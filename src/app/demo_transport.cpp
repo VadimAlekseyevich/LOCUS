@@ -97,11 +97,11 @@ void DemoTransport::Shutdown() {
 }
 
 double DemoTransport::SongSeconds(double monotonicSeconds) const noexcept {
-    return clock_.SecondsAt(monotonicSeconds);
+    return finished_ ? durationSeconds_ : clock_.SecondsAt(monotonicSeconds);
 }
 
 double DemoTransport::Beat(double monotonicSeconds) const noexcept {
-    return clock_.BeatAt(monotonicSeconds, bpm_);
+    return SongSeconds(monotonicSeconds) * bpm_ / 60.0;
 }
 
 const char* DemoTransport::Status() const noexcept {
