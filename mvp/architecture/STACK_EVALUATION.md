@@ -1,7 +1,7 @@
 # LOCUS — A-07 raylib Audio/Packaging Evaluation
 
 **Roadmap task:** A-07 — Spike raylib audio time and packaging  
-**Current status:** Probe source and measurement procedure prepared; **Windows build and interactive audio results must be verified before A-07 can be accepted**.  
+**Current status:** Windows x64 Release **build and headless WAV self-test passed**; an optional backend audio smoke run is in progress. Interactive audible playback, physical input latency, and a clean Windows machine launch remain unverified. Do not mistake the passing headless test for proof of acceptable rhythm-game timing.  
 **Pinned candidate:** raylib **6.0** (via CMake FetchContent)  
 **Probe:** [raylib_audio](../spikes/raylib_audio/README.md)  
 **Scope:** Technical experiment only, not a production engine choice.
@@ -10,13 +10,13 @@
 
 | Question | Mechanism | Current evidence |
 | --- | --- | --- |
-| Can a small C++/raylib program play a local metronome? | Generated 16 s 120 BPM PCM WAV, played via LoadMusicStream / UpdateMusicStream | **Needs interactive Windows playback** |
-| Can it show the reported music position? | GetMusicTimePlayed() sampled in GUI and CSV | **Instrumented; Windows runtime unverified** |
-| How do captured key-downs compare with reported song position? | A/D actions with std::chrono::steady_clock capture time and GetKeyPressed() polling | **Instrumented; results pending** |
-| Are pause and seek coherent? | PauseMusicStream, ResumeMusicStream, SeekMusicStream and recorded actions | **Instrumented; manual behavior pending** |
-| Is reported song time stable relative to a monotonic reference? | CSV samples every ~100 ms, reported minus wall-anchored time | **Pending actual runner/operator data** |
-| How big is a Windows Release executable? | CMake Release x64 + PowerShell byte count | **Pending Windows CI run** |
-| What additional files or runtime are required? | Inspect output DLLs and run on a clean Windows machine | **Pending Windows CI and clean-machine check** |
+| Can a small C++/raylib program play a local metronome? | Generated 16 s 120 BPM PCM WAV, played via LoadMusicStream / UpdateMusicStream | **Interactive Windows playback still unverified** |
+| Can it show the reported music position? | GetMusicTimePlayed() sampled in GUI and CSV | **Instrumented; interactive playback still unverified** |
+| How do captured key-downs compare with reported song position? | A/D actions with std::chrono::steady_clock capture time and GetKeyPressed() polling | **Instrumented; manual results pending** |
+| Are pause and seek coherent? | PauseMusicStream, ResumeMusicStream, SeekMusicStream and recorded actions | **Instrumented; optional API smoke + manual result pending** |
+| Is reported song time stable relative to a monotonic reference? | CSV samples every ~100 ms, reported minus wall-anchored time | **No acoustic or interactive measurement yet** |
+| How big is a Windows Release executable? | CMake Release x64 + PowerShell byte count | **975,360 bytes** (Windows 2022 runner, Release; run 41885935345) |
+| What additional files or runtime are required? | Inspect output DLLs and run on a clean Windows machine | **0 adjacent DLLs** in built Release folder; **clean-machine test pending** |
 
 **Important:** GetMusicTimePlayed() is a raylib stream-position value, not a direct DAC presentation timestamp. GetKeyPressed() is polled each frame and cannot guarantee OS event-capture precision. If these prevent defensible low-latency judgement, the project needs a separate input timestamp/audio-clock design (or a conditional SDL3 comparison); do not claim raylib alone has passed rhythm-game requirements.
 
@@ -48,17 +48,17 @@ Do not mark **passed** merely because the executable compiles or the WAV header 
 
 | Measurement | Result | Evidence |
 | --- | --- | --- |
-| Windows x64 Release build | **Not verified yet** | GitHub Actions / Windows toolchain output pending |
-| Headless WAV self-test | **Not verified yet** | Windows CI / operator output pending |
-| Release .exe size (bytes) | **Not measured yet** | CI windows-build-metrics.txt |
-| Bundled non-system DLL size (bytes) | **Not measured yet** | CI artifact inventory |
-| Generated metronome.wav size | **Expected 1,536,044 bytes**, by PCM header calculation; **not an observed Windows result** | 16 s × 48,000 samples/s × 2 bytes + 44-byte WAV header |
+| Windows x64 Release build | **PASS** | [Windows run 41885935345](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41885935345), MSVC 2022, raylib 6.0 |
+| Headless WAV self-test | **PASS** | Windows self-test output: SELF_TEST_PASS |
+| Release .exe size (bytes) | **975,360 bytes** (952.5 KiB) | Windows CI windows-build-metrics.txt |
+| Bundled non-system DLL size (bytes) | **0 bytes (0 adjacent DLLs)** | Build folder inventory; does not exclude Windows/CRT dependencies |
+| Generated metronome.wav size | **1,536,044 bytes (measured)** | Windows self-test + CI metrics; 16 s × 48,000 × 2 + 44 bytes |
 | Portable/clean Windows machine launch | **Not tested yet** | Manual installation check required |
 | Audible WAV playback | **Not tested yet** | Manual interactive run required |
 | Input timestamp granularity | **Not measured yet** | CSV + polling observation |
 | Pause/seek drift and jumps | **Not measured yet** | CSV + operator observation |
 
-Record the actual Windows runner URL, Visual Studio version, build SHA, sizes, and any dependency DLLs here when results exist. A headless runner can establish **build feasibility**, but not low-latency audio correctness on a typical player's machine.
+**Measured build provenance:** GitHub Actions [run 41885935345](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41885935345), commit `e3e5e1f4d0885b18d612e04776ae8383c5c140c8`, Windows 2022 hosted image, Visual Studio 2022 MSVC x64 Release, pinned raylib tag 6.0. Windows built static raylib archive: **5,324,650 bytes** (intermediate library, not shipped as an additional file). First run on Windows 2025 failed to locate VS 2022; corrected runner to Windows 2022 and reran successfully. A headless runner can establish **build feasibility**, but not low-latency audio correctness on a typical player's machine.
 
 ## 4. Technical risks discovered in design review
 
@@ -75,11 +75,11 @@ Record the actual Windows runner URL, Visual Studio version, build SHA, sizes, a
 
 | Criterion | A-07 result |
 | --- | --- |
-| Clean Windows build succeeds | Pending |
-| Release size and dependencies measured | Pending |
+| Clean Windows build succeeds | **PASS** on Windows 2022 hosted runner |
+| Release size and adjacent DLLs measured | **PARTIAL**: 975,360-byte EXE, 0 adjacent DLLs; system/CRT imports and clean-machine launch not tested |
 | Music plays correctly on an actual device | Pending |
 | Pause/seek/restart behave predictably | Pending |
 | Reported time stable enough to support a suitable clock adapter | Pending |
 | Polling timestamps/latency limitations are understood | Pending |
 
-**Roadmap status remains pending until the task's Windows build/run, observations, and concrete size numbers are verified.**
+**Roadmap status:** A-07 remains under evaluation until the optional audio API smoke output is recorded and the limitations of Windows hosted runners are explicitly accepted. The task may be completed as an **instrumented spike** without claiming the human listening/physical-latency tests have passed; those would remain hard requirements at the stack-selection gate (A-09).
