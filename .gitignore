@@ -1,20 +1,50 @@
-# Local builds, probes and logs (never commit user machine diagnostics)
-build-a07/
-.locus-runs/
-metronome.wav
-raylib_probe_log.csv
-windows-self-test.txt
-windows-audio-smoke.txt
-windows-build-metrics.txt
-
-# Common CMake/editor output
+# Local build trees, CMake cache/downloads, and IDE state
+/build/
+/build-*/
+/cmake-build-*/
+/out/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
+CTestTestfile.cmake
+compile_commands.json
+_deps/
+Testing/
+.ninja_deps
+.ninja_log
+build.ninja
 *.sln.docstates
+*.suo
+*.user
+*.VC.db
+*.VC.opendb
 .vs/
 .vscode/
 
-# OS artifacts
+# Private local diagnostics, audio, and chart/editor work (never upload by default)
+/.locus-runs/
+/local-audio/
+/local-charts/
+/.editor-temp/
+/audio/local/
+/charts/local/
+*.locus.json.tmp
+*.locus.json.*.tmp
+*.locus.json.bak
+*.autosave.locus.json
+*.locus.json~
+/metronome.wav
+/raylib_probe_log.csv
+/windows-self-test.txt
+/windows-audio-smoke.txt
+/windows-build-metrics.txt
+/foundation-smoke.txt
+/dependency-smoke.txt
+
+# Operating-system metadata
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# Do not blanket-ignore *.wav, *.json, or *.cpp: authored test fixtures
+# and licensed audio assets must remain possible to version intentionally.
