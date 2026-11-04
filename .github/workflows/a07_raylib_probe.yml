@@ -37,6 +37,14 @@ jobs:
             Tee-Object -FilePath windows-self-test.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Optional backend audio lifecycle smoke test (no physical audio assertion)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          & ".\build-a07\Release\locus_raylib_audio_spike.exe" --audio-smoke 2>&1 |
+            Tee-Object -FilePath windows-audio-smoke.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Collect executable and local dependency measurements
         shell: pwsh
         run: |
@@ -75,3 +83,4 @@ jobs:
             metronome.wav
             windows-build-metrics.txt
             windows-self-test.txt
+            windows-audio-smoke.txt
