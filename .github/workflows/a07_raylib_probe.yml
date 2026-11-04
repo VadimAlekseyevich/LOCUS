@@ -44,6 +44,7 @@ jobs:
             "draft.locus.json.123.tmp",
             "draft.locus.json.bak",
             "draft.autosave.locus.json",
+            "core-ctest.txt",
             "Thumbs.db"
           )
           foreach ($path in $ignored) {
