@@ -398,7 +398,7 @@ These are product-level acceptance criteria, not a task breakdown. Precise perfo
 | O-06 | Preview of overlapping, revisited, and wrapped route segments | Needs visual tests; no line across the grid on Wrap |
 | O-07 | Final chart serialization and audio packaging | Keep simple, versioned, local |
 | O-08 | Final score, accuracy, combo, and grade formula | Define after timing tests |
-| O-09 | Library choice: raylib vs SDL3 | Compare real timing, size, maintenance |
+| O-09 | Initial platform stack | Proposed C++17 + raylib 6.0 + raygui 5.0 in A-09; owner approval pending; latency measurement remains required |
 | O-10 | License for publicly available source | Owner to choose before a formal license claim |
 | O-11 | Exact v0.1 non-core settings and editor conveniences | Decide in separate roadmap |
 
