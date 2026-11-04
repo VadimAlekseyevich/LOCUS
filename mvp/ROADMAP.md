@@ -152,25 +152,27 @@ Examples: a Windows machine with an audio device is needed to validate A-07; inp
   **Change:** Write `mvp/architecture/UI_FLOW.md` with a compact editor wireframe (timeline + 4×4 preview) and screen transitions for play, pause, results, and editor test-play.  
   **Done when:** Every essential action has an identified UI location; no online/account screen appears.
 
-- [ ] **A-07 — Spike raylib audio time and packaging**  
+- [x] **A-07 — Spike raylib audio time and packaging**  
   **Depends on:** A-02.  
   **Change:** Create an isolated throwaway raylib probe that plays a local metronome, shows reported song time and key-down time, supports pause/seek, and records executable/dependency size.  
   **Done when:** Build and run on Windows; save observations, limitations, and size numbers in `mvp/architecture/STACK_EVALUATION.md`. Do not use the probe as the game architecture.
-  **Status (2026-11-04):** Windows x64 build and headless WAV self-test passed; latest EXE is 979,968 bytes with zero adjacent DLLs. The hosted runner has no output audio device, so interactive playback/pause/seek has not been verified. The owner can **double-click `build_and_run.bat`** in Windows (no Git Bash) and send the generated `LOCUS-A07-logs.zip` bundle. See `README.md` and `mvp/architecture/STACK_EVALUATION.md`. **HUMAN GATE REQUIRED EARLY: real audio-device and input-feel checks are needed. Keep A-07 unchecked until reviewed.**
+  **Status (COMPLETE — 2026-11-04):** Windows x64 build and headless WAV self-test passed; Release EXE measured 979,968 bytes with zero adjacent DLLs. The owner ran the BAT-driven interactive probe on their Windows PC and confirmed everything worked. **Owner explicitly declined to upload a ZIP; this is accepted for A-07's qualitative functional gate.** No input/audio latency in milliseconds was measured. Keep the working **`build_and_run.bat`** in the project. See `mvp/architecture/STACK_EVALUATION.md` for evidence and limitations.
 
 - [ ] **A-08 — Probe SDL3 only if raylib fails the timing gate (conditional)**  
   **Depends on:** A-07.  
   **Change:** If A-07 exposes a material timing, audio-output, event-capture, or stability blocker, create an isolated SDL3 audio/input probe comparing the same timing behavior; report package size as secondary context.  
   **Done when:** Comparable measurements are documented; skip explicitly if raylib meets the agreed criteria.
+  **Status (SKIPPED — 2026-11-04):** Conditional task not triggered. The owner reported successful raylib local operation; no material functional blocker has been observed. No SDL3 measurements or implementation were performed. **Not counted as a completed task.** Reopen only after a specific, measured latency/audio/input/stability blocker emerges.
 
-- [ ] **A-09 — Choose and record the production stack**  
+- [x] **A-09 — Choose and record the production stack**  
   **Depends on:** A-07.  
   **Change:** Create `mvp/architecture/STACK_DECISION.md` selecting rendering/audio/input approaches, UI approach, pinned dependencies, and reasons prioritizing verified timing/latency and correctness over binary size, based on the spikes (and A-08 if triggered).  
   **Done when:** Owner can approve one implementation path; temporary experiments are clearly separate from production code.
+  **Status (DOCUMENT COMPLETE — 2026-11-04):** See `mvp/architecture/STACK_DECISION.md`: C++17, raylib 6.0, raygui 5.0, native Win32 dialogs, nlohmann/json v3.12.0, CMake/CTest. **HUMAN GATE 1 STILL REQUIRES OWNER APPROVAL** before F-01. These selections do not certify measured end-to-end latency.
 
-### Human gate 1
+### Human gate 1 — OWNER APPROVAL PENDING
 
-**Do not start the next stage until approved.** Review the architecture decisions, test the timing prototype with headphones, and approve one stack and the core rule contracts.
+**HUMAN GATE REQUIRED:** The owner has confirmed the local A-07 audio/input prototype works, satisfying that functional check. **Before F-01, they must explicitly approve or request changes to** the architecture contracts (A-01–A-06) and selected stack documented in `mvp/architecture/STACK_DECISION.md` (A-09). No production code may start without that decision. No ZIP or additional A-07 data is required.
 
 ---
 
