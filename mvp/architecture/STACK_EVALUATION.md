@@ -40,7 +40,7 @@ Use **Git Bash** in the cloned repository root:
 bash run-a07.sh
 ~~~
 
-The script fast-forward pulls Git, builds the isolated probe, performs WAV and audio-device smoke tests, starts the GUI, asks brief subjective questions, and creates \`.locus-runs/a07-.../LOCUS-A07-logs.tar.gz\`. Upload that archive to the assistant. Setup and error instructions are in [the repository README](../../README.md). The script never uploads logs itself and will not overwrite uncommitted changes.
+The script fast-forward pulls Git, builds the isolated probe, performs WAV and audio-device smoke tests, starts the GUI, asks brief subjective questions, and creates `.locus-runs/a07-.../LOCUS-A07-logs.tar.gz`. Upload that archive to the assistant. Setup and error instructions are in [the repository README](../../README.md). The script never uploads logs itself and will not overwrite uncommitted changes.
 
 ### Local interactive acceptance procedure
 
