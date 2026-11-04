@@ -105,7 +105,7 @@ jobs:
       - name: Run F-04 core tests via CTest
         shell: pwsh
         run: |
-          ctest --test-dir build-a07/foundation --config Release --output-on-failure -R "^locus_core_foundation$" |
+          ctest --test-dir build-a07/foundation -C Release --output-on-failure -R "^locus_core_foundation$" |
             Tee-Object -FilePath core-ctest.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $report = Get-Content core-ctest.txt -Raw
