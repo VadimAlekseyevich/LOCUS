@@ -10,7 +10,7 @@ A rhythm game currently in development. **We are now building the first playable
 
 ### First-time setup
 
-- Windows 10 or Windows 11. An audio output device is only needed for the optional A-07 diagnostic, not the blank F-05 window.
+- Windows 10 or Windows 11. An audio output device is needed for the demo's audible 120 BPM click track and the optional A-07 diagnostic; the window still opens and explains the issue if audio output is unavailable.
 - **Git for Windows**, **CMake 3.25+** (required by raylib 6.0's CMake source build), and **Visual Studio 2022 with C++ tools**. A free Visual Studio 2022 Build Tools installation with the *Desktop development with C++* workload and Windows SDK is sufficient; the full IDE is not required.
 - Internet access for the first configuration: CMake downloads raylib 6.0 source.
 
@@ -146,7 +146,7 @@ The first test (`locus_core_foundation`) checks a small pure C++ core build/link
 
 **Keep `build_and_run.bat`.** With the owner's permission, F-05 switches its default to the production blank window and preserves the original A-07 diagnostic via `audio` mode. Future tasks may refine the launcher as LOCUS becomes playable, retaining error logs.
 
-**Gameplay progress (G-01 through G-03):** `src/core/route.h` and `src/core/route.cpp` contain the built-in 32-beat 120 BPM chart and deterministic turn/Wrap route calculation. The **Play** screen now renders the 16 grid points and bright marker at the demo chart's starting cell **(1, 1)**. The quiet grid guides are not the upcoming route; drawing the actual preview comes in G-04. The marker deliberately stays still until **G-04 (song-time movement)**. Press **F2** after BAT opens Home to see the grid and start the synthesized 32-beat click track. Moving to Home, Editor or Results stops playback. The same monotonic clock exposes song seconds and fractional beat without accumulating visual frame delta. The audio is generated in memory; nothing is downloaded or saved to disk. Windows CI verifies generation/clock behavior and C++ linking, but cannot guarantee acoustic output or physical device latency on your PC.
+**Gameplay progress (G-01 through G-04):** The built-in 32-beat, 120 BPM chart defines the exact authored Left/Right route across the 4×4 grid. **Play now moves the bright marker along that route** in time with the generated click track. The current step is cyan; the following three beats appear as fading blue segments. When a step wraps at a grid edge, the preview and marker disappear/reappear across **two short edge segments**, never drawing a false line through the middle of the board. `src/core/route_view.*` computes that display geometry in a testable, platform-independent way. **F2** from Home starts playback, returning to another screen stops it, and the marker ends on the chart's final cell after 32 beats. Its position and the preview use the same fractional beat from the song clock, never accumulated frame delta or player keys. No key judgements are implemented yet — that is **G-05**. Windows CI checks the route geometry and build without a graphical desktop; physical audio/visual alignment is not asserted by CI.
 
 ## Optional diagnostics — not required for gameplay
 
