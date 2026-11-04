@@ -12,6 +12,8 @@ include(cmake/dependencies.cmake)
 add_library(locus_core STATIC
     src/core/foundation.cpp
     src/core/route.cpp
+    src/core/song_clock.cpp
+    src/core/demo_audio.cpp
 )
 target_compile_features(locus_core PUBLIC cxx_std_17)
 set_target_properties(locus_core PROPERTIES
@@ -23,6 +25,7 @@ target_include_directories(locus_core PUBLIC
 
 add_executable(locus
     src/app/main.cpp
+    src/app/demo_transport.cpp
 )
 target_link_libraries(locus PRIVATE locus_core raylib)
 set_target_properties(locus PROPERTIES
@@ -58,4 +61,9 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_route_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_route_tests PRIVATE locus_core)
     add_test(NAME locus_demo_route COMMAND locus_route_tests)
+
+    add_executable(locus_music_tests tests/music_tests.cpp)
+    target_compile_features(locus_music_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_music_tests PRIVATE locus_core)
+    add_test(NAME locus_demo_audio_clock COMMAND locus_music_tests)
 endif()
