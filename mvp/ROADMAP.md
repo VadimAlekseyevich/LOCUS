@@ -130,7 +130,7 @@ Each checkbox below is intentionally a **bounded change with a concrete check**.
   **Change:** Document what qualifies as a key-down, simultaneous Left/Right, first-hit-wins, out-of-window presses, and pause/seek handling in `TIMING.md`.  
   **Done when:** For every ambiguous case, the document gives one deterministic expected judgement; numerical window sizes remain tunable.
 
-- [ ] **A-04 — Specify visual Wrap seams**  
+- [x] **A-04 — Specify visual Wrap seams**  
   **Depends on:** A-02.  
   **Change:** Add annotated route and wrap examples to `mvp/architecture/WRAP.md`, covering horizontal/vertical exits and turn-on-edge cases.  
   **Done when:** None of the examples draws a segment across the grid interior; marker progress over a seam is unambiguous.
