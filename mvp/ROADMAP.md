@@ -140,7 +140,7 @@ Each checkbox below is intentionally a **bounded change with a concrete check**.
   **Change:** Write `mvp/architecture/CHART_FORMAT.md` with a small versioned JSON example and fields for audio path, BPM, offset, start point/heading, preview lead, and timed Left/Right events.  
   **Done when:** One minimal chart and one invalid chart are shown; no Bounce field, variable grid, or speculative event plugin model is included.
 
-- [ ] **A-06 — Draw editor and game screen flows**  
+- [x] **A-06 — Draw editor and game screen flows**  
   **Depends on:** A-01.  
   **Change:** Write `mvp/architecture/UI_FLOW.md` with a compact editor wireframe (timeline + 4×4 preview) and screen transitions for play, pause, results, and editor test-play.  
   **Done when:** Every essential action has an identified UI location; no online/account screen appears.
