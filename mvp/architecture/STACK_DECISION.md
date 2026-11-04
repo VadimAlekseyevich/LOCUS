@@ -1,10 +1,10 @@
 # LOCUS — MVP v0.1 Technology Stack Decision
 
 **Roadmap task:** A-09 — Choose and record the production stack  
-**Status:** Selected technical direction; **Stage 1 owner approval required before production Foundation (F-01)**  
+**Status:** **APPROVED BY OWNER (2026-11-04)** — F-01 may begin; all existing timing limitations remain documented  
 **Updated:** 2026-11-04  
 **Platform:** Windows 10/11 x64 first  
-**Owner decision still needed:** Approve this stack at Human Gate 1. No production app has been implemented by A-09.
+**Owner decision:** The owner explicitly replied **Approved** after the Stage 1 stack summary on 2026-11-04. The F-01 production foundation is now authorized. This is a stack/architecture approval, **not** a claim of measured latency or a playable game.
 
 **References:** [GDD](../GDD.md), [Architecture Boundaries](./BOUNDARIES.md), [TIMING](./TIMING.md), [UI Flow](./UI_FLOW.md), [Chart Format](./CHART_FORMAT.md), [A-07 Evaluation](./STACK_EVALUATION.md), [Roadmap](../ROADMAP.md)
 
@@ -166,12 +166,12 @@ For editor audio selection and chart-relative paths, follow CHART_FORMAT.md. The
 
 ### Stage 1 human approval checklist
 
-- [ ] Owner accepts C++17 + raylib 6.0 as initial renderer/audio transport.
-- [ ] Owner accepts raygui 5.0 for basic editor widgets, Win32 file dialogs, and nlohmann/json v3.12.0 for chart serialization.
-- [ ] Owner understands **functional A-07 verification is qualitative**, not a physical millisecond latency benchmark.
-- [ ] Owner accepts SDL3 as a later measured fallback instead of a mandatory second implementation now.
-- [ ] Owner accepts preserving the root `build_and_run.bat` launcher.
-- [ ] After explicit approval, begin F-01 and report its tests and changed files.
+- [x] Owner accepts C++17 + raylib 6.0 as initial renderer/audio transport.
+- [x] Owner accepts raygui 5.0 for basic editor widgets, Win32 file dialogs, and nlohmann/json v3.12.0 for chart serialization.
+- [x] Owner understands **functional A-07 verification is qualitative**, not a physical millisecond latency benchmark.
+- [x] Owner accepts SDL3 as a later measured fallback instead of a mandatory second implementation now.
+- [x] Owner accepts preserving the root `build_and_run.bat` launcher.
+- [x] After explicit approval, begin F-01 and report its tests and changed files.
 
 ## 9. Completion criteria for A-09
 
