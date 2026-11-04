@@ -7,6 +7,8 @@ on:
       - "build_and_run.bat"
       - "CMakeLists.txt"
       - "src/**"
+      - "cmake/**"
+      - "tests/dependency_smoke.cpp"
       - ".github/workflows/a07_raylib_probe.yml"
   workflow_dispatch:
 
@@ -21,14 +23,14 @@ jobs:
       - name: Checkout LOCUS
         uses: actions/checkout@v4
 
-      # Temporary F-01 verification; F-08 will introduce dedicated production CI.
-      - name: Configure clean F-01 production foundation
+      # Temporary F-01/F-02 verification; F-08 adds dedicated production CI.
+      - name: Configure clean F-02 pinned production dependencies
         shell: pwsh
         run: |
-          cmake -S . -B build-a07/foundation -G "Visual Studio 17 2022" -A x64 -DLOCUS_BUILD_TESTS=ON
+          cmake -S . -B build-a07/foundation -G "Visual Studio 17 2022" -A x64 -DLOCUS_BUILD_TESTS=ON -DLOCUS_VERIFY_DEPENDENCIES=ON
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Build and run minimal LOCUS production executable
+      - name: Build and run production foundation and dependency smoke
         shell: pwsh
         run: |
           cmake --build build-a07/foundation --config Release --parallel 2
@@ -38,6 +40,10 @@ jobs:
           $output | Set-Content foundation-smoke.txt
           Write-Output $output
           if ($output -notmatch "LOCUS foundation built") { throw "F-01 production binary failed its minimal launch check" }
+          $deps = & ".\build-a07\foundation\Release\locus_dependencies_smoke.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $deps | Tee-Object -FilePath dependency-smoke.txt
+          if ($deps -notmatch "DEPENDENCY_SMOKE_PASS") { throw "Pinned dependency integration smoke test failed" }
 
       - name: Configure isolated raylib 6.0 probe
         shell: pwsh
@@ -110,6 +116,8 @@ jobs:
             build_and_run.bat
             build-a07/foundation/Release/locus.exe
             foundation-smoke.txt
+            build-a07/foundation/Release/locus_dependencies_smoke.exe
+            dependency-smoke.txt
             build-a07/Release/locus_raylib_audio_spike.exe
             metronome.wav
             windows-build-metrics.txt
