@@ -321,13 +321,11 @@ Avoid building a large settings framework until particular settings are proven n
 
 **Confirmed:** Windows first. **Highest priorities** are precise musical timing, minimal input-to-feedback and audio-output delay, stable performance, and correctness under frame stalls. **Secondary priorities** are maintainable code and a tightly controlled dependency/feature surface. Binary/download size is a diagnostic metric, **not a size cap**; a substantially larger build is acceptable for demonstrated benefits.
 
-**Open:** Engine/library choice.
+**Proposed (A-09; Stage 1 owner approval pending):** The initial Windows MVP stack is **C++17 + raylib 6.0** for window/rendering and basic audio transport, **raygui 5.0** for simple editor controls, **native Windows Common Item Dialogs** for file picking, and **nlohmann/json v3.12.0** for chart serialization. See [STACK_DECISION.md](./architecture/STACK_DECISION.md). A-07's real-device functional test was successful per the owner; **no numerical end-to-end latency was measured**.
 
-**Candidates:**
-- C++ + raylib — leading exploratory candidate for a compact 2D application.
-- C++ + SDL3 — alternative if lower-level audio timing/control or packaging favors it.
+**Conditional alternative:** SDL3 only after an observed timing, input, audio, or reliability blocker. Do not build two complete backends speculatively.
 
-Godot and Rust are not forbidden. Choose the stack by measured audio clock behavior, input capture timing, output latency, frame scheduling, platform stability, and maintenance cost. Do not select a library merely because its executable is smaller. New dependencies must solve concrete problems rather than grow the project aimlessly.
+Godot and Rust are not categorically forbidden. Choose revisions and future replacements by **measured audio/input timing, stability, and performance**, not by the fewest executable bytes. The selected tools require owner approval at Human Gate 1 before production work.
 
 ### 9.2 Architectural boundaries — Proposed
 
