@@ -40,8 +40,9 @@ Each item should produce visible or audible progress. Add focused automated test
   Add the first built-in 4×4 example with a start cell, heading, constant BPM and several Left/Right events. Implement the pure route calculation (turn before step; Wrap at edges) so the same beat always yields the same cell and heading. Verify a few turns and all edge directions. **Result:** a known correct route, independent of player keys.
   **Verified (2026-11-05):** Implemented a 32-beat, 120 BPM built-in chart with nine authored turns, pure integer-beat route computation in `src/core/route.h` and `route.cpp`, and focused `tests/route_tests.cpp` tests for turn-before-step, all four Wrap directions, beat-zero turning and deterministic samples. [Windows CI run 41913241034](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41913241034) passed **2/2 CTest tests** including `locus_demo_route`, and the production app still builds. The route exists in the core but is **not yet drawn on screen**; that is G-02.
 
-- [ ] **G-02 — Draw the game field and marker.**  
+- [x] **G-02 — Draw the game field and marker.**  
   Show 16 clearly spaced dots and the marker on the Play screen, using the existing raylib window and legible type. Keep Home/Editor/Results placeholders as needed; do not build menus now. **Result:** the game field is recognizably LOCUS, not a screen name.
+  **Verified (2026-11-05):** The Play screen now shows 16 evenly spaced grid points, subtle guide lines, and a bright stationary marker using the built-in demo chart's start cell `(1,1)`. The existing Windows-readable UI font and F2 debug navigation are retained. [Windows CI run 41914371229](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41914371229) passed the Release build, **2/2 CTest** cases, and headless screen-transition checks. **CI does not visually inspect the desktop.** Audio and musical-time movement deliberately remain G-03/G-04.
 
 - [ ] **G-03 — Play the demo track and drive one song clock.**  
   Reuse the proven raylib audio approach and a generated rights-clean click track. Start/stop it reliably; expose song time/beat for game logic rather than accumulating frame deltas. **Result:** audible beat-aligned playback on Windows and a coherent time source.
@@ -58,7 +59,7 @@ Each item should produce visible or audible progress. Add focused automated test
 - [ ] **G-07 — Deliver and playtest the first working prototype.**  
   Keep double-click `build_and_run.bat` launching the game, with no extra setup beyond the existing toolchain. Run the Windows build/tests, then ask the owner to actually play the demo on their PC. Fix **blocking** playability, timing or crashes discovered there. **Result:** owner confirms the demo is playable. **HUMAN GATE REQUIRED only for this real-device acceptance**, or for a genuine earlier blocker.
 
-**Next task is G-01.** Prefer a coherent feature per development turn, not a micromanaged series of one-line commits.
+**Next task is G-03 (demo audio and song clock).** Prefer a coherent feature per development turn, not a micromanaged series of one-line commits.
 
 ## After the game is playable — decide scope together
 
