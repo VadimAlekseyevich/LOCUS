@@ -47,6 +47,7 @@ These are design hypotheses, not validated audience research.
 - Only orthogonal travel: up, right, down, left.
 - Baseline movement: **one point-to-point step per quarter-note beat**.
 - Progressive advance preview of the correct route.
+- **Wrap** boundary traversal: leaving one side enters from the opposite side, preserving heading.
 - Timing judgements: **Perfect, Good, Bad, Miss**.
 - Always-on no-fail behavior; errors affect results, not route execution.
 - Chart editor combining an audio timeline and a synchronized grid preview.
@@ -85,11 +86,11 @@ The 4×4 layout evokes the musical four-count, but **grid positions are spatial 
 - The chart defines a start point and initial heading.
 - The marker moves forward autonomously, one grid edge per quarter note at the baseline rate.
 - A chart turn changes the heading when its scheduled moment is reached, whether or not the player pressed anything.
-- If there is no chart turn at that beat, the marker continues in its current direction, subject to the selected boundary rule.
+- If there is no chart turn at that beat, the marker continues in its current direction, wrapping to the opposite side when needed.
 - Visual movement should be smooth; logical routing remains discrete and deterministic.
 - Keyboard input **never** directly selects the next logical position.
 
-**Proposed event ordering at beat boundaries:** apply any scheduled chart turn, then resolve the next step and the boundary rule. Confirm during the boundary-mode prototype.
+**Proposed event ordering at beat boundaries:** apply any scheduled chart turn, then resolve the next step, wrapping if the step leaves the grid. Confirm this ordering in a deterministic route test.
 
 ### 3.3 Player input — Confirmed
 
@@ -120,7 +121,7 @@ For the baseline rule, turn events occur at eligible beat boundaries. There is n
     Beat 12 → Left
     Beat 16 → Right
 
-Start position, heading, BPM information, audio offset, preview lead, and boundary mode belong to chart-level configuration rather than being repeated on each turn.
+Start position, heading, BPM information, audio offset, and preview lead belong to chart-level configuration rather than being repeated on each turn. Boundary handling is fixed to Wrap in the MVP and does not need a chart setting.
 
 ### 3.5 No-fail route execution — Confirmed
 
@@ -135,16 +136,17 @@ There are two deliberately independent responsibilities:
 
 The renderer displays the results of these systems and does not decide either of them.
 
-### 3.6 Boundary handling — Open
+### 3.6 Boundary handling — Confirmed: Wrap
 
-Two candidate modes must be compared in a focused prototype:
+**Wrap is the only boundary rule in the MVP.** When a movement step would leave the 4×4 grid, the marker re-enters at the opposite edge on the same row or column, with its heading unchanged. For example, moving right from (3, 1) arrives at (0, 1); moving up from (2, 0) arrives at (2, 3).
 
-- **Wrap:** A step beyond one edge re-enters at the corresponding point of the opposite edge, preserving travel heading.
-- **Bounce:** A step beyond an edge reverses the heading and proceeds back into the grid.
+- A wrapped step consumes the same one-quarter-note duration as any other step.
+- Wrapping is automatic: it never requires an extra Left/Right input or produces a judgement.
+- If a charted turn occurs at an edge, resolve the turn before determining whether the following step wraps (**proposed ordering**, to be confirmed by a test).
+- Do not implement Bounce or a chart-selectable boundary-mode setting in the MVP.
+- For visual readability, a wrapped step must **not** be drawn as a line traversing the grid interior between opposite points.
 
-**Proposed:** The boundary mode is stored in chart metadata and is consistent throughout that chart. Automatic boundary behavior does not require a separate player keypress unless a future explicitly authored input event calls for one.
-
-Points to validate include how a wrap is drawn, when a bounce visually turns, and how either behavior interacts with a scheduled turn on the same beat. Do not hard-code one as the universal answer before the comparison.
+**Proposed visual treatment:** Split the moving segment and future-path preview at the outer grid boundary: show a brief exit on one side and re-entry on the opposite side. The exact animation is a playtest decision, but the logical destination and timing are fixed.
 
 ## 4. Audio Time and Judgement
 
@@ -213,7 +215,7 @@ The preview indicates **what the chart demands**, not what the player's inputs h
 
 The chart author can configure how far ahead the route is revealed. A lead of roughly one bar is a promising starting point but **not** a settled default. Density, tempo, crossings, and player legibility will determine a suitable range and any minimum.
 
-The preview should not jump or become misleading when the path crosses itself or revisits points. This is a primary playtest risk on a 4×4 grid.
+The preview should not jump or become misleading when the path crosses itself or revisits points. At a Wrap seam, render disconnected edge exit/re-entry segments, not a long line across the grid interior. This is a primary playtest risk on a 4×4 grid.
 
 ### 5.3 Past trajectory — Confirmed
 
@@ -246,7 +248,7 @@ Colors, typefaces, sizes, and animation curves are to be finalized through scree
 | Grid width/height | Initially fixed to 4×4 | Confirmed initial value |
 | Start point | Initial marker cell | Required |
 | Initial heading | Initial travel direction | Required |
-| Boundary mode | Wrap or Bounce, after comparison | Open |
+| Boundary rule | Fixed Wrap for MVP; no per-chart field needed | Confirmed |
 | Preview lead | Author-configured look-ahead | Confirmed capability |
 | Turn events | Ordered pairs of beat/time + Left/Right | Confirmed foundation |
 
@@ -258,7 +260,7 @@ The exact storage format (e.g., JSON or a compact text representation), IDs, and
 - One turn event per permitted step boundary for the MVP.
 - Every turn is Left or Right; straight movement is implicit.
 - Start point lies within the grid.
-- Every calculated movement resolves to a valid point using the chart's boundary rule.
+- Every calculated movement resolves to a valid point under Wrap (modulo-4 coordinates), without changing heading.
 - Route generation produces the same outcome in the editor, test harness, and game.
 - A chart with no turn events is valid and plays as automatic movement.
 - Parsing errors produce clear messages instead of crashes or silent correction.
@@ -287,7 +289,7 @@ The author can move through the song and inspect exactly what players will see a
 3. Choose the starting point and initial heading.
 4. Place, select, move, change direction, and delete Left/Right turn events on the timeline.
 5. Scrub and play/pause the audio while watching the grid preview.
-6. Configure future-path lead and, once settled, boundary mode.
+6. Configure future-path lead; Wrap is fixed and does not require an editor control.
 7. Validate chart events and inspect any detected errors.
 8. Save and reopen the chart without changing its route or event timing.
 9. Test-play the same chart with the actual game judgement rules.
@@ -368,7 +370,7 @@ Changes to core gameplay rules, timing, chart format, or scope require the owner
 The first playable MVP should demonstrate all of the following:
 
 - A Windows build displays a 4×4 grid and smoothly moving marker.
-- With no turn events, the marker moves automatically in musical quarter-note steps, following a deterministic boundary policy.
+- With no turn events, the marker moves automatically in musical quarter-note steps and correctly wraps across all four grid edges.
 - The correct route preview becomes visible ahead at the authored lead and disappears behind the marker.
 - Timed Left/Right events are graded Perfect, Good, Bad, or Miss using the audio clock, not visual frame position.
 - Wrong or absent input still produces the same correct marker trajectory.
@@ -384,19 +386,17 @@ These are product-level acceptance criteria, not a task breakdown. Precise perfo
 
 | ID | Question | Current direction |
 | --- | --- | --- |
-| O-01 | Wrap vs Bounce at grid boundaries | Test both; do not pick prematurely |
-| O-02 | Exact beat-boundary ordering for turns and edge resolution | Proposed: turn, then resolve step |
-| O-03 | Numerical Perfect/Good/Bad/Miss thresholds | Playtest and calibrate |
-| O-04 | Initial key bindings and remapping | Two relative actions; bindings TBD |
-| O-05 | Handling stray keys outside windows | Proposed: ignore |
-| O-06 | Exact preview lead units/default/range | Author-defined; roughly a bar is a test hypothesis |
-| O-07 | Preview of overlapping, revisited, and wrapped route segments | Needs visual tests |
-| O-08 | Final chart serialization and audio packaging | Keep simple, versioned, local |
-| O-09 | Final score, accuracy, combo, and grade formula | Define after timing tests |
-| O-10 | Library choice: raylib vs SDL3 | Compare real timing, size, maintenance |
-| O-11 | License for publicly available source | Owner to choose before a formal license claim |
-| O-12 | Exact v0.1 non-core settings and editor conveniences | Decide in separate roadmap |
-| O-13 | Visual treatment of an automatic 180° Bounce in a two-action game | Compare in prototype |
+| O-01 | Exact beat-boundary ordering for turns and Wrap resolution | Proposed: turn, then resolve step |
+| O-02 | Numerical Perfect/Good/Bad/Miss thresholds | Playtest and calibrate |
+| O-03 | Initial key bindings and remapping | Two relative actions; bindings TBD |
+| O-04 | Handling stray keys outside windows | Proposed: ignore |
+| O-05 | Exact preview lead units/default/range | Author-defined; roughly a bar is a test hypothesis |
+| O-06 | Preview of overlapping, revisited, and wrapped route segments | Needs visual tests; no line across the grid on Wrap |
+| O-07 | Final chart serialization and audio packaging | Keep simple, versioned, local |
+| O-08 | Final score, accuracy, combo, and grade formula | Define after timing tests |
+| O-09 | Library choice: raylib vs SDL3 | Compare real timing, size, maintenance |
+| O-10 | License for publicly available source | Owner to choose before a formal license claim |
+| O-11 | Exact v0.1 non-core settings and editor conveniences | Decide in separate roadmap |
 
 ## 13. Future Vision (Not MVP Commitments)
 
