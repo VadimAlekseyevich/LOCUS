@@ -1,0 +1,20 @@
+# Local builds, probes and logs (never commit user machine diagnostics)
+build-a07/
+.locus-runs/
+metronome.wav
+raylib_probe_log.csv
+windows-self-test.txt
+windows-audio-smoke.txt
+windows-build-metrics.txt
+
+# Common CMake/editor output
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.sln.docstates
+.vs/
+.vscode/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
