@@ -233,10 +233,11 @@ if /I "%MODE%"=="baseline" (
 
 echo.
 echo ============================================================
-echo  LOCUS MOVING DEMO ROUTE - GAMEPLAY IN DEVELOPMENT
+echo  LOCUS DEMO RHYTHM JUDGEMENTS - GAMEPLAY IN DEVELOPMENT
 echo  F1 = Home   F2 = Play / moving marker and 120 BPM click track
+echo  A = Left turn   D = Right turn   (press near the charted beat)
 echo  F3 = Editor   F4 = Results   ESC = Close
-echo  Cyan is the current step; blue previews the next three beats.
+echo  Errors earn Miss but never change the correct route.
 echo  Close with ESC or the X button in the window title bar.
 echo ============================================================
 echo.
