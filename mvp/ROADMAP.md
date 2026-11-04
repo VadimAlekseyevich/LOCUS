@@ -208,6 +208,7 @@ The owner explicitly approved the A-01–A-06 architecture contracts and A-09 te
   **Depends on:** F-02.  
   **Change:** Implement application initialization and a clean shutdown path using the selected library.  
   **Done when:** Window opens, remains responsive, and exits with no resource errors.
+  **Status (2026-11-04 — HUMAN GATE REQUIRED EARLY):** The production `locus.exe` implements a 960×540 dark raylib window, Esc/X exit, and a 60-frame CI smoke mode. Windows CI successfully compiles it but the hosted runner returned `WINDOW_INIT_FAILED` due to unavailable interactive desktop; this is **not** a passing real-window test. With owner authorization, `build_and_run.bat` now defaults to building/launching the production window, preserving the A-07 experiment under `audio` mode. **Leave F-05 unchecked until the owner confirms the window opens, remains responsive, and closes cleanly on their Windows PC.** A ZIP is required only on failure.
 
 - [ ] **F-06 — Separate update and render entry points**  
   **Depends on:** F-05.  
