@@ -44,8 +44,9 @@ Each item should produce visible or audible progress. Add focused automated test
   Show 16 clearly spaced dots and the marker on the Play screen, using the existing raylib window and legible type. Keep Home/Editor/Results placeholders as needed; do not build menus now. **Result:** the game field is recognizably LOCUS, not a screen name.
   **Verified (2026-11-05):** The Play screen now shows 16 evenly spaced grid points, subtle guide lines, and a bright stationary marker using the built-in demo chart's start cell `(1,1)`. The existing Windows-readable UI font and F2 debug navigation are retained. [Windows CI run 41914371229](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41914371229) passed the Release build, **2/2 CTest** cases, and headless screen-transition checks. **CI does not visually inspect the desktop.** Audio and musical-time movement deliberately remain G-03/G-04.
 
-- [ ] **G-03 — Play the demo track and drive one song clock.**  
+- [x] **G-03 — Play the demo track and drive one song clock.**  
   Reuse the proven raylib audio approach and a generated rights-clean click track. Start/stop it reliably; expose song time/beat for game logic rather than accumulating frame deltas. **Result:** audible beat-aligned playback on Windows and a coherent time source.
+  **Implemented (2026-11-05):** `src/core/demo_audio.*` synthesizes a 16-second original mono WAV in memory for the built-in 120 BPM / 32-beat demo. `src/core/song_clock.*` defines one monotonic song-time domain independent of render frame count, with seconds/beat conversion. `src/app/demo_transport.*` uses raylib 6.0 `Music` streaming to play on entering Play (F2) and stop when leaving, unloading the decoder before its backing WAV data and the audio device. The Play screen displays song seconds and beat; the marker remains stationary until G-04. [Windows CI run 41915821845](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41915821845) passed **3/3 CTest** cases including generated PCM/clock tests and the full x64 Release build. **Limitation:** hosted CI has no real audio output; acoustic playback on the owner's Windows speakers and latency are not physically verified. The transport clock is anchored to the PlayMusicStream call, not a measured audio DAC presentation timestamp. This limitation does not block working toward a playable demo or justify mandatory benchmarking.
 
 - [ ] **G-04 — Move the marker with music and show the route ahead.**  
   Render fractional-beat motion from the deterministic route, a short look-ahead path, and correct seam-split visuals for Wrap. Use the same song time for marker and preview. **Result:** a moving, readable rhythm path even if the player never presses a key.
@@ -59,7 +60,7 @@ Each item should produce visible or audible progress. Add focused automated test
 - [ ] **G-07 — Deliver and playtest the first working prototype.**  
   Keep double-click `build_and_run.bat` launching the game, with no extra setup beyond the existing toolchain. Run the Windows build/tests, then ask the owner to actually play the demo on their PC. Fix **blocking** playability, timing or crashes discovered there. **Result:** owner confirms the demo is playable. **HUMAN GATE REQUIRED only for this real-device acceptance**, or for a genuine earlier blocker.
 
-**Next task is G-03 (demo audio and song clock).** Prefer a coherent feature per development turn, not a micromanaged series of one-line commits.
+**Next task is G-04 (music-driven marker motion and readable route preview).** Prefer a coherent feature per development turn, not a micromanaged series of one-line commits.
 
 ## After the game is playable — decide scope together
 
