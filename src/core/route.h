@@ -33,7 +33,7 @@ struct RouteStep {
 };
 
 // A fixed, rights-clean gameplay chart for the first playable prototype.
-// The original 120 BPM click track is generated in the later audio slice.
+// The original 120 BPM click track is generated in src/core/demo_audio.cpp.
 Chart MakeDemoChart();
 
 // Pure deterministic route: apply a charted turn at the beat boundary,
