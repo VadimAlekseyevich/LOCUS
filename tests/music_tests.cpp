@@ -60,6 +60,33 @@ int main() {
     ok &= Expect(std::abs(clock.BeatAt(201.0, 120.0) - 2.0) < 1e-10,
                  "restarting establishes a new independent monotonic anchor");
 
+    // G-06: pausing and resuming must freeze the same clock used for route
+    // animation and A/D judgements; wall-clock pause time is excluded.
+    clock.Pause(201.25);
+    ok &= Expect(clock.Paused() && clock.Running() &&
+                     std::abs(clock.SecondsAt(250.0) - 1.25) < 1e-10 &&
+                     std::abs(clock.BeatAt(250.0, 120.0) - 2.5) < 1e-10,
+                 "music time must not advance during pause");
+    clock.Pause(250.0);
+    ok &= Expect(std::abs(clock.SecondsAt(300.0) - 1.25) < 1e-10,
+                 "pausing twice must not double-count elapsed time");
+    clock.Resume(300.0);
+    ok &= Expect(!clock.Paused() &&
+                     std::abs(clock.SecondsAt(300.25) - 1.5) < 1e-10 &&
+                     std::abs(clock.BeatAt(300.25, 120.0) - 3.0) < 1e-10,
+                 "resuming excludes wall-clock pause time");
+    clock.Resume(301.0);
+    ok &= Expect(std::abs(clock.SecondsAt(301.25) - 2.5) < 1e-10,
+                 "resuming twice must not shift the song clock");
+    clock.Pause(301.25);
+    clock.Stop();
+    ok &= Expect(!clock.Running() && !clock.Paused() &&
+                     clock.SecondsAt(400.0) == 0.0,
+                 "stop clears paused state and accumulated music time");
+    clock.Start(500.0);
+    ok &= Expect(std::abs(clock.SecondsAt(500.5) - 0.5) < 1e-10,
+                 "retry starts a fresh clock, independent of the previous pause");
+
     constexpr std::size_t frames = 48000U * 16U;
     const auto wav = MakeDemoClickWav(120.0, 32);
     ok &= Expect(wav.size() == 44U + frames * 2U,
