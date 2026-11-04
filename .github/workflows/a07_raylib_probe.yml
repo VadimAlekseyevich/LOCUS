@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "mvp/spikes/raylib_audio/**"
+      - "run-a07.sh"
       - ".github/workflows/a07_raylib_probe.yml"
   workflow_dispatch:
 
@@ -17,6 +18,10 @@ jobs:
     steps:
       - name: Checkout LOCUS
         uses: actions/checkout@v4
+
+      - name: Validate Git Bash launcher syntax
+        shell: bash
+        run: bash -n run-a07.sh
 
       - name: Configure isolated raylib 6.0 probe
         shell: pwsh
