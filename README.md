@@ -111,7 +111,7 @@ Build output stays inside the Git-ignored `build-a07/` tree for the existing Win
 **F-04 core smoke test (Windows Command Prompt):** After configuring and building with `-DLOCUS_BUILD_TESTS=ON`, run:
 
 ~~~bat
-ctest --test-dir build-a07/foundation --config Release --output-on-failure
+ctest --test-dir build-a07/foundation -C Release --output-on-failure
 ~~~
 
 The first test (`locus_core_foundation`) checks a small pure C++ core build/link contract and does not open a window or audio device. This is an **infrastructure placeholder**, not a gameplay correctness or latency test. Windows CI runs it automatically.
