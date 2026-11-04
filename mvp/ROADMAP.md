@@ -210,10 +210,11 @@ The owner explicitly approved the A-01–A-06 architecture contracts and A-09 te
   **Done when:** Window opens, remains responsive, and exits with no resource errors.
   **Status (2026-11-04 — HUMAN GATE REQUIRED EARLY):** The production `locus.exe` implements a 960×540 dark raylib window, Esc/X exit, and a 60-frame CI smoke mode. Windows CI [run 41902352666](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41902352666) **passed** the production compilation, core CTest, and both BAT (`test`/`build`) modes. Its hosted runner reported `WINDOW_INIT_FAILED` for graphical initialization and saved `F05_GUI_UNAVAILABLE_ON_HOSTED_RUNNER`; this is **not** a passing real-window test. With owner authorization, `build_and_run.bat` now defaults to building/launching the production window, preserving the A-07 experiment under `audio` mode. **Owner confirmed on 2026-11-04:** The blank window opened and closed normally on their Windows PC; the early F-05 human gate is **satisfied**, with no ZIP needed. The hosted-runner GUI limitation remains documented as a CI environment constraint, not a local failure.
 
-- [ ] **F-06 — Separate update and render entry points**  
+- [x] **F-06 — Separate update and render entry points**  
   **Depends on:** F-05.  
   **Change:** Introduce a single application loop with explicit input polling, state update, and render calls.  
   **Done when:** The program runs the three phases in a documented order without embedding gameplay logic in drawing.
+  **Verified (2026-11-04):** `src/app/main.cpp` now runs `PollInput()` → `UpdateState()` → (stop if requested) → `RenderFrame()` in one raylib loop. Input is observed once; update advances only minimal app state; rendering draws without applying gameplay rules. `locus.exe --loop-check` verifies the 60-frame update/stop limit and immediate close without a window. [Windows CI run 41904030990](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41904030990) passed this headless check (`LOOP_STATE_PASS frames=60`), CTest, production build, BAT test/build, and clean-worktree check. The owner already confirmed F-05's real window operation; the hosted runner has no interactive GUI.
 
 - [ ] **F-07 — Introduce a minimal screen state switch**  
   **Depends on:** F-06.  
