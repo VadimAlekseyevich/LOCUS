@@ -52,8 +52,9 @@ Each item should produce visible or audible progress. Add focused automated test
   Render fractional-beat motion from the deterministic route, a short look-ahead path, and correct seam-split visuals for Wrap. Use the same song time for marker and preview. **Result:** a moving, readable rhythm path even if the player never presses a key.
   **Verified (2026-11-05):** `src/core/route_view.*` defines pure fractional-beat interpolation and seam-split segments for all four Wrap edges. The Play renderer samples the single `DemoTransport::Beat(now)` clock for both marker and a four-step preview: bright cyan current step, fading blue next three beats, and no false cross-grid line on Wrap. The marker reaches the final chart cell at beat 32. [Windows CI run 41916912504](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41916912504) passed the x64 Release build and **4/4 CTest** cases, including `locus_route_view` checks for all Wrap directions, half-beat positions, end-of-song and clamping. Rendering on the owner's actual monitor and physical audio/display alignment are not certified by hosted CI. No A/D judgements have been implemented yet; that is G-05.
 
-- [ ] **G-05 — Judge Left/Right presses without steering the route.**  
+- [x] **G-05 — Judge Left/Right presses without steering the route.**  
   Capture fresh A/D key-downs, associate them with song time, and issue Perfect/Good/Bad/Miss with provisional reasonable thresholds. Test early/late/wrong/missing presses and verify the route stays identical. **Result:** player actions have meaningful, consistent feedback and **No Fail** works.
+  **Verified (2026-11-05):** Added pure `src/core/judgement.*` with one final grade per authored turn and provisional symmetric timing windows: Perfect ±50 ms, Good ±110 ms, Bad ±180 ms; incorrect input inside an event window and unplayed events become **Miss**, while out-of-window stray keys are ignored. Only fresh A/D key-downs are captured with the transport's monotonic song-time domain. Play now shows upcoming Left/Right turns, live counts and latest judgement. Hits never mutate the const chart or the deterministic G-01 route; returning to Play resets results. [Windows CI run 41931760389](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41931760389) passed x64 Release and **5/5 CTest** checks including `locus_turn_judgement` (early/late/wrong/missing hits, double-hit prevention, restarts, No Fail). Physical keyboard/audio latency and perceived difficulty are **not** measured; refine thresholds during actual playtesting, without mandatory benchmarks.
 
 - [ ] **G-06 — Make a complete short play session.**  
   Provide an obvious way to start the demo from Home, show basic judgement counts, handle pause/resume and restart, and display Results at the end. **Result:** a small game that can be played from start to finish, repeatedly.
@@ -61,7 +62,7 @@ Each item should produce visible or audible progress. Add focused automated test
 - [ ] **G-07 — Deliver and playtest the first working prototype.**  
   Keep double-click `build_and_run.bat` launching the game, with no extra setup beyond the existing toolchain. Run the Windows build/tests, then ask the owner to actually play the demo on their PC. Fix **blocking** playability, timing or crashes discovered there. **Result:** owner confirms the demo is playable. **HUMAN GATE REQUIRED only for this real-device acceptance**, or for a genuine earlier blocker.
 
-**Next task is G-05 (Left/Right timing judgements without steering the authored route).** Prefer a coherent feature per development turn, not a micromanaged series of one-line commits.
+**Next task is G-06 (complete short play session: start, pause/resume, restart, Results).** Prefer a coherent feature per development turn, not a micromanaged series of one-line commits.
 
 ## After the game is playable — decide scope together
 
