@@ -150,11 +150,14 @@ The first test (`locus_core_foundation`) checks a small pure C++ core build/link
 
 The dedicated Windows CI records **release executable size** and **headless process startup times** using [`tools/measure-baseline.ps1`](tools/measure-baseline.ps1). A hosted runner has no interactive desktop; it cannot provide genuine idle GUI CPU/RAM or a keyboard-to-screen latency measurement. See [`mvp/BASELINES.md`](mvp/BASELINES.md) for the exact methods, environment, measurement definitions and current evidence.
 
-To measure the **actual LOCUS window** on your Windows PC:
+To measure the **actual LOCUS window** on your Windows PC, **first update the cloned repository** if your current BAT predates the new `baseline` mode:
 
 ~~~bat
+git pull --ff-only
 build_and_run.bat baseline
 ~~~
+
+On subsequent runs, `build_and_run.bat baseline` alone is enough: the BAT checks Git updates itself. Running the old BAT with `baseline` **before** updating would simply print its usage instructions.
 
 Leave the window alone for **12 seconds** while sampling. When it says sampling is complete, press **Esc** or **X** to close the window. The BAT prints a text report with the EXE size, a window-ready proxy and mean/peak CPU/memory observations; it also keeps `baseline-summary.txt` and `baseline-idle-samples.csv` in a local Git-ignored archive. **No ZIP upload is required** when it works: you can simply tell the assistant the report values. The report contains your Windows hardware model and path details, so review it before sharing.
 
