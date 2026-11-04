@@ -22,7 +22,7 @@
 
 The diagram shows **runtime data flow**, not compile-time import direction. Solid arrows represent values/events passed to consumers. A single game session coordinates the components; the diagram intentionally does not require a separate executable process for each box.
 
-\`\`\`mermaid
+```mermaid
 flowchart TD
     File["Local chart file"] --> Storage["Chart load / save adapter"]
     Storage --> Parse["Chart parse + validation"]
@@ -50,7 +50,7 @@ flowchart TD
     Draft --> Storage
     Clock --> EditorUI["Editor timeline + grid preview"]
     Route --> EditorUI
-\`\`\`
+```
 
 **Important qualification:** The editor owns the mutable draft, while the renderer receives already computed snapshots and display parameters. In code, the session coordinator may call Route/Clock/Judgement and pass simple value objects to the UI; the UI is not required to call Route directly just because the diagram shows route data arriving there.
 
@@ -76,7 +76,7 @@ The core can be a handful of cohesive source files. These owners are **logical r
 
 The arrows below mean "may import or call," not "must import or call."
 
-\`\`\`text
+```text
                         App / session orchestration
                   /         |         |          \
             Game UI     Editor UI   Editor      Platform adapters
@@ -85,7 +85,7 @@ The arrows below mean "may import or call," not "must import or call."
                      Pure core contracts
                    /       |         |       \
                 Chart    Timing     Route    Judgement
-\`\`\`
+```
 
 ### Allowed
 
@@ -167,7 +167,7 @@ Precise pause/seek judgement semantics will be recorded in A-02/A-03; this table
 
 ## 7. Suggested source ownership (not a mandatory layout)
 
-\`\`\`text
+```text
 src/
   core/       # chart model/validation; beat math; route; judgement
   platform/   # audio and clock bridge; keyboard capture; file I/O
@@ -179,7 +179,7 @@ mvp/
   ROADMAP.md
   architecture/
     BOUNDARIES.md
-\`\`\`
+```
 
 Do not create empty directories or placeholder abstractions simply to match this diagram. Final build targets, source filenames, and third-party UI/rendering libraries are decisions for A-09 and the Foundation stage.
 
