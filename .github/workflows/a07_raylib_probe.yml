@@ -93,7 +93,7 @@ jobs:
         run: |
           cmake --build build-a07/foundation --config Release --parallel 2
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $output = & ".\build-a07\foundation\Release\locus.exe"
+          $output = & ".\build-a07\foundation\Release\locus.exe" --foundation-check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $output | Set-Content foundation-smoke.txt
           Write-Output $output
@@ -102,6 +102,28 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $deps | Tee-Object -FilePath dependency-smoke.txt
           if (-not ($deps -match "DEPENDENCY_SMOKE_PASS")) { throw "Pinned dependency integration smoke test failed" }
+
+      - name: Exercise F-05 blank window open draw and clean shutdown
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path ".\build-a07\foundation\Release\locus.exe").Path
+          $output = Join-Path $PWD "window-smoke.txt"
+          $errors = Join-Path $PWD "window-smoke-stderr.txt"
+          $process = Start-Process -FilePath $exe -ArgumentList "--window-smoke" -PassThru -RedirectStandardOutput $output -RedirectStandardError $errors
+          if (-not $process.WaitForExit(15000)) {
+            $process.Kill()
+            throw "F-05 window smoke timed out (possible unresponsive window)"
+          }
+          $process.Refresh()
+          if ($process.ExitCode -ne 0) {
+            Get-Content $errors -ErrorAction SilentlyContinue
+            throw "F-05 window smoke failed with exit code $($process.ExitCode)"
+          }
+          $report = Get-Content $output -Raw
+          Write-Output $report
+          if ($report -notmatch "LOCUS_WINDOW_OPEN" -or $report -notmatch "WINDOW_SMOKE_PASS frames=60") {
+            throw "F-05 window did not confirm 60 draws and clean shutdown"
+          }
 
       - name: Run F-04 core tests via CTest
         shell: pwsh
@@ -192,6 +214,8 @@ jobs:
             build_and_run.bat
             build-a07/foundation/Release/locus.exe
             foundation-smoke.txt
+            window-smoke.txt
+            window-smoke-stderr.txt
             build-a07/foundation/Release/locus_dependencies_smoke.exe
             dependency-smoke.txt
             build-a07/foundation/Release/locus_core_tests.exe
