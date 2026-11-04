@@ -1,6 +1,6 @@
 # LOCUS
 
-A rhythm game currently in development. The **MVP game is not playable yet**. Two Windows executables exist: the original **A-07 audio/input timing probe** (launched by `build_and_run.bat`) and the new **F-05 blank production window** (`locus.exe`).
+A rhythm game currently in development. The **MVP game is not playable yet**. Two Windows executables exist: the **F-05 blank production window** (`locus.exe`, launched by double-clicking `build_and_run.bat`) and the original **A-07 audio/input timing probe** (select the BAT's `audio` mode).
 
 [Game Design Document](mvp/GDD.md) · [MVP Roadmap](mvp/ROADMAP.md) · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
 
@@ -10,7 +10,7 @@ A rhythm game currently in development. The **MVP game is not playable yet**. Tw
 
 ### First-time setup
 
-- Windows 10 or Windows 11; speakers or headphones and a working output device.
+- Windows 10 or Windows 11. An audio output device is only needed for the optional A-07 diagnostic, not the blank F-05 window.
 - **Git for Windows**, **CMake 3.25+** (required by raylib 6.0's CMake source build), and **Visual Studio 2022 with C++ tools**. A free Visual Studio 2022 Build Tools installation with the *Desktop development with C++* workload and Windows SDK is sufficient; the full IDE is not required.
 - Internet access for the first configuration: CMake downloads raylib 6.0 source.
 
@@ -30,11 +30,11 @@ If you already have the LOCUS repository, **double-click `build_and_run.bat` in 
 
 1. Copies itself to a temporary location so a **Git update can safely replace the original BAT**.
 2. Checks for local uncommitted files; runs `git pull --ff-only` only if safe. It does **not** delete or overwrite your changes.
-3. Checks build prerequisites, asks before installing anything missing, and configures the isolated raylib 6.0 C++ probe.
-4. Compiles the **Windows x64 Release** executable in `build-a07`.
-5. Runs the generated WAV file self-test and an **audio-device smoke test** (play, pause, seek, resume).
-6. Starts the interactive diagnostic window and records timestamps to CSV.
-7. Offers optional feedback questions, then collects **all available logs into one ZIP**. A ZIP is produced even when configuration/build/tests fail after log-folder creation.
+3. Checks build prerequisites and asks before installing anything missing.
+4. **By default:** configures the root production CMake project and builds `locus.exe` in `build-a07/foundation/Release/`.
+5. Opens the **blank dark LOCUS window**. Close using Esc or the X button.
+6. Saves compile errors and window-open/close status to **`LOCUS-game-logs.zip`** if available; a ZIP is produced even when the build fails after log-folder creation.
+7. **Optional `audio` mode:** runs the previously tested A-07 metronome, transport tests, key-press CSV, and its separate `LOCUS-a07-logs.zip` bundle.
 
 All build output is kept locally and ignored by Git. Nothing is uploaded automatically.
 
@@ -42,15 +42,17 @@ All build output is kept locally and ignored by Git. Nothing is uploaded automat
 
 | Command | Behavior |
 | --- | --- |
-| `build_and_run.bat` | Default: pull, build, tests, audio smoke, launch GUI, ZIP logs |
-| `build_and_run.bat build` | Pull and compile only |
-| `build_and_run.bat test` | Pull, compile, run WAV self-test |
-| `build_and_run.bat smoke` | Pull, compile, WAV test, audio-device lifecycle smoke |
+| `build_and_run.bat` | **Default:** pull, build and open blank LOCUS production window |
 | `build_and_run.bat run` | Same as double-click |
+| `build_and_run.bat build` | Pull and compile the production game without launching a window |
+| `build_and_run.bat game` | Open blank production LOCUS window |
+| `build_and_run.bat audio` | Run the original A-07 metronome/audio-input experiment |
+| `build_and_run.bat test` | Run A-07 WAV self-test without a graphical window |
+| `build_and_run.bat smoke` | Run A-07 WAV and audio-device smoke tests |
 
 **Advanced/CI only:** Set `LOCUS_SKIP_PULL=1` to skip Git updates or `LOCUS_NO_PAUSE=1` to avoid waiting for a key at the end. These are not needed for normal use.
 
-### Controls in the test window
+### Original A-07 audio diagnostic (`build_and_run.bat audio`)
 
 The application generates a **16-second 120 BPM** metronome (one click every half-second).
 
@@ -71,17 +73,17 @@ This is **not yet a playable rhythm game**. The raylib reported streaming positi
 When the BAT finishes, it prints the path to the archive:
 
 ~~~text
-LOCUS\.locus-runs\a07-YYYYMMDD-HHMMSS-12345\LOCUS-A07-logs.zip
+LOCUS\.locus-runs\game-YYYYMMDD-HHMMSS-12345\LOCUS-game-logs.zip
 ~~~
 
-**If troubleshooting is needed, you can attach this ZIP to the ChatGPT conversation.** It includes relevant Git, dependency, compiler, self-test and audio-smoke output, plus timestamped CSV and optional feedback if the GUI ran. **The owner has already confirmed the functional A-07 check; no upload is required now.**
+**If troubleshooting is needed, you can attach this ZIP to the ChatGPT conversation.** In default game mode, it contains Git/build logs and output from the window; in `audio` mode it also includes the audio/device logs and A/D timestamps. **No ZIP is required if the new blank window opens and closes normally.** The owner has already confirmed the original A-07 audio diagnostic.
 
 - The archive excludes both the executable and generated WAV.
 - Logs are stored in a Git-ignored local directory, never committed.
 - The BAT does **not** upload data anywhere.
 - Review the archive before sharing; compiler paths can reveal your Windows user folder.
 
-**Even if something fails**, send the ZIP. It will include the failure details (when the launcher was able to create its log folder).
+**If something fails**, send the ZIP. It will include available failure details (provided the launcher was able to create its log folder).
 
 ## Troubleshooting
 
@@ -92,7 +94,7 @@ LOCUS\.locus-runs\a07-YYYYMMDD-HHMMSS-12345\LOCUS-A07-logs.zip
 - **No audio output device:** Choose a functioning Windows sound device, then rerun. If it persists, share the ZIP showing `AUDIO_SMOKE_NO_DEVICE`.
 - **Window fails to open:** Share the ZIP and any visible error text.
 
-The final game and its Windows installer are separate future roadmap tasks. raylib 6.0 is now the **proposed production stack** (A-09), **pending Stage 1 owner approval**; the A-07 diagnostic remains a separate test executable. The Windows BAT stays in the repository.
+The final playable game and its Windows installer are future roadmap tasks. The owner **approved the raylib 6.0 production stack** at Stage 1. The separate A-07 audio diagnostic remains available through BAT `audio` mode.
 
 ## Production foundation and first blank window (F-01–F-05)
 
@@ -106,7 +108,7 @@ cmake --build build-a07/foundation --config Release
 build-a07\foundation\Release\locus.exe
 ~~~
 
-**F-05 automatic window check:** CI runs `locus.exe --window-smoke`, which draws **60 frames**, verifies window initialization, closes it, and reports `WINDOW_SMOKE_PASS`. This verifies the opening/drawing/shutdown path on the Windows runner, **not** physical keyboard responsiveness or perceived visual smoothness. Those are part of the planned Stage 2 human approval. No additional owner check is required to begin F-06.
+**F-05 window check:** CI attempts `locus.exe --window-smoke`, which would draw **60 frames** and exit automatically. However, the GitHub-hosted Windows runner returned `WINDOW_INIT_FAILED` because it lacks an interactive desktop. **This is not a verified successful window test.** The app compiles, but the F-05 acceptance check requires an owner run on Windows. **HUMAN GATE REQUIRED EARLY:** double-click `build_and_run.bat`, confirm the blank window appears, remains responsive and closes with Esc or X; report whether it worked. A ZIP is only needed for failures. **F-05 remains unchecked until that confirmation.**
 
 Build output stays inside the Git-ignored `build-a07/` tree for the existing Windows CI and audio probe. The F-03 `.gitignore` also supports future `build/`, `build-*/`, `cmake-build-*/`, and `out/` build directories. The `LOCUS_BUILD_TESTS=ON` option now builds `locus_core_tests` (F-04), which runs headlessly through CTest; additional gameplay tests will be added as core modules arrive.
 
@@ -118,9 +120,9 @@ ctest --test-dir build-a07/foundation -C Release --output-on-failure
 
 The first test (`locus_core_foundation`) checks a small pure C++ core build/link contract and does not open a window or audio device. This is an **infrastructure placeholder**, not a gameplay correctness or latency test. Windows CI runs it automatically.
 
-**F-02 dependencies:** Production CMake downloads exact commit revisions of **raylib 6.0**, **raygui 5.0**, and **nlohmann/json 3.12.0** through `cmake/dependencies.cmake`. CMake does not need machine-specific library install paths. The first configure requires Internet access; later builds use the fetched sources. The `locus_dependencies_smoke.exe` target verifies that the pinned headers and implementations compile and link headlessly. **It is not the F-04 unit-test runner.** The existing BAT intentionally continues targeting the A-07 diagnostic until a later approved change.
+**F-02 dependencies:** Production CMake downloads exact commit revisions of **raylib 6.0**, **raygui 5.0**, and **nlohmann/json 3.12.0** through `cmake/dependencies.cmake`. CMake does not need machine-specific library install paths. The first configure requires Internet access; later builds use the fetched sources. The `locus_dependencies_smoke.exe` target verifies that the pinned headers and implementations compile and link headlessly. **It is not the F-04 unit-test runner.** The BAT now defaults to building the F-05 production window, while `build_and_run.bat audio` preserves the A-07 diagnostic.
 
-**Keep `build_and_run.bat`.** During early Foundation it still runs the A-07 audio/input diagnostic, not the blank F-05 game window. The owner has authorized changing the BAT when a useful interactive game build exists. A separately reviewed future change will switch its default to the game while preserving the optional audio diagnostic and ZIP capability.
+**Keep `build_and_run.bat`.** With the owner's permission, F-05 switches its default to the production blank window and preserves the original A-07 diagnostic via `audio` mode. Future tasks may refine the launcher as LOCUS becomes playable, retaining error logs.
 
 ## Repository hygiene and formatting (F-03)
 
@@ -128,7 +130,7 @@ The root [`.gitignore`](.gitignore) excludes generated build trees, fetched CMak
 
 The root [`.clang-format`](.clang-format) is the C++17 formatting policy (LLVM-based, four-space indentation, 100-column limit). Developers can run `clang-format -i src/app/main.cpp` with an installed LLVM formatter; formatting is intentionally **not applied automatically** to source in F-03. Windows CI checks that the policy is applied consistently and idempotently, and that build artifacts leave the Git worktree clean.
 
-The owner has explicitly authorized updating `build_and_run.bat` when later development needs a different executable or better diagnostics. **F-03 does not change it**: it still launches the A-07 probe until an appropriate later task switches it to the playable application.
+The owner has explicitly authorized updating `build_and_run.bat` when later development needs a different executable or better diagnostics. F-03 left it unchanged; **F-05 has now updated it** to launch the blank production window by default, with the probe available via `audio` mode.
 
 ## Engineering priorities
 
