@@ -1,6 +1,6 @@
 # LOCUS — Foundation v0.1 Windows Baselines (F-09)
 
-**Status:** IN PROGRESS — the headless CI measures are automated, but a real interactive Windows desktop is required for the GUI idle CPU/RAM samples. Do not mark F-09 complete before these are actually observed and recorded.
+**Status (2026-11-04):** Headless CI baseline **measured and passing** in [run 41911357263](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41911357263); **interactive GUI idle CPU/RAM remain pending** on the owner's Windows PC. F-09 is **not** completed until those observations are documented.
 
 **Code:** [Windows sampler](../tools/measure-baseline.ps1) · [one-click launcher](../build_and_run.bat) · [production CI](../.github/workflows/windows_ci.yml) · [Roadmap](./ROADMAP.md)
 
@@ -28,13 +28,23 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/measure-baseline.p
 
 | CI baseline metric | Measured value | Caveat |
 | --- | --- | --- |
-| Production Release EXE size | **Pending CI measurement** | Binary only |
-| First headless process launch-to-exit | **Pending CI measurement** | No graphics, audio, or cache flushing |
-| Median of five warm headless runs | **Pending CI measurement** | Process-launch proxy, not a GUI metric |
-| Windows/CPU/RAM of runner | **Pending CI measurement** | GitHub hosted, not owner's machine |
+| Production Release EXE size | **650,752 bytes (635.5 KiB)** | Windows x64 Release executable, not an install package |
+| First headless process launch-to-exit | **27.50 ms** | No graphics, audio, or cache flushing |
+| Median of five warm headless runs | **7.88 ms** | Process-launch proxy, not a GUI metric |
+| Windows/CPU/RAM of runner | **Windows Server 2022 Datacenter 10.0.20348; AMD EPYC 7763; 4 logical processors; 15.99 GiB RAM** | GitHub hosted, not owner's machine |
 | GUI idle working set | **Not measurable on hosted CI** | Owner machine needed |
 | GUI idle CPU | **Not measurable on hosted CI** | Owner machine needed |
 | Physical audio/input latency | **Not measured** | Separate T/Q-stage work |
+
+### CI measurement provenance (2026-11-04)
+
+- **Run:** [GitHub Actions 41911357263](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41911357263), all workflow steps successful.
+- **Checkout commit:** `6404ec77d130ef54ad22c1c1c9249b3cd870de69`.
+- **Release executable SHA-256:** `917C38F8F8117857B1E878ADB9B159B93A6FCD4D69418B4C02F3A0183FB10B46`.
+- **Sampler:** `baseline_version=F-09-v1`; code in `tools/measure-baseline.ps1`; first headless invocation followed by five warm headless invocations. No disk cache purging or timing isolation was applied.
+- **Windows configuration:** x64 Visual Studio 2022 MSVC Release; four logical processors exposed to the GitHub runner. Measured times are a **single CI run**, not a distribution or guarantee for the owner's PC.
+- **Other evidence:** CI reported `F09_BASELINE_COLLECTION_PASS`, `100% tests passed, 0 tests failed out of 1` and `FOUNDATION_CLEAN_WORKTREE_PASS`.
+- **Important:** The CLI measurement is *not* time-to-visible-window, acoustic output, or key response. The production graphical app's idle working set and CPU have **not** been observed in CI.
 
 ## 3. Real Windows GUI baseline collection
 
