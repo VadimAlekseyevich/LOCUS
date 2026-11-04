@@ -48,6 +48,7 @@ All build output is kept locally and ignored by Git. Nothing is uploaded automat
 | `build_and_run.bat run` | Same as double-click |
 | `build_and_run.bat build` | Pull and compile the production game without launching a window |
 | `build_and_run.bat game` | Open LOCUS with F1–F4 debug screen switching |
+| `build_and_run.bat baseline` | Build LOCUS, measure startup and 12 seconds of GUI idle CPU/memory; then close with Esc/X |
 | `build_and_run.bat audio` | Run the original A-07 metronome/audio-input experiment |
 | `build_and_run.bat test` | Run A-07 WAV self-test without a graphical window |
 | `build_and_run.bat smoke` | Run A-07 WAV and audio-device smoke tests |
@@ -144,6 +145,20 @@ The first test (`locus_core_foundation`) checks a small pure C++ core build/link
 **F-02 dependencies:** Production CMake downloads exact commit revisions of **raylib 6.0**, **raygui 5.0**, and **nlohmann/json 3.12.0** through `cmake/dependencies.cmake`. CMake does not need machine-specific library install paths. The first configure requires Internet access; later builds use the fetched sources. The `locus_dependencies_smoke.exe` target verifies that the pinned headers and implementations compile and link headlessly. **It is not the F-04 unit-test runner.** The BAT now defaults to building the production window with F-07 debug navigation, while `build_and_run.bat audio` preserves the A-07 diagnostic.
 
 **Keep `build_and_run.bat`.** With the owner's permission, F-05 switches its default to the production blank window and preserves the original A-07 diagnostic via `audio` mode. Future tasks may refine the launcher as LOCUS becomes playable, retaining error logs.
+
+## Baseline performance measurement (F-09)
+
+The dedicated Windows CI records **release executable size** and **headless process startup times** using [`tools/measure-baseline.ps1`](tools/measure-baseline.ps1). A hosted runner has no interactive desktop; it cannot provide genuine idle GUI CPU/RAM or a keyboard-to-screen latency measurement. See [`mvp/BASELINES.md`](mvp/BASELINES.md) for the exact methods, environment, measurement definitions and current evidence.
+
+To measure the **actual LOCUS window** on your Windows PC:
+
+~~~bat
+build_and_run.bat baseline
+~~~
+
+Leave the window alone for **12 seconds** while sampling. When it says sampling is complete, press **Esc** or **X** to close the window. The BAT prints a text report with the EXE size, a window-ready proxy and mean/peak CPU/memory observations; it also keeps `baseline-summary.txt` and `baseline-idle-samples.csv` in a local Git-ignored archive. **No ZIP upload is required** when it works: you can simply tell the assistant the report values. The report contains your Windows hardware model and path details, so review it before sharing.
+
+**HUMAN GATE REQUIRED — F-09 / Stage 2:** The owner needs to run this measurement on a genuine interactive Windows desktop, confirm the updated font is readable, and approve Stage 2 once the results have been documented. Until then F-09 stays unchecked; chart-domain C-01 must not begin.
 
 ## Repository hygiene and formatting (F-03)
 
