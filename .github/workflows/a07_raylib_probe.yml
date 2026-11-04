@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - "mvp/spikes/raylib_audio/**"
-      - "run-a07.sh"
+      - "build_and_run.bat"
       - ".github/workflows/a07_raylib_probe.yml"
   workflow_dispatch:
 
@@ -18,10 +18,6 @@ jobs:
     steps:
       - name: Checkout LOCUS
         uses: actions/checkout@v4
-
-      - name: Validate Git Bash launcher syntax
-        shell: bash
-        run: bash -n run-a07.sh
 
       - name: Configure isolated raylib 6.0 probe
         shell: pwsh
@@ -49,6 +45,13 @@ jobs:
           & ".\build-a07\Release\locus_raylib_audio_spike.exe" --audio-smoke 2>&1 |
             Tee-Object -FilePath windows-audio-smoke.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test double-click Windows BAT launcher (build + self-test)
+        shell: cmd
+        run: |
+          set LOCUS_SKIP_PULL=1
+          set LOCUS_NO_PAUSE=1
+          call build_and_run.bat test
 
       - name: Collect executable and local dependency measurements
         shell: pwsh
