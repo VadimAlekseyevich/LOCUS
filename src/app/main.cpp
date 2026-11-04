@@ -1,8 +1,10 @@
 #include "core/foundation.h"
 #include "core/route.h"
+#include "app/demo_transport.h"
 
 #include "raylib.h"
 
+#include <chrono>
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -16,6 +18,12 @@ constexpr int kWindowWidth = 960;
 constexpr int kWindowHeight = 540;
 constexpr int kSmokeFrames = 60;
 constexpr Color kBackground = {21, 23, 33, 255};
+
+double MonotonicSeconds() {
+    using Clock = std::chrono::steady_clock;
+    static const auto epoch = Clock::now();
+    return std::chrono::duration<double>(Clock::now() - epoch).count();
+}
 
 enum class Screen {
     Home,
@@ -113,8 +121,8 @@ void DrawTextLabel(Font font, const char* message, Vector2 position,
     DrawTextEx(font, message, position, size, 1.0f, color);
 }
 
-// G-02: show the actual 4x4 board, using the start position from the demo
-// chart. Audio-driven motion and future-route lines are added in G-03/G-04.
+// G-02: actual 4x4 board and starting position from the demo chart.
+// G-03: song-time display only; marker movement and route reveal are G-04.
 constexpr float kGridSpacing = 76.0f;
 constexpr float kGridOriginX = kWindowWidth / 2.0f - 1.5f * kGridSpacing;
 constexpr float kGridOriginY = 278.0f - 1.5f * kGridSpacing;
@@ -124,7 +132,8 @@ Vector2 GridPoint(locus::core::Cell cell) {
                    kGridOriginY + static_cast<float>(cell.y) * kGridSpacing};
 }
 
-void DrawPlayGrid(Font font, const locus::core::Chart& chart) {
+void DrawPlayGrid(Font font, const locus::core::Chart& chart,
+                  const locus::app::DemoTransport& transport, double now) {
     DrawTextLabel(font, "PLAY  /  DEMO CHART", Vector2{50.0f, 98.0f}, 27.0f,
                   Color{211, 239, 241, 255});
 
@@ -154,13 +163,21 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart) {
     DrawCircleV(start, 5.5f, Color{245, 253, 255, 255});
 
     DrawTextLabel(font, "120 BPM  |  32 BEATS  |  4 x 4 GRID",
-                  Vector2{50.0f, 439.0f}, 20.0f,
+                  Vector2{50.0f, 140.0f}, 20.0f,
+                  Color{204, 208, 222, 255});
+    DrawTextLabel(font, transport.Status(), Vector2{50.0f, 412.0f}, 20.0f,
+                  Color{211, 239, 241, 255});
+    DrawTextLabel(font,
+                  TextFormat("SONG TIME  %.2f s     BEAT  %.2f",
+                             transport.SongSeconds(now), transport.Beat(now)),
+                  Vector2{50.0f, 444.0f}, 20.0f,
                   Color{204, 208, 222, 255});
 }
 
 // 3. Render: display the selected state; never choose or modify it here.
 void RenderFrame(const AppState& state, bool debugScreens, Font font,
-                 const locus::core::Chart& demo) {
+                 const locus::core::Chart& demo,
+                 const locus::app::DemoTransport& transport, double now) {
     BeginDrawing();
     ClearBackground(kBackground);
 
@@ -168,7 +185,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   Color{223, 225, 238, 255});
 
     if (state.screen == Screen::Play) {
-        DrawPlayGrid(font, demo);
+        DrawPlayGrid(font, demo, transport, now);
     } else {
         const char* screen = ScreenName(state.screen);
         constexpr float kScreenFontSize = 54.0f;
@@ -280,15 +297,28 @@ int main(int argc, char** argv) {
 
     AppState state;
     const locus::core::Chart demo = locus::core::MakeDemoChart();
+    locus::app::DemoTransport transport;
+    transport.Initialize(demo); // Failed audio output must not crash the window.
     while (state.running) {
         const FrameInput input = PollInput(debugScreens);
+        const Screen previousScreen = state.screen;
         UpdateState(state, input, smokeWindow);
         if (!state.running) {
             break;
         }
-        RenderFrame(state, debugScreens, uiFont.value, demo);
+        if (state.screen != previousScreen) {
+            if (previousScreen == Screen::Play) transport.Stop();
+            if (state.screen == Screen::Play) transport.Start(MonotonicSeconds());
+        }
+        if (state.screen == Screen::Play) {
+            transport.Update(MonotonicSeconds());
+        }
+        RenderFrame(state, debugScreens, uiFont.value, demo,
+                    transport, MonotonicSeconds());
     }
 
+    // WAV decoder borrows in-memory PCM bytes until UnloadMusicStream().
+    transport.Shutdown();
     if (uiFont.owned) {
         UnloadFont(uiFont.value);
     }
