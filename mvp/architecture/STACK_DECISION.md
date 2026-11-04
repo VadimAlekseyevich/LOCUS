@@ -53,7 +53,7 @@ The owner's positive report is enough to close **A-07's functional spike**; it i
 
 The exact release tags above are the initial pins. **Do not automatically track a `master`/`main` branch or latest dependency release.** F-02 fixes their resolved **commit revisions** in [cmake/dependencies.cmake](../../cmake/dependencies.cmake): raylib 6.0 → `dbc56a87da87d973a9c5baa4e7438a9d20121d28`; raygui 5.0 → `020a61bebcbe288b4414de3416e219ef40af847a`; nlohmann/json v3.12.0 (annotated tag) → `55f93686c01528224f448c19128836e7df245f72`. All three were independently resolved through upstream GitHub tag references. Upgrades require a reviewed change to these pins. The owner-tested A-07 remains on raylib 6.0.
 
-**Compatibility verification (F-02):** A separate headless `locus_dependencies_smoke` executable compiles raygui 5.0's actual header implementation against raylib 6.0 and links nlohmann/json. This does not open a GUI or audio device; its Windows build/run evidence must be checked before marking F-02 complete. It is a dependency integration check, not the CTest suite scheduled for F-04.
+**Compatibility verification (F-02 — PASSED):** The separate headless `locus_dependencies_smoke` executable successfully compiled raygui 5.0's actual header implementation against raylib 6.0 and linked nlohmann/json 3.12.0 on **Windows x64, Visual Studio 2022 MSVC, Release**. Its output confirmed `DEPENDENCY_SMOKE_PASS`, `raylib=6.0`, `raygui=5.0`, `json=3.12.0` in [CI run 41895581746](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41895581746). No GUI or audio device is required. This is **not** the separate CTest test suite scheduled for F-04, nor proof of full editor behavior.
 
 ## 4. Module placement and dependency rules
 
