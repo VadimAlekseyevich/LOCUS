@@ -22,15 +22,7 @@ done
 
 [[ "$(git -C "$ROOT" rev-parse --is-inside-work-tree 2>/dev/null)" == "true" ]] ||
   fail "Cannot access the Git repository."
-[[ -z "$(git -C "$ROOT" status --porcelain)" ]] ||
-  fail "The repository has local changes. Commit or stash them before pulling; nothing was overwritten."
-
-say "Updating the current Git branch (fast-forward only; never force/reset)."
-if ! git -C "$ROOT" pull --ff-only; then
-  fail "Git pull failed. Check network access and the configured upstream branch."
-fi
-
-# No local files are written before pull. All generated data stays Git-ignored.
+# All generated data stays Git-ignored; even failed pulls get a log bundle.
 RUNS="$ROOT/.locus-runs"
 RUN_DIR="$RUNS/a07-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 mkdir -p "$RUN_DIR"
@@ -47,7 +39,7 @@ bundle_logs() {
 
   local items=()
   local item
-  for item in run-info.txt configure.log build.log self-test.log audio-smoke.log \
+  for item in run-info.txt git-update.log configure.log build.log self-test.log audio-smoke.log \
               probe-console.log raylib_probe_log.csv user-feedback.txt; do
     [[ ! -f "$RUN_DIR/$item" ]] || items+=("$item")
   done
@@ -65,6 +57,17 @@ bundle_logs() {
   printf '==============================================================\n'
 }
 trap bundle_logs EXIT
+
+if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
+  printf 'Repository contains local changes; pull blocked to protect your edits.\n' \
+    | tee "$RUN_DIR/git-update.log" >&2
+  fail "Commit or stash local changes before pulling; nothing was overwritten."
+fi
+
+say "Updating the current Git branch (fast-forward only; never force/reset)."
+if ! git -C "$ROOT" pull --ff-only 2>&1 | tee "$RUN_DIR/git-update.log"; then
+  fail "Git pull failed. Check network access and the configured upstream branch. Send the log bundle."
+fi
 
 CMAKE_GENERATOR_NAME="${LOCUS_CMAKE_GENERATOR:-Visual Studio 17 2022}"
 {
