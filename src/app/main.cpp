@@ -3,8 +3,10 @@
 #include "raylib.h"
 
 #include <cstring>
+#include <cstdlib>
 #include <iostream>
 #include <optional>
+#include <string>
 
 // F-07: placeholder screens share one window and one input/update/render loop.
 // Real screen controllers, routing, and musical timing arrive in later tasks.
@@ -72,21 +74,67 @@ void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
     ++state.frames;
 }
 
+// The installed Windows UI font is read from the OS, not bundled or redistributed.
+// A missing/unreadable TTF gracefully falls back to raylib's built-in font.
+struct UiFont {
+    Font value{};
+    bool owned = false;
+};
+
+UiFont LoadUiFont() {
+#ifdef _WIN32
+    const char* windowsDirectory = std::getenv("WINDIR");
+    const std::string fontsDirectory = (windowsDirectory && windowsDirectory[0] != '\0')
+                                           ? std::string(windowsDirectory) + "\\Fonts\\"
+                                           : "C:\\Windows\\Fonts\\";
+    const char* fontFiles[] = {"segoeui.ttf", "arial.ttf"};
+    for (const char* filename : fontFiles) {
+        const std::string path = fontsDirectory + filename;
+        if (!FileExists(path.c_str())) {
+            continue;
+        }
+        Font candidate = LoadFontEx(path.c_str(), 64, nullptr, 0);
+        // LoadFontEx may return the default font if rasterization fails.
+        if (IsFontValid(candidate) &&
+            candidate.texture.id != GetFontDefault().texture.id) {
+            SetTextureFilter(candidate.texture, TEXTURE_FILTER_BILINEAR);
+            std::cout << "UI_FONT_SYSTEM=" << filename << '\n';
+            return UiFont{candidate, true};
+        }
+    }
+#endif
+    std::cout << "UI_FONT_FALLBACK=raylib-default\n";
+    return UiFont{GetFontDefault(), false};
+}
+
+void DrawTextLabel(Font font, const char* message, Vector2 position,
+                   float size, Color color) {
+    DrawTextEx(font, message, position, size, 1.0f, color);
+}
+
 // 3. Render: display the selected state; never choose or modify it here.
-void RenderFrame(const AppState& state, bool debugScreens) {
+void RenderFrame(const AppState& state, bool debugScreens, Font font) {
     BeginDrawing();
     ClearBackground(kBackground);
 
-    DrawText("LOCUS", 50, 42, 24, Color{195, 197, 215, 255});
+    DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
+                  Color{223, 225, 238, 255});
+
     const char* screen = ScreenName(state.screen);
-    const int fontSize = 48;
-    DrawText(screen, (kWindowWidth - MeasureText(screen, fontSize)) / 2,
-             kWindowHeight / 2 - 40, fontSize, Color{174, 209, 214, 255});
-    DrawText("Placeholder screen - game functionality is not implemented",
-             50, kWindowHeight - 96, 19, Color{152, 155, 169, 255});
+    constexpr float kScreenFontSize = 54.0f;
+    const Vector2 textSize = MeasureTextEx(font, screen, kScreenFontSize, 1.0f);
+    DrawTextLabel(font, screen,
+                  Vector2{(static_cast<float>(kWindowWidth) - textSize.x) / 2.0f,
+                          static_cast<float>(kWindowHeight) / 2.0f - 38.0f},
+                  kScreenFontSize, Color{211, 239, 241, 255});
+
+    DrawTextLabel(font, "Placeholder screen - game functionality is not implemented",
+                  Vector2{50.0f, static_cast<float>(kWindowHeight - 112)},
+                  22.0f, Color{208, 211, 225, 255});
     if (debugScreens) {
-        DrawText("DEBUG: F1 Home   F2 Play   F3 Editor   F4 Results",
-                 50, kWindowHeight - 53, 18, Color{207, 193, 147, 255});
+        DrawTextLabel(font, "DEBUG: F1 Home   F2 Play   F3 Editor   F4 Results",
+                      Vector2{50.0f, static_cast<float>(kWindowHeight - 65)},
+                      22.0f, Color{232, 213, 160, 255});
     }
     EndDrawing();
 }
@@ -176,6 +224,7 @@ int main(int argc, char** argv) {
         std::cerr << "WINDOW_INIT_FAILED\n";
         return 1;
     }
+    UiFont uiFont = LoadUiFont();
     SetTargetFPS(60); // Visual smoke baseline only, never a musical clock.
     std::cout << "LOCUS_WINDOW_OPEN\n";
 
@@ -186,9 +235,12 @@ int main(int argc, char** argv) {
         if (!state.running) {
             break;
         }
-        RenderFrame(state, debugScreens);
+        RenderFrame(state, debugScreens, uiFont.value);
     }
 
+    if (uiFont.owned) {
+        UnloadFont(uiFont.value);
+    }
     CloseWindow();
     std::cout << "LOCUS_WINDOW_CLOSED\n";
     if (smokeWindow) {
