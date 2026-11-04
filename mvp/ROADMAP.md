@@ -216,10 +216,11 @@ The owner explicitly approved the A-01–A-06 architecture contracts and A-09 te
   **Done when:** The program runs the three phases in a documented order without embedding gameplay logic in drawing.
   **Verified (2026-11-04):** `src/app/main.cpp` now runs `PollInput()` → `UpdateState()` → (stop if requested) → `RenderFrame()` in one raylib loop. Input is observed once; update advances only minimal app state; rendering draws without applying gameplay rules. `locus.exe --loop-check` verifies the 60-frame update/stop limit and immediate close without a window. [Windows CI run 41904030990](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41904030990) passed this headless check (`LOOP_STATE_PASS frames=60`), CTest, production build, BAT test/build, and clean-worktree check. The owner already confirmed F-05's real window operation; the hosted runner has no interactive GUI.
 
-- [ ] **F-07 — Introduce a minimal screen state switch**  
+- [x] **F-07 — Introduce a minimal screen state switch**  
   **Depends on:** F-06.  
   **Change:** Add an enum/state controller supporting placeholder Home, Play, Editor, and Results states.  
   **Done when:** A debug-only action can switch placeholder screens without recreating the window.
+  **Verified (2026-11-04):** `src/app/main.cpp` defines one `Screen` enum for Home/Play/Editor/Results and stores the selected screen in `AppState`; `PollInput()` maps F1–F4 only with the explicit `--debug-screens` switch, `UpdateState()` applies transitions, and `RenderFrame()` draws the current placeholder without recreating the raylib window or modifying state. The root `build_and_run.bat` opts into debug screens for local review, preserving its A-07 `audio` mode. The headless `--screen-check` covers four transitions, no-input persistence, and close precedence. [Windows CI run 41907242084](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41907242084) passed, reporting `SCREEN_STATE_PASS transitions=4`, core CTest, existing build/BAT checks, and clean worktree. The CI runner cannot visually inspect GUI rendering; the human Stage 2 gate remains after F-08.
 
 - [ ] **F-08 — Create Windows CI build and test workflow**  
   **Depends on:** F-04.  
