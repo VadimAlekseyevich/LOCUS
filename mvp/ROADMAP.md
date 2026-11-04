@@ -135,7 +135,7 @@ Each checkbox below is intentionally a **bounded change with a concrete check**.
   **Change:** Add annotated route and wrap examples to `mvp/architecture/WRAP.md`, covering horizontal/vertical exits and turn-on-edge cases.  
   **Done when:** None of the examples draws a segment across the grid interior; marker progress over a seam is unambiguous.
 
-- [ ] **A-05 — Define the first chart schema**  
+- [x] **A-05 — Define the first chart schema**  
   **Depends on:** A-02.  
   **Change:** Write `mvp/architecture/CHART_FORMAT.md` with a small versioned JSON example and fields for audio path, BPM, offset, start point/heading, preview lead, and timed Left/Right events.  
   **Done when:** One minimal chart and one invalid chart are shown; no Bounce field, variable grid, or speculative event plugin model is included.
