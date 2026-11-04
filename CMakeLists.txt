@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 # Production LOCUS build. The A-07 raylib probe is intentionally separate.
 project(LOCUS VERSION 0.1.0 LANGUAGES C CXX)
 
-option(LOCUS_BUILD_TESTS "Enable LOCUS tests (test runner arrives in F-04)" OFF)
+option(LOCUS_BUILD_TESTS "Build and register core tests with CTest" OFF)
 option(LOCUS_VERIFY_DEPENDENCIES "Build a headless dependency integration smoke executable" ON)
 
 # Versions and source revisions are pinned in this small CMake module (F-02).
