@@ -65,7 +65,8 @@ jobs:
           $checks = @(
             @{ arg = "--foundation-check"; expected = "LOCUS foundation built" },
             @{ arg = "--loop-check"; expected = "LOOP_STATE_PASS frames=60" },
-            @{ arg = "--screen-check"; expected = "SCREEN_STATE_PASS transitions=4" }
+            @{ arg = "--screen-check"; expected = "SCREEN_STATE_PASS transitions=4" },
+            @{ arg = "--session-check"; expected = "SESSION_FLOW_PASS turns=9" }
           )
           $report = @()
           foreach ($check in $checks) {
