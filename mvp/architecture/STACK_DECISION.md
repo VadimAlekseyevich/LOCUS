@@ -10,7 +10,7 @@
 
 ## 1. Decision in one paragraph
 
-**Choose modern C++17 + raylib 6.0** for the first Windows renderer/window, basic local audio transport and exploratory keyboard capture, with **raygui 5.0** for ordinary editor controls and **native Windows Common Item Dialogs** for local open/save file pickers. Use **CMake 3.24+ / Visual Studio 2022 MSVC x64**, **nlohmann/json v3.12.0** for the strict v1 JSON chart adapter, and **CTest + small in-repository tests**. Keep music-time mapping, route, judgement, and edit data as pure C++ code, independent of the window, render frames, raylib audio, and UI framework. Start with one coherent backend, not a dual-raylib/SDL abstraction layer.
+**Choose modern C++17 + raylib 6.0** for the first Windows renderer/window, basic local audio transport and exploratory keyboard capture, with **raygui 5.0** for ordinary editor controls and **native Windows Common Item Dialogs** for local open/save file pickers. Use **CMake 3.25+ / Visual Studio 2022 MSVC x64**, **nlohmann/json v3.12.0** for the strict v1 JSON chart adapter, and **CTest + small in-repository tests**. Keep music-time mapping, route, judgement, and edit data as pure C++ code, independent of the window, render frames, raylib audio, and UI framework. Start with one coherent backend, not a dual-raylib/SDL abstraction layer.
 
 This choice prioritizes **minimum practical audio/input latency and repeatable timing, stability, and maintainability**. A small binary is not the reason for this selection and is **not** a release constraint. Keeping a small architectural *surface* is useful; an application or asset package weighing tens or hundreds of megabytes is acceptable if justified by measured quality.
 
