@@ -1,8 +1,8 @@
 # LOCUS
 
-A rhythm game currently in development. The **MVP game is not playable yet**. Two Windows executables exist: the **LOCUS production app** (currently four F-07 placeholder screens, launched by double-clicking `build_and_run.bat`) and the separate **A-07 audio/input timing probe** (BAT `audio` mode).
+A rhythm game currently in development. **We are now building the first playable demo, not completing an elaborate engineering checklist.** The prototype is not playable yet. Two Windows executables exist: the **LOCUS production app** (currently four F-07 placeholder screens, launched by double-clicking `build_and_run.bat`) and the separate **A-07 audio/input timing probe** (BAT `audio` mode).
 
-[Game Design Document](mvp/GDD.md) · [MVP Roadmap](mvp/ROADMAP.md) · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
+[Game Design Document](mvp/GDD.md) · **[Short playable-prototype roadmap](mvp/ROADMAP.md)** · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
 
 ## Windows: double-click to build and run
 
@@ -146,22 +146,11 @@ The first test (`locus_core_foundation`) checks a small pure C++ core build/link
 
 **Keep `build_and_run.bat`.** With the owner's permission, F-05 switches its default to the production blank window and preserves the original A-07 diagnostic via `audio` mode. Future tasks may refine the launcher as LOCUS becomes playable, retaining error logs.
 
-## Baseline performance measurement (F-09)
+## Optional diagnostics — not required for gameplay
 
-The dedicated Windows CI records **release executable size** and **headless process startup times** using [`tools/measure-baseline.ps1`](tools/measure-baseline.ps1). A hosted runner has no interactive desktop; it cannot provide genuine idle GUI CPU/RAM or a keyboard-to-screen latency measurement. See [`mvp/BASELINES.md`](mvp/BASELINES.md) for the exact methods, environment, measurement definitions and current evidence.
+The historical [baseline report](mvp/BASELINES.md) and `build_and_run.bat baseline` mode remain available **only if a real performance problem needs investigation**. The former F-09 measurement task and Stage 2 baseline approval gate have been **cancelled** as prerequisites. Do not ask the owner to run measurements or send ZIPs before working on the game.
 
-To measure the **actual LOCUS window** on your Windows PC, **first update the cloned repository** if your current BAT predates the new `baseline` mode:
-
-~~~bat
-git pull --ff-only
-build_and_run.bat baseline
-~~~
-
-On subsequent runs, `build_and_run.bat baseline` alone is enough: the BAT checks Git updates itself. Running the old BAT with `baseline` **before** updating would simply print its usage instructions.
-
-Leave the window alone for **12 seconds** while sampling. When it says sampling is complete, press **Esc** or **X** to close the window. The BAT prints a text report with the EXE size, a window-ready proxy and mean/peak CPU/memory observations; it also keeps `baseline-summary.txt` and `baseline-idle-samples.csv` in a local Git-ignored archive. **No ZIP upload is required** when it works: you can simply tell the assistant the report values. The report contains your Windows hardware model and path details, so review it before sharing.
-
-**HUMAN GATE REQUIRED — F-09 / Stage 2:** The owner needs to run this measurement on a genuine interactive Windows desktop, confirm the updated font is readable, and approve Stage 2 once the results have been documented. Until then F-09 stays unchecked; chart-domain C-01 must not begin.
+**Current priority:** [G-01 through G-07](mvp/ROADMAP.md), ending with a playable built-in demo. Custom-song loading and chart editing come after the first playable. CI should verify functional code, not spend time gathering idle CPU statistics.
 
 ## Repository hygiene and formatting (F-03)
 
@@ -186,4 +175,4 @@ Whenever an owner-side check or decision is needed early, the assistant must sta
 
 **A-07's early human gate has been satisfied.** The owner ran the probe on Windows and reported that everything worked; **no ZIP was requested or required afterward**. This is a qualitative check, not a numerical latency benchmark.
 
-**STAGE 1 HUMAN GATE APPROVED (2026-11-04):** The owner explicitly approved the [stack and architecture](mvp/architecture/STACK_DECISION.md). Production Foundation F-01 is authorized. The next scheduled owner gate is **after Stage 2**, once a working window and Windows build/test evidence are available; no early owner action is required for the F-01 console stub.
+**The owner simplified the roadmap on 2026-11-05.** The previous architecture/Foundation approval stands, and the F-09/Stage 2 infrastructure gate is no longer required. The next planned hands-on check is the **first playable G-07 demo**; ask earlier only if a concrete blocker requires real Windows testing.
