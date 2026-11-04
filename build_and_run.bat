@@ -2,7 +2,7 @@
 setlocal EnableExtensions DisableDelayedExpansion
 
 rem LOCUS Windows launcher. Double-click or run from Command Prompt.
-rem Default: F-05 blank game window; 'audio' runs the original A-07 probe.
+rem Default: F-07 placeholder screens with debug F1-F4 navigation; 'audio' runs A-07.
 rem Run a temporary copy so git pull can safely update this BAT file.
 
 if /I "%LOCUS_BAT_WORKER%"=="1" goto :worker
@@ -218,13 +218,13 @@ if /I "%MODE%"=="build" goto :success
 
 echo.
 echo ============================================================
-echo  LOCUS F-05 WINDOW - NO GAMEPLAY YET
-echo  The blank dark window should open and remain responsive.
+echo  LOCUS F-07 PLACEHOLDER SCREENS - NO GAMEPLAY YET
+echo  F1 = Home   F2 = Play   F3 = Editor   F4 = Results
 echo  Close with ESC or the X button in the window title bar.
 echo ============================================================
 echo.
 pushd "%LOG_DIR%"
-"%GAME_EXE%" > "%LOG_DIR%\game-console.log" 2>&1
+"%GAME_EXE%" --debug-screens > "%LOG_DIR%\game-console.log" 2>&1
 set "GAME_EXIT=%ERRORLEVEL%"
 popd
 if not "%GAME_EXIT%"=="0" (
