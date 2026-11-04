@@ -45,6 +45,7 @@ build.ninja
 /window-smoke-stderr.txt
 /window-smoke-result.txt
 /loop-check.txt
+/screen-check.txt
 
 # Operating-system metadata
 .DS_Store
