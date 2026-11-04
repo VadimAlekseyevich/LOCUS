@@ -2,7 +2,7 @@
 setlocal EnableExtensions DisableDelayedExpansion
 
 rem LOCUS Windows launcher. Double-click or run from Command Prompt.
-rem Current target: A-07 audio/input diagnostic prototype, NOT the full game.
+rem Default: F-05 blank game window; 'audio' runs the original A-07 probe.
 rem Run a temporary copy so git pull can safely update this BAT file.
 
 if /I "%LOCUS_BAT_WORKER%"=="1" goto :worker
@@ -30,17 +30,25 @@ set "ROOT=%CD%"
 set "MODE=%~1"
 if "%MODE%"=="" set "MODE=run"
 if /I "%MODE%"=="run" goto :mode_valid
+if /I "%MODE%"=="game" goto :mode_valid
 if /I "%MODE%"=="build" goto :mode_valid
+if /I "%MODE%"=="audio" goto :mode_valid
 if /I "%MODE%"=="test" goto :mode_valid
 if /I "%MODE%"=="smoke" goto :mode_valid
-echo Usage: build_and_run.bat [build ^| test ^| smoke ^| run]
+echo Usage: build_and_run.bat [run ^| build ^| game ^| audio ^| test ^| smoke]
 exit /b 2
 
 :mode_valid
 set "STAMP="
 for /f "delims=" %%T in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set "STAMP=%%T"
 if not defined STAMP set "STAMP=%RANDOM%"
-set "LOG_DIR=%ROOT%\.locus-runs\a07-%STAMP%-%RANDOM%"
+set "LOG_CATEGORY=a07"
+if /I "%MODE%"=="run" set "LOG_CATEGORY=game"
+if /I "%MODE%"=="game" set "LOG_CATEGORY=game"
+if /I "%MODE%"=="build" set "LOG_CATEGORY=game"
+set "LOG_ARCHIVE=LOCUS-%LOG_CATEGORY%-logs.zip"
+set "LOCUS_LOG_ARCHIVE=%LOG_ARCHIVE%"
+set "LOG_DIR=%ROOT%\.locus-runs\%LOG_CATEGORY%-%STAMP%-%RANDOM%"
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 if not exist "%LOG_DIR%" (
     echo [LOCUS] Cannot create the log directory.
@@ -48,9 +56,9 @@ if not exist "%LOG_DIR%" (
 )
 set "LOCUS_LOG_DIR=%LOG_DIR%"
 set "STATUS=1"
-> "%LOG_DIR%\run-info.txt" echo task=A-07
->> "%LOG_DIR%\run-info.txt" echo mode=%MODE%
->> "%LOG_DIR%\run-info.txt" echo component=raylib-audio-input-probe-not-game
+> "%LOG_DIR%\run-info.txt" echo mode=%MODE%
+>> "%LOG_DIR%\run-info.txt" echo component=%LOG_CATEGORY%
+>> "%LOG_DIR%\run-info.txt" echo launcher=build_and_run.bat
 >> "%LOG_DIR%\run-info.txt" echo timestamp=%STAMP%
 
 echo.
@@ -90,6 +98,10 @@ if errorlevel 1 goto :failed
 call :ensure_msvc
 if errorlevel 1 goto :failed
 
+if /I "%MODE%"=="run" goto :build_game
+if /I "%MODE%"=="game" goto :build_game
+if /I "%MODE%"=="build" goto :build_game
+
 set "SOURCE=%ROOT%\mvp\spikes\raylib_audio"
 set "BUILD=%ROOT%\build-a07"
 if not exist "%SOURCE%\CMakeLists.txt" (
@@ -121,7 +133,6 @@ if not exist "%EXE%" (
 )
 for %%F in ("%EXE%") do >> "%LOG_DIR%\run-info.txt" echo exe_size_bytes=%%~zF
 echo [LOCUS] Build succeeded: %EXE%
-if /I "%MODE%"=="build" goto :success
 
 rem Run in the log folder, so the generated WAV and CSV never clutter the repo.
 pushd "%LOG_DIR%"
@@ -174,6 +185,54 @@ if /I not "%LOCUS_NO_PROMPT%"=="1" if not defined GITHUB_ACTIONS (
     echo [LOCUS] Optional feedback. Press Enter to skip.
     powershell -NoProfile -Command "$f=Join-Path $env:LOCUS_LOG_DIR 'user-feedback.txt'; @('A-07 local subjective observations','audible_and_even='+(Read-Host 'Were metronome clicks audible and evenly spaced?'),'pause_seek_restart='+(Read-Host 'Did pause, seek and restart work?'),'tap_feel='+(Read-Host 'How did A/D input feel?'),'other='+(Read-Host 'Any glitches or comments?')) | Set-Content -LiteralPath $f -Encoding UTF8"
 )
+goto :success
+
+:build_game
+rem F-05 builds the real production target; the original probe is still available via 'audio'.
+set "GAME_BUILD=%ROOT%\build-a07\foundation"
+echo.
+echo [LOCUS] Configuring the production LOCUS window (Windows x64 Release)...
+cmake -S "%ROOT%" -B "%GAME_BUILD%" -G "Visual Studio 17 2022" -A x64 -DLOCUS_BUILD_TESTS=OFF -DLOCUS_VERIFY_DEPENDENCIES=OFF > "%LOG_DIR%\configure.log" 2>&1
+if errorlevel 1 (
+    echo [LOCUS] Production CMake configuration FAILED.
+    call :show_log "configure.log"
+    goto :failed
+)
+
+echo [LOCUS] Compiling the production LOCUS window...
+cmake --build "%GAME_BUILD%" --config Release --target locus --parallel 2 > "%LOG_DIR%\build.log" 2>&1
+if errorlevel 1 (
+    echo [LOCUS] Production compilation FAILED.
+    call :show_log "build.log"
+    goto :failed
+)
+
+set "GAME_EXE=%GAME_BUILD%\Release\locus.exe"
+if not exist "%GAME_EXE%" (
+    echo [LOCUS] Compiled game EXE not found: %GAME_EXE%
+    goto :failed
+)
+for %%F in ("%GAME_EXE%") do >> "%LOG_DIR%\run-info.txt" echo exe_size_bytes=%%~zF
+echo [LOCUS] Production build succeeded: %GAME_EXE%
+if /I "%MODE%"=="build" goto :success
+
+echo.
+echo ============================================================
+echo  LOCUS F-05 WINDOW - NO GAMEPLAY YET
+echo  The blank dark window should open and remain responsive.
+echo  Close with ESC or the X button in the window title bar.
+echo ============================================================
+echo.
+pushd "%LOG_DIR%"
+"%GAME_EXE%" > "%LOG_DIR%\game-console.log" 2>&1
+set "GAME_EXIT=%ERRORLEVEL%"
+popd
+if not "%GAME_EXIT%"=="0" (
+    echo [LOCUS] Game window exited with code %GAME_EXIT%.
+    call :show_log "game-console.log"
+    goto :failed
+)
+type "%LOG_DIR%\game-console.log"
 goto :success
 
 :ensure_git
@@ -268,11 +327,11 @@ echo [LOCUS] FAILED. See the logs below.
 :finish
 >> "%LOG_DIR%\run-info.txt" echo exit_code=%STATUS%
 echo [LOCUS] Creating a ZIP with compiler, test and input timing logs...
-powershell -NoProfile -Command "$dir=$env:LOCUS_LOG_DIR; $files=@(Get-ChildItem -LiteralPath $dir -File | Where-Object { $_.Extension -in '.txt','.log','.csv' }); if($files.Count -gt 0) { Compress-Archive -LiteralPath $files.FullName -DestinationPath (Join-Path $dir 'LOCUS-A07-logs.zip') -Force }"
+powershell -NoProfile -Command "$dir=$env:LOCUS_LOG_DIR; $files=@(Get-ChildItem -LiteralPath $dir -File | Where-Object { $_.Extension -in '.txt','.log','.csv' }); if($files.Count -gt 0) { Compress-Archive -LiteralPath $files.FullName -DestinationPath (Join-Path $dir $env:LOCUS_LOG_ARCHIVE) -Force }"
 echo.
 echo ============================================================
 echo  REPORT FOR CHATGPT
-echo  %LOG_DIR%\LOCUS-A07-logs.zip
+echo  %LOG_DIR%\%LOG_ARCHIVE%
 echo ============================================================
 echo  This archive contains NO audio and NO executable.
 echo  Review paths in the logs before sharing them.
