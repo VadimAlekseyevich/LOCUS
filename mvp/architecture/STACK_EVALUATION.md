@@ -34,13 +34,13 @@
 
 **HUMAN GATE REQUIRED (EARLY):** The GitHub-hosted Windows runner has no audio output endpoint; the owner must verify real playback and input feel on an audio-capable Windows machine **before marking A-07 complete**.
 
-Use **Git Bash** in the cloned repository root:
+Use **Windows File Explorer or Command Prompt** in the cloned repository root. **No Git Bash is required:**
 
-~~~bash
-bash run-a07.sh
+~~~bat
+build_and_run.bat
 ~~~
 
-The script fast-forward pulls Git, builds the isolated probe, performs WAV and audio-device smoke tests, starts the GUI, asks brief subjective questions, and creates `.locus-runs/a07-.../LOCUS-A07-logs.tar.gz`. Upload that archive to the assistant. Setup and error instructions are in [the repository README](../../README.md). The script never uploads logs itself and will not overwrite uncommitted changes.
+The BAT fast-forward pulls Git, builds the isolated probe, performs WAV and audio-device smoke tests, starts the GUI, asks brief subjective questions, and creates `.locus-runs/a07-.../LOCUS-A07-logs.zip`. Upload that archive to the assistant. Setup and error instructions are in [the repository README](../../README.md). The script never uploads logs itself and will not overwrite uncommitted changes.
 
 ### Local interactive acceptance procedure
 
@@ -98,4 +98,4 @@ The optional `--audio-smoke` command ran on the Windows 2022 CI host but reporte
 | Reported time stable enough to support a suitable clock adapter | Pending |
 | Polling timestamps/latency limitations are understood | Pending |
 
-**Roadmap status:** A-07 remains **pending** because the Windows hosted runner has no audio device and therefore cannot exercise actual raylib playback/pause/seek or physical key timing. The Windows build and headless file test are complete, and precise size evidence is available. The remaining step is the owner's real-device test via **`bash run-a07.sh`** and upload of its diagnostic archive. A-08 is **not automatically triggered** by absent CI audio hardware. Do not judge raylib's suitability by its sub-megabyte spike executable; **correct audio/input timing and stability are the priorities.**
+**Roadmap status:** A-07 remains **pending** because the Windows hosted runner has no audio device and therefore cannot exercise actual raylib playback/pause/seek or physical key timing. The Windows build and headless file test are complete, and precise size evidence is available. The remaining step is the owner's real-device test via **`build_and_run.bat`** and upload of its diagnostic archive. A-08 is **not automatically triggered** by absent CI audio hardware. Do not judge raylib's suitability by its sub-megabyte spike executable; **correct audio/input timing and stability are the priorities.**
