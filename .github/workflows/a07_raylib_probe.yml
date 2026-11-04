@@ -45,6 +45,9 @@ jobs:
             "draft.locus.json.bak",
             "draft.autosave.locus.json",
             "core-ctest.txt",
+            "window-smoke.txt",
+            "window-smoke-stderr.txt",
+            "window-smoke-result.txt",
             "Thumbs.db"
           )
           foreach ($path in $ignored) {
@@ -179,7 +182,9 @@ jobs:
           set LOCUS_SKIP_PULL=1
           set LOCUS_NO_PAUSE=1
           call build_and_run.bat test
+          if errorlevel 1 exit /b 1
           call build_and_run.bat build
+          if errorlevel 1 exit /b 1
 
       - name: Collect executable and local dependency measurements
         shell: pwsh
