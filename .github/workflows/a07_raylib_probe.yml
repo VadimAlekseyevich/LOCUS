@@ -106,6 +106,17 @@ jobs:
           $deps | Tee-Object -FilePath dependency-smoke.txt
           if (-not ($deps -match "DEPENDENCY_SMOKE_PASS")) { throw "Pinned dependency integration smoke test failed" }
 
+      - name: Verify F-06 state-update loop headlessly
+        shell: pwsh
+        run: |
+          $result = & ".\build-a07\foundation\Release\locus.exe" --loop-check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $result | Set-Content loop-check.txt
+          Write-Output $result
+          if ($result -notmatch "LOOP_STATE_PASS frames=60") {
+            throw "F-06 loop state update failed"
+          }
+
       - name: Exercise F-05 blank window open draw and clean shutdown
         shell: pwsh
         run: |
@@ -230,6 +241,7 @@ jobs:
             build_and_run.bat
             build-a07/foundation/Release/locus.exe
             foundation-smoke.txt
+            loop-check.txt
             window-smoke.txt
             window-smoke-stderr.txt
             window-smoke-result.txt
