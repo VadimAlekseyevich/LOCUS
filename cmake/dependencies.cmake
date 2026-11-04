@@ -3,8 +3,8 @@
 
 include(FetchContent)
 
-set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL
-    "Do not update already fetched pinned dependency revisions" FORCE)
+# With immutable commit pins, reconfiguration may update an existing source
+# if the pin is deliberately changed. Fresh builds remain reproducible.
 
 # Keep the raylib build restricted to what LOCUS needs.
 set(BUILD_EXAMPLES OFF CACHE BOOL "Do not build raylib examples" FORCE)
