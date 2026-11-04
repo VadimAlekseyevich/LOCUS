@@ -4,56 +4,99 @@
 
 #include <cstring>
 #include <iostream>
+#include <optional>
 
-// F-06: one loop with explicit input, update, and render phases.
-// Rendering is a blank placeholder; screens and musical timing arrive later.
+// F-07: placeholder screens share one window and one input/update/render loop.
+// Real screen controllers, routing, and musical timing arrive in later tasks.
 namespace {
 constexpr int kWindowWidth = 960;
 constexpr int kWindowHeight = 540;
 constexpr int kSmokeFrames = 60;
 constexpr Color kBackground = {21, 23, 33, 255};
 
+enum class Screen {
+    Home,
+    Play,
+    Editor,
+    Results
+};
+
 struct FrameInput {
     bool closeRequested = false;
+    std::optional<Screen> requestedScreen;
 };
 
 struct AppState {
     bool running = true;
     int frames = 0;
+    Screen screen = Screen::Home;
 };
 
 bool HasArgument(int argc, char** argv, const char* argument) {
     return argc == 2 && std::strcmp(argv[1], argument) == 0;
 }
 
-// 1. Input: read events raylib collected in the previous EndDrawing().
-// Do not call PollInputEvents() here: raylib already pumps them per frame.
-FrameInput PollInput() {
-    return {WindowShouldClose()};
+const char* ScreenName(Screen screen) {
+    switch (screen) {
+        case Screen::Home: return "Home";
+        case Screen::Play: return "Play";
+        case Screen::Editor: return "Editor";
+        case Screen::Results: return "Results";
+    }
+    return "Unknown";
 }
 
-// 2. Update: change app state only. No raylib drawing calls or music timing.
+// 1. Input: raylib already pumps native events at the end of each drawn frame.
+// F1-F4 are diagnostic shortcuts ONLY when --debug-screens is explicitly enabled.
+FrameInput PollInput(bool debugScreens) {
+    FrameInput input;
+    input.closeRequested = WindowShouldClose();
+    if (debugScreens) {
+        if (IsKeyPressed(KEY_F1)) input.requestedScreen = Screen::Home;
+        else if (IsKeyPressed(KEY_F2)) input.requestedScreen = Screen::Play;
+        else if (IsKeyPressed(KEY_F3)) input.requestedScreen = Screen::Editor;
+        else if (IsKeyPressed(KEY_F4)) input.requestedScreen = Screen::Results;
+    }
+    return input;
+}
+
+// 2. Update: only state transitions here. No drawing or gameplay logic.
 void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
     if (input.closeRequested || (smokeWindow && state.frames >= kSmokeFrames)) {
         state.running = false;
         return;
     }
+    if (input.requestedScreen.has_value()) {
+        state.screen = *input.requestedScreen;
+    }
     ++state.frames;
 }
 
-// 3. Render: draw the current blank view without changing app state.
-void RenderFrame() {
+// 3. Render: display the selected state; never choose or modify it here.
+void RenderFrame(const AppState& state, bool debugScreens) {
     BeginDrawing();
     ClearBackground(kBackground);
+
+    DrawText("LOCUS", 50, 42, 24, Color{195, 197, 215, 255});
+    const char* screen = ScreenName(state.screen);
+    const int fontSize = 48;
+    DrawText(screen, (kWindowWidth - MeasureText(screen, fontSize)) / 2,
+             kWindowHeight / 2 - 40, fontSize, Color{174, 209, 214, 255});
+    DrawText("Placeholder screen - game functionality is not implemented",
+             50, kWindowHeight - 96, 19, Color{152, 155, 169, 255});
+    if (debugScreens) {
+        DrawText("DEBUG: F1 Home   F2 Play   F3 Editor   F4 Results",
+                 50, kWindowHeight - 53, 18, Color{207, 193, 147, 255});
+    }
     EndDrawing();
 }
 
-// Headless unit-sized diagnostic for the same update function used in the loop.
+// Headless checks exercise the same update function without starting raylib.
 bool CheckLoopState() {
     AppState state;
     for (int i = 0; i < kSmokeFrames; ++i) {
         UpdateState(state, FrameInput{}, true);
-        if (!state.running || state.frames != i + 1) {
+        if (!state.running || state.frames != i + 1 || state.screen != Screen::Home) {
             return false;
         }
     }
@@ -63,8 +106,38 @@ bool CheckLoopState() {
     }
 
     AppState closedByUser;
-    UpdateState(closedByUser, FrameInput{true}, false);
+    UpdateState(closedByUser, FrameInput{true, std::nullopt}, false);
     return !closedByUser.running && closedByUser.frames == 0;
+}
+
+bool CheckScreenTransitions() {
+    AppState state;
+    if (state.screen != Screen::Home || std::strcmp(ScreenName(state.screen), "Home") != 0) {
+        return false;
+    }
+
+    const Screen transitions[] = {Screen::Play, Screen::Editor, Screen::Results, Screen::Home};
+    int expectedFrames = 0;
+    for (Screen next : transitions) {
+        UpdateState(state, FrameInput{false, next}, false);
+        if (!state.running || state.screen != next || ++expectedFrames != state.frames) {
+            return false;
+        }
+    }
+
+    // No key press means no screen transition.
+    UpdateState(state, FrameInput{}, false);
+    if (state.screen != Screen::Home || state.frames != ++expectedFrames) {
+        return false;
+    }
+
+    // Closing takes precedence over a simultaneous screen-switch request.
+    UpdateState(state, FrameInput{true, Screen::Editor}, false);
+    return !state.running && state.screen == Screen::Home &&
+           state.frames == expectedFrames &&
+           std::strcmp(ScreenName(Screen::Play), "Play") == 0 &&
+           std::strcmp(ScreenName(Screen::Editor), "Editor") == 0 &&
+           std::strcmp(ScreenName(Screen::Results), "Results") == 0;
 }
 } // namespace
 
@@ -81,10 +154,20 @@ int main(int argc, char** argv) {
         std::cout << "LOOP_STATE_PASS frames=" << kSmokeFrames << '\n';
         return 0;
     }
+    if (HasArgument(argc, argv, "--screen-check")) {
+        if (!CheckScreenTransitions()) {
+            std::cerr << "SCREEN_STATE_FAIL\n";
+            return 1;
+        }
+        std::cout << "SCREEN_STATE_PASS transitions=4\n";
+        return 0;
+    }
 
     const bool smokeWindow = HasArgument(argc, argv, "--window-smoke");
-    if (argc != 1 && !smokeWindow) {
-        std::cerr << "Usage: locus.exe [--foundation-check | --loop-check | --window-smoke]\n";
+    const bool debugScreens = HasArgument(argc, argv, "--debug-screens");
+    if (argc != 1 && !smokeWindow && !debugScreens) {
+        std::cerr << "Usage: locus.exe [--foundation-check | --loop-check | --screen-check | "
+                     "--window-smoke | --debug-screens]\n";
         return 2;
     }
 
@@ -98,12 +181,12 @@ int main(int argc, char** argv) {
 
     AppState state;
     while (state.running) {
-        const FrameInput input = PollInput();
+        const FrameInput input = PollInput(debugScreens);
         UpdateState(state, input, smokeWindow);
         if (!state.running) {
             break;
         }
-        RenderFrame();
+        RenderFrame(state, debugScreens);
     }
 
     CloseWindow();
