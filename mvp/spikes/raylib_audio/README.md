@@ -24,7 +24,7 @@ build_and_run.bat
 
 This pulls the latest Git commits (fast-forward only), configures/builds, runs the WAV and local audio smoke tests, launches the interactive probe, and creates a `LOCUS-A07-logs.zip` archive suitable for uploading to the assistant. See the [root README](../../../README.md) for prerequisites, troubleshooting, and the exact log location. The manual commands below are alternatives for debugging.
 
-**HUMAN GATE REQUIRED:** A-07 needs actual listening and A/D tapping on a Windows computer with a working audio device. GitHub Actions cannot verify acoustic timing.
+**A-07 EARLY HUMAN GATE SATISFIED:** The owner reported the Windows interactive probe worked correctly. No diagnostic archive is required to close the functional spike. **No objective physical audio/input latency measurement has been made**, and a later stack or timing review may request targeted testing. The original BAT remains available for voluntary diagnostics.
 
 ## Windows prerequisites
 
