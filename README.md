@@ -106,11 +106,19 @@ cmake --build build-a07/foundation --config Release
 build-a07\foundation\Release\locus.exe
 ~~~
 
-The build output is intentionally inside the already Git-ignored `build-a07/` tree until repository hygiene task **F-03** establishes the general production build folder convention. The tests option is wired in F-01; **F-04** will add the actual CTest test executable.
+Build output stays inside the Git-ignored `build-a07/` tree for the existing Windows CI and audio probe. The F-03 `.gitignore` also supports future `build/`, `build-*/`, `cmake-build-*/`, and `out/` build directories. The tests option is wired in F-01; **F-04** will add the actual CTest test executable.
 
 **F-02 dependencies:** Production CMake downloads exact commit revisions of **raylib 6.0**, **raygui 5.0**, and **nlohmann/json 3.12.0** through `cmake/dependencies.cmake`. CMake does not need machine-specific library install paths. The first configure requires Internet access; later builds use the fetched sources. The `locus_dependencies_smoke.exe` target verifies that the pinned headers and implementations compile and link headlessly. **It is not the F-04 unit-test runner.** The existing BAT intentionally continues targeting the A-07 diagnostic until a later approved change.
 
 **Keep `build_and_run.bat`.** During early Foundation it continues running the A-07 audio-input diagnostic, not the new console stub. A separate, reviewable future task will change its default target to the game when a useful interactive application exists, preserving the audio test and diagnostic ZIP capability.
+
+## Repository hygiene and formatting (F-03)
+
+The root [`.gitignore`](.gitignore) excludes generated build trees, fetched CMake dependencies, local audio/charts, editor temporary saves, Windows IDE state, and local diagnostic files. These rules intentionally **do not ignore every WAV or JSON file**: original or appropriately licensed test fixtures may be committed deliberately.
+
+The root [`.clang-format`](.clang-format) is the C++17 formatting policy (LLVM-based, four-space indentation, 100-column limit). Developers can run `clang-format -i src/app/main.cpp` with an installed LLVM formatter; formatting is intentionally **not applied automatically** to source in F-03. Windows CI checks that the policy is applied consistently and idempotently, and that build artifacts leave the Git worktree clean.
+
+The owner has explicitly authorized updating `build_and_run.bat` when later development needs a different executable or better diagnostics. **F-03 does not change it**: it still launches the A-07 probe until an appropriate later task switches it to the playable application.
 
 ## Engineering priorities
 
