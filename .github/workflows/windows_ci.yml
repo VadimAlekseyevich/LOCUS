@@ -58,7 +58,8 @@ jobs:
             Tee-Object -FilePath (Join-Path $out "baseline-ci-console.txt")
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $summary = Get-Content (Join-Path $out "baseline-summary.txt") -Raw
-          if ($summary -notmatch "executable_bytes=[0-9]+" -or
+          if ($summary -notmatch "git_commit=[0-9a-fA-F]{40}" -or
+              $summary -notmatch "executable_bytes=[0-9]+" -or
               $summary -notmatch "first_headless_launch_exit_ms=[0-9.]+" -or
               $summary -notmatch "gui_idle_observation=NOT_MEASURED_") {
             throw "F-09 baseline report is incomplete or mislabels GUI idle"
