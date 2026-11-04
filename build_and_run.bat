@@ -233,10 +233,10 @@ if /I "%MODE%"=="baseline" (
 
 echo.
 echo ============================================================
-echo  LOCUS DEMO CLICK TRACK - GAMEPLAY IN DEVELOPMENT
-echo  F1 = Home   F2 = Play / start 120 BPM click track
+echo  LOCUS MOVING DEMO ROUTE - GAMEPLAY IN DEVELOPMENT
+echo  F1 = Home   F2 = Play / moving marker and 120 BPM click track
 echo  F3 = Editor   F4 = Results   ESC = Close
-echo  The demo plays 32 quarter-note clicks; marker movement comes next.
+echo  Cyan is the current step; blue previews the next three beats.
 echo  Close with ESC or the X button in the window title bar.
 echo ============================================================
 echo.
