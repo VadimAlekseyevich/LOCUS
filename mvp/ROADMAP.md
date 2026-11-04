@@ -222,10 +222,11 @@ The owner explicitly approved the A-01–A-06 architecture contracts and A-09 te
   **Done when:** A debug-only action can switch placeholder screens without recreating the window.
   **Verified (2026-11-04):** `src/app/main.cpp` defines one `Screen` enum for Home/Play/Editor/Results and stores the selected screen in `AppState`; `PollInput()` maps F1–F4 only with the explicit `--debug-screens` switch, `UpdateState()` applies transitions, and `RenderFrame()` draws the current placeholder without recreating the raylib window or modifying state. The root `build_and_run.bat` opts into debug screens for local review, preserving its A-07 `audio` mode. The headless `--screen-check` covers four transitions, no-input persistence, and close precedence. [Windows CI run 41907242084](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41907242084) passed, reporting `SCREEN_STATE_PASS transitions=4`, core CTest, existing build/BAT checks, and clean worktree. The CI runner cannot visually inspect GUI rendering; the human Stage 2 gate remains after F-08.
 
-- [ ] **F-08 — Create Windows CI build and test workflow**  
+- [x] **F-08 — Create Windows CI build and test workflow**  
   **Depends on:** F-04.  
   **Change:** Add a GitHub Actions workflow that configures CMake, builds the application and test target, and runs CTest.  
   **Done when:** CI passes on a clean Windows runner without private credentials.
+  **Verified (2026-11-04):** Added `.github/workflows/windows_ci.yml`, a separate production workflow running on a clean `windows-2022` worker with public GitHub source dependencies and `contents: read` only. It configures CMake, builds Windows x64 Release application and test targets, runs all CTest cases, and checks headless foundation, loop, four-screen transitions, and dependency integration. [Windows CI run 41909550297](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41909550297) **passed** (`1/1` CTest, `LOOP_STATE_PASS`, `SCREEN_STATE_PASS`, `DEPENDENCY_SMOKE_PASS`); build remained Git-clean. CI uploaded `locus-windows-foundation-x64`. Hosted CI does not validate visible text or physical keyboard response; the owner has already reported F-07 label switching works. The owner also requested improved font legibility, so `src/app/main.cpp` now loads installed Windows Segoe UI/Arial with a raylib fallback, larger text and explicit cleanup; review the appearance at the scheduled Stage 2 gate after F-09.
 
 - [ ] **F-09 — Record blank-app baseline metrics**  
   **Depends on:** F-05.  
