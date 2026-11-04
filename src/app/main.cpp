@@ -1,10 +1,13 @@
 #include "core/foundation.h"
 #include "core/route.h"
+#include "core/route_view.h"
 #include "app/demo_transport.h"
 
 #include "raylib.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -121,8 +124,8 @@ void DrawTextLabel(Font font, const char* message, Vector2 position,
     DrawTextEx(font, message, position, size, 1.0f, color);
 }
 
-// G-02: actual 4x4 board and starting position from the demo chart.
-// G-03: song-time display only; marker movement and route reveal are G-04.
+// G-04: render the charted route and marker using one fractional song beat.
+// The route is fully independent of keyboard input and rendered frame count.
 constexpr float kGridSpacing = 76.0f;
 constexpr float kGridOriginX = kWindowWidth / 2.0f - 1.5f * kGridSpacing;
 constexpr float kGridOriginY = 278.0f - 1.5f * kGridSpacing;
@@ -132,18 +135,61 @@ Vector2 GridPoint(locus::core::Cell cell) {
                    kGridOriginY + static_cast<float>(cell.y) * kGridSpacing};
 }
 
+Vector2 GridPosition(locus::core::GridPoint point) {
+    return Vector2{kGridOriginX + static_cast<float>(point.x) * kGridSpacing,
+                   kGridOriginY + static_cast<float>(point.y) * kGridSpacing};
+}
+
+// Preview four authored route steps, never player-steered steps.
+// The current step is bright; later beats fade. Wrap routes have TWO lines
+// at opposite edges and deliberately no cross-grid connecting line.
+Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat) {
+    if (chart.lengthBeats <= 0) {
+        return GridPoint(chart.start);
+    }
+    const double beat = std::clamp(fractionalBeat, 0.0,
+                                   static_cast<double>(chart.lengthBeats));
+    const int currentBeat = std::min(static_cast<int>(std::floor(beat)),
+                                     chart.lengthBeats - 1);
+    const double currentProgress = std::clamp(beat - currentBeat, 0.0, 1.0);
+    constexpr int kPreviewSteps = 4;
+    constexpr Color kRouteColors[kPreviewSteps] = {
+        {107, 230, 222, 255}, {106, 187, 224, 220},
+        {102, 154, 203, 175}, {111, 130, 184, 140}
+    };
+
+    for (int ahead = kPreviewSteps - 1; ahead >= 0; --ahead) {
+        const int routeBeat = currentBeat + ahead;
+        if (routeBeat >= chart.lengthBeats) continue;
+        const locus::core::RouteStep step =
+            locus::core::SampleRouteStep(chart, routeBeat);
+        const auto view = locus::core::ViewRouteStep(step, 0.0);
+        for (int segment = 0; segment < view.segmentCount; ++segment) {
+            const auto& line = view.segments[segment];
+            DrawLineEx(GridPosition(line.from), GridPosition(line.to),
+                       (ahead == 0) ? 6.0f : 3.5f, kRouteColors[ahead]);
+        }
+        DrawCircleV(GridPoint(step.to), (ahead == 0) ? 6.0f : 4.0f,
+                    kRouteColors[ahead]);
+    }
+
+    const locus::core::RouteStep live = locus::core::SampleRouteStep(chart, currentBeat);
+    return GridPosition(locus::core::ViewRouteStep(live, currentProgress).marker);
+}
+
 void DrawPlayGrid(Font font, const locus::core::Chart& chart,
                   const locus::app::DemoTransport& transport, double now) {
     DrawTextLabel(font, "PLAY  /  DEMO CHART", Vector2{50.0f, 98.0f}, 27.0f,
                   Color{211, 239, 241, 255});
 
-    // Quiet guides help the player read all sixteen points without implying
-    // that these guide edges are the chart's actual upcoming route.
-    const Color guides{58, 68, 85, 255};
+    // Grid guides are quieter than the authored route overlay.
+    const Color guides{43, 50, 64, 255};
     for (int index = 0; index < 4; ++index) {
         DrawLineEx(GridPoint({0, index}), GridPoint({3, index}), 2.0f, guides);
         DrawLineEx(GridPoint({index, 0}), GridPoint({index, 3}), 2.0f, guides);
     }
+
+    const Vector2 marker = DrawRoutePreview(chart, transport.Beat(now));
 
     const Color pointOuter{83, 101, 122, 255};
     const Color pointInner{169, 191, 204, 255};
@@ -155,12 +201,18 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart,
         }
     }
 
-    // The marker is deliberately stationary at beat zero until the audio
-    // clock drives its progress. It is not controlled by Left/Right input.
-    const Vector2 start = GridPoint(chart.start);
-    DrawCircleV(start, 26.0f, Color{112, 211, 216, 45});
-    DrawCircleV(start, 17.0f, Color{125, 224, 229, 255});
-    DrawCircleV(start, 5.5f, Color{245, 253, 255, 255});
+    // One song-time snapshot controls both the marker and preview.
+    // The marker keeps moving along the authored path without key presses.
+    DrawCircleV(marker, 26.0f, Color{112, 211, 216, 45});
+    DrawCircleV(marker, 17.0f, Color{125, 224, 229, 255});
+    DrawCircleV(marker, 5.5f, Color{245, 253, 255, 255});
+
+    DrawTextLabel(font, "CYAN   CURRENT STEP", Vector2{665.0f, 216.0f}, 17.0f,
+                  Color{131, 232, 227, 255});
+    DrawTextLabel(font, "BLUE   NEXT 3 BEATS", Vector2{665.0f, 244.0f}, 17.0f,
+                  Color{128, 174, 222, 255});
+    DrawTextLabel(font, "WRAP   EDGE SPLIT", Vector2{665.0f, 272.0f}, 17.0f,
+                  Color{184, 189, 204, 255});
 
     DrawTextLabel(font, "120 BPM  |  32 BEATS  |  4 x 4 GRID",
                   Vector2{50.0f, 140.0f}, 20.0f,
