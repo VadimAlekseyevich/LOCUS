@@ -1,4 +1,5 @@
 #include "core/foundation.h"
+#include "core/route.h"
 
 #include "raylib.h"
 
@@ -112,25 +113,77 @@ void DrawTextLabel(Font font, const char* message, Vector2 position,
     DrawTextEx(font, message, position, size, 1.0f, color);
 }
 
+// G-02: show the actual 4x4 board, using the start position from the demo
+// chart. Audio-driven motion and future-route lines are added in G-03/G-04.
+constexpr float kGridSpacing = 76.0f;
+constexpr float kGridOriginX = kWindowWidth / 2.0f - 1.5f * kGridSpacing;
+constexpr float kGridOriginY = 278.0f - 1.5f * kGridSpacing;
+
+Vector2 GridPoint(locus::core::Cell cell) {
+    return Vector2{kGridOriginX + static_cast<float>(cell.x) * kGridSpacing,
+                   kGridOriginY + static_cast<float>(cell.y) * kGridSpacing};
+}
+
+void DrawPlayGrid(Font font, const locus::core::Chart& chart) {
+    DrawTextLabel(font, "PLAY  /  DEMO CHART", Vector2{50.0f, 98.0f}, 27.0f,
+                  Color{211, 239, 241, 255});
+
+    // Quiet guides help the player read all sixteen points without implying
+    // that these guide edges are the chart's actual upcoming route.
+    const Color guides{58, 68, 85, 255};
+    for (int index = 0; index < 4; ++index) {
+        DrawLineEx(GridPoint({0, index}), GridPoint({3, index}), 2.0f, guides);
+        DrawLineEx(GridPoint({index, 0}), GridPoint({index, 3}), 2.0f, guides);
+    }
+
+    const Color pointOuter{83, 101, 122, 255};
+    const Color pointInner{169, 191, 204, 255};
+    for (int y = 0; y < 4; ++y) {
+        for (int x = 0; x < 4; ++x) {
+            const Vector2 point = GridPoint({x, y});
+            DrawCircleV(point, 9.0f, pointOuter);
+            DrawCircleV(point, 4.0f, pointInner);
+        }
+    }
+
+    // The marker is deliberately stationary at beat zero until the audio
+    // clock drives its progress. It is not controlled by Left/Right input.
+    const Vector2 start = GridPoint(chart.start);
+    DrawCircleV(start, 26.0f, Color{112, 211, 216, 45});
+    DrawCircleV(start, 17.0f, Color{125, 224, 229, 255});
+    DrawCircleV(start, 5.5f, Color{245, 253, 255, 255});
+
+    DrawTextLabel(font, "120 BPM  |  32 BEATS  |  4 x 4 GRID",
+                  Vector2{50.0f, 439.0f}, 20.0f,
+                  Color{204, 208, 222, 255});
+    DrawTextLabel(font, "Marker movement and music are coming next",
+                  Vector2{50.0f, 474.0f}, 19.0f,
+                  Color{159, 164, 184, 255});
+}
+
 // 3. Render: display the selected state; never choose or modify it here.
-void RenderFrame(const AppState& state, bool debugScreens, Font font) {
+void RenderFrame(const AppState& state, bool debugScreens, Font font,
+                 const locus::core::Chart& demo) {
     BeginDrawing();
     ClearBackground(kBackground);
 
     DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
                   Color{223, 225, 238, 255});
 
-    const char* screen = ScreenName(state.screen);
-    constexpr float kScreenFontSize = 54.0f;
-    const Vector2 textSize = MeasureTextEx(font, screen, kScreenFontSize, 1.0f);
-    DrawTextLabel(font, screen,
-                  Vector2{(static_cast<float>(kWindowWidth) - textSize.x) / 2.0f,
-                          static_cast<float>(kWindowHeight) / 2.0f - 38.0f},
-                  kScreenFontSize, Color{211, 239, 241, 255});
-
-    DrawTextLabel(font, "Placeholder screen - game functionality is not implemented",
-                  Vector2{50.0f, static_cast<float>(kWindowHeight - 112)},
-                  22.0f, Color{208, 211, 225, 255});
+    if (state.screen == Screen::Play) {
+        DrawPlayGrid(font, demo);
+    } else {
+        const char* screen = ScreenName(state.screen);
+        constexpr float kScreenFontSize = 54.0f;
+        const Vector2 textSize = MeasureTextEx(font, screen, kScreenFontSize, 1.0f);
+        DrawTextLabel(font, screen,
+                      Vector2{(static_cast<float>(kWindowWidth) - textSize.x) / 2.0f,
+                              static_cast<float>(kWindowHeight) / 2.0f - 38.0f},
+                      kScreenFontSize, Color{211, 239, 241, 255});
+        DrawTextLabel(font, "Placeholder screen - game functionality is not implemented",
+                      Vector2{50.0f, static_cast<float>(kWindowHeight - 112)},
+                      22.0f, Color{208, 211, 225, 255});
+    }
     if (debugScreens) {
         DrawTextLabel(font, "DEBUG: F1 Home   F2 Play   F3 Editor   F4 Results",
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 65)},
@@ -229,13 +282,14 @@ int main(int argc, char** argv) {
     std::cout << "LOCUS_WINDOW_OPEN\n";
 
     AppState state;
+    const locus::core::Chart demo = locus::core::MakeDemoChart();
     while (state.running) {
         const FrameInput input = PollInput(debugScreens);
         UpdateState(state, input, smokeWindow);
         if (!state.running) {
             break;
         }
-        RenderFrame(state, debugScreens, uiFont.value);
+        RenderFrame(state, debugScreens, uiFont.value, demo);
     }
 
     if (uiFont.owned) {
