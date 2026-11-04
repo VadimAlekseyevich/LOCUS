@@ -23,10 +23,10 @@ Missing a turn or pressing the wrong button does not derail movement. The marker
 
 1. **Immediate readability.** One moving marker, one compact grid, two primary actions, and a readable future route.
 2. **Rhythm-first precision.** Judgements are based on the music timeline and timestamped inputs, never on rendered animation frames.
-3. **Lightweight by default.** Fast startup, low runtime overhead, small distribution size, and restrained dependencies matter alongside frame rate.
+3. **Low-latency and reliable first.** Precise audio/visual alignment and minimal input-to-feedback delay take priority over the download size. Profile the actual player experience rather than optimizing a few kilobytes.
 4. **Pleasant minimalism.** A dark canvas, soft pastel colors, smooth movement, and carefully limited effects.
 5. **Creation is a first-class feature.** The editor shares the game's chart format and route rules; charts are not handcrafted in source code.
-6. **Controlled complexity.** A small, understandable implementation is preferred over speculative extensibility.
+6. **Controlled complexity.** Avoid feature sprawl and unnecessary architectural layers. A build of tens or hundreds of megabytes is acceptable when justified by measurable timing, performance, robustness, or maintenance benefits.
 
 ### 1.2 Intended audience
 
@@ -319,7 +319,7 @@ Avoid building a large settings framework until particular settings are proven n
 
 ### 9.1 Platform and stack
 
-**Confirmed:** Windows first; low binary size, low overhead, low startup cost, and maintainable code are product goals.
+**Confirmed:** Windows first. **Highest priorities** are precise musical timing, minimal input-to-feedback and audio-output delay, stable performance, and correctness under frame stalls. **Secondary priorities** are maintainable code and a tightly controlled dependency/feature surface. Binary/download size is a diagnostic metric, **not a size cap**; a substantially larger build is acceptable for demonstrated benefits.
 
 **Open:** Engine/library choice.
 
@@ -327,7 +327,7 @@ Avoid building a large settings framework until particular settings are proven n
 - C++ + raylib — leading exploratory candidate for a compact 2D application.
 - C++ + SDL3 — alternative if lower-level audio timing/control or packaging favors it.
 
-Godot and Rust are not forbidden, but introducing a full engine or extra complexity requires a measured benefit. Evaluate candidates using a real audio-timed input test, not graphics performance alone.
+Godot and Rust are not forbidden. Choose the stack by measured audio clock behavior, input capture timing, output latency, frame scheduling, platform stability, and maintenance cost. Do not select a library merely because its executable is smaller. New dependencies must solve concrete problems rather than grow the project aimlessly.
 
 ### 9.2 Architectural boundaries — Proposed
 
@@ -345,10 +345,10 @@ These are responsibility boundaries, **not** a demand for six frameworks, dynami
 - Correct judgement must not depend on rendering frame rate.
 - Audio seek/pause/resume must not duplicate or skip turn judgements.
 - The game must remain playable on ordinary Windows hardware without a heavyweight runtime installation.
-- Release binary size and startup time must be benchmarked; numerical targets remain **Open** until a baseline is measured.
+- Benchmark input-event capture delay, audio/visual synchronization, audio-output latency where physical measurement is feasible, frame pacing, startup, memory, and release size. **No hard release-size limit is imposed**; prioritize timing and performance when metrics conflict.
 - Chart simulation and editor preview must match exactly.
 - Automated tests should cover turn rotation, boundary behavior, chart validation, timing-window edges, and miss/no-fail invariants.
-- Dependency additions must be justified by real requirements, binary size, and maintenance cost.
+- Dependency additions must be justified by real timing, performance, stability, and maintainability needs. Avoid uncontrolled scope/dependency growth; package size is informational rather than a primary constraint.
 - All repository content (code, documentation, comments, commit messages, UI text, and user-facing game strings) is written in **English**.
 
 ## 10. Human Gates and Change Control
@@ -364,6 +364,12 @@ Each review should include:
 - Explicit approval or requested changes.
 
 Changes to core gameplay rules, timing, chart format, or scope require the owner's approval and a GDD update. Prefer small, reviewable code changes even when a gate occurs at the end of a larger stage.
+
+### Early human intervention and communication — Confirmed
+
+If any task needs the owner **before** the planned end-of-stage review (real-device audio/keyboard testing, visible/feel judgement, installation on the owner's Windows machine, unresolved design choice, permission, or license approval), **stop that blocked part immediately and ask for the exact required action**. The assistant must prominently label the user-facing response with the all-caps heading **HUMAN GATE REQUIRED**. Never bury an early human dependency in small print or report it only after moving to an unrelated stage.
+
+When possible, provide a reproducible launcher, brief manual checklist, and a log/diagnostic bundle the owner can send back. The relevant roadmap item stays **open** until the required evidence arrives or the owner explicitly changes the acceptance criteria. The phrase **HUMAN GATE REQUIRED** applies equally to unscheduled early intervention and to planned owner approval at stage boundaries.
 
 ## 11. MVP Acceptance Principles
 
