@@ -186,10 +186,11 @@ The owner explicitly approved the A-01–A-06 architecture contracts and A-09 te
   **Done when:** A clean configure produces Windows build files and a minimal executable without manual IDE setup.
   **Verified (2026-11-04):** Root `CMakeLists.txt` builds `locus_core` and the `locus` console stub as separate targets; the optional tests switch is wired but no test runner is created until F-04. Clean Windows VS2022 x64 Release configure/build/run passed in [CI run 41894135183](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41894135183). The A-07 experiment and `build_and_run.bat` remain intact. No game window is claimed at F-01.
 
-- [ ] **F-02 — Pin the chosen external dependencies**  
+- [x] **F-02 — Pin the chosen external dependencies**  
   **Depends on:** F-01.  
   **Change:** Add the smallest reproducible dependency acquisition/configuration mechanism defined by A-09.  
   **Done when:** Clean builds use stated versions; no machine-specific installation paths are required.
+  **Verified (2026-11-04):** `cmake/dependencies.cmake` pins raylib 6.0, raygui 5.0, and nlohmann/json v3.12.0 by exact upstream commit SHA. Root CMake uses FetchContent and the required CMake 3.25 minimum. A headless `locus_dependencies_smoke` successfully built and reported all three versions on Windows MSVC Release in [CI run 41895581746](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41895581746); no installed per-machine SDK paths are necessary beyond the standard Windows build toolchain. The existing `build_and_run.bat` remains unchanged. A real CTest suite belongs to F-04.
 
 - [ ] **F-03 — Add repository hygiene files**  
   **Depends on:** F-01.  
