@@ -5,6 +5,8 @@ on:
     paths:
       - "mvp/spikes/raylib_audio/**"
       - "build_and_run.bat"
+      - ".gitignore"
+      - ".clang-format"
       - "CMakeLists.txt"
       - "src/**"
       - "cmake/**"
@@ -22,6 +24,61 @@ jobs:
     steps:
       - name: Checkout LOCUS
         uses: actions/checkout@v4
+
+      # F-03 checks keep private builds and temporary files out of Git.
+      - name: Verify Git ignore rules and reproducible C++ format
+        shell: pwsh
+        run: |
+          $ignored = @(
+            "build-a07/probe-log.txt",
+            "build/Release/locus.exe",
+            "cmake-build-debug/CMakeCache.txt",
+            "out/artifact.bin",
+            ".locus-runs/a07-session/raylib_probe_log.csv",
+            "local-audio/unlicensed.wav",
+            "local-charts/my-song.locus.json",
+            ".editor-temp/temp.txt",
+            "charts/local/draft.locus.json",
+            "audio/local/song.wav",
+            "draft.locus.json.tmp",
+            "draft.locus.json.123.tmp",
+            "draft.locus.json.bak",
+            "draft.autosave.locus.json",
+            "Thumbs.db"
+          )
+          foreach ($path in $ignored) {
+            git check-ignore -q --no-index -- $path
+            if ($LASTEXITCODE -ne 0) { throw "Generated/local path is not ignored: $path" }
+          }
+          $tracked = @("src/app/main.cpp", "CMakeLists.txt", "mvp/spikes/raylib_audio/main.cpp", "mvp/architecture/CHART_FORMAT.md")
+          foreach ($path in $tracked) {
+            git check-ignore -q --no-index -- $path
+            if ($LASTEXITCODE -eq 0) { throw "Source/documentation unexpectedly ignored: $path" }
+          }
+          $formatter = Get-Command clang-format -ErrorAction SilentlyContinue
+          if ($formatter) {
+            $formatterPath = $formatter.Source
+          } else {
+            $candidates = @(
+              "${env:ProgramFiles}\LLVM\bin\clang-format.exe",
+              "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\bin\clang-format.exe",
+              "${env:ProgramFiles}\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\bin\clang-format.exe"
+            )
+            $formatterPath = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $formatterPath) { throw "clang-format not installed on Windows runner" }
+          New-Item -ItemType Directory -Force -Path "build-a07" | Out-Null
+          $fixture = "build-a07/format-fixture.cpp"
+          Set-Content -LiteralPath $fixture -Value 'int main(){if(true){return 0;}return 1;}' -Encoding utf8
+          & $formatterPath -i --style=file $fixture
+          if ($LASTEXITCODE -ne 0) { throw "First clang-format pass failed" }
+          $first = Get-Content -LiteralPath $fixture -Raw
+          if (-not $first.Contains("    if (true)")) { throw "Expected 4-space indent from .clang-format was not applied" }
+          & $formatterPath -i --style=file $fixture
+          if ($LASTEXITCODE -ne 0) { throw "Second clang-format pass failed" }
+          $second = Get-Content -LiteralPath $fixture -Raw
+          if ($first -cne $second) { throw "clang-format is not idempotent" }
+          Write-Output "F03_IGNORE_AND_FORMAT_PASS"
 
       # Temporary F-01/F-02 verification; F-08 adds dedicated production CI.
       - name: Configure clean F-02 pinned production dependencies
@@ -106,6 +163,13 @@ jobs:
           )
           $lines | Set-Content windows-build-metrics.txt
           Get-Content windows-build-metrics.txt
+
+      - name: Ensure generated files did not dirty the tracked repository
+        shell: pwsh
+        run: |
+          $untracked = git status --porcelain
+          if ($untracked) { throw "Build created unignored files: $untracked" }
+          Write-Output "F03_CLEAN_WORKTREE_PASS"
 
       - name: Upload Windows binary and measurement evidence
         uses: actions/upload-artifact@v4
