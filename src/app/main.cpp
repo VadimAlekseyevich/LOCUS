@@ -457,6 +457,61 @@ bool CheckScreenTransitions() {
            std::strcmp(ScreenName(Screen::Editor), "Editor") == 0 &&
            std::strcmp(ScreenName(Screen::Results), "Results") == 0;
 }
+// Headless G-06 check: start, return Home, retry, resolve the demo, retry
+// from Results. The real music device/presentation is tested by owner in G-07.
+bool CheckSessionFlow() {
+    AppState state;
+    const locus::core::Chart chart = locus::core::MakeDemoChart();
+    locus::core::TurnJudge judge(chart);
+
+    FrameInput start;
+    start.startPressed = true;
+    UpdateState(state, start, false);
+    if (state.screen != Screen::Play) return false;
+
+    // A turn can be judged without ever changing authored movement.
+    const auto baseline = locus::core::SampleRouteStep(chart, 8);
+    judge.Press(locus::core::Turn::Right, 1.0);
+    if (judge.Counts().perfect != 1) return false;
+
+    FrameInput goHome;
+    goHome.homePressed = true;
+    UpdateState(state, goHome, false);
+    if (state.screen != Screen::Home) return false;
+    UpdateState(state, start, false);
+    if (state.screen != Screen::Play) return false;
+    judge.Reset();
+    if (judge.Counts().Resolved() != 0) return false;
+
+    // A clean run resolves every missing turn at song end and shows Results.
+    FinishSession(state, judge, chart);
+    if (state.screen != Screen::Results ||
+        judge.Counts().miss != static_cast<int>(chart.turns.size()) ||
+        judge.Counts().Resolved() != static_cast<int>(chart.turns.size())) {
+        return false;
+    }
+    const auto unchanged = locus::core::SampleRouteStep(chart, 8);
+    if (baseline.from.x != unchanged.from.x ||
+        baseline.from.y != unchanged.from.y ||
+        baseline.to.x != unchanged.to.x ||
+        baseline.to.y != unchanged.to.y ||
+        baseline.heading != unchanged.heading) return false;
+
+    FrameInput retry;
+    retry.restartPressed = true;
+    UpdateState(state, retry, false);
+    if (state.screen != Screen::Play) return false;
+    judge.Reset();
+    if (judge.Counts().Resolved() != 0) return false;
+
+    // Closing the window wins even if a screen change is requested.
+    FrameInput close;
+    close.closeRequested = true;
+    close.requestedScreen = Screen::Home;
+    UpdateState(state, close, false);
+    return !state.running && state.screen == Screen::Play;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -480,12 +535,20 @@ int main(int argc, char** argv) {
         std::cout << "SCREEN_STATE_PASS transitions=4\n";
         return 0;
     }
+    if (HasArgument(argc, argv, "--session-check")) {
+        if (!CheckSessionFlow()) {
+            std::cerr << "SESSION_FLOW_FAIL\n";
+            return 1;
+        }
+        std::cout << "SESSION_FLOW_PASS turns=9 retry=true results=true\n";
+        return 0;
+    }
 
     const bool smokeWindow = HasArgument(argc, argv, "--window-smoke");
     const bool debugScreens = HasArgument(argc, argv, "--debug-screens");
     if (argc != 1 && !smokeWindow && !debugScreens) {
         std::cerr << "Usage: locus.exe [--foundation-check | --loop-check | --screen-check | "
-                     "--window-smoke | --debug-screens]\n";
+                     "--session-check | --window-smoke | --debug-screens]\n";
         return 2;
     }
 
