@@ -11,6 +11,7 @@ include(cmake/dependencies.cmake)
 
 add_library(locus_core STATIC
     src/core/foundation.cpp
+    src/core/route.cpp
 )
 target_compile_features(locus_core PUBLIC cxx_std_17)
 set_target_properties(locus_core PROPERTIES
@@ -52,4 +53,9 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_core_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_core_tests PRIVATE locus_core)
     add_test(NAME locus_core_foundation COMMAND locus_core_tests)
+
+    add_executable(locus_route_tests tests/route_tests.cpp)
+    target_compile_features(locus_route_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_route_tests PRIVATE locus_core)
+    add_test(NAME locus_demo_route COMMAND locus_route_tests)
 endif()
