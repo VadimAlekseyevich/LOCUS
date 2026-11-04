@@ -1,6 +1,6 @@
 # LOCUS
 
-A rhythm game currently in development. **We are now building the first playable demo, not completing an elaborate engineering checklist.** The prototype is not playable yet. Two Windows executables exist: the **LOCUS production app** (currently four F-07 placeholder screens, launched by double-clicking `build_and_run.bat`) and the separate **A-07 audio/input timing probe** (BAT `audio` mode).
+A rhythm game currently in development. **We are now building the first playable demo, not completing an elaborate engineering checklist.** The prototype is not playable yet. Two Windows executables exist: the **LOCUS production app** (its Play screen now shows the G-02 4×4 board and stationary starting marker, launched by double-clicking `build_and_run.bat`) and the separate **A-07 audio/input timing probe** (BAT `audio` mode).
 
 [Game Design Document](mvp/GDD.md) · **[Short playable-prototype roadmap](mvp/ROADMAP.md)** · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
 
@@ -34,7 +34,7 @@ If you already have the LOCUS repository, **double-click `build_and_run.bat` in 
 2. Checks for local uncommitted files; runs `git pull --ff-only` only if safe. It does **not** delete or overwrite your changes.
 3. Checks build prerequisites and asks before installing anything missing.
 4. **By default:** configures the root production CMake project and builds `locus.exe` in `build-a07/foundation/Release/`.
-5. Opens the **LOCUS placeholder Home screen** with debug navigation: F1 Home, F2 Play, F3 Editor, F4 Results. Close using Esc or the X button.
+5. Opens **LOCUS Home** with debug navigation: F1 Home, F2 the **Play grid**, F3 Editor, F4 Results. Close using Esc or X. The marker is stationary until music and motion are implemented.
 6. Saves compile errors and window-open/close status to **`LOCUS-game-logs.zip`** if available; a ZIP is produced even when the build fails after log-folder creation.
 7. **Optional `audio` mode:** runs the previously tested A-07 metronome, transport tests, key-press CSV, and its separate `LOCUS-a07-logs.zip` bundle.
 
@@ -44,7 +44,7 @@ All build output is kept locally and ignored by Git. Nothing is uploaded automat
 
 | Command | Behavior |
 | --- | --- |
-| `build_and_run.bat` | **Default:** pull, build and open LOCUS with four debug placeholder screens |
+| `build_and_run.bat` | **Default:** pull, build and open LOCUS (F2 shows the first real 4×4 board) |
 | `build_and_run.bat run` | Same as double-click |
 | `build_and_run.bat build` | Pull and compile the production game without launching a window |
 | `build_and_run.bat game` | Open LOCUS with F1–F4 debug screen switching |
@@ -146,7 +146,7 @@ The first test (`locus_core_foundation`) checks a small pure C++ core build/link
 
 **Keep `build_and_run.bat`.** With the owner's permission, F-05 switches its default to the production blank window and preserves the original A-07 diagnostic via `audio` mode. Future tasks may refine the launcher as LOCUS becomes playable, retaining error logs.
 
-**First gameplay slice (G-01, complete):** `src/core/route.h` and `src/core/route.cpp` contain the built-in 32-beat 120 BPM chart and deterministic turn/Wrap route calculation. Windows CI runs `locus_demo_route` with CTest, covering turns and all four Wrap edges. This route is not yet drawn on the grid; **G-02 is the next task and will create the visible 4×4 game field**.
+**Gameplay progress (G-01 and G-02):** `src/core/route.h` and `src/core/route.cpp` contain the built-in 32-beat 120 BPM chart and deterministic turn/Wrap route calculation. The **Play** screen now renders the 16 grid points and bright marker at the demo chart's starting cell **(1, 1)**. The quiet grid guides are not the upcoming route; drawing the actual preview comes in G-04. The marker deliberately stays still because **G-03 (audio transport) and G-04 (song-time movement)** are next. Press **F2** after the BAT opens Home to see the grid. Windows CI checks the code builds and tests the deterministic route but cannot visually inspect the grid.
 
 ## Optional diagnostics — not required for gameplay
 
