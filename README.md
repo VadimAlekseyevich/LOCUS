@@ -1,6 +1,6 @@
 # LOCUS
 
-A rhythm game currently in development. The **MVP game is not playable yet**. Two Windows executables exist: the **F-05 blank production window** (`locus.exe`, launched by double-clicking `build_and_run.bat`) and the original **A-07 audio/input timing probe** (select the BAT's `audio` mode).
+A rhythm game currently in development. The **MVP game is not playable yet**. Two Windows executables exist: the **LOCUS production app** (currently four F-07 placeholder screens, launched by double-clicking `build_and_run.bat`) and the separate **A-07 audio/input timing probe** (BAT `audio` mode).
 
 [Game Design Document](mvp/GDD.md) · [MVP Roadmap](mvp/ROADMAP.md) · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
 
@@ -34,7 +34,7 @@ If you already have the LOCUS repository, **double-click `build_and_run.bat` in 
 2. Checks for local uncommitted files; runs `git pull --ff-only` only if safe. It does **not** delete or overwrite your changes.
 3. Checks build prerequisites and asks before installing anything missing.
 4. **By default:** configures the root production CMake project and builds `locus.exe` in `build-a07/foundation/Release/`.
-5. Opens the **blank dark LOCUS window**. Close using Esc or the X button.
+5. Opens the **LOCUS placeholder Home screen** with debug navigation: F1 Home, F2 Play, F3 Editor, F4 Results. Close using Esc or the X button.
 6. Saves compile errors and window-open/close status to **`LOCUS-game-logs.zip`** if available; a ZIP is produced even when the build fails after log-folder creation.
 7. **Optional `audio` mode:** runs the previously tested A-07 metronome, transport tests, key-press CSV, and its separate `LOCUS-a07-logs.zip` bundle.
 
@@ -44,10 +44,10 @@ All build output is kept locally and ignored by Git. Nothing is uploaded automat
 
 | Command | Behavior |
 | --- | --- |
-| `build_and_run.bat` | **Default:** pull, build and open blank LOCUS production window |
+| `build_and_run.bat` | **Default:** pull, build and open LOCUS with four debug placeholder screens |
 | `build_and_run.bat run` | Same as double-click |
 | `build_and_run.bat build` | Pull and compile the production game without launching a window |
-| `build_and_run.bat game` | Open blank production LOCUS window |
+| `build_and_run.bat game` | Open LOCUS with F1–F4 debug screen switching |
 | `build_and_run.bat audio` | Run the original A-07 metronome/audio-input experiment |
 | `build_and_run.bat test` | Run A-07 WAV self-test without a graphical window |
 | `build_and_run.bat smoke` | Run A-07 WAV and audio-device smoke tests |
@@ -100,7 +100,7 @@ The final playable game and its Windows installer are future roadmap tasks. The 
 
 ## Production foundation and first blank window (F-01–F-05)
 
-**Stage 1 architecture/stack approved by the owner on 2026-11-04.** The separate production root `CMakeLists.txt` now builds a **minimal console executable** (`locus.exe`) and a **pure C++17 core static library** (`locus_core`). As of **F-05**, normal execution of `locus.exe` opens a **960×540 blank dark raylib window**. Use **Esc** or the window **X** to close it cleanly. This is not yet a playable game or menu; no gameplay, audio transport, or state machine has been added. The `--foundation-check` flag still reports the core linkage status headlessly.
+**Stage 1 architecture/stack approved by the owner on 2026-11-04.** The separate production root `CMakeLists.txt` now builds a **minimal console executable** (`locus.exe`) and a **pure C++17 core static library** (`locus_core`). As of **F-07**, normal execution of `locus.exe` opens a **960×540 dark raylib window** showing the placeholder Home screen. Use **Esc** or the window **X** to close it cleanly. The four-screen state controller is a temporary debug scaffold, **not** a playable game or finished menu; no gameplay or audio transport has been added. The `--foundation-check` flag still reports the core linkage status headlessly.
 
 For a direct Windows Visual Studio 2022 build in Command Prompt:
 
@@ -123,6 +123,8 @@ raylib pumps native OS/window events during `EndDrawing()`; the next `PollInput(
 
 **F-06 headless check:** `locus.exe --loop-check` exercises the update/stop rules for exactly 60 simulated frames and an immediate close event, printing `LOOP_STATE_PASS frames=60` without opening a window. Windows CI runs this on every source change; it is a foundation check, not a timing or real-input latency benchmark.
 
+**F-07 screen placeholders:** LOCUS starts at **Home**. No window is recreated when changing states. In normal `locus.exe` execution the debug keys are disabled; double-clicking the BAT explicitly runs `locus.exe --debug-screens`, which enables **F1 = Home, F2 = Play, F3 = Editor, F4 = Results**. Each screen currently displays only its name and a placeholder caption. These shortcuts are for development, not final game navigation. The `PollInput()` phase captures the requested screen, `UpdateState()` commits it, and `RenderFrame()` draws that state without modifying it. The headless `locus.exe --screen-check` diagnostic exercises all four transitions, no-input persistence, and close precedence, printing `SCREEN_STATE_PASS transitions=4`; Windows CI runs it automatically. Graphical appearance is not asserted by headless CI, and the Stage 2 owner gate remains scheduled after F-08.
+
 Build output stays inside the Git-ignored `build-a07/` tree for the existing Windows CI and audio probe. The F-03 `.gitignore` also supports future `build/`, `build-*/`, `cmake-build-*/`, and `out/` build directories. The `LOCUS_BUILD_TESTS=ON` option now builds `locus_core_tests` (F-04), which runs headlessly through CTest; additional gameplay tests will be added as core modules arrive.
 
 **F-04 core smoke test (Windows Command Prompt):** After configuring and building with `-DLOCUS_BUILD_TESTS=ON`, run:
@@ -133,7 +135,7 @@ ctest --test-dir build-a07/foundation -C Release --output-on-failure
 
 The first test (`locus_core_foundation`) checks a small pure C++ core build/link contract and does not open a window or audio device. This is an **infrastructure placeholder**, not a gameplay correctness or latency test. Windows CI runs it automatically.
 
-**F-02 dependencies:** Production CMake downloads exact commit revisions of **raylib 6.0**, **raygui 5.0**, and **nlohmann/json 3.12.0** through `cmake/dependencies.cmake`. CMake does not need machine-specific library install paths. The first configure requires Internet access; later builds use the fetched sources. The `locus_dependencies_smoke.exe` target verifies that the pinned headers and implementations compile and link headlessly. **It is not the F-04 unit-test runner.** The BAT now defaults to building the F-05 production window, while `build_and_run.bat audio` preserves the A-07 diagnostic.
+**F-02 dependencies:** Production CMake downloads exact commit revisions of **raylib 6.0**, **raygui 5.0**, and **nlohmann/json 3.12.0** through `cmake/dependencies.cmake`. CMake does not need machine-specific library install paths. The first configure requires Internet access; later builds use the fetched sources. The `locus_dependencies_smoke.exe` target verifies that the pinned headers and implementations compile and link headlessly. **It is not the F-04 unit-test runner.** The BAT now defaults to building the production window with F-07 debug navigation, while `build_and_run.bat audio` preserves the A-07 diagnostic.
 
 **Keep `build_and_run.bat`.** With the owner's permission, F-05 switches its default to the production blank window and preserves the original A-07 diagnostic via `audio` mode. Future tasks may refine the launcher as LOCUS becomes playable, retaining error logs.
 
