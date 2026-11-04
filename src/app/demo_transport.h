@@ -21,12 +21,15 @@ public:
 
     bool Initialize(const core::Chart& chart);
     void Start(double monotonicSeconds);
+    void Pause(double monotonicSeconds);
+    void Resume(double monotonicSeconds);
     void Stop();
     void Update(double monotonicSeconds);
     void Shutdown();
 
     bool Ready() const noexcept { return musicLoaded_; }
     bool Playing() const noexcept { return playing_; }
+    bool Paused() const noexcept { return paused_; }
     bool Finished() const noexcept { return finished_; }
     double SongSeconds(double monotonicSeconds) const noexcept;
     double Beat(double monotonicSeconds) const noexcept;
@@ -41,6 +44,7 @@ private:
     bool audioInitialized_ = false;
     bool musicLoaded_ = false;
     bool playing_ = false;
+    bool paused_ = false;
     bool finished_ = false;
 };
 
