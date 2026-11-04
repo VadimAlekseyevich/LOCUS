@@ -5,12 +5,6 @@ on:
     paths:
       - "mvp/spikes/raylib_audio/**"
       - "build_and_run.bat"
-      - ".gitignore"
-      - ".clang-format"
-      - "CMakeLists.txt"
-      - "src/**"
-      - "cmake/**"
-      - "tests/**"
       - ".github/workflows/a07_raylib_probe.yml"
   workflow_dispatch:
 
