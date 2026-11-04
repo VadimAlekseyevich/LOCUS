@@ -91,7 +91,7 @@ On the interval `n < b < n+1`, the logical step is `P[n] -> P[n+1]`, with fracti
 
 **Crucial:** A turn at beat `n` changes the **outgoing step** `P[n] -> P[n+1]`; it does **not** retroactively curve the incoming movement `P[n-1] -> P[n]`.
 
-Rendering a Wrap step must use seam-aware exit/re-entry geometry, not interpolation through the grid interior. The exact visual treatment is deferred to A-04.
+Rendering a Wrap step must use seam-aware exit/re-entry geometry, not interpolation through the grid interior. The proposed screen-space treatment and worked examples are specified in [WRAP.md](./WRAP.md) (A-04).
 
 ## 5. Worked example: BPM 120, positive offset
 
@@ -299,7 +299,7 @@ For `ε` above, choose any sufficiently small **positive** duration that preserv
 | --- | --- |
 | Handling two keys at once, repeat presses, and which event wins a press | Resolved by Section 8.1 (A-03) |
 | How wide Perfect/Good/Bad/Miss windows are | T-11 and playtesting |
-| Visual shape/duration of exit and re-entry at the seam | A-04 |
+| Visual shape/duration of exit and re-entry at the seam | Documented in [WRAP.md](./WRAP.md) (A-04); prototype feel still awaits validation |
 | JSON serialization, names of timing fields, chart audio-reference encoding | A-05 |
 | Real backend transport, pause/seek, input clock correlation and timing drift | A-07, T-06–T-09 |
 | Editor snapping UI and count-in visuals | E-10, E-13, P-10 |
