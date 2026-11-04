@@ -3,7 +3,7 @@
 **Status:** Planning draft — review at human gates  
 **Updated:** 2026-11-04  
 **Language:** English (all repository content, commits, UI, code, and tests)  
-**Target:** Small, standalone Windows rhythm game with a usable local chart editor  
+**Target:** Responsive, precisely timed Windows rhythm game with a usable local chart editor; size is not capped  
 **Design authority:** [GDD.md](./GDD.md)
 
 > This file is an executable **task backlog**, not implemented functionality. Each checked item must mean code/docs were actually delivered and independently verified. **One task ID = one implementation request = one reviewable change.** Do not pre-implement neighboring IDs.
@@ -12,7 +12,7 @@
 
 The MVP is a 4×4 rhythm grid with a moving marker, two relative actions (Left/Right), quarter-note stepping, **Wrap-only boundaries**, gradually revealed correct route, unconditional No Fail, Perfect/Good/Bad/Miss judgements, local audio playback, and a chart editor with timeline plus synchronized grid. Windows comes first; accounts, hosting, variable grid sizes, Bounce, and elaborate note types are excluded.
 
-**Owner approvals:** Resolve the architecture decisions before production code; review the deliverable after **every stage**, not after every task. The final release tag is gated by explicit owner approval.
+**Owner approvals:** Resolve the architecture decisions before production code; review the deliverable after **every stage**, not after every task. **If user intervention is required early, label it HUMAN GATE REQUIRED in large uppercase text immediately.** The final release tag is gated by explicit owner approval.
 
 ## Architecture review (before the task list)
 
@@ -56,9 +56,9 @@ Use versioned local chart data with a fixed 4×4 size, an initial point and head
 
 Separate **Chart** (validated, read-only during play) from **ChartDraft** (editable and possibly invalid in the editor). Save and reopen must preserve route semantics. Resolve audio paths from the chart location; never upload user music.
 
-### E. Minimize build and UI complexity
+### E. Prioritize low latency; constrain code and UI complexity
 
-Prefer a small C++ executable with a pure core and only the dependencies the project needs. **raylib is a candidate, not a committed choice**; use a short technical probe and move to SDL3 only if evidence warrants the extra low-level work. A grid is simple to draw, but a usable editor timeline, text fields, file picker, focus management, and undo are not: pick the UI technique during the stack decision instead of casually creating an ad-hoc framework later.
+Prefer a coherent C++ implementation with a pure core and dependencies justified by **input/audio timing, frame pacing, and correctness first**. Do **not** reject a stack for having a larger executable: even tens or hundreds of megabytes are acceptable when justified. Keep **project complexity and feature scope** under control, not the file size at all costs. **raylib is a candidate, not a committed choice**; use a short technical probe and move to SDL3 only if evidence warrants the extra low-level work. A grid is simple to draw, but a usable editor timeline, text fields, file picker, focus management, and undo are not: pick the UI technique during the stack decision instead of casually creating an ad-hoc framework later.
 
 A suggested layout, to be adjusted once the stack is approved:
 
@@ -84,14 +84,21 @@ These are ownership boundaries, **not** a requirement for a generic engine, enti
 | Wrong route around edges or jumps through the grid | R-02, R-06–R-08, P-04, P-06 |
 | Preview ambiguity where paths overlap | R-11, P-08 and owner playtest |
 | Editor route differs from gameplay | E-14, I-17–I-19 |
-| Large executable or UI-framework sprawl | A-09, F-09, Q-11, Q-13 |
+| Uncontrolled scope/dependency growth (not raw executable size) | A-09, F-09, Q-11, Q-13 |
 | Corrupt charts, lost edits, or broken relative audio paths | C-04–C-12, I-10–I-13 |
 
 ### G. Definition of a single task
 
 Each checkbox below is intentionally a **bounded change with a concrete check**. A request should ask for **only one ID**. Implement the smallest coherent patch, add focused tests in the same change where relevant, run applicable checks, then report changed files, verification, known limitations, and the next blocked/unblocked task. Do not silently implement future IDs. Do not mark a checkbox complete based on planning or untested code. If a task reveals missing prerequisites, document them instead of expanding scope without consent.
 
-**Conditional task:** A-08 is performed only when A-07 has a material timing/packaging blocker. Mark it *Skipped with reason* rather than falsely completed if unnecessary.
+**Conditional task:** A-08 is performed only when A-07 has a material latency, timing, reliability, or maintainability blocker. Package size alone is not a blocker. Mark it *Skipped with reason* rather than falsely completed if unnecessary.
+
+
+## Human intervention escalation (mandatory)
+
+**HUMAN GATE REQUIRED** must be an explicit, prominent, **uppercase heading in the assistant's user-facing reply** whenever any task unexpectedly requires the owner before its scheduled stage-end gate. Do this **as soon as** the blocking need is discovered, not after the assistant has advanced unrelated tasks. Explain the reason, give the smallest concrete action/checklist, link a runnable test where possible, and say which task is blocked. Do not mark that task complete without its required evidence or approval.
+
+Examples: a Windows machine with an audio device is needed to validate A-07; input latency can only be calibrated with physical hardware; a creative design choice cannot be safely inferred; distribution/license permission is required. Provide logs/results easy to share. The scheduled human gate **after every stage** is still mandatory.
 
 ## Stage overview
 
@@ -149,16 +156,16 @@ Each checkbox below is intentionally a **bounded change with a concrete check**.
   **Depends on:** A-02.  
   **Change:** Create an isolated throwaway raylib probe that plays a local metronome, shows reported song time and key-down time, supports pause/seek, and records executable/dependency size.  
   **Done when:** Build and run on Windows; save observations, limitations, and size numbers in `mvp/architecture/STACK_EVALUATION.md`. Do not use the probe as the game architecture.
-  **Status (2026-11-04):** Windows x64 build and headless WAV self-test passed; latest EXE is 979,968 bytes with zero adjacent DLLs. The hosted runner has no output audio device, so interactive playback/pause/seek has not been verified. See `mvp/architecture/STACK_EVALUATION.md`. **Keep unchecked until the real-device run is reviewed.**
+  **Status (2026-11-04):** Windows x64 build and headless WAV self-test passed; latest EXE is 979,968 bytes with zero adjacent DLLs. The hosted runner has no output audio device, so interactive playback/pause/seek has not been verified. The owner can run `bash run-a07.sh` using Git Bash on Windows and send the generated `LOCUS-A07-logs.tar.gz` bundle. See `README.md` and `mvp/architecture/STACK_EVALUATION.md`. **HUMAN GATE REQUIRED EARLY: real audio-device and input-feel checks are needed. Keep A-07 unchecked until reviewed.**
 
 - [ ] **A-08 — Probe SDL3 only if raylib fails the timing gate (conditional)**  
   **Depends on:** A-07.  
-  **Change:** If A-07 exposes an unresolved blocker, create an isolated SDL3 audio/input probe measuring the same behavior and packaged size.  
+  **Change:** If A-07 exposes a material timing, audio-output, event-capture, or stability blocker, create an isolated SDL3 audio/input probe comparing the same timing behavior; report package size as secondary context.  
   **Done when:** Comparable measurements are documented; skip explicitly if raylib meets the agreed criteria.
 
 - [ ] **A-09 — Choose and record the production stack**  
   **Depends on:** A-07.  
-  **Change:** Create `mvp/architecture/STACK_DECISION.md` selecting one rendering/audio approach, UI approach, pinned dependencies, and reasons based on the spikes (and A-08 if triggered).  
+  **Change:** Create `mvp/architecture/STACK_DECISION.md` selecting rendering/audio/input approaches, UI approach, pinned dependencies, and reasons prioritizing verified timing/latency and correctness over binary size, based on the spikes (and A-08 if triggered).  
   **Done when:** Owner can approve one implementation path; temporary experiments are clearly separate from production code.
 
 ### Human gate 1
@@ -827,7 +834,7 @@ Each checkbox below is intentionally a **bounded change with a concrete check**.
 1. Finish and verify a task before starting its dependent tasks; the **Depends on** field identifies the immediate prerequisite IDs, while prior stage approvals are global prerequisites.
 2. The task ID and its **Done when** condition define the request scope. If the design changes, update GDD and this roadmap first.
 3. Keep PRs narrowly scoped. A task may touch a couple of production files and a relevant test, but it should not absorb another numbered task.
-4. After each stage, provide a runnable artifact or reproducible test output, build/size evidence where applicable, an English changelog, and explicit manual checks for the owner.
+4. After each stage, provide a runnable artifact or reproducible test output, **timing/latency and performance evidence first**, package-size evidence as context, an English changelog, and explicit manual checks for the owner.
 5. Use only original, generated, or appropriately licensed fixtures. Never commit imported user tracks without permission.
 6. Check a task's box only after verifying the corresponding commit on the target branch. Preserve the original ID even when task wording changes.
 7. If the owner rejects a human gate, add explicit corrective tasks before proceeding; do not bury repairs in unrelated tasks.
