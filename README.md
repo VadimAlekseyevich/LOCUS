@@ -1,6 +1,6 @@
 # LOCUS
 
-A rhythm game currently in development. **We are now building the first playable demo, not completing an elaborate engineering checklist.** The prototype is not playable yet. Two Windows executables exist: the **LOCUS production app** (its Play screen now shows the G-02 4×4 board and stationary starting marker, launched by double-clicking `build_and_run.bat`) and the separate **A-07 audio/input timing probe** (BAT `audio` mode).
+A rhythm game currently in development. **We are now building the first playable demo, not completing an elaborate engineering checklist.** The prototype is not playable yet. Two Windows executables exist: the **LOCUS production app** (its Play screen now shows the G-02 board and plays the original G-03 120 BPM click track, launched by double-clicking `build_and_run.bat`) and the separate **A-07 audio/input timing probe** (BAT `audio` mode).
 
 [Game Design Document](mvp/GDD.md) · **[Short playable-prototype roadmap](mvp/ROADMAP.md)** · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
 
@@ -34,7 +34,7 @@ If you already have the LOCUS repository, **double-click `build_and_run.bat` in 
 2. Checks for local uncommitted files; runs `git pull --ff-only` only if safe. It does **not** delete or overwrite your changes.
 3. Checks build prerequisites and asks before installing anything missing.
 4. **By default:** configures the root production CMake project and builds `locus.exe` in `build-a07/foundation/Release/`.
-5. Opens **LOCUS Home** with debug navigation: F1 Home, F2 the **Play grid**, F3 Editor, F4 Results. Close using Esc or X. The marker is stationary until music and motion are implemented.
+5. Opens **LOCUS Home** with debug navigation: F1 Home, F2 the **Play grid plus click track**, F3 Editor, F4 Results. Close using Esc or X. The marker remains stationary until G-04 implements music-driven motion.
 6. Saves compile errors and window-open/close status to **`LOCUS-game-logs.zip`** if available; a ZIP is produced even when the build fails after log-folder creation.
 7. **Optional `audio` mode:** runs the previously tested A-07 metronome, transport tests, key-press CSV, and its separate `LOCUS-a07-logs.zip` bundle.
 
@@ -146,7 +146,7 @@ The first test (`locus_core_foundation`) checks a small pure C++ core build/link
 
 **Keep `build_and_run.bat`.** With the owner's permission, F-05 switches its default to the production blank window and preserves the original A-07 diagnostic via `audio` mode. Future tasks may refine the launcher as LOCUS becomes playable, retaining error logs.
 
-**Gameplay progress (G-01 and G-02):** `src/core/route.h` and `src/core/route.cpp` contain the built-in 32-beat 120 BPM chart and deterministic turn/Wrap route calculation. The **Play** screen now renders the 16 grid points and bright marker at the demo chart's starting cell **(1, 1)**. The quiet grid guides are not the upcoming route; drawing the actual preview comes in G-04. The marker deliberately stays still because **G-03 (audio transport) and G-04 (song-time movement)** are next. Press **F2** after the BAT opens Home to see the grid. Windows CI checks the code builds and tests the deterministic route but cannot visually inspect the grid.
+**Gameplay progress (G-01 through G-03):** `src/core/route.h` and `src/core/route.cpp` contain the built-in 32-beat 120 BPM chart and deterministic turn/Wrap route calculation. The **Play** screen now renders the 16 grid points and bright marker at the demo chart's starting cell **(1, 1)**. The quiet grid guides are not the upcoming route; drawing the actual preview comes in G-04. The marker deliberately stays still until **G-04 (song-time movement)**. Press **F2** after BAT opens Home to see the grid and start the synthesized 32-beat click track. Moving to Home, Editor or Results stops playback. The same monotonic clock exposes song seconds and fractional beat without accumulating visual frame delta. The audio is generated in memory; nothing is downloaded or saved to disk. Windows CI verifies generation/clock behavior and C++ linking, but cannot guarantee acoustic output or physical device latency on your PC.
 
 ## Optional diagnostics — not required for gameplay
 
