@@ -48,5 +48,8 @@ endif()
 
 if(LOCUS_BUILD_TESTS)
     enable_testing()
-    # F-04 adds a test runner and CTest registrations.
+    add_executable(locus_core_tests tests/core_tests.cpp)
+    target_compile_features(locus_core_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_core_tests PRIVATE locus_core)
+    add_test(NAME locus_core_foundation COMMAND locus_core_tests)
 endif()
