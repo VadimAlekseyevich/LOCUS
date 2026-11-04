@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   windows-build-and-size:
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 25
     steps:
       - name: Checkout LOCUS
