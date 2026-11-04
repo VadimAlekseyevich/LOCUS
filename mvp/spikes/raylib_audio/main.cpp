@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <thread>
 
 namespace {
 constexpr int kSampleRate = 48000;
@@ -155,11 +156,74 @@ int SelfTest(const char* executablePath) {
               << "note=Headless self-test does not initialize an audio device\n";
     return 0;
 }
+int AudioSmoke() {
+    if (!GenerateMetronome(kWavPath) || !ValidateGeneratedWav(kWavPath)) {
+        std::cerr << "AUDIO_SMOKE_FAIL: WAV generation\n";
+        return 2;
+    }
+    // No window is opened. This checks the backend's API lifecycle, not real sound.
+    InitAudioDevice();
+    if (!IsAudioDeviceReady()) {
+        std::cerr << "AUDIO_SMOKE_NO_DEVICE: audio output unavailable\n";
+        CloseAudioDevice();
+        return 4;
+    }
+    Music music = LoadMusicStream(kWavPath);
+    if (!IsMusicValid(music)) {
+        std::cerr << "AUDIO_SMOKE_FAIL: WAV decoder unavailable\n";
+        CloseAudioDevice();
+        return 5;
+    }
+    music.looping = false;
+    auto pump = [&music](int milliseconds) {
+        const double start = MonotonicSeconds();
+        while ((MonotonicSeconds() - start) * 1000.0 < milliseconds) {
+            UpdateMusicStream(music);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return static_cast<double>(GetMusicTimePlayed(music));
+    };
+
+    PlayMusicStream(music);
+    const double afterPlay = pump(850);
+    PauseMusicStream(music);
+    const double beforePause = GetMusicTimePlayed(music);
+    std::this_thread::sleep_for(std::chrono::milliseconds(350));
+    const double afterPause = GetMusicTimePlayed(music);
+    SeekMusicStream(music, 4.0f);
+    const double afterSeek = GetMusicTimePlayed(music);
+    ResumeMusicStream(music);
+    const double afterResume = pump(450);
+
+    std::cout << std::fixed << std::setprecision(6)
+              << "audio_backend_initialized=true\n"
+              << "stream_play_850ms_reported_seconds=" << afterPlay << '\n'
+              << "paused_at_reported_seconds=" << beforePause << '\n'
+              << "paused_after_350ms_reported_seconds=" << afterPause << '\n'
+              << "after_seek_4s_reported_seconds=" << afterSeek << '\n'
+              << "after_resume_450ms_reported_seconds=" << afterResume << '\n'
+              << "acoustic_output_verified=false\n"
+              << "physical_keyboard_timestamp_verified=false\n";
+    const bool plausible = std::isfinite(afterPlay) && std::isfinite(afterPause) &&
+        std::isfinite(afterSeek) && std::isfinite(afterResume);
+    UnloadMusicStream(music);
+    CloseAudioDevice();
+    if (!plausible) {
+        std::cerr << "AUDIO_SMOKE_FAIL: non-finite time reading\n";
+        return 6;
+    }
+    std::cout << "AUDIO_SMOKE_PASS: API lifecycle completed (not an acoustic test)\n";
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
     if (argc > 1 && std::string(argv[1]) == "--self-test") {
         return SelfTest(argv[0]);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--audio-smoke") {
+        return AudioSmoke();
     }
     if (!GenerateMetronome(kWavPath) || !ValidateGeneratedWav(kWavPath)) {
         std::cerr << "Could not generate original metronome WAV\n";
