@@ -7,7 +7,7 @@
 **Document language:** English  
 **Approval status:** Draft — requires owner review
 
-> This document specifies the intended gameplay and MVP boundaries. It is not an implementation roadmap or a claim that the game has been built.
+> This document captures the **longer-term LOCUS game vision**, including a local chart editor. The **first playable demo is deliberately narrower**: one built-in chart, an original timing track, a 4×4 route, Left/Right judgement, No Fail, and a basic results loop. See the [short playable-prototype roadmap](./ROADMAP.md). The editor/custom audio follow the first usable game. This document is not a claim that those features are already implemented.
 >
 > **Decision legend:** **Confirmed** = explicitly agreed by the project owner; **Proposed** = reasonable working design, awaiting validation; **Open** = not decided. Do not silently promote a proposed rule into a confirmed one.
 
@@ -429,4 +429,4 @@ Future community features must address music rights, moderation, security, and o
 - **Judgement:** Perfect, Good, Bad, or Miss for one turn event.
 - **No-fail:** Misses never change the correct route or end the chart.
 
-**Next document:** A separate v0.1 roadmap with tasks small enough for one implementation request each. This GDD intentionally does not contain that roadmap.
+**Current implementation plan:** [First playable roadmap](./ROADMAP.md), simplified at the owner's request in November 2026. The earlier 124-task plan is archived in Git history and is no longer an active checklist. Do not turn every sentence of this GDD into a separate task before the first game is playable.
