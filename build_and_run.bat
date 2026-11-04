@@ -250,7 +250,7 @@ exit /b 0
 :show_log
 if exist "%LOG_DIR%\%~1" (
     echo [LOCUS] Last 40 lines from %~1:
-    powershell -NoProfile -Command "Get-Content -LiteralPath $env:LOCUS_LOG_DIR\%~1 -Tail 40"
+    powershell -NoProfile -Command "Get-Content -LiteralPath (Join-Path $env:LOCUS_LOG_DIR '%~1') -Tail 40"
 )
 exit /b 0
 
