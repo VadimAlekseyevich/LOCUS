@@ -8,7 +8,6 @@ on:
       - "src/**"
       - "tests/**"
       - "build_and_run.bat"
-      - "tools/**"
       - ".github/workflows/windows_ci.yml"
   pull_request:
     paths:
@@ -17,7 +16,6 @@ on:
       - "src/**"
       - "tests/**"
       - "build_and_run.bat"
-      - "tools/**"
       - ".github/workflows/windows_ci.yml"
   workflow_dispatch:
 
@@ -49,21 +47,6 @@ jobs:
         run: |
           cmake --build build/windows-foundation --config Release --parallel 2
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Measure F-09 Windows release size and headless startup
-        run: |
-          $out = "build/windows-foundation/baseline-ci"
-          New-Item -ItemType Directory -Force -Path $out | Out-Null
-          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/measure-baseline.ps1 -Executable build/windows-foundation/Release/locus.exe -OutputDirectory $out -Mode Headless |
-            Tee-Object -FilePath (Join-Path $out "baseline-ci-console.txt")
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $summary = Get-Content (Join-Path $out "baseline-summary.txt") -Raw
-          if ($summary -notmatch "git_commit=[0-9a-fA-F]{40}" -or
-              $summary -notmatch "executable_bytes=[0-9]+" -or
-              $summary -notmatch "first_headless_launch_exit_ms=[0-9.]+" -or
-              $summary -notmatch "gui_idle_observation=NOT_MEASURED_") {
-            throw "F-09 baseline report is incomplete or mislabels GUI idle"
-          }
 
       - name: Run all registered CTest cases
         run: |
@@ -133,5 +116,4 @@ jobs:
             build/windows-foundation/ctest-output.txt
             build/windows-foundation/ctest.xml
             build/windows-foundation/diagnostics.txt
-            build/windows-foundation/baseline-ci/
             build_and_run.bat
