@@ -110,7 +110,18 @@ cmake --build build-a07/foundation --config Release
 build-a07\foundation\Release\locus.exe
 ~~~
 
-**F-05 window check:** CI attempts `locus.exe --window-smoke`, which would draw **60 frames** and exit automatically. However, the GitHub-hosted Windows runner returned `WINDOW_INIT_FAILED` because it lacks an interactive desktop. **This is not a verified successful window test.** The app compiles, but the F-05 acceptance check requires an owner run on Windows. **HUMAN GATE REQUIRED EARLY:** double-click `build_and_run.bat`, confirm the blank window appears, remains responsive and closes with Esc or X; report whether it worked. A ZIP is only needed for failures. **F-05 remains unchecked until that confirmation.**
+**F-05 acceptance (owner-confirmed on 2026-11-04):** The owner ran the Windows application and confirmed that the blank window opened and closed normally. F-05 is complete; no ZIP or repeat manual check is required. The GitHub-hosted Windows runner still cannot initialize a GUI (`WINDOW_INIT_FAILED`), so GUI success in CI is not claimed. `locus.exe --window-smoke` remains available for manual diagnostics and automatically exits after 60 frames on machines with a display.
+
+
+**F-06 application loop:** Input polling, state update, and drawing are separate functions in `src/app/main.cpp`. They run in this exact order on each iteration:
+
+~~~text
+PollInput() -> UpdateState() -> (exit if requested) -> RenderFrame()
+~~~
+
+raylib pumps native OS/window events during `EndDrawing()`; the next `PollInput()` reads the resulting close/input state via `WindowShouldClose()`. Do not explicitly pump native events a second time. The update phase changes only application state and never draws; the render phase paints the blank screen and does not modify application state. Future gameplay logic must be coordinated in updates using musical time **not frame count**. The 60-frame `--window-smoke` limit exists only for this diagnostic, not for rhythm timing.
+
+**F-06 headless check:** `locus.exe --loop-check` exercises the update/stop rules for exactly 60 simulated frames and an immediate close event, printing `LOOP_STATE_PASS frames=60` without opening a window. Windows CI runs this on every source change; it is a foundation check, not a timing or real-input latency benchmark.
 
 Build output stays inside the Git-ignored `build-a07/` tree for the existing Windows CI and audio probe. The F-03 `.gitignore` also supports future `build/`, `build-*/`, `cmake-build-*/`, and `out/` build directories. The `LOCUS_BUILD_TESTS=ON` option now builds `locus_core_tests` (F-04), which runs headlessly through CTest; additional gameplay tests will be added as core modules arrive.
 
