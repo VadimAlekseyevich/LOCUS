@@ -170,9 +170,9 @@ Examples: a Windows machine with an audio device is needed to validate A-07; inp
   **Done when:** Owner can approve one implementation path; temporary experiments are clearly separate from production code.
   **Status (DOCUMENT COMPLETE — 2026-11-04):** See `mvp/architecture/STACK_DECISION.md`: C++17, raylib 6.0, raygui 5.0, native Win32 dialogs, nlohmann/json v3.12.0, CMake/CTest. **HUMAN GATE 1 STILL REQUIRES OWNER APPROVAL** before F-01. These selections do not certify measured end-to-end latency.
 
-### Human gate 1 — OWNER APPROVAL PENDING
+### Human gate 1 — APPROVED (2026-11-04)
 
-**HUMAN GATE REQUIRED:** The owner has confirmed the local A-07 audio/input prototype works, satisfying that functional check. **Before F-01, they must explicitly approve or request changes to** the architecture contracts (A-01–A-06) and selected stack documented in `mvp/architecture/STACK_DECISION.md` (A-09). No production code may start without that decision. No ZIP or additional A-07 data is required.
+The owner explicitly approved the A-01–A-06 architecture contracts and A-09 technology stack, authorizing Stage 2 production Foundation. The earlier A-07 audio test was accepted qualitatively without a ZIP; numerical end-to-end latency remains unmeasured and is addressed in the appropriate later timing tasks. **No further Stage 1 approval is required.**
 
 ---
 
@@ -180,10 +180,11 @@ Examples: a Windows machine with an audio device is needed to validate A-07; inp
 
 **Objective:** Create an executable and testable shell without introducing gameplay logic.
 
-- [ ] **F-01 — Create the root CMake project**  
+- [x] **F-01 — Create the root CMake project**  
   **Depends on:** A-09.  
   **Change:** Add `CMakeLists.txt` with a C++ application target, one core library target, and an isolated tests option.  
   **Done when:** A clean configure produces Windows build files and a minimal executable without manual IDE setup.
+  **Verified (2026-11-04):** Root `CMakeLists.txt` builds `locus_core` and the `locus` console stub as separate targets; the optional tests switch is wired but no test runner is created until F-04. Clean Windows VS2022 x64 Release configure/build/run passed in [CI run 41894135183](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41894135183). The A-07 experiment and `build_and_run.bat` remain intact. No game window is claimed at F-01.
 
 - [ ] **F-02 — Pin the chosen external dependencies**  
   **Depends on:** F-01.  
