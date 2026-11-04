@@ -60,16 +60,33 @@ void DemoTransport::Start(double monotonicSeconds) {
     std::cout << "DEMO_AUDIO_PLAY\n";
 }
 
+void DemoTransport::Pause(double monotonicSeconds) {
+    if (!playing_ || paused_) return;
+    PauseMusicStream(music_);
+    clock_.Pause(monotonicSeconds);
+    paused_ = true;
+    std::cout << "DEMO_AUDIO_PAUSE\n";
+}
+
+void DemoTransport::Resume(double monotonicSeconds) {
+    if (!playing_ || !paused_) return;
+    ResumeMusicStream(music_);
+    clock_.Resume(monotonicSeconds);
+    paused_ = false;
+    std::cout << "DEMO_AUDIO_RESUME\n";
+}
+
 void DemoTransport::Stop() {
     if (musicLoaded_ && playing_) {
         StopMusicStream(music_);
     }
     playing_ = false;
+    paused_ = false;
     clock_.Stop();
 }
 
 void DemoTransport::Update(double monotonicSeconds) {
-    if (!playing_) {
+    if (!playing_ || paused_) {
         return;
     }
     UpdateMusicStream(music_);
@@ -106,8 +123,9 @@ double DemoTransport::Beat(double monotonicSeconds) const noexcept {
 
 const char* DemoTransport::Status() const noexcept {
     if (!musicLoaded_) return "Audio unavailable - check output device";
-    if (finished_) return "Demo track complete - return to Home with F1";
-    if (playing_) return "Demo metronome playing - 120 BPM";
+    if (finished_) return "Demo complete - see Results";
+    if (paused_) return "PAUSED - press SPACE to resume";
+    if (playing_) return "Playing - SPACE pause, R retry, H home";
     return "Press F2 from Home to play the click track";
 }
 
