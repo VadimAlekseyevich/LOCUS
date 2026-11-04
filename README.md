@@ -94,6 +94,22 @@ LOCUS\.locus-runs\a07-YYYYMMDD-HHMMSS-12345\LOCUS-A07-logs.zip
 
 The final game and its Windows installer are separate future roadmap tasks. raylib 6.0 is now the **proposed production stack** (A-09), **pending Stage 1 owner approval**; the A-07 diagnostic remains a separate test executable. The Windows BAT stays in the repository.
 
+## Production foundation (F-01)
+
+**Stage 1 architecture/stack approved by the owner on 2026-11-04.** The separate production root `CMakeLists.txt` now builds a **minimal console executable** (`locus.exe`) and a **pure C++17 core static library** (`locus_core`). The app currently prints a foundation status and exits. The actual game window arrives in **F-05** after external dependencies are pinned in **F-02**. This output is **not a playable game**.
+
+For a direct Windows Visual Studio 2022 build in Command Prompt:
+
+~~~bat
+cmake -S . -B build-a07/foundation -G "Visual Studio 17 2022" -A x64 -DLOCUS_BUILD_TESTS=ON
+cmake --build build-a07/foundation --config Release
+build-a07\foundation\Release\locus.exe
+~~~
+
+The build output is intentionally inside the already Git-ignored `build-a07/` tree until repository hygiene task **F-03** establishes the general production build folder convention. The tests option is wired in F-01; **F-04** will add the actual CTest test executable.
+
+**Keep `build_and_run.bat`.** During early Foundation it continues running the A-07 audio-input diagnostic, not the new console stub. A separate, reviewable future task will change its default target to the game when a useful interactive application exists, preserving the audio test and diagnostic ZIP capability.
+
 ## Engineering priorities
 
 1. **Correct audio/input synchronization and minimal end-to-end latency.**
@@ -109,4 +125,4 @@ Whenever an owner-side check or decision is needed early, the assistant must sta
 
 **A-07's early human gate has been satisfied.** The owner ran the probe on Windows and reported that everything worked; **no ZIP was requested or required afterward**. This is a qualitative check, not a numerical latency benchmark.
 
-**HUMAN GATE REQUIRED — STAGE 1:** Before starting production task F-01, the owner must explicitly approve or revise the proposed [stack decision](mvp/architecture/STACK_DECISION.md) and A-01–A-06 architecture rules. There is no need to rerun A-07 merely to approve the stack.
+**STAGE 1 HUMAN GATE APPROVED (2026-11-04):** The owner explicitly approved the [stack and architecture](mvp/architecture/STACK_DECISION.md). Production Foundation F-01 is authorized. The next scheduled owner gate is **after Stage 2**, once a working window and Windows build/test evidence are available; no early owner action is required for the F-01 console stub.
