@@ -48,6 +48,7 @@ jobs:
             "window-smoke.txt",
             "window-smoke-stderr.txt",
             "window-smoke-result.txt",
+            "loop-check.txt",
             "Thumbs.db"
           )
           foreach ($path in $ignored) {
