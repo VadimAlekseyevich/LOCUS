@@ -34,8 +34,8 @@ bash run-a07.sh
 
 Every run performs the following in order:
 
-1. **Pull latest Git commits** using \`git pull --ff-only\` (never overwrites local edits; dirty repositories are rejected).
-2. Configure and compile the **isolated** raylib A-07 program in \`build-a07/\`.
+1. **Pull latest Git commits** using `git pull --ff-only` (never overwrites local edits; dirty repositories are rejected).
+2. Configure and compile the **isolated** raylib A-07 program in `build-a07/`.
 3. Run a deterministic WAV generation **self-test**.
 4. Run an audio-device **smoke test** including Play / Pause / Seek / Resume.
 5. Launch the **interactive diagnostic window**.
@@ -58,7 +58,7 @@ The program generates a **16-second, 120 BPM metronome** and logs its reported p
 
 Listen for regular clicks, tap A/D around each tick, pause for a few seconds, resume, seek, and restart. Note any discontinuity, noise, freezing, delayed reaction, or uneven timing.
 
-**Timing interpretation:** \`GetMusicTimePlayed()\` is not a hardware sound-output timestamp, and raylib's \`GetKeyPressed()\` is polled during frames. The CSV can reveal API/clock behavior but **cannot by itself prove physical input-to-audio latency**. Report subjective impressions separately; they are valuable but are not a calibrated latency measurement.
+**Timing interpretation:** `GetMusicTimePlayed()` is not a hardware sound-output timestamp, and raylib's `GetKeyPressed()` is polled during frames. The CSV can reveal API/clock behavior but **cannot by itself prove physical input-to-audio latency**. Report subjective impressions separately; they are valuable but are not a calibrated latency measurement.
 
 ### Send me the logs
 
@@ -68,12 +68,12 @@ At the end, the script prints an exact path resembling:
 .locus-runs/a07-YYYYMMDDTHHMMSSZ-1234/LOCUS-A07-logs.tar.gz
 ~~~
 
-**Attach that \`LOCUS-A07-logs.tar.gz\` file to the ChatGPT conversation.** It includes:
+**Attach that `LOCUS-A07-logs.tar.gz` file to the ChatGPT conversation.** It includes:
 
 - Git commit, compiler/generator and EXE size.
 - CMake configure/build output and WAV self-test.
 - Audio lifecycle test output.
-- \`raylib_probe_log.csv\` (song-time samples and A/D key captures), when the app launched.
+- `raylib_probe_log.csv` (song-time samples and A/D key captures), when the app launched.
 - Your optional listening/playback feedback.
 
 The WAV and compiled binaries are deliberately **not** included in the archive. All generated data is in ignored local folders, never committed. The script doesn't transmit or upload any logs. **Review before sharing:** compiler logs can contain local Windows paths or user folder names. It is fine to send the archive even if building or audio initialization failed; the script collects partial logs.
@@ -83,12 +83,12 @@ The WAV and compiled binaries are deliberately **not** included in the archive. 
 - **CMake or Git not found:** ensure Git for Windows / CMake were installed and restart Git Bash.
 - **Visual Studio generator not found:** install Visual Studio 2022 Build Tools with **Desktop development with C++**; ensure you selected the Windows SDK.
 - **Cannot fetch raylib:** check Internet access on first configure.
-- **Generator mismatch from earlier attempts:** after verifying no important files were placed there, delete the generated \`build-a07/\` folder and rerun.
-- **Audio device unavailable:** select a working Windows output device, unplug/replug if needed, and rerun. The generated archive will contain an \`AUDIO_SMOKE_NO_DEVICE\` diagnostic.
+- **Generator mismatch from earlier attempts:** after verifying no important files were placed there, delete the generated `build-a07/` folder and rerun.
+- **Audio device unavailable:** select a working Windows output device, unplug/replug if needed, and rerun. The generated archive will contain an `AUDIO_SMOKE_NO_DEVICE` diagnostic.
 - **Pull blocked by local edits:** review and commit/stash your changes manually; the script intentionally does not modify them.
 - **Other error:** attach the archive and include the visible error line.
 
-For advanced environments, \`LOCUS_CMAKE_GENERATOR\` can override the default \`Visual Studio 17 2022\`; ensure that generator and its compiler are correctly installed.
+For advanced environments, `LOCUS_CMAKE_GENERATOR` can override the default `Visual Studio 17 2022`; ensure that generator and its compiler are correctly installed.
 
 ## Engineering priorities
 
