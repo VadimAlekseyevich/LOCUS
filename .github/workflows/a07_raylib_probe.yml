@@ -5,6 +5,8 @@ on:
     paths:
       - "mvp/spikes/raylib_audio/**"
       - "build_and_run.bat"
+      - "CMakeLists.txt"
+      - "src/**"
       - ".github/workflows/a07_raylib_probe.yml"
   workflow_dispatch:
 
@@ -18,6 +20,24 @@ jobs:
     steps:
       - name: Checkout LOCUS
         uses: actions/checkout@v4
+
+      # Temporary F-01 verification; F-08 will introduce dedicated production CI.
+      - name: Configure clean F-01 production foundation
+        shell: pwsh
+        run: |
+          cmake -S . -B build-a07/foundation -G "Visual Studio 17 2022" -A x64 -DLOCUS_BUILD_TESTS=ON
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build and run minimal LOCUS production executable
+        shell: pwsh
+        run: |
+          cmake --build build-a07/foundation --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $output = & ".\build-a07\foundation\Release\locus.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $output | Set-Content foundation-smoke.txt
+          Write-Output $output
+          if ($output -notmatch "LOCUS foundation built") { throw "F-01 production binary failed its minimal launch check" }
 
       - name: Configure isolated raylib 6.0 probe
         shell: pwsh
@@ -88,6 +108,8 @@ jobs:
           if-no-files-found: error
           path: |
             build_and_run.bat
+            build-a07/foundation/Release/locus.exe
+            foundation-smoke.txt
             build-a07/Release/locus_raylib_audio_spike.exe
             metronome.wav
             windows-build-metrics.txt
