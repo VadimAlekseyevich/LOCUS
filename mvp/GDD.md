@@ -252,7 +252,7 @@ Colors, typefaces, sizes, and animation curves are to be finalized through scree
 | Preview lead | Author-configured look-ahead | Confirmed capability |
 | Turn events | Ordered pairs of beat/time + Left/Right | Confirmed foundation |
 
-The exact storage format (e.g., JSON or a compact text representation), IDs, and file packaging conventions remain **Open**. No online URL or server dependency is required to play a local chart.
+The proposed concrete MVP v1 JSON schema, field constraints, file naming, and portable local audio-path rules are documented in [CHART_FORMAT.md](./architecture/CHART_FORMAT.md) (A-05). This format is pending Stage 1 owner approval; no online URL or server dependency is required to play a local chart.
 
 ### 6.2 Essential invariants
 
