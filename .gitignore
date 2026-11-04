@@ -41,6 +41,9 @@ build.ninja
 /foundation-smoke.txt
 /dependency-smoke.txt
 /core-ctest.txt
+/window-smoke.txt
+/window-smoke-stderr.txt
+/window-smoke-result.txt
 
 # Operating-system metadata
 .DS_Store
