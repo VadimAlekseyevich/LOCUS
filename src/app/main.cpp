@@ -1,6 +1,7 @@
 #include "core/foundation.h"
 #include "core/route.h"
 #include "core/route_view.h"
+#include "core/judgement.h"
 #include "app/demo_transport.h"
 
 #include "raylib.h"
@@ -38,6 +39,10 @@ enum class Screen {
 struct FrameInput {
     bool closeRequested = false;
     std::optional<Screen> requestedScreen;
+    bool leftPressed = false;
+    bool rightPressed = false;
+    double leftCapturedAt = 0.0;
+    double rightCapturedAt = 0.0;
 };
 
 struct AppState {
@@ -71,6 +76,12 @@ FrameInput PollInput(bool debugScreens) {
         else if (IsKeyPressed(KEY_F3)) input.requestedScreen = Screen::Editor;
         else if (IsKeyPressed(KEY_F4)) input.requestedScreen = Screen::Results;
     }
+    // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
+    // Use the same steady clock origin as DemoTransport, not frame duration.
+    input.leftPressed = IsKeyPressed(KEY_A);
+    if (input.leftPressed) input.leftCapturedAt = MonotonicSeconds();
+    input.rightPressed = IsKeyPressed(KEY_D);
+    if (input.rightPressed) input.rightCapturedAt = MonotonicSeconds();
     return input;
 }
 
@@ -178,7 +189,8 @@ Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat)
 }
 
 void DrawPlayGrid(Font font, const locus::core::Chart& chart,
-                  const locus::app::DemoTransport& transport, double now) {
+                  const locus::app::DemoTransport& transport,
+                  const locus::core::TurnJudge& judge, double now) {
     DrawTextLabel(font, "PLAY  /  DEMO CHART", Vector2{50.0f, 98.0f}, 27.0f,
                   Color{211, 239, 241, 255});
 
@@ -214,6 +226,51 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart,
     DrawTextLabel(font, "WRAP   EDGE SPLIT", Vector2{665.0f, 272.0f}, 17.0f,
                   Color{184, 189, 204, 255});
 
+    // A/D only affect judgement feedback. The charted route never changes.
+    DrawTextLabel(font, "A  =  LEFT", Vector2{50.0f, 204.0f}, 21.0f,
+                  Color{236, 216, 160, 255});
+    DrawTextLabel(font, "D  =  RIGHT", Vector2{50.0f, 237.0f}, 21.0f,
+                  Color{236, 216, 160, 255});
+    DrawTextLabel(font, "HIT ON THE BEAT", Vector2{50.0f, 274.0f}, 18.0f,
+                  Color{171, 187, 210, 255});
+
+    if (const locus::core::TurnEvent* next = judge.NextEvent()) {
+        DrawTextLabel(font,
+                      TextFormat("NEXT: %s  /  BEAT %d",
+                                 locus::core::TurnName(next->direction), next->beat),
+                      Vector2{50.0f, 318.0f}, 17.0f,
+                      Color{228, 231, 241, 255});
+    } else {
+        DrawTextLabel(font, "ALL TURNS RESOLVED",
+                      Vector2{50.0f, 318.0f}, 17.0f,
+                      Color{228, 231, 241, 255});
+    }
+
+    const auto& counts = judge.Counts();
+    DrawTextLabel(font,
+                  TextFormat("PERFECT %d  GOOD %d", counts.perfect, counts.good),
+                  Vector2{665.0f, 322.0f}, 17.0f,
+                  Color{194, 225, 232, 255});
+    DrawTextLabel(font,
+                  TextFormat("BAD %d  MISS %d", counts.bad, counts.miss),
+                  Vector2{665.0f, 350.0f}, 17.0f,
+                  Color{202, 207, 218, 255});
+    if (const auto& last = judge.Last()) {
+        const char* label = locus::core::GradeName(last->grade);
+        if (last->grade == locus::core::Grade::Miss) {
+            label = last->wrongDirection ? "MISS (WRONG KEY)" : "MISS (NO INPUT)";
+        }
+        const Color feedback = last->grade == locus::core::Grade::Perfect
+                                   ? Color{131, 240, 207, 255}
+                               : last->grade == locus::core::Grade::Good
+                                   ? Color{131, 204, 235, 255}
+                               : last->grade == locus::core::Grade::Bad
+                                   ? Color{239, 195, 123, 255}
+                                   : Color{239, 136, 139, 255};
+        DrawTextLabel(font, label, Vector2{665.0f, 379.0f},
+                      17.0f, feedback);
+    }
+
     DrawTextLabel(font, "120 BPM  |  32 BEATS  |  4 x 4 GRID",
                   Vector2{50.0f, 140.0f}, 20.0f,
                   Color{204, 208, 222, 255});
@@ -229,7 +286,8 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart,
 // 3. Render: display the selected state; never choose or modify it here.
 void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::core::Chart& demo,
-                 const locus::app::DemoTransport& transport, double now) {
+                 const locus::app::DemoTransport& transport,
+                 const locus::core::TurnJudge& judge, double now) {
     BeginDrawing();
     ClearBackground(kBackground);
 
@@ -237,7 +295,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   Color{223, 225, 238, 255});
 
     if (state.screen == Screen::Play) {
-        DrawPlayGrid(font, demo, transport, now);
+        DrawPlayGrid(font, demo, transport, judge, now);
     } else {
         const char* screen = ScreenName(state.screen);
         constexpr float kScreenFontSize = 54.0f;
@@ -349,6 +407,7 @@ int main(int argc, char** argv) {
 
     AppState state;
     const locus::core::Chart demo = locus::core::MakeDemoChart();
+    locus::core::TurnJudge judge(demo);
     locus::app::DemoTransport transport;
     transport.Initialize(demo); // Failed audio output must not crash the window.
     while (state.running) {
@@ -360,13 +419,32 @@ int main(int argc, char** argv) {
         }
         if (state.screen != previousScreen) {
             if (previousScreen == Screen::Play) transport.Stop();
-            if (state.screen == Screen::Play) transport.Start(MonotonicSeconds());
+            if (state.screen == Screen::Play) {
+                judge.Reset();
+                transport.Start(MonotonicSeconds());
+            }
         }
         if (state.screen == Screen::Play) {
-            transport.Update(MonotonicSeconds());
+            if (transport.Playing()) {
+                // The two fresh key-downs are processed deterministically
+                // left first if they arrive in the same rendered frame.
+                if (input.leftPressed) {
+                    judge.Press(locus::core::Turn::Left,
+                                transport.SongSeconds(input.leftCapturedAt));
+                }
+                if (input.rightPressed) {
+                    judge.Press(locus::core::Turn::Right,
+                                transport.SongSeconds(input.rightCapturedAt));
+                }
+            }
+            const double now = MonotonicSeconds();
+            transport.Update(now);
+            if (transport.Ready()) {
+                judge.Advance(transport.SongSeconds(now));
+            }
         }
         RenderFrame(state, debugScreens, uiFont.value, demo,
-                    transport, MonotonicSeconds());
+                    transport, judge, MonotonicSeconds());
     }
 
     // WAV decoder borrows in-memory PCM bytes until UnloadMusicStream().
