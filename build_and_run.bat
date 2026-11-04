@@ -233,8 +233,9 @@ if /I "%MODE%"=="baseline" (
 
 echo.
 echo ============================================================
-echo  LOCUS F-07 PLACEHOLDER SCREENS - NO GAMEPLAY YET
-echo  F1 = Home   F2 = Play   F3 = Editor   F4 = Results
+echo  LOCUS DEMO GRID - GAMEPLAY IN DEVELOPMENT
+echo  F1 = Home   F2 = Play grid   F3 = Editor   F4 = Results
+echo  Play currently shows the 4x4 grid and stationary starting marker.
 echo  Close with ESC or the X button in the window title bar.
 echo ============================================================
 echo.
