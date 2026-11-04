@@ -11,7 +11,7 @@ A rhythm game currently in development. The **MVP game is not playable yet**. Th
 ### First-time setup
 
 - Windows 10 or Windows 11; speakers or headphones and a working output device.
-- **Git for Windows**, **CMake 3.24+**, and **Visual Studio 2022 with C++ tools**. A free Visual Studio 2022 Build Tools installation with the *Desktop development with C++* workload and Windows SDK is sufficient; the full IDE is not required.
+- **Git for Windows**, **CMake 3.25+** (required by raylib 6.0's CMake source build), and **Visual Studio 2022 with C++ tools**. A free Visual Studio 2022 Build Tools installation with the *Desktop development with C++* workload and Windows SDK is sufficient; the full IDE is not required.
 - Internet access for the first configuration: CMake downloads raylib 6.0 source.
 
 **The BAT detects missing tools.** If Windows Package Manager (`winget`) is available, it offers to install Git, CMake, or Visual Studio 2022 Build Tools with your explicit consent. Installing Visual Studio C++ tools can download **several gigabytes**, may request administrator approval, and may require restarting the BAT afterward. The launcher never silently installs them.
@@ -107,6 +107,8 @@ build-a07\foundation\Release\locus.exe
 ~~~
 
 The build output is intentionally inside the already Git-ignored `build-a07/` tree until repository hygiene task **F-03** establishes the general production build folder convention. The tests option is wired in F-01; **F-04** will add the actual CTest test executable.
+
+**F-02 dependencies:** Production CMake downloads exact commit revisions of **raylib 6.0**, **raygui 5.0**, and **nlohmann/json 3.12.0** through `cmake/dependencies.cmake`. CMake does not need machine-specific library install paths. The first configure requires Internet access; later builds use the fetched sources. The `locus_dependencies_smoke.exe` target verifies that the pinned headers and implementations compile and link headlessly. **It is not the F-04 unit-test runner.** The existing BAT intentionally continues targeting the A-07 diagnostic until a later approved change.
 
 **Keep `build_and_run.bat`.** During early Foundation it continues running the A-07 audio-input diagnostic, not the new console stub. A separate, reviewable future task will change its default target to the game when a useful interactive application exists, preserving the audio test and diagnostic ZIP capability.
 
