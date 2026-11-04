@@ -156,7 +156,7 @@ Examples: a Windows machine with an audio device is needed to validate A-07; inp
   **Depends on:** A-02.  
   **Change:** Create an isolated throwaway raylib probe that plays a local metronome, shows reported song time and key-down time, supports pause/seek, and records executable/dependency size.  
   **Done when:** Build and run on Windows; save observations, limitations, and size numbers in `mvp/architecture/STACK_EVALUATION.md`. Do not use the probe as the game architecture.
-  **Status (2026-11-04):** Windows x64 build and headless WAV self-test passed; latest EXE is 979,968 bytes with zero adjacent DLLs. The hosted runner has no output audio device, so interactive playback/pause/seek has not been verified. The owner can run `bash run-a07.sh` using Git Bash on Windows and send the generated `LOCUS-A07-logs.tar.gz` bundle. See `README.md` and `mvp/architecture/STACK_EVALUATION.md`. **HUMAN GATE REQUIRED EARLY: real audio-device and input-feel checks are needed. Keep A-07 unchecked until reviewed.**
+  **Status (2026-11-04):** Windows x64 build and headless WAV self-test passed; latest EXE is 979,968 bytes with zero adjacent DLLs. The hosted runner has no output audio device, so interactive playback/pause/seek has not been verified. The owner can **double-click `build_and_run.bat`** in Windows (no Git Bash) and send the generated `LOCUS-A07-logs.zip` bundle. See `README.md` and `mvp/architecture/STACK_EVALUATION.md`. **HUMAN GATE REQUIRED EARLY: real audio-device and input-feel checks are needed. Keep A-07 unchecked until reviewed.**
 
 - [ ] **A-08 — Probe SDL3 only if raylib fails the timing gate (conditional)**  
   **Depends on:** A-07.  
