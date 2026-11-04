@@ -14,6 +14,18 @@ Test the practical ergonomics of raylib's music stream API on **Windows**:
 
 **Do not interpret** the difference between music-reported time and a steady clock as measured speaker/DAC latency. GetMusicTimePlayed() is a stream-position estimate and raylib's GetKeyPressed() is frame-polled. The probe is useful for identifying discontinuities, drift, pause/seek bugs, and dependency overhead, not establishing sample-accurate input-to-output latency.
 
+## Recommended local run (one command)
+
+From the repository root in **Windows Git Bash**, run:
+
+~~~bash
+bash run-a07.sh
+~~~
+
+This pulls the latest Git commits (fast-forward only), configures/builds, runs the WAV and local audio smoke tests, launches the interactive probe, and creates a `LOCUS-A07-logs.tar.gz` archive suitable for uploading to the assistant. See the [root README](../../../README.md) for prerequisites, troubleshooting, and the exact log location. The manual commands below are alternatives for debugging.
+
+**HUMAN GATE REQUIRED:** A-07 needs actual listening and A/D tapping on a Windows computer with a working audio device. GitHub Actions cannot verify acoustic timing.
+
 ## Windows prerequisites
 
 - Windows 10/11, CMake 3.24 or newer, Visual Studio 2022 C/C++ tools, Git, a working audio output device.
