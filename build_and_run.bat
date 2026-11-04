@@ -31,11 +31,12 @@ set "MODE=%~1"
 if "%MODE%"=="" set "MODE=run"
 if /I "%MODE%"=="run" goto :mode_valid
 if /I "%MODE%"=="game" goto :mode_valid
+if /I "%MODE%"=="baseline" goto :mode_valid
 if /I "%MODE%"=="build" goto :mode_valid
 if /I "%MODE%"=="audio" goto :mode_valid
 if /I "%MODE%"=="test" goto :mode_valid
 if /I "%MODE%"=="smoke" goto :mode_valid
-echo Usage: build_and_run.bat [run ^| build ^| game ^| audio ^| test ^| smoke]
+echo Usage: build_and_run.bat [run ^| build ^| game ^| baseline ^| audio ^| test ^| smoke]
 exit /b 2
 
 :mode_valid
@@ -45,6 +46,7 @@ if not defined STAMP set "STAMP=%RANDOM%"
 set "LOG_CATEGORY=a07"
 if /I "%MODE%"=="run" set "LOG_CATEGORY=game"
 if /I "%MODE%"=="game" set "LOG_CATEGORY=game"
+if /I "%MODE%"=="baseline" set "LOG_CATEGORY=game"
 if /I "%MODE%"=="build" set "LOG_CATEGORY=game"
 set "LOG_ARCHIVE=LOCUS-%LOG_CATEGORY%-logs.zip"
 set "LOCUS_LOG_ARCHIVE=%LOG_ARCHIVE%"
@@ -100,6 +102,7 @@ if errorlevel 1 goto :failed
 
 if /I "%MODE%"=="run" goto :build_game
 if /I "%MODE%"=="game" goto :build_game
+if /I "%MODE%"=="baseline" goto :build_game
 if /I "%MODE%"=="build" goto :build_game
 
 set "SOURCE=%ROOT%\mvp\spikes\raylib_audio"
@@ -215,6 +218,18 @@ if not exist "%GAME_EXE%" (
 for %%F in ("%GAME_EXE%") do >> "%LOG_DIR%\run-info.txt" echo exe_size_bytes=%%~zF
 echo [LOCUS] Production build succeeded: %GAME_EXE%
 if /I "%MODE%"=="build" goto :success
+if /I "%MODE%"=="baseline" (
+    echo.
+    echo [LOCUS] F-09 local baseline: leave the LOCUS window untouched for 12 seconds.
+    echo [LOCUS] Once sampling ends, close the window with Esc or X.
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\measure-baseline.ps1" -Executable "%GAME_EXE%" -OutputDirectory "%LOG_DIR%" -Mode Interactive -SampleSeconds 12
+    if errorlevel 1 (
+        echo [LOCUS] Local performance baseline FAILED or was interrupted.
+        goto :failed
+    )
+    echo [LOCUS] Baseline complete - see baseline-summary.txt and baseline-idle-samples.csv in the ZIP.
+    goto :success
+)
 
 echo.
 echo ============================================================
