@@ -1,0 +1,10 @@
+# LOCUS C++17 formatting policy (F-03). Keep options stable across platforms.
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++17
+IndentWidth: 4
+ContinuationIndentWidth: 4
+ColumnLimit: 100
+UseTab: Never
+BreakBeforeBraces: Attach
+SortIncludes: CaseSensitive
