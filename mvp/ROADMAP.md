@@ -232,10 +232,11 @@ The owner explicitly approved the A-01–A-06 architecture contracts and A-09 te
   **Depends on:** F-05.  
   **Change:** Document cold startup method, release executable size, and idle memory/CPU observation in `mvp/BASELINES.md`.  
   **Done when:** The numbers, Windows machine conditions, and measurement commands are reproducible; no arbitrary size target is invented yet.
+  **Status (IN PROGRESS — 2026-11-04):** Added `tools/measure-baseline.ps1`, `mvp/BASELINES.md`, and an owner-friendly `build_and_run.bat baseline` mode. [Dedicated Windows CI run 41911357263](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41911357263) passed and documented the production Release EXE (650,752 bytes), first *headless process launch-to-exit* (27.50 ms), median of five warm headless runs (7.88 ms), OS build/CPU/RAM and source/executable hashes. These are **not** true GUI startup or measured I/O latency. The hosted runner has no interactive desktop; genuine idle **GUI working set and CPU observations remain unmeasured**. **HUMAN GATE REQUIRED (F-09):** owner runs `build_and_run.bat baseline` on their Windows PC, leaves the window idle 12 seconds, closes with Esc/X, and reports key numbers plus font readability. No ZIP is mandatory. **Leave F-09 unchecked until the actual GUI metrics are recorded.**
 
-### Human gate 2
+### Human gate 2 — OWNER APPROVAL PENDING
 
-**Do not start the next stage until approved.** Owner starts the Windows app, closes it cleanly, and sees a green Windows build/test run.
+**HUMAN GATE REQUIRED:** After F-09 local GUI idle measurements are recorded, owner reviews the now more readable placeholder text on Windows, confirms clean shutdown and the already green Windows CI, and **explicitly approves Stage 2** before C-01. The owner already verified F-05 window lifecycle and F-07 placeholder-key switching; do not ask them to repeat those earlier checks solely to validate the old stages. No ZIP is required if the F-09 text metrics can be shared. Do not begin Stage 3 before approval.
 
 ---
 
