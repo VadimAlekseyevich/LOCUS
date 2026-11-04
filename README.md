@@ -26,6 +26,8 @@ build_and_run.bat
 
 If you already have the LOCUS repository, **double-click `build_and_run.bat` in its root directory**. You can also launch it from Windows Command Prompt.
 
+**If your local BAT is an older A-07 version:** its first launch will update itself through Git, but may still open the old metronome because the currently running copy was created before the pull. **Close that test and double-click the BAT once more** to launch the new blank LOCUS window. This is an upgrade-only issue; future runs use the updated launcher.
+
 ### What the BAT does
 
 1. Copies itself to a temporary location so a **Git update can safely replace the original BAT**.
