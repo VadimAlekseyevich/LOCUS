@@ -14,7 +14,7 @@
 | Can it show the reported music position? | GetMusicTimePlayed() sampled in GUI and CSV | **Owner reported app working; no exported song-time traces supplied** |
 | How do captured key-downs compare with reported song position? | A/D actions with std::chrono::steady_clock capture time and GetKeyPressed() polling | **Owner-reported successful local operation; precise input latency not measured** |
 | Are pause and seek coherent? | PauseMusicStream, ResumeMusicStream, SeekMusicStream and recorded actions | **Owner-reported functional local operation**; CI smoke blocked by unavailable audio device |
-| Is reported song time stable relative to a monotonic reference? | CSV samples every ~100 ms, reported minus wall-anchored time | **No acoustic or interactive measurement yet** |
+| Is reported song time stable relative to a monotonic reference? | CSV samples every ~100 ms, reported minus wall-anchored time | **No quantitative trace supplied; owner-reported behavior functional** |
 | How big is a Windows Release executable? | CMake Release x64 + PowerShell byte count | **979,968 bytes** (latest source, Windows 2022 Release; run 41886414912) |
 | What additional files or runtime are required? | Inspect output DLLs and run on a clean Windows machine | **0 adjacent DLLs** in built Release folder; **clean-machine test pending** |
 
@@ -32,15 +32,15 @@
 
 ### Owner's one-command local runner
 
-**HUMAN GATE REQUIRED (EARLY):** The GitHub-hosted Windows runner has no audio output endpoint; the owner must verify real playback and input feel on an audio-capable Windows machine **before marking A-07 complete**.
+**EARLY HUMAN GATE SATISFIED (2026-11-04):** The GitHub-hosted Windows runner has no audio output endpoint, but the owner subsequently reported that the interactive probe worked on their Windows machine. **No ZIP or additional A-07 action is required**. A quantitative input/output-latency measurement remains a future engineering task, not a condition retroactively imposed on this functional spike.
 
-Use **Windows File Explorer or Command Prompt** in the cloned repository root. **No Git Bash is required:**
+The retained Windows BAT can be run again for **optional future diagnostics** from File Explorer or Command Prompt. **No Git Bash is required:**
 
 ~~~bat
 build_and_run.bat
 ~~~
 
-The BAT fast-forward pulls Git, builds the isolated probe, performs WAV and audio-device smoke tests, starts the GUI, asks brief subjective questions, and creates `.locus-runs/a07-.../LOCUS-A07-logs.zip`. Upload that archive to the assistant. Setup and error instructions are in [the repository README](../../README.md). The script never uploads logs itself and will not overwrite uncommitted changes.
+The BAT fast-forward pulls Git, builds the isolated probe, performs WAV and audio-device smoke tests, starts the GUI, asks brief subjective questions, and can create `.locus-runs/a07-.../LOCUS-A07-logs.zip`. **The owner chose not to upload logs and is not obliged to do so for A-07.** Setup and error instructions are in [the repository README](../../README.md). The script never uploads logs itself and will not overwrite uncommitted changes.
 
 ### Local interactive acceptance procedure
 
@@ -93,7 +93,7 @@ The owner confirmed that the BAT-launched interactive Windows probe worked corre
 
 ## 5. Go / no-go decision (A-09, not A-07)
 
-**Do not choose the production stack yet.** A-07 only records measured facts and blockers. A-08 (SDL3 probe) is conditional on an unresolved material failure, and A-09 makes the actual library decision.
+**A-09 now records the initial production-stack selection**, subject to Stage 1 owner approval. A-07 records evidence and limits; A-08 (SDL3 probe) is skipped because no material functional blocker was observed. The absence of quantified low-latency evidence remains a later engineering risk.
 
 | Criterion | A-07 result |
 | --- | --- |
