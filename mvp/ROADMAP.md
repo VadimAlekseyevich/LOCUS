@@ -192,10 +192,11 @@ The owner explicitly approved the A-01–A-06 architecture contracts and A-09 te
   **Done when:** Clean builds use stated versions; no machine-specific installation paths are required.
   **Verified (2026-11-04):** `cmake/dependencies.cmake` pins raylib 6.0, raygui 5.0, and nlohmann/json v3.12.0 by exact upstream commit SHA. Root CMake uses FetchContent and the required CMake 3.25 minimum. A headless `locus_dependencies_smoke` successfully built and reported all three versions on Windows MSVC Release in [CI run 41895581746](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41895581746); no installed per-machine SDK paths are necessary beyond the standard Windows build toolchain. The existing `build_and_run.bat` remains unchanged. A real CTest suite belongs to F-04.
 
-- [ ] **F-03 — Add repository hygiene files**  
+- [x] **F-03 — Add repository hygiene files**  
   **Depends on:** F-01.  
   **Change:** Add `.gitignore` for generated builds, local audio, editor temp files, and system artifacts; add a minimal `.clang-format`.  
   **Done when:** Tracked sources remain untouched by a clean build, and formatting is deterministic.
+  **Verified (2026-11-04):** Expanded `.gitignore` for generated CMake/IDE files, local audio/charts, editor autosaves and diagnostics without blanket-ignoring authored fixtures; added root `.clang-format` (LLVM-based, C++17, four spaces). [Windows CI run 41897345354](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41897345354) passed `git check-ignore` checks, a two-pass clang-format idempotence check, a clean post-build `git status --porcelain`, production build/smoke checks, and the A-07 BAT probe. `build_and_run.bat` was retained unchanged; the owner authorizes future updates when useful.
 
 - [ ] **F-04 — Add a CTest-compatible test executable**  
   **Depends on:** F-01.  
