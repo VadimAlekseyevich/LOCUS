@@ -233,9 +233,10 @@ if /I "%MODE%"=="baseline" (
 
 echo.
 echo ============================================================
-echo  LOCUS DEMO GRID - GAMEPLAY IN DEVELOPMENT
-echo  F1 = Home   F2 = Play grid   F3 = Editor   F4 = Results
-echo  Play currently shows the 4x4 grid and stationary starting marker.
+echo  LOCUS DEMO CLICK TRACK - GAMEPLAY IN DEVELOPMENT
+echo  F1 = Home   F2 = Play / start 120 BPM click track
+echo  F3 = Editor   F4 = Results   ESC = Close
+echo  The demo plays 32 quarter-note clicks; marker movement comes next.
 echo  Close with ESC or the X button in the window title bar.
 echo ============================================================
 echo.
