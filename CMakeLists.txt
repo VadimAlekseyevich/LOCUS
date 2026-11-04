@@ -13,6 +13,7 @@ add_library(locus_core STATIC
     src/core/foundation.cpp
     src/core/route.cpp
     src/core/route_view.cpp
+    src/core/judgement.cpp
     src/core/song_clock.cpp
     src/core/demo_audio.cpp
 )
@@ -72,4 +73,9 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_music_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_music_tests PRIVATE locus_core)
     add_test(NAME locus_demo_audio_clock COMMAND locus_music_tests)
+
+    add_executable(locus_judgement_tests tests/judgement_tests.cpp)
+    target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_judgement_tests PRIVATE locus_core)
+    add_test(NAME locus_turn_judgement COMMAND locus_judgement_tests)
 endif()
