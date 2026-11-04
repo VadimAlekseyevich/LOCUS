@@ -120,7 +120,7 @@ Each checkbox below is intentionally a **bounded change with a concrete check**.
   **Change:** Create `mvp/architecture/BOUNDARIES.md` with Chart, MusicClock/Audio, Route, Judgement, App UI, and Editor responsibilities plus allowed dependency directions.  
   **Done when:** The document includes one data-flow diagram and explicitly forbids renderer-driven timing and editor-specific route logic.
 
-- [ ] **A-02 — Freeze beat/event semantics**  
+- [x] **A-02 — Freeze beat/event semantics**  
   **Depends on:** A-01.  
   **Change:** Write `mvp/architecture/TIMING.md`: define beat zero, offset sign, quarter-note stepping, the exact turn-at-node ordering, and song end behavior.  
   **Done when:** Worked examples at BPM 120 cover beats 0, 1, and 4, and a turn on the outermost grid point.
