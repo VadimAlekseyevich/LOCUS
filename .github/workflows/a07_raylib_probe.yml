@@ -43,7 +43,7 @@ jobs:
           $deps = & ".\build-a07\foundation\Release\locus_dependencies_smoke.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $deps | Tee-Object -FilePath dependency-smoke.txt
-          if ($deps -notmatch "DEPENDENCY_SMOKE_PASS") { throw "Pinned dependency integration smoke test failed" }
+          if (-not ($deps -match "DEPENDENCY_SMOKE_PASS")) { throw "Pinned dependency integration smoke test failed" }
 
       - name: Configure isolated raylib 6.0 probe
         shell: pwsh
