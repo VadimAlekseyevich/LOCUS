@@ -156,9 +156,6 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart) {
     DrawTextLabel(font, "120 BPM  |  32 BEATS  |  4 x 4 GRID",
                   Vector2{50.0f, 439.0f}, 20.0f,
                   Color{204, 208, 222, 255});
-    DrawTextLabel(font, "Marker movement and music are coming next",
-                  Vector2{50.0f, 474.0f}, 19.0f,
-                  Color{159, 164, 184, 255});
 }
 
 // 3. Render: display the selected state; never choose or modify it here.
