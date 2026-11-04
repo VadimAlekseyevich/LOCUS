@@ -1,6 +1,6 @@
-# LOCUS — Foundation v0.1 Windows Baselines (F-09)
+# LOCUS — Optional historical Windows baseline diagnostics
 
-**Status (2026-11-04):** Headless CI baseline **measured and passing** in [run 41911357263](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41911357263); **interactive GUI idle CPU/RAM remain pending** on the owner's Windows PC. F-09 is **not** completed until those observations are documented.
+**Status (2026-11-05):** **OPTIONAL / NOT ON THE ACTIVE ROADMAP.** The previous F-09 task and mandatory measurement gate were cancelled at the owner's request so gameplay development can start immediately. The following historical CI measurements are preserved as reference; **nobody must repeat them or collect desktop idle CPU/RAM** unless troubleshooting a real problem.
 
 **Code:** [Windows sampler](../tools/measure-baseline.ps1) · [one-click launcher](../build_and_run.bat) · [production CI](../.github/workflows/windows_ci.yml) · [Roadmap](./ROADMAP.md)
 
@@ -14,7 +14,7 @@ Release EXE size excludes Microsoft Windows system libraries, Windows SDK, separ
 
 - **Platform:** GitHub Actions `windows-2022`, Visual Studio 2022 MSVC, x64 Release, pinned raylib 6.0. GitHub-hosted runner; actual CPU model, logical processors, Windows version/build and physical RAM are recorded by the script.
 - **Code identity:** SHA-256 of the measured `locus.exe` and the repository commit are included in the output.
-- **Measurement command:** After clean checkout, configuration and Release compilation, the CI job runs:
+- **Historical measurement command:** On the 2026-11-04 run, after clean checkout, configuration and Release compilation, a CI job ran (this step has since been removed from the routine CI workflow):
 
 ~~~powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/measure-baseline.ps1 -Executable build/windows-foundation/Release/locus.exe -OutputDirectory build/windows-foundation/baseline-ci -Mode Headless
@@ -48,7 +48,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/measure-baseline.p
 
 ## 3. Real Windows GUI baseline collection
 
-The owner has already confirmed that the window opens/closes and F1–F4 change the placeholder text. For F-09, use **one new measurement** on the owner's Windows machine, with no ZIP upload required when it works.
+The owner has already confirmed that the window opens/closes and F1–F4 change the placeholder text. These are **optional troubleshooting instructions**, not a request for the owner to measure anything now.
 
 From Windows Command Prompt in the repository root:
 
@@ -87,4 +87,4 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/measure-baseline.p
 
 When the results are available, record **specific values, the observation environment, sample duration, command and exact commit**, and assess whether the program appears stable. Do not invent a target such as `<5 MiB` or `<1 ms` from this minimal rendering prototype. Its frame cap is 60 FPS only for placeholder UI, not the game clock. Audio output, key-to-judgement timestamps, device buffers, and full-game frame pacing will be measured in later T/Q-stage tasks.
 
-**Stage 2 human gate:** After F-09 numbers are recorded, explicitly ask the owner to approve moving from Foundation to Stage 3 (chart domain). Do not advance to C-01 before that approval.
+**No human gate applies to these diagnostics.** The next owner playtest is for the first playable demo in [the current roadmap](./ROADMAP.md).
