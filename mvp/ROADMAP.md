@@ -115,7 +115,7 @@ Each checkbox below is intentionally a **bounded change with a concrete check**.
 
 **Objective:** Approve the minimum architecture before introducing production dependencies.
 
-- [ ] **A-01 — Define module ownership**  
+- [x] **A-01 — Define module ownership**  
   **Depends on:** None.  
   **Change:** Create `mvp/architecture/BOUNDARIES.md` with Chart, MusicClock/Audio, Route, Judgement, App UI, and Editor responsibilities plus allowed dependency directions.  
   **Done when:** The document includes one data-flow diagram and explicitly forbids renderer-driven timing and editor-specific route logic.
