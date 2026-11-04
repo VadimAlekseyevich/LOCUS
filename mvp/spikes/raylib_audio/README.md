@@ -39,6 +39,14 @@ From the repository root:
 
 This creates \`metronome.wav\`, checks the RIFF/WAVE magic and expected byte size, and prints executable size. **It does not open a window/audio device and cannot validate playback timing.**
 
+## Optional headless audio-backend smoke test
+
+~~~powershell
+.\build-a07\Release\locus_raylib_audio_spike.exe --audio-smoke
+~~~
+
+This opens the raylib **audio device only**, without a window, attempts ~0.85 seconds of playback, ~0.35 seconds of pause, a seek to 4 seconds, and ~0.45 seconds of resumed playback. It prints reported stream positions. On hosted CI runners, the test can fail because no audio device is available; that is an environment limitation, **not proof of a bug in the game's timing**. Even a passing result **cannot prove sound was audible** or that input latency is low.
+
 ## Interactive audio test
 
 ~~~powershell
