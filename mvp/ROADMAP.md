@@ -36,8 +36,9 @@ The first playable may use **one built-in chart** and one generated test track. 
 
 Each item should produce visible or audible progress. Add focused automated tests **as part of the feature** where they catch real bugs. Do not split it into a dozen sub-tasks merely to increase the count.
 
-- [ ] **G-01 — Make a real demo chart and deterministic route.**  
+- [x] **G-01 — Make a real demo chart and deterministic route.**  
   Add the first built-in 4×4 example with a start cell, heading, constant BPM and several Left/Right events. Implement the pure route calculation (turn before step; Wrap at edges) so the same beat always yields the same cell and heading. Verify a few turns and all edge directions. **Result:** a known correct route, independent of player keys.
+  **Verified (2026-11-05):** Implemented a 32-beat, 120 BPM built-in chart with nine authored turns, pure integer-beat route computation in `src/core/route.h` and `route.cpp`, and focused `tests/route_tests.cpp` tests for turn-before-step, all four Wrap directions, beat-zero turning and deterministic samples. [Windows CI run 41913241034](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41913241034) passed **2/2 CTest tests** including `locus_demo_route`, and the production app still builds. The route exists in the core but is **not yet drawn on screen**; that is G-02.
 
 - [ ] **G-02 — Draw the game field and marker.**  
   Show 16 clearly spaced dots and the marker on the Play screen, using the existing raylib window and legible type. Keep Home/Editor/Results placeholders as needed; do not build menus now. **Result:** the game field is recognizably LOCUS, not a screen name.
