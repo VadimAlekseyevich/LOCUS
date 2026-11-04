@@ -35,7 +35,7 @@ The owner's positive report is enough to close **A-07's functional spike**; it i
 | Component | Selected dependency or API | Version / pin | Ownership |
 | --- | --- | --- | --- |
 | Language | **C++17** | C++17 standard, no compiler-specific extensions in the pure core | All modules |
-| Build | **CMake** | Minimum **3.24** | Root project |
+| Build | **CMake** | Minimum **3.25** for raylib 6.0 source (was 3.24 in A-09) | Root project |
 | Windows compiler | Visual Studio 2022, **MSVC x64 Release** | Windows 2022 runner and supported VS2022 toolchain | CI / Windows release |
 | Renderer + window + audio transport | **raylib** | GitHub tag **6.0**, already used by working A-07 | Platform/UI adapter, not core |
 | Basic GUI controls | **raygui** | GitHub release tag **5.0**; **integration/compatibility still untested** | Editor widgets and small settings screens |
@@ -51,9 +51,9 @@ The owner's positive report is enough to close **A-07's functional spike**; it i
 - nlohmann/json: https://github.com/nlohmann/json/releases/tag/v3.12.0
 - Windows dialogs: https://learn.microsoft.com/en-us/windows/win32/shell/common-file-dialog
 
-The exact release tags above are the initial pins. **Do not automatically track a `master`/`main` branch or latest dependency release.** During F-02, verify each dependency's build integration and recorded upstream revision/hash; a controlled update may require an explicit future task. raylib 6.2 exists but was **not** the library tested by the owner, so this decision deliberately retains 6.0 until a measured reason to migrate.
+The exact release tags above are the initial pins. **Do not automatically track a `master`/`main` branch or latest dependency release.** F-02 fixes their resolved **commit revisions** in [cmake/dependencies.cmake](../../cmake/dependencies.cmake): raylib 6.0 → `dbc56a87da87d973a9c5baa4e7438a9d20121d28`; raygui 5.0 → `020a61bebcbe288b4414de3416e219ef40af847a`; nlohmann/json v3.12.0 (annotated tag) → `55f93686c01528224f448c19128836e7df245f72`. All three were independently resolved through upstream GitHub tag references. Upgrades require a reviewed change to these pins. The owner-tested A-07 remains on raylib 6.0.
 
-Potential integration risk: raygui 5.0 has not yet been compiled with raylib 6.0 in LOCUS. Verify compatibility in its own dependency task and resolve any incompatibility before UI work; never pretend that a planned library combination has already passed CI.
+**Compatibility verification (F-02):** A separate headless `locus_dependencies_smoke` executable compiles raygui 5.0's actual header implementation against raylib 6.0 and links nlohmann/json. This does not open a GUI or audio device; its Windows build/run evidence must be checked before marking F-02 complete. It is a dependency integration check, not the CTest suite scheduled for F-04.
 
 ## 4. Module placement and dependency rules
 
