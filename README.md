@@ -1,6 +1,6 @@
 # LOCUS
 
-A rhythm game currently in development. The **MVP game is not playable yet**. The runnable Windows build at this stage is the **A-07 raylib audio/input timing probe**, used to measure the behavior of audio streaming and keyboard input.
+A rhythm game currently in development. The **MVP game is not playable yet**. Two Windows executables exist: the original **A-07 audio/input timing probe** (launched by `build_and_run.bat`) and the new **F-05 blank production window** (`locus.exe`).
 
 [Game Design Document](mvp/GDD.md) · [MVP Roadmap](mvp/ROADMAP.md) · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
 
@@ -94,9 +94,9 @@ LOCUS\.locus-runs\a07-YYYYMMDD-HHMMSS-12345\LOCUS-A07-logs.zip
 
 The final game and its Windows installer are separate future roadmap tasks. raylib 6.0 is now the **proposed production stack** (A-09), **pending Stage 1 owner approval**; the A-07 diagnostic remains a separate test executable. The Windows BAT stays in the repository.
 
-## Production foundation (F-01)
+## Production foundation and first blank window (F-01–F-05)
 
-**Stage 1 architecture/stack approved by the owner on 2026-11-04.** The separate production root `CMakeLists.txt` now builds a **minimal console executable** (`locus.exe`) and a **pure C++17 core static library** (`locus_core`). The app currently prints a foundation status and exits. The actual game window arrives in **F-05** after external dependencies are pinned in **F-02**. This output is **not a playable game**.
+**Stage 1 architecture/stack approved by the owner on 2026-11-04.** The separate production root `CMakeLists.txt` now builds a **minimal console executable** (`locus.exe`) and a **pure C++17 core static library** (`locus_core`). As of **F-05**, normal execution of `locus.exe` opens a **960×540 blank dark raylib window**. Use **Esc** or the window **X** to close it cleanly. This is not yet a playable game or menu; no gameplay, audio transport, or state machine has been added. The `--foundation-check` flag still reports the core linkage status headlessly.
 
 For a direct Windows Visual Studio 2022 build in Command Prompt:
 
@@ -105,6 +105,8 @@ cmake -S . -B build-a07/foundation -G "Visual Studio 17 2022" -A x64 -DLOCUS_BUI
 cmake --build build-a07/foundation --config Release
 build-a07\foundation\Release\locus.exe
 ~~~
+
+**F-05 automatic window check:** CI runs `locus.exe --window-smoke`, which draws **60 frames**, verifies window initialization, closes it, and reports `WINDOW_SMOKE_PASS`. This verifies the opening/drawing/shutdown path on the Windows runner, **not** physical keyboard responsiveness or perceived visual smoothness. Those are part of the planned Stage 2 human approval. No additional owner check is required to begin F-06.
 
 Build output stays inside the Git-ignored `build-a07/` tree for the existing Windows CI and audio probe. The F-03 `.gitignore` also supports future `build/`, `build-*/`, `cmake-build-*/`, and `out/` build directories. The `LOCUS_BUILD_TESTS=ON` option now builds `locus_core_tests` (F-04), which runs headlessly through CTest; additional gameplay tests will be added as core modules arrive.
 
@@ -118,7 +120,7 @@ The first test (`locus_core_foundation`) checks a small pure C++ core build/link
 
 **F-02 dependencies:** Production CMake downloads exact commit revisions of **raylib 6.0**, **raygui 5.0**, and **nlohmann/json 3.12.0** through `cmake/dependencies.cmake`. CMake does not need machine-specific library install paths. The first configure requires Internet access; later builds use the fetched sources. The `locus_dependencies_smoke.exe` target verifies that the pinned headers and implementations compile and link headlessly. **It is not the F-04 unit-test runner.** The existing BAT intentionally continues targeting the A-07 diagnostic until a later approved change.
 
-**Keep `build_and_run.bat`.** During early Foundation it continues running the A-07 audio-input diagnostic, not the new console stub. A separate, reviewable future task will change its default target to the game when a useful interactive application exists, preserving the audio test and diagnostic ZIP capability.
+**Keep `build_and_run.bat`.** During early Foundation it still runs the A-07 audio/input diagnostic, not the blank F-05 game window. The owner has authorized changing the BAT when a useful interactive game build exists. A separately reviewed future change will switch its default to the game while preserving the optional audio diagnostic and ZIP capability.
 
 ## Repository hygiene and formatting (F-03)
 
