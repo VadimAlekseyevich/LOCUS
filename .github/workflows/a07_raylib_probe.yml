@@ -87,6 +87,7 @@ jobs:
           name: a07-windows-raylib-audio-probe
           if-no-files-found: error
           path: |
+            build_and_run.bat
             build-a07/Release/locus_raylib_audio_spike.exe
             metronome.wav
             windows-build-metrics.txt
