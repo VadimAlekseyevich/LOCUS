@@ -10,7 +10,7 @@ on:
       - "CMakeLists.txt"
       - "src/**"
       - "cmake/**"
-      - "tests/dependency_smoke.cpp"
+      - "tests/**"
       - ".github/workflows/a07_raylib_probe.yml"
   workflow_dispatch:
 
@@ -102,6 +102,17 @@ jobs:
           $deps | Tee-Object -FilePath dependency-smoke.txt
           if (-not ($deps -match "DEPENDENCY_SMOKE_PASS")) { throw "Pinned dependency integration smoke test failed" }
 
+      - name: Run F-04 core tests via CTest
+        shell: pwsh
+        run: |
+          ctest --test-dir build-a07/foundation --config Release --output-on-failure -R "^locus_core_foundation$" |
+            Tee-Object -FilePath core-ctest.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $report = Get-Content core-ctest.txt -Raw
+          if ($report -notmatch "1/1 Test" -or $report -notmatch "100% tests passed") {
+            throw "Expected exactly one passing core CTest test"
+          }
+
       - name: Configure isolated raylib 6.0 probe
         shell: pwsh
         run: |
@@ -182,6 +193,8 @@ jobs:
             foundation-smoke.txt
             build-a07/foundation/Release/locus_dependencies_smoke.exe
             dependency-smoke.txt
+            build-a07/foundation/Release/locus_core_tests.exe
+            core-ctest.txt
             build-a07/Release/locus_raylib_audio_spike.exe
             metronome.wav
             windows-build-metrics.txt
