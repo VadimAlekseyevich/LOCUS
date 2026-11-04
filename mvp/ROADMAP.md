@@ -125,7 +125,7 @@ Each checkbox below is intentionally a **bounded change with a concrete check**.
   **Change:** Write `mvp/architecture/TIMING.md`: define beat zero, offset sign, quarter-note stepping, the exact turn-at-node ordering, and song end behavior.  
   **Done when:** Worked examples at BPM 120 cover beats 0, 1, and 4, and a turn on the outermost grid point.
 
-- [ ] **A-03 — Freeze input arbitration policy**  
+- [x] **A-03 — Freeze input arbitration policy**  
   **Depends on:** A-02.  
   **Change:** Document what qualifies as a key-down, simultaneous Left/Right, first-hit-wins, out-of-window presses, and pause/seek handling in `TIMING.md`.  
   **Done when:** For every ambiguous case, the document gives one deterministic expected judgement; numerical window sizes remain tunable.
