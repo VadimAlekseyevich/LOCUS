@@ -52,6 +52,7 @@ int main(int argc, char** argv) {
     }
 
     CloseWindow();
+    std::cout << "LOCUS_WINDOW_CLOSED\n";
     if (smokeWindow) {
         if (IsWindowReady() || renderedFrames < kSmokeFrames) {
             std::cerr << "WINDOW_SMOKE_FAIL\n";
