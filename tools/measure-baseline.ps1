@@ -38,8 +38,17 @@ $logicalProcessors = [Environment]::ProcessorCount
 $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
 $processor = Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | Select-Object -First 1
 $computer = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
-$gitRevision = (& git rev-parse HEAD 2>$null | Select-Object -First 1)
-if ($LASTEXITCODE -ne 0) { $gitRevision = "unknown" }
+# Actions supplies a definitive checkout revision even when Git lookup is blocked.
+$gitRevision = $env:GITHUB_SHA
+if ([string]::IsNullOrWhiteSpace($gitRevision)) {
+    $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        $gitRevision = (& git -C $repositoryRoot rev-parse HEAD 2>$null | Select-Object -First 1)
+        if ($LASTEXITCODE -ne 0) { $gitRevision = $null }
+    }
+}
+if ([string]::IsNullOrWhiteSpace($gitRevision)) { $gitRevision = "unknown" }
 
 Add-Metric "baseline_version" "F-09-v1"
 Add-Metric "measurement_mode" $Mode
