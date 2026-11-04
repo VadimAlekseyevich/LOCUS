@@ -16,7 +16,7 @@
 4. **The MVP grid is 4×4 with Wrap only.** Crossing an edge preserves heading and consumes one quarter-note step; seam visuals must not imply a line crossing the grid interior.
 5. **Core logic runs headlessly.** Chart validation, beat/time math, route sampling, and judgement logic can be tested without a window, audio device, or local filesystem.
 6. **Dependencies flow inward.** Platform, game UI, and editor may use core rules; core rules must not import their callers.
-7. **Start small.** Responsibility boundaries do not require a plugin system, ECS, service locator, dynamic injection framework, or a class for each concept.
+7. **Keep code and scope controlled, not binary size artificially tiny.** Prioritize minimal input/audio latency, stable timing, and performance. Dependencies and even a large distributable package are acceptable if they materially help those goals; avoid an unnecessary plugin system, ECS, service locator, or class for each concept.
 
 ## 2. Data-flow overview
 
