@@ -39,6 +39,10 @@ enum class Screen {
 struct FrameInput {
     bool closeRequested = false;
     std::optional<Screen> requestedScreen;
+    bool startPressed = false;
+    bool pausePressed = false;
+    bool restartPressed = false;
+    bool homePressed = false;
     bool leftPressed = false;
     bool rightPressed = false;
     double leftCapturedAt = 0.0;
@@ -76,6 +80,10 @@ FrameInput PollInput(bool debugScreens) {
         else if (IsKeyPressed(KEY_F3)) input.requestedScreen = Screen::Editor;
         else if (IsKeyPressed(KEY_F4)) input.requestedScreen = Screen::Results;
     }
+    input.startPressed = IsKeyPressed(KEY_ENTER);
+    input.pausePressed = IsKeyPressed(KEY_SPACE);
+    input.restartPressed = IsKeyPressed(KEY_R);
+    input.homePressed = IsKeyPressed(KEY_H);
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
     input.leftPressed = IsKeyPressed(KEY_A);
@@ -93,8 +101,22 @@ void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
     }
     if (input.requestedScreen.has_value()) {
         state.screen = *input.requestedScreen;
+    } else if (input.homePressed && state.screen != Screen::Home) {
+        state.screen = Screen::Home;
+    } else if ((state.screen == Screen::Home && input.startPressed) ||
+               (state.screen == Screen::Results &&
+                (input.startPressed || input.restartPressed))) {
+        state.screen = Screen::Play;
     }
     ++state.frames;
+}
+
+// Resolve all remaining events at the end of the authored track, even if the
+// player never pressed a key. Final results cannot alter the route.
+void FinishSession(AppState& state, locus::core::TurnJudge& judge,
+                   const locus::core::Chart& chart) {
+    judge.Advance(chart.lengthBeats * 60.0 / chart.bpm);
+    state.screen = Screen::Results;
 }
 
 // The installed Windows UI font is read from the OS, not bundled or redistributed.
@@ -274,6 +296,9 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart,
     DrawTextLabel(font, "120 BPM  |  32 BEATS  |  4 x 4 GRID",
                   Vector2{50.0f, 140.0f}, 20.0f,
                   Color{204, 208, 222, 255});
+    DrawTextLabel(font, "SPACE PAUSE  |  R RETRY  |  H HOME",
+                  Vector2{50.0f, 380.0f}, 17.0f,
+                  Color{229, 214, 170, 255});
     DrawTextLabel(font, transport.Status(), Vector2{50.0f, 412.0f}, 20.0f,
                   Color{211, 239, 241, 255});
     DrawTextLabel(font,
@@ -281,6 +306,58 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart,
                              transport.SongSeconds(now), transport.Beat(now)),
                   Vector2{50.0f, 444.0f}, 20.0f,
                   Color{204, 208, 222, 255});
+}
+
+void DrawHomeScreen(Font font, const locus::core::Chart& demo) {
+    DrawTextLabel(font, "THE FIRST PLAYABLE DEMO", Vector2{110.0f, 124.0f},
+                  25.0f, Color{136, 221, 218, 255});
+    DrawTextLabel(font, "FOLLOW THE RHYTHM", Vector2{110.0f, 179.0f},
+                  47.0f, Color{232, 240, 246, 255});
+    DrawTextLabel(font, "ENTER   START DEMO", Vector2{110.0f, 274.0f},
+                  29.0f, Color{237, 218, 157, 255});
+    DrawTextLabel(font, "A = LEFT   /   D = RIGHT",
+                  Vector2{110.0f, 327.0f}, 22.0f,
+                  Color{191, 216, 225, 255});
+    DrawTextLabel(font,
+                  TextFormat("%d BEATS  |  %.0f BPM  |  %d TURNS  |  NO FAIL",
+                             demo.lengthBeats, demo.bpm,
+                             static_cast<int>(demo.turns.size())),
+                  Vector2{110.0f, 370.0f}, 20.0f,
+                  Color{182, 192, 209, 255});
+}
+
+void DrawResultsScreen(Font font, const locus::core::TurnJudge& judge,
+                       const locus::core::Chart& demo, bool completed) {
+    DrawTextLabel(font, completed ? "DEMO COMPLETE" : "RESULTS PREVIEW",
+                  Vector2{100.0f, 111.0f}, 41.0f,
+                  Color{195, 237, 232, 255});
+    const auto& counts = judge.Counts();
+    DrawTextLabel(font, TextFormat("PERFECT   %d", counts.perfect),
+                  Vector2{110.0f, 206.0f}, 27.0f,
+                  Color{128, 238, 204, 255});
+    DrawTextLabel(font, TextFormat("GOOD      %d", counts.good),
+                  Vector2{110.0f, 250.0f}, 27.0f,
+                  Color{147, 215, 245, 255});
+    DrawTextLabel(font, TextFormat("BAD       %d", counts.bad),
+                  Vector2{110.0f, 294.0f}, 27.0f,
+                  Color{240, 197, 138, 255});
+    DrawTextLabel(font, TextFormat("MISS      %d", counts.miss),
+                  Vector2{110.0f, 338.0f}, 27.0f,
+                  Color{243, 150, 151, 255});
+    DrawTextLabel(font,
+                  TextFormat("TURNS RESOLVED  %d / %d", counts.Resolved(),
+                             static_cast<int>(demo.turns.size())),
+                  Vector2{570.0f, 227.0f}, 22.0f,
+                  Color{204, 225, 228, 255});
+    DrawTextLabel(font, "NO FAIL  -  ROUTE UNCHANGED",
+                  Vector2{570.0f, 269.0f}, 17.0f,
+                  Color{158, 193, 204, 255});
+    DrawTextLabel(font, "ENTER / R  -  PLAY AGAIN",
+                  Vector2{110.0f, 409.0f}, 24.0f,
+                  Color{236, 219, 160, 255});
+    DrawTextLabel(font, "H  -  HOME",
+                  Vector2{110.0f, 447.0f}, 22.0f,
+                  Color{187, 205, 220, 255});
 }
 
 // 3. Render: display the selected state; never choose or modify it here.
@@ -294,8 +371,24 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
                   Color{223, 225, 238, 255});
 
-    if (state.screen == Screen::Play) {
+    if (state.screen == Screen::Home) {
+        DrawHomeScreen(font, demo);
+    } else if (state.screen == Screen::Play) {
         DrawPlayGrid(font, demo, transport, judge, now);
+        if (transport.Paused()) {
+            DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
+                          Color{12, 14, 22, 204});
+            DrawTextLabel(font, "PAUSED", Vector2{355.0f, 198.0f},
+                          59.0f, Color{240, 246, 247, 255});
+            DrawTextLabel(font, "SPACE  -  RESUME",
+                          Vector2{325.0f, 287.0f}, 28.0f,
+                          Color{239, 219, 164, 255});
+            DrawTextLabel(font, "R  -  RETRY      H  -  HOME",
+                          Vector2{277.0f, 335.0f}, 21.0f,
+                          Color{204, 213, 232, 255});
+        }
+    } else if (state.screen == Screen::Results) {
+        DrawResultsScreen(font, judge, demo, transport.Finished());
     } else {
         const char* screen = ScreenName(state.screen);
         constexpr float kScreenFontSize = 54.0f;
@@ -417,17 +510,28 @@ int main(int argc, char** argv) {
         if (!state.running) {
             break;
         }
+        const double now = MonotonicSeconds();
         if (state.screen != previousScreen) {
             if (previousScreen == Screen::Play) transport.Stop();
             if (state.screen == Screen::Play) {
                 judge.Reset();
-                transport.Start(MonotonicSeconds());
+                transport.Start(now);
+            }
+        } else if (state.screen == Screen::Play) {
+            // F2 (debug mode) and R both replay the entire demo.
+            if (input.restartPressed ||
+                (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
+                judge.Reset();
+                transport.Start(now);
+            } else if (input.pausePressed) {
+                if (transport.Paused()) transport.Resume(now);
+                else transport.Pause(now);
             }
         }
+
         if (state.screen == Screen::Play) {
-            if (transport.Playing()) {
-                // The two fresh key-downs are processed deterministically
-                // left first if they arrive in the same rendered frame.
+            if (transport.Playing() && !transport.Paused()) {
+                // Two simultaneous key-downs are processed left first.
                 if (input.leftPressed) {
                     judge.Press(locus::core::Turn::Left,
                                 transport.SongSeconds(input.leftCapturedAt));
@@ -437,10 +541,12 @@ int main(int argc, char** argv) {
                                 transport.SongSeconds(input.rightCapturedAt));
                 }
             }
-            const double now = MonotonicSeconds();
             transport.Update(now);
             if (transport.Ready()) {
                 judge.Advance(transport.SongSeconds(now));
+            }
+            if (transport.Finished()) {
+                FinishSession(state, judge, demo);
             }
         }
         RenderFrame(state, debugScreens, uiFont.value, demo,
