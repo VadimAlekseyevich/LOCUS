@@ -198,10 +198,11 @@ The owner explicitly approved the A-01–A-06 architecture contracts and A-09 te
   **Done when:** Tracked sources remain untouched by a clean build, and formatting is deterministic.
   **Verified (2026-11-04):** Expanded `.gitignore` for generated CMake/IDE files, local audio/charts, editor autosaves and diagnostics without blanket-ignoring authored fixtures; added root `.clang-format` (LLVM-based, C++17, four spaces). [Windows CI run 41897345354](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41897345354) passed `git check-ignore` checks, a two-pass clang-format idempotence check, a clean post-build `git status --porcelain`, production build/smoke checks, and the A-07 BAT probe. `build_and_run.bat` was retained unchanged; the owner authorizes future updates when useful.
 
-- [ ] **F-04 — Add a CTest-compatible test executable**  
+- [x] **F-04 — Add a CTest-compatible test executable**  
   **Depends on:** F-01.  
   **Change:** Create a tiny core test runner and register it with CTest.  
   **Done when:** One passing placeholder test is reported by `ctest` on Windows.
+  **Verified (2026-11-04):** Added a core-only `locus_core_tests` executable and registered `locus_core_foundation` with CTest behind `LOCUS_BUILD_TESTS=ON`; test code has no raylib, Win32, or audio dependency. [Windows CI run 41899304598](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41899304598) reported **1/1 test passed**, including a fully green production build, dependency smoke, A-07 probe/BAT checks, and a clean Git worktree. No gameplay tests are claimed at F-04; these arrive with their respective domain tasks.
 
 - [ ] **F-05 — Open and close a blank game window**  
   **Depends on:** F-02.  
