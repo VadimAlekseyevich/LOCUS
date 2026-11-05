@@ -255,11 +255,11 @@ struct GameplayGrid {
     }
 };
 
-// Exactly two 4/4 bars ahead: 4 solid red beats, then a 4-beat fade.
-// Render geometry derives from the authored route and not the arrow inputs.
+// One 4/4 bar of red route is shown; the last beats fade in as the
+// time cursor approaches. Rendering never changes judgement or geometry.
 Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat,
                          double previewLeadBeats) {
-    (void)previewLeadBeats; // Current visual rule is fixed at two bars.
+    (void)previewLeadBeats; // Current presentation rule is one bar.
     const GameplayGrid grid(chart);
     if (chart.lengthBeats <= chart.firstBeat) return grid.Point(chart.start);
     const double beat = std::clamp(fractionalBeat,
@@ -271,7 +271,10 @@ Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat,
     const auto& style = locus::app::kDefaultRouteVisualStyle;
     const float thickness = std::clamp(grid.step / 76.0f, 0.4f, 1.0f);
 
-    for (int ahead = locus::app::RouteVisualStyle::lookaheadBeats; ahead >= 0; --ahead) {
+    // Count the current step as part of the four-beat view rather than
+    // accidentally drawing four extra steps beyond it.
+    for (int ahead = locus::app::RouteVisualStyle::lookaheadBeats - 1;
+         ahead >= 0; --ahead) {
         const int routeBeat = currentBeat + ahead;
         if (routeBeat >= chart.lengthBeats) continue;
         const float opacity = ahead == 0
@@ -335,22 +338,30 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
     // One song-time snapshot controls both the marker and preview.
     // The marker keeps moving along the authored path without key presses.
     const auto& style = locus::app::kDefaultRouteVisualStyle;
-    for (const auto& cell : locus::core::ReachedTurnCells(
-             chart, static_cast<int>(std::floor(gameplay.beat)))) {
-        const Vector2 point = grid.Point(cell);
+    // Illuminate only authored turn junctions intersected by the visible
+    // one-bar path. They light BEFORE arrival and disappear when the path
+    // moves past them, even if the grid cell has been visited before.
+    const int currentBeat = static_cast<int>(std::floor(gameplay.beat));
+    for (const auto& turn : locus::core::PreviewTurnPoints(
+             chart, gameplay.beat,
+             locus::app::RouteVisualStyle::lookaheadBeats)) {
+        const Vector2 point = grid.Point(turn.cell);
+        const float opacity = turn.beat <= currentBeat
+            ? 1.0f
+            : locus::app::TrajectoryOpacity(turn.beat - 1 - gameplay.beat);
         DrawCircleV(point, std::min(11.0f, grid.step * 0.38f),
-                    style.reachedTurnPoint);
+                    locus::app::WithOpacity(style.reachedTurnPoint, opacity));
         DrawCircleV(point, std::min(4.0f, grid.step * 0.16f),
-                    Color{255, 229, 230, 255});
+                    locus::app::WithOpacity(Color{255, 229, 230, 255}, opacity));
     }
     const float markerRadius = std::min(17.0f, grid.step * 0.47f);
     DrawCircleV(marker, markerRadius * 1.5f, Color{255, 75, 86, 45});
     DrawCircleV(marker, markerRadius, Color{255, 140, 149, 255});
     DrawCircleV(marker, markerRadius * 0.33f, Color{245, 253, 255, 255});
 
-    DrawTextLabel(font, "RED   REACHED ROUTE", Vector2{665.0f, 216.0f}, 17.0f,
+    DrawTextLabel(font, "RED   TURN JUNCTIONS", Vector2{665.0f, 216.0f}, 17.0f,
                   Color{131, 232, 227, 255});
-    DrawTextLabel(font, "RED   2-BAR PREVIEW", Vector2{665.0f, 244.0f}, 17.0f,
+    DrawTextLabel(font, "RED   1-BAR PREVIEW", Vector2{665.0f, 244.0f}, 17.0f,
                   locus::app::kDefaultRouteVisualStyle.fullTrajectory);
     DrawTextLabel(font, "WRAP   EDGE SPLIT", Vector2{665.0f, 272.0f}, 17.0f,
                   Color{184, 189, 204, 255});

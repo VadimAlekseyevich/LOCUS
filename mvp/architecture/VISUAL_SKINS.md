@@ -41,6 +41,9 @@ authoring and playback.
 
 `RouteVisualStyle` now defines the **fully-colored red path**, a
 **semi-colored red path**, a **combined/traveled red path** and a reached-turn
-point color. Both route displays use the same two-bar horizon and one-bar
-alpha ramp. Skin settings may later override those colors without changing
-beat timing, arrow input mapping or chart serialization.
+point color. Both route displays use a **single one-bar horizon** (four
+steps total including the current step) and a four-beat alpha ramp. Turn
+junctions use the same projected range: they start glowing when the visible
+route line touches their cell, and they stop glowing when that junction
+leaves the visible range. Skin settings may later override colors without
+changing beat timing, arrow input mapping or chart serialization.

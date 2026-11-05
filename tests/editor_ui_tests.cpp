@@ -1,4 +1,5 @@
 #include "app/chart_editor_ui.h"
+#include "app/visual_style.h"
 
 #include <cmath>
 #include <iostream>
@@ -26,6 +27,11 @@ EditorControls Type(const char* text) {
 
 int main() {
     bool ok = true;
+    ok &= Check(RouteVisualStyle::lookaheadBeats == 4 &&
+                std::abs(TrajectoryOpacity(0.0) - 1.0f) < 1e-6f &&
+                std::abs(TrajectoryOpacity(2.0) - 0.5f) < 1e-6f &&
+                std::abs(TrajectoryOpacity(4.0)) < 1e-6f,
+                "one-bar red path uses four beats and a linear fade");
     ChartEditor chart;
     EditorUiState ui;
     ok &= Check(ui.tab == EditorTab::Route &&

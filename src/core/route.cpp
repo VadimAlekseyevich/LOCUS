@@ -1,5 +1,7 @@
 #include "core/route.h"
 
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 namespace locus::core {
@@ -41,31 +43,33 @@ Heading IncomingHeadingAt(const Chart& chart, int beat) {
                                   : SampleRouteStep(chart, beat - 1).heading;
 }
 
-std::vector<Cell> ReachedTurnCells(const Chart& chart, int inclusiveBeat) {
-    std::vector<Cell> cells;
-    if (chart.gridWidth < kMinGridSize || chart.gridWidth > kMaxGridSize ||
-        chart.gridHeight < kMinGridSize || chart.gridHeight > kMaxGridSize ||
-        inclusiveBeat < chart.firstBeat) return cells;
-    const int finalBeat = std::min(inclusiveBeat, chart.lengthBeats - 1);
-    std::vector<unsigned char> marked(chart.gridWidth * chart.gridHeight, 0);
-    Cell cell = chart.start;
-    Heading heading = chart.initialHeading;
-    std::size_t nextTurn = 0;
-    for (int beat = chart.firstBeat; beat <= finalBeat; ++beat) {
-        if (nextTurn < chart.turns.size() && chart.turns[nextTurn].beat == beat) {
-            const int index = cell.y * chart.gridWidth + cell.x;
-            if (index >= 0 && index < static_cast<int>(marked.size()) &&
-                !marked[index]) {
-                marked[index] = 1;
-                cells.push_back(cell);
-            }
-            heading = ApplyTurn(heading, chart.turns[nextTurn].direction);
-            ++nextTurn;
-        }
-        bool wraps = false;
-        cell = StepInHeading(cell, heading, chart.gridWidth, chart.gridHeight, wraps);
+std::vector<PreviewTurnPoint> PreviewTurnPoints(
+    const Chart& chart, double fractionalBeat, int lookaheadBeats) {
+    std::vector<PreviewTurnPoint> points;
+    if (!std::isfinite(fractionalBeat) || lookaheadBeats < 1 ||
+        chart.lengthBeats <= chart.firstBeat) return points;
+    const double bounded = std::clamp(
+        fractionalBeat, static_cast<double>(chart.firstBeat),
+        static_cast<double>(chart.lengthBeats - 1));
+    const int first = static_cast<int>(std::floor(bounded));
+    // The final visible segment is first + (lookaheadBeats - 1).
+    // Its destination P[first+lookaheadBeats] is already touched by the
+    // preview, so the turn junction there should light *before* the player
+    // arrives. Future turns beyond it are not lit.
+    const int last = std::min(chart.lengthBeats - 1,
+                              first + lookaheadBeats);
+    for (const TurnEvent& event : chart.turns) {
+        if (event.beat < first) continue; // No lingering historical dots.
+        if (event.beat > last) break;
+        const Cell cell = SampleRouteStep(chart, event.beat).from;
+        const auto existing = std::find_if(
+            points.begin(), points.end(), [cell](const PreviewTurnPoint& point) {
+                return point.cell.x == cell.x && point.cell.y == cell.y;
+            });
+        if (existing == points.end())
+            points.push_back({cell, event.beat});
     }
-    return cells;
+    return points;
 }
 
 Chart MakeDemoChart() {

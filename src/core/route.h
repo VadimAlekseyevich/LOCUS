@@ -55,9 +55,16 @@ Chart MakeDemoChart();
 // P[chart.firstBeat] is chart.start, and each beat is one outgoing step.
 std::optional<Turn> ArrowToTurn(Heading incoming, Heading pressed) noexcept;
 Heading IncomingHeadingAt(const Chart& chart, int beat);
-// Unique grid cells whose authored turn beats have already been reached.
-// O(current beat) in one simulation pass, not O(events * total beats).
-std::vector<Cell> ReachedTurnCells(const Chart& chart, int inclusiveBeat);
+// Only authored turn junctions touched by the CURRENT one-bar route preview.
+// A turn at beat N first lights when the visible line reaches P[N] from
+// step N-1; it stops lighting once that segment scrolls out of the preview.
+// This is NOT a persistent history of cells the character visited.
+struct PreviewTurnPoint {
+    Cell cell;
+    int beat = 0;
+};
+std::vector<PreviewTurnPoint> PreviewTurnPoints(
+    const Chart& chart, double fractionalBeat, int lookaheadBeats);
 RouteStep SampleRouteStep(const Chart& chart, int beat);
 
 } // namespace locus::core

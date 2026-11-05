@@ -107,12 +107,23 @@ int main() {
                      "only arrows perpendicular to the incoming route are valid");
     }
 
-    const auto earlyGlow = ReachedTurnCells(early, -3);
-    const auto atTurn = ReachedTurnCells(early, -2);
-    const auto lit = ReachedTurnCells(early, 0);
-    ok &= Expect(earlyGlow.empty() && atTurn.size() == 1 &&
-                 lit.size() == 2,
-                 "authored turn grid points light up on arrival, not beforehand");
+    // Preview highlights *future* turn junctions before arrival, and turns
+    // them off as soon as their part of the line leaves the one-bar window.
+    const auto demoBefore = PreviewTurnPoints(demo, 0.25, 4);
+    const auto demoApproach = PreviewTurnPoints(demo, 1.25, 4);
+    const auto demoAfter = PreviewTurnPoints(demo, 3.25, 4);
+    const auto demoGone = PreviewTurnPoints(demo, 6.25, 4);
+    ok &= Expect(demoBefore.size() == 1 && demoBefore[0].beat == 2 &&
+                 demoApproach.size() == 2 &&
+                 demoApproach[0].beat == 2 && demoApproach[1].beat == 5 &&
+                 demoAfter.size() == 1 && demoAfter[0].beat == 5 &&
+                 demoGone.size() == 1 && demoGone[0].beat == 8,
+                 "only turn points touched by the one-bar preview glow");
+    ok &= Expect(PreviewTurnPoints(early, -3.25, 4).size() == 2 &&
+                 PreviewTurnPoints(early, 1.25, 4).empty(),
+                 "negative beats and earlier turn dots also respect preview bounds");
+    ok &= Expect(PreviewTurnPoints(demo, 0.0, 0).empty(),
+                 "zero lookahead does not light any junctions");
 
     Chart beatZeroTurn;
     beatZeroTurn.start = Cell{0, 0};

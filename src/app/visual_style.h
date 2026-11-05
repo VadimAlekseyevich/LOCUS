@@ -15,8 +15,8 @@ struct RouteVisualStyle {
     Color combinedTrajectory{255, 117, 125, 255};
     Color routeOutline{49, 13, 24, 245};
     Color reachedTurnPoint{255, 63, 72, 255};
-    static constexpr int lookaheadBeats = 8; // Two bars of 4/4.
-    static constexpr int fadeBeats = 4; // Far bar fades in during one bar.
+    static constexpr int lookaheadBeats = 4; // One bar of 4/4.
+    static constexpr int fadeBeats = 4; // Linearly fade one bar into view.
     float editorNextStepWidth = 6.0f;
     float gameNextStepWidth = 5.0f;
     float outlineScale = 1.8f;
@@ -32,8 +32,8 @@ struct EditorRouteLayout {
 
 inline constexpr RouteVisualStyle kDefaultRouteVisualStyle{};
 
-// The next four beats are fully red; beats 4..8 ahead fade linearly from
-// full to invisible. The parameter is measured in beats, not frames.
+// One bar in total. Opacity rises linearly from zero at four beats ahead
+// to fully red at the current beat. Measured in beats, not frames.
 inline float TrajectoryOpacity(double beatsAhead) noexcept {
     if (beatsAhead <= RouteVisualStyle::lookaheadBeats -
                           RouteVisualStyle::fadeBeats) return 1.0f;

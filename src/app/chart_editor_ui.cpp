@@ -322,9 +322,10 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
         }
     };
     const auto& style = kDefaultRouteVisualStyle;
-    // Two full bars ahead. The farthest bar fades linearly from invisible
-    // to solid red as its turns approach within four beats.
-    for (int ahead = core::kMaxGridSize / 2; ahead >= 1; --ahead) {
+    // One bar TOTAL: the current step plus only three future steps.
+    // The far edge fades in as the playing cursor approaches.
+    for (int ahead = RouteVisualStyle::lookaheadBeats - 1;
+         ahead >= 1; --ahead) {
         const int target = beat + ahead;
         if (target >= chart.lengthBeats) continue;
         const float opacity = TrajectoryOpacity(target - bounded);
@@ -347,13 +348,17 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
             DrawCircleV(position, dot * 0.41f, Color{207, 221, 234, 255});
         }
     }
-    // Red turn junctions light up only once the route reaches those beats.
-    for (const auto& cell : core::ReachedTurnCells(chart, beat)) {
-        const Vector2 point = grid.Point(cell);
+    // A turn point glows when the current/future red path first touches it,
+    // not permanently after the character has passed through its cell.
+    for (const auto& turn : core::PreviewTurnPoints(
+             chart, bounded, RouteVisualStyle::lookaheadBeats)) {
+        const Vector2 point = grid.Point(turn.cell);
+        const float opacity = turn.beat <= beat
+            ? 1.0f : TrajectoryOpacity(turn.beat - 1 - bounded);
         DrawCircleV(point, std::min(11.0f, grid.step * 0.39f),
-                    style.reachedTurnPoint);
+                    WithOpacity(style.reachedTurnPoint, opacity));
         DrawCircleV(point, std::min(4.0f, grid.step * 0.16f),
-                    Color{255, 225, 228, 255});
+                    WithOpacity(Color{255, 225, 228, 255}, opacity));
     }
     const Vector2 start = grid.Point(chart.start);
     const float markerRadius = std::min(13.0f, grid.step * 0.39f);
