@@ -6,15 +6,34 @@ LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete 
 
 ## Next: play and make custom charts
 
-The owner accepted the first playable prototype after a complete Windows run with **7 Perfect, 2 Good, 0 Bad and 0 Miss** (9/9 turns). The current [short roadmap](mvp/ROADMAP.md) has five outcome-based milestones: local WAV/MP3 playback, external JSON chart loading, basic chart editor, save/reopen/test-play, and Windows usability/distribution. **M-01 and M-02 are implemented: songs can now be listened to or played with a JSON chart; M-03 (the in-game chart editor) is next.** There is no mandatory benchmarking, no ZIP requirement, and no repeated prototype approval gate.
+The owner accepted the first playable prototype after a complete Windows run with **7 Perfect, 2 Good, 0 Bad and 0 Miss** (9/9 turns). The current [short roadmap](mvp/ROADMAP.md) has five outcome-based milestones: local WAV/MP3 playback, external JSON chart loading, basic chart editor, save/reopen/test-play, and Windows usability/distribution. **M-01–M-03 are implemented: music listening, playing JSON charts and editing beats/turns in LOCUS. M-04 (saving, reopening and test-playing edits) is next.** There is no mandatory benchmarking, no ZIP requirement, and no repeated prototype approval gate.
+
+## Edit beats and turns inside LOCUS (M-03)
+
+From **Home**, press **E** to open the editor. Click any dot on the 4×4 grid to set the **starting position**; the chart's real route preview updates immediately. Click a beat on the bottom timeline (or use **Left/Right arrows**) to select it, then press **F** for a left turn or **J** for a right turn. **Delete/Backspace** removes the selected turn. **Shift+Left/Right** moves an existing turn by one beat without overwriting another event. The timeline automatically moves to the next 16-beat page as you advance.
+
+The editor also has clickable `−` / `+` controls, with keyboard shortcuts:
+
+| Setting | Keys | Adjustment |
+| --- | --- | --- |
+| BPM | **Z / X** | −1 / +1 BPM (30–300) |
+| Offset | **N / M** | −10 / +10 **milliseconds** |
+| Fine offset | **Shift+N / Shift+M** | −1 / +1 **millisecond** |
+| Starting direction | **Q / E** | Turn heading left / right |
+| Chart length | **[ / ]** | −16 / +16 beats; existing turns are not silently deleted |
+| Go back | **H** | Return Home; current draft remains in memory |
+
+To edit a loaded song chart, first open it with **C**, return Home with **H**, and press **E**. Otherwise the editor starts with an empty 32-beat draft at 120 BPM, offset **0 ms**. There is no need to edit JSON manually just to arrange the timeline.
+
+**Important M-03 limitation:** The editor is currently an **in-memory draft only**. Edits persist while LOCUS stays open, but **cannot yet be saved or test-played from the editor**. Closing the application discards unsaved edits. **M-04 will provide Save, Open and Test Play**, using this same editor data. The ordinary demo and manually loaded JSON levels are unaffected.
 
 ## Load and play your own JSON chart (M-02)
 
 On **Home**, press **C** to open a local `.locus.json` / `.json` chart. The chart must contain an `audioPath` pointing to a **WAV/MP3 in the chart folder or a subfolder**, plus its beat map. LOCUS loads the song, moves the same 4×4 marker along the authored route, judges **F = Left / J = Right**, and shows the normal Results screen at song end. **Space** pauses/resumes both audio and chart, **R** restarts the selected chart, and **H** returns Home. From Results, **Enter/R** plays the same chart again. **Enter on Home always starts the built-in demo**; **O** remains the listening-only music picker.
 
-**Try the included sample chart:** Copy [`mvp/examples/first-song.locus.json`](mvp/examples/first-song.locus.json) into a folder with your own MP3 (at least 16 seconds long), rename that file to `song.mp3`, then press **C** and choose `first-song.locus.json`. This sample is authored at **120 BPM**, so its F/J turns will align musically only if the chosen song actually matches 120 BPM and beat zero at its start. Edit its `bpm`, `offsetSeconds` and turns manually until M-03's editor arrives. For another filename, change `audioPath` accordingly. No music is included in the repository or uploaded.
+**Try the included sample chart:** Copy [`mvp/examples/first-song.locus.json`](mvp/examples/first-song.locus.json) into a folder with your own MP3 (at least 16 seconds long), rename that file to `song.mp3`, then press **C** and choose `first-song.locus.json`. This sample is authored at **120 BPM**, so its F/J turns will align musically only if the chosen song actually matches 120 BPM and beat zero at its start. Press **E** on Home to open the in-game editor for BPM, millisecond offset, start cell/direction and turns. **Saving those edits is M-04**, so they currently remain in memory only. For another filename, change `audioPath` accordingly. No music is included in the repository or uploaded.
 
-**Format v1:** Required fields are `formatVersion: 1`, `title`, `audioPath`, `bpm`, `offsetSeconds`, `grid: {width:4,height:4}`, `start: {x,y,heading}`, `previewLeadBeats`, and an ordered `turns` array. Each event is `{"beat": 2, "turn": "right"}`, with unique, ascending nonnegative integer beats. Turn at beat zero takes effect **before** the outgoing step. `offsetSeconds` is the audio time at chart beat zero: positive values delay the chart, negative values create silent preroll before the song starts. See [the original v1 format specification](mvp/architecture/CHART_FORMAT.md).
+**Format v1:** Required fields are `formatVersion: 1`, `title`, `audioPath`, `bpm`, **`offsetMs`**, `grid: {width:4,height:4}`, `start: {x,y,heading}`, `previewLeadBeats`, and an ordered `turns` array. A previously saved chart with `offsetSeconds` also opens normally, but **exactly one** of the two offset fields may be present. Each event is `{"beat": 2, "turn": "right"}`, with unique, ascending nonnegative integer beats. Turn at beat zero takes effect **before** the outgoing step. `offsetMs` is the signed audio time in **milliseconds** at chart beat zero (e.g. `250` = `0.25` seconds): positive values delay the chart, negative values create silent preroll before the song starts. See [the original v1 format specification](mvp/architecture/CHART_FORMAT.md).
 
 Malformed versions, unknown or duplicate fields, invalid beats, missing WAV/MP3 files, unsafe relative paths and songs too short for scheduled turns produce a readable error instead of starting a broken level. Junctions/symlinks that escape the chart folder are rejected. Playback remains **local**; no copying or uploading. Windows CI tests parsing, beat timing and compilation headlessly; the exact feel with your music must still be checked on a real Windows computer.
 
@@ -133,7 +152,7 @@ The final playable game and its Windows installer are future roadmap tasks. The 
 
 ## Production foundation and first blank window (F-01–F-05)
 
-**Stage 1 architecture/stack approved by the owner on 2026-11-04.** The root `CMakeLists.txt` builds the production Windows executable (`locus.exe`) and pure C++17 game-core library (`locus_core`). **G-06 now implements the complete 16-second demo session** in a 960×540 raylib window; Home, Play and Results are functional, while Editor remains a placeholder. **Esc/X** closes cleanly. The `--foundation-check` and `--session-check` flags run headless diagnostics in CI.
+**Stage 1 architecture/stack approved by the owner on 2026-11-04.** The root `CMakeLists.txt` builds the production Windows executable (`locus.exe`) and pure C++17 game-core library (`locus_core`). **G-06 now implements the complete 16-second demo session** in a 960×540 raylib window; Home, Play, Results and the M-03 Editor are functional; editor changes are in memory until M-04 adds saving. **Esc/X** closes cleanly. The `--foundation-check` and `--session-check` flags run headless diagnostics in CI.
 
 For a direct Windows Visual Studio 2022 build in Command Prompt:
 
@@ -156,7 +175,7 @@ raylib pumps native OS/window events during `EndDrawing()`; the next `PollInput(
 
 **F-06 headless check:** `locus.exe --loop-check` exercises the update/stop rules for exactly 60 simulated frames and an immediate close event, printing `LOOP_STATE_PASS frames=60` without opening a window. Windows CI runs this on every source change; it is a foundation check, not a timing or real-input latency benchmark.
 
-**F-07 debug navigation (owner-confirmed on 2026-11-04):** The owner previously confirmed F1–F4 changed screens in one window. Double-clicking the BAT retains those debug shortcuts: **F1 Home, F2 Play, F3 Editor, F4 Results**; they are disabled when launching `locus.exe` normally. The real demo can now be started with **Enter**, and the Results screen appears automatically after the track. Editor is still a placeholder. CI also checks screen transitions and the full start/Results/retry flow headlessly.
+**F-07 debug navigation (owner-confirmed on 2026-11-04):** The owner previously confirmed F1–F4 changed screens in one window. Double-clicking the BAT retains those debug shortcuts: **F1 Home, F2 Play, F3 Editor, F4 Results**; they are disabled when launching `locus.exe` normally. The real demo can now be started with **Enter**, and the Results screen appears automatically after the track. Editor is now a usable grid/timeline view (also opened by **E** on Home). CI checks route editing, screen transitions and the full start/Results/retry flow headlessly.
 
 **Text legibility improvement (2026-11-04):** The owner requested clearer placeholder text. On Windows, LOCUS now loads the **installed Segoe UI TrueType font** (Arial fallback), uses larger type and higher-contrast colors, and frees the font resource before closing the raylib window. If the system font is missing or cannot be loaded, raylib's default remains available. No Microsoft font files are copied into the repository, assets, or game package. Successful compilation does not establish that the visual appearance is satisfactory; ordinary feedback is welcome whenever the playable demo is tested.
 
