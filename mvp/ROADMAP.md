@@ -62,8 +62,9 @@ Each item should produce visible or audible progress. Add focused automated test
 
 - [ ] **G-07 — Deliver and playtest the first working prototype.**  
   Keep double-click `build_and_run.bat` launching the game, with no extra setup beyond the existing toolchain. Run the Windows build/tests, then ask the owner to actually play the demo on their PC. Fix **blocking** playability, timing or crashes discovered there. **Result:** owner confirms the demo is playable. **HUMAN GATE REQUIRED only for this real-device acceptance**, or for a genuine earlier blocker.
+  **Playtest feedback addressed (2026-11-05; local recheck pending):** Owner reported the short demo already plays well but requested a fullscreen mode, smoother line appearance and F/J controls. The game now accepts **F = Left, J = Right**, supports **F11 borderless fullscreen** and free window resizing with uniform 16:9 game canvas scaling, and progressively reveals the active line up to the moving marker while smoothly extending the farthest future preview line. Wrapped segments still split at opposite edges. The owner has **not yet confirmed these three refinements on Windows**, so G-07 remains unchecked until real-device feedback. No extra benchmarks, ZIPs or infrastructure gates are required.
 
-**Next task is G-07 (deliver and playtest the first working prototype on the owner's Windows PC).** Prefer a coherent feature per development turn, not a micromanaged series of one-line commits.
+**Next task is to finish G-07 with owner confirmation of the updated F/J controls, F11 fullscreen, and progressive lines.** Do not start a new infrastructure stage. Prefer a coherent feature per development turn, not a micromanaged series of one-line commits.
 
 ## After the game is playable — decide scope together
 
