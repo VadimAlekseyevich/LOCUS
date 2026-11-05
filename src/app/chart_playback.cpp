@@ -10,10 +10,18 @@ void ChartPlayback::Configure(double bpm, double offsetSeconds) noexcept {
     offsetSeconds_ = offsetSeconds;
 }
 
+void ChartPlayback::SetSpeed(double fraction, double monotonicSeconds) {
+    if (fraction < 0.1 || fraction > 1.0) return;
+    speed_ = fraction;
+    clock_.SetRate(fraction, monotonicSeconds);
+    audio_.SetSpeed(fraction, monotonicSeconds);
+}
+
 void ChartPlayback::Start(double monotonicSeconds) {
     Stop();
     if (!audio_.Ready()) return;
     finished_ = false;
+    audio_.SetSpeed(speed_, monotonicSeconds);
     clock_.Start(monotonicSeconds);
     playing_ = true;
     if (offsetSeconds_ >= 0.0) {
