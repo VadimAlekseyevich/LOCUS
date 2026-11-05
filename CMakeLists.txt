@@ -47,7 +47,7 @@ add_executable(locus
     src/app/chart_editor_actions.cpp
     src/app/route_renderer.cpp
 )
-target_link_libraries(locus PRIVATE locus_core raylib)
+target_link_libraries(locus PRIVATE locus_core raylib nlohmann_json::nlohmann_json)
 if(WIN32)
     target_link_libraries(locus PRIVATE comdlg32)
 endif()
@@ -158,7 +158,7 @@ if(LOCUS_BUILD_TESTS)
     )
     target_compile_features(locus_game_settings_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_game_settings_tests PRIVATE
-        raylib nlohmann_json::nlohmann_json
+        locus_core raylib nlohmann_json::nlohmann_json
     )
     add_test(NAME locus_persistent_game_settings COMMAND locus_game_settings_tests)
 
