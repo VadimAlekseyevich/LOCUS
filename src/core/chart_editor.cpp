@@ -1,0 +1,136 @@
+#include "core/chart_editor.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace locus::core {
+
+ChartEditor::ChartEditor() {
+    NewDraft();
+}
+
+void ChartEditor::NewDraft() {
+    chart_ = LoadedChart{};
+    chart_.title = "Untitled Chart";
+    chart_.audioPath = "song.mp3";
+    chart_.route = Chart{};
+    chart_.route.bpm = 120.0;
+    chart_.route.lengthBeats = 32;
+    chart_.route.start = Cell{1, 1};
+    chart_.route.initialHeading = Heading::Right;
+    chart_.route.turns.clear();
+    chart_.offsetSeconds = 0.0;
+    selectedBeat_ = 0;
+    dirty_ = false;
+}
+
+void ChartEditor::Load(const LoadedChart& source) {
+    chart_ = source;
+    selectedBeat_ = 0;
+    dirty_ = false;
+}
+
+bool ChartEditor::SelectBeat(int beat) noexcept {
+    if (beat < 0 || beat >= chart_.route.lengthBeats || selectedBeat_ == beat) return false;
+    selectedBeat_ = beat;
+    return true;
+}
+
+bool ChartEditor::ChangeBpm(int delta) noexcept {
+    const double target = chart_.route.bpm + delta;
+    if (target < 30.0 || target > 300.0 || target == chart_.route.bpm) return false;
+    chart_.route.bpm = target;
+    MarkDirty();
+    return true;
+}
+
+bool ChartEditor::ChangeOffsetMs(int deltaMs) noexcept {
+    constexpr long long kLimitMs = 3600000; // one hour; no overflow while editing
+    const double before = chart_.offsetSeconds * 1000.0;
+    if (!std::isfinite(before) || std::abs(before) > static_cast<double>(kLimitMs))
+        return false;
+    const long long current = std::llround(before);
+    const long long target = current + static_cast<long long>(deltaMs);
+    if (target < -kLimitMs || target > kLimitMs || target == current) return false;
+    chart_.offsetSeconds = static_cast<double>(target) / 1000.0;
+    MarkDirty();
+    return true;
+}
+
+bool ChartEditor::SetStart(Cell cell) noexcept {
+    if (cell.x < 0 || cell.x >= 4 || cell.y < 0 || cell.y >= 4 ||
+        (cell.x == chart_.route.start.x && cell.y == chart_.route.start.y)) return false;
+    chart_.route.start = cell;
+    MarkDirty();
+    return true;
+}
+
+void ChartEditor::RotateHeading(int quarterTurns) noexcept {
+    const int delta = (quarterTurns % 4 + 4) % 4;
+    if (delta == 0) return;
+    chart_.route.initialHeading = static_cast<Heading>(
+        (static_cast<int>(chart_.route.initialHeading) + delta) % 4);
+    MarkDirty();
+}
+
+bool ChartEditor::ChangeLength(int deltaBeats) noexcept {
+    const int current = chart_.route.lengthBeats;
+    const int next = current + deltaBeats;
+    if (next < 1 || next > 65536 || next == current) return false;
+    if (!chart_.route.turns.empty() && chart_.route.turns.back().beat >= next) return false;
+    chart_.route.lengthBeats = next;
+    selectedBeat_ = std::min(selectedBeat_, next - 1);
+    MarkDirty();
+    return true;
+}
+
+const TurnEvent* ChartEditor::SelectedTurn() const noexcept {
+    const auto& events = chart_.route.turns;
+    const auto found = std::lower_bound(
+        events.begin(), events.end(), selectedBeat_,
+        [](const TurnEvent& event, int beat) { return event.beat < beat; });
+    return (found != events.end() && found->beat == selectedBeat_) ? &*found : nullptr;
+}
+
+void ChartEditor::PutTurn(Turn turn) {
+    auto& events = chart_.route.turns;
+    const auto found = std::lower_bound(
+        events.begin(), events.end(), selectedBeat_,
+        [](const TurnEvent& event, int beat) { return event.beat < beat; });
+    if (found != events.end() && found->beat == selectedBeat_) {
+        if (found->direction == turn) return;
+        found->direction = turn;
+    } else {
+        events.insert(found, TurnEvent{selectedBeat_, turn});
+    }
+    MarkDirty();
+}
+
+bool ChartEditor::RemoveTurn() noexcept {
+    auto& events = chart_.route.turns;
+    const auto found = std::lower_bound(
+        events.begin(), events.end(), selectedBeat_,
+        [](const TurnEvent& event, int beat) { return event.beat < beat; });
+    if (found == events.end() || found->beat != selectedBeat_) return false;
+    events.erase(found);
+    MarkDirty();
+    return true;
+}
+
+bool ChartEditor::MoveTurn(int beats) noexcept {
+    if (beats == 0 || !SelectedTurn()) return false;
+    const int destination = selectedBeat_ + beats;
+    if (destination < 0 || destination >= chart_.route.lengthBeats) return false;
+    auto& events = chart_.route.turns;
+    if (std::any_of(events.begin(), events.end(),
+                    [destination](const TurnEvent& event) {
+                        return event.beat == destination;
+                    })) return false;
+    const Turn direction = SelectedTurn()->direction;
+    RemoveTurn();
+    selectedBeat_ = destination;
+    PutTurn(direction);
+    return true;
+}
+
+} // namespace locus::core
