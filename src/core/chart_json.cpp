@@ -112,10 +112,24 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             return true;
         };
         const Json document = Json::parse(text.begin(), text.end(), checkDuplicates);
-        if (!HasExactMembers(document,
-                {"formatVersion", "title", "audioPath", "bpm", "offsetSeconds",
-                 "grid", "start", "previewLeadBeats", "turns"},
-                "chart", error)) return false;
+        // offsetMs is the preferred v1 spelling. Previously authored
+        // offsetSeconds charts remain readable, but both fields are forbidden
+        // together so the beat-zero position is never ambiguous.
+        const bool hasMs = document.is_object() && document.contains("offsetMs");
+        const bool hasSeconds = document.is_object() && document.contains("offsetSeconds");
+        if (hasMs == hasSeconds) {
+            error = "offsetMs: provide exactly one of offsetMs or legacy offsetSeconds";
+            return false;
+        }
+        if (hasMs) {
+            if (!HasExactMembers(document,
+                    {"formatVersion", "title", "audioPath", "bpm", "offsetMs",
+                     "grid", "start", "previewLeadBeats", "turns"},
+                    "chart", error)) return false;
+        } else if (!HasExactMembers(document,
+                    {"formatVersion", "title", "audioPath", "bpm", "offsetSeconds",
+                     "grid", "start", "previewLeadBeats", "turns"},
+                    "chart", error)) return false;
 
         int version = 0;
         if (!IntegerInRange(document["formatVersion"], 1, 1, version,
@@ -130,10 +144,13 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             return false;
         }
         if (!Number(document["bpm"], parsed.route.bpm, "bpm", true, error) ||
-            !Number(document["offsetSeconds"], parsed.offsetSeconds,
-                    "offsetSeconds", false, error) ||
             !Number(document["previewLeadBeats"], parsed.previewLeadBeats,
                     "previewLeadBeats", true, error)) return false;
+        double offset = 0.0;
+        if (!Number(document[hasMs ? "offsetMs" : "offsetSeconds"], offset,
+                    hasMs ? "offsetMs" : "offsetSeconds", false, error))
+            return false;
+        parsed.offsetSeconds = hasMs ? offset / 1000.0 : offset;
 
         if (!HasExactMembers(document["grid"], {"width", "height"}, "grid", error))
             return false;
