@@ -12,5 +12,6 @@ struct MusicPickResult {
 
 // Native Windows file dialog. Canceling leaves the current song untouched.
 MusicPickResult ChooseLocalMusicFile();
+MusicPickResult ChooseChartFile();
 
 } // namespace locus::app
