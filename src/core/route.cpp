@@ -55,25 +55,21 @@ void HeadingDelta(Heading heading, int& dx, int& dy) noexcept {
     }
 }
 
-Cell StepInHeading(Cell cell, Heading heading,
-                   int width, int height, bool& wraps) {
-    int dx = 0, dy = 0;
-    HeadingDelta(heading, dx, dy);
-    const int x = cell.x + dx;
-    const int y = cell.y + dy;
-    wraps = x < 0 || x >= width || y < 0 || y >= height;
-    return Cell{(x + width) % width, (y + height) % height};
-}
-
-// Jump across long straight *or diagonal* runs in constant time.
-Cell AdvanceStraight(Cell cell, Heading heading, int beats,
-                     int width, int height) noexcept {
+// The route is on an unbounded integer plane. Grid dimensions are editor
+// viewport metadata, never movement boundaries or wrap periods.
+Cell AdvanceStraight(Cell cell, Heading heading, int beats) noexcept {
     if (beats <= 0) return cell;
     int dx = 0, dy = 0;
     HeadingDelta(heading, dx, dy);
-    cell.x = (cell.x + width + dx * (beats % width)) % width;
-    cell.y = (cell.y + height + dy * (beats % height)) % height;
+    cell.x += dx * beats;
+    cell.y += dy * beats;
     return cell;
+}
+
+Cell StepInHeading(Cell cell, Heading heading) noexcept {
+    int dx = 0, dy = 0;
+    HeadingDelta(heading, dx, dy);
+    return {cell.x + dx, cell.y + dy};
 }
 
 } // namespace
@@ -216,17 +212,13 @@ RouteStep SampleRouteStep(const Chart& chart, int beat) {
     for (const auto& event : chart.turns) {
         if (event.beat > beat) break;
         if (event.beat < cursor) continue;
-        cell = AdvanceStraight(cell, heading, event.beat - cursor,
-                               chart.gridWidth, chart.gridHeight);
+        cell = AdvanceStraight(cell, heading, event.beat - cursor);
         heading = HeadingAfterTurn(heading, event.direction);
         cursor = event.beat;
     }
-    cell = AdvanceStraight(cell, heading, beat - cursor,
-                           chart.gridWidth, chart.gridHeight);
-    bool wraps = false;
-    const Cell destination = StepInHeading(
-        cell, heading, chart.gridWidth, chart.gridHeight, wraps);
-    return RouteStep{cell, destination, heading, wraps,
+    cell = AdvanceStraight(cell, heading, beat - cursor);
+    const Cell destination = StepInHeading(cell, heading);
+    return RouteStep{cell, destination, heading, false,
                      chart.gridWidth, chart.gridHeight};
 }
 

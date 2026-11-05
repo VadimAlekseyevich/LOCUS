@@ -26,24 +26,17 @@ RouteStep ReferenceStep(const Chart& chart, int requestedBeat) {
     std::size_t index = 0;
     for (int beat = chart.firstBeat; beat <= requestedBeat; ++beat) {
         if (index < chart.turns.size() && chart.turns[index].beat == beat) {
-            heading = static_cast<Heading>(
-                (static_cast<int>(heading) +
-                 (chart.turns[index].direction == Turn::Right ? 1 : 3)) % 4);
+            heading = HeadingAfterTurn(heading, chart.turns[index].direction);
             ++index;
         }
-        Cell target = cell;
-        switch (heading) {
-            case Heading::Up: --target.y; break;
-            case Heading::Right: ++target.x; break;
-            case Heading::Down: ++target.y; break;
-            case Heading::Left: --target.x; break;
-        }
-        const bool wraps = target.x < 0 || target.x >= chart.gridWidth ||
-                           target.y < 0 || target.y >= chart.gridHeight;
-        target.x = (target.x + chart.gridWidth) % chart.gridWidth;
-        target.y = (target.y + chart.gridHeight) % chart.gridHeight;
+        const unsigned mask = HeadingArrowMask(heading);
+        const int dx = static_cast<int>((mask & 2u) != 0u) -
+                       static_cast<int>((mask & 8u) != 0u);
+        const int dy = static_cast<int>((mask & 4u) != 0u) -
+                       static_cast<int>((mask & 1u) != 0u);
+        const Cell target{cell.x + dx, cell.y + dy};
         if (beat == requestedBeat)
-            return {cell, target, heading, wraps,
+            return {cell, target, heading, false,
                     chart.gridWidth, chart.gridHeight};
         cell = target;
     }
@@ -57,13 +50,13 @@ bool SameStep(const RouteStep& a, const RouteStep& b) {
            a.gridWidth == b.gridWidth && a.gridHeight == b.gridHeight;
 }
 
-bool CheckEdgeWrap(Heading heading, Cell from, int toX, int toY) {
+bool CheckOutsideGrid(Heading heading, Cell from, int toX, int toY) {
     Chart chart;
     chart.start = from;
     chart.initialHeading = heading;
     chart.lengthBeats = 4;
     const RouteStep step = SampleRouteStep(chart, 0);
-    return step.wraps && CellIs(step.from, from.x, from.y) &&
+    return !step.wraps && CellIs(step.from, from.x, from.y) &&
            CellIs(step.to, toX, toY) && step.heading == heading;
 }
 
@@ -86,33 +79,33 @@ int main() {
     ok &= Expect(CellIs(turn.from, 3, 1) && CellIs(turn.to, 3, 2) &&
                      turn.heading == Heading::Down,
                  "beat two turn must happen before stepping");
-    const RouteStep wrap = SampleRouteStep(demo, 4);
-    ok &= Expect(CellIs(wrap.from, 3, 3) && CellIs(wrap.to, 3, 0) &&
-                     wrap.wraps, "bottom-edge wrap");
-    const RouteStep turnAndWrap = SampleRouteStep(demo, 5);
-    ok &= Expect(CellIs(turnAndWrap.from, 3, 0) &&
-                     CellIs(turnAndWrap.to, 0, 0) &&
-                     turnAndWrap.heading == Heading::Right &&
-                     turnAndWrap.wraps, "turn into wrap");
+    const RouteStep beyond = SampleRouteStep(demo, 4);
+    ok &= Expect(CellIs(beyond.from, 3, 3) && CellIs(beyond.to, 3, 4) &&
+                     !beyond.wraps, "moving past former bottom edge is continuous");
+    const RouteStep turned = SampleRouteStep(demo, 5);
+    ok &= Expect(CellIs(turned.from, 3, 4) &&
+                     CellIs(turned.to, 4, 4) &&
+                     turned.heading == Heading::Right &&
+                     !turned.wraps, "turning beyond the old edge stays in world space");
 
-    ok &= Expect(CheckEdgeWrap(Heading::Up, Cell{2, 0}, 2, 3),
-                 "top-edge wrap");
-    ok &= Expect(CheckEdgeWrap(Heading::Right, Cell{3, 2}, 0, 2),
-                 "right-edge wrap");
-    ok &= Expect(CheckEdgeWrap(Heading::Down, Cell{1, 3}, 1, 0),
-                 "bottom-edge wrap");
-    ok &= Expect(CheckEdgeWrap(Heading::Left, Cell{0, 1}, 3, 1),
-                 "left-edge wrap");
+    ok &= Expect(CheckOutsideGrid(Heading::Up, Cell{2, 0}, 2, -1),
+                 "top edge has no teleport");
+    ok &= Expect(CheckOutsideGrid(Heading::Right, Cell{3, 2}, 4, 2),
+                 "right edge has no teleport");
+    ok &= Expect(CheckOutsideGrid(Heading::Down, Cell{1, 3}, 1, 4),
+                 "bottom edge has no teleport");
+    ok &= Expect(CheckOutsideGrid(Heading::Left, Cell{0, 1}, -1, 1),
+                 "left edge has no teleport");
 
     Chart large;
     large.gridWidth = 8;
     large.gridHeight = 8;
     large.start = {7, 7};
     large.initialHeading = Heading::Right;
-    const RouteStep largeWrap = SampleRouteStep(large, 0);
-    ok &= Expect(largeWrap.wraps && CellIs(largeWrap.to, 0, 7) &&
-                 largeWrap.gridWidth == 8 && largeWrap.gridHeight == 8,
-                 "8x8 route wraps at x=7, not the old 4x4 boundary");
+    const RouteStep beyondLarge = SampleRouteStep(large, 0);
+    ok &= Expect(!beyondLarge.wraps && CellIs(beyondLarge.to, 8, 7) &&
+                 beyondLarge.gridWidth == 8 && beyondLarge.gridHeight == 8,
+                 "8x8 editor grid size does not impose a movement edge");
     large.start = {4, 4};
     ok &= Expect(!SampleRouteStep(large, 0).wraps &&
                  CellIs(SampleRouteStep(large, 0).to, 5, 4),
@@ -122,8 +115,8 @@ int main() {
     large.start = {5, 9};
     large.initialHeading = Heading::Down;
     const RouteStep rectangle = SampleRouteStep(large, 0);
-    ok &= Expect(rectangle.wraps && CellIs(rectangle.to, 5, 0),
-                 "rectangular 6x10 route supports independent dimensions");
+    ok &= Expect(!rectangle.wraps && CellIs(rectangle.to, 5, 10),
+                 "rectangular editor window cannot wrap movement");
 
     Chart early;
     early.firstBeat = -4;
@@ -170,8 +163,8 @@ int main() {
     beatZeroTurn.turns.push_back(TurnEvent{0, Turn::Left});
     const RouteStep initial = SampleRouteStep(beatZeroTurn, 0);
     ok &= Expect(initial.heading == Heading::Left &&
-                     CellIs(initial.to, 3, 0) && initial.wraps,
-                 "beat-zero turn applied to outgoing step");
+                     CellIs(initial.to, -1, 0) && !initial.wraps,
+                 "beat-zero turn exits into negative world coordinates");
 
     for (int beat = 0; beat < demo.lengthBeats; ++beat) {
         const RouteStep a = SampleRouteStep(demo, beat);
@@ -182,8 +175,8 @@ int main() {
                      "determinism after repeated random-access samples");
     }
 
-    // Compare the optimized sampler with the original beat-by-beat
-    // reference across different field sizes, offsets and note densities.
+    // Compare optimized sparse-event sampler with independent beat stepping
+    // across different editor grid sizes, offsets and turn densities.
     for (int variation = 0; variation < 6; ++variation) {
         Chart stress;
         stress.gridWidth = variation % 2 == 0 ? 2 : 13;
@@ -225,8 +218,8 @@ int main() {
         // Expected.
     }
 
-    // Eight-direction deterministic geometry: diagonal uses one beat and
-    // advances both axes by one, including wrapping at both edges.
+    // Eight-direction deterministic geometry: one diagonal beat changes
+    // both axes even when coordinates leave the editor grid.
     Chart diagonal;
     diagonal.start = {3, 0};
     diagonal.initialHeading = Heading::Right;
@@ -237,14 +230,14 @@ int main() {
     const auto diagonal1 = SampleRouteStep(diagonal, 1);
     const auto diagonal2 = SampleRouteStep(diagonal, 2);
     ok &= Expect(diagonal0.heading == Heading::UpRight &&
-                 diagonal0.to.x == 0 && diagonal0.to.y == 3 &&
-                 diagonal0.wraps &&
-                 diagonal1.from.x == 0 && diagonal1.from.y == 3 &&
-                 diagonal1.to.x == 1 && diagonal1.to.y == 2 &&
-                 !diagonal1.wraps &&
+                 CellIs(diagonal0.from, 3, 0) &&
+                 CellIs(diagonal0.to, 4, -1) && !diagonal0.wraps &&
+                 CellIs(diagonal1.from, 4, -1) &&
+                 CellIs(diagonal1.to, 5, -2) &&
                  diagonal2.heading == Heading::Down &&
-                 diagonal2.from.x == 1 && diagonal2.from.y == 2,
-                 "45 and 135 degree turn events drive diagonal routing and dual-axis wrap");
+                 CellIs(diagonal2.from, 5, -2) &&
+                 CellIs(diagonal2.to, 5, -1),
+                 "45 and 135 degree changes preserve world-space continuity");
     ok &= Expect(HeadingAfterTurn(Heading::Right, Turn::Left) == Heading::Up &&
                  HeadingAfterTurn(Heading::Right, Turn::Right) == Heading::Down &&
                  HeadingAfterTurn(Heading::UpRight, Turn::Left45) == Heading::Up &&
@@ -260,11 +253,31 @@ int main() {
     longDiagonal.initialHeading = Heading::DownRight;
     longDiagonal.lengthBeats = 32000;
     const auto longStep = SampleRouteStep(longDiagonal, 25001);
-    ok &= Expect(longStep.from.x == 1 && longStep.from.y == 5 &&
-                 longStep.to.x == 2 && longStep.to.y == 0 && longStep.wraps,
-                 "long diagonal straight run uses modulo on both axes");
+    ok &= Expect(longStep.from.x == 25001 && longStep.from.y == 25001 &&
+                 longStep.to.x == 25002 && longStep.to.y == 25002 &&
+                 !longStep.wraps,
+                 "long diagonal run crosses 25000 cells without any modulo");
+
+    // Changing the editor-only grid metadata cannot change the path.
+    Chart smallView = longDiagonal;
+    smallView.gridWidth = 2;
+    smallView.gridHeight = 2;
+    const RouteStep smallResult = SampleRouteStep(smallView, 25001);
+    ok &= Expect(CellIs(smallResult.from, longStep.from.x, longStep.from.y) &&
+                 CellIs(smallResult.to, longStep.to.x, longStep.to.y) &&
+                 !smallResult.wraps,
+                 "editor grid viewport has no influence on infinite trajectory");
+
+    Chart empty;
+    empty.start = {0, 0};
+    empty.initialHeading = Heading::Left;
+    empty.lengthBeats = 65536;
+    const RouteStep negativeWorld = SampleRouteStep(empty, 65535);
+    ok &= Expect(CellIs(negativeWorld.from, -65535, 0) &&
+                 CellIs(negativeWorld.to, -65536, 0),
+                 "65k-beat straight run extends to negative world coordinates");
 
     if (!ok) return 1;
-    std::cout << "DEMO_ROUTE_PASS beats=32 wraps=4-directions\n";
+    std::cout << "DEMO_ROUTE_PASS infinite-plane=1 headings=8 sparse-sampling=1\n";
     return 0;
 }

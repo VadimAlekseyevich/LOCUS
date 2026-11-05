@@ -160,14 +160,17 @@ int main() {
     ok &= Check(chart.SelectedBeat() == chart.Data().route.firstBeat,
                 "timeline navigation clamps to derived earliest song beat");
 
-    // The main grid fits the requested 8x8 geometry. Center at 448,282.
-    // 240-pixel span across 7 steps => cell (2,3) at about 397,265.
-    chart.SelectBeat(20);
-    ApplyEditorControls(chart, ui, Click(397, 265));
-    ok &= Check(chart.Data().route.start.x == 2 &&
-                chart.Data().route.start.y == 3 &&
+    // The editor grid follows the route camera but keeps clickable nodes.
+    // At the first beat the marker is at start (7,7), centered at 448,282.
+    // Clicking one grid unit up-left changes start to (6,6).
+    chart.SelectBeat(chart.Data().route.firstBeat);
+    const float editorStep = 240.0f / 7.0f;
+    ApplyEditorControls(chart, ui,
+                        Click(448.0f - editorStep, 282.0f - editorStep));
+    ok &= Check(chart.Data().route.start.x == 6 &&
+                chart.Data().route.start.y == 6 &&
                 chart.SelectedBeat() == chart.Data().route.firstBeat,
-                "clicking an 8x8 dot resets to the earliest available song beat");
+                "camera-following editor lattice keeps start-node editing working");
 
     const Vector2 mapped = EditorVirtualMouse({1920, 1080}, 3840, 2160);
     ok &= Check(std::abs(mapped.x - 480) < 1e-4 &&

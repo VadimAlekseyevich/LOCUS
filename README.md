@@ -1,5 +1,27 @@
 # LOCUS
 
+## Infinite world and stationary player (current gameplay)
+
+**No Wrap, boundaries, teleportation, or grid in PLAY/TEST.** All eight
+headings advance the authored route on an unbounded 2D plane; a diagonal
+moves one world unit along each active axis per beat. A camera translates the
+red path so the character remains **fixed at the centre of the playable area**
+while the world moves underneath it. The camera never rotates and its position
+comes directly from the *fractional music beat*, not from a delayed
+screen-following animation. Turns on 45°, 90°, or 135° therefore change the
+world's scroll direction, but cannot cause a camera position jump.
+
+In normal **PLAY** and **TEST** from the editor, **there are no grey grid
+lines or grid-node dots**. Only the red trajectory, large red turn junction
+points, centred player and the gameplay hit statistics appear. The grid
+remains visible in the **ROUTE editor**, scrolling below the preview so
+even long songs are still editable. Its persisted `grid.width/height` values
+only control **editor grid density**, not travel distance or world edges.
+Existing version-1 charts and timing/turn event definitions are unchanged,
+although paths previously wrapping now extend naturally beyond the former
+grid instead.
+
+
 ## Gameplay HUD and settings layout
 
 Normal **PLAY** now focuses on the enlarged route field, moving marker and

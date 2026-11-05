@@ -2,7 +2,7 @@
 
 **Task:** A-05 — Define the first chart schema  
 **Status:** Implemented chart v1; M-03 prefers millisecond offsets while keeping legacy charts readable  
-**Scope:** 2..16-column/row field (default 4×4), Wrap, quarter-note steps, eight-way headings and relative angle turns  
+**Scope:** Unbounded route plane, 2..16 editor grid viewport (default 4×4), quarter-note steps, eight-way headings and relative angle turns  
 **Related:** [GDD](../GDD.md), [TIMING](./TIMING.md), [BOUNDARIES](./BOUNDARIES.md), [ROADMAP](../ROADMAP.md)
 
 > This file specifies data and validation rules, not executable parser/editor code. A chart is self-contained gameplay data with a local reference to a separate music file. There is no online service or embedded music.
@@ -13,7 +13,7 @@
 - Store **starting state plus ordered turn events**, not a redundant list of every route coordinate.
 - Represent music time as **signed integer quarter-note beat indices**; negative beat indices can occur before positive audio offsets. The marker moves once per beat; a turn at beat n affects the outgoing step beginning on beat n.
 - Store **one constant BPM**, a **signed chart-to-audio offset in milliseconds**, and an explicit preview lead in beats.
-- Support **2..16 columns and 2..16 rows**, independently, with a **4×4 editor default**. This is **field geometry, not musical time signature**. Wrap remains the only boundary behavior; **there is no boundary-mode field**. Legacy 4×4 JSON remains unchanged and valid.
+- Support **2..16 columns and 2..16 rows** as an **editor-only view density**, with a **4×4 default**. They are neither a musical time signature nor boundaries. The world is infinite: there is **no Wrap or boundary mode**. Legacy JSON is still valid and retains its previously saved grid/start metadata.
 - Encode **relative left/right turns of 45°, 90° and 135°**. Legacy `left/right` means 90°. Straight movement requires no event; direct 180° reversals are disallowed.
 - Require a chart-relative audio path. Files can be played without accounts or network access.
 - Reject incompatible versions and unknown fields instead of silently ignoring data.
@@ -46,7 +46,7 @@ Suggested file name: **example.locus.json**. This is illustrative; the reference
 }
 ~~~
 
-**Interpretation:** Beat 0 occurs at audio time 0.250 s, and beat 4 occurs at 2.250 s. The initial heading Right turns Left into Up at beat 0, causing a top-to-bottom Wrap from (3,0) to (3,3). Continued Up movement returns the marker to (3,0) at beat 4, where a Right turn produces a right-to-left Wrap on the next step. The marker follows this path even when both player inputs are missed.
+**Interpretation:** Beat 0 occurs at audio time 0.250 s, and beat 4 at 2.250 s. The Right heading changes to Up at beat 0; each step continues into unbounded world coordinates, even when y becomes negative. At beat 4, Right changes the direction to the right without teleporting. The player stays screen-centred while the visible red path translates. Missing an input never alters this authored movement.
 
 An otherwise valid chart with **"turns": []** is also playable: the marker moves automatically and receives no turn judgements.
 
@@ -98,11 +98,11 @@ chartBeatAtSongSeconds(s) = (s - offsetSeconds) / secondsPerBeat
 - **Negative offsetMs**: beat 0 happens **before** the first audio sample; the transport must provide a sufficient silent preroll.
 - **Compatibility:** old JSON charts may still use `offsetSeconds` (e.g., `0.25` instead of `offsetMs: 250`). The editor always displays and adjusts the value in milliseconds.
 - Beat 0 is the beginning of the first step. A turn event **at beat 0 is legal**.
-- At each beat: first apply the relative 45°/90°/135° turn to the **incoming heading**, then travel one cell per active axis in the outgoing heading. Diagonals change both x and y by one cell in a single beat, including Wrap at either or both borders. Key presses never change the authored route.
+- At each beat: first apply the relative 45°/90°/135° turn to the **incoming heading**, then travel one world unit along each active axis in the outgoing heading. Diagonals change both x and y in one beat; there is **no modulo or Wrap**, including at former grid edges. Key presses never change the authored route.
 - On a beat with no event, keep the current heading. Store neither straight events nor calculated marker positions.
 - Missing or incorrect player input changes **judgement only**, never the route.
 - Timing-window widths, key bindings, player calibration, results, and scores belong to **session/user settings**, not the chart file.
-- The 4×4 chart in the example is only the default: for an 8×8 field, set `grid.width=8` and `grid.height=8`; the same integer beat timeline and Wrap rule apply.
+- The 4×4 chart in the example is only the editor's default viewport. Setting `grid.width=8` and `grid.height=8` changes the visible editor grid spacing; the infinite trajectory and music timeline are identical.
 
 - Constant BPM and integer beat events remain v1 limitations. No fractional event beats, tempo map, hold, Bounce, or dynamic grid change is defined by v1.
 
@@ -212,7 +212,7 @@ The implementation may report all errors or stop after one, but must **not silen
 - [x] A minimal versioned playable JSON chart is shown, including timing, audio, start pose, preview lead, and two timed relative turns.
 - [x] A valid empty-turn chart is explicitly allowed.
 - [x] A syntactically valid but schema-invalid chart and field-specific diagnostics are shown.
-- [x] The MVP is fixed 4×4, Wrap-only, one quarter-note step per beat.
+- [x] The live chart format retains 4×4 editor defaults but uses an infinite route plane, advancing one world step per beat.
 - [x] No Bounce field, extra grid dimensions, tempo/event plugins, or speculative features are introduced.
 - [x] Pure validation and file/audio integration are separate.
 

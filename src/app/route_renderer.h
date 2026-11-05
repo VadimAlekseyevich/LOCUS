@@ -13,10 +13,11 @@ struct RouteCanvas {
     float left = 0.0f;
     float top = 0.0f;
     float step = 1.0f;
+    core::GridPoint origin{}; // World position that maps to (left, top).
 
     Vector2 Position(core::GridPoint point) const noexcept {
-        return {left + static_cast<float>(point.x) * step,
-                top + static_cast<float>(point.y) * step};
+        return {left + static_cast<float>((point.x - origin.x) * step),
+                top + static_cast<float>((point.y - origin.y) * step)};
     }
     Vector2 Point(core::Cell cell) const noexcept {
         return Position({static_cast<double>(cell.x),

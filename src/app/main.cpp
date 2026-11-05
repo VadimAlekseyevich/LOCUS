@@ -266,68 +266,48 @@ struct GameplayView {
     const locus::app::GameSettings& bindings;
 };
 
-// G-04: render the charted route and marker using one fractional song beat.
-// The route is fully independent of keyboard input and rendered frame count.
-struct GameplayGrid {
-    float step;
-    float left;
-    float top;
+// The PLAY camera never rotates and follows the exact sub-beat player
+// position. We translate world points relative to it in double precision;
+// at beat 65535 there is no floating-point pan jitter or discontinuity.
+struct GameplayCamera {
+    static constexpr float kCenterX = 358.0f;
+    static constexpr float kCenterY = 271.0f;
+    static constexpr float kStep = 75.0f;
+    locus::core::GridPoint world{};
 
-    explicit GameplayGrid(const locus::core::Chart& chart) {
-        const int span = std::max(chart.gridWidth - 1, chart.gridHeight - 1);
-        // Play is intentionally a full-screen rhythm view, unlike the
-        // editor. Reserve the right side for hit statistics and maximize
-        // the field without clipping Wrap exits at the half-cell seams.
-        step = std::min(195.0f, 350.0f / static_cast<float>(std::max(1, span)));
-        left = 426.0f - static_cast<float>(chart.gridWidth - 1) * step / 2.0f;
-        top = 280.0f - static_cast<float>(chart.gridHeight - 1) * step / 2.0f;
-    }
+    GameplayCamera(const locus::core::Chart& chart, double beat)
+        : world(locus::core::RoutePositionAt(chart, beat)) {}
 
-    Vector2 Point(locus::core::Cell cell) const {
-        return {left + static_cast<float>(cell.x) * step,
-                top + static_cast<float>(cell.y) * step};
-    }
-    Vector2 Position(locus::core::GridPoint point) const {
-        return {left + static_cast<float>(point.x) * step,
-                top + static_cast<float>(point.y) * step};
+    locus::app::RouteCanvas Canvas() const noexcept {
+        return {kCenterX, kCenterY, kStep, world};
     }
 };
 
 void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     const auto& chart = gameplay.chart;
-    const GameplayGrid grid(chart);
+    const GameplayCamera camera(chart, gameplay.beat);
+    const auto canvas = camera.Canvas();
 
-    // Gameplay has its own deliberately quiet presentation. Editing
-    // instructions, next-note hints, timing data and technical transport
-    // information belong only to the editor, not the actual playfield.
-    const Color guides{43, 50, 64, 255};
-    for (int row = 0; row < chart.gridHeight; ++row) {
-        DrawLineEx(grid.Point({0, row}),
-                   grid.Point({chart.gridWidth - 1, row}), 1.5f, guides);
-    }
-    for (int column = 0; column < chart.gridWidth; ++column) {
-        DrawLineEx(grid.Point({column, 0}),
-                   grid.Point({column, chart.gridHeight - 1}), 1.5f, guides);
-    }
+    // Scissor is in physical window pixels; raylib's outer Camera2D already
+    // maps our virtual 960x540 UI to these coordinates.
+    const float scale = std::min(static_cast<float>(GetScreenWidth()) / kWindowWidth,
+                                 static_cast<float>(GetScreenHeight()) / kWindowHeight);
+    const float offsetX = (GetScreenWidth() - kWindowWidth * scale) / 2.0f;
+    const float offsetY = (GetScreenHeight() - kWindowHeight * scale) / 2.0f;
+    constexpr Rectangle viewport{38.0f, 38.0f, 636.0f, 466.0f};
+    BeginScissorMode(
+        static_cast<int>(std::floor(offsetX + viewport.x * scale)),
+        static_cast<int>(std::floor(offsetY + viewport.y * scale)),
+        static_cast<int>(std::ceil(viewport.width * scale)),
+        static_cast<int>(std::ceil(viewport.height * scale)));
 
-    const locus::app::RouteCanvas canvas{grid.left, grid.top, grid.step};
+    // NO GRID IN PLAY OR EDITOR TEST PLAY. Only the red authored path,
+    // red turn junctions and the player fixed at the gameplay viewport centre.
     const Vector2 marker = locus::app::DrawRouteTrajectory(
         chart, gameplay.beat, canvas, locus::app::RouteRenderMode::Gameplay);
-
-    const Color pointOuter{83, 101, 122, 255};
-    const Color pointInner{169, 191, 204, 255};
-    const float dotRadius = std::min(9.0f, grid.step * 0.30f);
-    for (int y = 0; y < chart.gridHeight; ++y) {
-        for (int x = 0; x < chart.gridWidth; ++x) {
-            const Vector2 point = grid.Point({x, y});
-            DrawCircleV(point, dotRadius, pointOuter);
-            DrawCircleV(point, dotRadius * 0.45f, pointInner);
-        }
-    }
-
     locus::app::DrawRouteJunctions(
         chart, gameplay.beat, canvas, locus::app::RouteRenderMode::Gameplay);
-    const float markerRadius = std::min(17.0f, grid.step * 0.47f);
+    constexpr float markerRadius = 17.0f;
     DrawCircleV(marker, markerRadius * 1.5f, Color{255, 75, 86, 45});
     DrawCircleV(marker, markerRadius, Color{255, 140, 149, 255});
     DrawCircleV(marker, markerRadius * 0.33f, Color{245, 253, 255, 255});
@@ -335,9 +315,9 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
         locus::app::DrawPlayerHitFlash(
             marker, markerRadius, gameplay.hitFlash.Sample(now));
     }
+    EndScissorMode();
 
-    // The only persistent HUD is the four judgement counters. The latest
-    // judgement is transient feedback, not an editor diagnostic overlay.
+    // The only permanent PLAY overlay: live judgement statistics.
     const auto& counts = gameplay.judge.Counts();
     DrawTextLabel(font, "HITS", {703.0f, 160.0f}, 22.0f,
                   Color{157, 226, 221, 255});
@@ -740,19 +720,29 @@ bool CheckPresentationLayout() {
             if (button.y < previous.y + previous.height) return false;
         }
     }
-    // The gameplay board must fit fully to the left of the HUD, including
-    // wrap seams extending by half a cell beyond either edge.
+    // A moving world MUST project the interpolated marker to exactly the
+    // same screen point regardless of chart size, heading or beat.
     for (int dimensions : {2, 4, 8, 16}) {
         auto chart = locus::core::MakeDemoChart();
         chart.gridWidth = dimensions;
         chart.gridHeight = dimensions;
-        const GameplayGrid grid(chart);
-        if (grid.left - grid.step * 0.5f < 0.0f ||
-            grid.left + (dimensions - 0.5f) * grid.step >= 690.0f ||
-            grid.top - grid.step * 0.5f < 0.0f ||
-            grid.top + (dimensions - 0.5f) * grid.step >= kWindowHeight)
-            return false;
+        for (double beat : {0.0, 1.5, 4.75, 15.125, 30.5}) {
+            const GameplayCamera camera(chart, beat);
+            const Vector2 projected = camera.Canvas().Position(camera.world);
+            if (std::abs(projected.x - GameplayCamera::kCenterX) > 0.001f ||
+                std::abs(projected.y - GameplayCamera::kCenterY) > 0.001f)
+                return false;
+        }
     }
+    auto longRoute = locus::core::MakeDemoChart();
+    longRoute.lengthBeats = 65536;
+    longRoute.turns.clear();
+    longRoute.initialHeading = locus::core::Heading::UpRight;
+    const GameplayCamera farCamera(longRoute, 65321.625);
+    const auto farSample = farCamera.Canvas().Position(farCamera.world);
+    if (std::abs(farSample.x - GameplayCamera::kCenterX) > 0.001f ||
+        std::abs(farSample.y - GameplayCamera::kCenterY) > 0.001f)
+        return false;
     return true;
 }
 

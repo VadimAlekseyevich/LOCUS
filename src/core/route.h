@@ -32,7 +32,8 @@ struct TurnEvent {
     Turn direction = Turn::Left;
 };
 
-// Grid dimensions are independent of musical meter.
+// Grid dimensions now describe only the editor's visible grid window.
+// They never constrain the route or cause world-space wrapping.
 constexpr int kMinGridSize = 2;
 constexpr int kMaxGridSize = 16;
 
@@ -53,7 +54,7 @@ struct RouteStep {
     Cell from;
     Cell to;
     Heading heading;
-    bool wraps = false;
+    bool wraps = false; // Retained for old aggregate callers; ALWAYS false.
     int gridWidth = 4;
     int gridHeight = 4;
 };
@@ -62,9 +63,10 @@ struct RouteStep {
 // The original 120 BPM click track is generated in src/core/demo_audio.cpp.
 Chart MakeDemoChart();
 
-// Pure deterministic eight-way route: apply a charted turn at the beat boundary,
-// then move one point in the new heading, wrapping at each grid edge.
-// Input/judgements never influence the result.
+// Pure deterministic eight-way route on an infinite plane: apply a turn at
+// the beat boundary, then advance one unit on each active axis. No wrapping,
+// teleportation, camera limits or connection to the editor grid dimensions.
+// Input/judgements never influence the route.
 // Throws std::out_of_range outside [chart.firstBeat, chart.lengthBeats).
 // P[chart.firstBeat] is chart.start, and each beat is one outgoing step.
 std::optional<Turn> ArrowToTurn(Heading incoming, Heading pressed) noexcept;

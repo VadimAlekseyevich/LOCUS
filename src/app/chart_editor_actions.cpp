@@ -404,13 +404,17 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             draft.SelectBeat(beat);
         } else if (ui.tab == EditorTab::Route) {
             const auto& chart = draft.Data().route;
-            const EditorGrid grid(chart);
+            const EditorGrid grid(chart, ViewBeat(draft, input.timelineViewBeat));
             const float tolerance = std::clamp(grid.step * 0.38f, 7.0f, 19.0f);
             for (int y = 0; y < chart.gridHeight; ++y)
                 for (int x = 0; x < chart.gridWidth; ++x) {
                     const auto center = grid.Point(core::Cell{x, y});
                     if (std::abs(mouse.x - center.x) <= tolerance &&
-                        std::abs(mouse.y - center.y) <= tolerance) {
+                        std::abs(mouse.y - center.y) <= tolerance &&
+                        mouse.x >= kGridCenterX - kGridMaxSpan * 0.5f &&
+                        mouse.x <= kGridCenterX + kGridMaxSpan * 0.5f &&
+                        mouse.y >= kGridCenterY - kGridMaxSpan * 0.5f &&
+                        mouse.y <= kGridCenterY + kGridMaxSpan * 0.5f) {
                         if (draft.SetStart({x, y})) {
                             draft.SelectBeat(draft.Data().route.firstBeat);
                             action.changedChart = true;

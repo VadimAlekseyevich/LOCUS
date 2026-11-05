@@ -90,18 +90,20 @@ inline Rectangle RouteSpeedBounds(int index) {
 
 inline bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(pos, bounds); }
 
+// The ROUTE editor keeps a scrolling lattice in an otherwise infinite world.
+// Its width/height determine grid density, not boundaries or Wrap behaviour.
 struct EditorGrid {
-    float left = 0.0f, top = 0.0f, step = 1.0f;
+    float left = kGridCenterX, top = kGridCenterY, step = 1.0f;
+    core::GridPoint origin{};
 
-    explicit EditorGrid(const core::Chart& chart) {
-        const int maxSteps = std::max(chart.gridWidth - 1, chart.gridHeight - 1);
-        step = kGridMaxSpan / static_cast<float>(std::max(1, maxSteps));
-        left = kGridCenterX - (chart.gridWidth - 1) * step * 0.5f;
-        top = kGridCenterY - (chart.gridHeight - 1) * step * 0.5f;
+    explicit EditorGrid(const core::Chart& chart, double beat) {
+        const int span = std::max(chart.gridWidth - 1, chart.gridHeight - 1);
+        step = kGridMaxSpan / static_cast<float>(std::max(1, span));
+        origin = core::RoutePositionAt(chart, beat);
     }
     Vector2 Point(core::GridPoint point) const {
-        return {left + static_cast<float>(point.x) * step,
-                top + static_cast<float>(point.y) * step};
+        return {left + static_cast<float>((point.x - origin.x) * step),
+                top + static_cast<float>((point.y - origin.y) * step)};
     }
     Vector2 Point(core::Cell point) const {
         return Point(core::GridPoint{static_cast<double>(point.x),

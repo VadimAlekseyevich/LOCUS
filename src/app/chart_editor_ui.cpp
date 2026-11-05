@@ -81,29 +81,46 @@ void DrawTextField(Font font, Rectangle rect, const char* label,
 
 void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBeat) {
     const auto& chart = draft.Data().route;
-    const EditorGrid grid(chart);
-    for (int y = 0; y < chart.gridHeight; ++y) {
-        DrawLineEx(grid.Point(core::Cell{0, y}),
-                   grid.Point(core::Cell{chart.gridWidth - 1, y}),
-                   1.5f, Color{51, 62, 79, 255});
-    }
-    for (int x = 0; x < chart.gridWidth; ++x) {
-        DrawLineEx(grid.Point(core::Cell{x, 0}),
-                   grid.Point(core::Cell{x, chart.gridHeight - 1}),
-                   1.5f, Color{51, 62, 79, 255});
-    }
-
     const double bounded = std::clamp(previewBeat,
                                       static_cast<double>(chart.firstBeat),
                                       static_cast<double>(chart.lengthBeats));
-    const RouteCanvas canvas{grid.left, grid.top, grid.step};
+    const EditorGrid grid(chart, bounded);
+    const RouteCanvas canvas{grid.left, grid.top, grid.step, grid.origin};
+
+    // The grid is retained only in ROUTE; it is a scrolling view over the
+    // limitless world, not a wall that routes bounce from or teleport across.
+    const float x0 = kGridCenterX - kGridMaxSpan * 0.5f;
+    const float y0 = kGridCenterY - kGridMaxSpan * 0.5f;
+    const float x1 = x0 + kGridMaxSpan, y1 = y0 + kGridMaxSpan;
+    const float scale = std::min(static_cast<float>(GetScreenWidth()) / kVirtualWidth,
+                                 static_cast<float>(GetScreenHeight()) / kVirtualHeight);
+    const float ox = (GetScreenWidth() - kVirtualWidth * scale) * 0.5f;
+    const float oy = (GetScreenHeight() - kVirtualHeight * scale) * 0.5f;
+    BeginScissorMode(static_cast<int>(std::floor(ox + x0 * scale)),
+                     static_cast<int>(std::floor(oy + y0 * scale)),
+                     static_cast<int>(std::ceil(kGridMaxSpan * scale)),
+                     static_cast<int>(std::ceil(kGridMaxSpan * scale)));
+
+    const int halfCells = static_cast<int>(std::ceil(kGridMaxSpan / grid.step)) + 2;
+    const int cx = static_cast<int>(std::floor(grid.origin.x));
+    const int cy = static_cast<int>(std::floor(grid.origin.y));
+    for (int i = -halfCells; i <= halfCells; ++i) {
+        const float x = grid.Point(core::Cell{cx + i, cy}).x;
+        if (x >= x0 - 1.0f && x <= x1 + 1.0f)
+            DrawLineEx({x, y0}, {x, y1}, 1.25f, Color{51, 62, 79, 255});
+        const float y = grid.Point(core::Cell{cx, cy + i}).y;
+        if (y >= y0 - 1.0f && y <= y1 + 1.0f)
+            DrawLineEx({x0, y}, {x1, y}, 1.25f, Color{51, 62, 79, 255});
+    }
+
     const Vector2 marker = DrawRouteTrajectory(
         chart, bounded, canvas, RouteRenderMode::Editor);
-
-    const float dot = std::min(8.0f, grid.step * 0.27f);
-    for (int y = 0; y < chart.gridHeight; ++y) {
-        for (int x = 0; x < chart.gridWidth; ++x) {
-            const Vector2 position = grid.Point(core::Cell{x, y});
+    const float dot = std::min(7.0f, grid.step * 0.25f);
+    for (int j = -halfCells; j <= halfCells; ++j) {
+        for (int i = -halfCells; i <= halfCells; ++i) {
+            const Vector2 position = grid.Point(core::Cell{cx + i, cy + j});
+            if (position.x < x0 || position.x > x1 ||
+                position.y < y0 || position.y > y1) continue;
             DrawCircleV(position, dot, Color{105, 127, 148, 255});
             DrawCircleV(position, dot * 0.41f, Color{207, 221, 234, 255});
         }
@@ -111,12 +128,15 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
     DrawRouteJunctions(chart, bounded, canvas, RouteRenderMode::Editor);
     const Vector2 start = grid.Point(chart.start);
     const float markerRadius = std::min(13.0f, grid.step * 0.39f);
-    DrawCircleV(start, markerRadius * 1.32f, Color{245, 203, 112, 48});
-    DrawCircleLines(static_cast<int>(start.x), static_cast<int>(start.y),
-                    markerRadius * 1.36f, Color{246, 209, 112, 255});
+    if (start.x >= x0 && start.x <= x1 && start.y >= y0 && start.y <= y1) {
+        DrawCircleV(start, markerRadius * 1.32f, Color{245, 203, 112, 48});
+        DrawCircleLines(static_cast<int>(start.x), static_cast<int>(start.y),
+                        markerRadius * 1.36f, Color{246, 209, 112, 255});
+    }
     DrawCircleV(marker, markerRadius * 1.7f, Color{112, 219, 216, 48});
     DrawCircleV(marker, markerRadius, Color{124, 229, 225, 255});
     DrawCircleV(marker, markerRadius * 0.32f, Color{246, 251, 252, 255});
+    EndScissorMode();
 
     Label(font, TextFormat("BEAT %.2f / %d", bounded, chart.lengthBeats - 1),
           52, 405, 15, Color{158, 225, 212, 255});
@@ -255,7 +275,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
           hasAudio ? Color{178, 227, 222, 255} : Color{242, 181, 164, 255});
 
     if (ui.tab == EditorTab::Route) {
-        Label(font, TextFormat("ROUTE  /  %d x %d FIELD",
+        Label(font, TextFormat("ROUTE  /  %d x %d EDITOR GRID",
                               chart.gridWidth, chart.gridHeight),
               51, 166, 17, Color{188, 215, 227, 255});
         DrawPreviewGrid(font, draft, previewBeat);
@@ -317,11 +337,11 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Label(font, "PRACTICE SPEED: SET ON ROUTE (KEYS 1-5 WORK HERE TOO)",
               92, 374, 16, Color{172, 199, 218, 255});
     } else {
-        Label(font, "FIELD  /  GAMEPLAY GEOMETRY", 104, 169, 20,
+        Label(font, "FIELD  /  EDITOR GRID VIEW", 104, 169, 20,
               Color{239, 210, 159, 255});
         Label(font, "NOT A MUSIC TIME SIGNATURE", 548, 172, 14,
               Color{161, 187, 210, 255});
-        DrawTextField(font, kGridSize, "FIELD SIZE  W/H  (2..16)",
+        DrawTextField(font, kGridSize, "EDITOR GRID  W/H  (2..16)",
                       std::to_string(chart.gridWidth) + "/" +
                       std::to_string(chart.gridHeight), EditorField::GridSize, ui);
         DrawTextField(font, kStartCell, "START CELL X/Y  (FROM 0)",
@@ -338,7 +358,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                Color{119, 229, 188, 255});
         Label(font, "BEATS COVER THE ENTIRE SONG, INCLUDING BEFORE OFFSET.",
               104, 384, 14, Color{169, 204, 218, 255});
-        Label(font, "IF SHRINKING FAILS, MOVE THE START CELL INSIDE THE GRID.",
+        Label(font, "GRID SIZE IS DISPLAY ONLY: WORLD NEVER WRAPS.",
               104, 403, 13, Color{226, 197, 146, 255});
     }
 

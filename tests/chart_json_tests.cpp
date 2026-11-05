@@ -62,9 +62,12 @@ int main() {
         const RouteStep first = SampleRouteStep(parsed.route, 0);
         const RouteStep later = SampleRouteStep(parsed.route, 4);
         ok &= Expect(first.heading == Heading::Up &&
-                     first.to.x == 0 && first.to.y == 3 &&
-                     later.heading == Heading::Right,
-                     "loaded JSON drives unchanged deterministic Wrap route");
+                     first.from.x == 4 && first.from.y == 0 &&
+                     first.to.x == 4 && first.to.y == -1 &&
+                     later.heading == Heading::Right &&
+                     later.from.x == 4 && later.from.y == -4 &&
+                     later.to.x == 5 && later.to.y == -4,
+                     "legacy JSON now follows continuous infinite world geometry");
     }
     ok &= Expect(Reject(valid, "\"formatVersion\": 1", "\"formatVersion\": 2",
                         "formatVersion"), "rejects unsupported future schema");
@@ -251,6 +254,6 @@ int main() {
                         "start.heading"), "unknown diagonal heading spelling is rejected");
 
     if (!ok) return 1;
-    std::cout << "CHART_JSON_PASS version=1 validation=1 wrap=1 preroll=1\n";
+    std::cout << "CHART_JSON_PASS version=1 validation=1 infinite=1 preroll=1\n";
     return 0;
 }
