@@ -15,7 +15,7 @@ int main() {
         {L"C:\\Music\\song.wav", MusicFileType::Wav},
         {L"D:\\Songs\\demo.MP3", MusicFileType::Mp3},
         {L"C:\\Users\\test\\musique.WaV", MusicFileType::Wav},
-        {L"C:\\Users\\test\\песня.mp3", MusicFileType::Mp3},
+        {L"C:\\Users\\test\\\u043F\u0435\u0441\u043D\u044F.mp3", MusicFileType::Mp3},
         {L"music.mp3.exe", MusicFileType::Unsupported},
         {L"song.ogg", MusicFileType::Unsupported},
         {L"", MusicFileType::Unsupported}
