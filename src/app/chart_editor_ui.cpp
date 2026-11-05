@@ -123,6 +123,7 @@ std::string InitialValue(const core::ChartEditor& draft, EditorField field) {
 void BeginField(EditorUiState& ui, const core::ChartEditor& draft, EditorField field) {
     ui.active = field;
     ui.buffer = InitialValue(draft, field);
+    ui.replaceOnType = true; // The first character replaces the shown number.
     ui.feedback = "";
 }
 
@@ -156,6 +157,7 @@ bool CommitField(EditorUiState& ui, core::ChartEditor& draft) {
     }
     ui.active = EditorField::None;
     ui.buffer.clear();
+    ui.replaceOnType = false;
     ui.feedback.clear();
     return true;
 }
@@ -320,14 +322,17 @@ EditorControls PollEditorControls() {
 EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                                   const EditorControls& input) {
     EditorUiAction action;
-    const bool wasDirty = draft.Dirty();
     if (ui.EditingText()) {
         if (input.escape) {
             ui.active = EditorField::None;
             ui.buffer.clear();
+            ui.replaceOnType = false;
             ui.feedback.clear();
         } else if (input.backspace) {
-            if (!ui.buffer.empty()) {
+            if (ui.replaceOnType) {
+                ui.buffer.clear();
+                ui.replaceOnType = false;
+            } else if (!ui.buffer.empty()) {
                 // Drop the entire last UTF-8 codepoint, not just a trailing byte.
                 std::size_t pos = ui.buffer.size() - 1;
                 while (pos > 0 &&
@@ -336,25 +341,34 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                 ui.buffer.erase(pos);
             }
         }
-        if (!input.typedUtf8.empty() && ui.buffer.size() < 100) {
+        if (!input.typedUtf8.empty()) {
+            if (ui.replaceOnType) {
+                ui.buffer.clear();
+                ui.replaceOnType = false;
+            }
             for (unsigned char c : input.typedUtf8) {
                 if (ui.active == EditorField::Title ||
-                    c == '.' || c == '-' || (c >= '0' && c <= '9')) {
-                    if (ui.buffer.size() < 100) ui.buffer.push_back(static_cast<char>(c));
+                    c == '.' || c == ',' || c == '-' || (c >= '0' && c <= '9')) {
+                    if (ui.buffer.size() < 100)
+                        ui.buffer.push_back(static_cast<char>(
+                            c == ',' && ui.active != EditorField::Title ? '.' : c));
                 }
             }
         }
         if (input.enter || input.tab) {
-            if (CommitField(ui, draft) && input.tab)
+            const bool committed = CommitField(ui, draft);
+            action.changedChart = committed;
+            if (committed && input.tab)
                 BeginField(ui, draft, EditorField::Bpm);
         } else if (input.mouseClick) {
             const EditorField target = ClickedField(input.mouse);
             if (target != ui.active) {
-                if (CommitField(ui, draft) && target != EditorField::None)
+                const bool committed = CommitField(ui, draft);
+                action.changedChart = committed;
+                if (committed && target != EditorField::None)
                     BeginField(ui, draft, target);
             }
         }
-        action.changedChart = !wasDirty && draft.Dirty();
         return action;
     }
 
