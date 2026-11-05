@@ -3,6 +3,8 @@
 #include "core/route_view.h"
 #include "core/judgement.h"
 #include "app/demo_transport.h"
+#include "app/local_music.h"
+#include "app/music_picker.h"
 
 #include "raylib.h"
 
@@ -33,7 +35,8 @@ enum class Screen {
     Home,
     Play,
     Editor,
-    Results
+    Results,
+    Listen
 };
 
 struct FrameInput {
@@ -44,6 +47,7 @@ struct FrameInput {
     bool restartPressed = false;
     bool homePressed = false;
     bool fullscreenPressed = false;
+    bool chooseMusicPressed = false;
     bool leftPressed = false;
     bool rightPressed = false;
     double leftCapturedAt = 0.0;
@@ -66,6 +70,7 @@ const char* ScreenName(Screen screen) {
         case Screen::Play: return "Play";
         case Screen::Editor: return "Editor";
         case Screen::Results: return "Results";
+        case Screen::Listen: return "Listen";
     }
     return "Unknown";
 }
@@ -86,6 +91,7 @@ FrameInput PollInput(bool debugScreens) {
     input.restartPressed = IsKeyPressed(KEY_R);
     input.homePressed = IsKeyPressed(KEY_H);
     input.fullscreenPressed = IsKeyPressed(KEY_F11);
+    input.chooseMusicPressed = IsKeyPressed(KEY_O);
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
     input.leftPressed = IsKeyPressed(KEY_F);
@@ -316,22 +322,77 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart,
                   Color{204, 208, 222, 255});
 }
 
-void DrawHomeScreen(Font font, const locus::core::Chart& demo) {
-    DrawTextLabel(font, "THE FIRST PLAYABLE DEMO", Vector2{110.0f, 124.0f},
+void DrawHomeScreen(Font font, const locus::core::Chart& demo,
+                    const std::string& musicError) {
+    DrawTextLabel(font, "THE FIRST PLAYABLE DEMO", Vector2{110.0f, 119.0f},
                   25.0f, Color{136, 221, 218, 255});
-    DrawTextLabel(font, "FOLLOW THE RHYTHM", Vector2{110.0f, 179.0f},
+    DrawTextLabel(font, "FOLLOW THE RHYTHM", Vector2{110.0f, 172.0f},
                   47.0f, Color{232, 240, 246, 255});
-    DrawTextLabel(font, "ENTER   START DEMO", Vector2{110.0f, 274.0f},
-                  29.0f, Color{237, 218, 157, 255});
+    DrawTextLabel(font, "ENTER   PLAY BUILT-IN DEMO", Vector2{110.0f, 260.0f},
+                  27.0f, Color{237, 218, 157, 255});
+    DrawTextLabel(font, "O   OPEN LOCAL WAV / MP3", Vector2{110.0f, 312.0f},
+                  26.0f, Color{144, 224, 225, 255});
     DrawTextLabel(font, "F = LEFT   /   J = RIGHT",
-                  Vector2{110.0f, 327.0f}, 22.0f,
+                  Vector2{110.0f, 362.0f}, 21.0f,
                   Color{191, 216, 225, 255});
     DrawTextLabel(font,
                   TextFormat("%d BEATS  |  %.0f BPM  |  %d TURNS  |  NO FAIL",
                              demo.lengthBeats, demo.bpm,
                              static_cast<int>(demo.turns.size())),
-                  Vector2{110.0f, 370.0f}, 20.0f,
+                  Vector2{110.0f, 403.0f}, 19.0f,
                   Color{182, 192, 209, 255});
+    if (!musicError.empty()) {
+        DrawTextLabel(font, musicError.c_str(), Vector2{110.0f, 439.0f},
+                      17.0f, Color{241, 150, 150, 255});
+    } else {
+        DrawTextLabel(font, "LOCAL SONGS: LISTEN MODE (CHARTS COME NEXT)",
+                      Vector2{110.0f, 439.0f}, 17.0f,
+                      Color{165, 182, 203, 255});
+    }
+}
+
+void DrawLocalMusicScreen(Font font, const locus::app::LocalMusic& song,
+                          double now, const std::string& musicError) {
+    DrawTextLabel(font, "YOUR MUSIC  /  LISTEN MODE", Vector2{88.0f, 112.0f},
+                  35.0f, Color{163, 233, 228, 255});
+    DrawTextLabel(font, song.DisplayName().c_str(), Vector2{89.0f, 187.0f},
+                  25.0f, Color{231, 232, 246, 255});
+
+    const double duration = song.DurationSeconds();
+    const double elapsed = std::clamp(song.SongSeconds(now), 0.0, duration);
+    DrawRectangle(89, 255, 782, 9, Color{55, 66, 84, 255});
+    if (duration > 0.0) {
+        DrawRectangle(89, 255,
+                      static_cast<int>(782.0 * (elapsed / duration)), 9,
+                      Color{121, 223, 213, 255});
+    }
+    const int currentSeconds = static_cast<int>(elapsed);
+    const int totalSeconds = static_cast<int>(duration);
+    DrawTextLabel(font,
+                  TextFormat("%02d:%02d / %02d:%02d",
+                             currentSeconds / 60, currentSeconds % 60,
+                             totalSeconds / 60, totalSeconds % 60),
+                  Vector2{89.0f, 284.0f}, 22.0f,
+                  Color{210, 223, 234, 255});
+
+    const char* status = song.Finished() ? "TRACK COMPLETE"
+                         : song.Paused() ? "PAUSED"
+                         : song.Playing() ? "PLAYING" : "READY";
+    DrawTextLabel(font, status, Vector2{89.0f, 332.0f}, 23.0f,
+                  Color{147, 226, 222, 255});
+    DrawTextLabel(font, "SPACE  PAUSE / RESUME     R / ENTER  REPLAY",
+                  Vector2{89.0f, 378.0f}, 19.0f,
+                  Color{237, 219, 163, 255});
+    DrawTextLabel(font, "O  CHOOSE ANOTHER SONG      H  HOME",
+                  Vector2{89.0f, 411.0f}, 19.0f,
+                  Color{210, 222, 233, 255});
+    DrawTextLabel(font,
+                  musicError.empty()
+                      ? "NO TURN CHART YET - SONG PREVIEW ONLY"
+                      : musicError.c_str(),
+                  Vector2{89.0f, 446.0f}, 17.0f,
+                  musicError.empty() ? Color{173, 183, 207, 255}
+                                     : Color{241, 150, 150, 255});
 }
 
 void DrawResultsScreen(Font font, const locus::core::TurnJudge& judge,
@@ -372,7 +433,9 @@ void DrawResultsScreen(Font font, const locus::core::TurnJudge& judge,
 void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::core::Chart& demo,
                  const locus::app::DemoTransport& transport,
-                 const locus::core::TurnJudge& judge, double now) {
+                 const locus::app::LocalMusic& localSong,
+                 const locus::core::TurnJudge& judge,
+                 const std::string& musicError, double now) {
     BeginDrawing();
     ClearBackground(kBackground);
 
@@ -391,7 +454,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   Color{223, 225, 238, 255});
 
     if (state.screen == Screen::Home) {
-        DrawHomeScreen(font, demo);
+        DrawHomeScreen(font, demo, musicError);
+    } else if (state.screen == Screen::Listen) {
+        DrawLocalMusicScreen(font, localSong, now, musicError);
     } else if (state.screen == Screen::Play) {
         DrawPlayGrid(font, demo, transport, judge, now);
         if (transport.Paused()) {
@@ -589,7 +654,9 @@ int main(int argc, char** argv) {
     const locus::core::Chart demo = locus::core::MakeDemoChart();
     locus::core::TurnJudge judge(demo);
     locus::app::DemoTransport transport;
-    transport.Initialize(demo); // Failed audio output must not crash the window.
+    locus::app::LocalMusic localSong;
+    std::string musicError;
+    transport.Initialize(demo); // Owns the shared raylib audio output device.
     while (state.running) {
         const FrameInput input = PollInput(debugScreens);
         if (input.fullscreenPressed) {
@@ -600,15 +667,41 @@ int main(int argc, char** argv) {
         if (!state.running) {
             break;
         }
-        const double now = MonotonicSeconds();
+        double now = MonotonicSeconds();
+        bool loadedNewSong = false;
+        if (input.chooseMusicPressed &&
+            (state.screen == Screen::Home || state.screen == Screen::Listen)) {
+            // File dialog is modal. Freeze playback while Windows owns focus,
+            // and preserve the current song if selection fails or is canceled.
+            const bool resume = state.screen == Screen::Listen &&
+                                localSong.Playing() && !localSong.Paused();
+            if (resume) localSong.Pause(now);
+            const auto picked = locus::app::ChooseLocalMusicFile();
+            now = MonotonicSeconds();
+            if (!picked.path.empty()) {
+                if (localSong.LoadFromFile(picked.path)) {
+                    musicError.clear();
+                    state.screen = Screen::Listen;
+                    loadedNewSong = true;
+                } else {
+                    musicError = localSong.Error();
+                }
+            } else if (!picked.canceled) {
+                musicError = picked.error;
+            }
+            if (resume && !loadedNewSong) localSong.Resume(now);
+        }
+
         if (state.screen != previousScreen) {
             if (previousScreen == Screen::Play) transport.Stop();
+            if (previousScreen == Screen::Listen) localSong.Stop();
             if (state.screen == Screen::Play) {
                 judge.Reset();
                 transport.Start(now);
+            } else if (state.screen == Screen::Listen) {
+                localSong.Start(now);
             }
         } else if (state.screen == Screen::Play) {
-            // F2 (debug mode) and R both replay the entire demo.
             if (input.restartPressed ||
                 (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
                 judge.Reset();
@@ -617,8 +710,19 @@ int main(int argc, char** argv) {
                 if (transport.Paused()) transport.Resume(now);
                 else transport.Pause(now);
             }
+        } else if (state.screen == Screen::Listen) {
+            if (loadedNewSong || input.restartPressed ||
+                (input.startPressed && localSong.Finished())) {
+                localSong.Start(now);
+            } else if (input.pausePressed) {
+                if (localSong.Paused()) localSong.Resume(now);
+                else localSong.Pause(now);
+            }
         }
 
+        if (state.screen == Screen::Listen) {
+            localSong.Update(now);
+        }
         if (state.screen == Screen::Play) {
             if (transport.Playing() && !transport.Paused()) {
                 // Two simultaneous key-downs are processed left first.
@@ -640,10 +744,11 @@ int main(int argc, char** argv) {
             }
         }
         RenderFrame(state, debugScreens, uiFont.value, demo,
-                    transport, judge, MonotonicSeconds());
+                    transport, localSong, judge, musicError, MonotonicSeconds());
     }
 
-    // WAV decoder borrows in-memory PCM bytes until UnloadMusicStream().
+    // Unload both music streams before the shared raylib audio device.
+    localSong.Shutdown();
     transport.Shutdown();
     if (uiFont.owned) {
         UnloadFont(uiFont.value);
