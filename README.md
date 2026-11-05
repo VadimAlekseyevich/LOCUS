@@ -1,8 +1,12 @@
 # LOCUS
 
-A rhythm game currently in development. **We are now building the first playable demo, not completing an elaborate engineering checklist.** G-06 now provides a complete 16-second start-to-results demo with pause, retry and nine F/J turn judgements; the next step is owner playtesting. Two Windows executables exist: the **LOCUS production app** (its Play screen now shows the G-02 board and plays the original G-03 120 BPM click track, launched by double-clicking `build_and_run.bat`) and the separate **A-07 audio/input timing probe** (BAT `audio` mode).
+LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete and owner-approved (2026-11-05).** It includes nine F/J turns, music-driven movement, smooth route reveal, fullscreen, pause/retry and Results. Development now focuses on **local songs and a practical custom-chart editor**, not additional infrastructure or benchmarks. Two Windows executables exist: the **LOCUS production app** (its Play screen now shows the G-02 board and plays the original G-03 120 BPM click track, launched by double-clicking `build_and_run.bat`) and the separate **A-07 audio/input timing probe** (BAT `audio` mode).
 
 [Game Design Document](mvp/GDD.md) · **[Short playable-prototype roadmap](mvp/ROADMAP.md)** · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
+
+## Next: play and make custom charts
+
+The owner accepted the first playable prototype after a complete Windows run with **7 Perfect, 2 Good, 0 Bad and 0 Miss** (9/9 turns). The current [short roadmap](mvp/ROADMAP.md) has only **five upcoming feature milestones**: local WAV/MP3 playback, external JSON chart loading, basic chart editor, save/reopen/test-play, and Windows usability/distribution. **M-01 (local music playback) is next.** There is no mandatory benchmarking, no ZIP requirement, and no repeated prototype approval gate.
 
 ## Windows: double-click to build and run
 
