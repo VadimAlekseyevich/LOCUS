@@ -30,6 +30,7 @@ add_executable(locus
     src/app/main.cpp
     src/app/demo_transport.cpp
     src/app/local_music.cpp
+    src/app/local_file_io.cpp
     src/app/music_picker.cpp
 )
 target_link_libraries(locus PRIVATE locus_core raylib)
