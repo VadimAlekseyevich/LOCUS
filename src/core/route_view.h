@@ -29,4 +29,9 @@ struct StepView {
 // destination. No drawn line crosses the middle of the board.
 StepView ViewRouteStep(const RouteStep& step, double progress) noexcept;
 
+// Only the portion traversed so far is visible. At progress zero the line
+// has not grown; at one it matches the full authored step. Wrapped lines
+// grow to the exit seam before continuing at the opposite entry seam.
+StepView TraceRouteStep(const RouteStep& step, double progress) noexcept;
+
 } // namespace locus::core
