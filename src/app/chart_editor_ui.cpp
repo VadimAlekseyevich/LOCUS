@@ -237,12 +237,20 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
             DrawCircleV(position, 3.3f, Color{207, 221, 234, 255});
         }
     }
+    // Gold shows the *authored start*, distinct from the moving cyan marker.
+    const Vector2 start = Point(chart.start);
+    DrawCircleV(start, 17.0f, Color{245, 203, 112, 48});
+    DrawCircleLines(static_cast<int>(start.x), static_cast<int>(start.y),
+                    18.0f, Color{246, 209, 112, 255});
     const Vector2 marker = Point(trace.marker);
     DrawCircleV(marker, 22.0f, Color{112, 219, 216, 48});
     DrawCircleV(marker, 13.0f, Color{124, 229, 225, 255});
     DrawCircleV(marker, 4.0f, Color{246, 251, 252, 255});
     Label(font, TextFormat("BEAT %.2f / %d", bounded, chart.lengthBeats),
           53, 390, 16, Color{158, 225, 212, 255});
+    Label(font, TextFormat("START: %d,%d  (CLICK A GRID DOT)",
+                           chart.start.x + 1, chart.start.y + 1),
+          53, 409, 13, Color{247, 213, 131, 255});
 }
 
 void DrawTimeline(Font font, const core::ChartEditor& draft) {
@@ -416,9 +424,13 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         } else {
             for (int y = 0; y < 4; ++y) for (int x = 0; x < 4; ++x) {
                 const auto center = Point(core::Cell{x, y});
-                if (std::abs(mouse.x - center.x) < 18 &&
-                    std::abs(mouse.y - center.y) < 18) {
-                    action.changedChart = draft.SetStart({x, y});
+                if (std::abs(mouse.x - center.x) < 22 &&
+                    std::abs(mouse.y - center.y) < 22) {
+                    if (draft.SetStart({x, y})) {
+                        draft.SelectBeat(0); // Show the new start immediately.
+                        action.changedChart = true;
+                    }
+                    return action;
                 }
             }
         }

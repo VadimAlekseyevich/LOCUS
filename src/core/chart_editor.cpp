@@ -31,6 +31,11 @@ void ChartEditor::Load(const LoadedChart& source) {
     dirty_ = false;
 }
 
+double ChartEditor::AudioSecondsAtBeat(int beat) const noexcept {
+    return chart_.offsetSeconds +
+           static_cast<double>(beat) * 60.0 / chart_.route.bpm;
+}
+
 bool ChartEditor::SetAudioPath(const std::string& relativePath) {
     if (!ValidChartAudioPath(relativePath)) return false;
     if (chart_.audioPath == relativePath) return true;

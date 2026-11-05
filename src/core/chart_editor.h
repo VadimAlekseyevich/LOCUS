@@ -13,6 +13,8 @@ public:
 
     const LoadedChart& Data() const noexcept { return chart_; }
     int SelectedBeat() const noexcept { return selectedBeat_; }
+    // Actual song timestamp for a selected beat and its signed offset.
+    double AudioSecondsAtBeat(int beat) const noexcept;
     bool Dirty() const noexcept { return dirty_; }
     void MarkSaved() noexcept { dirty_ = false; }
     bool SetAudioPath(const std::string& relativePath);

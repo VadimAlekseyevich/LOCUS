@@ -14,6 +14,8 @@ public:
 
     void Configure(double bpm, double offsetSeconds) noexcept;
     void Start(double monotonicSeconds);
+    // Editor-only seek: no scoring and no separate Play screen.
+    bool StartAtAudioSeconds(double audioSeconds, double monotonicSeconds);
     void Pause(double monotonicSeconds);
     void Resume(double monotonicSeconds);
     void Stop();
@@ -33,6 +35,7 @@ private:
     double bpm_ = 120.0;
     double speed_ = 1.0;
     double offsetSeconds_ = 0.0;
+    double startAudioSeconds_ = 0.0;
     bool audioStarted_ = false;
     bool playing_ = false;
     bool paused_ = false;
