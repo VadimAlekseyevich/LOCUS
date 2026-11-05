@@ -120,7 +120,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $result | Set-Content screen-check.txt
           Write-Output $result
-          if ($result -notmatch "SCREEN_STATE_PASS transitions=4") {
+          if ($result -notmatch "SCREEN_STATE_PASS transitions=7") {
             throw "F-07 placeholder transitions failed"
           }
 
