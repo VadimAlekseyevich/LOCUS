@@ -8,6 +8,7 @@
 #include "app/chart_file.h"
 #include "app/chart_playback.h"
 #include "app/music_picker.h"
+#include "app/chart_editor_ui.h"
 
 #include "raylib.h"
 
@@ -53,10 +54,12 @@ struct FrameInput {
     bool fullscreenPressed = false;
     bool chooseMusicPressed = false;
     bool chooseChartPressed = false;
+    bool openEditorPressed = false;
     bool leftPressed = false;
     bool rightPressed = false;
     double leftCapturedAt = 0.0;
     double rightCapturedAt = 0.0;
+    locus::app::EditorControls editor;
 };
 
 struct AppState {
@@ -98,12 +101,14 @@ FrameInput PollInput(bool debugScreens) {
     input.fullscreenPressed = IsKeyPressed(KEY_F11);
     input.chooseMusicPressed = IsKeyPressed(KEY_O);
     input.chooseChartPressed = IsKeyPressed(KEY_C);
+    input.openEditorPressed = IsKeyPressed(KEY_E);
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
     input.leftPressed = IsKeyPressed(KEY_F);
     if (input.leftPressed) input.leftCapturedAt = MonotonicSeconds();
     input.rightPressed = IsKeyPressed(KEY_J);
     if (input.rightPressed) input.rightCapturedAt = MonotonicSeconds();
+    input.editor = locus::app::PollEditorControls();
     return input;
 }
 
@@ -117,6 +122,8 @@ void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
         state.screen = *input.requestedScreen;
     } else if (input.homePressed && state.screen != Screen::Home) {
         state.screen = Screen::Home;
+    } else if (state.screen == Screen::Home && input.openEditorPressed) {
+        state.screen = Screen::Editor;
     } else if ((state.screen == Screen::Home && input.startPressed) ||
                (state.screen == Screen::Results &&
                 (input.startPressed || input.restartPressed))) {
@@ -375,9 +382,8 @@ void DrawHomeScreen(Font font, const locus::core::Chart& demo,
                   26.0f, Color{144, 224, 225, 255});
     DrawTextLabel(font, "C   OPEN JSON CHART + SONG", Vector2{110.0f, 337.0f},
                   25.0f, Color{177, 229, 206, 255});
-    DrawTextLabel(font, "F = LEFT   /   J = RIGHT",
-                  Vector2{110.0f, 375.0f}, 21.0f,
-                  Color{191, 216, 225, 255});
+    DrawTextLabel(font, "E   EDIT BEATS + TURNS", Vector2{110.0f, 375.0f},
+                  22.0f, Color{184, 200, 239, 255});
     DrawTextLabel(font,
                   TextFormat("%d BEATS  |  %.0f BPM  |  %d TURNS  |  NO FAIL",
                              demo.lengthBeats, demo.bpm,
@@ -389,7 +395,7 @@ void DrawHomeScreen(Font font, const locus::core::Chart& demo,
         DrawTextLabel(font, shortError.c_str(), Vector2{110.0f, 443.0f},
                       16.0f, Color{241, 150, 150, 255});
     } else {
-        DrawTextLabel(font, "CUSTOM SONG + CHART  |  NO FAIL",
+        DrawTextLabel(font, "F LEFT / J RIGHT  |  NO FAIL",
                       Vector2{110.0f, 443.0f}, 17.0f,
                       Color{165, 182, 203, 255});
     }
@@ -484,6 +490,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::core::Chart& demo,
                  const GameplayView& gameplay,
                  const locus::app::LocalMusic& localSong,
+                 const locus::core::ChartEditor& editor,
                  const std::string& musicError, double now) {
     BeginDrawing();
     ClearBackground(kBackground);
@@ -522,6 +529,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         }
     } else if (state.screen == Screen::Results) {
         DrawResultsScreen(font, gameplay);
+    } else if (state.screen == Screen::Editor) {
+        locus::app::RenderChartEditor(font, editor);
     } else {
         const char* screen = ScreenName(state.screen);
         constexpr float kScreenFontSize = 54.0f;
@@ -536,7 +545,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     }
     DrawTextLabel(font, "F11  FULLSCREEN", Vector2{665.0f, 61.0f}, 16.0f,
                   Color{174, 191, 208, 255});
-    if (debugScreens) {
+    if (debugScreens && state.screen != Screen::Editor) {
         DrawTextLabel(font, "DEBUG: F1 Home   F2 Play   F3 Editor   F4 Results",
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 65)},
                       22.0f, Color{232, 213, 160, 255});
@@ -702,6 +711,7 @@ int main(int argc, char** argv) {
     AppState state;
     const locus::core::Chart demo = locus::core::MakeDemoChart();
     locus::core::Chart activeChart = demo;
+    locus::core::ChartEditor editor;
     locus::core::TurnJudge judge(activeChart); // Stable reference across chart loads.
     locus::app::DemoTransport transport;
     locus::app::LocalMusic localSong;
@@ -765,6 +775,7 @@ int main(int argc, char** argv) {
                                candidate, localSong.DurationSeconds(), musicError)) {
                     std::cerr << "CHART_TIMING_FAIL " << musicError << '\\n';
                 } else {
+                    editor.Load(candidate); // M-03 can edit the imported route.
                     activeChart = std::move(candidate.route);
                     chartTitle = std::move(candidate.title);
                     previewLead = candidate.previewLeadBeats;
@@ -830,6 +841,9 @@ int main(int argc, char** argv) {
             }
         }
 
+        if (state.screen == Screen::Editor && previousScreen == Screen::Editor) {
+            locus::app::ApplyEditorControls(editor, input.editor);
+        }
         if (state.screen == Screen::Listen) {
             localSong.Update(now);
         }
@@ -877,7 +891,7 @@ int main(int argc, char** argv) {
                                                 : transport.Beat(renderNow),
                                     previewLead, paused, finished, customChart, status};
         RenderFrame(state, debugScreens, uiFont.value, demo,
-                    gameplay, localSong, musicError, renderNow);
+                    gameplay, localSong, editor, musicError, renderNow);
     }
 
     // Unload both music streams before the shared raylib audio device.
