@@ -233,12 +233,13 @@ if /I "%MODE%"=="baseline" (
 
 echo.
 echo ============================================================
-echo  LOCUS - BUILT-IN DEMO AND LOCAL MUSIC
-echo  ENTER = Play 16-second demo  O = Select WAV/MP3 to listen
-echo  F = Left turn  J = Right turn  (demo chart only)
+echo  LOCUS - BUILT-IN DEMO / LOCAL SONGS / JSON CHARTS
+echo  ENTER = Play 16-second demo  O = Listen to WAV/MP3
+echo  C = Open JSON chart + its referenced WAV/MP3 to play
+echo  F = Left turn  J = Right turn  (when playing a chart)
 echo  SPACE = Pause/Resume  R = Replay  H = Home  ESC = Close
 echo  F11 = Fullscreen / Window   Window edges = Resize
-echo  Custom songs are listening-only until chart loading is added.
+echo  A custom chart needs song audio in its folder or subfolder.
 echo  DEBUG ONLY: F1 Home / F2 Play / F3 Editor / F4 Results
 echo  No Fail: errors never change the correct route.
 echo  Close with ESC or the X button in the window title bar.
