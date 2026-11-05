@@ -3,7 +3,7 @@
   "title": "My First Song",
   "audioPath": "song.mp3",
   "bpm": 120,
-  "offsetSeconds": 0,
+  "offsetMs": 0,
   "grid": {
     "width": 4,
     "height": 4
