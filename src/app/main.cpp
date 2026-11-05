@@ -61,6 +61,7 @@ struct FrameInput {
     bool editorOpen = false;
     bool editorNew = false;
     bool editorTest = false;
+    int practiceSpeedIndex = -1;
     bool leftPressed = false;
     bool rightPressed = false;
     double leftCapturedAt = 0.0;
@@ -117,6 +118,11 @@ FrameInput PollInput(bool debugScreens) {
     input.editorOpen = control && IsKeyPressed(KEY_O);
     input.editorNew = control && IsKeyPressed(KEY_N);
     input.editorTest = IsKeyPressed(KEY_T);
+    input.practiceSpeedIndex = IsKeyPressed(KEY_ONE) ? 0
+                              : IsKeyPressed(KEY_TWO) ? 1
+                              : IsKeyPressed(KEY_THREE) ? 2
+                              : IsKeyPressed(KEY_FOUR) ? 3
+                              : IsKeyPressed(KEY_FIVE) ? 4 : -1;
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
     input.leftPressed = IsKeyPressed(KEY_F);
@@ -216,6 +222,7 @@ struct GameplayView {
     bool paused;
     bool completed;
     bool custom;
+    double practiceSpeed;
     const char* status;
 };
 
@@ -376,6 +383,13 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
     DrawTextLabel(font, "SPACE PAUSE  |  R RETRY  |  H HOME",
                   Vector2{50.0f, 380.0f}, 17.0f,
                   Color{229, 214, 170, 255});
+    if (gameplay.custom) {
+        DrawTextLabel(font,
+                      TextFormat("SPEED %.0f%%  |  1-5 TO PRACTICE SLOWLY",
+                                 gameplay.practiceSpeed * 100.0),
+                      Vector2{665.0f, 413.0f}, 15.0f,
+                      Color{164, 210, 222, 255});
+    }
     DrawTextLabel(font, gameplay.status, Vector2{50.0f, 412.0f}, 20.0f,
                   Color{211, 239, 241, 255});
     DrawTextLabel(font,
@@ -1100,6 +1114,10 @@ int main(int argc, char** argv) {
                 localSong.Start(now);
             }
         } else if (state.screen == Screen::Play) {
+            if (customChart && input.practiceSpeedIndex >= 0) {
+                const double speeds[] = {1.0, 0.75, 0.5, 0.25, 0.1};
+                chartPlayback.SetSpeed(speeds[input.practiceSpeedIndex], now);
+            }
             if (input.restartPressed ||
                 (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
                 judge.Reset();
@@ -1180,7 +1198,8 @@ int main(int argc, char** argv) {
         const GameplayView gameplay{activeChart, judge, chartTitle, songTime,
                                     customChart ? chartPlayback.Beat(renderNow)
                                                 : transport.Beat(renderNow),
-                                    previewLead, paused, finished, customChart, status};
+                                    previewLead, paused, finished, customChart,
+                                    customChart ? chartPlayback.Speed() : 1.0, status};
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
                     editorStatus, editorPending, musicError, renderNow);
