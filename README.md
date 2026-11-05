@@ -1,12 +1,33 @@
 # LOCUS
 
-LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete and owner-approved (2026-11-05).** It includes nine F/J turns, music-driven movement, smooth route reveal, fullscreen, pause/retry and Results. Development now focuses on **local songs and a practical custom-chart editor**, not additional infrastructure or benchmarks. Two Windows applications remain available: **LOCUS** (the 4×4 rhythm game, local WAV/MP3 playback, JSON charts and in-memory chart editor, launched by double-clicking `build_and_run.bat`) and the optional **A-07 audio/input diagnostic** (BAT `audio` mode).
+LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete and owner-approved (2026-11-05).** It includes nine F/J turns, music-driven movement, smooth route reveal, fullscreen, pause/retry and Results. Development now focuses on **local songs and a practical custom-chart editor**, not additional infrastructure or benchmarks. Two Windows applications remain available: **LOCUS** (the 4×4 rhythm game, local WAV/MP3 playback, JSON charts and an editor with JSON save/open/test-play, launched by double-clicking `build_and_run.bat`) and the optional **A-07 audio/input diagnostic** (BAT `audio` mode).
 
 [Game Design Document](mvp/GDD.md) · **[Short playable-prototype roadmap](mvp/ROADMAP.md)** · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
 
 ## Next: play and make custom charts
 
-The owner accepted the first playable prototype after a complete Windows run with **7 Perfect, 2 Good, 0 Bad and 0 Miss** (9/9 turns). The current [short roadmap](mvp/ROADMAP.md) has five outcome-based milestones: local WAV/MP3 playback, external JSON chart loading, basic chart editor, save/reopen/test-play, and Windows usability/distribution. **M-01–M-03 are implemented: music listening, playing JSON charts and editing beats/turns in LOCUS. M-04 (saving, reopening and test-playing edits) is next.** There is no mandatory benchmarking, no ZIP requirement, and no repeated prototype approval gate.
+The owner accepted the first playable prototype after a complete Windows run with **7 Perfect, 2 Good, 0 Bad and 0 Miss** (9/9 turns). The current [short roadmap](mvp/ROADMAP.md) has five outcome-based milestones: local WAV/MP3 playback, external JSON chart loading, basic chart editor, save/reopen/test-play, and Windows usability/distribution. **M-01–M-04 are implemented: WAV/MP3 listening, JSON gameplay, chart editing, saving/reopening and immediate test-play. M-05 (Windows usability polish and distribution) is next.** There is no mandatory benchmarking, no ZIP requirement, and no repeated prototype approval gate.
+
+## Save, reopen and test-play your chart (M-04)
+
+Use the **E** editor on Home. For a new chart, press **O** *inside the editor* to choose your own local WAV/MP3. Build the route with the grid and timeline. Then:
+
+| Shortcut | Action |
+| --- | --- |
+| **Ctrl+S** | Save the chart; the first save opens Windows Save As |
+| **Ctrl+Shift+S** | Save As another `.locus.json` file |
+| **Ctrl+O** | Open a saved chart directly into the editor |
+| **Ctrl+N** | Start a fresh 32-beat chart |
+| **T** | Test-play the edited route against the attached song, even before saving |
+| **H** | Home; return with E to keep editing |
+
+**Where should the JSON go?** Save in the **same folder as your WAV/MP3** (or one of its parent folders). The game writes a safe *relative audioPath*, so a chart and its song can move together. Saved JSON always uses `offsetMs` (milliseconds); legacy `offsetSeconds` files continue opening. An optional `lengthBeats` preserves the editor's authored timeline when it is shorter than the full song.
+
+**Unsaved changes:** The editor visibly marks changed drafts. Before discarding them with Home, Ctrl+N or Ctrl+O, LOCUS asks you to confirm: **Y** discards, **N** cancels. You can use Ctrl+S first. Save uses a temporary file plus replacement so a failed write should not destroy the previous chart. A missing song, out-of-range turn, invalid path or too-long timeline shows an error rather than silently writing broken game data. Force quitting can still lose unsaved edits.
+
+**Try the full round trip:** E → O to choose a song → add F/J turns → Ctrl+S to save `MyChart.locus.json` beside the song → Ctrl+O to reopen it → T to test → song finishes → Results. Go Home and E to continue editing the chart.
+
+Windows CI verifies file serialization, actual disk save/reopen, unchanged gameplay tests and compiler linkage without a graphical desktop. The appearance of Save/Open dialogs and subjective rhythm synchronization on your monitor remain for manual playtesting.
 
 ## Edit beats and turns inside LOCUS (M-03)
 
@@ -25,13 +46,13 @@ The editor also has clickable `−` / `+` controls, with keyboard shortcuts:
 
 To edit a loaded song chart, first open it with **C**, return Home with **H**, and press **E**. Otherwise the editor starts with an empty 32-beat draft at 120 BPM, offset **0 ms**. There is no need to edit JSON manually just to arrange the timeline.
 
-**Important M-03 limitation:** The editor is currently an **in-memory draft only**. Edits persist while LOCUS stays open, but **cannot yet be saved or test-played from the editor**. Closing the application discards unsaved edits. **M-04 will provide Save, Open and Test Play**, using this same editor data. The ordinary demo and manually loaded JSON levels are unaffected.
+**M-04 now adds persistence.** Save with Ctrl+S, reopen with Ctrl+O and test-play with T, using the controls in the section above. Unsaved edits are highlighted and a confirmation appears when leaving Home or starting a new/open action. You can still close the process forcibly, so save your chart before closing LOCUS.
 
 ## Load and play your own JSON chart (M-02)
 
 On **Home**, press **C** to open a local `.locus.json` / `.json` chart. The chart must contain an `audioPath` pointing to a **WAV/MP3 in the chart folder or a subfolder**, plus its beat map. LOCUS loads the song, moves the same 4×4 marker along the authored route, judges **F = Left / J = Right**, and shows the normal Results screen at song end. **Space** pauses/resumes both audio and chart, **R** restarts the selected chart, and **H** returns Home. From Results, **Enter/R** plays the same chart again. **Enter on Home always starts the built-in demo**; **O** remains the listening-only music picker.
 
-**Try the included sample chart:** Copy [`mvp/examples/first-song.locus.json`](mvp/examples/first-song.locus.json) into a folder with your own MP3 (at least 16 seconds long), rename that file to `song.mp3`, then press **C** and choose `first-song.locus.json`. This sample is authored at **120 BPM**, so its F/J turns will align musically only if the chosen song actually matches 120 BPM and beat zero at its start. Press **E** on Home to open the in-game editor for BPM, millisecond offset, start cell/direction and turns. **Saving those edits is M-04**, so they currently remain in memory only. For another filename, change `audioPath` accordingly. No music is included in the repository or uploaded.
+**Try the included sample chart:** Copy [`mvp/examples/first-song.locus.json`](mvp/examples/first-song.locus.json) into a folder with your own MP3 (at least 16 seconds long), rename that file to `song.mp3`, then press **C** and choose `first-song.locus.json`. This sample is authored at **120 BPM**, so its F/J turns will align musically only if the chosen song actually matches 120 BPM and beat zero at its start. Press **E** on Home to open the in-game editor for BPM, millisecond offset, start cell/direction and turns. Save with **Ctrl+S** or **Ctrl+Shift+S**, then test with **T**; no external JSON editor is needed. For another filename, change `audioPath` accordingly. No music is included in the repository or uploaded.
 
 **Format v1:** Required fields are `formatVersion: 1`, `title`, `audioPath`, `bpm`, **`offsetMs`**, `grid: {width:4,height:4}`, `start: {x,y,heading}`, `previewLeadBeats`, and an ordered `turns` array. A previously saved chart with `offsetSeconds` also opens normally, but **exactly one** of the two offset fields may be present. Each event is `{"beat": 2, "turn": "right"}`, with unique, ascending nonnegative integer beats. Turn at beat zero takes effect **before** the outgoing step. `offsetMs` is the signed audio time in **milliseconds** at chart beat zero (e.g. `250` = `0.25` seconds): positive values delay the chart, negative values create silent preroll before the song starts. See [the original v1 format specification](mvp/architecture/CHART_FORMAT.md).
 
