@@ -326,6 +326,11 @@ EditorControls PollEditorControls() {
         if (utf8 && bytes > 0) input.typedUtf8.append(utf8, bytes);
         codepoint = GetCharPressed();
     }
+    const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    if (control && IsKeyPressed(KEY_V)) {
+        const char* clipboard = GetClipboardText();
+        if (clipboard) input.typedUtf8 = clipboard; // Ctrl+V pastes the full value.
+    }
     return input;
 }
 
