@@ -103,6 +103,15 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_chart_editor_tests PRIVATE locus_core)
     add_test(NAME locus_chart_editing COMMAND locus_chart_editor_tests)
 
+    # Editor input/hitboxes are pure while no window is created.
+    add_executable(locus_editor_ui_tests
+        tests/editor_ui_tests.cpp
+        src/app/chart_editor_ui.cpp
+    )
+    target_compile_features(locus_editor_ui_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_editor_ui_tests PRIVATE locus_core raylib)
+    add_test(NAME locus_editor_controls COMMAND locus_editor_ui_tests)
+
     add_executable(locus_chart_file_tests
         tests/chart_file_tests.cpp
         src/app/chart_file.cpp
