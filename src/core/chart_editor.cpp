@@ -16,6 +16,7 @@ void ChartEditor::NewDraft() {
     chart_.route = Chart{};
     chart_.route.bpm = 120.0;
     chart_.route.lengthBeats = 32;
+    chart_.authoredLengthBeats = 32;
     chart_.route.start = Cell{1, 1};
     chart_.route.initialHeading = Heading::Right;
     chart_.route.turns.clear();
@@ -28,6 +29,14 @@ void ChartEditor::Load(const LoadedChart& source) {
     chart_ = source;
     selectedBeat_ = 0;
     dirty_ = false;
+}
+
+bool ChartEditor::SetAudioPath(const std::string& relativePath) {
+    if (!ValidChartAudioPath(relativePath)) return false;
+    if (chart_.audioPath == relativePath) return true;
+    chart_.audioPath = relativePath;
+    MarkDirty();
+    return true;
 }
 
 bool ChartEditor::SelectBeat(int beat) noexcept {
@@ -79,6 +88,7 @@ bool ChartEditor::ChangeLength(int deltaBeats) noexcept {
     if (next < 1 || next > 65536 || next == current) return false;
     if (!chart_.route.turns.empty() && chart_.route.turns.back().beat >= next) return false;
     chart_.route.lengthBeats = next;
+    chart_.authoredLengthBeats = next;
     selectedBeat_ = std::min(selectedBeat_, next - 1);
     MarkDirty();
     return true;
