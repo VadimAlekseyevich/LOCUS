@@ -12,9 +12,6 @@
 #include <vector>
 
 namespace locus::app {
-namespace {
-constexpr std::size_t kMaxLocalSongBytes = 256U * 1024U * 1024U;
-}
 
 std::string DisplayLocalFileName(const std::wstring& path) {
     const std::size_t slash = path.find_last_of(L"\\/");
@@ -41,7 +38,7 @@ std::string DisplayLocalFileName(const std::wstring& path) {
 }
 
 bool ReadLocalFileBytes(const std::wstring& path, std::vector<std::uint8_t>& bytes,
-                        std::string& error) {
+                        std::string& error, std::size_t maxBytes) {
 #ifdef _WIN32
     // CreateFileW retains full Unicode paths without relying on the ANSI locale.
     HANDLE handle = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ,
@@ -54,10 +51,10 @@ bool ReadLocalFileBytes(const std::wstring& path, std::vector<std::uint8_t>& byt
     const bool validLength = GetFileSizeEx(handle, &length) != 0 &&
                              length.QuadPart > 0 &&
                              static_cast<unsigned long long>(length.QuadPart) <=
-                                 static_cast<unsigned long long>(kMaxLocalSongBytes);
+                                 static_cast<unsigned long long>(maxBytes);
     if (!validLength) {
         CloseHandle(handle);
-        error = "File is empty or over 256 MiB. Try a smaller WAV/MP3.";
+        error = "Selected file is empty or exceeds the allowed file size.";
         return false;
     }
     try {
@@ -85,7 +82,8 @@ bool ReadLocalFileBytes(const std::wstring& path, std::vector<std::uint8_t>& byt
 #else
     (void)path;
     (void)bytes;
-    error = "Local music playback requires Windows.";
+    (void)maxBytes;
+    error = "Local file reading requires Windows.";
     return false;
 #endif
 }
