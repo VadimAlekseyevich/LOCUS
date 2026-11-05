@@ -371,23 +371,26 @@ void DrawHomeScreen(Font font, const locus::core::Chart& demo,
                   47.0f, Color{232, 240, 246, 255});
     DrawTextLabel(font, "ENTER   PLAY BUILT-IN DEMO", Vector2{110.0f, 260.0f},
                   27.0f, Color{237, 218, 157, 255});
-    DrawTextLabel(font, "O   OPEN LOCAL WAV / MP3", Vector2{110.0f, 312.0f},
+    DrawTextLabel(font, "O   LISTEN TO WAV / MP3", Vector2{110.0f, 298.0f},
                   26.0f, Color{144, 224, 225, 255});
+    DrawTextLabel(font, "C   OPEN JSON CHART + SONG", Vector2{110.0f, 337.0f},
+                  25.0f, Color{177, 229, 206, 255});
     DrawTextLabel(font, "F = LEFT   /   J = RIGHT",
-                  Vector2{110.0f, 362.0f}, 21.0f,
+                  Vector2{110.0f, 375.0f}, 21.0f,
                   Color{191, 216, 225, 255});
     DrawTextLabel(font,
                   TextFormat("%d BEATS  |  %.0f BPM  |  %d TURNS  |  NO FAIL",
                              demo.lengthBeats, demo.bpm,
                              static_cast<int>(demo.turns.size())),
-                  Vector2{110.0f, 403.0f}, 19.0f,
+                  Vector2{110.0f, 412.0f}, 19.0f,
                   Color{182, 192, 209, 255});
     if (!musicError.empty()) {
-        DrawTextLabel(font, musicError.c_str(), Vector2{110.0f, 439.0f},
-                      17.0f, Color{241, 150, 150, 255});
+        const std::string shortError = musicError.substr(0, 92);
+        DrawTextLabel(font, shortError.c_str(), Vector2{110.0f, 443.0f},
+                      16.0f, Color{241, 150, 150, 255});
     } else {
-        DrawTextLabel(font, "LOCAL SONGS: LISTEN MODE (CHARTS COME NEXT)",
-                      Vector2{110.0f, 439.0f}, 17.0f,
+        DrawTextLabel(font, "CUSTOM SONG + CHART  |  NO FAIL",
+                      Vector2{110.0f, 443.0f}, 17.0f,
                       Color{165, 182, 203, 255});
     }
 }
