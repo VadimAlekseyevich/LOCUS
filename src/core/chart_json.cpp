@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <utility>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -125,11 +126,25 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             if (!HasExactMembers(document,
                     {"formatVersion", "title", "audioPath", "bpm", "offsetMs",
                      "grid", "start", "previewLeadBeats", "turns"},
-                    "chart", error)) return false;
+                    "chart", error)) {
+                // Repeat only when the documented optional length is present;
+                // never let extra/unknown JSON members slip through.
+                if (!document.contains("lengthBeats") ||
+                    !HasExactMembers(document,
+                        {"formatVersion", "title", "audioPath", "bpm", "offsetMs",
+                         "grid", "start", "previewLeadBeats", "turns", "lengthBeats"},
+                        "chart", error)) return false;
+            }
         } else if (!HasExactMembers(document,
                     {"formatVersion", "title", "audioPath", "bpm", "offsetSeconds",
                      "grid", "start", "previewLeadBeats", "turns"},
+                    "chart", error)) {
+            if (!document.contains("lengthBeats") ||
+                !HasExactMembers(document,
+                    {"formatVersion", "title", "audioPath", "bpm", "offsetSeconds",
+                     "grid", "start", "previewLeadBeats", "turns", "lengthBeats"},
                     "chart", error)) return false;
+        }
 
         int version = 0;
         if (!IntegerInRange(document["formatVersion"], 1, 1, version,
@@ -216,11 +231,67 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                                                      ? Turn::Left : Turn::Right});
         }
         parsed.route.lengthBeats = 1; // Replaced by PrepareChartForSong().
+        if (document.contains("lengthBeats")) {
+            int authored = 0;
+            if (!IntegerInRange(document["lengthBeats"], 1, 65536, authored,
+                                "lengthBeats", error)) return false;
+            if (!parsed.route.turns.empty() &&
+                parsed.route.turns.back().beat >= authored) {
+                error = "lengthBeats: must be greater than the final turn beat";
+                return false;
+            }
+            parsed.authoredLengthBeats = authored;
+        }
         result = std::move(parsed);
         error.clear();
         return true;
     } catch (const std::exception& exception) {
         error = std::string("JSON: ") + exception.what();
+        return false;
+    }
+}
+
+bool SerializeChartJson(const LoadedChart& chart, std::string& json,
+                        std::string& error) {
+    try {
+        using Ordered = nlohmann::ordered_json;
+        Ordered document = Ordered::object();
+        document["formatVersion"] = 1;
+        document["title"] = chart.title;
+        document["audioPath"] = chart.audioPath;
+        document["bpm"] = chart.route.bpm;
+        // No loss of fractional milliseconds from older second-based charts.
+        document["offsetMs"] = chart.offsetSeconds * 1000.0;
+        document["grid"] = {{"width", 4}, {"height", 4}};
+        const char* headings[] = {"up", "right", "down", "left"};
+        const int heading = static_cast<int>(chart.route.initialHeading);
+        if (heading < 0 || heading > 3) {
+            error = "start.heading: invalid heading";
+            return false;
+        }
+        document["start"] = {{"x", chart.route.start.x},
+                             {"y", chart.route.start.y},
+                             {"heading", headings[heading]}};
+        document["previewLeadBeats"] = chart.previewLeadBeats;
+        if (chart.authoredLengthBeats) {
+            document["lengthBeats"] = *chart.authoredLengthBeats;
+        }
+        document["turns"] = Ordered::array();
+        for (const auto& event : chart.route.turns) {
+            document["turns"].push_back({
+                {"beat", event.beat},
+                {"turn", event.direction == Turn::Left ? "left" : "right"}
+            });
+        }
+        std::string encoded = document.dump(2, ' ', false,
+                                           Ordered::error_handler_t::strict) + "\n";
+        LoadedChart checked;
+        if (!ParseChartJson(encoded, checked, error)) return false;
+        json = std::move(encoded);
+        error.clear();
+        return true;
+    } catch (const std::exception& exception) {
+        error = std::string("Cannot serialize chart: ") + exception.what();
         return false;
     }
 }
@@ -237,6 +308,12 @@ bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
         error = "bpm/offsetSeconds: song chart must contain 1 to 65536 beats";
         return false;
     }
+    if (chart.authoredLengthBeats) {
+        if (*chart.authoredLengthBeats > static_cast<int>(std::ceil(beatCount))) {
+            error = "lengthBeats: chart is longer than the selected audio";
+            return false;
+        }
+    }
     for (std::size_t i = 0; i < chart.route.turns.size(); ++i) {
         const auto& event = chart.route.turns[i];
         const double targetSeconds =
@@ -247,7 +324,8 @@ bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
             return false;
         }
     }
-    chart.route.lengthBeats = static_cast<int>(std::ceil(beatCount));
+    chart.route.lengthBeats = chart.authoredLengthBeats.value_or(
+        static_cast<int>(std::ceil(beatCount)));
     error.clear();
     return true;
 }
