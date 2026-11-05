@@ -18,6 +18,8 @@ public:
     void Resume(double monotonicSeconds);
     void Stop();
     void Update(double monotonicSeconds);
+    void SetSpeed(double fraction, double monotonicSeconds);
+    double Speed() const noexcept { return speed_; }
 
     bool Playing() const noexcept { return playing_; }
     bool Paused() const noexcept { return paused_; }
@@ -29,6 +31,7 @@ private:
     LocalMusic& audio_;
     core::SongClock clock_;
     double bpm_ = 120.0;
+    double speed_ = 1.0;
     double offsetSeconds_ = 0.0;
     bool audioStarted_ = false;
     bool playing_ = false;
