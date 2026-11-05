@@ -3,6 +3,7 @@
 #include "core/route.h"
 #include "core/route_view.h"
 #include "app/visual_style.h"
+#include "app/route_renderer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -312,38 +313,9 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
     const double bounded = std::clamp(previewBeat,
                                       static_cast<double>(chart.firstBeat),
                                       static_cast<double>(chart.lengthBeats));
-    const int beat = std::min(static_cast<int>(std::floor(bounded)),
-                              chart.lengthBeats - 1);
-    const double progress = std::clamp(bounded - beat, 0.0, 1.0);
-    const core::RouteStep current = core::SampleRouteStep(chart, beat);
-    const core::StepView whole = core::ViewRouteStep(current, progress);
-    const core::StepView trace = core::TraceRouteStep(current, progress);
-
-    const auto drawSegments = [&](const core::StepView& view, Color tint, float width) {
-        const float scale = std::clamp(grid.step / 80.0f, 0.4f, 1.0f);
-        for (int i = 0; i < view.segmentCount; ++i) {
-            DrawLineEx(grid.Point(view.segments[i].from),
-                       grid.Point(view.segments[i].to), width * scale, tint);
-        }
-    };
-    const auto& style = kDefaultRouteVisualStyle;
-    // One bar TOTAL: the current step plus only three future steps.
-    // The far edge fades in as the playing cursor approaches.
-    for (int ahead = RouteVisualStyle::lookaheadBeats - 1;
-         ahead >= 1; --ahead) {
-        const int target = beat + ahead;
-        if (target >= chart.lengthBeats) continue;
-        const float opacity = TrajectoryOpacity(target - bounded);
-        if (opacity <= 0.0f) continue;
-        const core::StepView future = core::ViewRouteStep(
-            core::SampleRouteStep(chart, target), 1.0);
-        drawSegments(future, WithOpacity(style.routeOutline, opacity),
-                     style.editorNextStepWidth * style.outlineScale);
-        drawSegments(future, WithOpacity(style.fullTrajectory, opacity),
-                     style.editorNextStepWidth);
-    }
-    drawSegments(whole, style.fullTrajectory, 4.0f);
-    drawSegments(trace, style.combinedTrajectory, 5.5f);
+    const RouteCanvas canvas{grid.left, grid.top, grid.step};
+    const Vector2 marker = DrawRouteTrajectory(
+        chart, bounded, canvas, RouteRenderMode::Editor);
 
     const float dot = std::min(8.0f, grid.step * 0.27f);
     for (int y = 0; y < chart.gridHeight; ++y) {
@@ -353,24 +325,12 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
             DrawCircleV(position, dot * 0.41f, Color{207, 221, 234, 255});
         }
     }
-    // A turn point glows when the current/future red path first touches it,
-    // not permanently after the character has passed through its cell.
-    for (const auto& turn : core::PreviewTurnPoints(
-             chart, bounded, RouteVisualStyle::lookaheadBeats)) {
-        const Vector2 point = grid.Point(turn.cell);
-        const float opacity = turn.beat <= beat
-            ? 1.0f : TrajectoryOpacity(turn.beat - 1 - bounded);
-        DrawCircleV(point, std::min(11.0f, grid.step * 0.39f),
-                    WithOpacity(style.reachedTurnPoint, opacity));
-        DrawCircleV(point, std::min(4.0f, grid.step * 0.16f),
-                    WithOpacity(Color{255, 225, 228, 255}, opacity));
-    }
+    DrawRouteJunctions(chart, bounded, canvas, RouteRenderMode::Editor);
     const Vector2 start = grid.Point(chart.start);
     const float markerRadius = std::min(13.0f, grid.step * 0.39f);
     DrawCircleV(start, markerRadius * 1.32f, Color{245, 203, 112, 48});
     DrawCircleLines(static_cast<int>(start.x), static_cast<int>(start.y),
                     markerRadius * 1.36f, Color{246, 209, 112, 255});
-    const Vector2 marker = grid.Point(trace.marker);
     DrawCircleV(marker, markerRadius * 1.7f, Color{112, 219, 216, 48});
     DrawCircleV(marker, markerRadius, Color{124, 229, 225, 255});
     DrawCircleV(marker, markerRadius * 0.32f, Color{246, 251, 252, 255});

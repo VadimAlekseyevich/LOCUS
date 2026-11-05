@@ -11,6 +11,7 @@
 #include "app/chart_editor_ui.h"
 #include "app/chart_filename.h"
 #include "app/visual_style.h"
+#include "app/route_renderer.h"
 
 #include "raylib.h"
 
@@ -260,54 +261,7 @@ struct GameplayGrid {
     }
 };
 
-// One 4/4 bar of red route is shown; the last beats fade in as the
-// time cursor approaches. Rendering never changes judgement or geometry.
-Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat,
-                         double previewLeadBeats) {
-    (void)previewLeadBeats; // Current presentation rule is one bar.
-    const GameplayGrid grid(chart);
-    if (chart.lengthBeats <= chart.firstBeat) return grid.Point(chart.start);
-    const double beat = std::clamp(fractionalBeat,
-                                   static_cast<double>(chart.firstBeat),
-                                   static_cast<double>(chart.lengthBeats));
-    const int currentBeat = std::min(static_cast<int>(std::floor(beat)),
-                                     chart.lengthBeats - 1);
-    const double progress = std::clamp(beat - currentBeat, 0.0, 1.0);
-    const auto& style = locus::app::kDefaultRouteVisualStyle;
-    const float thickness = std::clamp(grid.step / 76.0f, 0.4f, 1.0f);
-
-    // Count the current step as part of the four-beat view rather than
-    // accidentally drawing four extra steps beyond it.
-    for (int ahead = locus::app::RouteVisualStyle::lookaheadBeats - 1;
-         ahead >= 0; --ahead) {
-        const int routeBeat = currentBeat + ahead;
-        if (routeBeat >= chart.lengthBeats) continue;
-        const float opacity = ahead == 0
-            ? 1.0f : locus::app::TrajectoryOpacity(routeBeat - beat);
-        if (opacity <= 0.0f) continue;
-        const locus::core::RouteStep step =
-            locus::core::SampleRouteStep(chart, routeBeat);
-        const auto view = locus::core::TraceRouteStep(
-            step, ahead == 0 ? progress : 1.0);
-        const Color color = locus::app::WithOpacity(
-            ahead == 0 ? style.combinedTrajectory : style.fullTrajectory, opacity);
-        for (int segment = 0; segment < view.segmentCount; ++segment) {
-            const auto& line = view.segments[segment];
-            const Vector2 from = grid.Position(line.from);
-            const Vector2 to = grid.Position(line.to);
-            DrawLineEx(from, to, (ahead == 0 ? 7.0f :
-                       style.gameNextStepWidth * style.outlineScale) * thickness,
-                       locus::app::WithOpacity(style.routeOutline, opacity));
-            DrawLineEx(from, to,
-                       (ahead == 0 ? 5.5f : style.gameNextStepWidth) * thickness,
-                       color);
-        }
-    }
-    const auto live = locus::core::SampleRouteStep(chart, currentBeat);
-    return grid.Position(locus::core::ViewRouteStep(live, progress).marker);
-}
-
-void DrawPlayGrid(Font font, const GameplayView& gameplay) {
+ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
     const auto& chart = gameplay.chart;
     const auto& judge = gameplay.judge;
     const GameplayGrid grid(chart);
@@ -326,8 +280,9 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
                    grid.Point({column, chart.gridHeight - 1}), 1.5f, guides);
     }
 
-    const Vector2 marker = DrawRoutePreview(chart, gameplay.beat,
-                                             gameplay.previewLeadBeats);
+    const locus::app::RouteCanvas canvas{grid.left, grid.top, grid.step};
+    const Vector2 marker = locus::app::DrawRouteTrajectory(
+        chart, gameplay.beat, canvas, locus::app::RouteRenderMode::Gameplay);
 
     const Color pointOuter{83, 101, 122, 255};
     const Color pointInner{169, 191, 204, 255};
@@ -340,25 +295,9 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
         }
     }
 
-    // One song-time snapshot controls both the marker and preview.
-    // The marker keeps moving along the authored path without key presses.
-    const auto& style = locus::app::kDefaultRouteVisualStyle;
-    // Illuminate only authored turn junctions intersected by the visible
-    // one-bar path. They light BEFORE arrival and disappear when the path
-    // moves past them, even if the grid cell has been visited before.
-    const int currentBeat = static_cast<int>(std::floor(gameplay.beat));
-    for (const auto& turn : locus::core::PreviewTurnPoints(
-             chart, gameplay.beat,
-             locus::app::RouteVisualStyle::lookaheadBeats)) {
-        const Vector2 point = grid.Point(turn.cell);
-        const float opacity = turn.beat <= currentBeat
-            ? 1.0f
-            : locus::app::TrajectoryOpacity(turn.beat - 1 - gameplay.beat);
-        DrawCircleV(point, std::min(11.0f, grid.step * 0.38f),
-                    locus::app::WithOpacity(style.reachedTurnPoint, opacity));
-        DrawCircleV(point, std::min(4.0f, grid.step * 0.16f),
-                    locus::app::WithOpacity(Color{255, 229, 230, 255}, opacity));
-    }
+    // Shared route renderer also owns fading turn junctions.
+    locus::app::DrawRouteJunctions(
+        chart, gameplay.beat, canvas, locus::app::RouteRenderMode::Gameplay);
     const float markerRadius = std::min(17.0f, grid.step * 0.47f);
     DrawCircleV(marker, markerRadius * 1.5f, Color{255, 75, 86, 45});
     DrawCircleV(marker, markerRadius, Color{255, 140, 149, 255});
