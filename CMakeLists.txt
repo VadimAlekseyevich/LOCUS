@@ -36,6 +36,7 @@ add_executable(locus
     src/app/local_file_io.cpp
     src/app/music_picker.cpp
     src/app/chart_file.cpp
+    src/app/chart_save.cpp
     src/app/chart_playback.cpp
     src/app/chart_editor_ui.cpp
 )
@@ -105,6 +106,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_chart_file_tests
         tests/chart_file_tests.cpp
         src/app/chart_file.cpp
+    src/app/chart_save.cpp
         src/app/local_file_io.cpp
     )
     target_compile_features(locus_chart_file_tests PRIVATE cxx_std_17)
