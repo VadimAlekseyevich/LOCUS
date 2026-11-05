@@ -3,6 +3,7 @@
 #include "core/chart_editor.h"
 #include "raylib.h"
 
+#include <limits>
 #include <string>
 
 namespace locus::app {
@@ -17,8 +18,8 @@ struct EditorControls {
     bool shiftHeld = false;
     Vector2 mouse{};
     float mouseWheel = 0.0f;
-    // Negative falls back to draft.SelectedBeat() for headless control tests.
-    double timelineViewBeat = -1.0;
+    // NaN means use the selected beat. -1 is a legitimate pre-offset beat.
+    double timelineViewBeat = std::numeric_limits<double>::quiet_NaN();
     bool zoomIn = false, zoomOut = false;
     bool copyRange = false, cutRange = false, pasteRange = false;
     bool invertRange = false, undo = false, redo = false;

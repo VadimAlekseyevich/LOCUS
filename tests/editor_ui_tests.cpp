@@ -149,9 +149,10 @@ int main() {
     ok &= Check(ui.timelineZoomIndex == 0, "zoom-out clamps");
     for (int n = 0; n < 10; ++n) ApplyEditorControls(chart, ui, zoomIn);
     ok &= Check(ui.timelineZoomIndex == 6, "zoom-in clamps");
-    chart.SelectBeat(0);
+    chart.SelectBeat(chart.Data().route.firstBeat);
     ApplyEditorControls(chart, ui, Click(60, 477));
-    ok &= Check(chart.SelectedBeat() == 0, "no negative timeline selection");
+    ok &= Check(chart.SelectedBeat() == chart.Data().route.firstBeat,
+                "timeline navigation clamps to derived earliest song beat");
 
     // The main grid fits the requested 8x8 geometry. Center at 448,282.
     // 240-pixel span across 7 steps => cell (2,3) at about 397,265.

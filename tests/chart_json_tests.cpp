@@ -181,7 +181,7 @@ int main() {
     editable.route.lengthBeats = 16;
     editable.authoredLengthBeats = 16;
     editable.route.turns.push_back({9, Turn::Left});
-    editable.offsetSeconds = -0.137;
+    editable.offsetSeconds = 0.137;
     std::string serialized;
     ok &= Expect(SerializeChartJson(editable, serialized, error),
                  "new chart serializes: " + error);
@@ -193,16 +193,16 @@ int main() {
     ok &= Expect(ParseChartJson(serialized, reopened, error) &&
                  !reopened.authoredLengthBeats.has_value() &&
                  reopened.route.turns.size() == 3 &&
-                 std::abs(reopened.offsetSeconds + 0.137) < 1e-9 &&
+                 std::abs(reopened.offsetSeconds - 0.137) < 1e-9 &&
                  reopened.route.turns.back().beat == 9,
                  "editor creation round-trips through JSON");
     ok &= Expect(PrepareChartForSong(reopened, 11.0, error) &&
-                 reopened.route.lengthBeats == 23,
+                 reopened.route.lengthBeats == 22,
                  "the editor timeline always spans the full song");
     LoadedChart legacyLength = reopened;
     legacyLength.authoredLengthBeats = 65536;
     ok &= Expect(PrepareChartForSong(legacyLength, 11.0, error) &&
-                 legacyLength.route.lengthBeats == 23 &&
+                 legacyLength.route.lengthBeats == 22 &&
                  !legacyLength.authoredLengthBeats,
                  "legacy saved length metadata no longer truncates the song");
 
