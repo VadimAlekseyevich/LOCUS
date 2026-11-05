@@ -50,6 +50,9 @@ void ChartPlayback::Stop() {
     audioStarted_ = false;
     playing_ = false;
     paused_ = false;
+    // Update() explicitly re-latches this after natural completion.
+    // Manual stop / reconfigure must release the final-frame preview.
+    finished_ = false;
 }
 
 double ChartPlayback::AudioSeconds(double monotonicSeconds) const noexcept {

@@ -33,16 +33,9 @@ Windows CI verifies file serialization, actual disk save/reopen, unchanged gamep
 
 From **Home**, press **E** to open the editor. Click any dot on the 4×4 grid to set the **starting position**; the chart's real route preview updates immediately. Click a beat on the bottom timeline (or use **Left/Right arrows**) to select it, then press **F** for a left turn or **J** for a right turn. **Delete/Backspace** removes the selected turn. **Shift+Left/Right** moves an existing turn by one beat without overwriting another event. The timeline automatically moves to the next 16-beat page as you advance.
 
-The editor also has clickable `−` / `+` controls, with keyboard shortcuts:
+**Direct text editing:** click **BPM**, **OFFSET IN MILLISECONDS**, **TOTAL BEATS**, or **CHART TITLE** and type a value. The first typed character replaces the displayed value. **Enter** commits, **Esc** cancels, and invalid values show feedback. BPM accepts 30–300 (including decimals); offset accepts a signed number in milliseconds (decimal point or comma); beat count must be a whole number. Reducing the beat count never silently deletes turns. Use **Q/E** to rotate the starting heading and **H** to return Home.
 
-| Setting | Keys | Adjustment |
-| --- | --- | --- |
-| BPM | **Z / X** | −1 / +1 BPM (30–300) |
-| Offset | **N / M** | −10 / +10 **milliseconds** |
-| Fine offset | **Shift+N / Shift+M** | −1 / +1 **millisecond** |
-| Starting direction | **Q / E** | Turn heading left / right |
-| Chart length | **[ / ]** | −16 / +16 beats; existing turns are not silently deleted |
-| Go back | **H** | Return Home; current draft remains in memory |
+**Music preview:** click **LOAD SONG** or press **O** to attach a local WAV/MP3. Click **PLAY** or press **Space** to play/pause the song together with the chart marker; **R** restarts from the beginning. The marker moves in musical time, with the current traversed step and a one-beat lookahead drawn on the 4×4 grid. When stopped, click a timeline beat to inspect its position. Click a speed button or press **1/2/3/4/5** for **100/75/50/25/10%** speed. Slowing down currently also lowers audio pitch (not pitch-preserving time stretch). **T** starts a scored test-play session, separate from this non-scoring preview.
 
 To edit a loaded song chart, first open it with **C**, return Home with **H**, and press **E**. Otherwise the editor starts with an empty 32-beat draft at 120 BPM, offset **0 ms**. There is no need to edit JSON manually just to arrange the timeline.
 

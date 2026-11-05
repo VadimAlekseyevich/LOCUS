@@ -924,11 +924,14 @@ int main(int argc, char** argv) {
                 chartPlayback.SetSpeed(speeds[uiAction.speedIndex], now);
                 editorStatus = "PREVIEW SPEED CHANGED - AUDIO PITCH WILL ALSO CHANGE";
             }
-            if ((uiAction.changedChart ||
-                 (editor.SelectedBeat() != beforeBeat && chartPlayback.Playing())) &&
-                chartPlayback.Playing()) {
+            // After playback reaches the song end, choosing another beat
+            // should restore manual grid inspection instead of leaving the
+            // preview pinned to its final marker position.
+            const bool movedBeat = editor.SelectedBeat() != beforeBeat;
+            if ((uiAction.changedChart || movedBeat) &&
+                (chartPlayback.Playing() || chartPlayback.Finished())) {
                 chartPlayback.Stop();
-                editorStatus = "PREVIEW STOPPED AFTER EDIT - SPACE TO RESTART";
+                editorStatus = "PREVIEW STOPPED - SPACE TO RESTART FROM BEGINNING";
             }
 
             const auto startPreview = [&]() {
