@@ -71,8 +71,8 @@ void DrawGrid(Font font, const core::ChartEditor& draft) {
     Label(font, "START CELL  -  CLICK A DOT", 49, 147, 18, Color{195, 209, 230, 255});
     constexpr Color guides{59, 66, 83, 255};
     for (int index = 0; index < 4; ++index) {
-        DrawLineEx(Point({0, index}), Point({3, index}), 2.0f, guides);
-        DrawLineEx(Point({index, 0}), Point({index, 3}), 2.0f, guides);
+        DrawLineEx(Point(core::Cell{0, index}), Point(core::Cell{3, index}), 2.0f, guides);
+        DrawLineEx(Point(core::Cell{index, 0}), Point(core::Cell{index, 3}), 2.0f, guides);
     }
 
     // Preview four steps from the selected beat, using the actual authored
@@ -94,7 +94,7 @@ void DrawGrid(Font font, const core::ChartEditor& draft) {
 
     for (int y = 0; y < 4; ++y) {
         for (int x = 0; x < 4; ++x) {
-            const Vector2 point = Point({x, y});
+            const Vector2 point = Point(core::Cell{x, y});
             DrawCircleV(point, 9.0f, Color{87, 108, 132, 255});
             DrawCircleV(point, 4.0f, Color{201, 214, 231, 255});
         }
@@ -221,7 +221,7 @@ void ApplyEditorControls(core::ChartEditor& draft, const EditorControls& input) 
     } else {
         for (int y = 0; y < 4; ++y) {
             for (int x = 0; x < 4; ++x) {
-                const Vector2 point = Point({x, y});
+                const Vector2 point = Point(core::Cell{x, y});
                 if (std::abs(mouse.x - point.x) <= 18.0f &&
                     std::abs(mouse.y - point.y) <= 18.0f) {
                     draft.SetStart({x, y});
@@ -240,15 +240,14 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft) {
     DrawGrid(font, draft);
 
     Label(font, "BPM", 416, 139, 17, Color{177, 195, 219, 255});
-    Label(font, TextFormat("%.0f", chart.bpm), 413, 166, 27,
+    Label(font, TextFormat("%.2f", chart.bpm), 413, 166, 24,
           Color{228, 237, 245, 255});
     Button(font, kBpmMinus, "-", Color{108, 151, 174, 255});
     Button(font, kBpmPlus, "+", Color{108, 151, 174, 255});
 
     Label(font, "OFFSET  /  MILLISECONDS", 649, 139, 17,
           Color{177, 195, 219, 255});
-    Label(font, TextFormat("%+.0f ms", chart.bpm > 0.0
-                            ? draft.Data().offsetSeconds * 1000.0 : 0.0),
+    Label(font, TextFormat("%+.0f ms", draft.Data().offsetSeconds * 1000.0),
           649, 166, 23, Color{231, 236, 242, 255});
     Button(font, kOffsetMinus, "-", Color{108, 151, 174, 255});
     Button(font, kOffsetPlus, "+", Color{108, 151, 174, 255});
