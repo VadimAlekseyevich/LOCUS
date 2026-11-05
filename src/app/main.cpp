@@ -358,7 +358,7 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
                   Color{211, 239, 241, 255});
     DrawTextLabel(font,
                   TextFormat("SONG TIME  %.2f s     BEAT  %.2f",
-                             gameplay.songSeconds, gameplay.beat)),
+                             gameplay.songSeconds, gameplay.beat),
                   Vector2{50.0f, 444.0f}, 20.0f,
                   Color{204, 208, 222, 255});
 }
