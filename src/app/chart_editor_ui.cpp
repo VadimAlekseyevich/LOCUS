@@ -236,8 +236,11 @@ void ApplyEditorControls(core::ChartEditor& draft, const EditorControls& input) 
 void RenderChartEditor(Font font, const core::ChartEditor& draft) {
     const auto& chart = draft.Data().route;
     Label(font, "CHART EDITOR", 48, 90, 31, Color{194, 237, 229, 255});
-    Label(font, "IN-MEMORY DRAFT  |  SAVE ARRIVES IN M-04", 415, 103,
-          17, Color{208, 190, 150, 255});
+    Label(font, "CTRL+S SAVE   CTRL+O OPEN   T TEST   O SONG   CTRL+N NEW",
+          414, 88, 14, Color{205, 223, 213, 255});
+    Label(font, draft.Dirty() ? "UNSAVED CHANGES" : "CHANGES SAVED / NEW DRAFT",
+          49, 126, 14, draft.Dirty() ? Color{241, 166, 145, 255}
+                                    : Color{142, 224, 186, 255});
     DrawGrid(font, draft);
 
     Label(font, "BPM", 416, 139, 17, Color{177, 195, 219, 255});
