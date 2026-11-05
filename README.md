@@ -6,7 +6,25 @@ LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete 
 
 ## Next: play and make custom charts
 
-The owner accepted the first playable prototype after a complete Windows run with **7 Perfect, 2 Good, 0 Bad and 0 Miss** (9/9 turns). The current [short roadmap](mvp/ROADMAP.md) has only **five upcoming feature milestones**: local WAV/MP3 playback, external JSON chart loading, basic chart editor, save/reopen/test-play, and Windows usability/distribution. **M-01 (local music playback) is next.** There is no mandatory benchmarking, no ZIP requirement, and no repeated prototype approval gate.
+The owner accepted the first playable prototype after a complete Windows run with **7 Perfect, 2 Good, 0 Bad and 0 Miss** (9/9 turns). The current [short roadmap](mvp/ROADMAP.md) has five outcome-based milestones: local WAV/MP3 playback, external JSON chart loading, basic chart editor, save/reopen/test-play, and Windows usability/distribution. **M-01 (local music playback) has been implemented; M-02 (loading an actual chart with its song) is next.** There is no mandatory benchmarking, no ZIP requirement, and no repeated prototype approval gate.
+
+## Listen to your own WAV or MP3 (M-01)
+
+**The original demo still works.** Launch LOCUS with `build_and_run.bat`. On **Home**, press **O** to open the native Windows music picker. Select a **WAV or MP3** from your computer. Playback starts on the separate **YOUR MUSIC / LISTEN MODE** screen; it shows the song name and a progress bar.
+
+| Key | Local song action |
+| --- | --- |
+| **O** | Choose a WAV/MP3, including a replacement for the current song |
+| **Space** | Pause or resume the local song |
+| **R** | Replay from the beginning |
+| **Enter** | Replay after the track has ended |
+| **H** | Return Home (stops playback) |
+| **F11** | Toggle fullscreen |
+| **Esc** | Close the application |
+
+To play the original rhythm demo instead, return **Home** and press **Enter**. **F/J turn judgements apply to the built-in demo only**; no custom chart is invented for a song you merely selected. Importing a real chart is the next milestone (M-02).
+
+The file remains local: the game does not upload it, copy it into the repository or send it anywhere. It uses an in-memory streaming decoder to handle Unicode file paths, including Russian filenames. The initial limit is **256 MiB per file**; very large WAVs can be converted to MP3, and unsupported/corrupt files produce a readable message. **Windows CI checks compilation and file-type handling, not physical sound output**; a normal Windows playback check is needed to confirm the file is audible on the owner's device.
 
 ## Windows: double-click to build and run
 
