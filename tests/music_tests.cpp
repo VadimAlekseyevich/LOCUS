@@ -122,6 +122,25 @@ int main() {
         ok &= Expect(false, "zero beats must be rejected");
     } catch (const std::invalid_argument&) {}
 
+    // Practice speed must slow the *song time* itself, not just the visuals.
+    clock.Stop();
+    clock.SetRate(0.5, 600.0);
+    clock.Start(600.0);
+    ok &= Expect(std::abs(clock.SecondsAt(602.0) - 1.0) < 1e-10,
+                 "50% speed advances one song second in two wall seconds");
+    clock.SetRate(0.25, 602.0);
+    ok &= Expect(std::abs(clock.SecondsAt(606.0) - 2.0) < 1e-10,
+                 "25% speed change keeps the clock continuous");
+    clock.Pause(606.0);
+    clock.SetRate(0.1, 607.0);
+    clock.Resume(610.0);
+    ok &= Expect(std::abs(clock.SecondsAt(620.0) - 3.0) < 1e-10,
+                 "10% speed respects pause and resume");
+    clock.SetRate(0.75, 620.0);
+    ok &= Expect(std::abs(clock.BeatAt(624.0, 120.0) - 12.0) < 1e-10,
+                 "75% speed drives the marker and metronome beat");
+    clock.SetRate(1.0, 624.0);
+
     if (!ok) return 1;
     std::cout << "DEMO_AUDIO_CLOCK_PASS bpm=120 beats=32 duration=16s\n";
     return 0;
