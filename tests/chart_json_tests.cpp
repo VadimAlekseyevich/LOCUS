@@ -1,0 +1,112 @@
+#include "core/chart_json.h"
+#include "core/route.h"
+
+#include <iostream>
+#include <string>
+
+using namespace locus::core;
+
+namespace {
+bool Expect(bool ok, const std::string& explanation) {
+    if (!ok) std::cerr << "CHART_JSON_FAIL: " << explanation << '\n';
+    return ok;
+}
+
+std::string ValidChartText() {
+    return R"({
+        "formatVersion": 1,
+        "title": "My Chart",
+        "audioPath": "audio/song.mp3",
+        "bpm": 120,
+        "offsetSeconds": 0.25,
+        "grid": {"width": 4, "height": 4},
+        "start": {"x": 3, "y": 0, "heading": "right"},
+        "previewLeadBeats": 4,
+        "turns": [
+            {"beat": 0, "turn": "left"},
+            {"beat": 4, "turn": "right"}
+        ]
+    })";
+}
+
+bool Reject(std::string text, const std::string& from, const std::string& to,
+            const std::string& errorFragment) {
+    const auto index = text.find(from);
+    if (index == std::string::npos) return false;
+    text.replace(index, from.size(), to);
+    LoadedChart parsed;
+    std::string error;
+    const bool accepted = ParseChartJson(text, parsed, error);
+    return !accepted && error.find(errorFragment) != std::string::npos;
+}
+} // namespace
+
+int main() {
+    bool ok = true;
+    const std::string valid = ValidChartText();
+    LoadedChart parsed;
+    std::string error;
+    ok &= Expect(ParseChartJson(valid, parsed, error), "valid v1 chart parses: " + error);
+    ok &= Expect(parsed.title == "My Chart" && parsed.audioPath == "audio/song.mp3" &&
+                 parsed.route.bpm == 120 && parsed.offsetSeconds == 0.25 &&
+                 parsed.route.start.x == 3 && parsed.route.start.y == 0 &&
+                 parsed.route.initialHeading == Heading::Right &&
+                 parsed.route.turns.size() == 2 &&
+                 parsed.route.turns.front().beat == 0,
+                 "original versioned chart fields preserved");
+    ok &= Expect(PrepareChartForSong(parsed, 11.0, error) &&
+                 parsed.route.lengthBeats == 22,
+                 "song duration determines a bounded number of beats");
+    if (parsed.route.lengthBeats > 4) {
+        const RouteStep first = SampleRouteStep(parsed.route, 0);
+        const RouteStep later = SampleRouteStep(parsed.route, 4);
+        ok &= Expect(first.heading == Heading::Up && first.wraps &&
+                     first.to.x == 3 && first.to.y == 3 &&
+                     later.heading == Heading::Right && later.wraps,
+                     "loaded JSON drives unchanged deterministic Wrap route");
+    }
+    ok &= Expect(Reject(valid, "\"formatVersion\": 1", "\"formatVersion\": 2",
+                        "formatVersion"), "rejects unsupported future schema");
+    ok &= Expect(Reject(valid, "\"width\": 4", "\"width\": 5", "grid.width"),
+                 "rejects unexpected grid size");
+    ok &= Expect(Reject(valid, "\"heading\": \"right\"",
+                        "\"heading\": \"north\"", "start.heading"),
+                 "rejects unknown heading");
+    ok &= Expect(Reject(valid, "\"audioPath\": \"audio/song.mp3\"",
+                        "\"audioPath\": \"../outside.mp3\"", "audioPath"),
+                 "blocks chart-directory escape");
+    ok &= Expect(Reject(valid, "\"beat\": 4", "\"beat\": 0", "turns[1].beat"),
+                 "blocks duplicate beats");
+    ok &= Expect(Reject(valid, "\"title\": \"My Chart\"",
+                        "\"title\": \"My Chart\", \"title\": \"Overwritten\"",
+                        "duplicate JSON key"), "rejects duplicate JSON keys");
+    ok &= Expect(Reject(valid, "\"offsetSeconds\": 0.25",
+                        "\"offsetSeconds\": \"wrong\"", "offsetSeconds"),
+                 "rejects string numeric fields");
+    ok &= Expect(Reject(valid, "\"start\": {", "\"unexpected\": true, \"start\": {",
+                        "unexpected"), "rejects unknown fields");
+    ok &= Expect(Reject(valid, "\"turns\": [", "\"turns\": [42,",
+                        "turns[0]"), "rejects malformed turn entries");
+    ok &= Expect(!ValidChartAudioPath("audio//song.mp3") &&
+                 !ValidChartAudioPath("C:/song.wav") &&
+                 !ValidChartAudioPath("file://song.wav") &&
+                 !ValidChartAudioPath("..\\song.mp3") &&
+                 !ValidChartAudioPath("sub/../song.mp3") &&
+                 ValidChartAudioPath("audio/song.wav"),
+                 "validates portable chart-relative audio paths");
+    ok &= Expect(!PrepareChartForSong(parsed, 0.1, error) &&
+                 error.find("offsetSeconds") != std::string::npos,
+                 "rejects charts beginning beyond end of audio");
+    LoadedChart early;
+    const std::string negative = std::string(valid).replace(
+        valid.find("\"offsetSeconds\": 0.25"), sizeof("\"offsetSeconds\": 0.25") - 1,
+        "\"offsetSeconds\": -0.5");
+    ok &= Expect(ParseChartJson(negative, early, error) &&
+                 PrepareChartForSong(early, 10.0, error) &&
+                 early.route.lengthBeats == 21,
+                 "negative offsets include chart-side silent preroll");
+
+    if (!ok) return 1;
+    std::cout << "CHART_JSON_PASS version=1 validation=1 wrap=1 preroll=1\n";
+    return 0;
+}
