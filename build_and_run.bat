@@ -240,7 +240,9 @@ echo  F = Left turn  J = Right turn  (Play or Editor)
 echo  EDITOR: click grid start / timeline beat, arrows select beat
 echo  EDITOR: Z/X BPM  N/M offset +/-10 ms  Shift+N/M +/-1 ms
 echo  EDITOR: Q/E heading  [/] length  Delete removes turn
-echo  EDITOR: edits are in memory; Save + Test Play arrive in M-04
+echo  EDITOR: O attach WAV/MP3  Ctrl+S Save  Ctrl+Shift+S Save As
+echo  EDITOR: Ctrl+O Open  Ctrl+N New  T Test Play  H Home
+echo  EDITOR: unsaved changes prompt - Y discard / N cancel
 echo  SPACE = Pause/Resume  R = Replay  H = Home  ESC = Close
 echo  F11 = Fullscreen / Window   Window edges = Resize
 echo  DEBUG ONLY: F1 Home / F2 Play / F3 Editor / F4 Results
