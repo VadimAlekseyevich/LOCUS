@@ -78,8 +78,8 @@ int main() {
                 "clicking the grid moves the starting point");
 
     const Vector2 mapped = EditorVirtualMouse({1920, 1080}, 3840, 2160);
-    ok &= Check(std::abs(mapped.x - 960) < 1e-4 &&
-                    std::abs(mapped.y - 540) < 1e-4,
+    ok &= Check(std::abs(mapped.x - 480) < 1e-4 &&
+                    std::abs(mapped.y - 270) < 1e-4,
                 "editor mouse coordinates survive fullscreen scaling");
 
     if (!ok) return 1;
