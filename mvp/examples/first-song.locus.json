@@ -1,0 +1,28 @@
+{
+  "formatVersion": 1,
+  "title": "My First Song",
+  "audioPath": "song.mp3",
+  "bpm": 120,
+  "offsetSeconds": 0,
+  "grid": {
+    "width": 4,
+    "height": 4
+  },
+  "start": {
+    "x": 1,
+    "y": 1,
+    "heading": "right"
+  },
+  "previewLeadBeats": 4,
+  "turns": [
+    {"beat": 2, "turn": "right"},
+    {"beat": 5, "turn": "left"},
+    {"beat": 8, "turn": "left"},
+    {"beat": 12, "turn": "right"},
+    {"beat": 16, "turn": "right"},
+    {"beat": 19, "turn": "right"},
+    {"beat": 23, "turn": "left"},
+    {"beat": 27, "turn": "left"},
+    {"beat": 30, "turn": "left"}
+  ]
+}
