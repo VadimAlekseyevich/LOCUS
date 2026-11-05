@@ -6,7 +6,17 @@ LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete 
 
 ## Next: play and make custom charts
 
-The owner accepted the first playable prototype after a complete Windows run with **7 Perfect, 2 Good, 0 Bad and 0 Miss** (9/9 turns). The current [short roadmap](mvp/ROADMAP.md) has five outcome-based milestones: local WAV/MP3 playback, external JSON chart loading, basic chart editor, save/reopen/test-play, and Windows usability/distribution. **M-01 (local music playback) has been implemented; M-02 (loading an actual chart with its song) is next.** There is no mandatory benchmarking, no ZIP requirement, and no repeated prototype approval gate.
+The owner accepted the first playable prototype after a complete Windows run with **7 Perfect, 2 Good, 0 Bad and 0 Miss** (9/9 turns). The current [short roadmap](mvp/ROADMAP.md) has five outcome-based milestones: local WAV/MP3 playback, external JSON chart loading, basic chart editor, save/reopen/test-play, and Windows usability/distribution. **M-01 and M-02 are implemented: songs can now be listened to or played with a JSON chart; M-03 (the in-game chart editor) is next.** There is no mandatory benchmarking, no ZIP requirement, and no repeated prototype approval gate.
+
+## Load and play your own JSON chart (M-02)
+
+On **Home**, press **C** to open a local `.locus.json` / `.json` chart. The chart must contain an `audioPath` pointing to a **WAV/MP3 in the chart folder or a subfolder**, plus its beat map. LOCUS loads the song, moves the same 4×4 marker along the authored route, judges **F = Left / J = Right**, and shows the normal Results screen at song end. **Space** pauses/resumes both audio and chart, **R** restarts the selected chart, and **H** returns Home. From Results, **Enter/R** plays the same chart again. **Enter on Home always starts the built-in demo**; **O** remains the listening-only music picker.
+
+**Try the included sample chart:** Copy [`mvp/examples/first-song.locus.json`](mvp/examples/first-song.locus.json) into a folder with your own MP3 (at least 16 seconds long), rename that file to `song.mp3`, then press **C** and choose `first-song.locus.json`. This sample is authored at **120 BPM**, so its F/J turns will align musically only if the chosen song actually matches 120 BPM and beat zero at its start. Edit its `bpm`, `offsetSeconds` and turns manually until M-03's editor arrives. For another filename, change `audioPath` accordingly. No music is included in the repository or uploaded.
+
+**Format v1:** Required fields are `formatVersion: 1`, `title`, `audioPath`, `bpm`, `offsetSeconds`, `grid: {width:4,height:4}`, `start: {x,y,heading}`, `previewLeadBeats`, and an ordered `turns` array. Each event is `{"beat": 2, "turn": "right"}`, with unique, ascending nonnegative integer beats. Turn at beat zero takes effect **before** the outgoing step. `offsetSeconds` is the audio time at chart beat zero: positive values delay the chart, negative values create silent preroll before the song starts. See [the original v1 format specification](mvp/architecture/CHART_FORMAT.md).
+
+Malformed versions, unknown or duplicate fields, invalid beats, missing WAV/MP3 files, unsafe relative paths and songs too short for scheduled turns produce a readable error instead of starting a broken level. Junctions/symlinks that escape the chart folder are rejected. Playback remains **local**; no copying or uploading. Windows CI tests parsing, beat timing and compilation headlessly; the exact feel with your music must still be checked on a real Windows computer.
 
 ## Listen to your own WAV or MP3 (M-01)
 
@@ -22,7 +32,7 @@ The owner accepted the first playable prototype after a complete Windows run wit
 | **F11** | Toggle fullscreen |
 | **Esc** | Close the application |
 
-To play the original rhythm demo instead, return **Home** and press **Enter**. **F/J turn judgements apply to the built-in demo only**; no custom chart is invented for a song you merely selected. Importing a real chart is the next milestone (M-02).
+To play the original rhythm demo instead, return **Home** and press **Enter**. **F/J turn judgements do not apply in Listen mode**; choose **C** on Home with a corresponding JSON chart to play a custom rhythm level. No chart is invented for a song selected with O.
 
 The file remains local: the game does not upload it, copy it into the repository or send it anywhere. It uses an in-memory streaming decoder to handle Unicode file paths, including Russian filenames. The initial limit is **256 MiB per file**; very large WAVs can be converted to MP3, and unsupported/corrupt files produce a readable message. **Windows CI checks compilation and file-type handling, not physical sound output**; a normal Windows playback check is needed to confirm the file is audible on the owner's device.
 
