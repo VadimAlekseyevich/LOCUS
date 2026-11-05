@@ -1,6 +1,7 @@
 #include "app/chart_playback.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace locus::app {
 
@@ -11,7 +12,7 @@ void ChartPlayback::Configure(double bpm, double offsetSeconds) noexcept {
 }
 
 void ChartPlayback::SetSpeed(double fraction, double monotonicSeconds) {
-    if (fraction < 0.1 || fraction > 1.0) return;
+    if (!std::isfinite(fraction) || fraction < 0.1 || fraction > 1.0) return;
     speed_ = fraction;
     clock_.SetRate(fraction, monotonicSeconds);
     audio_.SetSpeed(fraction, monotonicSeconds);
@@ -50,6 +51,7 @@ void ChartPlayback::Stop() {
     audioStarted_ = false;
     playing_ = false;
     paused_ = false;
+    finished_ = false;
 }
 
 double ChartPlayback::AudioSeconds(double monotonicSeconds) const noexcept {
