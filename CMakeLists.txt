@@ -38,6 +38,7 @@ add_executable(locus
     src/app/chart_file.cpp
     src/app/chart_save.cpp
     src/app/chart_playback.cpp
+    src/app/game_session.cpp
     src/app/chart_editor_ui.cpp
     src/app/route_renderer.cpp
 )

@@ -12,6 +12,7 @@
 #include "app/chart_filename.h"
 #include "app/visual_style.h"
 #include "app/route_renderer.h"
+#include "app/game_session.h"
 
 #include "raylib.h"
 
@@ -72,11 +73,6 @@ struct FrameInput {
 };
 
 enum class EditorPending { None, Home, Exit, NewDraft, OpenChart };
-
-struct EditorTestOrigin {
-    double audioSeconds = 0.0; // Exact stopped preview time, possibly fractional beat.
-    int firstScoredBeat = 0;   // Events before this are not graded as MISS.
-};
 
 struct AppState {
     bool running = true;
@@ -823,6 +819,7 @@ int main(int argc, char** argv) {
     locus::app::DemoTransport transport;
     locus::app::LocalMusic localSong;
     locus::app::ChartPlayback chartPlayback(localSong);
+    locus::app::GameSession gameSession(activeChart, judge, transport, chartPlayback);
     bool customChart = false;
     std::wstring editorChartPath;
     std::wstring editorAudioPath;
@@ -830,7 +827,6 @@ int main(int argc, char** argv) {
     std::string editorStatus = "O ATTACH AUDIO  |  CTRL+S SAVE  |  T TEST PLAY";
     double previewLead = 4.0;
     int editorPreviewStartBeat = 0; // R returns to this preview origin.
-    std::optional<EditorTestOrigin> editorTestOrigin; // T / TEST origin.
     std::string chartTitle = "BUILT-IN DEMO";
     std::string musicError;
     transport.Initialize(demo); // Owns the shared raylib audio output device.
@@ -1044,8 +1040,7 @@ int main(int argc, char** argv) {
                         previewLead = checked.previewLeadBeats;
                         chartPlayback.Configure(activeChart.bpm, checked.offsetSeconds);
                         judge.SetOffsetSeconds(checked.offsetSeconds);
-                        editorTestOrigin = EditorTestOrigin{editorSongPosition,
-                                                            firstScored};
+                        gameSession.SetTestOrigin({editorSongPosition, firstScored});
                         customChart = true;
                         state.screen = Screen::Play;
                         editorStatus = "TEST FROM BEAT " + std::to_string(exactBeat) +
@@ -1106,7 +1101,7 @@ int main(int argc, char** argv) {
                     previewLead = candidate.previewLeadBeats;
                     chartPlayback.Configure(activeChart.bpm, candidate.offsetSeconds);
                     chartPlayback.SetSpeed(1.0, now); // Fresh Home charts start at normal speed.
-                    editorTestOrigin.reset();
+                    gameSession.ClearTestOrigin();
                     judge.SetOffsetSeconds(candidate.offsetSeconds);
                     customChart = true;
                     loadedNewChart = true;
@@ -1122,8 +1117,7 @@ int main(int argc, char** argv) {
 
         if (state.screen != previousScreen) {
             if (previousScreen == Screen::Play) {
-                if (customChart) chartPlayback.Stop();
-                else transport.Stop();
+                gameSession.Stop(customChart);
             }
             if (previousScreen == Screen::Listen) localSong.Stop();
             if (previousScreen == Screen::Editor && state.screen != Screen::Editor)
@@ -1137,22 +1131,12 @@ int main(int argc, char** argv) {
                     activeChart = demo;
                     chartTitle = "BUILT-IN DEMO";
                     previewLead = 4.0;
-                    editorTestOrigin.reset();
+                    gameSession.ClearTestOrigin();
                     judge.SetOffsetSeconds(0.0);
                 } else {
                     judge.Reset();
                 }
-                if (customChart) {
-                    if (editorTestOrigin &&
-                        (previousScreen == Screen::Editor ||
-                         previousScreen == Screen::Results)) {
-                        judge.ResetFromBeat(editorTestOrigin->firstScoredBeat);
-                        chartPlayback.StartAtAudioSeconds(
-                            editorTestOrigin->audioSeconds, now);
-                    } else {
-                        chartPlayback.Start(now);
-                    }
-                } else transport.Start(now);
+                gameSession.Start(customChart, now);
             } else if (state.screen == Screen::Listen) {
                 localSong.SetSpeed(1.0, now); // Preview slowdown must not leak to Listen.
                 localSong.Start(now);
@@ -1160,26 +1144,13 @@ int main(int argc, char** argv) {
         } else if (state.screen == Screen::Play) {
             if (customChart && input.practiceSpeedIndex >= 0) {
                 const double speeds[] = {1.0, 0.75, 0.5, 0.25, 0.1};
-                chartPlayback.SetSpeed(speeds[input.practiceSpeedIndex], now);
+                gameSession.SetPracticeSpeed(customChart, speeds[input.practiceSpeedIndex], now);
             }
             if (input.restartPressed ||
                 (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
-                judge.Reset();
-                if (customChart) {
-                    if (editorTestOrigin) {
-                        judge.ResetFromBeat(editorTestOrigin->firstScoredBeat);
-                        chartPlayback.StartAtAudioSeconds(
-                            editorTestOrigin->audioSeconds, now);
-                    } else chartPlayback.Start(now);
-                } else transport.Start(now);
+                gameSession.Restart(customChart, now);
             } else if (input.pausePressed) {
-                if (customChart) {
-                    if (chartPlayback.Paused()) chartPlayback.Resume(now);
-                    else chartPlayback.Pause(now);
-                } else {
-                    if (transport.Paused()) transport.Resume(now);
-                    else transport.Pause(now);
-                }
+                gameSession.TogglePause(customChart, now);
             }
         } else if (state.screen == Screen::Listen) {
             if (loadedNewSong || input.restartPressed ||
@@ -1214,50 +1185,8 @@ int main(int argc, char** argv) {
             }
         }
         if (state.screen == Screen::Play) {
-            const bool playing = customChart ? chartPlayback.Playing() : transport.Playing();
-            const bool paused = customChart ? chartPlayback.Paused() : transport.Paused();
-            if (playing && !paused) {
-                // New arrow key-downs specify absolute heading.
-                // Only the two headings perpendicular to the *incoming*
-                // trajectory at the NEXT scorable turn are accepted. Looking
-                // up the event beat keeps early inputs correct after Wrap.
-                if (const auto* target = judge.NextEvent()) {
-                    const auto incoming = locus::core::IncomingHeadingAt(
-                        activeChart, target->beat);
-                    const double songAtInput = customChart
-                        ? chartPlayback.AudioSeconds(now)
-                        : transport.SongSeconds(now);
-                    const auto directionFor = [&](int i) {
-                        return locus::core::ArrowToTurn(
-                            incoming, static_cast<locus::core::Heading>(i));
-                    };
-                    int validArrowCount = 0, firstArrow = -1;
-                    for (int i = 0; i < 4; ++i) {
-                        if (input.arrowPressed[i] && directionFor(i)) {
-                            ++validArrowCount;
-                            if (firstArrow < 0) firstArrow = i;
-                        }
-                    }
-                    if (validArrowCount > 1) {
-                        // Two contradictory perpendicular arrow presses in the
-                        // same frame do not grant a free correct judgement.
-                        const auto wrong = target->direction == locus::core::Turn::Left
-                            ? locus::core::Turn::Right : locus::core::Turn::Left;
-                        judge.Press(wrong, songAtInput);
-                    } else if (firstArrow >= 0) {
-                        const double timestamp = input.arrowCapturedAt[firstArrow];
-                        judge.Press(*directionFor(firstArrow),
-                                    customChart
-                                      ? chartPlayback.AudioSeconds(timestamp)
-                                      : transport.SongSeconds(timestamp));
-                    }
-                }
-            }
-            if (customChart) chartPlayback.Update(now);
-            else transport.Update(now);
-            const double songTime = customChart ? chartPlayback.AudioSeconds(now)
-                                                 : transport.SongSeconds(now);
-            if (customChart || transport.Ready()) judge.Advance(songTime);
+            gameSession.Update(customChart, now,
+                               {input.arrowPressed, input.arrowCapturedAt});
             if (customChart ? chartPlayback.Finished() : transport.Finished()) {
                 FinishSession(state, judge, activeChart);
             }
