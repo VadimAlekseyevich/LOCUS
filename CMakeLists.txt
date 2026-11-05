@@ -40,6 +40,7 @@ add_executable(locus
     src/app/chart_playback.cpp
     src/app/game_session.cpp
     src/app/chart_editor_ui.cpp
+    src/app/chart_editor_actions.cpp
     src/app/route_renderer.cpp
 )
 target_link_libraries(locus PRIVATE locus_core raylib)
@@ -109,6 +110,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_editor_ui_tests
         tests/editor_ui_tests.cpp
         src/app/chart_editor_ui.cpp
+        src/app/chart_editor_actions.cpp
         src/app/route_renderer.cpp
     )
     target_compile_features(locus_editor_ui_tests PRIVATE cxx_std_17)

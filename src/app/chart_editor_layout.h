@@ -1,0 +1,106 @@
+#pragma once
+
+#include "app/chart_editor_ui.h"
+#include "app/visual_style.h"
+#include "core/route_view.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace locus::app::detail {
+constexpr float kVirtualWidth = 960.0f, kVirtualHeight = 540.0f;
+constexpr float kGridCenterX = 448.0f, kGridCenterY = 282.0f;
+constexpr float kGridMaxSpan = 240.0f;
+constexpr float kTimelineX = 50.0f, kTimelineY = 447.0f;
+constexpr float kTimelineWidth = 860.0f, kTimelineHeight = 52.0f;
+// Fixed playhead at one third of the ruler; the fractional-beat ruler moves.
+constexpr float kPlayheadX = kTimelineX + kTimelineWidth / 3.0f;
+constexpr float kZoomPixelsPerBeat[7] = {12, 18, 26, 36, 52, 76, 104};
+constexpr int kZoomMax = 6;
+constexpr float kDragEdgeZone = 48.0f;
+// Repeat a four-beat step quickly after a short delay; accelerate on hold.
+constexpr float kBarRepeatDelay = 0.23f;
+constexpr float kBarRepeatInterval = 0.075f;
+constexpr float kBarRepeatFastInterval = 0.04f;
+constexpr Rectangle kZoomOut{807, 416, 34, 27};
+constexpr Rectangle kZoomIn{863, 416, 34, 27};
+
+inline float PixelsPerBeat(const EditorUiState& ui) {
+    return kZoomPixelsPerBeat[std::clamp(ui.timelineZoomIndex, 0, kZoomMax)];
+}
+
+inline double ViewBeat(const core::ChartEditor& draft, double activeBeat) {
+    return std::isfinite(activeBeat)
+        ? std::clamp(activeBeat,
+                     static_cast<double>(draft.Data().route.firstBeat),
+                     static_cast<double>(draft.Data().route.lengthBeats))
+        : static_cast<double>(draft.SelectedBeat());
+}
+
+constexpr Rectangle kTabRoute{388, 73, 155, 35};
+constexpr Rectangle kTabAudio{552, 73, 155, 35};
+constexpr Rectangle kTabField{716, 73, 155, 35};
+
+constexpr Rectangle kSong{49, 115, 162, 37};
+constexpr Rectangle kPlay{220, 115, 157, 37};
+constexpr Rectangle kStop{386, 115, 115, 37};
+constexpr Rectangle kTest{510, 115, 102, 37};
+
+constexpr Rectangle kHeading{744, 201, 168, 40};
+constexpr Rectangle kLeftTurn{744, 271, 168, 37};
+constexpr Rectangle kRightTurn{744, 314, 168, 37};
+constexpr Rectangle kRemoveTurn{744, 357, 168, 37};
+constexpr Rectangle kCopyTurns{52, 213, 173, 31};
+constexpr Rectangle kPasteTurns{52, 248, 173, 31};
+constexpr Rectangle kInvertTurns{52, 283, 173, 31};
+constexpr Rectangle kCutTurns{52, 318, 173, 31};
+constexpr Rectangle kUndoEdit{52, 354, 83, 31};
+constexpr Rectangle kRedoEdit{142, 354, 83, 31};
+
+constexpr Rectangle kTitle{92, 205, 768, 43};
+constexpr Rectangle kBpm{92, 290, 350, 43};
+constexpr Rectangle kOffset{510, 290, 350, 43};
+constexpr Rectangle kGridSize{104, 225, 330, 47};
+constexpr Rectangle kStartCell{519, 225, 330, 47};
+constexpr Rectangle kLength{104, 321, 330, 47};
+constexpr Rectangle kFieldHeading{519, 321, 330, 47};
+
+constexpr double kSpeeds[5] = {1.0, 0.75, 0.5, 0.25, 0.1};
+
+inline Rectangle RouteSpeedBounds(int index) {
+    const auto& layout = kDefaultEditorRouteLayout;
+    return {layout.practiceSpeedX,
+            layout.practiceSpeedStartY + index *
+                (layout.practiceSpeedHeight + layout.practiceSpeedGap),
+            layout.practiceSpeedWidth, layout.practiceSpeedHeight};
+}
+
+inline bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(pos, bounds); }
+
+struct EditorGrid {
+    float left = 0.0f, top = 0.0f, step = 1.0f;
+
+    explicit EditorGrid(const core::Chart& chart) {
+        const int maxSteps = std::max(chart.gridWidth - 1, chart.gridHeight - 1);
+        step = kGridMaxSpan / static_cast<float>(std::max(1, maxSteps));
+        left = kGridCenterX - (chart.gridWidth - 1) * step * 0.5f;
+        top = kGridCenterY - (chart.gridHeight - 1) * step * 0.5f;
+    }
+    Vector2 Point(core::GridPoint point) const {
+        return {left + static_cast<float>(point.x) * step,
+                top + static_cast<float>(point.y) * step};
+    }
+    Vector2 Point(core::Cell point) const {
+        return Point(core::GridPoint{static_cast<double>(point.x),
+                                    static_cast<double>(point.y)});
+    }
+};
+
+inline EditorTab ClickedTab(Vector2 mouse, EditorTab previous) {
+    if (Hit(kTabRoute, mouse)) return EditorTab::Route;
+    if (Hit(kTabAudio, mouse)) return EditorTab::Audio;
+    if (Hit(kTabField, mouse)) return EditorTab::Field;
+    return previous;
+}
+
+ } // namespace locus::app::detail
