@@ -233,12 +233,12 @@ if /I "%MODE%"=="baseline" (
 
 echo.
 echo ============================================================
-echo  LOCUS FIRST PLAYABLE DEMO - 32 BEATS / 120 BPM
-echo  ENTER = Start from Home  F = Left turn  J = Right turn
+echo  LOCUS - BUILT-IN DEMO AND LOCAL MUSIC
+echo  ENTER = Play 16-second demo  O = Select WAV/MP3 to listen
+echo  F = Left turn  J = Right turn  (demo chart only)
+echo  SPACE = Pause/Resume  R = Replay  H = Home  ESC = Close
 echo  F11 = Fullscreen / Window   Window edges = Resize
-echo  SPACE = Pause/Resume  R = Retry  H = Home  ESC = Close
-echo  Line grows with the moving marker; Wrap remains edge-split.
-echo  After the track, Results shows all nine turn judgements.
+echo  Custom songs are listening-only until chart loading is added.
 echo  DEBUG ONLY: F1 Home / F2 Play / F3 Editor / F4 Results
 echo  No Fail: errors never change the correct route.
 echo  Close with ESC or the X button in the window title bar.
