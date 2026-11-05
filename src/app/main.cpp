@@ -569,7 +569,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                                      localSong.DisplayName(), localSong.Ready(),
                                      editorTransport.Playing(), editorTransport.Paused(),
                                      selectedBeat, editorTransport.Speed());
-        const std::string statusLine = editorStatus.substr(0, 100);
+        const std::string statusLine = editorStatus.substr(0, 68);
         DrawTextLabel(font, statusLine.c_str(), Vector2{416.0f, 405.0f},
                       12.0f, Color{175, 212, 213, 255});
         if (editorPending != EditorPending::None) {
