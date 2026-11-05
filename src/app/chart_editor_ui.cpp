@@ -2,6 +2,7 @@
 
 #include "core/route.h"
 #include "core/route_view.h"
+#include "app/visual_style.h"
 
 #include <algorithm>
 #include <cmath>
@@ -64,6 +65,14 @@ constexpr Rectangle kLength{104, 321, 330, 47};
 constexpr Rectangle kFieldHeading{519, 321, 330, 47};
 
 constexpr double kSpeeds[5] = {1.0, 0.75, 0.5, 0.25, 0.1};
+
+Rectangle RouteSpeedBounds(int index) {
+    const auto& layout = kDefaultEditorRouteLayout;
+    return {layout.practiceSpeedX,
+            layout.practiceSpeedStartY + index *
+                (layout.practiceSpeedHeight + layout.practiceSpeedGap),
+            layout.practiceSpeedWidth, layout.practiceSpeedHeight};
+}
 
 bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(pos, bounds); }
 
@@ -317,13 +326,16 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
                        grid.Point(view.segments[i].to), width * scale, tint);
         }
     };
+    const auto& style = kDefaultRouteVisualStyle;
     if (beat + 1 < chart.lengthBeats) {
         const core::RouteStep next = core::SampleRouteStep(chart, beat + 1);
-        drawSegments(core::ViewRouteStep(next, 1.0),
-                     Color{88, 153, 199, 110}, 3.0f);
+        const core::StepView future = core::ViewRouteStep(next, 1.0);
+        drawSegments(future, style.routeOutline,
+                     style.editorNextStepWidth * style.outlineScale);
+        drawSegments(future, style.nextStep, style.editorNextStepWidth);
     }
-    drawSegments(whole, Color{95, 179, 230, 200}, 4.0f);
-    drawSegments(trace, Color{110, 235, 218, 255}, 5.5f);
+    drawSegments(whole, style.wholeStep, 4.0f);
+    drawSegments(trace, style.traveledStep, 5.5f);
 
     const float dot = std::min(8.0f, grid.step * 0.27f);
     for (int y = 0; y < chart.gridHeight; ++y) {
@@ -658,11 +670,19 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             action.changedChart = true;
         } else if (ui.tab == EditorTab::Route && Hit(kRemoveTurn, mouse)) {
             deleteTurns = true;
-        } else if (ui.tab == EditorTab::Audio && mouse.y >= 371 &&
-                   mouse.y <= 409) {
+        } else if (ui.tab == EditorTab::Route &&
+                   mouse.x >= kDefaultEditorRouteLayout.practiceSpeedX &&
+                   mouse.x <= kDefaultEditorRouteLayout.practiceSpeedX +
+                              kDefaultEditorRouteLayout.practiceSpeedWidth &&
+                   mouse.y >= kDefaultEditorRouteLayout.practiceSpeedStartY &&
+                   mouse.y < kDefaultEditorRouteLayout.practiceSpeedStartY +
+                       5 * (kDefaultEditorRouteLayout.practiceSpeedHeight +
+                            kDefaultEditorRouteLayout.practiceSpeedGap)) {
             for (int i = 0; i < 5; ++i) {
-                const Rectangle button{92.0f + i * 155.0f, 371.0f, 148.0f, 37.0f};
-                if (Hit(button, mouse)) action.speedIndex = i;
+                if (Hit(RouteSpeedBounds(i), mouse)) {
+                    action.speedIndex = i;
+                    break;
+                }
             }
         } else if (mouse.y >= kTimelineY && mouse.y <= kTimelineY + kTimelineHeight &&
                    mouse.x >= kTimelineX &&
@@ -836,6 +856,14 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Button(font, kCutTurns, "CUT CTRL+X", Color{216, 166, 155, 255});
         Button(font, kUndoEdit, "UNDO", Color{169, 188, 217, 255});
         Button(font, kRedoEdit, "REDO", Color{169, 188, 217, 255});
+        Label(font, "PLAYBACK SPEED", 618, 185, 14,
+              Color{182, 207, 227, 255});
+        const char* speeds[5] = {"100%", "75%", "50%", "25%", "10%"};
+        for (int i = 0; i < 5; ++i) {
+            Button(font, RouteSpeedBounds(i), speeds[i],
+                   Color{125, 183, 222, 255},
+                   std::abs(playbackSpeed - kSpeeds[i]) < 0.001);
+        }
     } else if (ui.tab == EditorTab::Audio) {
         Label(font, "AUDIO  /  CHART TIMING", 92, 169, 20,
               Color{182, 218, 235, 255});
@@ -848,13 +876,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         DrawTextField(font, kBpm, "BPM (TYPE)", bpm, EditorField::Bpm, ui);
         DrawTextField(font, kOffset, "OFFSET IN MILLISECONDS (TYPE)",
                       offset, EditorField::OffsetMs, ui);
-        Label(font, "PREVIEW SPEED  (1-5 KEYS)", 92, 348, 16,
-              Color{182, 207, 227, 255});
-        const char* captions[5] = {"100%", "75%", "50%", "25%", "10%"};
-        for (int i = 0; i < 5; ++i)
-            Button(font, {92.0f + i * 155.0f, 371.0f, 148.0f, 37.0f},
-                   captions[i], Color{125, 167, 205, 255},
-                   std::abs(playbackSpeed - kSpeeds[i]) < 0.001);
+        Label(font, "PRACTICE SPEED: SET ON ROUTE (KEYS 1-5 WORK HERE TOO)",
+              92, 374, 16, Color{172, 199, 218, 255});
     } else {
         Label(font, "FIELD  /  GAMEPLAY GEOMETRY", 104, 169, 20,
               Color{239, 210, 159, 255});

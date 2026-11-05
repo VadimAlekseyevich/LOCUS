@@ -59,10 +59,9 @@ int main() {
     ok &= Check(chart.Data().title == "My rhythm chart",
                 "chart title can be typed in Audio tab");
 
-    const auto slow = ApplyEditorControls(chart, ui, Click(826, 390));
-    ok &= Check(slow.speedIndex == 4, "10 percent speed stays clickable in Audio");
-    const auto normal = ApplyEditorControls(chart, ui, Click(116, 390));
-    ok &= Check(normal.speedIndex == 0, "100 percent speed stays clickable in Audio");
+    const auto audioEmpty = ApplyEditorControls(chart, ui, Click(116, 390));
+    ok &= Check(audioEmpty.speedIndex == -1,
+                "practice speed buttons are no longer in the Audio tab");
 
     // Geometry is a separate authoring tab, accepting size WxH as 8/8.
     ApplyEditorControls(chart, ui, Click(783, 89));
@@ -109,6 +108,10 @@ int main() {
 
     ApplyEditorControls(chart, ui, Click(450, 89));
     ok &= Check(ui.tab == EditorTab::Route, "Route tab restores the large grid");
+    const auto normal = ApplyEditorControls(chart, ui, Click(668, 221));
+    const auto slow = ApplyEditorControls(chart, ui, Click(668, 370));
+    ok &= Check(normal.speedIndex == 0 && slow.speedIndex == 4,
+                "practice speed 100 and 10 percent are clickable on Route");
 
     // At x = 50 + 860/3, the selected beat stays under the fixed playhead.
     constexpr float cursor = 50.0f + 860.0f / 3.0f;

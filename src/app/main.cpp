@@ -9,6 +9,8 @@
 #include "app/chart_playback.h"
 #include "app/music_picker.h"
 #include "app/chart_editor_ui.h"
+#include "app/chart_filename.h"
+#include "app/visual_style.h"
 
 #include "raylib.h"
 
@@ -268,11 +270,11 @@ Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat,
     const double lead = std::clamp(previewLeadBeats, 0.01, 8.0);
     const int previewSteps = std::clamp(static_cast<int>(std::ceil(lead)), 1, 8);
 
+    const auto& style = locus::app::kDefaultRouteVisualStyle;
     for (int ahead = previewSteps - 1; ahead >= 0; --ahead) {
-        const Color color = ahead == 0
-            ? Color{107, 230, 222, 255}
-            : Color{106, 187, 224,
-                    static_cast<unsigned char>(std::max(75, 255 - 35 * ahead))};
+        const Color color = ahead == 0 ? style.currentStep
+                            : ahead == 1 ? style.nextStep
+                                         : style.furtherStep;
         const int routeBeat = currentBeat + ahead;
         if (routeBeat >= chart.lengthBeats) continue;
         const locus::core::RouteStep step =
@@ -290,8 +292,18 @@ Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat,
         for (int segment = 0; segment < view.segmentCount; ++segment) {
             const auto& line = view.segments[segment];
             const float thickness = std::clamp(grid.step / 76.0f, 0.4f, 1.0f);
-            DrawLineEx(grid.Position(line.from), grid.Position(line.to),
-                       (ahead == 0 ? 6.0f : 3.5f) * thickness, color);
+            const Vector2 from = grid.Position(line.from);
+            const Vector2 to = grid.Position(line.to);
+            if (ahead > 0) {
+                // A dark outline and opaque bright interior stay readable
+                // against both guides and future user-selected backgrounds.
+                DrawLineEx(from, to,
+                           style.gameNextStepWidth * style.outlineScale * thickness,
+                           style.routeOutline);
+            }
+            DrawLineEx(from, to,
+                       (ahead == 0 ? 6.0f : style.gameNextStepWidth) * thickness,
+                       color);
         }
         if (ahead > 0 && reveal >= 1.0) {
             DrawCircleV(grid.Point(step.to), std::min(4.0f, grid.step * 0.16f), color);
@@ -345,7 +357,7 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
     DrawTextLabel(font, "CYAN   CURRENT STEP", Vector2{665.0f, 216.0f}, 17.0f,
                   Color{131, 232, 227, 255});
     DrawTextLabel(font, "BLUE   ROUTE PREVIEW", Vector2{665.0f, 244.0f}, 17.0f,
-                  Color{128, 174, 222, 255});
+                  locus::app::kDefaultRouteVisualStyle.nextStep);
     DrawTextLabel(font, "WRAP   EDGE SPLIT", Vector2{665.0f, 272.0f}, 17.0f,
                   Color{184, 189, 204, 255});
 
@@ -763,10 +775,14 @@ bool SaveDraftToDisk(locus::core::ChartEditor& editor,
 
     std::wstring destination = chartPath;
     if (destination.empty() || saveAs) {
-        const std::wstring suggestion = destination.empty()
-            ? (std::filesystem::path(audioPath).parent_path() /
-               std::filesystem::path(L"Untitled.locus.json")).wstring()
-            : destination;
+        // Use the authored chart title as the filename suggestion, not
+        // the unrelated audio filename or a perpetual "Untitled" default.
+        // Ctrl+S for a previously saved chart still uses its existing path.
+        const auto folder = destination.empty()
+            ? std::filesystem::path(audioPath).parent_path()
+            : std::filesystem::path(destination).parent_path();
+        const std::wstring suggestion =
+            (folder / locus::app::SuggestedChartFileName(checked.title)).wstring();
         const auto selected = locus::app::ChooseChartSaveFile(suggestion);
         if (selected.path.empty()) {
             error = selected.canceled ? "" : selected.error;

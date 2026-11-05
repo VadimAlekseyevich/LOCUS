@@ -1,4 +1,5 @@
 #include "app/chart_file.h"
+#include "app/chart_filename.h"
 #include "core/chart_json.h"
 #include "core/demo_audio.h"
 
@@ -9,6 +10,21 @@
 #include <string>
 
 int main() {
+    // Save As suggests the authored chart title, not the audio filename.
+    const bool filenames =
+        locus::app::SuggestedChartFileName("rip me apart") ==
+            L"rip me apart.locus.json" &&
+        locus::app::SuggestedChartFileName("  New:Chart/Part?  ") ==
+            L"New_Chart_Part_.locus.json" &&
+        locus::app::SuggestedChartFileName("CON") == L"_CON.locus.json" &&
+        locus::app::SuggestedChartFileName(" ... ") == L"Untitled.locus.json" &&
+        locus::app::SuggestedChartFileName(
+            u8"\u041C\u043E\u044F \u043F\u0435\u0441\u043D\u044F") ==
+            L"\u041C\u043E\u044F \u043F\u0435\u0441\u043D\u044F.locus.json";
+    if (!filenames) {
+        std::cerr << "CHART_FILE_FAIL unsafe chart filename suggestion\n";
+        return 1;
+    }
 #ifdef _WIN32
     namespace fs = std::filesystem;
     const auto unique = std::to_string(std::chrono::steady_clock::now()
