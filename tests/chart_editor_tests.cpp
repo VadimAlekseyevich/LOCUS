@@ -150,6 +150,70 @@ int main() {
                 SampleRouteStep(draft.Data().route, 0).from.y == 3,
                 "new starting cell is used by actual route geometry");
 
+    // A range-based pattern copies relative notes, including gaps, rather than
+    // copying the entire chart. All group edits must be a single undo step.
+    ChartEditor group;
+    group.NewDraft();
+    group.MarkSaved();
+    group.SelectBeat(2);
+    group.PutTurn(Turn::Left);
+    group.SelectBeat(4);
+    group.PutTurn(Turn::Right);
+    group.SelectBeat(8);
+    group.PutTurn(Turn::Left);
+    const auto pattern = group.CopyTurns(2, 5);
+    ok &= Check(pattern.span == 4 && pattern.notes.size() == 2 &&
+                pattern.notes[0].beat == 0 && pattern.notes[1].beat == 2,
+                "pattern copy stores source span and relative note positions");
+    ok &= Check(!group.PasteTurns(30, pattern) &&
+                group.Data().route.turns.size() == 3,
+                "out-of-range paste is atomic");
+    ok &= Check(group.PasteTurns(12, pattern) &&
+                group.Data().route.turns.size() == 5 &&
+                group.Data().route.turns[3].beat == 12 &&
+                group.Data().route.turns[4].beat == 14,
+                "pattern paste preserves rests and sorted notes");
+    ok &= Check(group.InvertTurns(12, 14) &&
+                group.Data().route.turns[3].direction == Turn::Right &&
+                group.Data().route.turns[4].direction == Turn::Left,
+                "flip changes Left/Right for the entire selected group");
+    ok &= Check(group.Undo() &&
+                group.Data().route.turns[3].direction == Turn::Left &&
+                group.Data().route.turns[4].direction == Turn::Right &&
+                group.Redo() &&
+                group.Data().route.turns[3].direction == Turn::Right,
+                "undo and redo invert the whole group together");
+    ok &= Check(group.ShiftTurns(12, 14, 1) &&
+                group.Data().route.turns[3].beat == 13 &&
+                group.Data().route.turns[4].beat == 15,
+                "group shift moves all notes by one beat");
+    group.SelectBeat(16);
+    group.PutTurn(Turn::Left);
+    ok &= Check(!group.ShiftTurns(13, 15, 1) &&
+                group.Data().route.turns[4].beat == 15 &&
+                group.Data().route.turns[5].beat == 16,
+                "collision with notes outside selection rejects entire shift");
+    ok &= Check(group.DeleteTurns(13, 15) &&
+                group.Data().route.turns.size() == 4 &&
+                group.Undo() && group.Data().route.turns.size() == 6,
+                "delete range is reversible in one undo operation");
+    ok &= Check(group.Undo() && group.Data().route.turns.size() == 5 &&
+                group.Undo() && group.Data().route.turns[3].beat == 12 &&
+                group.Data().route.turns[4].beat == 14,
+                "multiple undo steps restore earlier pattern positions");
+    ok &= Check(group.SetGridSize(8, 8) && group.Undo() &&
+                group.Data().route.gridWidth == 4 &&
+                group.Redo() && group.Data().route.gridWidth == 8,
+                "undo and redo also cover ordinary field edits");
+    ChartEditor saved;
+    saved.NewDraft();
+    saved.PutTurn(Turn::Left);
+    saved.MarkSaved();
+    saved.PutTurn(Turn::Right);
+    ok &= Check(saved.Dirty() && saved.Undo() && !saved.Dirty() &&
+                saved.Redo() && saved.Dirty(),
+                "undo to last saved revision restores clean status");
+
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 wrap=1\n";
     return 0;

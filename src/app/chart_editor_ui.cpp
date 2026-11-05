@@ -48,6 +48,12 @@ constexpr Rectangle kHeading{744, 201, 168, 40};
 constexpr Rectangle kLeftTurn{744, 271, 168, 37};
 constexpr Rectangle kRightTurn{744, 314, 168, 37};
 constexpr Rectangle kRemoveTurn{744, 357, 168, 37};
+constexpr Rectangle kCopyTurns{52, 213, 173, 31};
+constexpr Rectangle kPasteTurns{52, 248, 173, 31};
+constexpr Rectangle kInvertTurns{52, 283, 173, 31};
+constexpr Rectangle kCutTurns{52, 318, 173, 31};
+constexpr Rectangle kUndoEdit{52, 354, 83, 31};
+constexpr Rectangle kRedoEdit{142, 354, 83, 31};
 
 constexpr Rectangle kTitle{92, 205, 768, 43};
 constexpr Rectangle kBpm{92, 290, 350, 43};
@@ -346,11 +352,17 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
 void DrawTimeline(Font font, const core::ChartEditor& draft,
                   const EditorUiState& ui, double previewBeat) {
     const auto& chart = draft.Data().route;
-    const double anchor = ViewBeat(draft, previewBeat);
+    const double anchor = ui.draggingTimeline
+        ? ui.dragViewBeat : ViewBeat(draft, previewBeat);
     const float pixels = PixelsPerBeat(ui);
 
-    Label(font, TextFormat("TIMELINE  %.2f / %d", anchor, chart.lengthBeats),
-          50, 422, 17, Color{209, 222, 234, 255});
+    if (ui.HasRange()) {
+        Label(font, TextFormat("RANGE %d-%d", ui.rangeFirst, ui.rangeLast),
+              50, 422, 17, Color{239, 207, 131, 255});
+    } else {
+        Label(font, TextFormat("TIMELINE  %.2f / %d", anchor, chart.lengthBeats),
+              50, 422, 17, Color{209, 222, 234, 255});
+    }
     Label(font, "ARROWS 1  CTRL+ARROWS 4", 328, 423, 13,
           Color{164, 188, 208, 255});
     Label(font, TextFormat("%d PX/BEAT", static_cast<int>(pixels)),
@@ -362,7 +374,20 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     DrawRectangleRounded(strip, 0.15f, 5, Color{34, 44, 59, 255});
     DrawRectangleRec({kTimelineX + 2.0f, kTimelineY + 2.0f,
                       kPlayheadX - kTimelineX - 2.0f, kTimelineHeight - 4.0f},
-                     Color{41, 62, 70, 255}); // The quarter-width past.
+                     Color{41, 62, 70, 255}); // Past the fixed cursor.
+    if (ui.tab == EditorTab::Route && ui.HasRange()) {
+        const float a = kPlayheadX +
+            static_cast<float>((ui.rangeFirst - 0.5 - anchor) * pixels);
+        const float b = kPlayheadX +
+            static_cast<float>((ui.rangeLast + 0.5 - anchor) * pixels);
+        const float x1 = std::max(a, kTimelineX + 2.0f);
+        const float x2 = std::min(b, kTimelineX + kTimelineWidth - 2.0f);
+        if (x2 > x1) {
+            DrawRectangleRec({x1, kTimelineY + 2.0f, x2 - x1,
+                              kTimelineHeight - 4.0f},
+                             Color{187, 160, 231, 96});
+        }
+    }
     DrawLineEx({kTimelineX + 4.0f, 477.0f},
                {kTimelineX + kTimelineWidth - 4.0f, 477.0f},
                2.0f, Color{98, 125, 150, 255});
@@ -434,6 +459,16 @@ EditorControls PollEditorControls() {
     EditorControls input;
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    input.shiftHeld = shift;
+    input.copyRange = control && IsKeyPressed(KEY_C);
+    input.cutRange = control && IsKeyPressed(KEY_X);
+    input.pasteRange = control && IsKeyPressed(KEY_V);
+    input.invertRange = !control && IsKeyPressed(KEY_I);
+    input.undo = control && !shift && IsKeyPressed(KEY_Z);
+    input.redo = (control && IsKeyPressed(KEY_Y)) ||
+                 (control && shift && IsKeyPressed(KEY_Z));
+    input.shiftRangePrevious = control && shift && IsKeyPressed(KEY_LEFT);
+    input.shiftRangeNext = control && shift && IsKeyPressed(KEY_RIGHT);
     input.zoomIn = IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_KP_ADD) ||
                    IsKeyPressed(KEY_RIGHT_BRACKET);
     input.zoomOut = IsKeyPressed(KEY_MINUS) || IsKeyPressed(KEY_KP_SUBTRACT) ||
@@ -461,6 +496,8 @@ EditorControls PollEditorControls() {
                      : IsKeyPressed(KEY_FOUR) ? 3
                      : IsKeyPressed(KEY_FIVE) ? 4 : -1;
     input.mouseClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    input.mouseHeld = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+    input.mouseReleased = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     input.mouse = EditorVirtualMouse(GetMousePosition(), GetScreenWidth(),
                                      GetScreenHeight());
     input.mouseWheel = GetMouseWheelMove();
@@ -486,18 +523,24 @@ EditorControls PollEditorControls() {
 EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                                   const EditorControls& input) {
     EditorUiAction action;
+    const auto notice = [&](const char* message, bool error = false) {
+        ui.feedback = message;
+        ui.feedbackError = error;
+    };
+
+    // Keep all editor shortcuts away from active text fields.
     if (ui.EditingText()) {
         if (input.escape) {
             ui.active = EditorField::None;
             ui.buffer.clear();
             ui.replaceOnType = false;
             ui.feedback.clear();
+            ui.feedbackError = false;
         } else if (input.backspace) {
             if (ui.replaceOnType) {
                 ui.buffer.clear();
                 ui.replaceOnType = false;
             } else if (!ui.buffer.empty()) {
-                // Drop the entire last UTF-8 codepoint, not just a trailing byte.
                 std::size_t pos = ui.buffer.size() - 1;
                 while (pos > 0 &&
                        (static_cast<unsigned char>(ui.buffer[pos]) & 0xc0) == 0x80)
@@ -525,23 +568,48 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         if (input.enter || input.tab) {
             const bool committed = CommitField(ui, draft);
             action.changedChart = committed;
-            if (committed && input.tab)
-                BeginField(ui, draft, EditorField::Bpm);
+            if (committed && input.tab) {
+                const EditorField next = ui.tab == EditorTab::Audio
+                    ? EditorField::Bpm : EditorField::GridSize;
+                BeginField(ui, draft, next);
+            }
         } else if (input.mouseClick) {
             const EditorField target = ClickedField(input.mouse, ui.tab);
-            if (target != ui.active) {
+            const EditorTab nextTab = ClickedTab(input.mouse, ui.tab);
+            if (target != ui.active || nextTab != ui.tab) {
                 const bool committed = CommitField(ui, draft);
                 action.changedChart = committed;
                 if (committed) {
-                    ui.tab = ClickedTab(input.mouse, ui.tab);
-                    if (target != EditorField::None) BeginField(ui, draft, target);
+                    ui.tab = nextTab;
+                    if (target != EditorField::None && nextTab == ui.tab)
+                        BeginField(ui, draft, target);
                 }
             }
         }
         return action;
     }
 
+    // Undo/redo also cover non-pattern edits (BPM, grid size, individual turns).
+    if (input.undo || input.redo) {
+        const bool ok = input.undo ? draft.Undo() : draft.Redo();
+        action.changedChart = ok;
+        notice(ok ? (input.undo ? "UNDO APPLIED" : "REDO APPLIED")
+                  : (input.undo ? "NOTHING TO UNDO" : "NOTHING TO REDO"), !ok);
+        if (ok && ui.HasRange()) {
+            if (ui.rangeLast >= draft.Data().route.lengthBeats)
+                ui.rangeFirst = ui.rangeLast = -1;
+        }
+        return action;
+    }
+
+    bool copy = input.copyRange && ui.tab == EditorTab::Route;
+    bool cut = input.cutRange && ui.tab == EditorTab::Route;
+    bool paste = input.pasteRange && ui.tab == EditorTab::Route;
+    bool invert = input.invertRange && ui.tab == EditorTab::Route;
+    bool deleteTurns = input.removeTurn && ui.tab == EditorTab::Route;
+
     if (input.mouseClick) {
+        ui.draggingTimeline = false;
         const Vector2 mouse = input.mouse;
         const EditorTab nextTab = ClickedTab(mouse, ui.tab);
         if (nextTab != ui.tab) {
@@ -553,6 +621,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             BeginField(ui, draft, selected);
             return action;
         }
+
         if (Hit(kSong, mouse)) action.chooseAudio = true;
         else if (Hit(kPlay, mouse)) action.previewToggle = true;
         else if (Hit(kStop, mouse)) action.previewRestart = true;
@@ -561,7 +630,21 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
         else if (Hit(kZoomIn, mouse))
             ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
-        else if (ui.tab == EditorTab::Route && Hit(kHeading, mouse)) {
+        else if (ui.tab == EditorTab::Route && Hit(kCopyTurns, mouse)) copy = true;
+        else if (ui.tab == EditorTab::Route && Hit(kPasteTurns, mouse)) paste = true;
+        else if (ui.tab == EditorTab::Route && Hit(kInvertTurns, mouse)) invert = true;
+        else if (ui.tab == EditorTab::Route && Hit(kCutTurns, mouse)) cut = true;
+        else if (ui.tab == EditorTab::Route && Hit(kUndoEdit, mouse)) {
+            action.changedChart = draft.Undo();
+            notice(action.changedChart ? "UNDO APPLIED" : "NOTHING TO UNDO",
+                   !action.changedChart);
+            return action;
+        } else if (ui.tab == EditorTab::Route && Hit(kRedoEdit, mouse)) {
+            action.changedChart = draft.Redo();
+            notice(action.changedChart ? "REDO APPLIED" : "NOTHING TO REDO",
+                   !action.changedChart);
+            return action;
+        } else if (ui.tab == EditorTab::Route && Hit(kHeading, mouse)) {
             draft.RotateHeading(1);
             action.changedChart = true;
         } else if (ui.tab == EditorTab::Field && Hit(kFieldHeading, mouse)) {
@@ -574,7 +657,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             draft.PutTurn(core::Turn::Right);
             action.changedChart = true;
         } else if (ui.tab == EditorTab::Route && Hit(kRemoveTurn, mouse)) {
-            action.changedChart = draft.RemoveTurn();
+            deleteTurns = true;
         } else if (ui.tab == EditorTab::Audio && mouse.y >= 371 &&
                    mouse.y <= 409) {
             for (int i = 0; i < 5; ++i) {
@@ -588,6 +671,17 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             const double clicked = anchor + (mouse.x - kPlayheadX) / PixelsPerBeat(ui);
             const int beat = std::clamp(static_cast<int>(std::lround(clicked)),
                                         0, draft.Data().route.lengthBeats - 1);
+            if (ui.tab == EditorTab::Route && input.shiftHeld) {
+                const int origin = draft.SelectedBeat();
+                ui.rangeFirst = std::min(origin, beat);
+                ui.rangeLast = std::max(origin, beat);
+                ui.draggingTimeline = false;
+            } else {
+                ui.rangeFirst = ui.rangeLast = -1;
+                ui.draggingTimeline = ui.tab == EditorTab::Route && input.mouseHeld;
+                ui.dragAnchorBeat = beat;
+                ui.dragViewBeat = anchor;
+            }
             draft.SelectBeat(beat);
         } else if (ui.tab == EditorTab::Route) {
             const auto& chart = draft.Data().route;
@@ -608,18 +702,78 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         }
     }
 
+    // While dragging, freeze the beat-to-pixel transform so the scroll
+    // follows the mouse rather than moving the clicked target out from under it.
+    if (ui.draggingTimeline && (input.mouseHeld || input.mouseReleased)) {
+        const double point = ui.dragViewBeat +
+                             (input.mouse.x - kPlayheadX) / PixelsPerBeat(ui);
+        const int beat = std::clamp(static_cast<int>(std::lround(point)),
+                                    0, draft.Data().route.lengthBeats - 1);
+        if (beat != ui.dragAnchorBeat) {
+            ui.rangeFirst = std::min(ui.dragAnchorBeat, beat);
+            ui.rangeLast = std::max(ui.dragAnchorBeat, beat);
+        } else {
+            ui.rangeFirst = ui.rangeLast = -1;
+        }
+        draft.SelectBeat(beat);
+    }
+    if (input.mouseReleased || (!input.mouseHeld && !input.mouseClick))
+        ui.draggingTimeline = false;
+
     if (input.zoomOut) ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
     if (input.zoomIn) ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
-    if (input.previousBeat) draft.StepSelection(-1);
-    if (input.nextBeat) draft.StepSelection(1);
-    if (input.previousBar) draft.StepSelection(-4);
-    if (input.nextBar) draft.StepSelection(4);
+    if (input.previousBeat) { draft.StepSelection(-1); ui.rangeFirst = ui.rangeLast = -1; }
+    if (input.nextBeat) { draft.StepSelection(1); ui.rangeFirst = ui.rangeLast = -1; }
+    if (input.previousBar) { draft.StepSelection(-4); ui.rangeFirst = ui.rangeLast = -1; }
+    if (input.nextBar) { draft.StepSelection(4); ui.rangeFirst = ui.rangeLast = -1; }
+
     if (ui.tab == EditorTab::Route) {
-        if (input.movePrevious) action.changedChart |= draft.MoveTurn(-1);
-        if (input.moveNext) action.changedChart |= draft.MoveTurn(1);
+        if (input.movePrevious && !ui.HasRange()) action.changedChart |= draft.MoveTurn(-1);
+        if (input.moveNext && !ui.HasRange()) action.changedChart |= draft.MoveTurn(1);
         if (input.addLeft) { draft.PutTurn(core::Turn::Left); action.changedChart = true; }
         if (input.addRight) { draft.PutTurn(core::Turn::Right); action.changedChart = true; }
-        if (input.removeTurn) action.changedChart |= draft.RemoveTurn();
+        const int first = ui.HasRange() ? ui.rangeFirst : draft.SelectedBeat();
+        const int last = ui.HasRange() ? ui.rangeLast : draft.SelectedBeat();
+        const bool valid = first >= 0 && last < draft.Data().route.lengthBeats;
+
+        if (copy || cut) {
+            ui.clipboard = valid ? draft.CopyTurns(first, last)
+                                 : core::ChartEditor::Pattern{};
+            const bool any = !ui.clipboard.notes.empty();
+            if (cut && any) action.changedChart |= draft.DeleteTurns(first, last);
+            notice(any ? (cut ? "TURNS CUT - CTRL+V TO PASTE"
+                              : "TURNS COPIED - SELECT DESTINATION BEAT")
+                       : "NO TURNS IN SELECTION", !any);
+        }
+        if (paste) {
+            const bool ok = draft.PasteTurns(draft.SelectedBeat(), ui.clipboard);
+            action.changedChart |= ok;
+            notice(ok ? "PATTERN PASTED AT SELECTED BEAT"
+                      : "CANNOT PASTE - EMPTY CLIPBOARD, SAME NOTES OR OUT OF BOUNDS", !ok);
+        }
+        if (invert) {
+            const bool ok = valid && draft.InvertTurns(first, last);
+            action.changedChart |= ok;
+            notice(ok ? "LEFT / RIGHT REVERSED" : "NO TURNS TO INVERT", !ok);
+        }
+        if (deleteTurns) {
+            const bool ok = valid && draft.DeleteTurns(first, last);
+            action.changedChart |= ok;
+            notice(ok ? "SELECTED TURNS DELETED" : "NO TURNS TO DELETE", !ok);
+        }
+        if (input.shiftRangePrevious || input.shiftRangeNext) {
+            const int delta = input.shiftRangePrevious ? -1 : 1;
+            const bool ok = ui.HasRange() && valid &&
+                            draft.ShiftTurns(first, last, delta);
+            action.changedChart |= ok;
+            if (ok) {
+                ui.rangeFirst += delta;
+                ui.rangeLast += delta;
+                draft.StepSelection(delta);
+            }
+            notice(ok ? "PATTERN SHIFTED ONE BEAT"
+                      : "SHIFT BLOCKED - SELECT TURNS OR AVOID COLLISIONS", !ok);
+        }
     }
     if (ui.tab != EditorTab::Audio) {
         if (input.headingLeft) { draft.RotateHeading(-1); action.changedChart = true; }
@@ -674,6 +828,14 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Button(font, kLeftTurn, "F  LEFT", Color{113, 226, 205, 255});
         Button(font, kRightTurn, "J  RIGHT", Color{173, 170, 239, 255});
         Button(font, kRemoveTurn, "DEL  REMOVE", Color{223, 156, 156, 255});
+        Label(font, "PATTERN  /  DRAG RULER", 52, 188, 14,
+              Color{193, 215, 226, 255});
+        Button(font, kCopyTurns, "COPY CTRL+C", Color{126, 190, 221, 255});
+        Button(font, kPasteTurns, "PASTE CTRL+V", Color{127, 224, 199, 255});
+        Button(font, kInvertTurns, "FLIP L/R  I", Color{190, 168, 229, 255});
+        Button(font, kCutTurns, "CUT CTRL+X", Color{216, 166, 155, 255});
+        Button(font, kUndoEdit, "UNDO", Color{169, 188, 217, 255});
+        Button(font, kRedoEdit, "REDO", Color{169, 188, 217, 255});
     } else if (ui.tab == EditorTab::Audio) {
         Label(font, "AUDIO  /  CHART TIMING", 92, 169, 20,
               Color{182, 218, 235, 255});
@@ -723,7 +885,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         : ui.feedback;
     Label(font, Truncate(message, 90).c_str(), 50, 508, 14,
           ui.feedback.empty() ? Color{177, 198, 218, 255}
-                              : Color{238, 166, 154, 255});
+              : ui.feedbackError ? Color{238, 166, 154, 255}
+                                 : Color{142, 232, 207, 255});
 }
 
 } // namespace locus::app

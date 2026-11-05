@@ -163,6 +163,84 @@ int main() {
                 std::abs(mapped.y - 270) < 1e-4,
                 "editor mouse coordinates survive fullscreen scaling");
 
+    // ROUTE only: select a continuous beat interval with a real mouse drag,
+    // copy it, and paste it at an unrelated timeline position.
+    chart.NewDraft();
+    ui = EditorUiState{};
+    chart.SelectBeat(6);
+    chart.PutTurn(Turn::Left);
+    chart.SelectBeat(8);
+    chart.PutTurn(Turn::Right);
+    chart.SelectBeat(6);
+
+    EditorControls press = Click(cursor, 477);
+    press.mouseHeld = true;
+    press.timelineViewBeat = 6.0;
+    ApplyEditorControls(chart, ui, press);
+    EditorControls drag;
+    drag.mouseHeld = true;
+    drag.mouse = {cursor + 72.0f, 477};
+    drag.timelineViewBeat = 8.0;
+    ApplyEditorControls(chart, ui, drag);
+    EditorControls release;
+    release.mouseReleased = true;
+    release.mouse = {cursor + 72.0f, 477};
+    ApplyEditorControls(chart, ui, release);
+    ok &= Check(ui.HasRange() && ui.rangeFirst == 6 &&
+                ui.rangeLast == 8 && chart.SelectedBeat() == 8,
+                "mouse drag highlights inclusive beat range 6..8");
+
+    EditorControls copy;
+    copy.copyRange = true;
+    const auto copied = ApplyEditorControls(chart, ui, copy);
+    ok &= Check(!copied.changedChart && ui.clipboard.span == 3 &&
+                ui.clipboard.notes.size() == 2 &&
+                ui.clipboard.notes[1].beat == 2,
+                "Ctrl+C copies group using relative beat positions");
+
+    ApplyEditorControls(chart, ui, Click(cursor + 36.0f * 4.0f, 477));
+    ok &= Check(!ui.HasRange() && chart.SelectedBeat() == 12,
+                "clicking destination clears previous range selection");
+    EditorControls paste;
+    paste.pasteRange = true;
+    const auto pasted = ApplyEditorControls(chart, ui, paste);
+    ok &= Check(pasted.changedChart &&
+                chart.Data().route.turns.size() == 4 &&
+                chart.Data().route.turns[2].beat == 12 &&
+                chart.Data().route.turns[3].beat == 14,
+                "Ctrl+V pastes selected turn pattern starting at beat 12");
+
+    // Shift-click builds a range from the currently selected beat.
+    EditorControls extend = Click(cursor + 72, 477);
+    extend.shiftHeld = true;
+    ApplyEditorControls(chart, ui, extend);
+    ok &= Check(ui.HasRange() && ui.rangeFirst == 12 && ui.rangeLast == 14,
+                "Shift+click extends selection without opening another tab");
+    EditorControls invert;
+    invert.invertRange = true;
+    const auto flipped = ApplyEditorControls(chart, ui, invert);
+    ok &= Check(flipped.changedChart &&
+                chart.Data().route.turns[2].direction == Turn::Right &&
+                chart.Data().route.turns[3].direction == Turn::Left,
+                "I inverts Left and Right for selected interval");
+    EditorControls undo;
+    undo.undo = true;
+    ApplyEditorControls(chart, ui, undo);
+    ok &= Check(chart.Data().route.turns[2].direction == Turn::Left,
+                "Ctrl+Z undoes the entire inversion");
+    EditorControls redo;
+    redo.redo = true;
+    ApplyEditorControls(chart, ui, redo);
+    ok &= Check(chart.Data().route.turns[2].direction == Turn::Right,
+                "Ctrl+Y redoes inverted group");
+    EditorControls shift;
+    shift.shiftRangePrevious = true;
+    const auto shifted = ApplyEditorControls(chart, ui, shift);
+    ok &= Check(shifted.changedChart && ui.rangeFirst == 11 &&
+                ui.rangeLast == 13 && chart.Data().route.turns[2].beat == 11 &&
+                chart.Data().route.turns[3].beat == 13,
+                "Ctrl+Shift+Left moves whole highlighted group one beat");
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS tabs=3 grid=8x8 preview=1 zoom=1\n";
     return 0;
