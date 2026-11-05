@@ -45,6 +45,48 @@ bool ChartEditor::SelectBeat(int beat) noexcept {
     return true;
 }
 
+bool ChartEditor::SetBpm(double bpm) noexcept {
+    if (!std::isfinite(bpm) || bpm < 30.0 || bpm > 300.0) return false;
+    if (bpm != chart_.route.bpm) {
+        chart_.route.bpm = bpm;
+        MarkDirty();
+    }
+    return true;
+}
+
+bool ChartEditor::SetOffsetMs(double milliseconds) noexcept {
+    if (!std::isfinite(milliseconds) || std::abs(milliseconds) > 3600000.0)
+        return false;
+    if (milliseconds != chart_.offsetSeconds * 1000.0) {
+        chart_.offsetSeconds = milliseconds / 1000.0;
+        MarkDirty();
+    }
+    return true;
+}
+
+bool ChartEditor::SetLength(int beats) noexcept {
+    if (beats < 1 || beats > 65536) return false;
+    if (!chart_.route.turns.empty() && chart_.route.turns.back().beat >= beats)
+        return false;
+    if (beats != chart_.route.lengthBeats) {
+        chart_.route.lengthBeats = beats;
+        chart_.authoredLengthBeats = beats;
+        selectedBeat_ = std::min(selectedBeat_, beats - 1);
+        MarkDirty();
+    }
+    return true;
+}
+
+bool ChartEditor::SetTitle(const std::string& title) {
+    if (title.empty() || title.size() > 100 ||
+        title.find_first_not_of(" \t\n\r") == std::string::npos) return false;
+    if (title != chart_.title) {
+        chart_.title = title;
+        MarkDirty();
+    }
+    return true;
+}
+
 bool ChartEditor::ChangeBpm(int delta) noexcept {
     const double target = chart_.route.bpm + delta;
     if (target < 30.0 || target > 300.0 || target == chart_.route.bpm) return false;
