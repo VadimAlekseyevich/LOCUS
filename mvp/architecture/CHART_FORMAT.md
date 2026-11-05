@@ -1,7 +1,7 @@
 # LOCUS — Chart File Format v1
 
 **Task:** A-05 — Define the first chart schema  
-**Status:** Proposed architecture contract, pending Stage 1 human gate  
+**Status:** Implemented chart v1; M-03 prefers millisecond offsets while keeping legacy charts readable  
 **Scope:** MVP v0.1, fixed 4×4 grid, Wrap, quarter-note steps, relative Left/Right  
 **Related:** [GDD](../GDD.md), [TIMING](./TIMING.md), [BOUNDARIES](./BOUNDARIES.md), [ROADMAP](../ROADMAP.md)
 
@@ -12,7 +12,7 @@
 - Use **UTF-8 JSON**, one chart per file, with an explicit **formatVersion: 1**. The format version is independent of the game's v0.1 release number.
 - Store **starting state plus ordered turn events**, not a redundant list of every route coordinate.
 - Represent music time as **nonnegative integer quarter-note beat indices**. The marker moves once per beat; a turn at beat n affects the outgoing step beginning on beat n.
-- Store **one constant BPM**, a **signed chart-to-audio offset in seconds**, and an explicit preview lead in beats.
+- Store **one constant BPM**, a **signed chart-to-audio offset in milliseconds**, and an explicit preview lead in beats.
 - Keep the grid fixed at **4×4**. Wrap is the only boundary behavior; **there is no boundary-mode field**.
 - Encode only **relative Left and Right** turns. Straight movement requires no event.
 - Require a chart-relative audio path. Files can be played without accounts or network access.
@@ -28,7 +28,7 @@ Suggested file name: **example.locus.json**. This is illustrative; the reference
   "title": "Example",
   "audioPath": "audio/example.wav",
   "bpm": 120,
-  "offsetSeconds": 0.25,
+  "offsetMs": 250,
   "grid": {
     "width": 4,
     "height": 4
@@ -60,7 +60,8 @@ Every field below is **required** for v1. Do not invent default values during pa
 | title | String | Non-empty title after trimming whitespace |
 | audioPath | String | Non-empty chart-relative local path; see Section 6 |
 | bpm | Number | Finite and **greater than 0**; quarter notes per minute |
-| offsetSeconds | Number | Finite signed seconds; audio time at which beat zero occurs |
+| offsetMs | Number | Preferred: finite signed **milliseconds**; audio time at beat zero |
+| offsetSeconds (legacy) | Number | Legacy seconds-based alternative; **exactly one** of `offsetMs` or `offsetSeconds` is required |
 | grid | Object | Exactly width and height |
 | grid.width | Integer | Exactly **4** |
 | grid.height | Integer | Exactly **4** |
@@ -77,10 +78,10 @@ Every field below is **required** for v1. Do not invent default values during pa
 
 - Names and enum values are **case-sensitive**. JSON booleans, nulls, or numeric strings cannot substitute for numbers.
 - Integer fields must use integer JSON tokens (for example, 4, **not** 4.0, 4e0, or "4") and must fit the supported integer range.
-- Decimal numbers are accepted for bpm, offsetSeconds, and previewLeadBeats. Reject overflow/non-finite numeric results instead of clamping.
-- All defined object fields are required. **Duplicate JSON member names** and unknown properties at any level are errors, even if a JSON library would normally keep the last duplicate.
+- Decimal numbers are accepted for bpm, offsetMs (or legacy offsetSeconds), and previewLeadBeats. Reject overflow/non-finite numeric results instead of clamping.
+- All defined object fields are required, except that **exactly one** of `offsetMs` and the legacy alias `offsetSeconds` must be present. Providing both is an error. **Duplicate JSON member names** and unknown properties at any level are errors, even if a JSON library would normally keep the last duplicate.
 - Use exactly one event at most per beat. A charted turn is a discrete action, not a note with duration.
-- There are **no optional gameplay fields** in version 1. A future format update must explicitly migrate/interpret additional behavior.
+- There are **no other optional gameplay fields** in version 1. New charts use `offsetMs`; existing `offsetSeconds` charts remain backward-compatible. A future format update must explicitly migrate/interpret additional behavior.
 
 ## 4. Time and route meaning
 
@@ -88,12 +89,14 @@ Use the definitions and ordering specified in [TIMING.md](./TIMING.md):
 
 ~~~text
 secondsPerBeat = 60.0 / bpm
+offsetSeconds = offsetMs / 1000.0
 targetSongSeconds(beat) = offsetSeconds + beat * secondsPerBeat
 chartBeatAtSongSeconds(s) = (s - offsetSeconds) / secondsPerBeat
 ~~~
 
-- **Positive offsetSeconds**: beat 0 happens **after** the audio file starts.
-- **Negative offsetSeconds**: beat 0 happens **before** the first audio sample; the transport must provide a sufficient silent preroll.
+- **Positive offsetMs**: beat 0 happens **after** the audio file starts.
+- **Negative offsetMs**: beat 0 happens **before** the first audio sample; the transport must provide a sufficient silent preroll.
+- **Compatibility:** old JSON charts may still use `offsetSeconds` (e.g., `0.25` instead of `offsetMs: 250`). The editor always displays and adjusts the value in milliseconds.
 - Beat 0 is the beginning of the first step. A turn event **at beat 0 is legal**.
 - At each beat: first apply the scheduled Left/Right change relative to the **incoming heading**, then travel one cell in the outgoing heading. Wrap across any grid edge without additional input or judgement.
 - On a beat with no event, keep the current heading. Store neither straight events nor calculated marker positions.
@@ -149,7 +152,7 @@ This file is valid **JSON syntax**, but invalid **LOCUS formatVersion 1**:
   "title": "Broken",
   "audioPath": "../outside.wav",
   "bpm": 120,
-  "offsetSeconds": 0,
+  "offsetMs": 0,
   "grid": {
     "width": 5,
     "height": 4
@@ -211,4 +214,4 @@ The implementation may report all errors or stop after one, but must **not silen
 - [x] No Bounce field, extra grid dimensions, tempo/event plugins, or speculative features are introduced.
 - [x] Pure validation and file/audio integration are separate.
 
-**A-05 delivers a specification only.** No parser, editor, game binary, or automated chart test is created by this task.
+**Original A-05 work delivered this specification.** The chart parser and first editor controls have since been implemented as part of the later playable LOCUS milestones.
