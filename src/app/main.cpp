@@ -562,8 +562,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::Results) {
         DrawResultsScreen(font, gameplay);
     } else if (state.screen == Screen::Editor) {
-        const double selectedBeat = (editorTransport.Playing() ||
-                                     editorTransport.Finished())
+        const double selectedBeat = editorTransport.Playing()
             ? editorTransport.Beat(now) : static_cast<double>(editor.SelectedBeat());
         locus::app::RenderChartEditor(font, editor, editorUi,
                                      localSong.DisplayName(), localSong.Ready(),
@@ -915,6 +914,11 @@ int main(int argc, char** argv) {
             previousScreen == Screen::Editor &&
             editorPending == EditorPending::None) {
             const int beforeBeat = editor.SelectedBeat();
+            // Use the fractional transport beat for timeline hit testing,
+            // matching the animated ruler even between whole beat markers.
+            input.editor.timelineViewBeat = chartPlayback.Playing()
+                ? std::max(0.0, chartPlayback.Beat(now))
+                : static_cast<double>(editor.SelectedBeat());
             const auto uiAction = locus::app::ApplyEditorControls(
                 editor, editorUi, input.editor);
             if (uiAction.chooseAudio) input.chooseMusicPressed = true;

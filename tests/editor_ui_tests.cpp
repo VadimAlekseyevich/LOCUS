@@ -71,8 +71,49 @@ int main() {
     const auto normal = ApplyEditorControls(chart, ui, Click(435, 329));
     ok &= Check(normal.speedIndex == 0, "100 percent speed is clickable");
 
-    ApplyEditorControls(chart, ui, Click(50 + 53.75f * 9 + 8, 469));
-    ok &= Check(chart.SelectedBeat() == 9, "timeline selects a beat for manual preview");
+    // Continuous timeline: the playhead is fixed at x=265, default 36 px/beat.
+    // Crossing the old 15/16 boundary must be ordinary single-beat navigation.
+    chart.SelectBeat(15);
+    ApplyEditorControls(chart, ui, Click(265 + 36, 477));
+    ok &= Check(chart.SelectedBeat() == 16,
+                "continuous timeline crosses 15 to 16 without page flips");
+    ApplyEditorControls(chart, ui, Click(265 - 36 * 3, 477));
+    ok &= Check(chart.SelectedBeat() == 13,
+                "clicking behind the fixed quarter-width playhead selects a past beat");
+    chart.SelectBeat(15);
+    EditorControls moving = Click(265 + 18, 477);
+    moving.timelineViewBeat = 15.5; // During playback the ruler is fractional.
+    ApplyEditorControls(chart, ui, moving);
+    ok &= Check(chart.SelectedBeat() == 16,
+                "hit-testing uses continuous audio beat while playing");
+
+    EditorControls zoomIn;
+    zoomIn.zoomIn = true;
+    ApplyEditorControls(chart, ui, zoomIn);
+    ok &= Check(ui.timelineZoomIndex == 4,
+                "plus hotkey increases tick spacing");
+    chart.SelectBeat(16);
+    ApplyEditorControls(chart, ui, Click(265 + 52, 477));
+    ok &= Check(chart.SelectedBeat() == 17,
+                "zoomed ruler maps clicks to exact nearby beat ticks");
+    ApplyEditorControls(chart, ui, Click(820, 430));
+    ok &= Check(ui.timelineZoomIndex == 3,
+                "zoom-out button restores the original scale");
+    EditorControls zoomOut;
+    zoomOut.zoomOut = true;
+    for (int i = 0; i < 10; ++i)
+        ApplyEditorControls(chart, ui, zoomOut);
+    ok &= Check(ui.timelineZoomIndex == 0,
+                "zoom-out is clamped at smallest tick density");
+    for (int i = 0; i < 10; ++i)
+        ApplyEditorControls(chart, ui, zoomIn);
+    ok &= Check(ui.timelineZoomIndex == 6,
+                "zoom-in is clamped at largest tick density");
+    chart.SelectBeat(0);
+    ApplyEditorControls(chart, ui, Click(60, 477));
+    ok &= Check(chart.SelectedBeat() == 0,
+                "timeline cannot select a negative beat");
+
     ApplyEditorControls(chart, ui, Click(96 + 2*59, 197 + 3*59));
     ok &= Check(chart.Data().route.start.x == 2 && chart.Data().route.start.y == 3,
                 "clicking the grid moves the starting point");

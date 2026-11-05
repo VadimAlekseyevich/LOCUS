@@ -14,9 +14,25 @@ namespace locus::app {
 namespace {
 constexpr float kVirtualWidth = 960.0f, kVirtualHeight = 540.0f;
 constexpr float kGridX = 96.0f, kGridY = 197.0f, kGridStep = 59.0f;
-constexpr float kTimelineX = 50.0f, kTimelineY = 454.0f;
-constexpr float kCellWidth = 53.75f;
-constexpr int kVisibleBeats = 16;
+constexpr float kTimelineX = 50.0f, kTimelineY = 447.0f;
+constexpr float kTimelineWidth = 860.0f, kTimelineHeight = 52.0f;
+// Playhead stays 1/4 of the way across, preserving more future than past.
+constexpr float kPlayheadX = kTimelineX + kTimelineWidth * 0.25f;
+constexpr float kZoomPixelsPerBeat[7] = {12, 18, 26, 36, 52, 76, 104};
+constexpr int kZoomMax = 6;
+constexpr Rectangle kZoomOut{807, 416, 34, 27};
+constexpr Rectangle kZoomIn{863, 416, 34, 27};
+
+float PixelsPerBeat(const EditorUiState& ui) {
+    return kZoomPixelsPerBeat[std::clamp(ui.timelineZoomIndex, 0, kZoomMax)];
+}
+
+double ViewBeat(const core::ChartEditor& draft, double activeBeat) {
+    return std::isfinite(activeBeat) && activeBeat >= 0.0
+        ? std::clamp(activeBeat, 0.0,
+                     static_cast<double>(draft.Data().route.lengthBeats))
+        : static_cast<double>(draft.SelectedBeat());
+}
 
 constexpr Rectangle kTitle{49, 118, 321, 35};
 constexpr Rectangle kBpm{416, 174, 176, 43};
@@ -253,42 +269,82 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
           53, 409, 13, Color{247, 213, 131, 255});
 }
 
-void DrawTimeline(Font font, const core::ChartEditor& draft) {
+void DrawTimeline(Font font, const core::ChartEditor& draft,
+                  const EditorUiState& ui, double previewBeat) {
     const auto& chart = draft.Data().route;
-    const int page = draft.SelectedBeat() / kVisibleBeats * kVisibleBeats;
-    Label(font, TextFormat("TIMELINE   %d - %d",
-                          page, std::min(page + 15, chart.lengthBeats - 1)),
+    const double anchor = ViewBeat(draft, previewBeat);
+    const float pixels = PixelsPerBeat(ui);
+
+    Label(font, TextFormat("TIMELINE  %.2f / %d", anchor, chart.lengthBeats),
           50, 422, 17, Color{209, 222, 234, 255});
-    Label(font, "ARROWS 1 BEAT  /  CTRL+ARROWS 4 BEATS  /  SHIFT MOVE",
-          351, 422, 14, Color{164, 188, 208, 255});
-    for (int index = 0; index < kVisibleBeats; ++index) {
-        const int beat = page + index;
-        if (beat >= chart.lengthBeats) continue;
-        const Rectangle cell{kTimelineX + index * kCellWidth, kTimelineY,
-                             kCellWidth - 3.0f, 46.0f};
-        const bool selected = draft.SelectedBeat() == beat;
-        DrawRectangleRec(cell, selected ? Color{48, 82, 88, 255}
-                                        : Color{38, 47, 61, 255});
-        DrawRectangleLinesEx(cell, selected ? 2.0f : 1.0f,
-                             selected ? Color{138, 235, 215, 255}
-                                      : Color{84, 102, 126, 255});
-        Label(font, TextFormat("%d", beat), cell.x + 6, cell.y + 3, 14,
-              Color{224, 235, 239, 255});
-        const auto it = std::lower_bound(
-            chart.turns.begin(), chart.turns.end(), beat,
-            [](const core::TurnEvent& event, int n) { return event.beat < n; });
-        if (it != chart.turns.end() && it->beat == beat) {
-            DrawRectangle(static_cast<int>(cell.x + 5), static_cast<int>(cell.y + 26),
-                          static_cast<int>(cell.width - 10), 15,
-                          it->direction == core::Turn::Left
-                              ? Color{96, 220, 193, 255}
-                              : Color{175, 155, 236, 255});
-            Label(font, it->direction == core::Turn::Left ? "L" : "R",
-                  cell.x + 19, cell.y + 25, 13, Color{22, 26, 36, 255});
+    Label(font, "ARROWS 1  CTRL+ARROWS 4", 328, 423, 13,
+          Color{164, 188, 208, 255});
+    Label(font, TextFormat("%d PX/BEAT", static_cast<int>(pixels)),
+          693, 423, 13, Color{174, 205, 229, 255});
+    Button(font, kZoomOut, "-", Color{125, 167, 205, 255});
+    Button(font, kZoomIn, "+", Color{125, 167, 205, 255});
+
+    const Rectangle strip{kTimelineX, kTimelineY, kTimelineWidth, kTimelineHeight};
+    DrawRectangleRounded(strip, 0.15f, 5, Color{34, 44, 59, 255});
+    DrawRectangleRec({kTimelineX + 2.0f, kTimelineY + 2.0f,
+                      kPlayheadX - kTimelineX - 2.0f, kTimelineHeight - 4.0f},
+                     Color{41, 62, 70, 255}); // The quarter-width past.
+    DrawLineEx({kTimelineX + 4.0f, 477.0f},
+               {kTimelineX + kTimelineWidth - 4.0f, 477.0f},
+               2.0f, Color{98, 125, 150, 255});
+
+    // Visible beat ticks are projected from a continuous (possibly fractional)
+    // beat. The ruler slides every frame; it never jumps at 15 -> 16.
+    const int first = std::max(0, static_cast<int>(std::floor(
+        anchor + (kTimelineX - kPlayheadX) / pixels)) - 1);
+    const int last = std::min(chart.lengthBeats - 1,
+        static_cast<int>(std::ceil(
+            anchor + (kTimelineX + kTimelineWidth - kPlayheadX) / pixels)) + 1);
+    const int barLabelStride = pixels < 20.0f ? 8 : 4;
+
+    for (int beat = first; beat <= last; ++beat) {
+        const float x = kPlayheadX +
+                        static_cast<float>((static_cast<double>(beat) - anchor) * pixels);
+        if (x < kTimelineX + 5.0f || x > kTimelineX + kTimelineWidth - 5.0f)
+            continue;
+        const bool bar = beat % 4 == 0;
+        DrawLineEx({x, bar ? 462.0f : 470.0f}, {x, 486.0f},
+                   bar ? 2.5f : 1.25f,
+                   bar ? Color{199, 220, 234, 255}
+                       : Color{113, 141, 163, 255});
+        if (bar && beat % barLabelStride == 0 &&
+            x < kTimelineX + kTimelineWidth - 55.0f) {
+            Label(font, TextFormat("%d", beat), x + 4.0f, 450.0f, 13,
+                  Color{195, 215, 229, 255});
         }
     }
-}
 
+    // Draw turn symbols from the actual chart: left=teal, right=violet.
+    // Iterate authored turns (already sorted), stopping after the view.
+    for (const auto& event : chart.turns) {
+        if (event.beat < first) continue;
+        if (event.beat > last) break;
+        const float x = kPlayheadX +
+                        static_cast<float>((static_cast<double>(event.beat) - anchor) * pixels);
+        if (x < kTimelineX + 8.0f || x > kTimelineX + kTimelineWidth - 8.0f)
+            continue;
+        const bool left = event.direction == core::Turn::Left;
+        DrawRectangleRec({x - 6.0f, 481.0f, 12.0f, 15.0f},
+                         left ? Color{96, 220, 193, 255}
+                              : Color{175, 155, 236, 255});
+        if (pixels >= 26.0f) {
+            Label(font, left ? "L" : "R", x - 4.0f, 480.0f, 12,
+                  Color{22, 26, 36, 255});
+        }
+    }
+
+    // Last, draw the stationary playhead *over* the moving ruler/events.
+    DrawRectangleRec({kPlayheadX - 4.0f, kTimelineY + 1.0f,
+                      8.0f, kTimelineHeight - 2.0f},
+                     Color{241, 206, 118, 255});
+    DrawCircleV({kPlayheadX, 477.0f}, 6.0f,
+                Color{253, 246, 215, 255});
+}
 } // namespace
 
 Vector2 EditorVirtualMouse(Vector2 physical, int screenWidth, int screenHeight) {
@@ -304,6 +360,10 @@ EditorControls PollEditorControls() {
     EditorControls input;
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    input.zoomIn = IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_KP_ADD) ||
+                   IsKeyPressed(KEY_RIGHT_BRACKET);
+    input.zoomOut = IsKeyPressed(KEY_MINUS) || IsKeyPressed(KEY_KP_SUBTRACT) ||
+                    IsKeyPressed(KEY_LEFT_BRACKET);
     input.previousBeat = IsKeyPressed(KEY_LEFT) && !shift && !control;
     input.nextBeat = IsKeyPressed(KEY_RIGHT) && !shift && !control;
     input.previousBar = IsKeyPressed(KEY_LEFT) && control && !shift;
@@ -330,6 +390,11 @@ EditorControls PollEditorControls() {
     input.mouse = EditorVirtualMouse(GetMousePosition(), GetScreenWidth(),
                                      GetScreenHeight());
     input.mouseWheel = GetMouseWheelMove();
+    if (control && input.mouseWheel != 0.0f) {
+        input.zoomIn |= input.mouseWheel > 0;
+        input.zoomOut |= input.mouseWheel < 0;
+        input.mouseWheel = 0.0f;
+    }
     int codepoint = GetCharPressed();
     while (codepoint > 0) {
         int bytes = 0;
@@ -412,16 +477,20 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         else if (Hit(kLeftTurn, mouse)) { draft.PutTurn(core::Turn::Left); action.changedChart = true; }
         else if (Hit(kRightTurn, mouse)) { draft.PutTurn(core::Turn::Right); action.changedChart = true; }
         else if (Hit(kRemoveTurn, mouse)) { action.changedChart = draft.RemoveTurn(); }
+        else if (Hit(kZoomOut, mouse)) ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
+        else if (Hit(kZoomIn, mouse)) ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
         else if (mouse.y >= 311 && mouse.y <= 348) {
             for (int i = 0; i < 5; ++i) {
                 const Rectangle button{416.0f + i * 93.0f, 312.0f, 86.0f, 35.0f};
                 if (Hit(button, mouse)) action.speedIndex = i;
             }
-        } else if (mouse.y >= kTimelineY && mouse.y <= kTimelineY + 46 &&
+        } else if (mouse.y >= kTimelineY && mouse.y <= kTimelineY + kTimelineHeight &&
                    mouse.x >= kTimelineX &&
-                   mouse.x < kTimelineX + kCellWidth * kVisibleBeats) {
-            const int beat = draft.SelectedBeat() / kVisibleBeats * kVisibleBeats +
-                             static_cast<int>((mouse.x - kTimelineX) / kCellWidth);
+                   mouse.x <= kTimelineX + kTimelineWidth) {
+            const double anchor = ViewBeat(draft, input.timelineViewBeat);
+            const double clicked = anchor + (mouse.x - kPlayheadX) / PixelsPerBeat(ui);
+            const int beat = std::clamp(static_cast<int>(std::lround(clicked)),
+                                        0, draft.Data().route.lengthBeats - 1);
             draft.SelectBeat(beat);
         } else {
             for (int y = 0; y < 4; ++y) for (int x = 0; x < 4; ++x) {
@@ -438,6 +507,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         }
     }
 
+    if (input.zoomOut) ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
+    if (input.zoomIn) ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
     if (input.previousBeat) draft.StepSelection(-1);
     if (input.nextBeat) draft.StepSelection(1);
     if (input.previousBar) draft.StepSelection(-4);
@@ -507,7 +578,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     Button(font, kRemoveTurn, "DEL  REMOVE", Color{223, 156, 156, 255});
 
     DrawPreviewGrid(font, draft, previewBeat);
-    DrawTimeline(font, draft);
+    DrawTimeline(font, draft, ui, previewBeat);
     const std::string message = ui.feedback.empty()
         ? (ui.EditingText() ? "TYPE VALUE, ENTER CONFIRMS, ESC CANCELS"
                              : "CTRL+S SAVE  CTRL+O OPEN  H HOME  F11 FULLSCREEN")

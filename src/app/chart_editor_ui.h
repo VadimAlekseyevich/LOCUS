@@ -16,6 +16,9 @@ struct EditorControls {
     bool mouseClick = false;
     Vector2 mouse{};
     float mouseWheel = 0.0f;
+    // Negative falls back to draft.SelectedBeat() for headless control tests.
+    double timelineViewBeat = -1.0;
+    bool zoomIn = false, zoomOut = false;
 
     bool enter = false, escape = false, backspace = false, tab = false;
     bool previewToggle = false, previewRestart = false;
@@ -30,6 +33,7 @@ struct EditorUiState {
     std::string buffer;
     bool replaceOnType = false;
     std::string feedback;
+    int timelineZoomIndex = 3; // Default 36 px/beat; zoom changes view only.
     bool EditingText() const noexcept { return active != EditorField::None; }
 };
 
