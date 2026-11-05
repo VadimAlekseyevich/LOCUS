@@ -2,7 +2,7 @@
 
 **Priority:** Make a game you can actually play on Windows, not an engineering showcase.  
 **Revised:** 2026-11-05 at the owner's request.  
-**Status:** Foundation is working; gameplay implementation is next.  
+**Status:** **First playable prototype accepted by the owner (2026-11-05).** The next goal is creating and playing custom music charts.  
 **Design reference:** [GDD](./GDD.md) · [Timing rules](./architecture/TIMING.md) · [Wrap behavior](./architecture/WRAP.md)
 
 > This short roadmap **replaces the former 124-task checklist**. That overly granular plan is available in Git history if ever needed; it is **not** an active queue, gate, or obligation. Existing working code is retained. Finished setup work will not be repeated or counted as future tasks.
@@ -15,7 +15,7 @@
 - A short **original/generated 120 BPM metronome-backed demo**, with a fixed series of authored Left/Right turns. No external songs or editor setup required to start.
 - **Wrap** at the edges, shown as an exit/re-entry rather than a line cutting across the grid.
 - A readable **look-ahead route** showing upcoming motion.
-- Two keys (provisionally **A = Left** and **D = Right**) graded **Perfect / Good / Bad / Miss**, with immediate visual feedback.
+- Two keys (**F = Left** and **J = Right**) graded **Perfect / Good / Bad / Miss**, with immediate visual feedback.
 - **No Fail:** missed or incorrect actions never alter the correct route or stop playback.
 - A basic start/play/pause/retry/finish loop with results. Close with Esc or X.
 - Input judgements and movement use the **same music-time domain**, not frame count. Keep this rule simple and correct; investigate actual latency only if playtesting exposes a real problem.
@@ -60,29 +60,36 @@ Each item should produce visible or audible progress. Add focused automated test
   Provide an obvious way to start the demo from Home, show basic judgement counts, handle pause/resume and restart, and display Results at the end. **Result:** a small game that can be played from start to finish, repeatedly.
   **Verified in CI (2026-11-05):** Home now starts the built-in 16-second chart with **Enter**. Play has **Space pause/resume**, **R retry**, **H Home**; the raylib audio stream and pure `SongClock` pause together so marker movement and judgement time stay frozen. At song end every scheduled turn resolves exactly once and the app moves automatically to Results with Perfect/Good/Bad/Miss counts, where **Enter/R** replays and **H** returns Home. Esc/X still closes the window; F1–F4 stay optional debug shortcuts. [Windows x64 CI run 41932910700](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/41932910700) passed **5/5 CTest** checks and `SESSION_FLOW_PASS turns=9 retry=true results=true`; existing No Fail route and BAT game/audio modes remain intact. **Real-device audio, input feel and visual usability are not certified by hosted CI**; these belong to G-07's owner playtest.
 
-- [ ] **G-07 — Deliver and playtest the first working prototype.**  
+- [x] **G-07 — Deliver and playtest the first working prototype.**  
   Keep double-click `build_and_run.bat` launching the game, with no extra setup beyond the existing toolchain. Run the Windows build/tests, then ask the owner to actually play the demo on their PC. Fix **blocking** playability, timing or crashes discovered there. **Result:** owner confirms the demo is playable. **HUMAN GATE REQUIRED only for this real-device acceptance**, or for a genuine earlier blocker.
-  **Playtest feedback addressed (2026-11-05; local recheck pending):** Owner reported the short demo already plays well but requested a fullscreen mode, smoother line appearance and F/J controls. The game now accepts **F = Left, J = Right**, supports **F11 borderless fullscreen** and free window resizing with uniform 16:9 game canvas scaling, and progressively reveals the active line up to the moving marker while smoothly extending the farthest future preview line. Wrapped segments still split at opposite edges. The owner has **not yet confirmed these three refinements on Windows**, so G-07 remains unchecked until real-device feedback. No extra benchmarks, ZIPs or infrastructure gates are required.
+  **Owner acceptance (2026-11-05):** The owner played the complete updated Windows prototype and explicitly confirmed it is ready. Their Results screen showed **7 Perfect, 2 Good, 0 Bad, 0 Miss** across nine turns. The accepted build includes **F = Left, J = Right**, F11 fullscreen, resizable window, smooth line reveal and proper Wrap. No more approval or ZIP is required for this milestone. [Green Windows CI](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/42025585935): all five CTest tests and headless session checks passed.
 
-**Next task is to finish G-07 with owner confirmation of the updated F/J controls, F11 fullscreen, and progressive lines.** Do not start a new infrastructure stage. Prefer a coherent feature per development turn, not a micromanaged series of one-line commits.
+**Prototype milestone: complete (7/7).** The seven items above are retained as historical implementation milestones. They are not a new work queue.
 
-## After the game is playable — decide scope together
+## Next milestone: make and play your own levels
 
-These are **not blockers for G-01–G-07**, and are **not yet individual checkbox tasks**:
+**Goal:** Choose a local song, build a chart for it in LOCUS, save it, reopen it, and play it. **Five outcome-based slices, not dozens of microtasks.** Each slice must result in something the owner can actually use. The generated demo stays available as a safe fallback throughout development.
 
-- Open a local WAV/MP3 and a versioned JSON chart, with clear errors.
-- Add a minimal **chart editor**: BPM/offset, starting position/direction, placing turns on a simple timeline, saving and reopening, and test-play. Reuse the same route/judgement logic; no second engine.
-- Improve music sync, input feel and calibration **only where actual play shows a problem**. Detailed latency or CPU benchmarks are optional diagnostic tools, not a ritual.
-- Consider convenience features such as better menus, custom bindings, package/installer, undo/redo, or visual polish **after** the basic game works.
+- [ ] **M-01 — Play a local music file.** Allow the owner to select a Windows local **WAV or MP3** file, hear playback using the existing game transport, and pause/retry without losing synchronization. Make unsupported-file errors understandable. No online account, uploader, song library, or installation flow. **Done when:** a real song plays in LOCUS while the original demo still works.
 
-The [GDD](./GDD.md) describes the broader desired LOCUS experience, including the eventual chart editor. **The first playable is deliberately a smaller milestone, not a cancellation of that vision.**
+- [ ] **M-02 — Load and play a saved chart.** Implement a minimal **versioned JSON** chart for the existing 4×4 rules: song path, BPM, beat-zero offset, start cell/heading and Left/Right turn events. Use a simple local file-open workflow and clear errors for invalid data; reuse the existing route, visual and judgement engines rather than creating new gameplay logic. **Done when:** a hand-written example chart loads with its song and plays from start to Results.
 
-## Not required for the first playable
+- [ ] **M-03 — Edit the chart inside LOCUS.** Replace the Editor placeholder with practical controls to set BPM, timing offset, start position/direction, and add/remove/move Left/Right events on a basic beat timeline. Show the familiar grid and route preview while editing. **Done when:** the owner can author a short custom chart without editing JSON manually.
 
-- The former **F-09 mandatory startup/idle CPU/RAM baseline** and its approval gate. Its script, CI artifact and `build_and_run.bat baseline` mode may stay as optional diagnostics; **nobody needs to run them to proceed**.
-- Benchmarking philosophy, optimizing a tiny binary, profiled low-latency promises before there is a game to play.
-- Repeated owner approvals after each infrastructure stage; exhaustive test matrices or a separate task for every event handler, editor button or JSON field.
-- A full editor, charts library, online service, installer, settings menu, or non-Windows ports before the demo works.
+- [ ] **M-04 — Save, reopen and test-play editor creations.** Connect Editor to JSON save/open and Play so changes round-trip correctly. Provide simple errors, avoid losing an unsaved chart accidentally, and reuse the same game clock/route/judgement implementation. **Done when:** create → save → reopen → play → Results works for an original custom level.
+
+- [ ] **M-05 — Make the custom-song version pleasant to use.** Respond to owner playtesting: sensible file selection and feedback, intuitive editor shortcuts, readable UI, and audio/visual offset adjustment **only if the actual songs reveal a need**. Prepare a straightforward Windows build for playing without manually configuring Visual Studio, while preserving `build_and_run.bat` and its optional audio diagnostic. **Done when:** the owner confirms they can play and create a chart with reasonable effort on their Windows PC.
+
+**Next task: M-01 — local WAV/MP3 playback.** Finish only that feature per "continue development" turn, verify the Windows build, then stop.
+
+## Deliberately deferred
+
+- Cloud storage, online song discovery, accounts, leaderboards, mobile ports, multiplayer, and complex visual skins.
+- Variable grid sizes, tempo maps, hold notes and advanced chart gimmicks.
+- Full waveform editing, automatic BPM detection, complex settings menus, or mandatory performance/latency benchmarking.
+- More project-management gates or a new 100-task checklist.
+
+The [GDD](./GDD.md) describes the longer-term vision. Prefer playable feature delivery and simple owner feedback over prebuilding everything the GDD mentions.
 
 ## Working rules
 
