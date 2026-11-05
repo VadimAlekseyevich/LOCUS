@@ -840,6 +840,7 @@ int main(int argc, char** argv) {
     EditorPending editorPending = EditorPending::None;
     std::string editorStatus = "O ATTACH AUDIO  |  CTRL+S SAVE  |  T TEST PLAY";
     double previewLead = 4.0;
+    int editorPreviewStartBeat = 0; // R returns to this preview origin.
     std::string chartTitle = "BUILT-IN DEMO";
     std::string musicError;
     transport.Initialize(demo); // Owns the shared raylib audio output device.
@@ -924,33 +925,42 @@ int main(int argc, char** argv) {
                 chartPlayback.SetSpeed(speeds[uiAction.speedIndex], now);
                 editorStatus = "PREVIEW SPEED CHANGED - AUDIO PITCH WILL ALSO CHANGE";
             }
-            if ((uiAction.changedChart ||
-                 (editor.SelectedBeat() != beforeBeat && chartPlayback.Playing())) &&
-                chartPlayback.Playing()) {
+            const bool selectedAnotherBeat = editor.SelectedBeat() != beforeBeat;
+            if (selectedAnotherBeat) editorPreviewStartBeat = editor.SelectedBeat();
+            if ((uiAction.changedChart || selectedAnotherBeat) &&
+                (chartPlayback.Playing() || chartPlayback.Finished())) {
                 chartPlayback.Stop();
-                editorStatus = "PREVIEW STOPPED AFTER EDIT - SPACE TO RESTART";
+                editorStatus = "PREVIEW STOPPED - SPACE PLAYS FROM SELECTED BEAT";
             }
 
-            const auto startPreview = [&]() {
+            const auto startPreview = [&](int beat) {
                 if (!localSong.Ready() || editorAudioPath.empty()) {
                     editorStatus = "NO SONG - CLICK LOAD SONG / PRESS O";
                     return;
                 }
-                auto checked = editor.Data();
-                std::string error;
-                if (!locus::core::PrepareChartForSong(
-                        checked, localSong.DurationSeconds(), error)) {
-                    editorStatus = "PREVIEW FAILED: " + error;
+                // Preview is for authoring, not scoring: allow a partial
+                // chart even when its full timeline exceeds song duration.
+                const double songTime = editor.AudioSecondsAtBeat(beat);
+                if (!std::isfinite(songTime) ||
+                    songTime >= localSong.DurationSeconds()) {
+                    editorStatus = "PREVIEW FAILED: SELECTED BEAT / OFFSET IS AFTER SONG END";
                     return;
                 }
-                chartPlayback.Configure(checked.route.bpm, checked.offsetSeconds);
-                chartPlayback.Start(now);
-                editorStatus = "PREVIEW PLAYING - SPACE PAUSE / R RESTART";
+                chartPlayback.Configure(editor.Data().route.bpm,
+                                        editor.Data().offsetSeconds);
+                if (!chartPlayback.StartAtAudioSeconds(songTime, now)) {
+                    editorStatus = "PREVIEW FAILED: COULD NOT START AUDIO";
+                    return;
+                }
+                editorPreviewStartBeat = beat;
+                editorStatus = "PREVIEW FROM BEAT " + std::to_string(beat) +
+                               " / SONG " + std::to_string(songTime) +
+                               "S - SPACE PAUSE / R RESTART";
             };
             if (uiAction.previewRestart) {
-                startPreview();
+                startPreview(editorPreviewStartBeat);
             } else if (uiAction.previewToggle) {
-                if (!chartPlayback.Playing()) startPreview();
+                if (!chartPlayback.Playing()) startPreview(editor.SelectedBeat());
                 else if (chartPlayback.Paused()) chartPlayback.Resume(now);
                 else chartPlayback.Pause(now);
             }
@@ -962,6 +972,7 @@ int main(int argc, char** argv) {
                 editorUi = locus::app::EditorUiState{};
                 editorChartPath.clear();
                 editorAudioPath.clear();
+                editorPreviewStartBeat = 0;
                 editorStatus = "NEW CHART - CLICK LOAD SONG";
             } else if (input.editorOpen) {
                 chartPlayback.Stop();
@@ -971,6 +982,7 @@ int main(int argc, char** argv) {
                     if (LoadDraftFromDisk(picked.path, editor, localSong,
                                           editorChartPath, editorAudioPath, musicError)) {
                         editorUi = locus::app::EditorUiState{};
+                        editorPreviewStartBeat = 0;
                         editorStatus = "CHART LOADED - SPACE PREVIEW / T TEST";
                     } else {
                         editorStatus = "OPEN FAILED: " + musicError;
@@ -1150,12 +1162,19 @@ int main(int argc, char** argv) {
         if (state.screen == Screen::Editor && chartPlayback.Playing()) {
             chartPlayback.Update(now);
             if (chartPlayback.Finished()) {
-                editorStatus = "PREVIEW FINISHED - SPACE OR R TO RESTART";
+                editorStatus = "PREVIEW FINISHED - SELECT BEAT OR R TO RESTART";
             } else if (!chartPlayback.Paused()) {
-                const int beat = std::clamp(
-                    static_cast<int>(std::floor(chartPlayback.Beat(now))), 0,
-                    editor.Data().route.lengthBeats - 1);
-                editor.SelectBeat(beat); // Follow the playing cursor without editing.
+                const double currentBeat = chartPlayback.Beat(now);
+                const int lastBeat = editor.Data().route.lengthBeats - 1;
+                if (currentBeat >= editor.Data().route.lengthBeats) {
+                    chartPlayback.Stop();
+                    editor.SelectBeat(lastBeat);
+                    editorStatus = "PREVIEW REACHED CHART END - SELECT ANOTHER BEAT";
+                } else {
+                    const int beat = std::clamp(
+                        static_cast<int>(std::floor(currentBeat)), 0, lastBeat);
+                    editor.SelectBeat(beat); // Follow audio with bottom squares.
+                }
             }
         }
         if (state.screen == Screen::Play) {

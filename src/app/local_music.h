@@ -22,6 +22,8 @@ public:
     // On failure, the previous loaded song remains usable.
     bool LoadFromFile(const std::wstring& path);
     void Start(double monotonicSeconds);
+    // Play from a real WAV/MP3 position; the visual clock follows that position.
+    void StartAt(double monotonicSeconds, double audioSeconds);
     void Pause(double monotonicSeconds);
     void Resume(double monotonicSeconds);
     void Stop();
@@ -47,6 +49,7 @@ private:
     std::string displayName_;
     std::string error_;
     double durationSeconds_ = 0.0;
+    double startPositionSeconds_ = 0.0;
     double speed_ = 1.0;
     bool ready_ = false;
     bool playing_ = false;

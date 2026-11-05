@@ -106,6 +106,20 @@ int main() {
                     !draft.SetTitle("   "),
                 "typed title is stored and empty titles rejected");
 
+    // 173765 is an offset in milliseconds, not an excessively large BPM.
+    // Space on beat 16 should seek to the correct *song* time.
+    draft.NewDraft();
+    ok &= Check(draft.SetBpm(120.0) && draft.SetOffsetMs(173765.0),
+                "173765 ms is a valid offset");
+    draft.SelectBeat(16);
+    ok &= Check(std::abs(draft.AudioSecondsAtBeat(0) - 173.765) < 1e-9 &&
+                std::abs(draft.AudioSecondsAtBeat(16) - 181.765) < 1e-9,
+                "selected beat maps to the correct audio timestamp");
+    ok &= Check(draft.SetStart({0, 3}) &&
+                SampleRouteStep(draft.Data().route, 0).from.x == 0 &&
+                SampleRouteStep(draft.Data().route, 0).from.y == 3,
+                "new starting cell is used by actual route geometry");
+
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 wrap=1\n";
     return 0;

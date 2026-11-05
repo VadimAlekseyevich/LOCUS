@@ -61,11 +61,20 @@ bool LocalMusic::LoadFromFile(const std::wstring& path) {
 }
 
 void LocalMusic::Start(double monotonicSeconds) {
-    if (!ready_) return;
+    StartAt(monotonicSeconds, 0.0);
+}
+
+void LocalMusic::StartAt(double monotonicSeconds, double audioSeconds) {
+    if (!ready_ || !std::isfinite(audioSeconds) ||
+        audioSeconds < 0.0 || audioSeconds >= durationSeconds_) return;
     Stop();
     finished_ = false;
+    startPositionSeconds_ = audioSeconds;
     SetMusicPitch(music_, static_cast<float>(speed_));
     PlayMusicStream(music_);
+    // Seek the actual audio stream; moving just the marker would desync it.
+    if (audioSeconds > 0.0)
+        SeekMusicStream(music_, static_cast<float>(audioSeconds));
     clock_.Start(monotonicSeconds);
     playing_ = true;
 }
@@ -96,12 +105,13 @@ void LocalMusic::Stop() {
     playing_ = false;
     paused_ = false;
     clock_.Stop();
+    startPositionSeconds_ = 0.0;
 }
 
 void LocalMusic::Update(double monotonicSeconds) {
     if (!playing_ || paused_) return;
     UpdateMusicStream(music_);
-    if (clock_.SecondsAt(monotonicSeconds) >= durationSeconds_) {
+    if (SongSeconds(monotonicSeconds) >= durationSeconds_) {
         Stop();
         finished_ = true;
     }
@@ -121,7 +131,8 @@ void LocalMusic::Shutdown() {
 }
 
 double LocalMusic::SongSeconds(double monotonicSeconds) const noexcept {
-    return finished_ ? durationSeconds_ : clock_.SecondsAt(monotonicSeconds);
+    return finished_ ? durationSeconds_
+                     : startPositionSeconds_ + clock_.SecondsAt(monotonicSeconds);
 }
 
 } // namespace locus::app
