@@ -4,8 +4,7 @@
 
 namespace locus::core {
 
-// In-memory editor draft. M-03 deliberately does not save files; M-04 will
-// connect this same value object to save/reopen and game test-play.
+// Editor values are owned in memory; platform adapters handle persistent files.
 class ChartEditor {
 public:
     ChartEditor();
@@ -15,6 +14,8 @@ public:
     const LoadedChart& Data() const noexcept { return chart_; }
     int SelectedBeat() const noexcept { return selectedBeat_; }
     bool Dirty() const noexcept { return dirty_; }
+    void MarkSaved() noexcept { dirty_ = false; }
+    bool SetAudioPath(const std::string& relativePath);
 
     bool SelectBeat(int beat) noexcept;
     bool ChangeBpm(int delta) noexcept; // integer BPM, 30..300
