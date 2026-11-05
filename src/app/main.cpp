@@ -506,6 +506,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const GameplayView& gameplay,
                  const locus::app::LocalMusic& localSong,
                  const locus::core::ChartEditor& editor,
+                 const locus::app::EditorUiState& editorUi,
+                 const locus::app::ChartPlayback& editorTransport,
                  const std::string& editorStatus, EditorPending editorPending,
                  const std::string& musicError, double now) {
     BeginDrawing();
@@ -546,10 +548,16 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::Results) {
         DrawResultsScreen(font, gameplay);
     } else if (state.screen == Screen::Editor) {
-        locus::app::RenderChartEditor(font, editor);
-        const std::string statusLine = editorStatus.substr(0, 59);
-        DrawTextLabel(font, statusLine.c_str(), Vector2{416.0f, 109.0f},
-                      13.0f, Color{175, 212, 213, 255});
+        const double selectedBeat = (editorTransport.Playing() ||
+                                     editorTransport.Finished())
+            ? editorTransport.Beat(now) : static_cast<double>(editor.SelectedBeat());
+        locus::app::RenderChartEditor(font, editor, editorUi,
+                                     localSong.DisplayName(), localSong.Ready(),
+                                     editorTransport.Playing(), editorTransport.Paused(),
+                                     selectedBeat, editorTransport.Speed());
+        const std::string statusLine = editorStatus.substr(0, 100);
+        DrawTextLabel(font, statusLine.c_str(), Vector2{416.0f, 405.0f},
+                      12.0f, Color{175, 212, 213, 255});
         if (editorPending != EditorPending::None) {
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{10, 13, 21, 218});
             DrawTextLabel(font, "UNSAVED CHART CHANGES", {193.0f, 187.0f},
@@ -807,6 +815,7 @@ int main(int argc, char** argv) {
     const locus::core::Chart demo = locus::core::MakeDemoChart();
     locus::core::Chart activeChart = demo;
     locus::core::ChartEditor editor;
+    locus::app::EditorUiState editorUi;
     locus::core::TurnJudge judge(activeChart); // Stable reference across chart loads.
     locus::app::DemoTransport transport;
     locus::app::LocalMusic localSong;
@@ -1099,8 +1108,8 @@ int main(int argc, char** argv) {
                                                 : transport.Beat(renderNow),
                                     previewLead, paused, finished, customChart, status};
         RenderFrame(state, debugScreens, uiFont.value, demo,
-                    gameplay, localSong, editor, editorStatus, editorPending,
-                    musicError, renderNow);
+                    gameplay, localSong, editor, editorUi, chartPlayback,
+                    editorStatus, editorPending, musicError, renderNow);
     }
 
     // Unload both music streams before the shared raylib audio device.
