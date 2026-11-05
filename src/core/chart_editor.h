@@ -19,10 +19,14 @@ public:
 
     bool SelectBeat(int beat) noexcept;
     bool ChangeBpm(int delta) noexcept; // integer BPM, 30..300
+    bool SetBpm(double bpm) noexcept;
     bool ChangeOffsetMs(int deltaMs) noexcept; // signed milliseconds
+    bool SetOffsetMs(double milliseconds) noexcept;
     bool SetStart(Cell cell) noexcept;
     void RotateHeading(int quarterTurns) noexcept;
     bool ChangeLength(int deltaBeats) noexcept; // no deletion of events
+    bool SetLength(int beats) noexcept;
+    bool SetTitle(const std::string& title);
     void PutTurn(Turn turn);
     bool RemoveTurn() noexcept;
     bool MoveTurn(int beats) noexcept; // preserves sorted, unique turn events
