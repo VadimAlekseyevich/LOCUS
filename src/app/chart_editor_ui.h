@@ -17,6 +17,7 @@ struct EditorControls {
     bool bpmUp = false;
     bool offsetDown = false;
     bool offsetUp = false;
+    bool fineOffset = false;
     bool headingLeft = false;
     bool headingRight = false;
     bool lengthDown = false;
