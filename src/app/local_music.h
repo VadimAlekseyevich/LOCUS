@@ -26,12 +26,14 @@ public:
     void Resume(double monotonicSeconds);
     void Stop();
     void Update(double monotonicSeconds);
+    void SetSpeed(double fraction, double monotonicSeconds);
     void Shutdown();
 
     bool Ready() const noexcept { return ready_; }
     bool Playing() const noexcept { return playing_; }
     bool Paused() const noexcept { return paused_; }
     bool Finished() const noexcept { return finished_; }
+    double Speed() const noexcept { return speed_; }
     double DurationSeconds() const noexcept { return durationSeconds_; }
     double SongSeconds(double monotonicSeconds) const noexcept;
     const std::string& DisplayName() const noexcept { return displayName_; }
@@ -45,6 +47,7 @@ private:
     std::string displayName_;
     std::string error_;
     double durationSeconds_ = 0.0;
+    double speed_ = 1.0;
     bool ready_ = false;
     bool playing_ = false;
     bool paused_ = false;
