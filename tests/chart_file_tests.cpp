@@ -89,7 +89,13 @@ int main() {
     const bool blocked = !locus::core::ValidChartAudioPath("../another-song.wav");
     fs::remove_all(root, errorCode);
     if (!correct || !blocked || !roundTrip || !refusedOutside || !existedAfterError) {
-        std::cerr << "CHART_FILE_FAIL " << message << '\n';
+        std::cerr << "CHART_FILE_FAIL " << message
+                  << " opened=" << opened << " correct=" << correct
+                  << " saved=" << savedOnce << " reloaded=" << reloaded
+                  << " roundTrip=" << roundTrip
+                  << " refusedOutside=" << refusedOutside
+                  << " existedAfterError=" << existedAfterError
+                  << " blocked=" << blocked << '\n';
         return 1;
     }
     std::cout << "CHART_FILE_PASS relative_audio=1 turns=3 save_reopen=1\n";
