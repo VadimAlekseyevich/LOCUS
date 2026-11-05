@@ -43,6 +43,7 @@ struct FrameInput {
     bool pausePressed = false;
     bool restartPressed = false;
     bool homePressed = false;
+    bool fullscreenPressed = false;
     bool leftPressed = false;
     bool rightPressed = false;
     double leftCapturedAt = 0.0;
@@ -84,11 +85,12 @@ FrameInput PollInput(bool debugScreens) {
     input.pausePressed = IsKeyPressed(KEY_SPACE);
     input.restartPressed = IsKeyPressed(KEY_R);
     input.homePressed = IsKeyPressed(KEY_H);
+    input.fullscreenPressed = IsKeyPressed(KEY_F11);
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
-    input.leftPressed = IsKeyPressed(KEY_A);
+    input.leftPressed = IsKeyPressed(KEY_F);
     if (input.leftPressed) input.leftCapturedAt = MonotonicSeconds();
-    input.rightPressed = IsKeyPressed(KEY_D);
+    input.rightPressed = IsKeyPressed(KEY_J);
     if (input.rightPressed) input.rightCapturedAt = MonotonicSeconds();
     return input;
 }
@@ -173,9 +175,9 @@ Vector2 GridPosition(locus::core::GridPoint point) {
                    kGridOriginY + static_cast<float>(point.y) * kGridSpacing};
 }
 
-// Preview four authored route steps, never player-steered steps.
-// The current step is bright; later beats fade. Wrap routes have TWO lines
-// at opposite edges and deliberately no cross-grid connecting line.
+// The active line grows with the marker, not in jumps on each beat.
+// Show three future steps; their farthest segment grows gradually as
+// the look-ahead horizon moves. A Wrap never connects opposite edges.
 Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat) {
     if (chart.lengthBeats <= 0) {
         return GridPoint(chart.start);
@@ -196,14 +198,20 @@ Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat)
         if (routeBeat >= chart.lengthBeats) continue;
         const locus::core::RouteStep step =
             locus::core::SampleRouteStep(chart, routeBeat);
-        const auto view = locus::core::ViewRouteStep(step, 0.0);
+        // The current step is revealed up to the moving marker. The
+        // newest (third future) step is also revealed over a full beat,
+        // so no complete new segment pops into view on a click.
+        const double reveal = (ahead == 0 || ahead == kPreviewSteps - 1)
+                                  ? currentProgress : 1.0;
+        const auto view = locus::core::TraceRouteStep(step, reveal);
         for (int segment = 0; segment < view.segmentCount; ++segment) {
             const auto& line = view.segments[segment];
             DrawLineEx(GridPosition(line.from), GridPosition(line.to),
                        (ahead == 0) ? 6.0f : 3.5f, kRouteColors[ahead]);
         }
-        DrawCircleV(GridPoint(step.to), (ahead == 0) ? 6.0f : 4.0f,
-                    kRouteColors[ahead]);
+        if (ahead > 0 && reveal >= 1.0) {
+            DrawCircleV(GridPoint(step.to), 4.0f, kRouteColors[ahead]);
+        }
     }
 
     const locus::core::RouteStep live = locus::core::SampleRouteStep(chart, currentBeat);
@@ -248,10 +256,10 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart,
     DrawTextLabel(font, "WRAP   EDGE SPLIT", Vector2{665.0f, 272.0f}, 17.0f,
                   Color{184, 189, 204, 255});
 
-    // A/D only affect judgement feedback. The charted route never changes.
-    DrawTextLabel(font, "A  =  LEFT", Vector2{50.0f, 204.0f}, 21.0f,
+    // F/J only affect judgement feedback. The charted route never changes.
+    DrawTextLabel(font, "F  =  LEFT", Vector2{50.0f, 204.0f}, 21.0f,
                   Color{236, 216, 160, 255});
-    DrawTextLabel(font, "D  =  RIGHT", Vector2{50.0f, 237.0f}, 21.0f,
+    DrawTextLabel(font, "J  =  RIGHT", Vector2{50.0f, 237.0f}, 21.0f,
                   Color{236, 216, 160, 255});
     DrawTextLabel(font, "HIT ON THE BEAT", Vector2{50.0f, 274.0f}, 18.0f,
                   Color{171, 187, 210, 255});
@@ -315,7 +323,7 @@ void DrawHomeScreen(Font font, const locus::core::Chart& demo) {
                   47.0f, Color{232, 240, 246, 255});
     DrawTextLabel(font, "ENTER   START DEMO", Vector2{110.0f, 274.0f},
                   29.0f, Color{237, 218, 157, 255});
-    DrawTextLabel(font, "A = LEFT   /   D = RIGHT",
+    DrawTextLabel(font, "F = LEFT   /   J = RIGHT",
                   Vector2{110.0f, 327.0f}, 22.0f,
                   Color{191, 216, 225, 255});
     DrawTextLabel(font,
@@ -368,6 +376,17 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     BeginDrawing();
     ClearBackground(kBackground);
 
+    // Keep all UI and the 4x4 grid at the original 16:9 proportions.
+    // Resizing/maximizing/fullscreen simply fits and centers this canvas.
+    const float scale = std::min(static_cast<float>(GetScreenWidth()) / kWindowWidth,
+                                 static_cast<float>(GetScreenHeight()) / kWindowHeight);
+    Camera2D camera{};
+    camera.offset = Vector2{(GetScreenWidth() - kWindowWidth * scale) / 2.0f,
+                            (GetScreenHeight() - kWindowHeight * scale) / 2.0f};
+    camera.target = Vector2{0.0f, 0.0f};
+    camera.zoom = scale;
+    BeginMode2D(camera);
+
     DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
                   Color{223, 225, 238, 255});
 
@@ -401,11 +420,14 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 112)},
                       22.0f, Color{208, 211, 225, 255});
     }
+    DrawTextLabel(font, "F11  FULLSCREEN", Vector2{665.0f, 61.0f}, 16.0f,
+                  Color{174, 191, 208, 255});
     if (debugScreens) {
         DrawTextLabel(font, "DEBUG: F1 Home   F2 Play   F3 Editor   F4 Results",
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 65)},
                       22.0f, Color{232, 213, 160, 255});
     }
+    EndMode2D();
     EndDrawing();
 }
 
@@ -552,11 +574,13 @@ int main(int argc, char** argv) {
         return 2;
     }
 
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(kWindowWidth, kWindowHeight, "LOCUS");
     if (!IsWindowReady()) {
         std::cerr << "WINDOW_INIT_FAILED\n";
         return 1;
     }
+    SetWindowMinSize(800, 450);
     UiFont uiFont = LoadUiFont();
     SetTargetFPS(60); // Visual smoke baseline only, never a musical clock.
     std::cout << "LOCUS_WINDOW_OPEN\n";
@@ -568,6 +592,9 @@ int main(int argc, char** argv) {
     transport.Initialize(demo); // Failed audio output must not crash the window.
     while (state.running) {
         const FrameInput input = PollInput(debugScreens);
+        if (input.fullscreenPressed) {
+            ToggleBorderlessWindowed(); // F11: fullscreen desktop / resizable window
+        }
         const Screen previousScreen = state.screen;
         UpdateState(state, input, smokeWindow);
         if (!state.running) {
