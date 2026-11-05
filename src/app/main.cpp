@@ -820,17 +820,121 @@ int main(int argc, char** argv) {
     std::string musicError;
     transport.Initialize(demo); // Owns the shared raylib audio output device.
     while (state.running) {
-        const FrameInput input = PollInput(debugScreens);
+        FrameInput input = PollInput(debugScreens);
         if (input.fullscreenPressed) {
             ToggleBorderlessWindowed(); // F11: fullscreen desktop / resizable window
         }
         const Screen previousScreen = state.screen;
+        bool editorModalHandled = false;
+        if (previousScreen == Screen::Editor) {
+            if (editorPending != EditorPending::None) {
+                editorModalHandled = true;
+                const EditorPending requested = editorPending;
+                if (IsKeyPressed(KEY_Y)) {
+                    editorPending = EditorPending::None;
+                    if (requested == EditorPending::Home) input.homePressed = true;
+                    if (requested == EditorPending::Exit) input.closeRequested = true;
+                    if (requested == EditorPending::NewDraft) input.editorNew = true;
+                    if (requested == EditorPending::OpenChart) input.editorOpen = true;
+                } else if (IsKeyPressed(KEY_N)) {
+                    editorPending = EditorPending::None;
+                    editorStatus = "CHANGES KEPT - CTRL+S TO SAVE";
+                }
+                if (editorPending != EditorPending::None ||
+                    !IsKeyPressed(KEY_Y)) {
+                    input.homePressed = false;
+                    input.closeRequested = false;
+                    input.editorNew = false;
+                    input.editorOpen = false;
+                    input.requestedScreen.reset();
+                }
+            } else if (editor.Dirty() &&
+                       (input.closeRequested || input.homePressed ||
+                        input.editorNew || input.editorOpen ||
+                        (input.requestedScreen &&
+                         *input.requestedScreen != Screen::Editor))) {
+                editorPending = input.closeRequested ? EditorPending::Exit
+                              : input.editorNew ? EditorPending::NewDraft
+                              : input.editorOpen ? EditorPending::OpenChart
+                                                 : EditorPending::Home;
+                input.closeRequested = false;
+                input.homePressed = false;
+                input.editorNew = false;
+                input.editorOpen = false;
+                input.requestedScreen.reset();
+                editorModalHandled = true;
+            }
+        }
         UpdateState(state, input, smokeWindow);
         if (!state.running) {
             break;
         }
         double now = MonotonicSeconds();
         bool loadedNewSong = false;
+        if (state.screen == Screen::Editor && editorPending == EditorPending::None) {
+            if (input.editorNew) {
+                editor.NewDraft();
+                editorChartPath.clear();
+                editorAudioPath.clear();
+                editorStatus = "NEW CHART - PRESS O TO ATTACH SONG";
+            } else if (input.editorOpen) {
+                const auto picked = locus::app::ChooseChartFile();
+                now = MonotonicSeconds();
+                if (!picked.path.empty()) {
+                    if (LoadDraftFromDisk(picked.path, editor, localSong,
+                                          editorChartPath, editorAudioPath, musicError)) {
+                        editorStatus = "CHART LOADED - T TO TEST / CTRL+S TO SAVE";
+                    } else {
+                        editorStatus = "OPEN FAILED: " + musicError;
+                    }
+                } else if (!picked.canceled) {
+                    editorStatus = "OPEN FAILED: " + picked.error;
+                }
+            } else if (input.chooseMusicPressed) {
+                const auto picked = locus::app::ChooseLocalMusicFile();
+                now = MonotonicSeconds();
+                if (!picked.path.empty()) {
+                    if (localSong.LoadFromFile(picked.path)) {
+                        editorAudioPath = picked.path;
+                        const std::string name =
+                            std::filesystem::path(picked.path).filename().u8string();
+                        editor.SetAudioPath(name);
+                        editorStatus = "SONG ATTACHED - CTRL+S TO SAVE / T TO TEST";
+                    } else {
+                        editorStatus = "SONG FAILED: " + localSong.Error();
+                    }
+                } else if (!picked.canceled) {
+                    editorStatus = "SONG PICKER FAILED: " + picked.error;
+                }
+            } else if (input.editorSave || input.editorSaveAs) {
+                std::string failure;
+                if (SaveDraftToDisk(editor, localSong, editorChartPath,
+                                    editorAudioPath, input.editorSaveAs, failure)) {
+                    editorStatus = "SAVED - T TEST PLAY / CTRL+O REOPEN";
+                } else if (!failure.empty()) {
+                    editorStatus = "SAVE FAILED: " + failure;
+                }
+            } else if (input.editorTest) {
+                locus::core::LoadedChart checked = editor.Data();
+                if (editorAudioPath.empty() || !localSong.Ready()) {
+                    editorStatus = "TEST NEEDS AUDIO - PRESS O FIRST";
+                } else if (!locus::core::PrepareChartForSong(
+                               checked, localSong.DurationSeconds(), musicError)) {
+                    editorStatus = "TEST FAILED: " + musicError;
+                } else {
+                    activeChart = std::move(checked.route);
+                    chartTitle = std::move(checked.title);
+                    previewLead = checked.previewLeadBeats;
+                    chartPlayback.Configure(activeChart.bpm, checked.offsetSeconds);
+                    judge.SetOffsetSeconds(checked.offsetSeconds);
+                    customChart = true;
+                    state.screen = Screen::Play;
+                    editorStatus = "TEST IN PROGRESS - H HOME / E EDIT AGAIN";
+                }
+            } else if (!editorModalHandled) {
+                locus::app::ApplyEditorControls(editor, input.editor);
+            }
+        }
         if (input.chooseMusicPressed &&
             (state.screen == Screen::Home || state.screen == Screen::Listen)) {
             // File dialog is modal. Freeze playback while Windows owns focus,
@@ -873,7 +977,10 @@ int main(int argc, char** argv) {
                                candidate, localSong.DurationSeconds(), musicError)) {
                     std::cerr << "CHART_TIMING_FAIL " << musicError << '\\n';
                 } else {
-                    editor.Load(candidate); // M-03 can edit the imported route.
+                    editor.Load(candidate); // M-04 can reopen/edit/save imported routes.
+                    editorChartPath = selected.path;
+                    editorAudioPath = songPath;
+                    editorStatus = "CHART LOADED - E EDIT / CTRL+S SAVE";
                     activeChart = std::move(candidate.route);
                     chartTitle = std::move(candidate.title);
                     previewLead = candidate.previewLeadBeats;
@@ -898,7 +1005,8 @@ int main(int argc, char** argv) {
             }
             if (previousScreen == Screen::Listen) localSong.Stop();
             if (state.screen == Screen::Play) {
-                if (previousScreen != Screen::Results && !loadedNewChart) {
+                if (previousScreen != Screen::Results && !loadedNewChart &&
+                    previousScreen != Screen::Editor) {
                     // Enter on Home always selects the built-in original demo;
                     // replay from Results keeps the chart just completed.
                     customChart = false;
@@ -939,9 +1047,6 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (state.screen == Screen::Editor && previousScreen == Screen::Editor) {
-            locus::app::ApplyEditorControls(editor, input.editor);
-        }
         if (state.screen == Screen::Listen) {
             localSong.Update(now);
         }
