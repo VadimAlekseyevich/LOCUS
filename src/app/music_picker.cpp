@@ -1,9 +1,7 @@
 #include "app/music_picker.h"
 
-// raylib defines Rectangle and DrawText; parse it BEFORE Windows headers
-// to prevent their C declarations/macros from corrupting raylib types.
-#include "raylib.h"
-
+// This compilation unit deliberately never includes raylib.h: Windows SDK
+// declares functions with names shared by raylib.
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -21,7 +19,7 @@ MusicPickResult ChooseLocalMusicFile() {
     std::vector<wchar_t> file(32768, L'\0');
     OPENFILENAMEW dialog{};
     dialog.lStructSize = sizeof(dialog);
-    dialog.hwndOwner = static_cast<HWND>(GetWindowHandle());
+    dialog.hwndOwner = GetActiveWindow();
     dialog.lpstrFile = file.data();
     dialog.nMaxFile = static_cast<DWORD>(file.size());
     dialog.lpstrTitle = L"LOCUS - Select a WAV or MP3";
