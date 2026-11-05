@@ -234,8 +234,10 @@ if /I "%MODE%"=="baseline" (
 echo.
 echo ============================================================
 echo  LOCUS FIRST PLAYABLE DEMO - 32 BEATS / 120 BPM
-echo  ENTER = Start from Home  A = Left turn  D = Right turn
+echo  ENTER = Start from Home  F = Left turn  J = Right turn
+echo  F11 = Fullscreen / Window   Window edges = Resize
 echo  SPACE = Pause/Resume  R = Retry  H = Home  ESC = Close
+echo  Line grows with the moving marker; Wrap remains edge-split.
 echo  After the track, Results shows all nine turn judgements.
 echo  DEBUG ONLY: F1 Home / F2 Play / F3 Editor / F4 Results
 echo  No Fail: errors never change the correct route.
