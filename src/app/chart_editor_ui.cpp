@@ -170,6 +170,7 @@ EditorControls PollEditorControls() {
     controls.bpmUp = IsKeyPressed(KEY_X);
     controls.offsetDown = IsKeyPressed(KEY_N);
     controls.offsetUp = IsKeyPressed(KEY_M);
+    controls.fineOffset = shift;
     controls.headingLeft = IsKeyPressed(KEY_Q);
     controls.headingRight = IsKeyPressed(KEY_E);
     controls.lengthDown = IsKeyPressed(KEY_LEFT_BRACKET);
@@ -191,8 +192,8 @@ void ApplyEditorControls(core::ChartEditor& draft, const EditorControls& input) 
     if (input.removeTurn) draft.RemoveTurn();
     if (input.bpmDown) draft.ChangeBpm(-1);
     if (input.bpmUp) draft.ChangeBpm(1);
-    if (input.offsetDown) draft.ChangeOffsetMs(-10);
-    if (input.offsetUp) draft.ChangeOffsetMs(10);
+    if (input.offsetDown) draft.ChangeOffsetMs(input.fineOffset ? -1 : -10);
+    if (input.offsetUp) draft.ChangeOffsetMs(input.fineOffset ? 1 : 10);
     if (input.headingLeft) draft.RotateHeading(-1);
     if (input.headingRight) draft.RotateHeading(1);
     if (input.lengthDown) draft.ChangeLength(-16);
@@ -273,7 +274,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft) {
     Button(font, kRightTurn, "J  RIGHT", Color{150, 158, 236, 255});
     Button(font, kRemoveTurn, "DEL  ERASE", Color{223, 152, 151, 255});
     DrawTimeline(font, draft);
-    Label(font, "Z/X BPM   N/M OFFSET +/-10 ms   Q/E HEADING   [/] LENGTH   H HOME",
+    Label(font, "Z/X BPM   N/M +/-10 ms (SHIFT = 1 ms)   Q/E HEADING   [/] BEATS   H HOME",
           50, 507, 14, Color{194, 196, 214, 255});
 }
 
