@@ -10,6 +10,8 @@ public:
     void Pause(double monotonicSeconds) noexcept;
     void Resume(double monotonicSeconds) noexcept;
     void Stop() noexcept;
+    void SetRate(double rate, double monotonicSeconds) noexcept;
+    double Rate() const noexcept { return rate_; }
 
     bool Running() const noexcept;
     bool Paused() const noexcept;
@@ -20,6 +22,7 @@ public:
 private:
     double startedAtSeconds_ = 0.0;
     double elapsedBeforePause_ = 0.0;
+    double rate_ = 1.0;
     bool running_ = false;
     bool paused_ = false;
 };
