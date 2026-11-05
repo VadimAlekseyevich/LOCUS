@@ -233,13 +233,16 @@ if /I "%MODE%"=="baseline" (
 
 echo.
 echo ============================================================
-echo  LOCUS - BUILT-IN DEMO / LOCAL SONGS / JSON CHARTS
-echo  ENTER = Play 16-second demo  O = Listen to WAV/MP3
-echo  C = Open JSON chart + its referenced WAV/MP3 to play
-echo  F = Left turn  J = Right turn  (when playing a chart)
+echo  LOCUS - DEMO / LOCAL SONGS / JSON CHARTS / EDITOR
+echo  ENTER = Built-in demo    O = Listen to WAV/MP3
+echo  C = Open JSON chart + song   E = Open chart editor
+echo  F = Left turn  J = Right turn  (Play or Editor)
+echo  EDITOR: click grid start / timeline beat, arrows select beat
+echo  EDITOR: Z/X BPM  N/M offset +/-10 ms  Shift+N/M +/-1 ms
+echo  EDITOR: Q/E heading  [/] length  Delete removes turn
+echo  EDITOR: edits are in memory; Save + Test Play arrive in M-04
 echo  SPACE = Pause/Resume  R = Replay  H = Home  ESC = Close
 echo  F11 = Fullscreen / Window   Window edges = Resize
-echo  A custom chart needs song audio in its folder or subfolder.
 echo  DEBUG ONLY: F1 Home / F2 Play / F3 Editor / F4 Results
 echo  No Fail: errors never change the correct route.
 echo  Close with ESC or the X button in the window title bar.
