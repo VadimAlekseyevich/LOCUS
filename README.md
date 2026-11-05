@@ -1,5 +1,23 @@
 # LOCUS
 
+## Forward-only route glow and uncluttered gameplay HUD
+
+In normal **PLAY** and editor **TEST**, the red path now exists visually
+**only for one beat in front of the player**. Directly ahead of the fixed
+centre marker it is bright, opaque and wide. It tapers continuously, getting
+thinner and more transparent until it is completely invisible at exactly
+one beat ahead. **Nothing remains behind the player**, even for part of a
+beat. Small sub-beat line slices are clipped at the player's fractional
+music-time position, so whole route steps never pop on/off. Future red turn
+points use the same one-beat fade window. The ROUTE editor's existing
+multi-beat authoring preview is unaffected.
+
+PLAY is slightly zoomed out (51 pixels per world unit rather than 75),
+with a smaller player drawn at the true **centre of the 960×540 screen**.
+Perfect/Good/Bad/Miss counts and the latest result live exclusively in a
+slim bar at the bottom, not over the route. The gameplay view remains
+grid-free, including when testing directly from ROUTE.
+
 ## Infinite world and stationary player (current gameplay)
 
 **No Wrap, boundaries, teleportation, or grid in PLAY/TEST.** All eight

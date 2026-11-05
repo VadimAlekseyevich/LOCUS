@@ -136,6 +136,12 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_chart_file_tests PRIVATE locus_core)
     add_test(NAME locus_chart_local_file COMMAND locus_chart_file_tests)
 
+    add_executable(locus_path_fade_tests tests/path_fade_tests.cpp)
+    target_compile_features(locus_path_fade_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_path_fade_tests PRIVATE raylib)
+    target_include_directories(locus_path_fade_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    add_test(NAME locus_forward_only_path_fade COMMAND locus_path_fade_tests)
+
     add_executable(locus_hit_flash_tests tests/hit_flash_tests.cpp)
     target_compile_features(locus_hit_flash_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_hit_flash_tests PRIVATE locus_core)

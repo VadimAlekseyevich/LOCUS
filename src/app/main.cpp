@@ -266,13 +266,15 @@ struct GameplayView {
     const locus::app::GameSettings& bindings;
 };
 
-// The PLAY camera never rotates and follows the exact sub-beat player
-// position. We translate world points relative to it in double precision;
-// at beat 65535 there is no floating-point pan jitter or discontinuity.
+// Fixed screen-centre avatar: only the world translates. The gameplay
+// viewport is grid-free and the entire HUD is isolated in a bottom strip.
+constexpr float kGameplayHudTop = 478.0f;
+constexpr Rectangle kGameplayWorldViewport{0.0f, 0.0f, 960.0f, kGameplayHudTop};
+
 struct GameplayCamera {
-    static constexpr float kCenterX = 358.0f;
-    static constexpr float kCenterY = 271.0f;
-    static constexpr float kStep = 75.0f;
+    static constexpr float kCenterX = kWindowWidth * 0.5f;
+    static constexpr float kCenterY = kWindowHeight * 0.5f;
+    static constexpr float kStep = 51.0f; // Less zoomed than the old 75px/beat.
     locus::core::GridPoint world{};
 
     GameplayCamera(const locus::core::Chart& chart, double beat)
@@ -284,31 +286,32 @@ struct GameplayCamera {
 };
 
 void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
-    const auto& chart = gameplay.chart;
-    const GameplayCamera camera(chart, gameplay.beat);
+    const GameplayCamera camera(gameplay.chart, gameplay.beat);
     const auto canvas = camera.Canvas();
 
-    // Scissor is in physical window pixels; raylib's outer Camera2D already
-    // maps our virtual 960x540 UI to these coordinates.
+    // Scissor coordinates are physical pixels while all world points remain
+    // projected into the virtual 960x540 resolution.
     const float scale = std::min(static_cast<float>(GetScreenWidth()) / kWindowWidth,
                                  static_cast<float>(GetScreenHeight()) / kWindowHeight);
-    const float offsetX = (GetScreenWidth() - kWindowWidth * scale) / 2.0f;
-    const float offsetY = (GetScreenHeight() - kWindowHeight * scale) / 2.0f;
-    constexpr Rectangle viewport{38.0f, 38.0f, 636.0f, 466.0f};
+    const float offsetX = (GetScreenWidth() - kWindowWidth * scale) * 0.5f;
+    const float offsetY = (GetScreenHeight() - kWindowHeight * scale) * 0.5f;
     BeginScissorMode(
-        static_cast<int>(std::floor(offsetX + viewport.x * scale)),
-        static_cast<int>(std::floor(offsetY + viewport.y * scale)),
-        static_cast<int>(std::ceil(viewport.width * scale)),
-        static_cast<int>(std::ceil(viewport.height * scale)));
+        static_cast<int>(std::floor(offsetX + kGameplayWorldViewport.x * scale)),
+        static_cast<int>(std::floor(offsetY + kGameplayWorldViewport.y * scale)),
+        static_cast<int>(std::ceil(kGameplayWorldViewport.width * scale)),
+        static_cast<int>(std::ceil(kGameplayWorldViewport.height * scale)));
 
-    // NO GRID IN PLAY OR EDITOR TEST PLAY. Only the red authored path,
-    // red turn junctions and the player fixed at the gameplay viewport centre.
+    // PLAY and editor TEST: only a gradually thinning/fading red route
+    // *ahead* of the marker, red turn targets and the centred avatar.
+    // No past-route trail, grid or debug overlay.
     const Vector2 marker = locus::app::DrawRouteTrajectory(
-        chart, gameplay.beat, canvas, locus::app::RouteRenderMode::Gameplay);
+        gameplay.chart, gameplay.beat, canvas,
+        locus::app::RouteRenderMode::Gameplay);
     locus::app::DrawRouteJunctions(
-        chart, gameplay.beat, canvas, locus::app::RouteRenderMode::Gameplay);
-    constexpr float markerRadius = 17.0f;
-    DrawCircleV(marker, markerRadius * 1.5f, Color{255, 75, 86, 45});
+        gameplay.chart, gameplay.beat, canvas,
+        locus::app::RouteRenderMode::Gameplay);
+    constexpr float markerRadius = 12.5f;
+    DrawCircleV(marker, markerRadius * 1.65f, Color{255, 75, 86, 43});
     DrawCircleV(marker, markerRadius, Color{255, 140, 149, 255});
     DrawCircleV(marker, markerRadius * 0.33f, Color{245, 253, 255, 255});
     if (gameplay.showHitFlash) {
@@ -317,28 +320,35 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     }
     EndScissorMode();
 
-    // The only permanent PLAY overlay: live judgement statistics.
+    // Hit feedback lives in a dedicated bottom bar, not on top of the route.
+    DrawRectangle(0, static_cast<int>(kGameplayHudTop), kWindowWidth,
+                  kWindowHeight - static_cast<int>(kGameplayHudTop),
+                  Color{22, 26, 37, 255});
+    DrawLine(0, static_cast<int>(kGameplayHudTop),
+             kWindowWidth, static_cast<int>(kGameplayHudTop),
+             Color{47, 57, 73, 255});
+
     const auto& counts = gameplay.judge.Counts();
-    DrawTextLabel(font, "HITS", {703.0f, 160.0f}, 22.0f,
-                  Color{157, 226, 221, 255});
     const struct {
         const char* label;
         int count;
+        float x;
         Color color;
-    } rows[] = {
-        {"PERFECT", counts.perfect, {133, 236, 201, 255}},
-        {"GOOD", counts.good, {143, 208, 239, 255}},
-        {"BAD", counts.bad, {242, 198, 135, 255}},
-        {"MISS", counts.miss, {237, 142, 149, 255}}
+    } stats[] = {
+        {"PERFECT", counts.perfect, 42.0f, {133, 236, 201, 255}},
+        {"GOOD", counts.good, 224.0f, {143, 208, 239, 255}},
+        {"BAD", counts.bad, 401.0f, {242, 198, 135, 255}},
+        {"MISS", counts.miss, 558.0f, {237, 142, 149, 255}}
     };
-    for (int i = 0; i < 4; ++i) {
-        const float y = 213.0f + 47.0f * i;
-        DrawTextLabel(font, rows[i].label, {703.0f, y}, 19.0f, rows[i].color);
-        const char* value = TextFormat("%d", rows[i].count);
-        const Vector2 measure = MeasureTextEx(font, value, 22.0f, 1.0f);
-        DrawTextLabel(font, value, {904.0f - measure.x, y - 2.0f}, 22.0f,
+    for (const auto& stat : stats) {
+        DrawTextLabel(font, stat.label, {stat.x, 488.0f}, 15.0f, stat.color);
+        DrawTextLabel(font, TextFormat("%d", stat.count),
+                      {stat.x, 508.0f}, 22.0f,
                       Color{231, 237, 243, 255});
     }
+    DrawLine(750, 488, 750, 531, Color{47, 57, 73, 255});
+    DrawTextLabel(font, "LAST", {775.0f, 488.0f}, 14.0f,
+                  Color{164, 188, 207, 255});
     if (const auto& last = gameplay.judge.Last()) {
         const Color color = last->grade == locus::core::Grade::Perfect
                                 ? Color{133, 236, 201, 255}
@@ -348,7 +358,7 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
                                 ? Color{242, 198, 135, 255}
                                 : Color{237, 142, 149, 255};
         DrawTextLabel(font, locus::core::GradeName(last->grade),
-                      {703.0f, 426.0f}, 19.0f, color);
+                      {775.0f, 509.0f}, 20.0f, color);
     }
 }
 
@@ -696,6 +706,13 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
 // Keep rendering-only layout regressions in the headless screen check.
 // This uses the same rectangles as the visible controls and hit testing.
 bool CheckPresentationLayout() {
+    // World is truly screen-centred, and scoring is on a separate strip.
+    if (GameplayCamera::kCenterX != kWindowWidth * 0.5f ||
+        GameplayCamera::kCenterY != kWindowHeight * 0.5f ||
+        GameplayCamera::kCenterY >= kGameplayHudTop ||
+        kGameplayWorldViewport.height != kGameplayHudTop ||
+        kGameplayWorldViewport.width != kWindowWidth)
+        return false;
     const Rectangle left{52, 149, 408, 325};
     const Rectangle right{486, 149, 432, 325};
     const auto inside = [](Rectangle frame, Rectangle r) {

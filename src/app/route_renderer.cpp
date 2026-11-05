@@ -22,6 +22,48 @@ int CurrentBeat(const core::Chart& chart, double beat) {
                       chart.firstBeat, chart.lengthBeats - 1);
 }
 
+// Only the part of the authored path with song-beat coordinates in
+// [beat, beat+1] is displayed in scored PLAY/TEST. A segment can span
+// the current and next integer beat; their visible portions are clipped
+// at exact fractional beats, so there is never a lingering tail or a
+// whole beat appearing/disappearing in a single frame.
+void DrawScoredPath(const core::Chart& chart, double beat,
+                    RouteCanvas canvas, const RouteVisualStyle& style) {
+    const int first = CurrentBeat(chart, beat);
+    const int last = std::min(chart.lengthBeats - 1, first + 1);
+    for (int target = last; target >= first; --target) {
+        const ScoredPathInterval visible = ScoredPathVisibleInterval(beat, target);
+        if (!visible.Visible()) continue;
+        const double begin = visible.begin, end = visible.end;
+        const core::RouteStep step = core::SampleRouteStep(chart, target);
+        const double fromX = static_cast<double>(step.from.x);
+        const double fromY = static_cast<double>(step.from.y);
+        const double dx = static_cast<double>(step.to.x - step.from.x);
+        const double dy = static_cast<double>(step.to.y - step.from.y);
+
+        // Subdivide only the visible interval. Its near endpoint follows
+        // the player exactly; it never draws past the marker.
+        for (int i = kScoredPathSlices - 1; i >= 0; --i) {
+            const double a = begin + (end - begin) * i / kScoredPathSlices;
+            const double b = begin + (end - begin) * (i + 1) / kScoredPathSlices;
+            const double ahead = (a + b) * 0.5 - beat;
+            const float opacity = ScoredPathOpacity(ahead);
+            if (opacity <= 0.0005f) continue;
+            const float width = ScoredPathWidth(ahead);
+            const auto screen = [&](double time) {
+                const double t = time - target;
+                return canvas.Position({fromX + dx * t, fromY + dy * t});
+            };
+            const Vector2 p0 = screen(a);
+            const Vector2 p1 = screen(b);
+            DrawLineEx(p0, p1, width * style.outlineScale,
+                       WithOpacity(style.routeOutline, opacity));
+            DrawLineEx(p0, p1, width,
+                       WithOpacity(style.fullTrajectory, opacity));
+        }
+    }
+}
+
 } // namespace
 
 Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
@@ -34,8 +76,12 @@ Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
                                   static_cast<double>(chart.firstBeat),
                                   static_cast<double>(chart.lengthBeats));
     const int current = CurrentBeat(chart, beat);
+    if (mode == RouteRenderMode::Gameplay) {
+        DrawScoredPath(chart, beat, canvas, style);
+        return canvas.Position(core::RoutePositionAt(chart, beat));
+    }
     const double progress = std::clamp(beat - current, 0.0, 1.0);
-    const bool editor = mode == RouteRenderMode::Editor;
+    const bool editor = true;
     const float scale = std::clamp(canvas.step / (editor ? 80.0f : 76.0f),
                                    0.4f, 1.0f);
     const float width = editor ? style.editorNextStepWidth : style.gameNextStepWidth;
@@ -81,6 +127,32 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
     const int current = CurrentBeat(chart, beat);
     const bool editor = mode == RouteRenderMode::Editor;
     const auto& style = kDefaultRouteVisualStyle;
+    if (!editor) {
+        // Same one-beat visibility envelope as the path. Targets never
+        // linger after the player passes them; they approach smoothly.
+        const int next = static_cast<int>(std::ceil(beat));
+        const auto first = std::lower_bound(
+            chart.turns.begin(), chart.turns.end(), next,
+            [](const core::TurnEvent& e, int index) {
+                return e.beat < index;
+            });
+        for (auto turn = first; turn != chart.turns.end() &&
+                          static_cast<double>(turn->beat) <
+                              beat + kScoredPathLengthBeats; ++turn) {
+            const float opacity = ScoredPathOpacity(turn->beat - beat);
+            if (opacity <= 0.0005f) continue;
+            const core::Cell cell = core::SampleRouteStep(chart, turn->beat).from;
+            const Vector2 point = canvas.Point(cell);
+            const float radius = std::min(9.5f, canvas.step * 0.25f);
+            DrawCircleV(point, radius * 1.45f,
+                        WithOpacity(Color{255, 70, 84, 65}, opacity));
+            DrawCircleV(point, radius,
+                        WithOpacity(style.reachedTurnPoint, opacity));
+            DrawCircleV(point, radius * 0.35f,
+                        WithOpacity(Color{255, 225, 228, 255}, opacity));
+        }
+        return;
+    }
     for (const auto& turn : core::PreviewTurnPoints(
              chart, beat, RouteVisualStyle::lookaheadBeats)) {
         const float opacity = turn.beat <= current
