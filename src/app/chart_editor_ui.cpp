@@ -724,7 +724,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                     if (std::abs(mouse.x - center.x) <= tolerance &&
                         std::abs(mouse.y - center.y) <= tolerance) {
                         if (draft.SetStart({x, y})) {
-                            draft.SelectBeat(0);
+                            draft.SelectBeat(draft.Data().route.firstBeat);
                             action.changedChart = true;
                         }
                         return action;

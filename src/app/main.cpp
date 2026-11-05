@@ -977,9 +977,10 @@ int main(int argc, char** argv) {
                     editorStatus = "NO SONG - CLICK LOAD SONG / PRESS O";
                     return;
                 }
-                // Beat indices can be negative before positive offset;
-                // beginning of physical audio remains time zero.
-                const double songTime = std::max(0.0, editor.AudioSecondsAtBeat(beat));
+                // Preserve virtual negative-time preroll for both the
+                // original negative offset and a partially overlapping
+                // first beat before physical song time zero.
+                const double songTime = editor.AudioSecondsAtBeat(beat);
                 if (!std::isfinite(songTime) ||
                     songTime >= localSong.DurationSeconds()) {
                     editorStatus = "PREVIEW FAILED: SELECTED BEAT / OFFSET IS AFTER SONG END";

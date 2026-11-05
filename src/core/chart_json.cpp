@@ -306,7 +306,9 @@ bool ComputeSongBeatRange(double bpm, double offsetSeconds, double durationSecon
     }
     const double earliest = -offsetSeconds * bpm / 60.0;
     const double latest = (durationSeconds - offsetSeconds) * bpm / 60.0;
-    const double first = std::floor(earliest);
+    // Keep old negative-offset charts playable in their silent preroll:
+    // their first authored beat is still zero, not the first audio sample.
+    const double first = std::min(0.0, std::floor(earliest));
     const double end = std::ceil(latest);
     if (!std::isfinite(first) || !std::isfinite(end) ||
         first < -65536.0 || end > 65536.0 || end - first < 1.0 ||
@@ -330,7 +332,9 @@ bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
         const double timestamp =
             chart.offsetSeconds + static_cast<double>(event.beat) * 60.0 / chart.route.bpm;
         if (event.beat < first || event.beat >= end ||
-            !std::isfinite(timestamp) || timestamp < 0.0 ||
+            !std::isfinite(timestamp) ||
+            (timestamp < 0.0 &&
+             !(chart.offsetSeconds < 0.0 && event.beat >= 0)) ||
             timestamp >= songDurationSeconds) {
             error = "turns[" + std::to_string(i) +
                     "].beat: note outside actual song audio";

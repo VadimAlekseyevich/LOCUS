@@ -138,14 +138,11 @@ int main() {
         valid.find("\"offsetSeconds\": 0.25"), sizeof("\"offsetSeconds\": 0.25") - 1,
         "\"offsetSeconds\": -0.5");
     ok &= Expect(ParseChartJson(negative, early, error) &&
-                 !PrepareChartForSong(early, 10.0, error) &&
-                 error.find("turns[0]") != std::string::npos,
-                 "events in negative song-time preroll are not scorable");
-    if (!early.route.turns.empty()) early.route.turns.erase(early.route.turns.begin());
-    ok &= Expect(PrepareChartForSong(early, 10.0, error) &&
-                 early.route.firstBeat == 1 &&
-                 early.route.lengthBeats == 21,
-                 "negative offset starts the visible grid at the audio-overlapping beat");
+                 PrepareChartForSong(early, 10.0, error) &&
+                 early.route.firstBeat == 0 &&
+                 early.route.lengthBeats == 21 &&
+                 early.route.turns[0].beat == 0,
+                 "negative offset preserves existing beat-zero silent preroll turns");
 
     // New format is milliseconds; legacy second-based charts remain valid.
     std::string millis = valid;

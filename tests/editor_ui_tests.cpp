@@ -160,8 +160,8 @@ int main() {
     ApplyEditorControls(chart, ui, Click(397, 265));
     ok &= Check(chart.Data().route.start.x == 2 &&
                 chart.Data().route.start.y == 3 &&
-                chart.SelectedBeat() == 0,
-                "clicking an 8x8 dot changes start and resets selected beat");
+                chart.SelectedBeat() == chart.Data().route.firstBeat,
+                "clicking an 8x8 dot resets to the earliest available song beat");
 
     const Vector2 mapped = EditorVirtualMouse({1920, 1080}, 3840, 2160);
     ok &= Check(std::abs(mapped.x - 480) < 1e-4 &&

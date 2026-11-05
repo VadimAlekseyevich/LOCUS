@@ -120,7 +120,7 @@ The mutable **Editor ChartDraft** may be incomplete/invalid while editing; it mu
 
 - Locate the audio file relative to the **directory containing the chart file**, not the process working directory.
 - Check existence/readability and whether the chosen audio backend decodes the format. Parsing JSON alone does not access an audio device.
-- When file duration **D** is known, each turn target must satisfy **0 ≤ target song time < D**. Beat indices may be negative, but playable input events must lie within actual audio (silent negative-time preroll is not scored).
+- When file duration **D** is known, a turn target must satisfy **target song time < D**. Negative-beat events belong to audible time before a positive offset. Existing **nonnegative** beat events in the negative-time silent preroll of a negative offset remain playable for compatibility.
 - Warn when a timing window could extend beyond audio end, without silently moving the event. At audio completion any unresolved scheduled events are settled once, as defined in TIMING.md.
 - Window overlap is dependent on the selected judgement thresholds and is checked **when starting a scoring session**, not as a permanent JSON-schema error.
 - If audio is unavailable, distinguish **valid chart data** from **unplayable chart/audio association** in error messages.
@@ -224,13 +224,13 @@ The manual Total Beats field is retired. On load, the app derives a half-open
 beat interval directly from audio duration `D`, BPM `B` and offset seconds `O`:
 
 ```
-firstBeat = floor(-O * B / 60)
+firstBeat = min(0, floor(-O * B / 60))
 endBeatExclusive = ceil((D-O) * B / 60)
 valid route step indices: [firstBeat, endBeatExclusive)
 ```
 
-The start cell/heading now describe the first step that overlaps the song,
-not necessarily beat zero. A positive offset can place beats −5..−1 inside
+The start cell/heading describe the earliest rendered step. A negative offset
+retains original beat-zero silent preroll for backward compatibility. A positive offset can place beats −5..−1 inside
 the song, including scored relative turns at those negative beat indices.
 New JSON never writes `lengthBeats`. Existing JSON with that property is
 accepted and its manual length ignored after song-duration calculation.

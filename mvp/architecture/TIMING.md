@@ -321,12 +321,12 @@ This contract deliberately introduces **no** new event types, tempo changes, alt
 ## November 2026 revision — authoritative current rules
 
 This section supersedes the original 4×4/fixed-zero and nonnegative-event MVP
-restrictions above. The start cell is attached to the **first song-overlapping
-beat** `floor(-O*B/60)`. The route continues through the exclusive end beat
+restrictions above. The start cell is attached to the first rendered beat
+`min(0, floor(-O*B/60))`. The route continues through the exclusive end beat
 `ceil((D-O)*B/60)`. A positive offset therefore displays beats before zero,
-with **negative beat numbers**. Turn events at such beats are permitted only if
-their target audio timestamp is `0 ≤ O + beat*60/B < D`; negative-time silent
-preroll is not scored. No Total Beats override limits the track. The grid is
+with **negative beat numbers**. Turn events on negative beats are valid within
+actual audio; old nonnegative beat events in the silent preroll of a
+negative offset remain playable for backward compatibility. No Total Beats override limits the track. The grid is
 configurable 2–16 columns/rows independently.
 
 The editor continues to author relative Left/Right turns. In gameplay, the
