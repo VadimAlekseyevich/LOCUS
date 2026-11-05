@@ -11,7 +11,8 @@ Heading ApplyTurn(Heading heading, Turn turn) {
     return static_cast<Heading>((current + rotation) % 4);
 }
 
-Cell StepInHeading(Cell cell, Heading heading, bool& wraps) {
+Cell StepInHeading(Cell cell, Heading heading,
+                   int width, int height, bool& wraps) {
     int x = cell.x;
     int y = cell.y;
     switch (heading) {
@@ -20,8 +21,8 @@ Cell StepInHeading(Cell cell, Heading heading, bool& wraps) {
         case Heading::Down: ++y; break;
         case Heading::Left: --x; break;
     }
-    wraps = (x < 0 || x >= 4 || y < 0 || y >= 4);
-    return Cell{(x + 4) % 4, (y + 4) % 4};
+    wraps = (x < 0 || x >= width || y < 0 || y >= height);
+    return Cell{(x + width) % width, (y + height) % height};
 }
 
 } // namespace
@@ -44,6 +45,12 @@ RouteStep SampleRouteStep(const Chart& chart, int beat) {
     if (beat < 0 || beat >= chart.lengthBeats) {
         throw std::out_of_range("route beat is outside chart duration");
     }
+    if (chart.gridWidth < kMinGridSize || chart.gridWidth > kMaxGridSize ||
+        chart.gridHeight < kMinGridSize || chart.gridHeight > kMaxGridSize ||
+        chart.start.x < 0 || chart.start.x >= chart.gridWidth ||
+        chart.start.y < 0 || chart.start.y >= chart.gridHeight) {
+        throw std::invalid_argument("route grid or starting cell is invalid");
+    }
 
     Cell cell = chart.start;
     Heading heading = chart.initialHeading;
@@ -54,9 +61,11 @@ RouteStep SampleRouteStep(const Chart& chart, int beat) {
             ++nextTurn;
         }
         bool wraps = false;
-        const Cell destination = StepInHeading(cell, heading, wraps);
+        const Cell destination = StepInHeading(
+            cell, heading, chart.gridWidth, chart.gridHeight, wraps);
         if (n == beat) {
-            return RouteStep{cell, destination, heading, wraps};
+            return RouteStep{cell, destination, heading, wraps,
+                             chart.gridWidth, chart.gridHeight};
         }
         cell = destination;
     }

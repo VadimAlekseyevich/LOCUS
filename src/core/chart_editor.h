@@ -25,6 +25,9 @@ public:
     bool SetBpm(double bpm) noexcept;
     bool ChangeOffsetMs(int deltaMs) noexcept; // signed milliseconds
     bool SetOffsetMs(double milliseconds) noexcept;
+    // Grid width and height are authored gameplay geometry, not time signature.
+    // Reject a resize that would silently move an authored starting cell.
+    bool SetGridSize(int width, int height) noexcept;
     bool SetStart(Cell cell) noexcept;
     void RotateHeading(int quarterTurns) noexcept;
     bool ChangeLength(int deltaBeats) noexcept; // no deletion of events

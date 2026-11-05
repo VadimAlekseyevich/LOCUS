@@ -65,6 +65,27 @@ int main() {
     ok &= Expect(CheckEdgeWrap(Heading::Left, Cell{0, 1}, 3, 1),
                  "left-edge wrap");
 
+    Chart large;
+    large.gridWidth = 8;
+    large.gridHeight = 8;
+    large.start = {7, 7};
+    large.initialHeading = Heading::Right;
+    const RouteStep largeWrap = SampleRouteStep(large, 0);
+    ok &= Expect(largeWrap.wraps && CellIs(largeWrap.to, 0, 7) &&
+                 largeWrap.gridWidth == 8 && largeWrap.gridHeight == 8,
+                 "8x8 route wraps at x=7, not the old 4x4 boundary");
+    large.start = {4, 4};
+    ok &= Expect(!SampleRouteStep(large, 0).wraps &&
+                 CellIs(SampleRouteStep(large, 0).to, 5, 4),
+                 "8x8 center step must not wrap at former x=3 edge");
+    large.gridWidth = 6;
+    large.gridHeight = 10;
+    large.start = {5, 9};
+    large.initialHeading = Heading::Down;
+    const RouteStep rectangle = SampleRouteStep(large, 0);
+    ok &= Expect(rectangle.wraps && CellIs(rectangle.to, 5, 0),
+                 "rectangular 6x10 route supports independent dimensions");
+
     Chart beatZeroTurn;
     beatZeroTurn.start = Cell{0, 0};
     beatZeroTurn.initialHeading = Heading::Up;

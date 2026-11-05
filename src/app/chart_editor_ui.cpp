@@ -13,11 +13,12 @@
 namespace locus::app {
 namespace {
 constexpr float kVirtualWidth = 960.0f, kVirtualHeight = 540.0f;
-constexpr float kGridX = 96.0f, kGridY = 197.0f, kGridStep = 59.0f;
+constexpr float kGridCenterX = 448.0f, kGridCenterY = 282.0f;
+constexpr float kGridMaxSpan = 240.0f;
 constexpr float kTimelineX = 50.0f, kTimelineY = 447.0f;
 constexpr float kTimelineWidth = 860.0f, kTimelineHeight = 52.0f;
-// Playhead stays 1/4 of the way across, preserving more future than past.
-constexpr float kPlayheadX = kTimelineX + kTimelineWidth * 0.25f;
+// Fixed playhead at one third of the ruler; the fractional-beat ruler moves.
+constexpr float kPlayheadX = kTimelineX + kTimelineWidth / 3.0f;
 constexpr float kZoomPixelsPerBeat[7] = {12, 18, 26, 36, 52, 76, 104};
 constexpr int kZoomMax = 6;
 constexpr Rectangle kZoomOut{807, 416, 34, 27};
@@ -34,19 +35,28 @@ double ViewBeat(const core::ChartEditor& draft, double activeBeat) {
         : static_cast<double>(draft.SelectedBeat());
 }
 
-constexpr Rectangle kTitle{49, 118, 321, 35};
-constexpr Rectangle kBpm{416, 174, 176, 43};
-constexpr Rectangle kOffset{630, 174, 244, 43};
-constexpr Rectangle kHeading{416, 249, 176, 42};
-constexpr Rectangle kLength{630, 249, 244, 42};
+constexpr Rectangle kTabRoute{388, 73, 155, 35};
+constexpr Rectangle kTabAudio{552, 73, 155, 35};
+constexpr Rectangle kTabField{716, 73, 155, 35};
 
-constexpr Rectangle kSong{416, 82, 135, 39};
-constexpr Rectangle kPlay{559, 82, 143, 39};
-constexpr Rectangle kStop{710, 82, 82, 39};
-constexpr Rectangle kTest{800, 82, 91, 39};
-constexpr Rectangle kLeftTurn{416, 365, 137, 37};
-constexpr Rectangle kRightTurn{561, 365, 137, 37};
-constexpr Rectangle kRemoveTurn{706, 365, 169, 37};
+constexpr Rectangle kSong{49, 115, 162, 37};
+constexpr Rectangle kPlay{220, 115, 157, 37};
+constexpr Rectangle kStop{386, 115, 115, 37};
+constexpr Rectangle kTest{510, 115, 102, 37};
+
+constexpr Rectangle kHeading{744, 201, 168, 40};
+constexpr Rectangle kLeftTurn{744, 271, 168, 37};
+constexpr Rectangle kRightTurn{744, 314, 168, 37};
+constexpr Rectangle kRemoveTurn{744, 357, 168, 37};
+
+constexpr Rectangle kTitle{92, 205, 768, 43};
+constexpr Rectangle kBpm{92, 290, 350, 43};
+constexpr Rectangle kOffset{510, 290, 350, 43};
+constexpr Rectangle kGridSize{104, 225, 330, 47};
+constexpr Rectangle kStartCell{519, 225, 330, 47};
+constexpr Rectangle kLength{104, 321, 330, 47};
+constexpr Rectangle kFieldHeading{519, 321, 330, 47};
+
 constexpr double kSpeeds[5] = {1.0, 0.75, 0.5, 0.25, 0.1};
 
 bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(pos, bounds); }
@@ -81,13 +91,30 @@ void Button(Font font, Rectangle rect, const char* text, Color tint, bool active
           17.0f, Color{232, 238, 245, 255});
 }
 
-Vector2 Point(core::GridPoint grid) {
-    return {kGridX + static_cast<float>(grid.x) * kGridStep,
-            kGridY + static_cast<float>(grid.y) * kGridStep};
-}
-Vector2 Point(core::Cell cell) {
-    return Point(core::GridPoint{static_cast<double>(cell.x),
-                                static_cast<double>(cell.y)});
+struct EditorGrid {
+    float left = 0.0f, top = 0.0f, step = 1.0f;
+
+    explicit EditorGrid(const core::Chart& chart) {
+        const int maxSteps = std::max(chart.gridWidth - 1, chart.gridHeight - 1);
+        step = kGridMaxSpan / static_cast<float>(std::max(1, maxSteps));
+        left = kGridCenterX - (chart.gridWidth - 1) * step * 0.5f;
+        top = kGridCenterY - (chart.gridHeight - 1) * step * 0.5f;
+    }
+    Vector2 Point(core::GridPoint point) const {
+        return {left + static_cast<float>(point.x) * step,
+                top + static_cast<float>(point.y) * step};
+    }
+    Vector2 Point(core::Cell point) const {
+        return Point(core::GridPoint{static_cast<double>(point.x),
+                                    static_cast<double>(point.y)});
+    }
+};
+
+EditorTab ClickedTab(Vector2 mouse, EditorTab previous) {
+    if (Hit(kTabRoute, mouse)) return EditorTab::Route;
+    if (Hit(kTabAudio, mouse)) return EditorTab::Audio;
+    if (Hit(kTabField, mouse)) return EditorTab::Field;
+    return previous;
 }
 
 const char* HeadingName(core::Heading heading) {
@@ -106,6 +133,8 @@ const char* FieldName(EditorField field) {
         case EditorField::Bpm: return "BPM";
         case EditorField::OffsetMs: return "OFFSET (MS)";
         case EditorField::Length: return "BEATS";
+        case EditorField::GridSize: return "GRID SIZE (W/H)";
+        case EditorField::StartCell: return "START (X/Y)";
         case EditorField::None: break;
     }
     return "";
@@ -117,15 +146,24 @@ Rectangle FieldBounds(EditorField field) {
         case EditorField::Bpm: return kBpm;
         case EditorField::OffsetMs: return kOffset;
         case EditorField::Length: return kLength;
+        case EditorField::GridSize: return kGridSize;
+        case EditorField::StartCell: return kStartCell;
         case EditorField::None: break;
     }
     return {0, 0, 0, 0};
 }
 
-EditorField ClickedField(Vector2 mouse) {
-    for (const auto field : {EditorField::Title, EditorField::Bpm,
-                             EditorField::OffsetMs, EditorField::Length}) {
-        if (Hit(FieldBounds(field), mouse)) return field;
+EditorField ClickedField(Vector2 mouse, EditorTab tab) {
+    if (tab == EditorTab::Audio) {
+        for (const auto field : {EditorField::Title, EditorField::Bpm,
+                                  EditorField::OffsetMs}) {
+            if (Hit(FieldBounds(field), mouse)) return field;
+        }
+    } else if (tab == EditorTab::Field) {
+        for (const auto field : {EditorField::GridSize, EditorField::StartCell,
+                                  EditorField::Length}) {
+            if (Hit(FieldBounds(field), mouse)) return field;
+        }
     }
     return EditorField::None;
 }
@@ -142,6 +180,12 @@ std::string InitialValue(const core::ChartEditor& draft, EditorField field) {
             return text;
         case EditorField::Length:
             return std::to_string(draft.Data().route.lengthBeats);
+        case EditorField::GridSize:
+            return std::to_string(draft.Data().route.gridWidth) + "/" +
+                   std::to_string(draft.Data().route.gridHeight);
+        case EditorField::StartCell:
+            return std::to_string(draft.Data().route.start.x) + "/" +
+                   std::to_string(draft.Data().route.start.y);
         default: return "";
     }
 }
@@ -160,12 +204,38 @@ bool ParseNumeric(const std::string& string, double& result) {
     return end && end != string.c_str() && *end == '\0' && std::isfinite(result);
 }
 
+// A field size like 8/8 (or 8x8) is two game-field dimensions,
+// not a musical time signature. Coordinates are zero-based.
+bool ParsePair(const std::string& value, int& first, int& second) {
+    if (value.empty()) return false;
+    char* middle = nullptr;
+    const long a = std::strtol(value.c_str(), &middle, 10);
+    if (middle == value.c_str() ||
+        (*middle != '/' && *middle != 'x' && *middle != 'X')) return false;
+    char* end = nullptr;
+    const long b = std::strtol(middle + 1, &end, 10);
+    if (end == middle + 1 || *end != '\0' ||
+        a < 0 || a > std::numeric_limits<int>::max() ||
+        b < 0 || b > std::numeric_limits<int>::max()) return false;
+    first = static_cast<int>(a);
+    second = static_cast<int>(b);
+    return true;
+}
+
 bool CommitField(EditorUiState& ui, core::ChartEditor& draft) {
     if (!ui.EditingText()) return true;
     const auto field = ui.active;
     bool valid = false;
     if (field == EditorField::Title) {
         valid = draft.SetTitle(ui.buffer);
+    } else if (field == EditorField::GridSize || field == EditorField::StartCell) {
+        int x = 0, y = 0;
+        if (ParsePair(ui.buffer, x, y)) {
+            if (field == EditorField::GridSize) valid = draft.SetGridSize(x, y);
+            else valid = draft.SetStart({x, y}) ||
+                         (draft.Data().route.start.x == x &&
+                          draft.Data().route.start.y == y);
+        }
     } else {
         double value = 0.0;
         if (ParseNumeric(ui.buffer, value)) {
@@ -213,16 +283,18 @@ void DrawTextField(Font font, Rectangle rect, const char* label,
 
 void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBeat) {
     const auto& chart = draft.Data().route;
-    Label(font, "BEAT-BY-BEAT ROUTE PREVIEW", 50, 164, 17,
-          Color{188, 215, 227, 255});
-    for (int line = 0; line < 4; ++line) {
-        DrawLineEx(Point(core::Cell{0, line}), Point(core::Cell{3, line}),
-                   2, Color{51, 62, 79, 255});
-        DrawLineEx(Point(core::Cell{line, 0}), Point(core::Cell{line, 3}),
-                   2, Color{51, 62, 79, 255});
+    const EditorGrid grid(chart);
+    for (int y = 0; y < chart.gridHeight; ++y) {
+        DrawLineEx(grid.Point(core::Cell{0, y}),
+                   grid.Point(core::Cell{chart.gridWidth - 1, y}),
+                   1.5f, Color{51, 62, 79, 255});
     }
-    // The marker, cyan travelled line and one-beat blue lookahead use
-    // the same route geometry as actual gameplay (including edge Wrap).
+    for (int x = 0; x < chart.gridWidth; ++x) {
+        DrawLineEx(grid.Point(core::Cell{x, 0}),
+                   grid.Point(core::Cell{x, chart.gridHeight - 1}),
+                   1.5f, Color{51, 62, 79, 255});
+    }
+
     const double bounded = std::clamp(previewBeat, 0.0,
                                       static_cast<double>(chart.lengthBeats));
     const int beat = std::min(static_cast<int>(std::floor(bounded)),
@@ -233,11 +305,12 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
     const core::StepView trace = core::TraceRouteStep(current, progress);
 
     const auto drawSegments = [&](const core::StepView& view, Color tint, float width) {
+        const float scale = std::clamp(grid.step / 80.0f, 0.4f, 1.0f);
         for (int i = 0; i < view.segmentCount; ++i) {
-            DrawLineEx(Point(view.segments[i].from), Point(view.segments[i].to), width, tint);
+            DrawLineEx(grid.Point(view.segments[i].from),
+                       grid.Point(view.segments[i].to), width * scale, tint);
         }
     };
-
     if (beat + 1 < chart.lengthBeats) {
         const core::RouteStep next = core::SampleRouteStep(chart, beat + 1);
         drawSegments(core::ViewRouteStep(next, 1.0),
@@ -246,27 +319,28 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
     drawSegments(whole, Color{95, 179, 230, 200}, 4.0f);
     drawSegments(trace, Color{110, 235, 218, 255}, 5.5f);
 
-    for (int y = 0; y < 4; ++y) {
-        for (int x = 0; x < 4; ++x) {
-            const Vector2 position = Point(core::Cell{x, y});
-            DrawCircleV(position, 8.0f, Color{105, 127, 148, 255});
-            DrawCircleV(position, 3.3f, Color{207, 221, 234, 255});
+    const float dot = std::min(8.0f, grid.step * 0.27f);
+    for (int y = 0; y < chart.gridHeight; ++y) {
+        for (int x = 0; x < chart.gridWidth; ++x) {
+            const Vector2 position = grid.Point(core::Cell{x, y});
+            DrawCircleV(position, dot, Color{105, 127, 148, 255});
+            DrawCircleV(position, dot * 0.41f, Color{207, 221, 234, 255});
         }
     }
-    // Gold shows the *authored start*, distinct from the moving cyan marker.
-    const Vector2 start = Point(chart.start);
-    DrawCircleV(start, 17.0f, Color{245, 203, 112, 48});
+    const Vector2 start = grid.Point(chart.start);
+    const float markerRadius = std::min(13.0f, grid.step * 0.39f);
+    DrawCircleV(start, markerRadius * 1.32f, Color{245, 203, 112, 48});
     DrawCircleLines(static_cast<int>(start.x), static_cast<int>(start.y),
-                    18.0f, Color{246, 209, 112, 255});
-    const Vector2 marker = Point(trace.marker);
-    DrawCircleV(marker, 22.0f, Color{112, 219, 216, 48});
-    DrawCircleV(marker, 13.0f, Color{124, 229, 225, 255});
-    DrawCircleV(marker, 4.0f, Color{246, 251, 252, 255});
+                    markerRadius * 1.36f, Color{246, 209, 112, 255});
+    const Vector2 marker = grid.Point(trace.marker);
+    DrawCircleV(marker, markerRadius * 1.7f, Color{112, 219, 216, 48});
+    DrawCircleV(marker, markerRadius, Color{124, 229, 225, 255});
+    DrawCircleV(marker, markerRadius * 0.32f, Color{246, 251, 252, 255});
+
     Label(font, TextFormat("BEAT %.2f / %d", bounded, chart.lengthBeats),
-          53, 390, 16, Color{158, 225, 212, 255});
-    Label(font, TextFormat("START: %d,%d  (CLICK A GRID DOT)",
-                           chart.start.x + 1, chart.start.y + 1),
-          53, 409, 13, Color{247, 213, 131, 255});
+          52, 405, 15, Color{158, 225, 212, 255});
+    Label(font, TextFormat("START %d/%d", chart.start.x, chart.start.y),
+          266, 405, 15, Color{247, 213, 131, 255});
 }
 
 void DrawTimeline(Font font, const core::ChartEditor& draft,
@@ -437,7 +511,10 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                 ui.replaceOnType = false;
             }
             for (unsigned char c : input.typedUtf8) {
+                const bool pairField = ui.active == EditorField::GridSize ||
+                                       ui.active == EditorField::StartCell;
                 if (ui.active == EditorField::Title ||
+                    (pairField && (c == '/' || c == 'x' || c == 'X')) ||
                     c == '.' || c == ',' || c == '-' || (c >= '0' && c <= '9')) {
                     if (ui.buffer.size() < 100)
                         ui.buffer.push_back(static_cast<char>(
@@ -451,37 +528,57 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             if (committed && input.tab)
                 BeginField(ui, draft, EditorField::Bpm);
         } else if (input.mouseClick) {
-            const EditorField target = ClickedField(input.mouse);
+            const EditorField target = ClickedField(input.mouse, ui.tab);
             if (target != ui.active) {
                 const bool committed = CommitField(ui, draft);
                 action.changedChart = committed;
-                if (committed && target != EditorField::None)
-                    BeginField(ui, draft, target);
+                if (committed) {
+                    ui.tab = ClickedTab(input.mouse, ui.tab);
+                    if (target != EditorField::None) BeginField(ui, draft, target);
+                }
             }
         }
         return action;
     }
 
     if (input.mouseClick) {
-        const EditorField selected = ClickedField(input.mouse);
+        const Vector2 mouse = input.mouse;
+        const EditorTab nextTab = ClickedTab(mouse, ui.tab);
+        if (nextTab != ui.tab) {
+            ui.tab = nextTab;
+            return action;
+        }
+        const EditorField selected = ClickedField(mouse, ui.tab);
         if (selected != EditorField::None) {
             BeginField(ui, draft, selected);
             return action;
         }
-        const Vector2 mouse = input.mouse;
         if (Hit(kSong, mouse)) action.chooseAudio = true;
         else if (Hit(kPlay, mouse)) action.previewToggle = true;
         else if (Hit(kStop, mouse)) action.previewRestart = true;
         else if (Hit(kTest, mouse)) action.testPlay = true;
-        else if (Hit(kHeading, mouse)) { draft.RotateHeading(1); action.changedChart = true; }
-        else if (Hit(kLeftTurn, mouse)) { draft.PutTurn(core::Turn::Left); action.changedChart = true; }
-        else if (Hit(kRightTurn, mouse)) { draft.PutTurn(core::Turn::Right); action.changedChart = true; }
-        else if (Hit(kRemoveTurn, mouse)) { action.changedChart = draft.RemoveTurn(); }
-        else if (Hit(kZoomOut, mouse)) ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
-        else if (Hit(kZoomIn, mouse)) ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
-        else if (mouse.y >= 311 && mouse.y <= 348) {
+        else if (Hit(kZoomOut, mouse))
+            ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
+        else if (Hit(kZoomIn, mouse))
+            ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
+        else if (ui.tab == EditorTab::Route && Hit(kHeading, mouse)) {
+            draft.RotateHeading(1);
+            action.changedChart = true;
+        } else if (ui.tab == EditorTab::Field && Hit(kFieldHeading, mouse)) {
+            draft.RotateHeading(1);
+            action.changedChart = true;
+        } else if (ui.tab == EditorTab::Route && Hit(kLeftTurn, mouse)) {
+            draft.PutTurn(core::Turn::Left);
+            action.changedChart = true;
+        } else if (ui.tab == EditorTab::Route && Hit(kRightTurn, mouse)) {
+            draft.PutTurn(core::Turn::Right);
+            action.changedChart = true;
+        } else if (ui.tab == EditorTab::Route && Hit(kRemoveTurn, mouse)) {
+            action.changedChart = draft.RemoveTurn();
+        } else if (ui.tab == EditorTab::Audio && mouse.y >= 371 &&
+                   mouse.y <= 409) {
             for (int i = 0; i < 5; ++i) {
-                const Rectangle button{416.0f + i * 93.0f, 312.0f, 86.0f, 35.0f};
+                const Rectangle button{92.0f + i * 155.0f, 371.0f, 148.0f, 37.0f};
                 if (Hit(button, mouse)) action.speedIndex = i;
             }
         } else if (mouse.y >= kTimelineY && mouse.y <= kTimelineY + kTimelineHeight &&
@@ -492,18 +589,22 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             const int beat = std::clamp(static_cast<int>(std::lround(clicked)),
                                         0, draft.Data().route.lengthBeats - 1);
             draft.SelectBeat(beat);
-        } else {
-            for (int y = 0; y < 4; ++y) for (int x = 0; x < 4; ++x) {
-                const auto center = Point(core::Cell{x, y});
-                if (std::abs(mouse.x - center.x) < 22 &&
-                    std::abs(mouse.y - center.y) < 22) {
-                    if (draft.SetStart({x, y})) {
-                        draft.SelectBeat(0); // Show the new start immediately.
-                        action.changedChart = true;
+        } else if (ui.tab == EditorTab::Route) {
+            const auto& chart = draft.Data().route;
+            const EditorGrid grid(chart);
+            const float tolerance = std::clamp(grid.step * 0.38f, 7.0f, 19.0f);
+            for (int y = 0; y < chart.gridHeight; ++y)
+                for (int x = 0; x < chart.gridWidth; ++x) {
+                    const auto center = grid.Point(core::Cell{x, y});
+                    if (std::abs(mouse.x - center.x) <= tolerance &&
+                        std::abs(mouse.y - center.y) <= tolerance) {
+                        if (draft.SetStart({x, y})) {
+                            draft.SelectBeat(0);
+                            action.changedChart = true;
+                        }
+                        return action;
                     }
-                    return action;
                 }
-            }
         }
     }
 
@@ -513,15 +614,19 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     if (input.nextBeat) draft.StepSelection(1);
     if (input.previousBar) draft.StepSelection(-4);
     if (input.nextBar) draft.StepSelection(4);
-    if (input.movePrevious) action.changedChart |= draft.MoveTurn(-1);
-    if (input.moveNext) action.changedChart |= draft.MoveTurn(1);
-    if (input.addLeft) { draft.PutTurn(core::Turn::Left); action.changedChart = true; }
-    if (input.addRight) { draft.PutTurn(core::Turn::Right); action.changedChart = true; }
-    if (input.removeTurn) action.changedChart |= draft.RemoveTurn();
-    if (input.headingLeft) { draft.RotateHeading(-1); action.changedChart = true; }
-    if (input.headingRight) { draft.RotateHeading(1); action.changedChart = true; }
-    if (input.mouseWheel > 0) draft.SelectBeat(draft.SelectedBeat() - 1);
-    if (input.mouseWheel < 0) draft.SelectBeat(draft.SelectedBeat() + 1);
+    if (ui.tab == EditorTab::Route) {
+        if (input.movePrevious) action.changedChart |= draft.MoveTurn(-1);
+        if (input.moveNext) action.changedChart |= draft.MoveTurn(1);
+        if (input.addLeft) { draft.PutTurn(core::Turn::Left); action.changedChart = true; }
+        if (input.addRight) { draft.PutTurn(core::Turn::Right); action.changedChart = true; }
+        if (input.removeTurn) action.changedChart |= draft.RemoveTurn();
+    }
+    if (ui.tab != EditorTab::Audio) {
+        if (input.headingLeft) { draft.RotateHeading(-1); action.changedChart = true; }
+        if (input.headingRight) { draft.RotateHeading(1); action.changedChart = true; }
+    }
+    if (input.mouseWheel > 0) draft.StepSelection(-1);
+    if (input.mouseWheel < 0) draft.StepSelection(1);
     action.previewToggle |= input.previewToggle;
     action.previewRestart |= input.previewRestart;
     if (input.speedIndex >= 0) action.speedIndex = input.speedIndex;
@@ -533,51 +638,84 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        bool hasAudio, bool previewPlaying, bool previewPaused,
                        double previewBeat, double playbackSpeed) {
     const auto& chart = draft.Data().route;
-    Label(font, "CHART EDITOR", 49, 75, 31, Color{194, 236, 231, 255});
+    Label(font, "CHART EDITOR", 49, 77, 26, Color{194, 236, 231, 255});
+    Button(font, kTabRoute, "ROUTE", Color{126, 219, 209, 255},
+           ui.tab == EditorTab::Route);
+    Button(font, kTabAudio, "AUDIO", Color{131, 190, 237, 255},
+           ui.tab == EditorTab::Audio);
+    Button(font, kTabField, "FIELD", Color{239, 203, 129, 255},
+           ui.tab == EditorTab::Field);
+
+    // Transport and timeline persist across all editor tabs.
     Button(font, kSong, "LOAD SONG  O", Color{97, 222, 193, 255});
     Button(font, kPlay, previewPlaying && !previewPaused ? "PAUSE SPACE" : "PLAY SPACE",
            Color{137, 211, 235, 255});
     Button(font, kStop, "RESTART R", Color{211, 178, 137, 255});
     Button(font, kTest, "TEST T", Color{188, 176, 232, 255});
-    Label(font, hasAudio ? Truncate(songName, 51).c_str()
-                         : "NO AUDIO SELECTED - CLICK LOAD SONG",
-          421, 129, 16,
+    Label(font, hasAudio ? Truncate(songName, 30).c_str()
+                         : "NO SONG - LOAD SONG",
+          626, 127, 15,
           hasAudio ? Color{178, 227, 222, 255} : Color{242, 181, 164, 255});
 
-    DrawTextField(font, kTitle, "CHART TITLE (CLICK TO TYPE)",
-                  draft.Data().title, EditorField::Title, ui);
-    char bpm[40]{}, offset[40]{};
-    std::snprintf(bpm, sizeof(bpm), "%.3f", chart.bpm);
-    std::snprintf(offset, sizeof(offset), "%.3f", draft.Data().offsetSeconds * 1000.0);
-    DrawTextField(font, kBpm, "BPM (TYPE)", bpm, EditorField::Bpm, ui);
-    DrawTextField(font, kOffset, "OFFSET IN MILLISECONDS (TYPE)",
-                  offset, EditorField::OffsetMs, ui);
-    Button(font, kHeading, HeadingName(chart.initialHeading),
-           Color{119, 229, 188, 255});
-    Label(font, "START HEADING (Q/E OR CLICK)", 416, 230, 16,
-          Color{172, 199, 218, 255});
-    DrawTextField(font, kLength, "TOTAL BEATS (TYPE)",
-                  std::to_string(chart.lengthBeats),
-                  EditorField::Length, ui);
-
-    Label(font, "PREVIEW SPEED  (1-5 KEYS)", 416, 292, 16,
-          Color{182, 207, 227, 255});
-    const char* captions[5] = {"100%", "75%", "50%", "25%", "10%"};
-    for (int i = 0; i < 5; ++i) {
-        Button(font, {416.0f + i * 93.0f, 312.0f, 86.0f, 35.0f},
-               captions[i], Color{125, 167, 205, 255},
-               std::abs(playbackSpeed - kSpeeds[i]) < 0.001);
+    if (ui.tab == EditorTab::Route) {
+        Label(font, TextFormat("ROUTE  /  %d x %d FIELD",
+                              chart.gridWidth, chart.gridHeight),
+              51, 166, 17, Color{188, 215, 227, 255});
+        DrawPreviewGrid(font, draft, previewBeat);
+        Label(font, "START HEADING  Q/E", 744, 177, 14,
+              Color{172, 199, 218, 255});
+        Button(font, kHeading, HeadingName(chart.initialHeading),
+               Color{119, 229, 188, 255});
+        const auto* turn = draft.SelectedTurn();
+        Label(font, TextFormat("BEAT %d  /  %s", draft.SelectedBeat(),
+                              turn ? (turn->direction == core::Turn::Left
+                                      ? "LEFT" : "RIGHT") : "NO TURN"),
+              744, 251, 14, Color{216, 232, 239, 255});
+        Button(font, kLeftTurn, "F  LEFT", Color{113, 226, 205, 255});
+        Button(font, kRightTurn, "J  RIGHT", Color{173, 170, 239, 255});
+        Button(font, kRemoveTurn, "DEL  REMOVE", Color{223, 156, 156, 255});
+    } else if (ui.tab == EditorTab::Audio) {
+        Label(font, "AUDIO  /  CHART TIMING", 92, 169, 20,
+              Color{182, 218, 235, 255});
+        DrawTextField(font, kTitle, "CHART TITLE (TYPE)", draft.Data().title,
+                      EditorField::Title, ui);
+        char bpm[40]{}, offset[40]{};
+        std::snprintf(bpm, sizeof(bpm), "%.3f", chart.bpm);
+        std::snprintf(offset, sizeof(offset), "%.3f",
+                      draft.Data().offsetSeconds * 1000.0);
+        DrawTextField(font, kBpm, "BPM (TYPE)", bpm, EditorField::Bpm, ui);
+        DrawTextField(font, kOffset, "OFFSET IN MILLISECONDS (TYPE)",
+                      offset, EditorField::OffsetMs, ui);
+        Label(font, "PREVIEW SPEED  (1-5 KEYS)", 92, 348, 16,
+              Color{182, 207, 227, 255});
+        const char* captions[5] = {"100%", "75%", "50%", "25%", "10%"};
+        for (int i = 0; i < 5; ++i)
+            Button(font, {92.0f + i * 155.0f, 371.0f, 148.0f, 37.0f},
+                   captions[i], Color{125, 167, 205, 255},
+                   std::abs(playbackSpeed - kSpeeds[i]) < 0.001);
+    } else {
+        Label(font, "FIELD  /  GAMEPLAY GEOMETRY", 104, 169, 20,
+              Color{239, 210, 159, 255});
+        Label(font, "NOT A MUSIC TIME SIGNATURE", 548, 172, 14,
+              Color{161, 187, 210, 255});
+        DrawTextField(font, kGridSize, "FIELD SIZE  W/H  (2..16)",
+                      std::to_string(chart.gridWidth) + "/" +
+                      std::to_string(chart.gridHeight), EditorField::GridSize, ui);
+        DrawTextField(font, kStartCell, "START CELL X/Y  (FROM 0)",
+                      std::to_string(chart.start.x) + "/" +
+                      std::to_string(chart.start.y), EditorField::StartCell, ui);
+        DrawTextField(font, kLength, "TOTAL BEATS",
+                      std::to_string(chart.lengthBeats), EditorField::Length, ui);
+        Label(font, "START HEADING  Q/E OR CLICK", 519, 299, 16,
+              Color{172, 199, 218, 255});
+        Button(font, kFieldHeading, HeadingName(chart.initialHeading),
+               Color{119, 229, 188, 255});
+        Label(font, "EXAMPLE 8/8 = 8 COLUMNS AND 8 ROWS. GRID IS SAVED IN JSON.",
+              104, 384, 14, Color{169, 204, 218, 255});
+        Label(font, "IF SHRINKING FAILS, MOVE THE START CELL INSIDE THE NEW GRID.",
+              104, 403, 13, Color{226, 197, 146, 255});
     }
-    const auto* turn = draft.SelectedTurn();
-    Label(font, TextFormat("BEAT %d  %s", draft.SelectedBeat(),
-                          turn ? (turn->direction == core::Turn::Left
-                                      ? "LEFT TURN" : "RIGHT TURN") : "NO TURN"),
-          416, 347, 16, Color{216, 232, 239, 255});
-    Button(font, kLeftTurn, "F  LEFT", Color{113, 226, 205, 255});
-    Button(font, kRightTurn, "J  RIGHT", Color{173, 170, 239, 255});
-    Button(font, kRemoveTurn, "DEL  REMOVE", Color{223, 156, 156, 255});
 
-    DrawPreviewGrid(font, draft, previewBeat);
     DrawTimeline(font, draft, ui, previewBeat);
     const std::string message = ui.feedback.empty()
         ? (ui.EditingText() ? "TYPE VALUE, ENTER CONFIRMS, ESC CANCELS"

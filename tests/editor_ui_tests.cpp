@@ -28,102 +28,142 @@ int main() {
     bool ok = true;
     ChartEditor chart;
     EditorUiState ui;
+    ok &= Check(ui.tab == EditorTab::Route &&
+                chart.Data().route.gridWidth == 4 &&
+                chart.Data().route.gridHeight == 4,
+                "editor opens with a 4x4 main Route tab");
 
-    ApplyEditorControls(chart, ui, Click(455, 190));
+    // Audio settings are no longer stacked on top of the route grid.
+    ApplyEditorControls(chart, ui, Click(612, 89));
+    ok &= Check(ui.tab == EditorTab::Audio, "Audio tab opens");
+    ApplyEditorControls(chart, ui, Click(145, 312));
     ok &= Check(ui.EditingText() && ui.active == EditorField::Bpm,
-                "BPM field accepts mouse focus");
-    ApplyEditorControls(chart, ui, Type("137,5"));
+                "Audio BPM field accepts mouse focus");
+    ApplyEditorControls(chart, ui, Type("400,5"));
     EditorControls enter;
     enter.enter = true;
     const auto committed = ApplyEditorControls(chart, ui, enter);
     ok &= Check(committed.changedChart && !ui.EditingText() &&
-                    std::abs(chart.Data().route.bpm - 137.5) < 1e-9,
-                "typing replaces old BPM, accepts decimal comma");
+                    std::abs(chart.Data().route.bpm - 400.5) < 1e-9,
+                "Audio BPM accepts fast decimal values");
 
-    ApplyEditorControls(chart, ui, Click(677, 194));
+    ApplyEditorControls(chart, ui, Click(600, 310));
     ApplyEditorControls(chart, ui, Type("-175.25"));
     ApplyEditorControls(chart, ui, enter);
     ok &= Check(std::abs(chart.Data().offsetSeconds + 0.17525) < 1e-10,
                 "negative millisecond offset entered directly");
 
-    ApplyEditorControls(chart, ui, Click(691, 260));
-    ApplyEditorControls(chart, ui, Type("48"));
-    ApplyEditorControls(chart, ui, enter);
-    ok &= Check(chart.Data().route.lengthBeats == 48,
-                "whole timeline length is directly editable");
-
-    ApplyEditorControls(chart, ui, Click(150, 130));
+    ApplyEditorControls(chart, ui, Click(145, 226));
     ApplyEditorControls(chart, ui, Type("My rhythm chart"));
     ApplyEditorControls(chart, ui, enter);
     ok &= Check(chart.Data().title == "My rhythm chart",
-                "chart title can be typed");
+                "chart title can be typed in Audio tab");
 
-    const auto song = ApplyEditorControls(chart, ui, Click(477, 99));
-    const auto play = ApplyEditorControls(chart, ui, Click(618, 99));
-    const auto restart = ApplyEditorControls(chart, ui, Click(746, 99));
-    const auto test = ApplyEditorControls(chart, ui, Click(850, 99));
+    const auto slow = ApplyEditorControls(chart, ui, Click(826, 390));
+    ok &= Check(slow.speedIndex == 4, "10 percent speed stays clickable in Audio");
+    const auto normal = ApplyEditorControls(chart, ui, Click(116, 390));
+    ok &= Check(normal.speedIndex == 0, "100 percent speed stays clickable in Audio");
+
+    // Geometry is a separate authoring tab, accepting size WxH as 8/8.
+    ApplyEditorControls(chart, ui, Click(783, 89));
+    ok &= Check(ui.tab == EditorTab::Field, "Field tab opens");
+    ApplyEditorControls(chart, ui, Click(157, 247));
+    ApplyEditorControls(chart, ui, Type("8/8"));
+    ApplyEditorControls(chart, ui, enter);
+    ok &= Check(chart.Data().route.gridWidth == 8 &&
+                chart.Data().route.gridHeight == 8,
+                "8/8 sets eight rows and eight columns");
+
+    ApplyEditorControls(chart, ui, Click(598, 247));
+    ApplyEditorControls(chart, ui, Type("7/7"));
+    ApplyEditorControls(chart, ui, enter);
+    ok &= Check(chart.Data().route.start.x == 7 &&
+                chart.Data().route.start.y == 7,
+                "Field tab supports start cells beyond 4x4");
+
+    ApplyEditorControls(chart, ui, Click(157, 247));
+    ApplyEditorControls(chart, ui, Type("4/4"));
+    ApplyEditorControls(chart, ui, enter);
+    ok &= Check(ui.EditingText() &&
+                chart.Data().route.gridWidth == 8 &&
+                !ui.feedback.empty(),
+                "cannot shrink a grid over an authored start cell");
+    EditorControls escape;
+    escape.escape = true;
+    ApplyEditorControls(chart, ui, escape);
+
+    ApplyEditorControls(chart, ui, Click(155, 343));
+    ApplyEditorControls(chart, ui, Type("48"));
+    ApplyEditorControls(chart, ui, enter);
+    ok &= Check(chart.Data().route.lengthBeats == 48,
+                "total timeline length is edited under Field");
+
+    // Transport is shared by all tabs.
+    const auto song = ApplyEditorControls(chart, ui, Click(113, 134));
+    const auto play = ApplyEditorControls(chart, ui, Click(285, 134));
+    const auto restart = ApplyEditorControls(chart, ui, Click(445, 134));
+    const auto test = ApplyEditorControls(chart, ui, Click(556, 134));
     ok &= Check(song.chooseAudio && play.previewToggle &&
                     restart.previewRestart && test.testPlay,
-                "large visible song, preview, restart and test buttons");
+                "song, play, restart and test remain on every tab");
 
-    const auto slow = ApplyEditorControls(chart, ui, Click(840, 329));
-    ok &= Check(slow.speedIndex == 4, "10 percent music speed is clickable");
-    const auto normal = ApplyEditorControls(chart, ui, Click(435, 329));
-    ok &= Check(normal.speedIndex == 0, "100 percent speed is clickable");
+    ApplyEditorControls(chart, ui, Click(450, 89));
+    ok &= Check(ui.tab == EditorTab::Route, "Route tab restores the large grid");
 
-    // Continuous timeline: the playhead is fixed at x=265, default 36 px/beat.
-    // Crossing the old 15/16 boundary must be ordinary single-beat navigation.
+    // At x = 50 + 860/3, the selected beat stays under the fixed playhead.
+    constexpr float cursor = 50.0f + 860.0f / 3.0f;
     chart.SelectBeat(15);
-    ApplyEditorControls(chart, ui, Click(265 + 36, 477));
+    ApplyEditorControls(chart, ui, Click(cursor + 36, 477));
     ok &= Check(chart.SelectedBeat() == 16,
-                "continuous timeline crosses 15 to 16 without page flips");
-    ApplyEditorControls(chart, ui, Click(265 - 36 * 3, 477));
+                "timeline crosses 15/16 without any page jump");
+    ApplyEditorControls(chart, ui, Click(cursor - 36 * 3, 477));
     ok &= Check(chart.SelectedBeat() == 13,
-                "clicking behind the fixed quarter-width playhead selects a past beat");
+                "clicking behind the one-third playhead selects a past beat");
+
     chart.SelectBeat(15);
-    EditorControls moving = Click(265 + 18, 477);
-    moving.timelineViewBeat = 15.5; // During playback the ruler is fractional.
+    EditorControls moving = Click(cursor + 18, 477);
+    moving.timelineViewBeat = 15.5;
     ApplyEditorControls(chart, ui, moving);
     ok &= Check(chart.SelectedBeat() == 16,
-                "hit-testing uses continuous audio beat while playing");
+                "fractional playback beat drives timeline hit-testing");
 
     EditorControls zoomIn;
     zoomIn.zoomIn = true;
     ApplyEditorControls(chart, ui, zoomIn);
     ok &= Check(ui.timelineZoomIndex == 4,
-                "plus hotkey increases tick spacing");
+                "zoom hotkey changes pixels per beat");
     chart.SelectBeat(16);
-    ApplyEditorControls(chart, ui, Click(265 + 52, 477));
+    ApplyEditorControls(chart, ui, Click(cursor + 52, 477));
     ok &= Check(chart.SelectedBeat() == 17,
-                "zoomed ruler maps clicks to exact nearby beat ticks");
+                "zoomed ruler maps clicks to nearby beat ticks");
     ApplyEditorControls(chart, ui, Click(820, 430));
     ok &= Check(ui.timelineZoomIndex == 3,
                 "zoom-out button restores the original scale");
     EditorControls zoomOut;
     zoomOut.zoomOut = true;
-    for (int i = 0; i < 10; ++i)
-        ApplyEditorControls(chart, ui, zoomOut);
-    ok &= Check(ui.timelineZoomIndex == 0,
-                "zoom-out is clamped at smallest tick density");
-    for (int i = 0; i < 10; ++i)
-        ApplyEditorControls(chart, ui, zoomIn);
-    ok &= Check(ui.timelineZoomIndex == 6,
-                "zoom-in is clamped at largest tick density");
+    for (int n = 0; n < 10; ++n) ApplyEditorControls(chart, ui, zoomOut);
+    ok &= Check(ui.timelineZoomIndex == 0, "zoom-out clamps");
+    for (int n = 0; n < 10; ++n) ApplyEditorControls(chart, ui, zoomIn);
+    ok &= Check(ui.timelineZoomIndex == 6, "zoom-in clamps");
     chart.SelectBeat(0);
     ApplyEditorControls(chart, ui, Click(60, 477));
-    ok &= Check(chart.SelectedBeat() == 0,
-                "timeline cannot select a negative beat");
+    ok &= Check(chart.SelectedBeat() == 0, "no negative timeline selection");
 
-    ApplyEditorControls(chart, ui, Click(96 + 2*59, 197 + 3*59));
-    ok &= Check(chart.Data().route.start.x == 2 && chart.Data().route.start.y == 3,
-                "clicking the grid moves the starting point");
+    // The main grid fits the requested 8x8 geometry. Center at 448,282.
+    // 240-pixel span across 7 steps => cell (2,3) at about 397,265.
+    chart.SelectBeat(20);
+    ApplyEditorControls(chart, ui, Click(397, 265));
+    ok &= Check(chart.Data().route.start.x == 2 &&
+                chart.Data().route.start.y == 3 &&
+                chart.SelectedBeat() == 0,
+                "clicking an 8x8 dot changes start and resets selected beat");
 
     const Vector2 mapped = EditorVirtualMouse({1920, 1080}, 3840, 2160);
     ok &= Check(std::abs(mapped.x - 480) < 1e-4 &&
-                    std::abs(mapped.y - 270) < 1e-4,
+                std::abs(mapped.y - 270) < 1e-4,
                 "editor mouse coordinates survive fullscreen scaling");
 
     if (!ok) return 1;
-    std::cout << "EDITOR_UI_PASS text=1 speed=5 preview=1 grid=1\n";
+    std::cout << "EDITOR_UI_PASS tabs=3 grid=8x8 preview=1 zoom=1\n";
     return 0;
 }

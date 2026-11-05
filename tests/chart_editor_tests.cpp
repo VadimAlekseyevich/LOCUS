@@ -31,7 +31,18 @@ int main() {
                 std::abs(draft.Data().offsetSeconds + 0.03) < 1e-9,
                 "negative millisecond preroll");
     ok &= Check(draft.SetStart({3, 0}) && !draft.SetStart({4, 0}),
-                "start-cell bounds");
+                "default start-cell bounds");
+    ok &= Check(draft.SetGridSize(8, 8) && draft.SetStart({7, 7}) &&
+                draft.Data().route.gridWidth == 8 &&
+                draft.Data().route.gridHeight == 8,
+                "8/8 game field expands selectable start cells");
+    ok &= Check(!draft.SetGridSize(4, 4) &&
+                draft.Data().route.gridWidth == 8 &&
+                draft.Data().route.start.x == 7 &&
+                !draft.SetGridSize(17, 8),
+                "resizing never silently discards an out-of-bounds start cell");
+    ok &= Check(draft.SetStart({1, 1}) && draft.SetGridSize(4, 4),
+                "shrinking succeeds after moving the start inside the field");
     draft.RotateHeading(-1);
     ok &= Check(draft.Data().route.initialHeading == Heading::Up,
                 "left heading rotation");

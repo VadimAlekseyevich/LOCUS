@@ -97,6 +97,19 @@ int main() {
                           GridPoint{1, 3.5}, GridPoint{1, -0.5}),
                 "bottom-edge Wrap must draw two short disconnected segments");
 
+    // Wrap rendering must use the selected grid's far edge, not x/y=3.5.
+    const RouteStep wideEdge{{7, 4}, {0, 4}, Heading::Right, true, 8, 8};
+    const StepView wideView = ViewRouteStep(wideEdge, 0.75);
+    ok &= Check(PointIs(wideView.segments[0].to, 7.5, 4) &&
+                PointIs(wideView.segments[1].from, -0.5, 4) &&
+                PointIs(wideView.marker, -0.25, 4),
+                "8x8 right-edge wrap uses x=7.5 on both halves");
+    const RouteStep tallEdge{{3, 9}, {3, 0}, Heading::Down, true, 6, 10};
+    const StepView tallView = TraceRouteStep(tallEdge, 1.0);
+    ok &= Check(PointIs(tallView.segments[0].to, 3, 9.5) &&
+                PointIs(tallView.segments[1].from, 3, -0.5),
+                "6x10 bottom-edge wrap uses y=9.5");
+
     // The original authored chart wraps both straight and after a turn.
     const RouteStep beat4 = SampleRouteStep(chart, 4);
     const RouteStep beat5 = SampleRouteStep(chart, 5);

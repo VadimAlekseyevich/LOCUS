@@ -17,8 +17,14 @@ struct TurnEvent {
     Turn direction = Turn::Left;
 };
 
+// Grid dimensions are independent of musical meter.
+constexpr int kMinGridSize = 2;
+constexpr int kMaxGridSize = 16;
+
 struct Chart {
     double bpm = 120.0;
+    int gridWidth = 4;
+    int gridHeight = 4;
     Cell start{0, 0};
     Heading initialHeading = Heading::Right;
     int lengthBeats = 32;
@@ -30,6 +36,8 @@ struct RouteStep {
     Cell to;
     Heading heading;
     bool wraps = false;
+    int gridWidth = 4;
+    int gridHeight = 4;
 };
 
 // A fixed, rights-clean gameplay chart for the first playable prototype.

@@ -6,7 +6,7 @@
 
 namespace locus::core {
 
-// Grid coordinates use the 4x4 cell centers at [0..3]. A wrapped step is
+// Grid coordinates follow chart.gridWidth/gridHeight. A wrapped step is
 // clipped at the visual seam halfway outside the outermost cells.
 struct GridPoint {
     double x = 0.0;

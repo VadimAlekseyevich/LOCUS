@@ -170,17 +170,19 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
         if (!HasExactMembers(document["grid"], {"width", "height"}, "grid", error))
             return false;
         int width = 0, height = 0;
-        if (!IntegerInRange(document["grid"]["width"], 4, 4, width,
+        if (!IntegerInRange(document["grid"]["width"], kMinGridSize, kMaxGridSize, width,
                             "grid.width", error) ||
-            !IntegerInRange(document["grid"]["height"], 4, 4, height,
+            !IntegerInRange(document["grid"]["height"], kMinGridSize, kMaxGridSize, height,
                             "grid.height", error)) return false;
+        parsed.route.gridWidth = width;
+        parsed.route.gridHeight = height;
 
         if (!HasExactMembers(document["start"], {"x", "y", "heading"}, "start", error))
             return false;
-        if (!IntegerInRange(document["start"]["x"], 0, 3, parsed.route.start.x,
-                            "start.x", error) ||
-            !IntegerInRange(document["start"]["y"], 0, 3, parsed.route.start.y,
-                            "start.y", error)) return false;
+        if (!IntegerInRange(document["start"]["x"], 0, width - 1,
+                            parsed.route.start.x, "start.x", error) ||
+            !IntegerInRange(document["start"]["y"], 0, height - 1,
+                            parsed.route.start.y, "start.y", error)) return false;
         const Json& heading = document["start"]["heading"];
         if (!heading.is_string()) {
             error = "start.heading: expected up/right/down/left";
@@ -262,7 +264,8 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
         document["bpm"] = chart.route.bpm;
         // No loss of fractional milliseconds from older second-based charts.
         document["offsetMs"] = chart.offsetSeconds * 1000.0;
-        document["grid"] = {{"width", 4}, {"height", 4}};
+        document["grid"] = {{"width", chart.route.gridWidth},
+                             {"height", chart.route.gridHeight}};
         const char* headings[] = {"up", "right", "down", "left"};
         const int heading = static_cast<int>(chart.route.initialHeading);
         if (heading < 0 || heading > 3) {

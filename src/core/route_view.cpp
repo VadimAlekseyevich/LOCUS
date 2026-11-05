@@ -31,25 +31,25 @@ StepView ViewRouteStep(const RouteStep& step, double progress) noexcept {
     }
 
     // A unit step spans one beat even across a boundary. Each visible half
-    // spans half the beat. The non-drawn jump models a periodic 4x4 grid.
+    // spans half the beat. The non-drawn jump models a periodic grid of the step's authored dimensions.
     GridPoint exit = from;
     GridPoint entry = to;
     switch (step.heading) {
         case Heading::Up:
             exit.y = -0.5;
-            entry.y = 3.5;
+            entry.y = static_cast<double>(step.gridHeight) - 0.5;
             break;
         case Heading::Right:
-            exit.x = 3.5;
+            exit.x = static_cast<double>(step.gridWidth) - 0.5;
             entry.x = -0.5;
             break;
         case Heading::Down:
-            exit.y = 3.5;
+            exit.y = static_cast<double>(step.gridHeight) - 0.5;
             entry.y = -0.5;
             break;
         case Heading::Left:
             exit.x = -0.5;
-            entry.x = 3.5;
+            entry.x = static_cast<double>(step.gridWidth) - 0.5;
             break;
     }
     view.segments[0] = {from, exit};

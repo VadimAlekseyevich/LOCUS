@@ -67,8 +67,43 @@ int main() {
     }
     ok &= Expect(Reject(valid, "\"formatVersion\": 1", "\"formatVersion\": 2",
                         "formatVersion"), "rejects unsupported future schema");
-    ok &= Expect(Reject(valid, "\"width\": 4", "\"width\": 5", "grid.width"),
-                 "rejects unexpected grid size");
+    ok &= Expect(Reject(valid, "\"width\": 4", "\"width\": 17", "grid.width") &&
+                 Reject(valid, "\"height\": 4", "\"height\": 1", "grid.height"),
+                 "rejects grid dimensions outside supported 2..16 range");
+    std::string largeGrid = valid;
+    const auto replaceOnce = [](std::string& value, const std::string& before,
+                                const std::string& after) {
+        const auto offset = value.find(before);
+        if (offset == std::string::npos) return false;
+        value.replace(offset, before.size(), after);
+        return true;
+    };
+    bool largeFixture = replaceOnce(largeGrid, "\"width\": 4", "\"width\": 8");
+    largeFixture &= replaceOnce(largeGrid, "\"height\": 4", "\"height\": 8");
+    largeFixture &= replaceOnce(largeGrid, "\"x\": 3", "\"x\": 7");
+    LoadedChart wideParsed;
+    ok &= Expect(largeFixture && ParseChartJson(largeGrid, wideParsed, error) &&
+                 wideParsed.route.gridWidth == 8 &&
+                 wideParsed.route.gridHeight == 8 &&
+                 wideParsed.route.start.x == 7,
+                 "8/8 field size and a seventh-index start parse correctly");
+    std::string largeSerialized;
+    LoadedChart largeAuthored = wideParsed;
+    largeAuthored.route.lengthBeats = 8;
+    largeAuthored.authoredLengthBeats = 8;
+    ok &= Expect(SerializeChartJson(largeAuthored, largeSerialized, error) &&
+                 largeSerialized.find("\"width\": 8") != std::string::npos &&
+                 largeSerialized.find("\"height\": 8") != std::string::npos,
+                 "8/8 field dimensions persist through serialization");
+    ok &= Expect(Reject(valid, "\"width\": 4", "\"width\": 2", "start.x"),
+                 "start cell is validated against the actual grid width");
+    std::string rectangleJson = valid;
+    bool rectangleFixture = replaceOnce(rectangleJson, "\"width\": 4", "\"width\": 6");
+    rectangleFixture &= replaceOnce(rectangleJson, "\"height\": 4", "\"height\": 10");
+    LoadedChart rectangle;
+    ok &= Expect(rectangleFixture && ParseChartJson(rectangleJson, rectangle, error) &&
+                 rectangle.route.gridWidth == 6 && rectangle.route.gridHeight == 10,
+                 "rectangular field sizes are supported independently");
     ok &= Expect(Reject(valid, "\"heading\": \"right\"",
                         "\"heading\": \"north\"", "start.heading"),
                  "rejects unknown heading");

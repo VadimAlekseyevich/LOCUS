@@ -120,8 +120,21 @@ bool ChartEditor::ChangeOffsetMs(int deltaMs) noexcept {
     return true;
 }
 
+bool ChartEditor::SetGridSize(int width, int height) noexcept {
+    if (width < kMinGridSize || width > kMaxGridSize ||
+        height < kMinGridSize || height > kMaxGridSize ||
+        chart_.route.start.x >= width || chart_.route.start.y >= height) return false;
+    if (width != chart_.route.gridWidth || height != chart_.route.gridHeight) {
+        chart_.route.gridWidth = width;
+        chart_.route.gridHeight = height;
+        MarkDirty();
+    }
+    return true;
+}
+
 bool ChartEditor::SetStart(Cell cell) noexcept {
-    if (cell.x < 0 || cell.x >= 4 || cell.y < 0 || cell.y >= 4 ||
+    if (cell.x < 0 || cell.x >= chart_.route.gridWidth ||
+        cell.y < 0 || cell.y >= chart_.route.gridHeight ||
         (cell.x == chart_.route.start.x && cell.y == chart_.route.start.y)) return false;
     chart_.route.start = cell;
     MarkDirty();

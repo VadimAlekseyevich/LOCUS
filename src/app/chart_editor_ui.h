@@ -26,10 +26,12 @@ struct EditorControls {
     std::string typedUtf8;
 };
 
-enum class EditorField { None, Title, Bpm, OffsetMs, Length };
+enum class EditorTab { Route, Audio, Field };
+enum class EditorField { None, Title, Bpm, OffsetMs, Length, GridSize, StartCell };
 
 struct EditorUiState {
     EditorField active = EditorField::None;
+    EditorTab tab = EditorTab::Route;
     std::string buffer;
     bool replaceOnType = false;
     std::string feedback;

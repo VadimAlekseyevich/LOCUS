@@ -228,27 +228,37 @@ struct GameplayView {
 
 // G-04: render the charted route and marker using one fractional song beat.
 // The route is fully independent of keyboard input and rendered frame count.
-constexpr float kGridSpacing = 76.0f;
-constexpr float kGridOriginX = kWindowWidth / 2.0f - 1.5f * kGridSpacing;
-constexpr float kGridOriginY = 278.0f - 1.5f * kGridSpacing;
+struct GameplayGrid {
+    float step;
+    float left;
+    float top;
 
-Vector2 GridPoint(locus::core::Cell cell) {
-    return Vector2{kGridOriginX + static_cast<float>(cell.x) * kGridSpacing,
-                   kGridOriginY + static_cast<float>(cell.y) * kGridSpacing};
-}
+    explicit GameplayGrid(const locus::core::Chart& chart) {
+        const int span = std::max(chart.gridWidth - 1, chart.gridHeight - 1);
+        step = std::min(76.0f, 240.0f / static_cast<float>(std::max(1, span)));
+        left = kWindowWidth / 2.0f -
+               static_cast<float>(chart.gridWidth - 1) * step / 2.0f;
+        top = 278.0f - static_cast<float>(chart.gridHeight - 1) * step / 2.0f;
+    }
 
-Vector2 GridPosition(locus::core::GridPoint point) {
-    return Vector2{kGridOriginX + static_cast<float>(point.x) * kGridSpacing,
-                   kGridOriginY + static_cast<float>(point.y) * kGridSpacing};
-}
+    Vector2 Point(locus::core::Cell cell) const {
+        return {left + static_cast<float>(cell.x) * step,
+                top + static_cast<float>(cell.y) * step};
+    }
+    Vector2 Position(locus::core::GridPoint point) const {
+        return {left + static_cast<float>(point.x) * step,
+                top + static_cast<float>(point.y) * step};
+    }
+};
 
 // The active line grows with the marker, not in jumps on each beat.
 // Show three future steps; their farthest segment grows gradually as
 // the look-ahead horizon moves. A Wrap never connects opposite edges.
 Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat,
                          double previewLeadBeats) {
+    const GameplayGrid grid(chart);
     if (chart.lengthBeats <= 0) {
-        return GridPoint(chart.start);
+        return grid.Point(chart.start);
     }
     const double beat = std::clamp(fractionalBeat, 0.0,
                                    static_cast<double>(chart.lengthBeats));
@@ -279,30 +289,36 @@ Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat,
         const auto view = locus::core::TraceRouteStep(step, reveal);
         for (int segment = 0; segment < view.segmentCount; ++segment) {
             const auto& line = view.segments[segment];
-            DrawLineEx(GridPosition(line.from), GridPosition(line.to),
-                       (ahead == 0) ? 6.0f : 3.5f, color);
+            const float thickness = std::clamp(grid.step / 76.0f, 0.4f, 1.0f);
+            DrawLineEx(grid.Position(line.from), grid.Position(line.to),
+                       (ahead == 0 ? 6.0f : 3.5f) * thickness, color);
         }
         if (ahead > 0 && reveal >= 1.0) {
-            DrawCircleV(GridPoint(step.to), 4.0f, color);
+            DrawCircleV(grid.Point(step.to), std::min(4.0f, grid.step * 0.16f), color);
         }
     }
 
     const locus::core::RouteStep live = locus::core::SampleRouteStep(chart, currentBeat);
-    return GridPosition(locus::core::ViewRouteStep(live, currentProgress).marker);
+    return grid.Position(locus::core::ViewRouteStep(live, currentProgress).marker);
 }
 
 void DrawPlayGrid(Font font, const GameplayView& gameplay) {
     const auto& chart = gameplay.chart;
     const auto& judge = gameplay.judge;
+    const GameplayGrid grid(chart);
     DrawTextLabel(font, gameplay.custom ? "PLAY  /  YOUR CHART" : "PLAY  /  DEMO CHART",
                   Vector2{50.0f, 98.0f}, 27.0f,
                   Color{211, 239, 241, 255});
 
     // Grid guides are quieter than the authored route overlay.
     const Color guides{43, 50, 64, 255};
-    for (int index = 0; index < 4; ++index) {
-        DrawLineEx(GridPoint({0, index}), GridPoint({3, index}), 2.0f, guides);
-        DrawLineEx(GridPoint({index, 0}), GridPoint({index, 3}), 2.0f, guides);
+    for (int row = 0; row < chart.gridHeight; ++row) {
+        DrawLineEx(grid.Point({0, row}),
+                   grid.Point({chart.gridWidth - 1, row}), 1.5f, guides);
+    }
+    for (int column = 0; column < chart.gridWidth; ++column) {
+        DrawLineEx(grid.Point({column, 0}),
+                   grid.Point({column, chart.gridHeight - 1}), 1.5f, guides);
     }
 
     const Vector2 marker = DrawRoutePreview(chart, gameplay.beat,
@@ -310,19 +326,21 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
 
     const Color pointOuter{83, 101, 122, 255};
     const Color pointInner{169, 191, 204, 255};
-    for (int y = 0; y < 4; ++y) {
-        for (int x = 0; x < 4; ++x) {
-            const Vector2 point = GridPoint({x, y});
-            DrawCircleV(point, 9.0f, pointOuter);
-            DrawCircleV(point, 4.0f, pointInner);
+    const float dotRadius = std::min(9.0f, grid.step * 0.30f);
+    for (int y = 0; y < chart.gridHeight; ++y) {
+        for (int x = 0; x < chart.gridWidth; ++x) {
+            const Vector2 point = grid.Point({x, y});
+            DrawCircleV(point, dotRadius, pointOuter);
+            DrawCircleV(point, dotRadius * 0.45f, pointInner);
         }
     }
 
     // One song-time snapshot controls both the marker and preview.
     // The marker keeps moving along the authored path without key presses.
-    DrawCircleV(marker, 26.0f, Color{112, 211, 216, 45});
-    DrawCircleV(marker, 17.0f, Color{125, 224, 229, 255});
-    DrawCircleV(marker, 5.5f, Color{245, 253, 255, 255});
+    const float markerRadius = std::min(17.0f, grid.step * 0.47f);
+    DrawCircleV(marker, markerRadius * 1.5f, Color{112, 211, 216, 45});
+    DrawCircleV(marker, markerRadius, Color{125, 224, 229, 255});
+    DrawCircleV(marker, markerRadius * 0.33f, Color{245, 253, 255, 255});
 
     DrawTextLabel(font, "CYAN   CURRENT STEP", Vector2{665.0f, 216.0f}, 17.0f,
                   Color{131, 232, 227, 255});
@@ -376,8 +394,9 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
                       17.0f, feedback);
     }
 
-    DrawTextLabel(font, TextFormat("%.1f BPM  |  %d BEATS  |  4 x 4 GRID",
-                                     chart.bpm, chart.lengthBeats),
+    DrawTextLabel(font, TextFormat("%.1f BPM  |  %d BEATS  |  %d x %d GRID",
+                                     chart.bpm, chart.lengthBeats,
+                                     chart.gridWidth, chart.gridHeight),
                   Vector2{50.0f, 140.0f}, 20.0f,
                   Color{204, 208, 222, 255});
     DrawTextLabel(font, "SPACE PAUSE  |  R RETRY  |  H HOME",
@@ -527,7 +546,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     BeginDrawing();
     ClearBackground(kBackground);
 
-    // Keep all UI and the 4x4 grid at the original 16:9 proportions.
+    // Keep UI and the authored game field at the original 16:9 proportions.
     // Resizing/maximizing/fullscreen simply fits and centers this canvas.
     const float scale = std::min(static_cast<float>(GetScreenWidth()) / kWindowWidth,
                                  static_cast<float>(GetScreenHeight()) / kWindowHeight);
@@ -569,7 +588,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                                      editorTransport.Playing(), editorTransport.Paused(),
                                      selectedBeat, editorTransport.Speed());
         const std::string statusLine = editorStatus.substr(0, 68);
-        DrawTextLabel(font, statusLine.c_str(), Vector2{416.0f, 405.0f},
+        DrawTextLabel(font, statusLine.c_str(), Vector2{50.0f, 525.0f},
                       12.0f, Color{175, 212, 213, 255});
         if (editorPending != EditorPending::None) {
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{10, 13, 21, 218});

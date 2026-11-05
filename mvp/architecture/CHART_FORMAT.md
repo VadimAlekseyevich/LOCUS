@@ -2,7 +2,7 @@
 
 **Task:** A-05 — Define the first chart schema  
 **Status:** Implemented chart v1; M-03 prefers millisecond offsets while keeping legacy charts readable  
-**Scope:** MVP v0.1, fixed 4×4 grid, Wrap, quarter-note steps, relative Left/Right  
+**Scope:** MVP v0.1, configurable 2..16-column/row field (default 4×4), Wrap, quarter-note steps, relative Left/Right  
 **Related:** [GDD](../GDD.md), [TIMING](./TIMING.md), [BOUNDARIES](./BOUNDARIES.md), [ROADMAP](../ROADMAP.md)
 
 > This file specifies data and validation rules, not executable parser/editor code. A chart is self-contained gameplay data with a local reference to a separate music file. There is no online service or embedded music.
@@ -13,7 +13,7 @@
 - Store **starting state plus ordered turn events**, not a redundant list of every route coordinate.
 - Represent music time as **nonnegative integer quarter-note beat indices**. The marker moves once per beat; a turn at beat n affects the outgoing step beginning on beat n.
 - Store **one constant BPM**, a **signed chart-to-audio offset in milliseconds**, and an explicit preview lead in beats.
-- Keep the grid fixed at **4×4**. Wrap is the only boundary behavior; **there is no boundary-mode field**.
+- Support **2..16 columns and 2..16 rows**, independently, with a **4×4 editor default**. This is **field geometry, not musical time signature**. Wrap remains the only boundary behavior; **there is no boundary-mode field**. Legacy 4×4 JSON remains unchanged and valid.
 - Encode only **relative Left and Right** turns. Straight movement requires no event.
 - Require a chart-relative audio path. Files can be played without accounts or network access.
 - Reject incompatible versions and unknown fields instead of silently ignoring data.
@@ -63,11 +63,11 @@ Every field below is **required** for v1. Do not invent default values during pa
 | offsetMs | Number | Preferred: finite signed **milliseconds**; audio time at beat zero |
 | offsetSeconds (legacy) | Number | Legacy seconds-based alternative; **exactly one** of `offsetMs` or `offsetSeconds` is required |
 | grid | Object | Exactly width and height |
-| grid.width | Integer | Exactly **4** |
-| grid.height | Integer | Exactly **4** |
+| grid.width | Integer | **2 through 16**, columns |
+| grid.height | Integer | **2 through 16**, rows |
 | start | Object | Exactly x, y, and heading |
-| start.x | Integer | 0 through 3, from left to right |
-| start.y | Integer | 0 through 3, from top to bottom |
+| start.x | Integer | **0 through grid.width−1**, from left to right |
+| start.y | Integer | **0 through grid.height−1**, from top to bottom |
 | start.heading | String | One of **"up", "right", "down", "left"** |
 | previewLeadBeats | Number | Finite and **greater than 0**; fractional values allowed |
 | turns | Array | Zero or more turn objects, in **strictly increasing beat order** |
@@ -102,13 +102,15 @@ chartBeatAtSongSeconds(s) = (s - offsetSeconds) / secondsPerBeat
 - On a beat with no event, keep the current heading. Store neither straight events nor calculated marker positions.
 - Missing or incorrect player input changes **judgement only**, never the route.
 - Timing-window widths, key bindings, player calibration, results, and scores belong to **session/user settings**, not the chart file.
+- The 4×4 chart in the example is only the default: for an 8×8 field, set `grid.width=8` and `grid.height=8`; the same integer beat timeline and Wrap rule apply.
+
 - Constant BPM and integer beat events are MVP limitations. No fractional event beats, tempo map, diagonal action, hold, Bounce, or dynamic grid change is defined by v1.
 
 ## 5. Validation responsibilities
 
 ### 5.1 Pure parsing and chart validation (no filesystem/audio)
 
-Reject malformed/non-UTF-8 JSON; missing/duplicate/unknown fields; wrong types; unsupported formatVersion; empty title; invalid audio path; non-positive bpm or previewLeadBeats; non-finite numeric values; grid sizes other than 4×4; start outside grid; unknown headings/actions; invalid, unsorted, repeated, fractional, or negative event beats.
+Reject malformed/non-UTF-8 JSON; missing/duplicate/unknown fields; wrong types; unsupported formatVersion; empty title; invalid audio path; non-positive bpm or previewLeadBeats; non-finite numeric values; grid dimensions outside 2..16; start outside the authored grid; unknown headings/actions; invalid, unsorted, repeated, fractional, or negative event beats.
 
 Validators must report a **specific field path and reason**, for example **turns[1].beat: duplicate beat 4**. Never silently sort, deduplicate, clamp, coerce a value, choose an alternative heading, or accept unknown future semantics.
 
