@@ -45,6 +45,30 @@ bool CheckWrap(Heading heading, Cell from, Cell to,
            PointIs(end.marker, to.x, to.y);
 }
 
+bool CheckGrowingWrap(Heading heading, Cell from, Cell to,
+                      GridPoint exit, GridPoint entry) {
+    const RouteStep step{from, to, heading, true};
+    const StepView zero = TraceRouteStep(step, 0.0);
+    const StepView quarter = TraceRouteStep(step, 0.25);
+    const StepView seam = TraceRouteStep(step, 0.5);
+    const StepView threeQuarter = TraceRouteStep(step, 0.75);
+    const StepView done = TraceRouteStep(step, 1.0);
+
+    return zero.segmentCount == 0 &&
+           quarter.segmentCount == 1 &&
+           PointIs(quarter.segments[0].to, (from.x + exit.x) / 2.0,
+                   (from.y + exit.y) / 2.0) &&
+           seam.segmentCount == 1 &&
+           PointIs(seam.segments[0].to, exit.x, exit.y) &&
+           threeQuarter.segmentCount == 2 &&
+           PointIs(threeQuarter.segments[0].to, exit.x, exit.y) &&
+           PointIs(threeQuarter.segments[1].from, entry.x, entry.y) &&
+           PointIs(threeQuarter.segments[1].to, (entry.x + to.x) / 2.0,
+                   (entry.y + to.y) / 2.0) &&
+           done.segmentCount == 2 &&
+           PointIs(done.segments[1].to, to.x, to.y);
+}
+
 } // namespace
 
 int main() {
@@ -89,7 +113,37 @@ int main() {
     ok &= Check(PointIs(finished.marker, last.to.x, last.to.y),
                 "finishing the song leaves the marker on the final cell");
 
+    // New progressive reveal follows the moving marker instead of
+    // exposing an entire line abruptly at every click/beat boundary.
+    const StepView noLine = TraceRouteStep(straight, 0.0);
+    const StepView grown = TraceRouteStep(straight, 0.35);
+    const StepView complete = TraceRouteStep(straight, 1.0);
+    ok &= Check(noLine.segmentCount == 0 &&
+                    grown.segmentCount == 1 &&
+                    PointIs(grown.segments[0].from, 1.0, 1.0) &&
+                    PointIs(grown.segments[0].to, 1.35, 1.0) &&
+                    PointIs(grown.marker, 1.35, 1.0) &&
+                    complete.segmentCount == 1 &&
+                    PointIs(complete.segments[0].to, 2.0, 1.0),
+                "line should grow continuously from zero to a complete step");
+
+    ok &= Check(CheckGrowingWrap(Heading::Right, {3, 1}, {0, 1},
+                                 {3.5, 1}, {-0.5, 1}),
+                "right Wrap line grows to exit seam, then opposite entry");
+    ok &= Check(CheckGrowingWrap(Heading::Left, {0, 2}, {3, 2},
+                                 {-0.5, 2}, {3.5, 2}),
+                "left Wrap has no cross-grid progressive segment");
+    ok &= Check(CheckGrowingWrap(Heading::Up, {2, 0}, {2, 3},
+                                 {2, -0.5}, {2, 3.5}),
+                "top Wrap has no cross-grid progressive segment");
+    ok &= Check(CheckGrowingWrap(Heading::Down, {1, 3}, {1, 0},
+                                 {1, 3.5}, {1, -0.5}),
+                "bottom Wrap has no cross-grid progressive segment");
+    ok &= Check(TraceRouteStep(straight, -2.0).segmentCount == 0 &&
+                    TraceRouteStep(straight, 3.0).segmentCount == 1,
+                "progressive line clamps fractional beat to [0,1]");
+
     if (!ok) return 1;
-    std::cout << "ROUTE_VIEW_PASS wraps=4 preview=seam-split clock=beat\n";
+    std::cout << "ROUTE_VIEW_PASS wraps=4 reveal=progressive clock=beat\n";
     return 0;
 }
