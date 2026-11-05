@@ -686,6 +686,70 @@ bool CheckSessionFlow() {
     return !state.running && state.screen == Screen::Play;
 }
 
+// M-04: reuse the same validation and local-music stream as external chart
+// playback. Saving/opening never silently changes the active Play session.
+bool LoadDraftFromDisk(const std::wstring& file, locus::core::ChartEditor& editor,
+                       locus::app::LocalMusic& song, std::wstring& chartPath,
+                       std::wstring& audioPath, std::string& error) {
+    locus::core::LoadedChart candidate;
+    std::wstring selectedAudio;
+    if (!locus::app::OpenChartWithAudioPath(file, candidate, selectedAudio, error))
+        return false;
+    if (!song.LoadFromFile(selectedAudio)) {
+        error = song.Error();
+        return false;
+    }
+    if (!locus::core::PrepareChartForSong(candidate, song.DurationSeconds(), error))
+        return false;
+    editor.Load(candidate);
+    chartPath = file;
+    audioPath = selectedAudio;
+    error.clear();
+    return true;
+}
+
+bool SaveDraftToDisk(locus::core::ChartEditor& editor,
+                     const locus::app::LocalMusic& song,
+                     std::wstring& chartPath, const std::wstring& audioPath,
+                     bool saveAs, std::string& error) {
+    if (audioPath.empty() || !song.Ready()) {
+        error = "PRESS O TO ATTACH YOUR WAV / MP3 FIRST";
+        return false;
+    }
+    locus::core::LoadedChart checked = editor.Data();
+    if (!locus::core::PrepareChartForSong(checked, song.DurationSeconds(), error))
+        return false;
+
+    std::wstring destination = chartPath;
+    if (destination.empty() || saveAs) {
+        const std::wstring suggestion = destination.empty()
+            ? (std::filesystem::path(audioPath).parent_path() /
+               std::filesystem::path(L"Untitled.locus.json")).wstring()
+            : destination;
+        const auto selected = locus::app::ChooseChartSaveFile(suggestion);
+        if (selected.path.empty()) {
+            error = selected.canceled ? "" : selected.error;
+            return false;
+        }
+        destination = selected.path;
+    }
+    if (!locus::app::SaveChartWithAudioPath(destination, audioPath, checked, error))
+        return false;
+
+    // Reopen exactly the bytes that were saved, preserving editor semantics
+    // including audioPath relative to the new location and authored length.
+    locus::core::LoadedChart reopened;
+    std::wstring resolvedSong;
+    if (!locus::app::OpenChartWithAudioPath(
+            destination, reopened, resolvedSong, error) ||
+        !locus::core::PrepareChartForSong(reopened, song.DurationSeconds(), error))
+        return false;
+    editor.Load(reopened);
+    chartPath = destination;
+    error.clear();
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
