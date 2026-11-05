@@ -60,4 +60,31 @@ StepView ViewRouteStep(const RouteStep& step, double progress) noexcept {
     return view;
 }
 
+
+StepView TraceRouteStep(const RouteStep& step, double progress) noexcept {
+    const double t = std::isfinite(progress) ? std::clamp(progress, 0.0, 1.0) : 0.0;
+    const StepView full = ViewRouteStep(step, t);
+    StepView trace;
+    trace.marker = full.marker;
+    if (t <= 0.0) return trace;
+
+    if (!step.wraps) {
+        trace.segments[0] = {full.segments[0].from, full.marker};
+        trace.segmentCount = 1;
+    } else if (t <= 0.5) {
+        // The marker has crossed half a beat at the seam: reveal the whole
+        // outgoing half, but not an artificial line across the board.
+        trace.segments[0] = {
+            full.segments[0].from,
+            Interpolate(full.segments[0].from, full.segments[0].to, t * 2.0)
+        };
+        trace.segmentCount = 1;
+    } else {
+        trace.segments[0] = full.segments[0];
+        trace.segments[1] = {full.segments[1].from, full.marker};
+        trace.segmentCount = 2;
+    }
+    return trace;
+}
+
 } // namespace locus::core
