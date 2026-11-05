@@ -52,7 +52,7 @@ int main() {
     ok &= Check(chart.Data().route.lengthBeats == 48,
                 "whole timeline length is directly editable");
 
-    ApplyEditorControls(chart, ui, Click(450, 130));
+    ApplyEditorControls(chart, ui, Click(150, 130));
     ApplyEditorControls(chart, ui, Type("My rhythm chart"));
     ApplyEditorControls(chart, ui, enter);
     ok &= Check(chart.Data().title == "My rhythm chart",
