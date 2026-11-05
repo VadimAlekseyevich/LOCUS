@@ -17,6 +17,7 @@
 #include <cmath>
 #include <cstring>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -55,12 +56,19 @@ struct FrameInput {
     bool chooseMusicPressed = false;
     bool chooseChartPressed = false;
     bool openEditorPressed = false;
+    bool editorSave = false;
+    bool editorSaveAs = false;
+    bool editorOpen = false;
+    bool editorNew = false;
+    bool editorTest = false;
     bool leftPressed = false;
     bool rightPressed = false;
     double leftCapturedAt = 0.0;
     double rightCapturedAt = 0.0;
     locus::app::EditorControls editor;
 };
+
+enum class EditorPending { None, Home, Exit, NewDraft, OpenChart };
 
 struct AppState {
     bool running = true;
@@ -87,7 +95,7 @@ const char* ScreenName(Screen screen) {
 // F1-F4 are diagnostic shortcuts ONLY when --debug-screens is explicitly enabled.
 FrameInput PollInput(bool debugScreens) {
     FrameInput input;
-    input.closeRequested = WindowShouldClose();
+    input.closeRequested = WindowShouldClose() || IsKeyPressed(KEY_ESCAPE);
     if (debugScreens) {
         if (IsKeyPressed(KEY_F1)) input.requestedScreen = Screen::Home;
         else if (IsKeyPressed(KEY_F2)) input.requestedScreen = Screen::Play;
@@ -102,6 +110,13 @@ FrameInput PollInput(bool debugScreens) {
     input.chooseMusicPressed = IsKeyPressed(KEY_O);
     input.chooseChartPressed = IsKeyPressed(KEY_C);
     input.openEditorPressed = IsKeyPressed(KEY_E);
+    const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    input.editorSave = control && IsKeyPressed(KEY_S) && !shift;
+    input.editorSaveAs = control && IsKeyPressed(KEY_S) && shift;
+    input.editorOpen = control && IsKeyPressed(KEY_O);
+    input.editorNew = control && IsKeyPressed(KEY_N);
+    input.editorTest = IsKeyPressed(KEY_T);
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
     input.leftPressed = IsKeyPressed(KEY_F);
@@ -491,6 +506,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const GameplayView& gameplay,
                  const locus::app::LocalMusic& localSong,
                  const locus::core::ChartEditor& editor,
+                 const std::string& editorStatus, EditorPending editorPending,
                  const std::string& musicError, double now) {
     BeginDrawing();
     ClearBackground(kBackground);
@@ -531,6 +547,19 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         DrawResultsScreen(font, gameplay);
     } else if (state.screen == Screen::Editor) {
         locus::app::RenderChartEditor(font, editor);
+        DrawTextLabel(font, editorStatus.c_str(), Vector2{416.0f, 129.0f},
+                      14.0f, Color{175, 212, 213, 255});
+        if (editorPending != EditorPending::None) {
+            DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{10, 13, 21, 218});
+            DrawTextLabel(font, "UNSAVED CHART CHANGES", {193.0f, 187.0f},
+                          32.0f, Color{245, 216, 165, 255});
+            DrawTextLabel(font, "Y  DISCARD CHANGES", {245.0f, 268.0f},
+                          23.0f, Color{235, 156, 156, 255});
+            DrawTextLabel(font, "N  CANCEL AND KEEP EDITING", {206.0f, 315.0f},
+                          21.0f, Color{201, 226, 226, 255});
+            DrawTextLabel(font, "CTRL+S AFTER CANCEL TO SAVE", {218.0f, 364.0f},
+                          18.0f, Color{192, 203, 223, 255});
+        }
     } else {
         const char* screen = ScreenName(state.screen);
         constexpr float kScreenFontSize = 54.0f;
@@ -704,6 +733,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     SetWindowMinSize(800, 450);
+    SetExitKey(KEY_NULL); // Route Esc through unsaved-editor confirmation.
     UiFont uiFont = LoadUiFont();
     SetTargetFPS(60); // Visual smoke baseline only, never a musical clock.
     std::cout << "LOCUS_WINDOW_OPEN\n";
@@ -717,6 +747,10 @@ int main(int argc, char** argv) {
     locus::app::LocalMusic localSong;
     locus::app::ChartPlayback chartPlayback(localSong);
     bool customChart = false;
+    std::wstring editorChartPath;
+    std::wstring editorAudioPath;
+    EditorPending editorPending = EditorPending::None;
+    std::string editorStatus = "O ATTACH AUDIO  |  CTRL+S SAVE  |  T TEST PLAY";
     double previewLead = 4.0;
     std::string chartTitle = "BUILT-IN DEMO";
     std::string musicError;
@@ -891,7 +925,8 @@ int main(int argc, char** argv) {
                                                 : transport.Beat(renderNow),
                                     previewLead, paused, finished, customChart, status};
         RenderFrame(state, debugScreens, uiFont.value, demo,
-                    gameplay, localSong, editor, musicError, renderNow);
+                    gameplay, localSong, editor, editorStatus, editorPending,
+                    musicError, renderNow);
     }
 
     // Unload both music streams before the shared raylib audio device.
