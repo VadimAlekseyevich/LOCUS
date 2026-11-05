@@ -29,24 +29,21 @@ Use the **E** editor on Home. For a new chart, press **O** *inside the editor* t
 
 Windows CI verifies file serialization, actual disk save/reopen, unchanged gameplay tests and compiler linkage without a graphical desktop. The appearance of Save/Open dialogs and subjective rhythm synchronization on your monitor remain for manual playtesting.
 
-## Edit beats and turns inside LOCUS (M-03)
+## Edit and preview a chart inside LOCUS (M-05 usability revision)
 
-From **Home**, press **E** to open the editor. Click any dot on the 4×4 grid to set the **starting position**; the chart's real route preview updates immediately. Click a beat on the bottom timeline (or use **Left/Right arrows**) to select it, then press **F** for a left turn or **J** for a right turn. **Delete/Backspace** removes the selected turn. **Shift+Left/Right** moves an existing turn by one beat without overwriting another event. The timeline automatically moves to the next 16-beat page as you advance.
+After owner playtesting revealed the previous editor was not usable enough, its controls were reworked. From **Home**, press **E**.
 
-The editor also has clickable `−` / `+` controls, with keyboard shortcuts:
+**Load music visibly:** Click **LOAD SONG** at the top (or press **O**) to attach WAV/MP3. The selected filename appears directly under the buttons. To edit an existing chart instead, press **Ctrl+O** in Editor; its song opens with it.
 
-| Setting | Keys | Adjustment |
-| --- | --- | --- |
-| BPM | **Z / X** | −1 / +1 BPM (30–300) |
-| Offset | **N / M** | −10 / +10 **milliseconds** |
-| Fine offset | **Shift+N / Shift+M** | −1 / +1 **millisecond** |
-| Starting direction | **Q / E** | Turn heading left / right |
-| Chart length | **[ / ]** | −16 / +16 beats; existing turns are not silently deleted |
-| Go back | **H** | Return Home; current draft remains in memory |
+**Type values rather than clicking +/-:** Click **CHART TITLE**, **BPM**, **OFFSET IN MILLISECONDS** or **TOTAL BEATS**. The first typed character replaces the existing value. Enter confirms; Esc cancels; Ctrl+V pastes a value. A decimal point or comma works for BPM and offset. Offset is signed and displayed in **milliseconds** (e.g. `-175.5`); values are validated before use. Click the direction button or press **Q/E** to rotate the starting heading; click a grid dot to change the start cell.
 
-To edit a loaded song chart, first open it with **C**, return Home with **H**, and press **E**. Otherwise the editor starts with an empty 32-beat draft at 120 BPM, offset **0 ms**. There is no need to edit JSON manually just to arrange the timeline.
+**Real moving preview:** Click **PLAY** or press **Space** directly in Editor. The audio plays, and the marker moves along the authored path at each beat, showing the cyan traveled line and one blue step ahead, including correct edge Wrap. The bottom timeline follows the current beat. Space pauses/resumes and **R** restarts. When stopped, click a beat on the timeline (or use **Left/Right arrows**) to inspect the marker and next step at that beat without playing music. F/J adds the corresponding turn; Delete removes it; Shift+arrows moves an event without overwriting one.
 
-**M-04 now adds persistence.** Save with Ctrl+S, reopen with Ctrl+O and test-play with T, using the controls in the section above. Unsaved edits are highlighted and a confirmation appears when leaving Home or starting a new/open action. You can still close the process forcibly, so save your chart before closing LOCUS.
+**Slow practice speeds:** Click the speed buttons **100%, 75%, 50%, 25%, 10%**, or press **1–5** respectively, in Editor preview or during custom-song Play. Audio and route time share the selected speed. **raylib's pitch adjustment changes musical pitch as well as speed**; this is not pitch-preserving time stretch, and extreme slowdowns may sound different. A speed change does not edit the saved chart or its original BPM.
+
+**Save and test:** Ctrl+S saves; Ctrl+Shift+S uses Save As; Ctrl+N starts a fresh chart; **T** runs a normal scored playthrough under the attached song; **H** returns Home. Unsaved changes retain the earlier Y/N confirmation. Editing a numeric field prevents conflicting game shortcuts until Enter/Esc. The [full save/reopen instructions](#save-reopen-and-test-play-your-chart-m-04) remain valid.
+
+CI tests chart editing, speed-adjusted/pause-resume song clocks, JSON round trips and Windows compilation. The visual editor and 10% audio playback **still require actual Windows playtesting** before M-05 can be accepted.
 
 ## Load and play your own JSON chart (M-02)
 
