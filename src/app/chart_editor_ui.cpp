@@ -39,9 +39,19 @@ void Label(Font font, const char* value, float x, float y, float size, Color col
     DrawTextEx(font, value, {x, y}, size, 1.0f, color);
 }
 
-std::string Truncate(const std::string& value, std::size_t maxCharacters) {
-    if (value.size() <= maxCharacters) return value;
-    return value.substr(0, maxCharacters - 3) + "...";
+std::string Truncate(const std::string& value, std::size_t maxBytes) {
+    if (value.size() <= maxBytes || maxBytes <= 3) return value;
+    const std::size_t limit = maxBytes - 3;
+    std::size_t position = 0;
+    while (position < value.size()) {
+        const unsigned char first = static_cast<unsigned char>(value[position]);
+        const std::size_t characterBytes = first < 0x80 ? 1
+                                           : first < 0xe0 ? 2
+                                           : first < 0xf0 ? 3 : 4;
+        if (position + characterBytes > limit) break;
+        position += characterBytes;
+    }
+    return value.substr(0, position) + "...";
 }
 
 void Button(Font font, Rectangle rect, const char* text, Color tint, bool active = false) {
