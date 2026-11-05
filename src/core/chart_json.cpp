@@ -184,17 +184,26 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             !IntegerInRange(document["start"]["y"], 0, height - 1,
                             parsed.route.start.y, "start.y", error)) return false;
         const Json& heading = document["start"]["heading"];
+
         if (!heading.is_string()) {
-            error = "start.heading: expected up/right/down/left";
+            error = "start.heading: expected a compass direction";
             return false;
         }
+        constexpr const char* headingNames[] = {
+            "up", "right", "down", "left",
+            "up-right", "down-right", "down-left", "up-left"
+        };
         const std::string name = heading.get<std::string>();
-        if (name == "up") parsed.route.initialHeading = Heading::Up;
-        else if (name == "right") parsed.route.initialHeading = Heading::Right;
-        else if (name == "down") parsed.route.initialHeading = Heading::Down;
-        else if (name == "left") parsed.route.initialHeading = Heading::Left;
-        else {
-            error = "start.heading: expected up/right/down/left";
+        bool recognized = false;
+        for (int i = 0; i < 8; ++i) {
+            if (name == headingNames[i]) {
+                parsed.route.initialHeading = static_cast<Heading>(i);
+                recognized = true;
+                break;
+            }
+        }
+        if (!recognized) {
+            error = "start.heading: expected a compass direction";
             return false;
         }
 
@@ -220,17 +229,27 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 return false;
             }
             prior = beat;
+
             if (!turns[i]["turn"].is_string()) {
-                error = where + ".turn: expected left or right";
+                error = where + ".turn: expected left/right or an angle variant";
                 return false;
             }
+            constexpr const char* turnNames[] = {
+                "left", "right", "left45", "right45", "left135", "right135"
+            };
             const std::string direction = turns[i]["turn"].get<std::string>();
-            if (direction != "left" && direction != "right") {
-                error = where + ".turn: expected left or right";
+            bool recognizedTurn = false;
+            for (int j = 0; j < 6; ++j) {
+                if (direction == turnNames[j]) {
+                    parsed.route.turns.push_back({beat, static_cast<Turn>(j)});
+                    recognizedTurn = true;
+                    break;
+                }
+            }
+            if (!recognizedTurn) {
+                error = where + ".turn: unknown turn angle or direction";
                 return false;
             }
-            parsed.route.turns.push_back({beat, direction == "left"
-                                                     ? Turn::Left : Turn::Right});
         }
         parsed.route.lengthBeats = 1; // Replaced by PrepareChartForSong().
         if (document.contains("lengthBeats")) {
@@ -262,9 +281,13 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
         document["offsetMs"] = chart.offsetSeconds * 1000.0;
         document["grid"] = {{"width", chart.route.gridWidth},
                              {"height", chart.route.gridHeight}};
-        const char* headings[] = {"up", "right", "down", "left"};
+
+        const char* headings[] = {
+            "up", "right", "down", "left",
+            "up-right", "down-right", "down-left", "up-left"
+        };
         const int heading = static_cast<int>(chart.route.initialHeading);
-        if (heading < 0 || heading > 3) {
+        if (!ValidHeading(chart.route.initialHeading)) {
             error = "start.heading: invalid heading";
             return false;
         }
@@ -274,10 +297,19 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
         document["previewLeadBeats"] = chart.previewLeadBeats;
         // Legacy lengthBeats is no longer authored: song length determines it.
         document["turns"] = Ordered::array();
+
+        constexpr const char* turnNames[] = {
+            "left", "right", "left45", "right45", "left135", "right135"
+        };
         for (const auto& event : chart.route.turns) {
+            const int turnIndex = static_cast<int>(event.direction);
+            if (turnIndex < 0 || turnIndex >= 6) {
+                error = "turns: unsupported turn angle";
+                return false;
+            }
             document["turns"].push_back({
                 {"beat", event.beat},
-                {"turn", event.direction == Turn::Left ? "left" : "right"}
+                {"turn", turnNames[turnIndex]}
             });
         }
         std::string encoded = document.dump(2, ' ', false,

@@ -58,6 +58,9 @@ public:
     // Fresh key-down only, timestamped in the same song-time domain as
     // marker animation. Returns nullopt for ignored/out-of-window presses.
     std::optional<Judgement> Press(Turn direction, double songSeconds) noexcept;
+    // Absolute direction input. Diagonals require the corresponding two
+    // arrow keys, but still score as one authored turn event.
+    std::optional<Judgement> PressHeading(Heading outgoing, double songSeconds);
 
     const GradeCounts& Counts() const noexcept { return counts_; }
     const std::optional<Judgement>& Last() const noexcept { return last_; }

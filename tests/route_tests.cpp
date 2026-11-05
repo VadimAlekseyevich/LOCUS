@@ -225,6 +225,45 @@ int main() {
         // Expected.
     }
 
+    // Eight-direction deterministic geometry: diagonal uses one beat and
+    // advances both axes by one, including wrapping at both edges.
+    Chart diagonal;
+    diagonal.start = {3, 0};
+    diagonal.initialHeading = Heading::Right;
+    diagonal.lengthBeats = 10;
+    diagonal.turns = {{0, Turn::Left45}, {2, Turn::Right135},
+                      {5, Turn::Right45}};
+    const auto diagonal0 = SampleRouteStep(diagonal, 0);
+    const auto diagonal1 = SampleRouteStep(diagonal, 1);
+    const auto diagonal2 = SampleRouteStep(diagonal, 2);
+    ok &= Expect(diagonal0.heading == Heading::UpRight &&
+                 diagonal0.to.x == 0 && diagonal0.to.y == 3 &&
+                 diagonal0.wraps &&
+                 diagonal1.from.x == 0 && diagonal1.from.y == 3 &&
+                 diagonal1.to.x == 1 && diagonal1.to.y == 2 &&
+                 !diagonal1.wraps &&
+                 diagonal2.heading == Heading::Down &&
+                 diagonal2.from.x == 1 && diagonal2.from.y == 2,
+                 "45 and 135 degree turn events drive diagonal routing and dual-axis wrap");
+    ok &= Expect(HeadingAfterTurn(Heading::Right, Turn::Left) == Heading::Up &&
+                 HeadingAfterTurn(Heading::Right, Turn::Right) == Heading::Down &&
+                 HeadingAfterTurn(Heading::UpRight, Turn::Left45) == Heading::Up &&
+                 HeadingAfterTurn(Heading::UpRight, Turn::Right45) == Heading::Right &&
+                 ArrowToTurn(Heading::Right, Heading::UpRight) == Turn::Left45 &&
+                 ArrowToTurn(Heading::UpRight, Heading::Down) == Turn::Right135 &&
+                 !ArrowToTurn(Heading::UpRight, Heading::DownLeft),
+                 "cardinal compatibility, 45/135 direction mapping, 180 reversal rejected");
+    Chart longDiagonal;
+    longDiagonal.gridWidth = 8;
+    longDiagonal.gridHeight = 6;
+    longDiagonal.start = {0, 0};
+    longDiagonal.initialHeading = Heading::DownRight;
+    longDiagonal.lengthBeats = 32000;
+    const auto longStep = SampleRouteStep(longDiagonal, 25001);
+    ok &= Expect(longStep.from.x == 1 && longStep.from.y == 5 &&
+                 longStep.to.x == 2 && longStep.to.y == 0 && longStep.wraps,
+                 "long diagonal straight run uses modulo on both axes");
+
     if (!ok) return 1;
     std::cout << "DEMO_ROUTE_PASS beats=32 wraps=4-directions\n";
     return 0;

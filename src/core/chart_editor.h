@@ -40,7 +40,9 @@ public:
     // Reject a resize that would silently move an authored starting cell.
     bool SetGridSize(int width, int height);
     bool SetStart(Cell cell);
-    void RotateHeading(int quarterTurns);
+    void RotateHeading(int quarterTurns); // legacy API, 90 degrees per step
+    void RotateHeading45(int eighthTurns);
+    bool SetOutgoingHeading(Heading heading); // compass authoring on ROUTE
     bool SetTitle(const std::string& title);
     void PutTurn(Turn turn);
     bool RemoveTurn();

@@ -2,7 +2,7 @@
 
 **Task:** A-05 — Define the first chart schema  
 **Status:** Implemented chart v1; M-03 prefers millisecond offsets while keeping legacy charts readable  
-**Scope:** MVP v0.1, configurable 2..16-column/row field (default 4×4), Wrap, quarter-note steps, relative Left/Right  
+**Scope:** 2..16-column/row field (default 4×4), Wrap, quarter-note steps, eight-way headings and relative angle turns  
 **Related:** [GDD](../GDD.md), [TIMING](./TIMING.md), [BOUNDARIES](./BOUNDARIES.md), [ROADMAP](../ROADMAP.md)
 
 > This file specifies data and validation rules, not executable parser/editor code. A chart is self-contained gameplay data with a local reference to a separate music file. There is no online service or embedded music.
@@ -11,10 +11,10 @@
 
 - Use **UTF-8 JSON**, one chart per file, with an explicit **formatVersion: 1**. The format version is independent of the game's v0.1 release number.
 - Store **starting state plus ordered turn events**, not a redundant list of every route coordinate.
-- Represent music time as **nonnegative integer quarter-note beat indices**. The marker moves once per beat; a turn at beat n affects the outgoing step beginning on beat n.
+- Represent music time as **signed integer quarter-note beat indices**; negative beat indices can occur before positive audio offsets. The marker moves once per beat; a turn at beat n affects the outgoing step beginning on beat n.
 - Store **one constant BPM**, a **signed chart-to-audio offset in milliseconds**, and an explicit preview lead in beats.
 - Support **2..16 columns and 2..16 rows**, independently, with a **4×4 editor default**. This is **field geometry, not musical time signature**. Wrap remains the only boundary behavior; **there is no boundary-mode field**. Legacy 4×4 JSON remains unchanged and valid.
-- Encode only **relative Left and Right** turns. Straight movement requires no event.
+- Encode **relative left/right turns of 45°, 90° and 135°**. Legacy `left/right` means 90°. Straight movement requires no event; direct 180° reversals are disallowed.
 - Require a chart-relative audio path. Files can be played without accounts or network access.
 - Reject incompatible versions and unknown fields instead of silently ignoring data.
 
@@ -68,11 +68,11 @@ Every field below is **required** for v1. Do not invent default values during pa
 | start | Object | Exactly x, y, and heading |
 | start.x | Integer | **0 through grid.width−1**, from left to right |
 | start.y | Integer | **0 through grid.height−1**, from top to bottom |
-| start.heading | String | One of **"up", "right", "down", "left"** |
+| start.heading | String | `up`, `right`, `down`, `left`, `up-right`, `down-right`, `down-left`, `up-left` |
 | previewLeadBeats | Number | Finite and **greater than 0**; fractional values allowed |
 | turns | Array | Zero or more turn objects, in **strictly increasing beat order** |
 | turns[i].beat | Integer | Whole-number beat index **−65536 through 65535**; negative beats are valid before a positive offset if the event time is within the song |
-| turns[i].turn | String | Exactly **"left"** or **"right"** |
+| turns[i].turn | String | `left` or `right` (90°), `left45`, `right45`, `left135`, `right135` |
 
 **JSON type and naming rules**
 
@@ -98,13 +98,13 @@ chartBeatAtSongSeconds(s) = (s - offsetSeconds) / secondsPerBeat
 - **Negative offsetMs**: beat 0 happens **before** the first audio sample; the transport must provide a sufficient silent preroll.
 - **Compatibility:** old JSON charts may still use `offsetSeconds` (e.g., `0.25` instead of `offsetMs: 250`). The editor always displays and adjusts the value in milliseconds.
 - Beat 0 is the beginning of the first step. A turn event **at beat 0 is legal**.
-- At each beat: first apply the scheduled Left/Right change relative to the **incoming heading**, then travel one cell in the outgoing heading. Wrap across any grid edge without additional input or judgement.
+- At each beat: first apply the relative 45°/90°/135° turn to the **incoming heading**, then travel one cell per active axis in the outgoing heading. Diagonals change both x and y by one cell in a single beat, including Wrap at either or both borders. Key presses never change the authored route.
 - On a beat with no event, keep the current heading. Store neither straight events nor calculated marker positions.
 - Missing or incorrect player input changes **judgement only**, never the route.
 - Timing-window widths, key bindings, player calibration, results, and scores belong to **session/user settings**, not the chart file.
 - The 4×4 chart in the example is only the default: for an 8×8 field, set `grid.width=8` and `grid.height=8`; the same integer beat timeline and Wrap rule apply.
 
-- Constant BPM and integer beat events are MVP limitations. No fractional event beats, tempo map, diagonal action, hold, Bounce, or dynamic grid change is defined by v1.
+- Constant BPM and integer beat events remain v1 limitations. No fractional event beats, tempo map, hold, Bounce, or dynamic grid change is defined by v1.
 
 ## 5. Validation responsibilities
 
@@ -234,5 +234,9 @@ retains original beat-zero silent preroll for backward compatibility. A positive
 the song, including scored relative turns at those negative beat indices.
 New JSON never writes `lengthBeats`. Existing JSON with that property is
 accepted and its manual length ignored after song-duration calculation.
-The stored `turns` remain relative Left/Right; gameplay converts absolute
-perpendicular arrow keys to the same authored turn values before judgement.
+The stored `turns` remain relative Left/Right with explicit 45/90/135
+angle variants. Gameplay scores an absolute outgoing heading. A diagonal
+heading uses two adjacent arrow keys (e.g. Up+Right) within an 85 ms chord
+window, scored once at the later press. The core trajectory never depends
+on input. Earlier v1 charts with only `left/right` and cardinal initial
+headings remain unchanged.

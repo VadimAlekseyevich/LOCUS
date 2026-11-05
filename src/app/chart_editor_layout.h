@@ -50,6 +50,20 @@ constexpr Rectangle kHeading{744, 201, 168, 40};
 constexpr Rectangle kLeftTurn{744, 271, 168, 37};
 constexpr Rectangle kRightTurn{744, 314, 168, 37};
 constexpr Rectangle kRemoveTurn{744, 357, 168, 37};
+// Eight directions around DEL (center); positioned above the timeline.
+constexpr Rectangle DirectionPadBounds(int row, int col) noexcept {
+    return {744.0f + col * 56.0f, 275.0f + row * 39.0f, 52.0f, 35.0f};
+}
+inline std::optional<core::Heading> DirectionPadHeading(int row, int col) noexcept {
+    constexpr core::Heading values[9] = {
+        core::Heading::UpLeft, core::Heading::Up, core::Heading::UpRight,
+        core::Heading::Left, core::Heading::Up, core::Heading::Right,
+        core::Heading::DownLeft, core::Heading::Down, core::Heading::DownRight
+    };
+    if (row < 0 || row > 2 || col < 0 || col > 2 ||
+        (row == 1 && col == 1)) return std::nullopt;
+    return values[row * 3 + col];
+}
 constexpr Rectangle kCopyTurns{52, 213, 173, 31};
 constexpr Rectangle kPasteTurns{52, 248, 173, 31};
 constexpr Rectangle kInvertTurns{52, 283, 173, 31};

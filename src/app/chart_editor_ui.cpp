@@ -1,5 +1,6 @@
 #include "app/chart_editor_ui.h"
 #include "app/chart_editor_layout.h"
+#include "core/judgement.h"
 #include "app/route_renderer.h"
 
 #include <algorithm>
@@ -47,6 +48,10 @@ const char* HeadingName(core::Heading heading) {
         case core::Heading::Right: return "RIGHT";
         case core::Heading::Down: return "DOWN";
         case core::Heading::Left: return "LEFT";
+        case core::Heading::UpRight: return "UP+RIGHT";
+        case core::Heading::DownRight: return "DOWN+RIGHT";
+        case core::Heading::DownLeft: return "DOWN+LEFT";
+        case core::Heading::UpLeft: return "UP+LEFT";
     }
     return "?";
 }
@@ -197,13 +202,22 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                         static_cast<float>((static_cast<double>(event.beat) - anchor) * pixels);
         if (x < kTimelineX + 8.0f || x > kTimelineX + kTimelineWidth - 8.0f)
             continue;
-        const bool left = event.direction == core::Turn::Left;
-        DrawRectangleRec({x - 6.0f, 481.0f, 12.0f, 15.0f},
+        const bool left = event.direction == core::Turn::Left ||
+                          event.direction == core::Turn::Left45 ||
+                          event.direction == core::Turn::Left135;
+        const bool narrow = pixels < 26.0f;
+        const float width = narrow ? 12.0f : std::min(pixels - 3.0f, 32.0f);
+        DrawRectangleRec({x - width * 0.5f, 481.0f, width, 15.0f},
                          left ? Color{96, 220, 193, 255}
                               : Color{175, 155, 236, 255});
-        if (pixels >= 26.0f) {
-            Label(font, left ? "L" : "R", x - 4.0f, 480.0f, 12,
-                  Color{22, 26, 36, 255});
+        if (!narrow) {
+            const char* angle = event.direction == core::Turn::Left45 ||
+                                event.direction == core::Turn::Right45 ? "45"
+                              : event.direction == core::Turn::Left135 ||
+                                event.direction == core::Turn::Right135 ? "135" : "90";
+            Label(font, TextFormat("%s%s", left ? "L" : "R", angle),
+                  x - width * 0.5f + 2.0f, 482.0f,
+                  10.0f, Color{22, 26, 36, 255});
         }
     }
 
@@ -245,18 +259,33 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                               chart.gridWidth, chart.gridHeight),
               51, 166, 17, Color{188, 215, 227, 255});
         DrawPreviewGrid(font, draft, previewBeat);
-        Label(font, "START HEADING  Q/E", 744, 177, 14,
+        Label(font, "START HEADING Q/E 45", 744, 177, 13,
               Color{172, 199, 218, 255});
         Button(font, kHeading, HeadingName(chart.initialHeading),
                Color{119, 229, 188, 255});
         const auto* turn = draft.SelectedTurn();
-        Label(font, TextFormat("BEAT %d  /  %s", draft.SelectedBeat(),
-                              turn ? (turn->direction == core::Turn::Left
-                                      ? "LEFT" : "RIGHT") : "NO TURN"),
-              744, 251, 14, Color{216, 232, 239, 255});
-        Button(font, kLeftTurn, "F  LEFT", Color{113, 226, 205, 255});
-        Button(font, kRightTurn, "J  RIGHT", Color{173, 170, 239, 255});
-        Button(font, kRemoveTurn, "DEL  REMOVE", Color{223, 156, 156, 255});
+        const auto incoming = core::IncomingHeadingAt(chart, draft.SelectedBeat());
+        const auto outgoing = turn ? core::HeadingAfterTurn(incoming, turn->direction)
+                                   : incoming;
+        Label(font, TextFormat("BEAT %d / %s", draft.SelectedBeat(),
+                              turn ? core::TurnName(turn->direction) : "STRAIGHT"),
+              744, 250, 12, Color{216, 232, 239, 255});
+        const char* padNames[9] = {"UL", "U", "UR", "L", "DEL", "R",
+                                   "DL", "D", "DR"};
+        for (int row = 0; row < 3; ++row)
+            for (int col = 0; col < 3; ++col) {
+                const auto heading = DirectionPadHeading(row, col);
+                Button(font, DirectionPadBounds(row, col),
+                       padNames[row * 3 + col],
+                       !heading ? Color{224, 150, 148, 255}
+                         : core::IsDiagonal(*heading)
+                           ? Color{186, 160, 235, 255}
+                           : Color{110, 220, 198, 255},
+                       heading ? (turn && *heading == outgoing)
+                               : turn != nullptr);
+            }
+        Label(font, "F/J 90  G/H 45  V/N 135", 744, 398, 11,
+              Color{165, 198, 213, 255});
         Label(font, "PATTERN  /  DRAG RULER", 52, 188, 14,
               Color{193, 215, 226, 255});
         Button(font, kCopyTurns, "COPY CTRL+C", Color{126, 190, 221, 255});
@@ -303,7 +332,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                            chart.firstBeat, chart.lengthBeats - 1)
               : "SONG TIMELINE: LOAD AUDIO TO CALCULATE",
               104, 329, 15, Color{188, 218, 228, 255});
-        Label(font, "START HEADING  Q/E OR CLICK", 519, 299, 16,
+        Label(font, "START HEADING  Q/E 45 DEG", 519, 299, 16,
               Color{172, 199, 218, 255});
         Button(font, kFieldHeading, HeadingName(chart.initialHeading),
                Color{119, 229, 188, 255});

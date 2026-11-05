@@ -367,6 +367,35 @@ int main() {
     ok &= Check(longChart.SelectedBeat() == longChart.Data().route.firstBeat,
                 "repeating Ctrl+Left clamps at earliest song beat");
 
+    // Eight-way compass on ROUTE authors actual diagonal route notes.
+    ChartEditor compassUi;
+    EditorUiState diagonalUi;
+    auto chooseNE = ApplyEditorControls(compassUi, diagonalUi, Click(882, 292));
+    ok &= Check(chooseNE.changedChart &&
+                compassUi.SelectedTurn() &&
+                compassUi.SelectedTurn()->direction == Turn::Left45 &&
+                SampleRouteStep(compassUi.Data().route, 0).heading == Heading::UpRight,
+                "compass NE button authors the appropriate 45 degree turn");
+    compassUi.SelectBeat(1);
+    auto chooseEast = ApplyEditorControls(compassUi, diagonalUi, Click(882, 331));
+    ok &= Check(chooseEast.changedChart &&
+                compassUi.SelectedTurn() &&
+                compassUi.SelectedTurn()->direction == Turn::Right45 &&
+                SampleRouteStep(compassUi.Data().route, 1).heading == Heading::Right,
+                "compass cardinal button supports diagonal-to-cardinal transitions");
+    EditorControls halfTurn;
+    halfTurn.addLeft135 = true;
+    compassUi.SelectBeat(2);
+    ApplyEditorControls(compassUi, diagonalUi, halfTurn);
+    ok &= Check(compassUi.SelectedTurn() &&
+                compassUi.SelectedTurn()->direction == Turn::Left135,
+                "editor keyboard can author 135 degree turns");
+    EditorControls rotateStart;
+    rotateStart.headingRight = true;
+    ApplyEditorControls(compassUi, diagonalUi, rotateStart);
+    ok &= Check(compassUi.Data().route.initialHeading == Heading::DownRight,
+                "Q/E start heading supports diagonal increments");
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS tabs=3 grid=8x8 preview=1 zoom=1\n";
     return 0;

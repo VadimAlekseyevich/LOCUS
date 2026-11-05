@@ -5,8 +5,22 @@
 
 namespace locus::core {
 
-enum class Heading { Up, Right, Down, Left };
-enum class Turn { Left, Right };
+// Preserve original four numeric values for old charts and callers.
+enum class Heading {
+    Up, Right, Down, Left,
+    UpRight, DownRight, DownLeft, UpLeft
+};
+// Legacy Left/Right remain 90-degree turns.
+enum class Turn { Left, Right, Left45, Right45, Left135, Right135 };
+
+bool ValidHeading(Heading heading) noexcept;
+bool IsDiagonal(Heading heading) noexcept;
+// A beat always advances exactly one cell on each active axis (one beat,
+// including diagonals); the opposite direction and straight are not notes.
+Heading HeadingAfterTurn(Heading incoming, Turn turn) noexcept;
+Turn InverseTurn(Turn turn) noexcept;
+unsigned HeadingArrowMask(Heading heading) noexcept;
+std::optional<Heading> HeadingFromArrowMask(unsigned keys) noexcept;
 
 struct Cell {
     int x = 0;
@@ -48,7 +62,7 @@ struct RouteStep {
 // The original 120 BPM click track is generated in src/core/demo_audio.cpp.
 Chart MakeDemoChart();
 
-// Pure deterministic route: apply a charted turn at the beat boundary,
+// Pure deterministic eight-way route: apply a charted turn at the beat boundary,
 // then move one point in the new heading, wrapping at each grid edge.
 // Input/judgements never influence the result.
 // Throws std::out_of_range outside [chart.firstBeat, chart.lengthBeats).

@@ -235,6 +235,34 @@ int main() {
                 autoTimeline.Data().route.lengthBeats == 15,
                 "BPM reflows full song and Undo restores calculated boundaries");
 
+    ChartEditor compass;
+    compass.NewDraft();
+    ok &= Check(compass.SetOutgoingHeading(Heading::UpRight) &&
+                compass.SelectedTurn() &&
+                compass.SelectedTurn()->direction == Turn::Left45 &&
+                SampleRouteStep(compass.Data().route, 0).heading == Heading::UpRight,
+                "ROUTE compass authors diagonal direction as relative 45 turn");
+    ok &= Check(!compass.SetOutgoingHeading(Heading::Left) &&
+                compass.SelectedTurn()->direction == Turn::Left45,
+                "opposite outgoing direction cannot be authored in one beat");
+    compass.SelectBeat(1);
+    ok &= Check(compass.SetOutgoingHeading(Heading::Down) &&
+                compass.SelectedTurn()->direction == Turn::Right135 &&
+                compass.InvertTurns(0, 1) &&
+                compass.Data().route.turns[0].direction == Turn::Right45 &&
+                compass.Data().route.turns[1].direction == Turn::Left135,
+                "pattern inversion preserves 45/135 degree turn magnitudes");
+    ok &= Check(compass.Undo() &&
+                compass.Data().route.turns[0].direction == Turn::Left45 &&
+                compass.Redo() &&
+                compass.Data().route.turns[0].direction == Turn::Right45,
+                "diagonal inversion is one undo/redo transaction");
+    compass.RotateHeading45(1);
+    ok &= Check(compass.Data().route.initialHeading == Heading::DownRight &&
+                compass.SetOutgoingHeading(Heading::Down) &&
+                SampleRouteStep(compass.Data().route, 1).heading == Heading::Down,
+                "editor can set a diagonal initial heading in 45 degree increments");
+
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 wrap=1\n";
     return 0;

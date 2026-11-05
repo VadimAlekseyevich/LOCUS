@@ -239,12 +239,27 @@ bool ChartEditor::SetStart(Cell cell) {
 }
 
 void ChartEditor::RotateHeading(int quarterTurns) {
-    const int delta = (quarterTurns % 4 + 4) % 4;
-    if (delta == 0) return;
+    RotateHeading45(quarterTurns * 2);
+}
+
+void ChartEditor::RotateHeading45(int eighthTurns) {
+    const int steps = (eighthTurns % 8 + 8) % 8;
+    if (steps == 0) return;
     SaveUndo();
-    chart_.route.initialHeading = static_cast<Heading>(
-        (static_cast<int>(chart_.route.initialHeading) + delta) % 4);
+    for (int i = 0; i < steps; ++i)
+        chart_.route.initialHeading = HeadingAfterTurn(
+            chart_.route.initialHeading, Turn::Right45);
     MarkDirty();
+}
+
+bool ChartEditor::SetOutgoingHeading(Heading heading) {
+    if (!ValidHeading(heading)) return false;
+    const Heading incoming = IncomingHeadingAt(chart_.route, selectedBeat_);
+    if (heading == incoming) return RemoveTurn(); // Straight means no note.
+    const auto turn = ArrowToTurn(incoming, heading);
+    if (!turn || (SelectedTurn() && SelectedTurn()->direction == *turn)) return false;
+    PutTurn(*turn);
+    return true;
 }
 
 const TurnEvent* ChartEditor::SelectedTurn() const noexcept {
@@ -386,7 +401,7 @@ bool ChartEditor::InvertTurns(int firstBeat, int lastBeat) {
     SaveUndo();
     for (auto& event : chart_.route.turns) {
         if (event.beat >= firstBeat && event.beat <= lastBeat)
-            event.direction = event.direction == Turn::Left ? Turn::Right : Turn::Left;
+            event.direction = InverseTurn(event.direction);
     }
     MarkDirty();
     return true;

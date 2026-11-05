@@ -7,55 +7,143 @@
 namespace locus::core {
 namespace {
 
-Heading ApplyTurn(Heading heading, Turn turn) {
-    const int current = static_cast<int>(heading);
-    const int rotation = (turn == Turn::Right) ? 1 : 3;
-    return static_cast<Heading>((current + rotation) % 4);
+// Clockwise compass indices: N, NE, E, SE, S, SW, W, NW.
+// The enum deliberately keeps its original N/E/S/W numeric values.
+constexpr Heading kCompass[8] = {
+    Heading::Up, Heading::UpRight, Heading::Right, Heading::DownRight,
+    Heading::Down, Heading::DownLeft, Heading::Left, Heading::UpLeft
+};
+
+int CompassIndex(Heading heading) noexcept {
+    switch (heading) {
+        case Heading::Up: return 0;
+        case Heading::UpRight: return 1;
+        case Heading::Right: return 2;
+        case Heading::DownRight: return 3;
+        case Heading::Down: return 4;
+        case Heading::DownLeft: return 5;
+        case Heading::Left: return 6;
+        case Heading::UpLeft: return 7;
+    }
+    return 0;
+}
+
+int RotationEighths(Turn turn) noexcept {
+    switch (turn) {
+        case Turn::Left: return -2;
+        case Turn::Right: return 2;
+        case Turn::Left45: return -1;
+        case Turn::Right45: return 1;
+        case Turn::Left135: return -3;
+        case Turn::Right135: return 3;
+    }
+    return 0;
+}
+
+void HeadingDelta(Heading heading, int& dx, int& dy) noexcept {
+    dx = 0;
+    dy = 0;
+    switch (heading) {
+        case Heading::Up: dy = -1; break;
+        case Heading::UpRight: dx = 1; dy = -1; break;
+        case Heading::Right: dx = 1; break;
+        case Heading::DownRight: dx = 1; dy = 1; break;
+        case Heading::Down: dy = 1; break;
+        case Heading::DownLeft: dx = -1; dy = 1; break;
+        case Heading::Left: dx = -1; break;
+        case Heading::UpLeft: dx = -1; dy = -1; break;
+    }
 }
 
 Cell StepInHeading(Cell cell, Heading heading,
                    int width, int height, bool& wraps) {
-    int x = cell.x;
-    int y = cell.y;
-    switch (heading) {
-        case Heading::Up: --y; break;
-        case Heading::Right: ++x; break;
-        case Heading::Down: ++y; break;
-        case Heading::Left: --x; break;
-    }
-    wraps = (x < 0 || x >= width || y < 0 || y >= height);
+    int dx = 0, dy = 0;
+    HeadingDelta(heading, dx, dy);
+    const int x = cell.x + dx;
+    const int y = cell.y + dy;
+    wraps = x < 0 || x >= width || y < 0 || y >= height;
     return Cell{(x + width) % width, (y + height) % height};
 }
 
-// Jump over a run of straight beats in constant time. The old sampler
-// advanced cell-by-cell from the beginning of the song on *every* query.
+// Jump across long straight *or diagonal* runs in constant time.
 Cell AdvanceStraight(Cell cell, Heading heading, int beats,
                      int width, int height) noexcept {
     if (beats <= 0) return cell;
-    switch (heading) {
-        case Heading::Up:
-            cell.y = (cell.y + height - (beats % height)) % height;
-            break;
-        case Heading::Right:
-            cell.x = (cell.x + (beats % width)) % width;
-            break;
-        case Heading::Down:
-            cell.y = (cell.y + (beats % height)) % height;
-            break;
-        case Heading::Left:
-            cell.x = (cell.x + width - (beats % width)) % width;
-            break;
-    }
+    int dx = 0, dy = 0;
+    HeadingDelta(heading, dx, dy);
+    cell.x = (cell.x + width + dx * (beats % width)) % width;
+    cell.y = (cell.y + height + dy * (beats % height)) % height;
     return cell;
 }
 
 } // namespace
 
+bool ValidHeading(Heading heading) noexcept {
+    const int value = static_cast<int>(heading);
+    return value >= 0 && value <= 7;
+}
+
+bool IsDiagonal(Heading heading) noexcept {
+    return ValidHeading(heading) && static_cast<int>(heading) >= 4;
+}
+
+Heading HeadingAfterTurn(Heading incoming, Turn turn) noexcept {
+    const int index = CompassIndex(incoming);
+    return kCompass[(index + RotationEighths(turn) + 8) % 8];
+}
+
+Turn InverseTurn(Turn turn) noexcept {
+    switch (turn) {
+        case Turn::Left: return Turn::Right;
+        case Turn::Right: return Turn::Left;
+        case Turn::Left45: return Turn::Right45;
+        case Turn::Right45: return Turn::Left45;
+        case Turn::Left135: return Turn::Right135;
+        case Turn::Right135: return Turn::Left135;
+    }
+    return turn;
+}
+
+unsigned HeadingArrowMask(Heading heading) noexcept {
+    switch (heading) {
+        case Heading::Up: return 1u;
+        case Heading::Right: return 2u;
+        case Heading::Down: return 4u;
+        case Heading::Left: return 8u;
+        case Heading::UpRight: return 3u;
+        case Heading::DownRight: return 6u;
+        case Heading::DownLeft: return 12u;
+        case Heading::UpLeft: return 9u;
+    }
+    return 0u;
+}
+
+std::optional<Heading> HeadingFromArrowMask(unsigned keys) noexcept {
+    switch (keys) {
+        case 1: return Heading::Up;
+        case 2: return Heading::Right;
+        case 4: return Heading::Down;
+        case 8: return Heading::Left;
+        case 3: return Heading::UpRight;
+        case 6: return Heading::DownRight;
+        case 12: return Heading::DownLeft;
+        case 9: return Heading::UpLeft;
+        default: return std::nullopt;
+    }
+}
+
 std::optional<Turn> ArrowToTurn(Heading incoming, Heading pressed) noexcept {
-    const int delta = (static_cast<int>(pressed) - static_cast<int>(incoming) + 4) % 4;
-    if (delta == 1) return Turn::Right;
-    if (delta == 3) return Turn::Left;
-    return std::nullopt; // Straight ahead / reverse are forbidden.
+    if (!ValidHeading(incoming) || !ValidHeading(pressed)) return std::nullopt;
+    const int delta = (CompassIndex(pressed) - CompassIndex(incoming) + 8) % 8;
+    switch (delta) {
+        case 1: return Turn::Right45;
+        case 2: return Turn::Right;
+        case 3: return Turn::Right135;
+        case 5: return Turn::Left135;
+        case 6: return Turn::Left;
+        case 7: return Turn::Left45;
+        default: return std::nullopt; // Straight / reverse are not turn notes.
+    }
 }
 
 Heading IncomingHeadingAt(const Chart& chart, int beat) {
@@ -115,7 +203,8 @@ RouteStep SampleRouteStep(const Chart& chart, int beat) {
     if (chart.gridWidth < kMinGridSize || chart.gridWidth > kMaxGridSize ||
         chart.gridHeight < kMinGridSize || chart.gridHeight > kMaxGridSize ||
         chart.start.x < 0 || chart.start.x >= chart.gridWidth ||
-        chart.start.y < 0 || chart.start.y >= chart.gridHeight) {
+        chart.start.y < 0 || chart.start.y >= chart.gridHeight ||
+        !ValidHeading(chart.initialHeading)) {
         throw std::invalid_argument("route grid or starting cell is invalid");
     }
 
@@ -129,7 +218,7 @@ RouteStep SampleRouteStep(const Chart& chart, int beat) {
         if (event.beat < cursor) continue;
         cell = AdvanceStraight(cell, heading, event.beat - cursor,
                                chart.gridWidth, chart.gridHeight);
-        heading = ApplyTurn(heading, event.direction);
+        heading = HeadingAfterTurn(heading, event.direction);
         cursor = event.beat;
     }
     cell = AdvanceStraight(cell, heading, beat - cursor,

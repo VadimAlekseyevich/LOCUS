@@ -157,6 +157,26 @@ int main() {
                 fromMiddle.Counts().Resolved() == 0,
                 "test after final event has no phantom misses");
 
+    Chart diagonalChart;
+    diagonalChart.initialHeading = Heading::Right;
+    diagonalChart.turns = {{2, Turn::Left45}, {4, Turn::Right45}};
+    TurnJudge diagonalJudge(diagonalChart);
+    const auto hitDiagonal = diagonalJudge.PressHeading(Heading::UpRight, 1.0);
+    const auto hitCardinal = diagonalJudge.PressHeading(Heading::Right, 2.0);
+    ok &= Check(hitDiagonal && hitDiagonal->grade == Grade::Perfect &&
+                hitCardinal && hitCardinal->grade == Grade::Perfect &&
+                diagonalJudge.Counts().perfect == 2,
+                "diagonal and cardinal absolute outgoing headings score correctly");
+    diagonalJudge.Reset();
+    const auto wrongDiagonal = diagonalJudge.PressHeading(Heading::Up, 1.0);
+    ok &= Check(wrongDiagonal && wrongDiagonal->wrongDirection &&
+                diagonalJudge.Counts().miss == 1,
+                "single arrow is wrong for an authored diagonal stroke");
+    diagonalJudge.Reset();
+    ok &= Check(!diagonalJudge.PressHeading(Heading::UpRight, 0.1) &&
+                diagonalJudge.Counts().Resolved() == 0,
+                "early chord does not consume a later diagonal note");
+
     if (!ok) return 1;
     std::cout << "JUDGEMENT_PASS turns=9 perfect-good-bad-miss no-fail=true\n";
     return 0;

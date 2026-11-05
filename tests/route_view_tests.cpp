@@ -156,6 +156,33 @@ int main() {
                     TraceRouteStep(straight, 3.0).segmentCount == 1,
                 "progressive line clamps fractional beat to [0,1]");
 
+    // Diagonal crossing: the two coordinate seams share half a beat.
+    const RouteStep corner{{3, 0}, {0, 3}, Heading::UpRight, true, 4, 4};
+    const StepView cornerHalf = ViewRouteStep(corner, 0.5);
+    const StepView cornerQuarter = ViewRouteStep(corner, 0.25);
+    const StepView cornerTrace = TraceRouteStep(corner, 0.75);
+    ok &= Check(cornerHalf.segmentCount == 2 &&
+                std::abs(cornerHalf.segments[0].to.x - 3.5) < 1e-9 &&
+                std::abs(cornerHalf.segments[0].to.y + 0.5) < 1e-9 &&
+                std::abs(cornerHalf.segments[1].from.x + 0.5) < 1e-9 &&
+                std::abs(cornerHalf.segments[1].from.y - 3.5) < 1e-9 &&
+                std::abs(cornerQuarter.marker.x - 3.25) < 1e-9 &&
+                std::abs(cornerQuarter.marker.y + 0.25) < 1e-9 &&
+                cornerTrace.segmentCount == 2,
+                "diagonal dual-axis wrap clips at correct half-cell seams");
+    const RouteStep horizontalSeam{{3, 1}, {0, 0},
+                                   Heading::UpRight, true, 4, 4};
+    const StepView horizontalView = ViewRouteStep(horizontalSeam, 0.5);
+    ok &= Check(std::abs(horizontalView.segments[0].to.y - 0.5) < 1e-9 &&
+                std::abs(horizontalView.segments[1].from.y - 0.5) < 1e-9,
+                "diagonal horizontal seam preserves continuous vertical coordinate");
+    const RouteStep verticalSeam{{1, 0}, {2, 3},
+                                 Heading::UpRight, true, 4, 4};
+    const StepView verticalView = ViewRouteStep(verticalSeam, 0.5);
+    ok &= Check(std::abs(verticalView.segments[0].to.x - 1.5) < 1e-9 &&
+                std::abs(verticalView.segments[1].from.x - 1.5) < 1e-9,
+                "diagonal vertical seam preserves continuous horizontal coordinate");
+
     if (!ok) return 1;
     std::cout << "ROUTE_VIEW_PASS wraps=4 reveal=progressive clock=beat\n";
     return 0;

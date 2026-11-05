@@ -32,25 +32,26 @@ StepView ViewRouteStep(const RouteStep& step, double progress) noexcept {
 
     // A unit step spans one beat even across a boundary. Each visible half
     // spans half the beat. The non-drawn jump models a periodic grid of the step's authored dimensions.
-    GridPoint exit = from;
-    GridPoint entry = to;
-    switch (step.heading) {
-        case Heading::Up:
-            exit.y = -0.5;
-            entry.y = static_cast<double>(step.gridHeight) - 0.5;
-            break;
-        case Heading::Right:
-            exit.x = static_cast<double>(step.gridWidth) - 0.5;
-            entry.x = -0.5;
-            break;
-        case Heading::Down:
-            exit.y = static_cast<double>(step.gridHeight) - 0.5;
-            entry.y = -0.5;
-            break;
-        case Heading::Left:
-            exit.x = -0.5;
-            entry.x = static_cast<double>(step.gridWidth) - 0.5;
-            break;
+    const unsigned mask = HeadingArrowMask(step.heading);
+    const int dx = ((mask & 2u) ? 1 : 0) - ((mask & 8u) ? 1 : 0);
+    const int dy = ((mask & 4u) ? 1 : 0) - ((mask & 1u) ? 1 : 0);
+    // Both axes cross their half-cell seams at exactly t=0.5, even when
+    // only one of them wraps. Keep the non-wrapped axis continuous.
+    GridPoint exit{from.x + dx * 0.5, from.y + dy * 0.5};
+    GridPoint entry = exit;
+    if (step.from.x + dx < 0) {
+        exit.x = -0.5;
+        entry.x = static_cast<double>(step.gridWidth) - 0.5;
+    } else if (step.from.x + dx >= step.gridWidth) {
+        exit.x = static_cast<double>(step.gridWidth) - 0.5;
+        entry.x = -0.5;
+    }
+    if (step.from.y + dy < 0) {
+        exit.y = -0.5;
+        entry.y = static_cast<double>(step.gridHeight) - 0.5;
+    } else if (step.from.y + dy >= step.gridHeight) {
+        exit.y = static_cast<double>(step.gridHeight) - 0.5;
+        entry.y = -0.5;
     }
     view.segments[0] = {from, exit};
     view.segments[1] = {entry, to};

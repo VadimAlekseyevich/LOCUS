@@ -69,6 +69,7 @@ struct FrameInput {
     int practiceSpeedIndex = -1;
     std::array<bool, 4> arrowPressed{};
     std::array<double, 4> arrowCapturedAt{};
+    std::array<bool, 4> arrowHeld{};
     locus::app::EditorControls editor;
 };
 
@@ -128,11 +129,12 @@ FrameInput PollInput(bool debugScreens) {
                               : IsKeyPressed(KEY_FIVE) ? 4 : -1;
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
-    // Absolute direction input for scored gameplay; editor F/J still authors
-    // relative turn events. Arrow indices match core::Heading enum order.
+    // Absolute direction input; a diagonal is a two-key stroke.
+    // The original four enum indices still map to Up, Right, Down, Left.
     constexpr int keys[4] = {KEY_UP, KEY_RIGHT, KEY_DOWN, KEY_LEFT};
     for (int i = 0; i < 4; ++i) {
         input.arrowPressed[i] = IsKeyPressed(keys[i]);
+        input.arrowHeld[i] = IsKeyDown(keys[i]);
         if (input.arrowPressed[i]) input.arrowCapturedAt[i] = MonotonicSeconds();
     }
     input.editor = locus::app::PollEditorControls();
@@ -307,19 +309,20 @@ struct GameplayGrid {
 
     DrawTextLabel(font, "ARROWS TO TURN", Vector2{50.0f, 204.0f}, 21.0f,
                   Color{236, 216, 160, 255});
-    DrawTextLabel(font, "ONLY PERPENDICULAR", Vector2{50.0f, 237.0f}, 18.0f,
+    DrawTextLabel(font, "DIAGONAL = TWO ARROWS", Vector2{50.0f, 237.0f}, 18.0f,
                   Color{236, 216, 160, 255});
     DrawTextLabel(font, "HIT ON THE BEAT", Vector2{50.0f, 274.0f}, 18.0f,
                   Color{171, 187, 210, 255});
 
     if (const locus::core::TurnEvent* next = judge.NextEvent()) {
         const auto incoming = locus::core::IncomingHeadingAt(chart, next->beat);
-        const int rotation = next->direction == locus::core::Turn::Right ? 1 : 3;
-        const auto outgoing = static_cast<locus::core::Heading>(
-            (static_cast<int>(incoming) + rotation) % 4);
-        const char* arrows[] = {"UP", "RIGHT", "DOWN", "LEFT"};
+        const auto outgoing = locus::core::HeadingAfterTurn(incoming, next->direction);
+        const char* arrows[] = {
+            "UP", "RIGHT", "DOWN", "LEFT",
+            "UP+RIGHT", "DOWN+RIGHT", "DOWN+LEFT", "UP+LEFT"
+        };
         DrawTextLabel(font,
-                      TextFormat("NEXT: %s ARROW  /  BEAT %d",
+                      TextFormat("NEXT: %s  /  BEAT %d",
                                  arrows[static_cast<int>(outgoing)], next->beat),
                       Vector2{50.0f, 318.0f}, 17.0f,
                       Color{228, 231, 241, 255});
@@ -1181,7 +1184,7 @@ int main(int argc, char** argv) {
         }
         if (state.screen == Screen::Play) {
             gameSession.Update(customChart, now,
-                               {input.arrowPressed, input.arrowCapturedAt});
+                               {input.arrowPressed, input.arrowCapturedAt, input.arrowHeld});
             if (customChart ? chartPlayback.Finished() : transport.Finished()) {
                 FinishSession(state, judge, activeChart);
             }

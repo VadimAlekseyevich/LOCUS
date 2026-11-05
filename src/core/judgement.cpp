@@ -16,7 +16,15 @@ const char* GradeName(Grade grade) noexcept {
 }
 
 const char* TurnName(Turn turn) noexcept {
-    return (turn == Turn::Left) ? "LEFT" : "RIGHT";
+    switch (turn) {
+        case Turn::Left: return "LEFT 90";
+        case Turn::Right: return "RIGHT 90";
+        case Turn::Left45: return "LEFT 45";
+        case Turn::Right45: return "RIGHT 45";
+        case Turn::Left135: return "LEFT 135";
+        case Turn::Right135: return "RIGHT 135";
+    }
+    return "UNKNOWN";
 }
 
 void TurnJudge::Reset() noexcept {
@@ -80,6 +88,31 @@ std::optional<Judgement> TurnJudge::Press(Turn direction, double songSeconds) no
 
     Grade grade = Grade::Miss;
     const bool wrong = direction != next->direction;
+    if (!wrong) {
+        const double deviation = std::abs(error);
+        if (deviation <= kPerfectWindowSeconds) grade = Grade::Perfect;
+        else if (deviation <= kGoodWindowSeconds) grade = Grade::Good;
+        else grade = Grade::Bad;
+    }
+    Resolve(grade, error, wrong);
+    return last_;
+}
+
+std::optional<Judgement> TurnJudge::PressHeading(Heading outgoing,
+                                                 double songSeconds) {
+    if (!ValidHeading(outgoing) || !std::isfinite(songSeconds)) return std::nullopt;
+    Advance(songSeconds);
+    const TurnEvent* next = NextEvent();
+    if (!next) return std::nullopt;
+
+    const double expectedSeconds = offsetSeconds_ + next->beat * 60.0 / chart_.bpm;
+    const double error = songSeconds - expectedSeconds;
+    if (std::abs(error) > kBadWindowSeconds) return std::nullopt;
+
+    const Heading incoming = IncomingHeadingAt(chart_, next->beat);
+    const Heading expected = HeadingAfterTurn(incoming, next->direction);
+    const bool wrong = outgoing != expected;
+    Grade grade = Grade::Miss;
     if (!wrong) {
         const double deviation = std::abs(error);
         if (deviation <= kPerfectWindowSeconds) grade = Grade::Perfect;

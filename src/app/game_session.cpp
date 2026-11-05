@@ -5,6 +5,7 @@
 namespace locus::app {
 
 void GameSession::Start(bool customChart, double now) {
+    chord_.Reset();
     judge_.Reset();
     if (customChart) {
         if (testOrigin_) {
@@ -23,11 +24,13 @@ void GameSession::Restart(bool customChart, double now) {
 }
 
 void GameSession::Stop(bool customChart) {
+    chord_.Reset();
     if (customChart) local_.Stop();
     else demo_.Stop();
 }
 
 void GameSession::TogglePause(bool customChart, double now) {
+    chord_.Reset();
     if (customChart) {
         if (local_.Paused()) local_.Resume(now);
         else local_.Pause(now);
@@ -46,30 +49,17 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     const bool paused = customChart ? local_.Paused() : demo_.Paused();
     if (playing && !paused) {
         if (const auto* target = judge_.NextEvent()) {
-            // Convert absolute arrow key presses into relative turns using
-            // the *incoming* direction at the scheduled event.
-            const auto incoming = core::IncomingHeadingAt(chart_, target->beat);
-            const auto turnFor = [&](int direction) {
-                return core::ArrowToTurn(incoming,
-                                         static_cast<core::Heading>(direction));
-            };
-            int validCount = 0;
-            int first = -1;
-            for (int index = 0; index < 4; ++index) {
-                if (arrows.pressed[index] && turnFor(index)) {
-                    ++validCount;
-                    if (first < 0) first = index;
-                }
-            }
-            if (validCount > 1) {
-                const auto wrong = target->direction == core::Turn::Left
-                    ? core::Turn::Right : core::Turn::Left;
-                judge_.Press(wrong, customChart ? local_.AudioSeconds(now)
-                                               : demo_.SongSeconds(now));
-            } else if (first >= 0) {
-                judge_.Press(*turnFor(first),
-                             customChart ? local_.AudioSeconds(arrows.capturedAt[first])
-                                         : demo_.SongSeconds(arrows.capturedAt[first]));
+            const core::Heading incoming = core::IncomingHeadingAt(chart_, target->beat);
+            const core::Heading expected =
+                core::HeadingAfterTurn(incoming, target->direction);
+            const auto stroke = chord_.Observe(
+                {arrows.pressed, arrows.held, arrows.capturedAt},
+                expected, incoming);
+            if (stroke) {
+                const double timestamp = customChart
+                    ? local_.AudioSeconds(stroke->capturedAt)
+                    : demo_.SongSeconds(stroke->capturedAt);
+                judge_.PressHeading(stroke->outgoing, timestamp);
             }
         }
     }

@@ -3,6 +3,7 @@
 #include "app/chart_playback.h"
 #include "app/demo_transport.h"
 #include "core/judgement.h"
+#include "core/arrow_chord.h"
 
 #include <array>
 #include <optional>
@@ -19,6 +20,7 @@ struct ArrowInput {
     // Up, Right, Down, Left, as in core::Heading.
     std::array<bool, 4> pressed{};
     std::array<double, 4> capturedAt{};
+    std::array<bool, 4> held{};
 };
 
 // Coordinates the actual Play session, not the UI screens. Non-owning refs:
@@ -47,6 +49,7 @@ private:
     DemoTransport& demo_;
     ChartPlayback& local_;
     std::optional<EditorTestOrigin> testOrigin_;
+    core::ArrowChordTracker chord_;
 };
 
 } // namespace locus::app

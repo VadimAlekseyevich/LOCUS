@@ -176,6 +176,10 @@ EditorControls PollEditorControls() {
     input.moveNext = IsKeyPressed(KEY_RIGHT) && shift && !control;
     input.addLeft = IsKeyPressed(KEY_F);
     input.addRight = IsKeyPressed(KEY_J);
+    input.addLeft45 = IsKeyPressed(KEY_G) && !control;
+    input.addRight45 = IsKeyPressed(KEY_H) && !control;
+    input.addLeft135 = IsKeyPressed(KEY_V) && !control;
+    input.addRight135 = IsKeyPressed(KEY_N) && !control;
     input.removeTurn = IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE);
     input.headingLeft = IsKeyPressed(KEY_Q);
     input.headingRight = IsKeyPressed(KEY_E);
@@ -343,19 +347,27 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                    !action.changedChart);
             return action;
         } else if (ui.tab == EditorTab::Route && Hit(kHeading, mouse)) {
-            draft.RotateHeading(1);
+            draft.RotateHeading45(1);
             action.changedChart = true;
         } else if (ui.tab == EditorTab::Field && Hit(kFieldHeading, mouse)) {
-            draft.RotateHeading(1);
+            draft.RotateHeading45(1);
             action.changedChart = true;
-        } else if (ui.tab == EditorTab::Route && Hit(kLeftTurn, mouse)) {
-            draft.PutTurn(core::Turn::Left);
-            action.changedChart = true;
-        } else if (ui.tab == EditorTab::Route && Hit(kRightTurn, mouse)) {
-            draft.PutTurn(core::Turn::Right);
-            action.changedChart = true;
-        } else if (ui.tab == EditorTab::Route && Hit(kRemoveTurn, mouse)) {
-            deleteTurns = true;
+        } else if (ui.tab == EditorTab::Route &&
+                   mouse.x >= 744.0f && mouse.x <= 908.0f &&
+                   mouse.y >= 275.0f && mouse.y <= 388.0f) {
+            for (int row = 0; row < 3; ++row)
+                for (int col = 0; col < 3; ++col) {
+                    if (!Hit(DirectionPadBounds(row, col), mouse)) continue;
+                    const auto heading = DirectionPadHeading(row, col);
+                    if (heading) {
+                        const bool changed = draft.SetOutgoingHeading(*heading);
+                        action.changedChart |= changed;
+                        if (!changed) notice(
+                            "NO CHANGE - STRAIGHT OR OPPOSITE DIRECTION", true);
+                    } else {
+                        deleteTurns = true;
+                    }
+                }
         } else if (ui.tab == EditorTab::Route &&
                    mouse.x >= kDefaultEditorRouteLayout.practiceSpeedX &&
                    mouse.x <= kDefaultEditorRouteLayout.practiceSpeedX +
@@ -493,6 +505,10 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         if (input.moveNext && !ui.HasRange()) action.changedChart |= draft.MoveTurn(1);
         if (input.addLeft) { draft.PutTurn(core::Turn::Left); action.changedChart = true; }
         if (input.addRight) { draft.PutTurn(core::Turn::Right); action.changedChart = true; }
+        if (input.addLeft45) { draft.PutTurn(core::Turn::Left45); action.changedChart = true; }
+        if (input.addRight45) { draft.PutTurn(core::Turn::Right45); action.changedChart = true; }
+        if (input.addLeft135) { draft.PutTurn(core::Turn::Left135); action.changedChart = true; }
+        if (input.addRight135) { draft.PutTurn(core::Turn::Right135); action.changedChart = true; }
         const int first = ui.HasRange() ? ui.rangeFirst : draft.SelectedBeat();
         const int last = ui.HasRange() ? ui.rangeLast : draft.SelectedBeat();
         const bool valid = first >= draft.Data().route.firstBeat &&
@@ -547,8 +563,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         }
     }
     if (ui.tab != EditorTab::Audio) {
-        if (input.headingLeft) { draft.RotateHeading(-1); action.changedChart = true; }
-        if (input.headingRight) { draft.RotateHeading(1); action.changedChart = true; }
+        if (input.headingLeft) { draft.RotateHeading45(-1); action.changedChart = true; }
+        if (input.headingRight) { draft.RotateHeading45(1); action.changedChart = true; }
     }
     if (input.mouseWheel > 0) draft.StepSelection(-1);
     if (input.mouseWheel < 0) draft.StepSelection(1);

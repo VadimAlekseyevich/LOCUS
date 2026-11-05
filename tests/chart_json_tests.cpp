@@ -225,6 +225,31 @@ int main() {
                  saved.find("\"beat\": -3") != std::string::npos,
                  "negative beat turn before offset works across parse, route and save");
 
+    // v1 extension: old left/right remains 90 degrees, new tokens carry angles.
+    LoadedChart diagonalChart;
+    diagonalChart.route = Chart{};
+    diagonalChart.title = "Diagonal Chart";
+    diagonalChart.audioPath = "song.mp3";
+    diagonalChart.route.start = {3, 0};
+    diagonalChart.route.initialHeading = Heading::UpRight;
+    diagonalChart.route.turns = {{0, Turn::Right45},
+                                 {3, Turn::Left135}};
+    std::string diagonalJson;
+    LoadedChart parsedDiagonal;
+    ok &= Expect(SerializeChartJson(diagonalChart, diagonalJson, error) &&
+                 diagonalJson.find("\"up-right\"") != std::string::npos &&
+                 diagonalJson.find("\"right45\"") != std::string::npos &&
+                 diagonalJson.find("\"left135\"") != std::string::npos &&
+                 ParseChartJson(diagonalJson, parsedDiagonal, error) &&
+                 parsedDiagonal.route.initialHeading == Heading::UpRight &&
+                 parsedDiagonal.route.turns[0].direction == Turn::Right45 &&
+                 parsedDiagonal.route.turns[1].direction == Turn::Left135,
+                 "diagonal initial heading and 45/135 turns roundtrip in v1 JSON");
+    ok &= Expect(Reject(diagonalJson, "\"right45\"", "\"right180\"",
+                        ".turn"), "unknown turn angle is rejected");
+    ok &= Expect(Reject(diagonalJson, "\"up-right\"", "\"north-east\"",
+                        "start.heading"), "unknown diagonal heading spelling is rejected");
+
     if (!ok) return 1;
     std::cout << "CHART_JSON_PASS version=1 validation=1 wrap=1 preroll=1\n";
     return 0;

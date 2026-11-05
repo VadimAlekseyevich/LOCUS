@@ -17,6 +17,8 @@ struct EditorControls {
     float elapsedSeconds = 0.0f;
     bool movePrevious = false, moveNext = false;
     bool addLeft = false, addRight = false, removeTurn = false;
+    bool addLeft45 = false, addRight45 = false;
+    bool addLeft135 = false, addRight135 = false;
     bool headingLeft = false, headingRight = false;
     bool mouseClick = false, mouseHeld = false, mouseReleased = false;
     bool shiftHeld = false;
