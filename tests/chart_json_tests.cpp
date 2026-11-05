@@ -132,6 +132,38 @@ int main() {
     ok &= Expect(Reject(valid, "\"offsetSeconds\": 0.25", "\"wrongOffset\": 250",
                         "offsetMs"), "an offset value is always required");
 
+    // M-04: a saved chart must parse back with exact authored fields,
+    // length and turn order, and must use offsetMs (not legacy seconds).
+    LoadedChart editable;
+    ok &= Expect(ParseChartJson(millis, editable, error),
+                 "millisecond chart parses before editing");
+    editable.route.lengthBeats = 16;
+    editable.authoredLengthBeats = 16;
+    editable.route.turns.push_back({9, Turn::Left});
+    editable.offsetSeconds = -0.137;
+    std::string serialized;
+    ok &= Expect(SerializeChartJson(editable, serialized, error),
+                 "new chart serializes: " + error);
+    ok &= Expect(serialized.find("\"offsetMs\"") != std::string::npos &&
+                 serialized.find("\"offsetSeconds\"") == std::string::npos &&
+                 serialized.find("\"lengthBeats\": 16") != std::string::npos,
+                 "writer uses offsetMs and saves the editor timeline length");
+    LoadedChart reopened;
+    ok &= Expect(ParseChartJson(serialized, reopened, error) &&
+                 reopened.authoredLengthBeats == 16 &&
+                 reopened.route.turns.size() == 3 &&
+                 std::abs(reopened.offsetSeconds + 0.137) < 1e-9 &&
+                 reopened.route.turns.back().beat == 9,
+                 "editor creation round-trips through JSON");
+    ok &= Expect(PrepareChartForSong(reopened, 11.0, error) &&
+                 reopened.route.lengthBeats == 16,
+                 "shorter authored timeline survives song-duration validation");
+    LoadedChart invalidLength = reopened;
+    invalidLength.authoredLengthBeats = 65536;
+    ok &= Expect(!PrepareChartForSong(invalidLength, 11.0, error) &&
+                 error.find("lengthBeats") != std::string::npos,
+                 "chart timeline cannot exceed available song duration");
+
     if (!ok) return 1;
     std::cout << "CHART_JSON_PASS version=1 validation=1 wrap=1 preroll=1\n";
     return 0;
