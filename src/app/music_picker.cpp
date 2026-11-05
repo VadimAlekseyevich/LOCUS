@@ -1,13 +1,15 @@
 #include "app/music_picker.h"
 
+// raylib defines Rectangle and DrawText; parse it BEFORE Windows headers
+// to prevent their C declarations/macros from corrupting raylib types.
+#include "raylib.h"
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
 #include <commdlg.h>
 #endif
-
-#include "raylib.h"
 
 #include <vector>
 
