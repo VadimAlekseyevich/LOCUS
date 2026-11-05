@@ -136,6 +136,27 @@ int main() {
     ok &= Check(shifted.Counts().Resolved() == static_cast<int>(demo.turns.size()),
                 "song completion must not double-count missing events");
 
+    // T/Test from a selected beat should not penalize the skipped intro.
+    TurnJudge fromMiddle(demo);
+    fromMiddle.ResetFromBeat(8);
+    ok &= Check(fromMiddle.Counts().Resolved() == 0 &&
+                fromMiddle.NextEvent() &&
+                fromMiddle.NextEvent()->beat == 8,
+                "test practice starts at selected beat without earlier misses");
+    ok &= Check(Is(fromMiddle.Press(Turn::Left, third), Grade::Perfect, 8) &&
+                fromMiddle.Counts().perfect == 1 &&
+                fromMiddle.Counts().miss == 0,
+                "the event exactly at the test origin can still score");
+    fromMiddle.ResetFromBeat(13);
+    ok &= Check(fromMiddle.NextEvent() &&
+                fromMiddle.NextEvent()->beat == 16 &&
+                fromMiddle.Counts().Resolved() == 0,
+                "fractional-beat test skips the turn already behind the cursor");
+    fromMiddle.ResetFromBeat(999);
+    ok &= Check(fromMiddle.NextEvent() == nullptr &&
+                fromMiddle.Counts().Resolved() == 0,
+                "test after final event has no phantom misses");
+
     if (!ok) return 1;
     std::cout << "JUDGEMENT_PASS turns=9 perfect-good-bad-miss no-fail=true\n";
     return 0;

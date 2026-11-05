@@ -72,6 +72,11 @@ struct FrameInput {
 
 enum class EditorPending { None, Home, Exit, NewDraft, OpenChart };
 
+struct EditorTestOrigin {
+    double audioSeconds = 0.0; // Exact stopped preview time, possibly fractional beat.
+    int firstScoredBeat = 0;   // Events before this are not graded as MISS.
+};
+
 struct AppState {
     bool running = true;
     int frames = 0;
@@ -886,6 +891,7 @@ int main(int argc, char** argv) {
     std::string editorStatus = "O ATTACH AUDIO  |  CTRL+S SAVE  |  T TEST PLAY";
     double previewLead = 4.0;
     int editorPreviewStartBeat = 0; // R returns to this preview origin.
+    std::optional<EditorTestOrigin> editorTestOrigin; // T / TEST origin.
     std::string chartTitle = "BUILT-IN DEMO";
     std::string musicError;
     transport.Initialize(demo); // Owns the shared raylib audio output device.
@@ -1072,6 +1078,11 @@ int main(int argc, char** argv) {
                     editorStatus = "SAVE FAILED: " + failure;
                 }
             } else if (input.editorTest) {
+                // Practice starts from the exact paused/current audio position.
+                // If not previewing, use the selected timeline beat.
+                const double editorSongPosition = chartPlayback.Playing()
+                    ? chartPlayback.AudioSeconds(now)
+                    : editor.AudioSecondsAtBeat(editor.SelectedBeat());
                 chartPlayback.Stop();
                 locus::core::LoadedChart checked = editor.Data();
                 if (editorAudioPath.empty() || !localSong.Ready()) {
@@ -1080,14 +1091,27 @@ int main(int argc, char** argv) {
                                checked, localSong.DurationSeconds(), musicError)) {
                     editorStatus = "TEST FAILED: " + musicError;
                 } else {
-                    activeChart = std::move(checked.route);
-                    chartTitle = std::move(checked.title);
-                    previewLead = checked.previewLeadBeats;
-                    chartPlayback.Configure(activeChart.bpm, checked.offsetSeconds);
-                    judge.SetOffsetSeconds(checked.offsetSeconds);
-                    customChart = true;
-                    state.screen = Screen::Play;
-                    editorStatus = "TEST IN PROGRESS - H HOME / E EDIT AGAIN";
+                    if (!std::isfinite(editorSongPosition) ||
+                        editorSongPosition >= localSong.DurationSeconds()) {
+                        editorStatus = "TEST FAILED: SELECT A POSITION BEFORE SONG END";
+                    } else {
+                        const double exactBeat = (editorSongPosition - checked.offsetSeconds)
+                            * checked.route.bpm / 60.0;
+                        const int firstScored = std::clamp(
+                            static_cast<int>(std::ceil(exactBeat - 1e-6)),
+                            checked.route.firstBeat, checked.route.lengthBeats);
+                        activeChart = std::move(checked.route);
+                        chartTitle = std::move(checked.title);
+                        previewLead = checked.previewLeadBeats;
+                        chartPlayback.Configure(activeChart.bpm, checked.offsetSeconds);
+                        judge.SetOffsetSeconds(checked.offsetSeconds);
+                        editorTestOrigin = EditorTestOrigin{editorSongPosition,
+                                                            firstScored};
+                        customChart = true;
+                        state.screen = Screen::Play;
+                        editorStatus = "TEST FROM BEAT " + std::to_string(exactBeat) +
+                                       " - R RETRIES FROM HERE";
+                    }
                 }
             }
         }
@@ -1143,6 +1167,7 @@ int main(int argc, char** argv) {
                     previewLead = candidate.previewLeadBeats;
                     chartPlayback.Configure(activeChart.bpm, candidate.offsetSeconds);
                     chartPlayback.SetSpeed(1.0, now); // Fresh Home charts start at normal speed.
+                    editorTestOrigin.reset();
                     judge.SetOffsetSeconds(candidate.offsetSeconds);
                     customChart = true;
                     loadedNewChart = true;
@@ -1173,12 +1198,22 @@ int main(int argc, char** argv) {
                     activeChart = demo;
                     chartTitle = "BUILT-IN DEMO";
                     previewLead = 4.0;
+                    editorTestOrigin.reset();
                     judge.SetOffsetSeconds(0.0);
                 } else {
                     judge.Reset();
                 }
-                if (customChart) chartPlayback.Start(now);
-                else transport.Start(now);
+                if (customChart) {
+                    if (editorTestOrigin &&
+                        (previousScreen == Screen::Editor ||
+                         previousScreen == Screen::Results)) {
+                        judge.ResetFromBeat(editorTestOrigin->firstScoredBeat);
+                        chartPlayback.StartAtAudioSeconds(
+                            editorTestOrigin->audioSeconds, now);
+                    } else {
+                        chartPlayback.Start(now);
+                    }
+                } else transport.Start(now);
             } else if (state.screen == Screen::Listen) {
                 localSong.SetSpeed(1.0, now); // Preview slowdown must not leak to Listen.
                 localSong.Start(now);
@@ -1191,8 +1226,13 @@ int main(int argc, char** argv) {
             if (input.restartPressed ||
                 (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
                 judge.Reset();
-                if (customChart) chartPlayback.Start(now);
-                else transport.Start(now);
+                if (customChart) {
+                    if (editorTestOrigin) {
+                        judge.ResetFromBeat(editorTestOrigin->firstScoredBeat);
+                        chartPlayback.StartAtAudioSeconds(
+                            editorTestOrigin->audioSeconds, now);
+                    } else chartPlayback.Start(now);
+                } else transport.Start(now);
             } else if (input.pausePressed) {
                 if (customChart) {
                     if (chartPlayback.Paused()) chartPlayback.Resume(now);

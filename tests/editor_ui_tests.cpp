@@ -252,6 +252,101 @@ int main() {
                 chart.Data().route.turns[3].beat == 13,
                 "Ctrl+Shift+Left moves whole highlighted group one beat");
 
+    // Regression: dragging off the right edge must keep scrolling the ruler
+    // instead of capping selection at the last visible tick.
+    ChartEditor longChart;
+    longChart.NewDraft();
+    ok &= Check(longChart.SetSongDuration(180.0) &&
+                longChart.Data().route.lengthBeats >= 300,
+                "long song provides room for drag autoscroll");
+    EditorUiState scrollUi;
+    longChart.SelectBeat(20);
+    EditorControls beginDrag = Click(cursor, 477);
+    beginDrag.mouseHeld = true;
+    beginDrag.elapsedSeconds = 1.0f / 60.0f;
+    ApplyEditorControls(longChart, scrollUi, beginDrag);
+    const int firstVisibleEdge = longChart.SelectedBeat() + 16;
+    EditorControls atRightEdge;
+    atRightEdge.mouse = {909, 477};
+    atRightEdge.mouseHeld = true;
+    atRightEdge.elapsedSeconds = 0.05f;
+    for (int frame = 0; frame < 80; ++frame)
+        ApplyEditorControls(longChart, scrollUi, atRightEdge);
+    ok &= Check(scrollUi.HasRange() && scrollUi.rangeFirst == 20 &&
+                scrollUi.rangeLast > firstVisibleEdge &&
+                longChart.SelectedBeat() == scrollUi.rangeLast,
+                "holding a range at the right edge extends beyond the visible screen");
+    EditorControls stopDrag;
+    stopDrag.mouseReleased = true;
+    stopDrag.mouse = {909, 477};
+    ApplyEditorControls(longChart, scrollUi, stopDrag);
+    const int finishedSelection = longChart.SelectedBeat();
+    for (int i = 0; i < 20; ++i) {
+        EditorControls idle;
+        idle.mouse = {909, 477};
+        idle.elapsedSeconds = 0.05f;
+        ApplyEditorControls(longChart, scrollUi, idle);
+    }
+    ok &= Check(!scrollUi.draggingTimeline &&
+                longChart.SelectedBeat() == finishedSelection,
+                "autoscrolling stops immediately on mouse release");
+    // Left edge also supports continuous backwards range selection.
+    longChart.SelectBeat(170);
+    scrollUi = EditorUiState{};
+    ApplyEditorControls(longChart, scrollUi, beginDrag);
+    EditorControls atLeftEdge;
+    atLeftEdge.mouse = {51, 477};
+    atLeftEdge.mouseHeld = true;
+    atLeftEdge.elapsedSeconds = 0.05f;
+    for (int i = 0; i < 50; ++i)
+        ApplyEditorControls(longChart, scrollUi, atLeftEdge);
+    ok &= Check(scrollUi.HasRange() && scrollUi.rangeLast == 170 &&
+                scrollUi.rangeFirst < 140,
+                "left-edge drag scrolls backwards continuously");
+
+    // Holding Ctrl+arrows repeats four-beat navigation at increasing speed,
+    // without modifying authored chart events.
+    scrollUi = EditorUiState{};
+    longChart.SelectBeat(4);
+    const auto unchangedTurns = longChart.Data().route.turns.size();
+    EditorControls initialBar;
+    initialBar.nextBar = true;
+    initialBar.heldBarDirection = 1;
+    initialBar.elapsedSeconds = 0.016f;
+    ApplyEditorControls(longChart, scrollUi, initialBar);
+    ok &= Check(longChart.SelectedBeat() == 8,
+                "first Ctrl+Right keydown jumps exactly one bar");
+    EditorControls heldBar;
+    heldBar.heldBarDirection = 1;
+    heldBar.elapsedSeconds = 0.05f;
+    for (int i = 0; i < 30; ++i)
+        ApplyEditorControls(longChart, scrollUi, heldBar);
+    ok &= Check(longChart.SelectedBeat() > 40 &&
+                unchangedTurns == longChart.Data().route.turns.size(),
+                "holding Ctrl+Right rapidly traverses many bars without editing");
+    EditorControls releasedBar;
+    releasedBar.elapsedSeconds = 0.05f;
+    ApplyEditorControls(longChart, scrollUi, releasedBar);
+    const int releasedBeat = longChart.SelectedBeat();
+    for (int i = 0; i < 25; ++i)
+        ApplyEditorControls(longChart, scrollUi, releasedBar);
+    ok &= Check(longChart.SelectedBeat() == releasedBeat,
+                "bar navigation repeat stops on key release");
+    EditorControls reverseBar;
+    reverseBar.previousBar = true;
+    reverseBar.heldBarDirection = -1;
+    reverseBar.elapsedSeconds = 0.016f;
+    ApplyEditorControls(longChart, scrollUi, reverseBar);
+    ok &= Check(longChart.SelectedBeat() == releasedBeat - 4,
+                "Ctrl+Left changes direction with a single initial step");
+    for (int i = 0; i < 100; ++i) {
+        reverseBar.previousBar = false;
+        reverseBar.elapsedSeconds = 0.05f;
+        ApplyEditorControls(longChart, scrollUi, reverseBar);
+    }
+    ok &= Check(longChart.SelectedBeat() == longChart.Data().route.firstBeat,
+                "repeating Ctrl+Left clamps at earliest song beat");
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS tabs=3 grid=8x8 preview=1 zoom=1\n";
     return 0;

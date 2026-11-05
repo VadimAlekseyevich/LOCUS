@@ -11,6 +11,10 @@ namespace locus::app {
 struct EditorControls {
     bool previousBeat = false, nextBeat = false;
     bool previousBar = false, nextBar = false; // Four beats = one 4/4 bar.
+    // Held Ctrl+arrow direction for deterministic continuous navigation.
+    // UI input polls the key state; tests can supply elapsedSeconds directly.
+    int heldBarDirection = 0; // -1 = left, +1 = right, 0 = released.
+    float elapsedSeconds = 0.0f;
     bool movePrevious = false, moveNext = false;
     bool addLeft = false, addRight = false, removeTurn = false;
     bool headingLeft = false, headingRight = false;
@@ -45,6 +49,9 @@ struct EditorUiState {
     bool draggingTimeline = false;
     int dragAnchorBeat = 0;
     double dragViewBeat = 0.0;
+    int heldBarDirection = 0;
+    float heldBarSeconds = 0.0f;
+    float barRepeatSeconds = 0.0f;
     core::ChartEditor::Pattern clipboard;
     bool HasRange() const noexcept {
         return rangeFirst >= 0 && rangeLast >= rangeFirst;

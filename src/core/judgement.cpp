@@ -1,5 +1,6 @@
 #include "core/judgement.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace locus::core {
@@ -22,6 +23,16 @@ void TurnJudge::Reset() noexcept {
     nextEvent_ = 0;
     counts_ = GradeCounts{};
     last_.reset();
+}
+
+void TurnJudge::ResetFromBeat(int firstScoredBeat) noexcept {
+    Reset();
+    nextEvent_ = static_cast<std::size_t>(
+        std::lower_bound(chart_.turns.begin(), chart_.turns.end(),
+                         firstScoredBeat,
+                         [](const TurnEvent& event, int beat) {
+                             return event.beat < beat;
+                         }) - chart_.turns.begin());
 }
 
 const TurnEvent* TurnJudge::NextEvent() const noexcept {

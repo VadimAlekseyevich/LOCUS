@@ -22,6 +22,11 @@ constexpr float kTimelineWidth = 860.0f, kTimelineHeight = 52.0f;
 constexpr float kPlayheadX = kTimelineX + kTimelineWidth / 3.0f;
 constexpr float kZoomPixelsPerBeat[7] = {12, 18, 26, 36, 52, 76, 104};
 constexpr int kZoomMax = 6;
+constexpr float kDragEdgeZone = 48.0f;
+// Repeat a four-beat step quickly after a short delay; accelerate on hold.
+constexpr float kBarRepeatDelay = 0.23f;
+constexpr float kBarRepeatInterval = 0.075f;
+constexpr float kBarRepeatFastInterval = 0.04f;
 constexpr Rectangle kZoomOut{807, 416, 34, 27};
 constexpr Rectangle kZoomIn{863, 416, 34, 27};
 
@@ -504,6 +509,10 @@ EditorControls PollEditorControls() {
     input.nextBeat = IsKeyPressed(KEY_RIGHT) && !shift && !control;
     input.previousBar = IsKeyPressed(KEY_LEFT) && control && !shift;
     input.nextBar = IsKeyPressed(KEY_RIGHT) && control && !shift;
+    input.heldBarDirection = control && !shift
+        ? (static_cast<int>(IsKeyDown(KEY_RIGHT)) -
+           static_cast<int>(IsKeyDown(KEY_LEFT))) : 0;
+    input.elapsedSeconds = GetFrameTime();
     input.movePrevious = IsKeyPressed(KEY_LEFT) && shift && !control;
     input.moveNext = IsKeyPressed(KEY_RIGHT) && shift && !control;
     input.addLeft = IsKeyPressed(KEY_F);
@@ -557,6 +566,9 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
     // Keep all editor shortcuts away from active text fields.
     if (ui.EditingText()) {
+        ui.heldBarDirection = 0;
+        ui.heldBarSeconds = 0.0f;
+        ui.barRepeatSeconds = 0.0f;
         if (input.escape) {
             ui.active = EditorField::None;
             ui.buffer.clear();
@@ -738,11 +750,35 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         }
     }
 
-    // While dragging, freeze the beat-to-pixel transform so the scroll
-    // follows the mouse rather than moving the clicked target out from under it.
+    // Dragging past the visible ruler now autoscrolls the *view* as well as
+    // extending the selected interval. Keep the beat-to-pixel transform
+    // stable while dragging, except for deliberate edge scrolling.
     if (ui.draggingTimeline && (input.mouseHeld || input.mouseReleased)) {
+        if (input.mouseHeld && ui.tab == EditorTab::Route) {
+            const float left = kTimelineX;
+            const float right = kTimelineX + kTimelineWidth;
+            const float x = input.mouse.x;
+            float edge = 0.0f;
+            if (x > right - kDragEdgeZone) {
+                edge = (x - (right - kDragEdgeZone)) / kDragEdgeZone;
+            } else if (x < left + kDragEdgeZone) {
+                edge = (x - (left + kDragEdgeZone)) / kDragEdgeZone;
+            }
+            if (edge != 0.0f) {
+                const float intensity = std::min(3.0f, std::abs(edge));
+                const float dt = std::clamp(input.elapsedSeconds, 0.0f, 0.10f);
+                const double beatsPerSecond = 8.0 + intensity * 16.0;
+                ui.dragViewBeat = std::clamp(
+                    ui.dragViewBeat +
+                        (edge > 0.0f ? 1.0 : -1.0) * beatsPerSecond * dt,
+                    static_cast<double>(draft.Data().route.firstBeat),
+                    static_cast<double>(draft.Data().route.lengthBeats - 1));
+            }
+        }
+        const float x = std::clamp(input.mouse.x, kTimelineX,
+                                    kTimelineX + kTimelineWidth);
         const double point = ui.dragViewBeat +
-                             (input.mouse.x - kPlayheadX) / PixelsPerBeat(ui);
+                             (x - kPlayheadX) / PixelsPerBeat(ui);
         const int beat = std::clamp(static_cast<int>(std::lround(point)),
                                     draft.Data().route.firstBeat,
                                     draft.Data().route.lengthBeats - 1);
@@ -763,6 +799,35 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     if (input.nextBeat) { draft.StepSelection(1); ui.rangeFirst = ui.rangeLast = -1; }
     if (input.previousBar) { draft.StepSelection(-4); ui.rangeFirst = ui.rangeLast = -1; }
     if (input.nextBar) { draft.StepSelection(4); ui.rangeFirst = ui.rangeLast = -1; }
+    // Use held key state instead of OS key-repeat: consistent on all PCs.
+    // First key-down gets a single step above; continuous steps begin after
+    // 230ms, then speed up after 1.2 seconds of holding.
+    const int held = std::clamp(input.heldBarDirection, -1, 1);
+    if (held != ui.heldBarDirection) {
+        ui.heldBarDirection = held;
+        ui.heldBarSeconds = 0.0f;
+        ui.barRepeatSeconds = 0.0f;
+    }
+    if (held != 0) {
+        const float dt = std::clamp(input.elapsedSeconds, 0.0f, 0.10f);
+        const float before = ui.heldBarSeconds;
+        ui.heldBarSeconds += dt;
+        if (ui.heldBarSeconds >= kBarRepeatDelay) {
+            ui.barRepeatSeconds += before < kBarRepeatDelay
+                ? ui.heldBarSeconds - kBarRepeatDelay : dt;
+            const float interval = ui.heldBarSeconds >= 1.20f
+                ? kBarRepeatFastInterval : kBarRepeatInterval;
+            int repeats = 0;
+            while (ui.barRepeatSeconds >= interval && repeats++ < 8) {
+                ui.barRepeatSeconds -= interval;
+                if (!draft.StepSelection(held * 4)) {
+                    ui.barRepeatSeconds = 0.0f; // Stay at the chart boundary.
+                    break;
+                }
+                ui.rangeFirst = ui.rangeLast = -1;
+            }
+        }
+    }
 
     if (ui.tab == EditorTab::Route) {
         if (input.movePrevious && !ui.HasRange()) action.changedChart |= draft.MoveTurn(-1);
