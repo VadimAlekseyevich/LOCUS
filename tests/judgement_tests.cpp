@@ -119,6 +119,23 @@ int main() {
                     judge.Counts().miss == 1,
                 "late press after window ends yields Miss, not a late hit");
 
+    // External v1 charts use audio time at beat zero, not a second
+    // frame-based timing domain. Both early and late offsets are legal.
+    TurnJudge shifted(demo);
+    shifted.SetOffsetSeconds(0.75);
+    ok &= Check(!shifted.Press(Turn::Right, first) &&
+                    Is(shifted.Press(Turn::Right, first + 0.75), Grade::Perfect, 2),
+                "positive chart offset shifts the scheduled hit window");
+    shifted.SetOffsetSeconds(-0.5);
+    ok &= Check(Is(shifted.Press(Turn::Right, first - 0.5), Grade::Perfect, 2),
+                "negative audio-time preroll preserves beat-zero judgements");
+    shifted.FinishRemainingMisses();
+    ok &= Check(shifted.Counts().Resolved() == static_cast<int>(demo.turns.size()),
+                "song end resolves remaining chart events once");
+    shifted.FinishRemainingMisses();
+    ok &= Check(shifted.Counts().Resolved() == static_cast<int>(demo.turns.size()),
+                "song completion must not double-count missing events");
+
     if (!ok) return 1;
     std::cout << "JUDGEMENT_PASS turns=9 perfect-good-bad-miss no-fail=true\n";
     return 0;
