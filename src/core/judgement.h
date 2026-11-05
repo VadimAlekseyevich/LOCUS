@@ -41,10 +41,17 @@ class TurnJudge {
 public:
     explicit TurnJudge(const Chart& chart) noexcept : chart_(chart) {}
 
+    // Offset is audio time at which chart beat zero occurs. Call between sessions.
+    void SetOffsetSeconds(double offset) noexcept {
+        offsetSeconds_ = offset;
+        Reset();
+    }
+
     void Reset() noexcept;
 
     // Mark every unplayed event whose late window has elapsed as Miss.
     void Advance(double songSeconds) noexcept;
+    void FinishRemainingMisses() noexcept;
 
     // Fresh key-down only, timestamped in the same song-time domain as
     // marker animation. Returns nullopt for ignored/out-of-window presses.
@@ -58,6 +65,7 @@ private:
     void Resolve(Grade grade, double errorSeconds, bool wrongDirection) noexcept;
 
     const Chart& chart_;
+    double offsetSeconds_ = 0.0;
     std::size_t nextEvent_ = 0;
     GradeCounts counts_;
     std::optional<Judgement> last_;
