@@ -237,11 +237,14 @@ echo  LOCUS - DEMO / LOCAL SONGS / JSON CHARTS / EDITOR
 echo  ENTER = Built-in demo    O = Listen to WAV/MP3
 echo  C = Open JSON chart + song   E = Open chart editor
 echo  F = Left turn  J = Right turn  (Play or Editor)
-echo  EDITOR: click grid start / timeline beat, arrows select beat
-echo  EDITOR: Z/X BPM  N/M offset +/-10 ms  Shift+N/M +/-1 ms
-echo  EDITOR: Q/E heading  [/] length  Delete removes turn
-echo  EDITOR: O attach WAV/MP3  Ctrl+S Save  Ctrl+Shift+S Save As
-echo  EDITOR: Ctrl+O Open  Ctrl+N New  T Test Play  H Home
+echo  EDITOR: click LOAD SONG, PLAY/PAUSE, RESTART, TEST
+echo  EDITOR: click BPM / OFFSET MS / BEATS / TITLE to type; ENTER confirms
+echo  EDITOR: SPACE preview song+moving marker  R restart  Q/E heading
+echo  EDITOR: 1-5 or speed buttons = 100/75/50/25/10 percent
+echo  EDITOR: click grid start / timeline beat; arrows step; F/J turns
+echo  EDITOR: Ctrl+S Save  Ctrl+Shift+S Save As  Ctrl+O Open
+echo  EDITOR: Ctrl+N New  T Test Play  H Home
+echo  PLAY: 1-5 adjust speed of custom song and moving chart
 echo  EDITOR: unsaved changes prompt - Y discard / N cancel
 echo  SPACE = Pause/Resume  R = Replay  H = Home  ESC = Close
 echo  F11 = Fullscreen / Window   Window edges = Resize
