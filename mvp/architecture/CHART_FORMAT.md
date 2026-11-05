@@ -71,7 +71,7 @@ Every field below is **required** for v1. Do not invent default values during pa
 | start.heading | String | One of **"up", "right", "down", "left"** |
 | previewLeadBeats | Number | Finite and **greater than 0**; fractional values allowed |
 | turns | Array | Zero or more turn objects, in **strictly increasing beat order** |
-| turns[i].beat | Integer | Nonnegative whole-number quarter-note index (0 allowed) |
+| turns[i].beat | Integer | Whole-number beat index **−65536 through 65535**; negative beats are valid before a positive offset if the event time is within the song |
 | turns[i].turn | String | Exactly **"left"** or **"right"** |
 
 **JSON type and naming rules**
@@ -110,7 +110,7 @@ chartBeatAtSongSeconds(s) = (s - offsetSeconds) / secondsPerBeat
 
 ### 5.1 Pure parsing and chart validation (no filesystem/audio)
 
-Reject malformed/non-UTF-8 JSON; missing/duplicate/unknown fields; wrong types; unsupported formatVersion; empty title; invalid audio path; non-positive bpm or previewLeadBeats; non-finite numeric values; grid dimensions outside 2..16; start outside the authored grid; unknown headings/actions; invalid, unsorted, repeated, fractional, or negative event beats.
+Reject malformed/non-UTF-8 JSON; missing/duplicate/unknown fields; wrong types; unsupported formatVersion; empty title; invalid audio path; non-positive bpm or previewLeadBeats; non-finite numeric values; grid dimensions outside 2..16; start outside the authored grid; unknown headings/actions; invalid, unsorted, repeated, fractional, or out-of-range beat indices.
 
 Validators must report a **specific field path and reason**, for example **turns[1].beat: duplicate beat 4**. Never silently sort, deduplicate, clamp, coerce a value, choose an alternative heading, or accept unknown future semantics.
 
@@ -120,7 +120,7 @@ The mutable **Editor ChartDraft** may be incomplete/invalid while editing; it mu
 
 - Locate the audio file relative to the **directory containing the chart file**, not the process working directory.
 - Check existence/readability and whether the chosen audio backend decodes the format. Parsing JSON alone does not access an audio device.
-- When file duration **D** is known, each turn target must occur at audio time **strictly less than D**. Negative-time events are permitted only under the silent-preroll rules of TIMING.md.
+- When file duration **D** is known, each turn target must satisfy **0 ≤ target song time < D**. Beat indices may be negative, but playable input events must lie within actual audio (silent negative-time preroll is not scored).
 - Warn when a timing window could extend beyond audio end, without silently moving the event. At audio completion any unresolved scheduled events are settled once, as defined in TIMING.md.
 - Window overlap is dependent on the selected judgement thresholds and is checked **when starting a scoring session**, not as a permanent JSON-schema error.
 - If audio is unavailable, distinguish **valid chart data** from **unplayable chart/audio association** in error messages.
@@ -217,3 +217,22 @@ The implementation may report all errors or stop after one, but must **not silen
 - [x] Pure validation and file/audio integration are separate.
 
 **Original A-05 work delivered this specification.** The chart parser and first editor controls have since been implemented as part of the later playable LOCUS milestones.
+
+## November 2026 song-length update
+
+The manual Total Beats field is retired. On load, the app derives a half-open
+beat interval directly from audio duration `D`, BPM `B` and offset seconds `O`:
+
+```
+firstBeat = floor(-O * B / 60)
+endBeatExclusive = ceil((D-O) * B / 60)
+valid route step indices: [firstBeat, endBeatExclusive)
+```
+
+The start cell/heading now describe the first step that overlaps the song,
+not necessarily beat zero. A positive offset can place beats −5..−1 inside
+the song, including scored relative turns at those negative beat indices.
+New JSON never writes `lengthBeats`. Existing JSON with that property is
+accepted and its manual length ignored after song-duration calculation.
+The stored `turns` remain relative Left/Right; gameplay converts absolute
+perpendicular arrow keys to the same authored turn values before judgement.

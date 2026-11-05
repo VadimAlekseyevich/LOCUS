@@ -55,14 +55,15 @@ int main() {
                  parsed.route.turns.front().beat == 0,
                  "original versioned chart fields preserved");
     ok &= Expect(PrepareChartForSong(parsed, 11.0, error) &&
+                 parsed.route.firstBeat == -1 &&
                  parsed.route.lengthBeats == 22,
-                 "song duration determines a bounded number of beats");
+                 "song duration covers the whole track, including pre-offset negative beats");
     if (parsed.route.lengthBeats > 4) {
         const RouteStep first = SampleRouteStep(parsed.route, 0);
         const RouteStep later = SampleRouteStep(parsed.route, 4);
-        ok &= Expect(first.heading == Heading::Up && first.wraps &&
-                     first.to.x == 3 && first.to.y == 3 &&
-                     later.heading == Heading::Right && later.wraps,
+        ok &= Expect(first.heading == Heading::Up &&
+                     first.to.x == 0 && first.to.y == 3 &&
+                     later.heading == Heading::Right,
                      "loaded JSON drives unchanged deterministic Wrap route");
     }
     ok &= Expect(Reject(valid, "\"formatVersion\": 1", "\"formatVersion\": 2",
@@ -130,16 +131,21 @@ int main() {
                  ValidChartAudioPath("audio/song.wav"),
                  "validates portable chart-relative audio paths");
     ok &= Expect(!PrepareChartForSong(parsed, 0.1, error) &&
-                 error.find("offsetSeconds") != std::string::npos,
-                 "rejects charts beginning beyond end of audio");
+                 error.find("turns[") != std::string::npos,
+                 "rejects a turn that occurs outside the song even before offset");
     LoadedChart early;
     const std::string negative = std::string(valid).replace(
         valid.find("\"offsetSeconds\": 0.25"), sizeof("\"offsetSeconds\": 0.25") - 1,
         "\"offsetSeconds\": -0.5");
     ok &= Expect(ParseChartJson(negative, early, error) &&
-                 PrepareChartForSong(early, 10.0, error) &&
+                 !PrepareChartForSong(early, 10.0, error) &&
+                 error.find("turns[0]") != std::string::npos,
+                 "events in negative song-time preroll are not scorable");
+    if (!early.route.turns.empty()) early.route.turns.erase(early.route.turns.begin());
+    ok &= Expect(PrepareChartForSong(early, 10.0, error) &&
+                 early.route.firstBeat == 1 &&
                  early.route.lengthBeats == 21,
-                 "negative offsets include chart-side silent preroll");
+                 "negative offset starts the visible grid at the audio-overlapping beat");
 
     // New format is milliseconds; legacy second-based charts remain valid.
     std::string millis = valid;
@@ -181,23 +187,46 @@ int main() {
                  "new chart serializes: " + error);
     ok &= Expect(serialized.find("\"offsetMs\"") != std::string::npos &&
                  serialized.find("\"offsetSeconds\"") == std::string::npos &&
-                 serialized.find("\"lengthBeats\": 16") != std::string::npos,
-                 "writer uses offsetMs and saves the editor timeline length");
+                 serialized.find("\"lengthBeats\"") == std::string::npos,
+                 "writer uses offsetMs and never saves manual chart length");
     LoadedChart reopened;
     ok &= Expect(ParseChartJson(serialized, reopened, error) &&
-                 reopened.authoredLengthBeats == 16 &&
+                 !reopened.authoredLengthBeats.has_value() &&
                  reopened.route.turns.size() == 3 &&
                  std::abs(reopened.offsetSeconds + 0.137) < 1e-9 &&
                  reopened.route.turns.back().beat == 9,
                  "editor creation round-trips through JSON");
     ok &= Expect(PrepareChartForSong(reopened, 11.0, error) &&
-                 reopened.route.lengthBeats == 16,
-                 "shorter authored timeline survives song-duration validation");
-    LoadedChart invalidLength = reopened;
-    invalidLength.authoredLengthBeats = 65536;
-    ok &= Expect(!PrepareChartForSong(invalidLength, 11.0, error) &&
-                 error.find("lengthBeats") != std::string::npos,
-                 "chart timeline cannot exceed available song duration");
+                 reopened.route.lengthBeats == 23,
+                 "the editor timeline always spans the full song");
+    LoadedChart legacyLength = reopened;
+    legacyLength.authoredLengthBeats = 65536;
+    ok &= Expect(PrepareChartForSong(legacyLength, 11.0, error) &&
+                 legacyLength.route.lengthBeats == 23 &&
+                 !legacyLength.authoredLengthBeats,
+                 "legacy saved length metadata no longer truncates the song");
+
+    int firstBeat = 0, endBeat = 0;
+    ok &= Expect(ComputeSongBeatRange(120.0, 2.5, 10.0,
+                                     firstBeat, endBeat, error) &&
+                 firstBeat == -5 && endBeat == 15,
+                 "offset 2500ms gives five negative beats and fifteen nonnegative");
+    const std::string negativeEvent = R"({
+        "formatVersion":1,"title":"Early","audioPath":"song.mp3",
+        "bpm":120,"offsetMs":2500,"grid":{"width":4,"height":4},
+        "start":{"x":0,"y":0,"heading":"right"},
+        "previewLeadBeats":8,
+        "turns":[{"beat":-3,"turn":"left"},{"beat":1,"turn":"right"}]
+    })";
+    LoadedChart beforeOffset;
+    std::string saved;
+    ok &= Expect(ParseChartJson(negativeEvent, beforeOffset, error) &&
+                 PrepareChartForSong(beforeOffset, 10.0, error) &&
+                 beforeOffset.route.firstBeat == -5 &&
+                 SampleRouteStep(beforeOffset.route, -3).heading == Heading::Up &&
+                 SerializeChartJson(beforeOffset, saved, error) &&
+                 saved.find("\"beat\": -3") != std::string::npos,
+                 "negative beat turn before offset works across parse, route and save");
 
     if (!ok) return 1;
     std::cout << "CHART_JSON_PASS version=1 validation=1 wrap=1 preroll=1\n";

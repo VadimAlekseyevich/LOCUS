@@ -9,12 +9,14 @@ namespace locus::app {
 // structs without changing the route sampler or chart JSON format.
 // No user-editable skins, textures or drag-and-drop layout exist yet.
 struct RouteVisualStyle {
-    Color nextStep{179, 224, 255, 255};  // High-contrast future trajectory
-    Color furtherStep{152, 207, 252, 235};
-    Color routeOutline{13, 29, 49, 245};
-    Color wholeStep{112, 199, 239, 222};
-    Color traveledStep{112, 240, 220, 255};
-    Color currentStep{113, 237, 221, 255};
+    // These form the future skin's fully-colored / semi-colored / overlaid path.
+    Color fullTrajectory{255, 70, 84, 255};
+    Color semiTrajectory{255, 70, 84, 130};
+    Color combinedTrajectory{255, 117, 125, 255};
+    Color routeOutline{49, 13, 24, 245};
+    Color reachedTurnPoint{255, 63, 72, 255};
+    static constexpr int lookaheadBeats = 8; // Two bars of 4/4.
+    static constexpr int fadeBeats = 4; // Far bar fades in during one bar.
     float editorNextStepWidth = 6.0f;
     float gameNextStepWidth = 5.0f;
     float outlineScale = 1.8f;
@@ -29,6 +31,24 @@ struct EditorRouteLayout {
 };
 
 inline constexpr RouteVisualStyle kDefaultRouteVisualStyle{};
+
+// The next four beats are fully red; beats 4..8 ahead fade linearly from
+// full to invisible. The parameter is measured in beats, not frames.
+inline float TrajectoryOpacity(double beatsAhead) noexcept {
+    if (beatsAhead <= RouteVisualStyle::lookaheadBeats -
+                          RouteVisualStyle::fadeBeats) return 1.0f;
+    if (beatsAhead >= RouteVisualStyle::lookaheadBeats) return 0.0f;
+    return static_cast<float>(
+        (RouteVisualStyle::lookaheadBeats - beatsAhead) /
+        RouteVisualStyle::fadeBeats);
+}
+
+inline Color WithOpacity(Color color, float opacity) noexcept {
+    if (opacity <= 0.0f) color.a = 0;
+    else if (opacity < 1.0f) color.a = static_cast<unsigned char>(
+        static_cast<float>(color.a) * opacity);
+    return color;
+}
 inline constexpr EditorRouteLayout kDefaultEditorRouteLayout{};
 
 } // namespace locus::app

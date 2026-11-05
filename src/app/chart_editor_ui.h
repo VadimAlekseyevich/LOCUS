@@ -31,7 +31,7 @@ struct EditorControls {
 };
 
 enum class EditorTab { Route, Audio, Field };
-enum class EditorField { None, Title, Bpm, OffsetMs, Length, GridSize, StartCell };
+enum class EditorField { None, Title, Bpm, OffsetMs, GridSize, StartCell };
 
 struct EditorUiState {
     EditorField active = EditorField::None;

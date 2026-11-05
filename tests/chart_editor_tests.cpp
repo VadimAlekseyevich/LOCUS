@@ -214,6 +214,28 @@ int main() {
                 saved.Redo() && saved.Dirty(),
                 "undo to last saved revision restores clean status");
 
+    ChartEditor autoTimeline;
+    ok &= Check(autoTimeline.SetSongDuration(10.0) &&
+                autoTimeline.Data().route.firstBeat == 0 &&
+                autoTimeline.Data().route.lengthBeats == 20,
+                "audio duration automatically sets 20 beats at 120 BPM");
+    ok &= Check(autoTimeline.SetOffsetMs(2500.0) &&
+                autoTimeline.Data().route.firstBeat == -5 &&
+                autoTimeline.Data().route.lengthBeats == 15 &&
+                autoTimeline.SelectBeat(-3),
+                "positive offset exposes selectable negative beats in song");
+    autoTimeline.PutTurn(Turn::Left);
+    ok &= Check(autoTimeline.CopyTurns(-5, -2).notes.size() == 1 &&
+                autoTimeline.Data().route.turns[0].beat == -3,
+                "pattern editing supports pre-offset negative beat turn");
+    ok &= Check(autoTimeline.SetBpm(240.0) &&
+                autoTimeline.Data().route.firstBeat == -10 &&
+                autoTimeline.Data().route.lengthBeats == 30 &&
+                autoTimeline.Undo() &&
+                autoTimeline.Data().route.firstBeat == -5 &&
+                autoTimeline.Data().route.lengthBeats == 15,
+                "BPM reflows full song and Undo restores calculated boundaries");
+
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 wrap=1\n";
     return 0;

@@ -207,13 +207,13 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             error = "turns: too many events";
             return false;
         }
-        int prior = -1;
+        int prior = -65537;
         for (std::size_t i = 0; i < turns.size(); ++i) {
             const std::string where = "turns[" + std::to_string(i) + "]";
             if (!HasExactMembers(turns[i], {"beat", "turn"}, where, error))
                 return false;
             int beat = 0;
-            if (!IntegerInRange(turns[i]["beat"], 0, 65535, beat,
+            if (!IntegerInRange(turns[i]["beat"], -65536, 65535, beat,
                                 where + ".beat", error)) return false;
             if (beat <= prior) {
                 error = where + ".beat: events must be strictly increasing (no duplicates)";
@@ -237,12 +237,8 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             int authored = 0;
             if (!IntegerInRange(document["lengthBeats"], 1, 65536, authored,
                                 "lengthBeats", error)) return false;
-            if (!parsed.route.turns.empty() &&
-                parsed.route.turns.back().beat >= authored) {
-                error = "lengthBeats: must be greater than the final turn beat";
-                return false;
-            }
-            parsed.authoredLengthBeats = authored;
+            // Former manual editor length is intentionally discarded.
+            (void)authored;
         }
         result = std::move(parsed);
         error.clear();
@@ -276,9 +272,7 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
                              {"y", chart.route.start.y},
                              {"heading", headings[heading]}};
         document["previewLeadBeats"] = chart.previewLeadBeats;
-        if (chart.authoredLengthBeats) {
-            document["lengthBeats"] = *chart.authoredLengthBeats;
-        }
+        // Legacy lengthBeats is no longer authored: song length determines it.
         document["turns"] = Ordered::array();
         for (const auto& event : chart.route.turns) {
             document["turns"].push_back({
@@ -299,36 +293,53 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
     }
 }
 
-bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
-                         std::string& error) {
-    if (!std::isfinite(songDurationSeconds) || songDurationSeconds <= 0.0) {
+bool ComputeSongBeatRange(double bpm, double offsetSeconds, double durationSeconds,
+                          int& firstBeat, int& endBeat, std::string& error) {
+    if (!std::isfinite(durationSeconds) || durationSeconds <= 0.0) {
         error = "audioPath: music duration is invalid";
         return false;
     }
-    const double beatCount = (songDurationSeconds - chart.offsetSeconds) *
-                             chart.route.bpm / 60.0;
-    if (!std::isfinite(beatCount) || beatCount <= 0.0 || beatCount > 65536.0) {
-        error = "bpm/offsetSeconds: song chart must contain 1 to 65536 beats";
+    if (!std::isfinite(bpm) || bpm <= 0.0 ||
+        !std::isfinite(offsetSeconds)) {
+        error = "bpm/offsetMs: BPM or offset is invalid";
         return false;
     }
-    if (chart.authoredLengthBeats) {
-        if (*chart.authoredLengthBeats > static_cast<int>(std::ceil(beatCount))) {
-            error = "lengthBeats: chart is longer than the selected audio";
-            return false;
-        }
+    const double earliest = -offsetSeconds * bpm / 60.0;
+    const double latest = (durationSeconds - offsetSeconds) * bpm / 60.0;
+    const double first = std::floor(earliest);
+    const double end = std::ceil(latest);
+    if (!std::isfinite(first) || !std::isfinite(end) ||
+        first < -65536.0 || end > 65536.0 || end - first < 1.0 ||
+        end - first > 65536.0) {
+        error = "bpm/offsetMs: song must contain 1 to 65536 timeline beats";
+        return false;
     }
+    firstBeat = static_cast<int>(first);
+    endBeat = static_cast<int>(end);
+    error.clear();
+    return true;
+}
+
+bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
+                         std::string& error) {
+    int first = 0, end = 0;
+    if (!ComputeSongBeatRange(chart.route.bpm, chart.offsetSeconds,
+                              songDurationSeconds, first, end, error)) return false;
     for (std::size_t i = 0; i < chart.route.turns.size(); ++i) {
         const auto& event = chart.route.turns[i];
-        const double targetSeconds =
-            chart.offsetSeconds + event.beat * 60.0 / chart.route.bpm;
-        if (!std::isfinite(targetSeconds) || targetSeconds >= songDurationSeconds) {
+        const double timestamp =
+            chart.offsetSeconds + static_cast<double>(event.beat) * 60.0 / chart.route.bpm;
+        if (event.beat < first || event.beat >= end ||
+            !std::isfinite(timestamp) || timestamp < 0.0 ||
+            timestamp >= songDurationSeconds) {
             error = "turns[" + std::to_string(i) +
-                    "].beat: event occurs after song end";
+                    "].beat: note outside actual song audio";
             return false;
         }
     }
-    chart.route.lengthBeats = chart.authoredLengthBeats.value_or(
-        static_cast<int>(std::ceil(beatCount)));
+    chart.route.firstBeat = first;
+    chart.route.lengthBeats = end;
+    chart.authoredLengthBeats.reset();
     error.clear();
     return true;
 }

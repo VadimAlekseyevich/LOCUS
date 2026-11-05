@@ -92,10 +92,11 @@ int main() {
     ApplyEditorControls(chart, ui, escape);
 
     ApplyEditorControls(chart, ui, Click(155, 343));
-    ApplyEditorControls(chart, ui, Type("48"));
-    ApplyEditorControls(chart, ui, enter);
-    ok &= Check(chart.Data().route.lengthBeats == 48,
-                "total timeline length is edited under Field");
+    ok &= Check(!ui.EditingText(),
+                "manual Total Beats is not an editable field anymore");
+    ok &= Check(chart.SetSongDuration(10.0) &&
+                chart.Data().route.lengthBeats > 0,
+                "loading audio derives timeline length");
 
     // Transport is shared by all tabs.
     const auto song = ApplyEditorControls(chart, ui, Click(113, 134));

@@ -19,6 +19,8 @@ public:
     ChartEditor();
     void NewDraft();
     void Load(const LoadedChart& source);
+    bool SetSongDuration(double seconds);
+    bool HasSongDuration() const noexcept { return songDurationSeconds_ > 0.0; }
 
     const LoadedChart& Data() const noexcept { return chart_; }
     int SelectedBeat() const noexcept { return selectedBeat_; }
@@ -66,9 +68,11 @@ private:
     void SaveUndo();
     void MarkDirty() noexcept;
     void ResetHistory() noexcept;
+    bool ReflowSongRange() noexcept;
     static constexpr std::size_t kMaxHistory = 64;
 
     LoadedChart chart_;
+    double songDurationSeconds_ = 0.0;
     int selectedBeat_ = 0;
     bool dirty_ = false;
     std::uint64_t revision_ = 0;

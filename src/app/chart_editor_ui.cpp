@@ -30,8 +30,9 @@ float PixelsPerBeat(const EditorUiState& ui) {
 }
 
 double ViewBeat(const core::ChartEditor& draft, double activeBeat) {
-    return std::isfinite(activeBeat) && activeBeat >= 0.0
-        ? std::clamp(activeBeat, 0.0,
+    return std::isfinite(activeBeat)
+        ? std::clamp(activeBeat,
+                     static_cast<double>(draft.Data().route.firstBeat),
                      static_cast<double>(draft.Data().route.lengthBeats))
         : static_cast<double>(draft.SelectedBeat());
 }
@@ -147,7 +148,6 @@ const char* FieldName(EditorField field) {
         case EditorField::Title: return "TITLE";
         case EditorField::Bpm: return "BPM";
         case EditorField::OffsetMs: return "OFFSET (MS)";
-        case EditorField::Length: return "BEATS";
         case EditorField::GridSize: return "GRID SIZE (W/H)";
         case EditorField::StartCell: return "START (X/Y)";
         case EditorField::None: break;
@@ -160,8 +160,7 @@ Rectangle FieldBounds(EditorField field) {
         case EditorField::Title: return kTitle;
         case EditorField::Bpm: return kBpm;
         case EditorField::OffsetMs: return kOffset;
-        case EditorField::Length: return kLength;
-        case EditorField::GridSize: return kGridSize;
+         case EditorField::GridSize: return kGridSize;
         case EditorField::StartCell: return kStartCell;
         case EditorField::None: break;
     }
@@ -176,7 +175,7 @@ EditorField ClickedField(Vector2 mouse, EditorTab tab) {
         }
     } else if (tab == EditorTab::Field) {
         for (const auto field : {EditorField::GridSize, EditorField::StartCell,
-                                  EditorField::Length}) {
+                                  }) {
             if (Hit(FieldBounds(field), mouse)) return field;
         }
     }
@@ -193,9 +192,7 @@ std::string InitialValue(const core::ChartEditor& draft, EditorField field) {
         case EditorField::OffsetMs:
             std::snprintf(text, sizeof(text), "%.3f", draft.Data().offsetSeconds * 1000.0);
             return text;
-        case EditorField::Length:
-            return std::to_string(draft.Data().route.lengthBeats);
-        case EditorField::GridSize:
+         case EditorField::GridSize:
             return std::to_string(draft.Data().route.gridWidth) + "/" +
                    std::to_string(draft.Data().route.gridHeight);
         case EditorField::StartCell:
@@ -256,10 +253,7 @@ bool CommitField(EditorUiState& ui, core::ChartEditor& draft) {
         if (ParseNumeric(ui.buffer, value)) {
             if (field == EditorField::Bpm) valid = draft.SetBpm(value);
             if (field == EditorField::OffsetMs) valid = draft.SetOffsetMs(value);
-            if (field == EditorField::Length && value >= 1.0 &&
-                value <= 65536.0 && std::floor(value) == value)
-                valid = draft.SetLength(static_cast<int>(value));
-        }
+         }
     }
     if (!valid) {
         ui.feedback = std::string("INVALID ") + FieldName(field) +
@@ -310,7 +304,8 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
                    1.5f, Color{51, 62, 79, 255});
     }
 
-    const double bounded = std::clamp(previewBeat, 0.0,
+    const double bounded = std::clamp(previewBeat,
+                                      static_cast<double>(chart.firstBeat),
                                       static_cast<double>(chart.lengthBeats));
     const int beat = std::min(static_cast<int>(std::floor(bounded)),
                               chart.lengthBeats - 1);
@@ -327,15 +322,22 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
         }
     };
     const auto& style = kDefaultRouteVisualStyle;
-    if (beat + 1 < chart.lengthBeats) {
-        const core::RouteStep next = core::SampleRouteStep(chart, beat + 1);
-        const core::StepView future = core::ViewRouteStep(next, 1.0);
-        drawSegments(future, style.routeOutline,
+    // Two full bars ahead. The farthest bar fades linearly from invisible
+    // to solid red as its turns approach within four beats.
+    for (int ahead = core::kMaxGridSize / 2; ahead >= 1; --ahead) {
+        const int target = beat + ahead;
+        if (target >= chart.lengthBeats) continue;
+        const float opacity = TrajectoryOpacity(target - bounded);
+        if (opacity <= 0.0f) continue;
+        const core::StepView future = core::ViewRouteStep(
+            core::SampleRouteStep(chart, target), 1.0);
+        drawSegments(future, WithOpacity(style.routeOutline, opacity),
                      style.editorNextStepWidth * style.outlineScale);
-        drawSegments(future, style.nextStep, style.editorNextStepWidth);
+        drawSegments(future, WithOpacity(style.fullTrajectory, opacity),
+                     style.editorNextStepWidth);
     }
-    drawSegments(whole, style.wholeStep, 4.0f);
-    drawSegments(trace, style.traveledStep, 5.5f);
+    drawSegments(whole, style.fullTrajectory, 4.0f);
+    drawSegments(trace, style.combinedTrajectory, 5.5f);
 
     const float dot = std::min(8.0f, grid.step * 0.27f);
     for (int y = 0; y < chart.gridHeight; ++y) {
@@ -344,6 +346,14 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
             DrawCircleV(position, dot, Color{105, 127, 148, 255});
             DrawCircleV(position, dot * 0.41f, Color{207, 221, 234, 255});
         }
+    }
+    // Red turn junctions light up only once the route reaches those beats.
+    for (const auto& cell : core::ReachedTurnCells(chart, beat)) {
+        const Vector2 point = grid.Point(cell);
+        DrawCircleV(point, std::min(11.0f, grid.step * 0.39f),
+                    style.reachedTurnPoint);
+        DrawCircleV(point, std::min(4.0f, grid.step * 0.16f),
+                    Color{255, 225, 228, 255});
     }
     const Vector2 start = grid.Point(chart.start);
     const float markerRadius = std::min(13.0f, grid.step * 0.39f);
@@ -355,7 +365,7 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
     DrawCircleV(marker, markerRadius, Color{124, 229, 225, 255});
     DrawCircleV(marker, markerRadius * 0.32f, Color{246, 251, 252, 255});
 
-    Label(font, TextFormat("BEAT %.2f / %d", bounded, chart.lengthBeats),
+    Label(font, TextFormat("BEAT %.2f / %d", bounded, chart.lengthBeats - 1),
           52, 405, 15, Color{158, 225, 212, 255});
     Label(font, TextFormat("START %d/%d", chart.start.x, chart.start.y),
           266, 405, 15, Color{247, 213, 131, 255});
@@ -406,7 +416,7 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
 
     // Visible beat ticks are projected from a continuous (possibly fractional)
     // beat. The ruler slides every frame; it never jumps at 15 -> 16.
-    const int first = std::max(0, static_cast<int>(std::floor(
+    const int first = std::max(chart.firstBeat, static_cast<int>(std::floor(
         anchor + (kTimelineX - kPlayheadX) / pixels)) - 1);
     const int last = std::min(chart.lengthBeats - 1,
         static_cast<int>(std::ceil(
@@ -690,7 +700,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             const double anchor = ViewBeat(draft, input.timelineViewBeat);
             const double clicked = anchor + (mouse.x - kPlayheadX) / PixelsPerBeat(ui);
             const int beat = std::clamp(static_cast<int>(std::lround(clicked)),
-                                        0, draft.Data().route.lengthBeats - 1);
+                                        draft.Data().route.firstBeat,
+                                        draft.Data().route.lengthBeats - 1);
             if (ui.tab == EditorTab::Route && input.shiftHeld) {
                 const int origin = draft.SelectedBeat();
                 ui.rangeFirst = std::min(origin, beat);
@@ -728,7 +739,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         const double point = ui.dragViewBeat +
                              (input.mouse.x - kPlayheadX) / PixelsPerBeat(ui);
         const int beat = std::clamp(static_cast<int>(std::lround(point)),
-                                    0, draft.Data().route.lengthBeats - 1);
+                                    draft.Data().route.firstBeat,
+                                    draft.Data().route.lengthBeats - 1);
         if (beat != ui.dragAnchorBeat) {
             ui.rangeFirst = std::min(ui.dragAnchorBeat, beat);
             ui.rangeLast = std::max(ui.dragAnchorBeat, beat);
@@ -754,7 +766,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         if (input.addRight) { draft.PutTurn(core::Turn::Right); action.changedChart = true; }
         const int first = ui.HasRange() ? ui.rangeFirst : draft.SelectedBeat();
         const int last = ui.HasRange() ? ui.rangeLast : draft.SelectedBeat();
-        const bool valid = first >= 0 && last < draft.Data().route.lengthBeats;
+        const bool valid = first >= draft.Data().route.firstBeat &&
+                           last < draft.Data().route.lengthBeats;
 
         if (copy || cut) {
             ui.clipboard = valid ? draft.CopyTurns(first, last)
@@ -889,15 +902,18 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         DrawTextField(font, kStartCell, "START CELL X/Y  (FROM 0)",
                       std::to_string(chart.start.x) + "/" +
                       std::to_string(chart.start.y), EditorField::StartCell, ui);
-        DrawTextField(font, kLength, "TOTAL BEATS",
-                      std::to_string(chart.lengthBeats), EditorField::Length, ui);
+        Label(font, draft.HasSongDuration()
+              ? TextFormat("SONG TIMELINE: %d TO %d (AUTO FROM BPM / OFFSET)",
+                           chart.firstBeat, chart.lengthBeats - 1)
+              : "SONG TIMELINE: LOAD AUDIO TO CALCULATE",
+              104, 329, 15, Color{188, 218, 228, 255});
         Label(font, "START HEADING  Q/E OR CLICK", 519, 299, 16,
               Color{172, 199, 218, 255});
         Button(font, kFieldHeading, HeadingName(chart.initialHeading),
                Color{119, 229, 188, 255});
-        Label(font, "EXAMPLE 8/8 = 8 COLUMNS AND 8 ROWS. GRID IS SAVED IN JSON.",
+        Label(font, "BEATS COVER THE ENTIRE SONG, INCLUDING BEFORE OFFSET.",
               104, 384, 14, Color{169, 204, 218, 255});
-        Label(font, "IF SHRINKING FAILS, MOVE THE START CELL INSIDE THE NEW GRID.",
+        Label(font, "IF SHRINKING FAILS, MOVE THE START CELL INSIDE THE GRID.",
               104, 403, 13, Color{226, 197, 146, 255});
     }
 

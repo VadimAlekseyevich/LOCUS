@@ -16,7 +16,7 @@ struct LoadedChart {
     std::string audioPath;
     double offsetSeconds = 0.0;
     double previewLeadBeats = 4.0;
-    // Explicit editor length; absent in older charts, where song duration sets it.
+    // Legacy v1 metadata: readable, but ignored and never written by new saves.
     std::optional<int> authoredLengthBeats;
 };
 
@@ -32,8 +32,13 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
 // empty, "." or ".." segments, or Windows backslashes.
 bool ValidChartAudioPath(std::string_view path) noexcept;
 
-// Resolve the number of authored steps against a real audio duration. Reject
-// events after song end, invalid song lengths, and pathological beat counts.
+// Derive playable beat coverage from audio time [0,duration), BPM and offset.
+ // A positive offset can produce negative beat indices before beat zero.
+bool ComputeSongBeatRange(double bpm, double offsetSeconds, double durationSeconds,
+                          int& firstBeat, int& endBeat, std::string& error);
+
+// Resolve the complete song range. Reject notes outside real audio time,
+ // invalid song lengths, and pathological beat counts.
 bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
                          std::string& error);
 

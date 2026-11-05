@@ -87,9 +87,10 @@ int main() {
     const bool roundTrip = reloaded &&
         reopened.title == "My edited chart" &&
         reopened.route.turns.size() == 3 &&
-        reopened.route.lengthBeats == 8 &&
+        reopened.route.firstBeat == 0 &&
+        reopened.route.lengthBeats == 9 &&
         reopened.route.turns[2].beat == 7 &&
-        reopened.authoredLengthBeats == 8 &&
+        !reopened.authoredLengthBeats &&
         reopened.offsetSeconds == -0.125 &&
         fs::equivalent(fs::path(songAgain), audio);
 

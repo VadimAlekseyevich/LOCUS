@@ -15,6 +15,7 @@
 #include "raylib.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -64,10 +65,8 @@ struct FrameInput {
     bool editorNew = false;
     bool editorTest = false;
     int practiceSpeedIndex = -1;
-    bool leftPressed = false;
-    bool rightPressed = false;
-    double leftCapturedAt = 0.0;
-    double rightCapturedAt = 0.0;
+    std::array<bool, 4> arrowPressed{};
+    std::array<double, 4> arrowCapturedAt{};
     locus::app::EditorControls editor;
 };
 
@@ -127,10 +126,13 @@ FrameInput PollInput(bool debugScreens) {
                               : IsKeyPressed(KEY_FIVE) ? 4 : -1;
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
-    input.leftPressed = IsKeyPressed(KEY_F);
-    if (input.leftPressed) input.leftCapturedAt = MonotonicSeconds();
-    input.rightPressed = IsKeyPressed(KEY_J);
-    if (input.rightPressed) input.rightCapturedAt = MonotonicSeconds();
+    // Absolute direction input for scored gameplay; editor F/J still authors
+    // relative turn events. Arrow indices match core::Heading enum order.
+    constexpr int keys[4] = {KEY_UP, KEY_RIGHT, KEY_DOWN, KEY_LEFT};
+    for (int i = 0; i < 4; ++i) {
+        input.arrowPressed[i] = IsKeyPressed(keys[i]);
+        if (input.arrowPressed[i]) input.arrowCapturedAt[i] = MonotonicSeconds();
+    }
     input.editor = locus::app::PollEditorControls();
     return input;
 }
@@ -253,65 +255,48 @@ struct GameplayGrid {
     }
 };
 
-// The active line grows with the marker, not in jumps on each beat.
-// Show three future steps; their farthest segment grows gradually as
-// the look-ahead horizon moves. A Wrap never connects opposite edges.
+// Exactly two 4/4 bars ahead: 4 solid red beats, then a 4-beat fade.
+// Render geometry derives from the authored route and not the arrow inputs.
 Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat,
                          double previewLeadBeats) {
+    (void)previewLeadBeats; // Current visual rule is fixed at two bars.
     const GameplayGrid grid(chart);
-    if (chart.lengthBeats <= 0) {
-        return grid.Point(chart.start);
-    }
-    const double beat = std::clamp(fractionalBeat, 0.0,
+    if (chart.lengthBeats <= chart.firstBeat) return grid.Point(chart.start);
+    const double beat = std::clamp(fractionalBeat,
+                                   static_cast<double>(chart.firstBeat),
                                    static_cast<double>(chart.lengthBeats));
     const int currentBeat = std::min(static_cast<int>(std::floor(beat)),
                                      chart.lengthBeats - 1);
-    const double currentProgress = std::clamp(beat - currentBeat, 0.0, 1.0);
-    const double lead = std::clamp(previewLeadBeats, 0.01, 8.0);
-    const int previewSteps = std::clamp(static_cast<int>(std::ceil(lead)), 1, 8);
-
+    const double progress = std::clamp(beat - currentBeat, 0.0, 1.0);
     const auto& style = locus::app::kDefaultRouteVisualStyle;
-    for (int ahead = previewSteps - 1; ahead >= 0; --ahead) {
-        const Color color = ahead == 0 ? style.currentStep
-                            : ahead == 1 ? style.nextStep
-                                         : style.furtherStep;
+    const float thickness = std::clamp(grid.step / 76.0f, 0.4f, 1.0f);
+
+    for (int ahead = locus::app::RouteVisualStyle::lookaheadBeats; ahead >= 0; --ahead) {
         const int routeBeat = currentBeat + ahead;
         if (routeBeat >= chart.lengthBeats) continue;
+        const float opacity = ahead == 0
+            ? 1.0f : locus::app::TrajectoryOpacity(routeBeat - beat);
+        if (opacity <= 0.0f) continue;
         const locus::core::RouteStep step =
             locus::core::SampleRouteStep(chart, routeBeat);
-        // The current step is revealed up to the moving marker. The
-        // newest (third future) step is also revealed over a full beat,
-        // so no complete new segment pops into view on a click.
-        const double reveal = (ahead == 0)
-                                  ? currentProgress
-                              : (ahead == previewSteps - 1)
-                                  ? std::clamp(currentProgress + lead - previewSteps,
-                                               0.0, 1.0)
-                                  : 1.0;
-        const auto view = locus::core::TraceRouteStep(step, reveal);
+        const auto view = locus::core::TraceRouteStep(
+            step, ahead == 0 ? progress : 1.0);
+        const Color color = locus::app::WithOpacity(
+            ahead == 0 ? style.combinedTrajectory : style.fullTrajectory, opacity);
         for (int segment = 0; segment < view.segmentCount; ++segment) {
             const auto& line = view.segments[segment];
-            const float thickness = std::clamp(grid.step / 76.0f, 0.4f, 1.0f);
             const Vector2 from = grid.Position(line.from);
             const Vector2 to = grid.Position(line.to);
-            if (ahead > 0) {
-                // A dark outline and opaque bright interior stay readable
-                // against both guides and future user-selected backgrounds.
-                DrawLineEx(from, to,
-                           style.gameNextStepWidth * style.outlineScale * thickness,
-                           style.routeOutline);
-            }
+            DrawLineEx(from, to, (ahead == 0 ? 7.0f :
+                       style.gameNextStepWidth * style.outlineScale) * thickness,
+                       locus::app::WithOpacity(style.routeOutline, opacity));
             DrawLineEx(from, to,
-                       (ahead == 0 ? 6.0f : style.gameNextStepWidth) * thickness,
+                       (ahead == 0 ? 5.5f : style.gameNextStepWidth) * thickness,
                        color);
         }
-        if (ahead > 0 && reveal >= 1.0) {
-            DrawCircleV(grid.Point(step.to), std::min(4.0f, grid.step * 0.16f), color);
-        }
     }
-
-    const locus::core::RouteStep live = locus::core::SampleRouteStep(chart, currentBeat);
-    return grid.Position(locus::core::ViewRouteStep(live, currentProgress).marker);
+    const auto live = locus::core::SampleRouteStep(chart, currentBeat);
+    return grid.Position(locus::core::ViewRouteStep(live, progress).marker);
 }
 
 void DrawPlayGrid(Font font, const GameplayView& gameplay) {
@@ -349,30 +334,43 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
 
     // One song-time snapshot controls both the marker and preview.
     // The marker keeps moving along the authored path without key presses.
+    const auto& style = locus::app::kDefaultRouteVisualStyle;
+    for (const auto& cell : locus::core::ReachedTurnCells(
+             chart, static_cast<int>(std::floor(gameplay.beat)))) {
+        const Vector2 point = grid.Point(cell);
+        DrawCircleV(point, std::min(11.0f, grid.step * 0.38f),
+                    style.reachedTurnPoint);
+        DrawCircleV(point, std::min(4.0f, grid.step * 0.16f),
+                    Color{255, 229, 230, 255});
+    }
     const float markerRadius = std::min(17.0f, grid.step * 0.47f);
-    DrawCircleV(marker, markerRadius * 1.5f, Color{112, 211, 216, 45});
-    DrawCircleV(marker, markerRadius, Color{125, 224, 229, 255});
+    DrawCircleV(marker, markerRadius * 1.5f, Color{255, 75, 86, 45});
+    DrawCircleV(marker, markerRadius, Color{255, 140, 149, 255});
     DrawCircleV(marker, markerRadius * 0.33f, Color{245, 253, 255, 255});
 
-    DrawTextLabel(font, "CYAN   CURRENT STEP", Vector2{665.0f, 216.0f}, 17.0f,
+    DrawTextLabel(font, "RED   REACHED ROUTE", Vector2{665.0f, 216.0f}, 17.0f,
                   Color{131, 232, 227, 255});
-    DrawTextLabel(font, "BLUE   ROUTE PREVIEW", Vector2{665.0f, 244.0f}, 17.0f,
-                  locus::app::kDefaultRouteVisualStyle.nextStep);
+    DrawTextLabel(font, "RED   2-BAR PREVIEW", Vector2{665.0f, 244.0f}, 17.0f,
+                  locus::app::kDefaultRouteVisualStyle.fullTrajectory);
     DrawTextLabel(font, "WRAP   EDGE SPLIT", Vector2{665.0f, 272.0f}, 17.0f,
                   Color{184, 189, 204, 255});
 
-    // F/J only affect judgement feedback. The charted route never changes.
-    DrawTextLabel(font, "F  =  LEFT", Vector2{50.0f, 204.0f}, 21.0f,
+    DrawTextLabel(font, "ARROWS TO TURN", Vector2{50.0f, 204.0f}, 21.0f,
                   Color{236, 216, 160, 255});
-    DrawTextLabel(font, "J  =  RIGHT", Vector2{50.0f, 237.0f}, 21.0f,
+    DrawTextLabel(font, "ONLY PERPENDICULAR", Vector2{50.0f, 237.0f}, 18.0f,
                   Color{236, 216, 160, 255});
     DrawTextLabel(font, "HIT ON THE BEAT", Vector2{50.0f, 274.0f}, 18.0f,
                   Color{171, 187, 210, 255});
 
     if (const locus::core::TurnEvent* next = judge.NextEvent()) {
+        const auto incoming = locus::core::IncomingHeadingAt(chart, next->beat);
+        const int rotation = next->direction == locus::core::Turn::Right ? 1 : 3;
+        const auto outgoing = static_cast<locus::core::Heading>(
+            (static_cast<int>(incoming) + rotation) % 4);
+        const char* arrows[] = {"UP", "RIGHT", "DOWN", "LEFT"};
         DrawTextLabel(font,
-                      TextFormat("NEXT: %s  /  BEAT %d",
-                                 locus::core::TurnName(next->direction), next->beat),
+                      TextFormat("NEXT: %s ARROW  /  BEAT %d",
+                                 arrows[static_cast<int>(outgoing)], next->beat),
                       Vector2{50.0f, 318.0f}, 17.0f,
                       Color{228, 231, 241, 255});
     } else {
@@ -407,7 +405,7 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay) {
     }
 
     DrawTextLabel(font, TextFormat("%.1f BPM  |  %d BEATS  |  %d x %d GRID",
-                                     chart.bpm, chart.lengthBeats,
+                                     chart.bpm, chart.lengthBeats - chart.firstBeat,
                                      chart.gridWidth, chart.gridHeight),
                   Vector2{50.0f, 140.0f}, 20.0f,
                   Color{204, 208, 222, 255});
@@ -755,6 +753,7 @@ bool LoadDraftFromDisk(const std::wstring& file, locus::core::ChartEditor& edito
     if (!locus::core::PrepareChartForSong(candidate, song.DurationSeconds(), error))
         return false;
     editor.Load(candidate);
+    editor.SetSongDuration(song.DurationSeconds());
     chartPath = file;
     audioPath = selectedAudio;
     error.clear();
@@ -802,6 +801,7 @@ bool SaveDraftToDisk(locus::core::ChartEditor& editor,
         !locus::core::PrepareChartForSong(reopened, song.DurationSeconds(), error))
         return false;
     editor.Load(reopened);
+    editor.SetSongDuration(song.DurationSeconds());
     chartPath = destination;
     error.clear();
     return true;
@@ -952,7 +952,7 @@ int main(int argc, char** argv) {
             // Use the fractional transport beat for timeline hit testing,
             // matching the animated ruler even between whole beat markers.
             input.editor.timelineViewBeat = chartPlayback.Playing()
-                ? std::max(0.0, chartPlayback.Beat(now))
+                ? chartPlayback.Beat(now)
                 : static_cast<double>(editor.SelectedBeat());
             const auto uiAction = locus::app::ApplyEditorControls(
                 editor, editorUi, input.editor);
@@ -977,9 +977,9 @@ int main(int argc, char** argv) {
                     editorStatus = "NO SONG - CLICK LOAD SONG / PRESS O";
                     return;
                 }
-                // Preview is for authoring, not scoring: allow a partial
-                // chart even when its full timeline exceeds song duration.
-                const double songTime = editor.AudioSecondsAtBeat(beat);
+                // Beat indices can be negative before positive offset;
+                // beginning of physical audio remains time zero.
+                const double songTime = std::max(0.0, editor.AudioSecondsAtBeat(beat));
                 if (!std::isfinite(songTime) ||
                     songTime >= localSong.DurationSeconds()) {
                     editorStatus = "PREVIEW FAILED: SELECTED BEAT / OFFSET IS AFTER SONG END";
@@ -1035,11 +1035,15 @@ int main(int argc, char** argv) {
                 now = MonotonicSeconds();
                 if (!picked.path.empty()) {
                     if (localSong.LoadFromFile(picked.path)) {
+                        const bool timelineOk =
+                            editor.SetSongDuration(localSong.DurationSeconds());
                         editorAudioPath = picked.path;
                         const std::string name =
                             std::filesystem::path(picked.path).filename().u8string();
                         editor.SetAudioPath(name);
-                        editorStatus = "SONG LOADED - CLICK PLAY / SPACE TO PREVIEW";
+                        editorStatus = timelineOk
+                            ? "SONG LOADED - TIMELINE FITS THE WHOLE TRACK"
+                            : "SONG LOADED - BPM / OFFSET EXCEEDS TIMELINE LIMIT";
                     } else {
                         editorStatus = "SONG FAILED: " + localSong.Error();
                     }
@@ -1117,7 +1121,8 @@ int main(int argc, char** argv) {
                                candidate, localSong.DurationSeconds(), musicError)) {
                     std::cerr << "CHART_TIMING_FAIL " << musicError << '\\n';
                 } else {
-                    editor.Load(candidate); // M-04 can reopen/edit/save imported routes.
+                    editor.Load(candidate); // Reopen/edit imported routes.
+                    editor.SetSongDuration(localSong.DurationSeconds());
                     editorChartPath = selected.path;
                     editorAudioPath = songPath;
                     editorStatus = "CHART LOADED - E EDIT / CTRL+S SAVE";
@@ -1211,7 +1216,8 @@ int main(int argc, char** argv) {
                     editorStatus = "PREVIEW REACHED CHART END - SELECT ANOTHER BEAT";
                 } else {
                     const int beat = std::clamp(
-                        static_cast<int>(std::floor(currentBeat)), 0, lastBeat);
+                        static_cast<int>(std::floor(currentBeat)),
+                        editor.Data().route.firstBeat, lastBeat);
                     editor.SelectBeat(beat); // Follow audio with bottom squares.
                 }
             }
@@ -1220,19 +1226,40 @@ int main(int argc, char** argv) {
             const bool playing = customChart ? chartPlayback.Playing() : transport.Playing();
             const bool paused = customChart ? chartPlayback.Paused() : transport.Paused();
             if (playing && !paused) {
-                // Fresh F/J key-downs are timestamped in music-time coordinates
-                // for either audio source. Player input never changes the route.
-                if (input.leftPressed) {
-                    judge.Press(locus::core::Turn::Left,
-                                customChart
-                                    ? chartPlayback.AudioSeconds(input.leftCapturedAt)
-                                    : transport.SongSeconds(input.leftCapturedAt));
-                }
-                if (input.rightPressed) {
-                    judge.Press(locus::core::Turn::Right,
-                                customChart
-                                    ? chartPlayback.AudioSeconds(input.rightCapturedAt)
-                                    : transport.SongSeconds(input.rightCapturedAt));
+                // New arrow key-downs specify absolute heading.
+                // Only the two headings perpendicular to the *incoming*
+                // trajectory at the NEXT scorable turn are accepted. Looking
+                // up the event beat keeps early inputs correct after Wrap.
+                if (const auto* target = judge.NextEvent()) {
+                    const auto incoming = locus::core::IncomingHeadingAt(
+                        activeChart, target->beat);
+                    const double songAtInput = customChart
+                        ? chartPlayback.AudioSeconds(now)
+                        : transport.SongSeconds(now);
+                    const auto directionFor = [&](int i) {
+                        return locus::core::ArrowToTurn(
+                            incoming, static_cast<locus::core::Heading>(i));
+                    };
+                    int validArrowCount = 0, firstArrow = -1;
+                    for (int i = 0; i < 4; ++i) {
+                        if (input.arrowPressed[i] && directionFor(i)) {
+                            ++validArrowCount;
+                            if (firstArrow < 0) firstArrow = i;
+                        }
+                    }
+                    if (validArrowCount > 1) {
+                        // Two contradictory perpendicular arrow presses in the
+                        // same frame do not grant a free correct judgement.
+                        const auto wrong = target->direction == locus::core::Turn::Left
+                            ? locus::core::Turn::Right : locus::core::Turn::Left;
+                        judge.Press(wrong, songAtInput);
+                    } else if (firstArrow >= 0) {
+                        const double timestamp = input.arrowCapturedAt[firstArrow];
+                        judge.Press(*directionFor(firstArrow),
+                                    customChart
+                                      ? chartPlayback.AudioSeconds(timestamp)
+                                      : transport.SongSeconds(timestamp));
+                    }
                 }
             }
             if (customChart) chartPlayback.Update(now);
@@ -1252,8 +1279,8 @@ int main(int argc, char** argv) {
         const char* status = customChart
             ? (finished ? "CHART FINISHED"
                : paused ? "PAUSED  |  SPACE RESUME"
-               : songTime < 0.0 ? "SILENT PREROLL  |  F/J TO HIT"
-                                : "CUSTOM SONG  |  F/J TO HIT")
+               : songTime < 0.0 ? "SILENT PREROLL  |  ARROWS TO TURN"
+                                : "CUSTOM SONG  |  ARROWS TO TURN")
             : transport.Status();
         const GameplayView gameplay{activeChart, judge, chartTitle, songTime,
                                     customChart ? chartPlayback.Beat(renderNow)

@@ -86,6 +86,34 @@ int main() {
     ok &= Expect(rectangle.wraps && CellIs(rectangle.to, 5, 0),
                  "rectangular 6x10 route supports independent dimensions");
 
+    Chart early;
+    early.firstBeat = -4;
+    early.lengthBeats = 5;
+    early.start = {1, 1};
+    early.turns = {{-2, Turn::Left}, {0, Turn::Right}};
+    ok &= Expect(SampleRouteStep(early, -4).from.x == 1 &&
+                 SampleRouteStep(early, -2).heading == Heading::Up &&
+                 SampleRouteStep(early, 0).heading == Heading::Right &&
+                 IncomingHeadingAt(early, 0) == Heading::Up,
+                 "negative beat events and incoming-heading lookup work");
+    for (auto incoming : {Heading::Right, Heading::Down, Heading::Left, Heading::Up}) {
+        const auto right = static_cast<Heading>((static_cast<int>(incoming) + 1) % 4);
+        const auto left = static_cast<Heading>((static_cast<int>(incoming) + 3) % 4);
+        const auto opposite = static_cast<Heading>((static_cast<int>(incoming) + 2) % 4);
+        ok &= Expect(ArrowToTurn(incoming, right) == Turn::Right &&
+                     ArrowToTurn(incoming, left) == Turn::Left &&
+                     !ArrowToTurn(incoming, incoming).has_value() &&
+                     !ArrowToTurn(incoming, opposite).has_value(),
+                     "only arrows perpendicular to the incoming route are valid");
+    }
+
+    const auto earlyGlow = ReachedTurnCells(early, -3);
+    const auto atTurn = ReachedTurnCells(early, -2);
+    const auto lit = ReachedTurnCells(early, 0);
+    ok &= Expect(earlyGlow.empty() && atTurn.size() == 1 &&
+                 lit.size() == 2,
+                 "authored turn grid points light up on arrival, not beforehand");
+
     Chart beatZeroTurn;
     beatZeroTurn.start = Cell{0, 0};
     beatZeroTurn.initialHeading = Heading::Up;

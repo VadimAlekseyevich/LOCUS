@@ -317,3 +317,22 @@ This contract deliberately introduces **no** new event types, tempo changes, alt
 - [x] Unresolved input arbitration and backend-dependent timing remain attributed to later tasks.
 
 **A-02 output:** A behavioral contract for implementation and unit-test fixtures; not a claim that audio, movement, or scoring code already exists.
+
+## November 2026 revision — authoritative current rules
+
+This section supersedes the original 4×4/fixed-zero and nonnegative-event MVP
+restrictions above. The start cell is attached to the **first song-overlapping
+beat** `floor(-O*B/60)`. The route continues through the exclusive end beat
+`ceil((D-O)*B/60)`. A positive offset therefore displays beats before zero,
+with **negative beat numbers**. Turn events at such beats are permitted only if
+their target audio timestamp is `0 ≤ O + beat*60/B < D`; negative-time silent
+preroll is not scored. No Total Beats override limits the track. The grid is
+configurable 2–16 columns/rows independently.
+
+The editor continues to author relative Left/Right turns. In gameplay, the
+player presses an **absolute arrow** corresponding to a heading perpendicular
+to the incoming movement at the scheduled turn; straight/reverse arrows are
+ignored. Route geometry and grading remain independent of displayed colors.
+Visual preview is two bars of 4/4 (eight beats): beats 0–4 ahead are fully
+red, beats 4–8 ahead fade linearly from full to zero as they recede, and
+reached turn junctions light red. Style values live outside chart data.

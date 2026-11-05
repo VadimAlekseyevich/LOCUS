@@ -17,7 +17,8 @@ void ChartEditor::NewDraft() {
     chart_.route = Chart{};
     chart_.route.bpm = 120.0;
     chart_.route.lengthBeats = 32;
-    chart_.authoredLengthBeats = 32;
+    chart_.authoredLengthBeats.reset();
+    songDurationSeconds_ = 0.0;
     chart_.route.start = Cell{1, 1};
     chart_.route.initialHeading = Heading::Right;
     chart_.route.turns.clear();
@@ -28,8 +29,34 @@ void ChartEditor::NewDraft() {
 
 void ChartEditor::Load(const LoadedChart& source) {
     chart_ = source;
-    selectedBeat_ = 0;
+    songDurationSeconds_ = 0.0;
+    selectedBeat_ = std::clamp(0, chart_.route.firstBeat,
+                              chart_.route.lengthBeats - 1);
     ResetHistory();
+}
+
+bool ChartEditor::SetSongDuration(double seconds) {
+    if (!std::isfinite(seconds) || seconds <= 0.0) return false;
+    const double old = songDurationSeconds_;
+    songDurationSeconds_ = seconds;
+    if (!ReflowSongRange()) {
+        songDurationSeconds_ = old;
+        return false;
+    }
+    return true;
+}
+
+bool ChartEditor::ReflowSongRange() noexcept {
+    if (songDurationSeconds_ <= 0.0) return true; // Temporary unbound draft.
+    int first = 0, end = 0;
+    std::string error;
+    if (!ComputeSongBeatRange(chart_.route.bpm, chart_.offsetSeconds,
+                              songDurationSeconds_, first, end, error)) return false;
+    chart_.route.firstBeat = first;
+    chart_.route.lengthBeats = end;
+    chart_.authoredLengthBeats.reset();
+    selectedBeat_ = std::clamp(selectedBeat_, first, end - 1);
+    return true;
 }
 
 void ChartEditor::ResetHistory() noexcept {
@@ -96,7 +123,8 @@ bool ChartEditor::SetAudioPath(const std::string& relativePath) {
 }
 
 bool ChartEditor::SelectBeat(int beat) noexcept {
-    if (beat < 0 || beat >= chart_.route.lengthBeats || selectedBeat_ == beat) return false;
+    if (beat < chart_.route.firstBeat ||
+        beat >= chart_.route.lengthBeats || selectedBeat_ == beat) return false;
     selectedBeat_ = beat;
     return true;
 }
@@ -105,7 +133,8 @@ bool ChartEditor::StepSelection(int deltaBeats) noexcept {
     // Avoid out-of-range selections at either edge of a short timeline.
     const long long next = std::clamp(
         static_cast<long long>(selectedBeat_) + deltaBeats,
-        0LL, static_cast<long long>(chart_.route.lengthBeats - 1));
+        static_cast<long long>(chart_.route.firstBeat),
+        static_cast<long long>(chart_.route.lengthBeats - 1));
     return SelectBeat(static_cast<int>(next));
 }
 
@@ -114,8 +143,16 @@ bool ChartEditor::SetBpm(double bpm) {
     // not reject legitimate fast charts (e.g. 400 BPM) at an arbitrary 300.
     if (!std::isfinite(bpm) || bpm <= 0.0) return false;
     if (bpm != chart_.route.bpm) {
+        int first = chart_.route.firstBeat, end = chart_.route.lengthBeats;
+        std::string error;
+        if (HasSongDuration() &&
+            !ComputeSongBeatRange(bpm, chart_.offsetSeconds,
+                                  songDurationSeconds_, first, end, error)) return false;
         SaveUndo();
         chart_.route.bpm = bpm;
+        chart_.route.firstBeat = first;
+        chart_.route.lengthBeats = end;
+        selectedBeat_ = std::clamp(selectedBeat_, first, end - 1);
         MarkDirty();
     }
     return true;
@@ -125,8 +162,16 @@ bool ChartEditor::SetOffsetMs(double milliseconds) {
     if (!std::isfinite(milliseconds) || std::abs(milliseconds) > 3600000.0)
         return false;
     if (milliseconds != chart_.offsetSeconds * 1000.0) {
+        int first = chart_.route.firstBeat, end = chart_.route.lengthBeats;
+        std::string error;
+        if (HasSongDuration() &&
+            !ComputeSongBeatRange(chart_.route.bpm, milliseconds / 1000.0,
+                                  songDurationSeconds_, first, end, error)) return false;
         SaveUndo();
         chart_.offsetSeconds = milliseconds / 1000.0;
+        chart_.route.firstBeat = first;
+        chart_.route.lengthBeats = end;
+        selectedBeat_ = std::clamp(selectedBeat_, first, end - 1);
         MarkDirty();
     }
     return true;
@@ -170,10 +215,7 @@ bool ChartEditor::ChangeOffsetMs(int deltaMs) {
     const long long current = std::llround(before);
     const long long target = current + static_cast<long long>(deltaMs);
     if (target < -kLimitMs || target > kLimitMs || target == current) return false;
-    SaveUndo();
-    chart_.offsetSeconds = static_cast<double>(target) / 1000.0;
-    MarkDirty();
-    return true;
+    return SetOffsetMs(static_cast<double>(target));
 }
 
 bool ChartEditor::SetGridSize(int width, int height) {
@@ -260,7 +302,7 @@ bool ChartEditor::RemoveTurn() {
 bool ChartEditor::MoveTurn(int beats) {
     if (beats == 0 || !SelectedTurn()) return false;
     const long long destination = static_cast<long long>(selectedBeat_) + beats;
-    if (destination < 0 || destination >= chart_.route.lengthBeats) return false;
+    if (destination < chart_.route.firstBeat || destination >= chart_.route.lengthBeats) return false;
     auto& events = chart_.route.turns;
     if (std::any_of(events.begin(), events.end(),
                     [destination](const TurnEvent& event) {
@@ -282,7 +324,7 @@ bool ChartEditor::MoveTurn(int beats) {
 
 ChartEditor::Pattern ChartEditor::CopyTurns(int firstBeat, int lastBeat) const {
     Pattern result;
-    if (firstBeat < 0 || lastBeat < firstBeat ||
+    if (firstBeat < chart_.route.firstBeat || lastBeat < firstBeat ||
         lastBeat >= chart_.route.lengthBeats) return result;
     result.span = lastBeat - firstBeat + 1;
     for (const auto& event : chart_.route.turns) {
@@ -295,7 +337,7 @@ ChartEditor::Pattern ChartEditor::CopyTurns(int firstBeat, int lastBeat) const {
 
 bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
     if (pattern.span < 1 || pattern.notes.empty() ||
-        destinationBeat < 0 ||
+        destinationBeat < chart_.route.firstBeat ||
         static_cast<long long>(destinationBeat) + pattern.span >
             chart_.route.lengthBeats) return false;
     std::vector<TurnEvent> updated = chart_.route.turns;
@@ -328,14 +370,14 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
 }
 
 bool ChartEditor::ShiftTurns(int firstBeat, int lastBeat, int deltaBeats) {
-    if (firstBeat < 0 || lastBeat < firstBeat ||
+    if (firstBeat < chart_.route.firstBeat || lastBeat < firstBeat ||
         lastBeat >= chart_.route.lengthBeats || deltaBeats == 0) return false;
     std::vector<TurnEvent> updated = chart_.route.turns;
     bool moved = false;
     for (auto& event : updated) {
         if (event.beat < firstBeat || event.beat > lastBeat) continue;
         const long long destination = static_cast<long long>(event.beat) + deltaBeats;
-        if (destination < 0 || destination >= chart_.route.lengthBeats) return false;
+        if (destination < chart_.route.firstBeat || destination >= chart_.route.lengthBeats) return false;
         event.beat = static_cast<int>(destination);
         moved = true;
     }
@@ -351,7 +393,7 @@ bool ChartEditor::ShiftTurns(int firstBeat, int lastBeat, int deltaBeats) {
 }
 
 bool ChartEditor::InvertTurns(int firstBeat, int lastBeat) {
-    if (firstBeat < 0 || lastBeat < firstBeat ||
+    if (firstBeat < chart_.route.firstBeat || lastBeat < firstBeat ||
         lastBeat >= chart_.route.lengthBeats) return false;
     bool any = false;
     for (const auto& event : chart_.route.turns)
@@ -367,7 +409,7 @@ bool ChartEditor::InvertTurns(int firstBeat, int lastBeat) {
 }
 
 bool ChartEditor::DeleteTurns(int firstBeat, int lastBeat) {
-    if (firstBeat < 0 || lastBeat < firstBeat ||
+    if (firstBeat < chart_.route.firstBeat || lastBeat < firstBeat ||
         lastBeat >= chart_.route.lengthBeats) return false;
     auto& events = chart_.route.turns;
     const auto start = std::lower_bound(events.begin(), events.end(), firstBeat,
