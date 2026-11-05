@@ -70,7 +70,8 @@ Each item should produce visible or audible progress. Add focused automated test
 
 **Goal:** Choose a local song, build a chart for it in LOCUS, save it, reopen it, and play it. **Five outcome-based slices, not dozens of microtasks.** Each slice must result in something the owner can actually use. The generated demo stays available as a safe fallback throughout development.
 
-- [ ] **M-01 — Play a local music file.** Allow the owner to select a Windows local **WAV or MP3** file, hear playback using the existing game transport, and pause/retry without losing synchronization. Make unsupported-file errors understandable. No online account, uploader, song library, or installation flow. **Done when:** a real song plays in LOCUS while the original demo still works.
+- [x] **M-01 — Play a local music file.** Allow the owner to select a Windows local **WAV or MP3** file, hear playback using the existing game transport, and pause/retry without losing synchronization. Make unsupported-file errors understandable. No online account, uploader, song library, or installation flow. **Done when:** a real song plays in LOCUS while the original demo still works.
+  **Implemented (2026-11-05):** Home **O** opens a native Windows WAV/MP3 picker. After selecting a local file, LOCUS enters a separate **Listen** screen and streams the song with **Space pause/resume**, **R replay**, **O change song**, **H Home**, F11 fullscreen and a progress/time display. The built-in F/J chart demo still starts from Home with Enter and retains its original scoring. Win32 Unicode file access supports non-ASCII paths without copying/uploading tracks; the raylib memory decoder retains file data until unload and refuses files over 256 MiB with a readable message. There are **no invented turn judgements** for a selected song without its chart (M-02). [Windows CI run 42029184504](https://github.com/VadimAlekseyevich/LOCUS/actions/runs/42029184504) passed x64 Release, **6/6 CTest**, local WAV/MP3 extension checks, legacy session tests and clean worktree. **Real speaker playback of a user-selected song is not physically verified by hosted CI**; ordinary user feedback may reveal compatibility issues. No benchmark or ZIP is required.
 
 - [ ] **M-02 — Load and play a saved chart.** Implement a minimal **versioned JSON** chart for the existing 4×4 rules: song path, BPM, beat-zero offset, start cell/heading and Left/Right turn events. Use a simple local file-open workflow and clear errors for invalid data; reuse the existing route, visual and judgement engines rather than creating new gameplay logic. **Done when:** a hand-written example chart loads with its song and plays from start to Results.
 
@@ -80,7 +81,7 @@ Each item should produce visible or audible progress. Add focused automated test
 
 - [ ] **M-05 — Make the custom-song version pleasant to use.** Respond to owner playtesting: sensible file selection and feedback, intuitive editor shortcuts, readable UI, and audio/visual offset adjustment **only if the actual songs reveal a need**. Prepare a straightforward Windows build for playing without manually configuring Visual Studio, while preserving `build_and_run.bat` and its optional audio diagnostic. **Done when:** the owner confirms they can play and create a chart with reasonable effort on their Windows PC.
 
-**Next task: M-01 — local WAV/MP3 playback.** Finish only that feature per "continue development" turn, verify the Windows build, then stop.
+**Next task: M-02 — load a saved JSON chart alongside its audio.** Finish only that feature per "continue development" turn, verify Windows CI, then stop.
 
 ## Deliberately deferred
 
