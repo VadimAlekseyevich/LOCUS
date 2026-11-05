@@ -18,6 +18,45 @@ bool Expect(bool condition, const char* message) {
     return condition;
 }
 
+// Intentionally slow, independent reference implementation used to ensure
+// the optimized random-access sampler produces exactly the old route.
+RouteStep ReferenceStep(const Chart& chart, int requestedBeat) {
+    Cell cell = chart.start;
+    Heading heading = chart.initialHeading;
+    std::size_t index = 0;
+    for (int beat = chart.firstBeat; beat <= requestedBeat; ++beat) {
+        if (index < chart.turns.size() && chart.turns[index].beat == beat) {
+            heading = static_cast<Heading>(
+                (static_cast<int>(heading) +
+                 (chart.turns[index].direction == Turn::Right ? 1 : 3)) % 4);
+            ++index;
+        }
+        Cell target = cell;
+        switch (heading) {
+            case Heading::Up: --target.y; break;
+            case Heading::Right: ++target.x; break;
+            case Heading::Down: ++target.y; break;
+            case Heading::Left: --target.x; break;
+        }
+        const bool wraps = target.x < 0 || target.x >= chart.gridWidth ||
+                           target.y < 0 || target.y >= chart.gridHeight;
+        target.x = (target.x + chart.gridWidth) % chart.gridWidth;
+        target.y = (target.y + chart.gridHeight) % chart.gridHeight;
+        if (beat == requestedBeat)
+            return {cell, target, heading, wraps,
+                    chart.gridWidth, chart.gridHeight};
+        cell = target;
+    }
+    throw std::logic_error("reference beat outside chart");
+}
+
+bool SameStep(const RouteStep& a, const RouteStep& b) {
+    return CellIs(a.from, b.from.x, b.from.y) &&
+           CellIs(a.to, b.to.x, b.to.y) &&
+           a.heading == b.heading && a.wraps == b.wraps &&
+           a.gridWidth == b.gridWidth && a.gridHeight == b.gridHeight;
+}
+
 bool CheckEdgeWrap(Heading heading, Cell from, int toX, int toY) {
     Chart chart;
     chart.start = from;
@@ -142,6 +181,42 @@ int main() {
                          a.heading == b.heading && a.wraps == b.wraps,
                      "determinism after repeated random-access samples");
     }
+
+    // Compare the optimized sampler with the original beat-by-beat
+    // reference across different field sizes, offsets and note densities.
+    for (int variation = 0; variation < 6; ++variation) {
+        Chart stress;
+        stress.gridWidth = variation % 2 == 0 ? 2 : 13;
+        stress.gridHeight = variation % 3 == 0 ? 16 : 5;
+        stress.start = {variation % stress.gridWidth,
+                        (variation * 3) % stress.gridHeight};
+        stress.initialHeading = static_cast<Heading>(variation % 4);
+        stress.firstBeat = variation % 2 ? -37 : 0;
+        stress.lengthBeats = stress.firstBeat + 380;
+        const int gap = variation == 0 ? 1
+            : variation == 1 ? 2 : variation == 2 ? 7 : 43;
+        for (int beat = stress.firstBeat; beat < stress.lengthBeats; beat += gap)
+            stress.turns.push_back({beat, (beat & 1) ? Turn::Left : Turn::Right});
+        for (int beat = stress.firstBeat; beat < stress.lengthBeats; ++beat) {
+            if (!SameStep(SampleRouteStep(stress, beat), ReferenceStep(stress, beat))) {
+                ok &= Expect(false,
+                             "optimized sparse-event sampler matches original simulation");
+                break;
+            }
+        }
+    }
+
+    Chart longSong;
+    longSong.lengthBeats = 65536;
+    longSong.gridWidth = 13;
+    longSong.gridHeight = 9;
+    longSong.start = {12, 8};
+    longSong.turns = {{100, Turn::Right},
+                      {12000, Turn::Left},
+                      {51000, Turn::Left}};
+    ok &= Expect(SameStep(SampleRouteStep(longSong, 65535),
+                          ReferenceStep(longSong, 65535)),
+                 "65536-beat chart samples correctly without scanning every beat");
 
     try {
         (void)SampleRouteStep(demo, demo.lengthBeats);

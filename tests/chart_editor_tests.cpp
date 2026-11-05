@@ -65,13 +65,10 @@ int main() {
                 "move the selected turn one beat");
     ok &= Check(draft.RemoveTurn() && draft.Data().route.turns.size() == 1 &&
                 !draft.RemoveTurn(), "remove selected event exactly once");
-    ok &= Check(!draft.ChangeLength(-28) &&
-                draft.Data().route.lengthBeats == 32,
-                "shortening must not silently discard later turns");
-    ok &= Check(draft.ChangeLength(16) &&
-                draft.Data().route.lengthBeats == 48 &&
-                draft.SelectBeat(47) && !draft.SelectBeat(48),
-                "timeline can extend beyond first page and clamps selection");
+    ok &= Check(draft.SetSongDuration(24.0) &&
+                draft.Data().route.lengthBeats == 51 &&
+                draft.SelectBeat(50) && !draft.SelectBeat(51),
+                "full song length automatically sets the editable timeline");
     const auto routeBefore = SampleRouteStep(draft.Data().route, 5);
     draft.SelectBeat(5);
     draft.PutTurn(Turn::Left);
@@ -111,14 +108,16 @@ int main() {
                     std::abs(draft.Data().offsetSeconds + 0.17525) < 1e-10,
                 "typed millisecond offset can be fractional and negative");
     ok &= Check(!draft.SetOffsetMs(4000000.0) &&
-                    draft.SetLength(64) &&
-                    draft.Data().route.lengthBeats == 64,
-                "typed beat count is validated");
+                    draft.SetSongDuration(10.0) &&
+                    draft.Data().route.lengthBeats > 64,
+                "song duration, not manual length, controls chart extent");
     draft.SelectBeat(63);
     draft.PutTurn(Turn::Left);
-    ok &= Check(!draft.SetLength(20) &&
-                    draft.Data().route.lengthBeats == 64,
-                "typed length cannot silently erase a distant turn");
+    const int protectedEnd = draft.Data().route.lengthBeats;
+    ok &= Check(!draft.SetSongDuration(1.0) &&
+                    draft.Data().route.lengthBeats == protectedEnd &&
+                    draft.Data().route.turns.back().beat == 63,
+                "shorter songs cannot silently strand authored turns");
     ok &= Check(draft.SetTitle("Typed title") &&
                     draft.Data().title == "Typed title" &&
                     !draft.SetTitle("   "),

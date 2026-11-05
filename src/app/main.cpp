@@ -224,7 +224,6 @@ struct GameplayView {
     const std::string& title;
     double songSeconds;
     double beat;
-    double previewLeadBeats;
     bool paused;
     bool completed;
     bool custom;
@@ -825,7 +824,6 @@ int main(int argc, char** argv) {
     std::wstring editorAudioPath;
     EditorPending editorPending = EditorPending::None;
     std::string editorStatus = "O ATTACH AUDIO  |  CTRL+S SAVE  |  T TEST PLAY";
-    double previewLead = 4.0;
     int editorPreviewStartBeat = 0; // R returns to this preview origin.
     std::string chartTitle = "BUILT-IN DEMO";
     std::string musicError;
@@ -1037,7 +1035,6 @@ int main(int argc, char** argv) {
                             checked.route.firstBeat, checked.route.lengthBeats);
                         activeChart = std::move(checked.route);
                         chartTitle = std::move(checked.title);
-                        previewLead = checked.previewLeadBeats;
                         chartPlayback.Configure(activeChart.bpm, checked.offsetSeconds);
                         judge.SetOffsetSeconds(checked.offsetSeconds);
                         gameSession.SetTestOrigin({editorSongPosition, firstScored});
@@ -1098,7 +1095,6 @@ int main(int argc, char** argv) {
                     editorStatus = "CHART LOADED - E EDIT / CTRL+S SAVE";
                     activeChart = std::move(candidate.route);
                     chartTitle = std::move(candidate.title);
-                    previewLead = candidate.previewLeadBeats;
                     chartPlayback.Configure(activeChart.bpm, candidate.offsetSeconds);
                     chartPlayback.SetSpeed(1.0, now); // Fresh Home charts start at normal speed.
                     gameSession.ClearTestOrigin();
@@ -1130,7 +1126,6 @@ int main(int argc, char** argv) {
                     customChart = false;
                     activeChart = demo;
                     chartTitle = "BUILT-IN DEMO";
-                    previewLead = 4.0;
                     gameSession.ClearTestOrigin();
                     judge.SetOffsetSeconds(0.0);
                 } else {
@@ -1205,7 +1200,7 @@ int main(int argc, char** argv) {
         const GameplayView gameplay{activeChart, judge, chartTitle, songTime,
                                     customChart ? chartPlayback.Beat(renderNow)
                                                 : transport.Beat(renderNow),
-                                    previewLead, paused, finished, customChart,
+                                    paused, finished, customChart,
                                     customChart ? chartPlayback.Speed() : 1.0, status};
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,

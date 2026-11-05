@@ -27,6 +27,28 @@ Cell StepInHeading(Cell cell, Heading heading,
     return Cell{(x + width) % width, (y + height) % height};
 }
 
+// Jump over a run of straight beats in constant time. The old sampler
+// advanced cell-by-cell from the beginning of the song on *every* query.
+Cell AdvanceStraight(Cell cell, Heading heading, int beats,
+                     int width, int height) noexcept {
+    if (beats <= 0) return cell;
+    switch (heading) {
+        case Heading::Up:
+            cell.y = (cell.y + height - (beats % height)) % height;
+            break;
+        case Heading::Right:
+            cell.x = (cell.x + (beats % width)) % width;
+            break;
+        case Heading::Down:
+            cell.y = (cell.y + (beats % height)) % height;
+            break;
+        case Heading::Left:
+            cell.x = (cell.x + width - (beats % width)) % width;
+            break;
+    }
+    return cell;
+}
+
 } // namespace
 
 std::optional<Turn> ArrowToTurn(Heading incoming, Heading pressed) noexcept {
@@ -99,24 +121,24 @@ RouteStep SampleRouteStep(const Chart& chart, int beat) {
 
     Cell cell = chart.start;
     Heading heading = chart.initialHeading;
-    std::size_t nextTurn = 0;
-    for (int n = chart.firstBeat; n <= beat; ++n) {
-        if (nextTurn < chart.turns.size() && chart.turns[nextTurn].beat == n) {
-            heading = ApplyTurn(heading, chart.turns[nextTurn].direction);
-            ++nextTurn;
-        }
-        bool wraps = false;
-        const Cell destination = StepInHeading(
-            cell, heading, chart.gridWidth, chart.gridHeight, wraps);
-        if (n == beat) {
-            return RouteStep{cell, destination, heading, wraps,
-                             chart.gridWidth, chart.gridHeight};
-        }
-        cell = destination;
+    int cursor = chart.firstBeat;
+    // The authored turn events are sorted. Only the handful of actual
+    // direction changes require work, regardless of the number of beats.
+    for (const auto& event : chart.turns) {
+        if (event.beat > beat) break;
+        if (event.beat < cursor) continue;
+        cell = AdvanceStraight(cell, heading, event.beat - cursor,
+                               chart.gridWidth, chart.gridHeight);
+        heading = ApplyTurn(heading, event.direction);
+        cursor = event.beat;
     }
-
-    // Unreachable when the chart duration and requested beat are valid.
-    throw std::logic_error("route iteration unexpectedly ended");
+    cell = AdvanceStraight(cell, heading, beat - cursor,
+                           chart.gridWidth, chart.gridHeight);
+    bool wraps = false;
+    const Cell destination = StepInHeading(
+        cell, heading, chart.gridWidth, chart.gridHeight, wraps);
+    return RouteStep{cell, destination, heading, wraps,
+                     chart.gridWidth, chart.gridHeight};
 }
 
 } // namespace locus::core

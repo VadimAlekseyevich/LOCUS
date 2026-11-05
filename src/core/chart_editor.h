@@ -41,8 +41,6 @@ public:
     bool SetGridSize(int width, int height);
     bool SetStart(Cell cell);
     void RotateHeading(int quarterTurns);
-    bool ChangeLength(int deltaBeats); // no deletion of events
-    bool SetLength(int beats);
     bool SetTitle(const std::string& title);
     void PutTurn(Turn turn);
     bool RemoveTurn();
@@ -69,6 +67,7 @@ private:
     void MarkDirty() noexcept;
     void ResetHistory() noexcept;
     bool ReflowSongRange() noexcept;
+    bool TurnRangeFits(int firstBeat, int endBeat) const noexcept;
     static constexpr std::size_t kMaxHistory = 64;
 
     LoadedChart chart_;

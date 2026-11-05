@@ -52,10 +52,19 @@ bool ChartEditor::ReflowSongRange() noexcept {
     std::string error;
     if (!ComputeSongBeatRange(chart_.route.bpm, chart_.offsetSeconds,
                               songDurationSeconds_, first, end, error)) return false;
+    if (!TurnRangeFits(first, end)) return false;
     chart_.route.firstBeat = first;
     chart_.route.lengthBeats = end;
     chart_.authoredLengthBeats.reset();
     selectedBeat_ = std::clamp(selectedBeat_, first, end - 1);
+    return true;
+}
+
+bool ChartEditor::TurnRangeFits(int firstBeat, int endBeat) const noexcept {
+    // A BPM/offset/audio change may not silently strand authored turns
+    // outside the song's editable timeline.
+    for (const auto& event : chart_.route.turns)
+        if (event.beat < firstBeat || event.beat >= endBeat) return false;
     return true;
 }
 
@@ -148,6 +157,7 @@ bool ChartEditor::SetBpm(double bpm) {
         if (HasSongDuration() &&
             !ComputeSongBeatRange(bpm, chart_.offsetSeconds,
                                   songDurationSeconds_, first, end, error)) return false;
+        if (!TurnRangeFits(first, end)) return false;
         SaveUndo();
         chart_.route.bpm = bpm;
         chart_.route.firstBeat = first;
@@ -167,25 +177,12 @@ bool ChartEditor::SetOffsetMs(double milliseconds) {
         if (HasSongDuration() &&
             !ComputeSongBeatRange(chart_.route.bpm, milliseconds / 1000.0,
                                   songDurationSeconds_, first, end, error)) return false;
+        if (!TurnRangeFits(first, end)) return false;
         SaveUndo();
         chart_.offsetSeconds = milliseconds / 1000.0;
         chart_.route.firstBeat = first;
         chart_.route.lengthBeats = end;
         selectedBeat_ = std::clamp(selectedBeat_, first, end - 1);
-        MarkDirty();
-    }
-    return true;
-}
-
-bool ChartEditor::SetLength(int beats) {
-    if (beats < 1 || beats > 65536) return false;
-    if (!chart_.route.turns.empty() && chart_.route.turns.back().beat >= beats)
-        return false;
-    if (beats != chart_.route.lengthBeats) {
-        SaveUndo();
-        chart_.route.lengthBeats = beats;
-        chart_.authoredLengthBeats = beats;
-        selectedBeat_ = std::min(selectedBeat_, beats - 1);
         MarkDirty();
     }
     return true;
@@ -248,19 +245,6 @@ void ChartEditor::RotateHeading(int quarterTurns) {
     chart_.route.initialHeading = static_cast<Heading>(
         (static_cast<int>(chart_.route.initialHeading) + delta) % 4);
     MarkDirty();
-}
-
-bool ChartEditor::ChangeLength(int deltaBeats) {
-    const int current = chart_.route.lengthBeats;
-    const int next = current + deltaBeats;
-    if (next < 1 || next > 65536 || next == current) return false;
-    if (!chart_.route.turns.empty() && chart_.route.turns.back().beat >= next) return false;
-    SaveUndo();
-    chart_.route.lengthBeats = next;
-    chart_.authoredLengthBeats = next;
-    selectedBeat_ = std::min(selectedBeat_, next - 1);
-    MarkDirty();
-    return true;
 }
 
 const TurnEvent* ChartEditor::SelectedTurn() const noexcept {

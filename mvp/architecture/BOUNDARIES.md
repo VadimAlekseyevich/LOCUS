@@ -1,19 +1,45 @@
 # LOCUS — Architectural Boundaries
 
 **Task:** A-01 — Define module ownership  
-**Status:** Proposed architecture contract (pending Stage 1 human gate)  
+**Status:** Active architecture contract, refreshed for implemented game/editor boundaries  
 **Scope:** MVP v0.1, Windows  
 **Design reference:** [GDD](../GDD.md)  
 **Execution plan:** [Roadmap](../ROADMAP.md)
 
 > This document specifies **who owns which responsibilities and which dependencies are allowed**. It does not select a graphics library, freeze the chart schema or timing values, or create an implementation framework. Those decisions belong to A-02 through A-09.
 
+## Current implementation module map
+
+```text
+src/core/route.*            deterministic route, Wrap, event-aware fast seeking
+src/core/route_view.*       wrap-safe line and marker geometry, raylib-free
+src/core/judgement.*        Perfect/Good/Bad/Miss, raylib-free
+src/core/song_clock.*       shared monotonic audio time
+src/core/chart_json.*       v1 parser, serializer and song-duration bounds
+src/core/chart_editor.*     chart editing, history and pattern operations
+
+src/app/game_session.*      scored play/pause/restart, arrow -> turn grading
+src/app/route_renderer.*    shared one-bar red line and turn node drawing
+src/app/chart_editor_actions.cpp editor controls, selection and text actions
+src/app/chart_editor_ui.cpp editor drawing and timeline
+src/app/chart_editor_layout.h common editor button/grid positions
+src/app/chart_playback.*    timeline seeks and local audio clock
+src/app/local_music.*       raylib WAV/MP3 adapter
+src/app/chart_file.*        OS-safe JSON file access
+src/app/main.cpp            UI screens, file dialogs, session coordination
+```
+
+CMake builds `locus_core` as a static library without raylib, and `locus`
+as the raylib front end. All registered unit tests and headless smoke checks
+run in Windows CI. The original GDD/spike documents are historical and may
+describe older behavior; this map reflects the actual source ownership.
+
 ## 1. Non-negotiable principles
 
 1. **The chart decides the route.** Player input affects judgements, not the marker's authoritative position or heading.
 2. **Audio-related musical time decides the moment.** Render frame count, frame delta, and animation position never determine timing or input grades.
 3. **There is only one route algorithm.** Play mode, editor preview, and test-play must share the same deterministic route sampler.
-4. **The MVP grid is 4×4 with Wrap only.** Crossing an edge preserves heading and consumes one quarter-note step; seam visuals must not imply a line crossing the grid interior.
+4. **The default grid is 4×4, configurable from 2 to 16 cells per axis, with Wrap only.** Crossing an edge preserves heading and consumes one quarter-note step; seam visuals must not imply a line crossing the grid interior.
 5. **Core logic runs headlessly.** Chart validation, beat/time math, route sampling, and judgement logic can be tested without a window, audio device, or local filesystem.
 6. **Dependencies flow inward.** Platform, game UI, and editor may use core rules; core rules must not import their callers.
 7. **Keep code and scope controlled, not binary size artificially tiny.** Prioritize minimal input/audio latency, stable timing, and performance. Dependencies and even a large distributable package are acceptable if they materially help those goals; avoid an unnecessary plugin system, ECS, service locator, or class for each concept.
@@ -30,7 +56,7 @@ flowchart TD
 
     AudioFile["Local audio file"] --> Audio["Audio backend"]
     Audio --> Clock["SongClock / music time"]
-    Keys["Keyboard"] --> Input["Timestamped Left / Right input"]
+    Keys["Keyboard arrows"] --> Input["Timestamped absolute heading input"]
 
     Chart --> Route["Pure Route sampler"]
     Chart --> Judge["Pure Judgement rules"]
@@ -62,7 +88,7 @@ flowchart TD
 | Filesystem/chart I/O | **Platform storage adapter** | Local chart path ↔ chart bytes; chart-relative audio path resolution | Chart semantics or UI decisions |
 | Beat/time math | **Timing** (pure core) | BPM + offset + song time ↔ beat position | Reading wall-clock time, device management, rendering |
 | Audio playback and clock | **MusicClock/Audio** (platform adapter + small interface) | Audio load/play/pause/seek; coherent timestamped song position | Chart rules, moving the marker, judging turn direction |
-| Keyboard input capture | **Input adapter** (platform) | Fresh key-down edges with timestamps and Left/Right actions | Scoring, auto-turns, renderer states |
+| Keyboard input capture | **Input adapter** (platform) | Fresh arrow key-down edges with monotonic timestamps | Scoring, auto-turns, renderer states |
 | Logical movement | **Route** (pure core) | Chart + requested beat → heading, grid segment, progress, Wrap seam information | User input, mutable score, drawing, audio-device calls |
 | Input evaluation | **Judgement** (pure core) | Expected chart events + timestamped actions + configured windows → per-event grade and result state | Authoritative route, graphics, low-level keyboard polling |
 | App/game session | **App** (orchestrator) | Chart + audio/clock + inputs + core outputs → lifecycle state and presentation snapshot | Duplicated turn math, duplicated judgement math, editor-only chart rules |
@@ -119,7 +145,7 @@ These are conceptual contracts. Names and exact signatures are **not** frozen in
 
 ### 5.1 Chart → Route
 
-- Input: a **validated chart** and an arbitrary nonnegative musical beat position.
+- Input: a **validated chart** and any musical beat position within the derived song interval, including negative indices before positive offset.
 - Output: deterministic logical cell/heading, interpolation segment/progress, and whether the step crosses a Wrap seam.
 - Invariant: identical chart and beat position always return identical route data, regardless of player actions, FPS, or previous seeks.
 
@@ -135,8 +161,8 @@ The precise alignment strategy, offset sign, and monotonic-to-audio timestamp co
 
 ### 5.3 Input → App → Judgement
 
-- Input produces discrete Left/Right **key-down** events with timestamps, not a current key-is-held direction.
-- App maps timestamps onto the same song-time domain used by scheduled chart events.
+- Input produces discrete **absolute arrow key-down** events with timestamps; GameSession maps perpendicular headings at each event to authored Left/Right before grading.
+- GameSession maps timestamps onto the same song-time domain used by scheduled chart events.
 - Judgement determines Perfect/Good/Bad/Miss and exposes a one-result-per-event outcome.
 - App displays feedback and aggregates results; it **never redirects Route** due to a Miss.
 

@@ -6,7 +6,9 @@ that skins are already configurable.
 
 ## Implemented now
 
-- `src/app/visual_style.h` owns the default **route visual palette**:
+- `src/app/route_renderer.h/.cpp` now **shares the complete route line and
+  glowing-junction rendering** between Editor and Play, including the one-bar
+  opacity ramp. `src/app/visual_style.h` owns the default **route visual palette**:
   high-contrast preview color, outline, current/traveled path colors,
   and preview stroke widths. Both editor and scored gameplay use these values.
 - The same header contains an **editor layout token** for the vertical

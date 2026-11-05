@@ -62,7 +62,6 @@ constexpr Rectangle kBpm{92, 290, 350, 43};
 constexpr Rectangle kOffset{510, 290, 350, 43};
 constexpr Rectangle kGridSize{104, 225, 330, 47};
 constexpr Rectangle kStartCell{519, 225, 330, 47};
-constexpr Rectangle kLength{104, 321, 330, 47};
 constexpr Rectangle kFieldHeading{519, 321, 330, 47};
 
 constexpr double kSpeeds[5] = {1.0, 0.75, 0.5, 0.25, 0.1};
