@@ -133,6 +133,11 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_chart_file_tests PRIVATE locus_core)
     add_test(NAME locus_chart_local_file COMMAND locus_chart_file_tests)
 
+    add_executable(locus_hit_flash_tests tests/hit_flash_tests.cpp)
+    target_compile_features(locus_hit_flash_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_hit_flash_tests PRIVATE locus_core)
+    add_test(NAME locus_player_hit_flash COMMAND locus_hit_flash_tests)
+
     add_executable(locus_judgement_tests tests/judgement_tests.cpp)
     target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_judgement_tests PRIVATE locus_core)

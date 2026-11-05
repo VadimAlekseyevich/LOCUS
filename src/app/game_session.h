@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/chart_playback.h"
+#include "app/hit_flash.h"
 #include "app/demo_transport.h"
 #include "core/judgement.h"
 #include "core/arrow_chord.h"
@@ -42,6 +43,7 @@ public:
     void TogglePause(bool customChart, double now);
     void SetPracticeSpeed(bool customChart, double speed, double now);
     void Update(bool customChart, double now, const ArrowInput& arrows);
+    const HitFlash& Flash() const noexcept { return hitFlash_; }
 
 private:
     const core::Chart& chart_;
@@ -50,6 +52,7 @@ private:
     ChartPlayback& local_;
     std::optional<EditorTestOrigin> testOrigin_;
     core::ArrowChordTracker chord_;
+    HitFlash hitFlash_;
 };
 
 } // namespace locus::app

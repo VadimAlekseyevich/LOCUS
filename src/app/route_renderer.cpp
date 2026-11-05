@@ -95,4 +95,16 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
     }
 }
 
+void DrawPlayerHitFlash(Vector2 marker, float markerRadius, HitFlashFrame flash) {
+    if (flash.intensity <= 0.0f) return;
+    const float radius = markerRadius + 4.0f + 17.0f * flash.progress;
+    // Tiny halo, expanding ring and bright core. All decay within 180 ms.
+    DrawCircleV(marker, markerRadius * (1.48f + 0.27f * flash.progress),
+                WithOpacity(Color{153, 255, 235, 90}, flash.intensity));
+    DrawRing(marker, radius - 1.5f, radius + 1.5f, 0.0f, 360.0f, 40,
+             WithOpacity(Color{255, 233, 174, 235}, flash.intensity));
+    DrawCircleV(marker, markerRadius * 0.68f,
+                WithOpacity(Color{250, 255, 255, 125}, flash.intensity));
+}
+
 } // namespace locus::app

@@ -4,6 +4,16 @@ LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete 
 
 [Game Design Document](mvp/GDD.md) · **[Short playable-prototype roadmap](mvp/ROADMAP.md)** · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
 
+## Successful-turn player flash
+
+During scored Play (demo and custom charts), a correct **Perfect / Good / Bad**
+arrow judgement triggers a tiny 180 ms halo and expanding gold ring **on the
+moving marker**. Perfect is brightest, Good is softer, and Bad is subtle.
+Wrong-direction hits and Misses do not flash. The effect uses wall-clock time,
+so practicing at 10% playback speed does not make it linger; pause, restart
+and returning Home clear it. This is visual feedback only and does not alter
+route movement, chart JSON, or judgement windows.
+
 ## Current architecture (November 2026)
 
 LOCUS retains two build layers: **`locus_core`** (pure route, timing, grading,

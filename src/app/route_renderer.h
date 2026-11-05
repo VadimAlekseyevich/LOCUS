@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/hit_flash.h"
 #include "core/route.h"
 #include "core/route_view.h"
 #include "raylib.h"
@@ -32,5 +33,8 @@ Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
                             RouteCanvas canvas, RouteRenderMode mode);
 void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
                         RouteCanvas canvas, RouteRenderMode mode);
+// A short radial feedback burst attached to the moving marker, never
+// the stationary junction dot. Only called for scored successful hits.
+void DrawPlayerHitFlash(Vector2 marker, float markerRadius, HitFlashFrame flash);
 
 } // namespace locus::app

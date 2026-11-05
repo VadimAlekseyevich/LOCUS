@@ -223,6 +223,7 @@ void DrawTextLabel(Font font, const char* message, Vector2 position,
 struct GameplayView {
     const locus::core::Chart& chart;
     const locus::core::TurnJudge& judge;
+    const locus::app::HitFlash& hitFlash;
     const std::string& title;
     double songSeconds;
     double beat;
@@ -258,7 +259,7 @@ struct GameplayGrid {
     }
 };
 
- void DrawPlayGrid(Font font, const GameplayView& gameplay) {
+ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     const auto& chart = gameplay.chart;
     const auto& judge = gameplay.judge;
     const GameplayGrid grid(chart);
@@ -299,6 +300,8 @@ struct GameplayGrid {
     DrawCircleV(marker, markerRadius * 1.5f, Color{255, 75, 86, 45});
     DrawCircleV(marker, markerRadius, Color{255, 140, 149, 255});
     DrawCircleV(marker, markerRadius * 0.33f, Color{245, 253, 255, 255});
+    locus::app::DrawPlayerHitFlash(
+        marker, markerRadius, gameplay.hitFlash.Sample(now));
 
     DrawTextLabel(font, "RED   TURN JUNCTIONS", Vector2{665.0f, 216.0f}, 17.0f,
                   Color{131, 232, 227, 255});
@@ -528,7 +531,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::Listen) {
         DrawLocalMusicScreen(font, localSong, now, musicError);
     } else if (state.screen == Screen::Play) {
-        DrawPlayGrid(font, gameplay);
+        DrawPlayGrid(font, gameplay, now);
         if (gameplay.paused) {
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
                           Color{12, 14, 22, 204});
@@ -1200,7 +1203,8 @@ int main(int argc, char** argv) {
                : songTime < 0.0 ? "SILENT PREROLL  |  ARROWS TO TURN"
                                 : "CUSTOM SONG  |  ARROWS TO TURN")
             : transport.Status();
-        const GameplayView gameplay{activeChart, judge, chartTitle, songTime,
+        const GameplayView gameplay{activeChart, judge, gameSession.Flash(),
+                                     chartTitle, songTime,
                                     customChart ? chartPlayback.Beat(renderNow)
                                                 : transport.Beat(renderNow),
                                     paused, finished, customChart,
