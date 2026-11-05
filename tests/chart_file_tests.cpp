@@ -78,8 +78,9 @@ int main() {
         fs::equivalent(fs::path(songAgain), audio);
 
     // An impossible save location must not modify the original JSON.
-    const fs::path outside = fs::temp_directory_path() /
-        ("locus-outside-" + unique + ".locus.json");
+    const fs::path sibling = fs::temp_directory_path() / ("locus-sibling-" + unique);
+    fs::create_directories(sibling, errorCode);
+    const fs::path outside = sibling / "outside.locus.json";
     const bool refusedOutside = !locus::app::SaveChartWithAudioPath(
         outside.wstring(), resolved, parsed, message) &&
         !fs::exists(outside);
@@ -88,6 +89,7 @@ int main() {
     // Verify a normalized traversal attempt is rejected before any file access.
     const bool blocked = !locus::core::ValidChartAudioPath("../another-song.wav");
     fs::remove_all(root, errorCode);
+    fs::remove_all(sibling, errorCode);
     if (!correct || !blocked || !roundTrip || !refusedOutside || !existedAfterError) {
         std::cerr << "CHART_FILE_FAIL " << message
                   << " opened=" << opened << " correct=" << correct
