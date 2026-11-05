@@ -2,8 +2,11 @@
 #include "core/route.h"
 #include "core/route_view.h"
 #include "core/judgement.h"
+#include "core/chart_json.h"
 #include "app/demo_transport.h"
 #include "app/local_music.h"
+#include "app/chart_file.h"
+#include "app/chart_playback.h"
 #include "app/music_picker.h"
 
 #include "raylib.h"
@@ -49,6 +52,7 @@ struct FrameInput {
     bool homePressed = false;
     bool fullscreenPressed = false;
     bool chooseMusicPressed = false;
+    bool chooseChartPressed = false;
     bool leftPressed = false;
     bool rightPressed = false;
     double leftCapturedAt = 0.0;
@@ -93,6 +97,7 @@ FrameInput PollInput(bool debugScreens) {
     input.homePressed = IsKeyPressed(KEY_H);
     input.fullscreenPressed = IsKeyPressed(KEY_F11);
     input.chooseMusicPressed = IsKeyPressed(KEY_O);
+    input.chooseChartPressed = IsKeyPressed(KEY_C);
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
     input.leftPressed = IsKeyPressed(KEY_F);
@@ -124,7 +129,8 @@ void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
 // player never pressed a key. Final results cannot alter the route.
 void FinishSession(AppState& state, locus::core::TurnJudge& judge,
                    const locus::core::Chart& chart) {
-    judge.Advance(chart.lengthBeats * 60.0 / chart.bpm);
+    (void)chart; // Completion is defined by music duration, not the next whole beat.
+    judge.FinishRemainingMisses();
     state.screen = Screen::Results;
 }
 
@@ -177,6 +183,20 @@ void DrawTextLabel(Font font, const char* message, Vector2 position,
     DrawTextEx(font, message, position, size, 1.0f, color);
 }
 
+// One presentation snapshot for both generated and local-chart sessions.
+struct GameplayView {
+    const locus::core::Chart& chart;
+    const locus::core::TurnJudge& judge;
+    const std::string& title;
+    double songSeconds;
+    double beat;
+    double previewLeadBeats;
+    bool paused;
+    bool completed;
+    bool custom;
+    const char* status;
+};
+
 // G-04: render the charted route and marker using one fractional song beat.
 // The route is fully independent of keyboard input and rendered frame count.
 constexpr float kGridSpacing = 76.0f;
@@ -196,7 +216,8 @@ Vector2 GridPosition(locus::core::GridPoint point) {
 // The active line grows with the marker, not in jumps on each beat.
 // Show three future steps; their farthest segment grows gradually as
 // the look-ahead horizon moves. A Wrap never connects opposite edges.
-Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat) {
+Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat,
+                         double previewLeadBeats) {
     if (chart.lengthBeats <= 0) {
         return GridPoint(chart.start);
     }
@@ -205,13 +226,14 @@ Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat)
     const int currentBeat = std::min(static_cast<int>(std::floor(beat)),
                                      chart.lengthBeats - 1);
     const double currentProgress = std::clamp(beat - currentBeat, 0.0, 1.0);
-    constexpr int kPreviewSteps = 4;
-    constexpr Color kRouteColors[kPreviewSteps] = {
-        {107, 230, 222, 255}, {106, 187, 224, 220},
-        {102, 154, 203, 175}, {111, 130, 184, 140}
-    };
+    const double lead = std::clamp(previewLeadBeats, 0.01, 8.0);
+    const int previewSteps = std::clamp(static_cast<int>(std::ceil(lead)), 1, 8);
 
-    for (int ahead = kPreviewSteps - 1; ahead >= 0; --ahead) {
+    for (int ahead = previewSteps - 1; ahead >= 0; --ahead) {
+        const Color color = ahead == 0
+            ? Color{107, 230, 222, 255}
+            : Color{106, 187, 224,
+                    static_cast<unsigned char>(std::max(75, 255 - 35 * ahead))};
         const int routeBeat = currentBeat + ahead;
         if (routeBeat >= chart.lengthBeats) continue;
         const locus::core::RouteStep step =
@@ -219,16 +241,20 @@ Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat)
         // The current step is revealed up to the moving marker. The
         // newest (third future) step is also revealed over a full beat,
         // so no complete new segment pops into view on a click.
-        const double reveal = (ahead == 0 || ahead == kPreviewSteps - 1)
-                                  ? currentProgress : 1.0;
+        const double reveal = (ahead == 0)
+                                  ? currentProgress
+                              : (ahead == previewSteps - 1)
+                                  ? std::clamp(currentProgress + lead - previewSteps,
+                                               0.0, 1.0)
+                                  : 1.0;
         const auto view = locus::core::TraceRouteStep(step, reveal);
         for (int segment = 0; segment < view.segmentCount; ++segment) {
             const auto& line = view.segments[segment];
             DrawLineEx(GridPosition(line.from), GridPosition(line.to),
-                       (ahead == 0) ? 6.0f : 3.5f, kRouteColors[ahead]);
+                       (ahead == 0) ? 6.0f : 3.5f, color);
         }
         if (ahead > 0 && reveal >= 1.0) {
-            DrawCircleV(GridPoint(step.to), 4.0f, kRouteColors[ahead]);
+            DrawCircleV(GridPoint(step.to), 4.0f, color);
         }
     }
 
@@ -236,10 +262,11 @@ Vector2 DrawRoutePreview(const locus::core::Chart& chart, double fractionalBeat)
     return GridPosition(locus::core::ViewRouteStep(live, currentProgress).marker);
 }
 
-void DrawPlayGrid(Font font, const locus::core::Chart& chart,
-                  const locus::app::DemoTransport& transport,
-                  const locus::core::TurnJudge& judge, double now) {
-    DrawTextLabel(font, "PLAY  /  DEMO CHART", Vector2{50.0f, 98.0f}, 27.0f,
+void DrawPlayGrid(Font font, const GameplayView& gameplay) {
+    const auto& chart = gameplay.chart;
+    const auto& judge = gameplay.judge;
+    DrawTextLabel(font, gameplay.custom ? "PLAY  /  YOUR CHART" : "PLAY  /  DEMO CHART",
+                  Vector2{50.0f, 98.0f}, 27.0f,
                   Color{211, 239, 241, 255});
 
     // Grid guides are quieter than the authored route overlay.
@@ -249,7 +276,8 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart,
         DrawLineEx(GridPoint({index, 0}), GridPoint({index, 3}), 2.0f, guides);
     }
 
-    const Vector2 marker = DrawRoutePreview(chart, transport.Beat(now));
+    const Vector2 marker = DrawRoutePreview(chart, gameplay.beat,
+                                             gameplay.previewLeadBeats);
 
     const Color pointOuter{83, 101, 122, 255};
     const Color pointInner{169, 191, 204, 255};
@@ -269,7 +297,7 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart,
 
     DrawTextLabel(font, "CYAN   CURRENT STEP", Vector2{665.0f, 216.0f}, 17.0f,
                   Color{131, 232, 227, 255});
-    DrawTextLabel(font, "BLUE   NEXT 3 BEATS", Vector2{665.0f, 244.0f}, 17.0f,
+    DrawTextLabel(font, "BLUE   ROUTE PREVIEW", Vector2{665.0f, 244.0f}, 17.0f,
                   Color{128, 174, 222, 255});
     DrawTextLabel(font, "WRAP   EDGE SPLIT", Vector2{665.0f, 272.0f}, 17.0f,
                   Color{184, 189, 204, 255});
@@ -319,17 +347,18 @@ void DrawPlayGrid(Font font, const locus::core::Chart& chart,
                       17.0f, feedback);
     }
 
-    DrawTextLabel(font, "120 BPM  |  32 BEATS  |  4 x 4 GRID",
+    DrawTextLabel(font, TextFormat("%.1f BPM  |  %d BEATS  |  4 x 4 GRID",
+                                     chart.bpm, chart.lengthBeats),
                   Vector2{50.0f, 140.0f}, 20.0f,
                   Color{204, 208, 222, 255});
     DrawTextLabel(font, "SPACE PAUSE  |  R RETRY  |  H HOME",
                   Vector2{50.0f, 380.0f}, 17.0f,
                   Color{229, 214, 170, 255});
-    DrawTextLabel(font, transport.Status(), Vector2{50.0f, 412.0f}, 20.0f,
+    DrawTextLabel(font, gameplay.status, Vector2{50.0f, 412.0f}, 20.0f,
                   Color{211, 239, 241, 255});
     DrawTextLabel(font,
                   TextFormat("SONG TIME  %.2f s     BEAT  %.2f",
-                             transport.SongSeconds(now), transport.Beat(now)),
+                             gameplay.songSeconds, gameplay.beat)),
                   Vector2{50.0f, 444.0f}, 20.0f,
                   Color{204, 208, 222, 255});
 }
@@ -407,11 +436,17 @@ void DrawLocalMusicScreen(Font font, const locus::app::LocalMusic& song,
                                      : Color{241, 150, 150, 255});
 }
 
-void DrawResultsScreen(Font font, const locus::core::TurnJudge& judge,
-                       const locus::core::Chart& demo, bool completed) {
-    DrawTextLabel(font, completed ? "DEMO COMPLETE" : "RESULTS PREVIEW",
+void DrawResultsScreen(Font font, const GameplayView& gameplay) {
+    const auto& judge = gameplay.judge;
+    const auto& demo = gameplay.chart;
+    const bool completed = gameplay.completed;
+    DrawTextLabel(font, completed
+                            ? (gameplay.custom ? "CHART COMPLETE" : "DEMO COMPLETE")
+                            : "RESULTS PREVIEW",
                   Vector2{100.0f, 111.0f}, 41.0f,
                   Color{195, 237, 232, 255});
+    DrawTextLabel(font, gameplay.title.c_str(), Vector2{570.0f, 180.0f},
+                  18.0f, Color{170, 215, 222, 255});
     const auto& counts = judge.Counts();
     DrawTextLabel(font, TextFormat("PERFECT   %d", counts.perfect),
                   Vector2{110.0f, 206.0f}, 27.0f,
@@ -444,9 +479,8 @@ void DrawResultsScreen(Font font, const locus::core::TurnJudge& judge,
 // 3. Render: display the selected state; never choose or modify it here.
 void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::core::Chart& demo,
-                 const locus::app::DemoTransport& transport,
+                 const GameplayView& gameplay,
                  const locus::app::LocalMusic& localSong,
-                 const locus::core::TurnJudge& judge,
                  const std::string& musicError, double now) {
     BeginDrawing();
     ClearBackground(kBackground);
@@ -470,8 +504,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::Listen) {
         DrawLocalMusicScreen(font, localSong, now, musicError);
     } else if (state.screen == Screen::Play) {
-        DrawPlayGrid(font, demo, transport, judge, now);
-        if (transport.Paused()) {
+        DrawPlayGrid(font, gameplay);
+        if (gameplay.paused) {
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
                           Color{12, 14, 22, 204});
             DrawTextLabel(font, "PAUSED", Vector2{355.0f, 198.0f},
@@ -484,7 +518,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                           Color{204, 213, 232, 255});
         }
     } else if (state.screen == Screen::Results) {
-        DrawResultsScreen(font, judge, demo, transport.Finished());
+        DrawResultsScreen(font, gameplay);
     } else {
         const char* screen = ScreenName(state.screen);
         constexpr float kScreenFontSize = 54.0f;
