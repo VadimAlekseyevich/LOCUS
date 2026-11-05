@@ -84,6 +84,28 @@ int main() {
                 draft.Data().offsetSeconds == 0.0,
                 "new draft resets controls without hidden chart events");
 
+    // Direct text-field setters: no repeated +/- clicking or drifting offsets.
+    ok &= Check(draft.SetBpm(137.5) && draft.Data().route.bpm == 137.5,
+                "typed decimal BPM replaces the previous value");
+    ok &= Check(!draft.SetBpm(0.0) && !draft.SetBpm(400.0),
+                "invalid typed BPM is refused");
+    ok &= Check(draft.SetOffsetMs(-175.25) &&
+                    std::abs(draft.Data().offsetSeconds + 0.17525) < 1e-10,
+                "typed millisecond offset can be fractional and negative");
+    ok &= Check(!draft.SetOffsetMs(4000000.0) &&
+                    draft.SetLength(64) &&
+                    draft.Data().route.lengthBeats == 64,
+                "typed beat count is validated");
+    draft.SelectBeat(63);
+    draft.PutTurn(Turn::Left);
+    ok &= Check(!draft.SetLength(20) &&
+                    draft.Data().route.lengthBeats == 64,
+                "typed length cannot silently erase a distant turn");
+    ok &= Check(draft.SetTitle("Typed title") &&
+                    draft.Data().title == "Typed title" &&
+                    !draft.SetTitle("   "),
+                "typed title is stored and empty titles rejected");
+
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 wrap=1\n";
     return 0;
