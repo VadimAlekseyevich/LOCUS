@@ -220,6 +220,17 @@ int main() {
                 chart.Data().route.turns[2].beat == 12 &&
                 chart.Data().route.turns[3].beat == 14,
                 "Ctrl+V pastes selected turn pattern starting at beat 12");
+    ok &= Check(ui.HasRange() && ui.rangeFirst == 12 &&
+                ui.rangeLast == 14 && chart.SelectedBeat() == 12,
+                "Ctrl+V keeps the full pasted span selected, including rests");
+
+    chart.SelectBeat(chart.Data().route.lengthBeats - 1);
+    const auto failedPaste = ApplyEditorControls(chart, ui, paste);
+    ok &= Check(!failedPaste.changedChart && ui.HasRange() &&
+                ui.rangeFirst == 12 && ui.rangeLast == 14 &&
+                chart.Data().route.turns.size() == 4,
+                "out-of-bounds paste leaves previous selection and notes intact");
+    chart.SelectBeat(12);
 
     // Shift-click builds a range from the currently selected beat.
     EditorControls extend = Click(cursor + 72, 477);
@@ -251,6 +262,15 @@ int main() {
                 ui.rangeLast == 13 && chart.Data().route.turns[2].beat == 11 &&
                 chart.Data().route.turns[3].beat == 13,
                 "Ctrl+Shift+Left moves whole highlighted group one beat");
+
+    // The on-screen PASTE button must preserve selection just like Ctrl+V.
+    chart.SelectBeat(20);
+    ui.rangeFirst = ui.rangeLast = -1;
+    const auto clickedPaste = ApplyEditorControls(chart, ui, Click(120, 262));
+    ok &= Check(clickedPaste.changedChart && ui.HasRange() &&
+                ui.rangeFirst == 20 && ui.rangeLast == 22 &&
+                chart.Data().route.turns.back().beat == 22,
+                "ROUTE paste button selects newly pasted notes and gaps");
 
     // Regression: dragging off the right edge must keep scrolling the ruler
     // instead of capping selection at the last visible tick.

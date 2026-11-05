@@ -849,9 +849,18 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                        : "NO TURNS IN SELECTION", !any);
         }
         if (paste) {
-            const bool ok = draft.PasteTurns(draft.SelectedBeat(), ui.clipboard);
+            const int destination = draft.SelectedBeat();
+            const bool ok = draft.PasteTurns(destination, ui.clipboard);
             action.changedChart |= ok;
-            notice(ok ? "PATTERN PASTED AT SELECTED BEAT"
+            if (ok) {
+                // Keep the entire pasted pattern selected, including rests
+                // between notes, for immediate shift / flip / copy / delete.
+                // PasteTurns already checks that the whole span fits.
+                ui.rangeFirst = destination;
+                ui.rangeLast = destination + ui.clipboard.span - 1;
+                ui.draggingTimeline = false;
+            }
+            notice(ok ? "PATTERN PASTED - RANGE STILL SELECTED"
                       : "CANNOT PASTE - EMPTY CLIPBOARD, SAME NOTES OR OUT OF BOUNDS", !ok);
         }
         if (invert) {
