@@ -698,9 +698,14 @@ int main(int argc, char** argv) {
 
     AppState state;
     const locus::core::Chart demo = locus::core::MakeDemoChart();
-    locus::core::TurnJudge judge(demo);
+    locus::core::Chart activeChart = demo;
+    locus::core::TurnJudge judge(activeChart); // Stable reference across chart loads.
     locus::app::DemoTransport transport;
     locus::app::LocalMusic localSong;
+    locus::app::ChartPlayback chartPlayback(localSong);
+    bool customChart = false;
+    double previewLead = 4.0;
+    std::string chartTitle = "BUILT-IN DEMO";
     std::string musicError;
     transport.Initialize(demo); // Owns the shared raylib audio output device.
     while (state.running) {
@@ -738,12 +743,62 @@ int main(int argc, char** argv) {
             if (resume && !loadedNewSong) localSong.Resume(now);
         }
 
+        bool loadedNewChart = false;
+        if (input.chooseChartPressed && state.screen == Screen::Home) {
+            // The same Play/Results route and F/J judge handle imported charts.
+            // Only commit a new chart after JSON + relative audio + duration
+            // have been validated. A canceled dialog keeps Home unchanged.
+            const auto selected = locus::app::ChooseChartFile();
+            now = MonotonicSeconds();
+            if (!selected.path.empty()) {
+                locus::core::LoadedChart candidate;
+                std::wstring songPath;
+                if (!locus::app::OpenChartWithAudioPath(
+                        selected.path, candidate, songPath, musicError)) {
+                    std::cerr << "CHART_LOAD_FAIL " << musicError << '\\n';
+                } else if (!localSong.LoadFromFile(songPath)) {
+                    musicError = "audioPath: " + localSong.Error();
+                } else if (!locus::core::PrepareChartForSong(
+                               candidate, localSong.DurationSeconds(), musicError)) {
+                    std::cerr << "CHART_TIMING_FAIL " << musicError << '\\n';
+                } else {
+                    activeChart = std::move(candidate.route);
+                    chartTitle = std::move(candidate.title);
+                    previewLead = candidate.previewLeadBeats;
+                    chartPlayback.Configure(activeChart.bpm, candidate.offsetSeconds);
+                    judge.SetOffsetSeconds(candidate.offsetSeconds);
+                    customChart = true;
+                    loadedNewChart = true;
+                    state.screen = Screen::Play;
+                    musicError.clear();
+                    std::cout << "CHART_V1_READY turns=" << activeChart.turns.size()
+                              << " bpm=" << activeChart.bpm << '\\n';
+                }
+            } else if (!selected.canceled) {
+                musicError = selected.error;
+            }
+        }
+
         if (state.screen != previousScreen) {
-            if (previousScreen == Screen::Play) transport.Stop();
+            if (previousScreen == Screen::Play) {
+                if (customChart) chartPlayback.Stop();
+                else transport.Stop();
+            }
             if (previousScreen == Screen::Listen) localSong.Stop();
             if (state.screen == Screen::Play) {
-                judge.Reset();
-                transport.Start(now);
+                if (previousScreen != Screen::Results && !loadedNewChart) {
+                    // Enter on Home always selects the built-in original demo;
+                    // replay from Results keeps the chart just completed.
+                    customChart = false;
+                    activeChart = demo;
+                    chartTitle = "BUILT-IN DEMO";
+                    previewLead = 4.0;
+                    judge.SetOffsetSeconds(0.0);
+                } else {
+                    judge.Reset();
+                }
+                if (customChart) chartPlayback.Start(now);
+                else transport.Start(now);
             } else if (state.screen == Screen::Listen) {
                 localSong.Start(now);
             }
@@ -751,10 +806,16 @@ int main(int argc, char** argv) {
             if (input.restartPressed ||
                 (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
                 judge.Reset();
-                transport.Start(now);
+                if (customChart) chartPlayback.Start(now);
+                else transport.Start(now);
             } else if (input.pausePressed) {
-                if (transport.Paused()) transport.Resume(now);
-                else transport.Pause(now);
+                if (customChart) {
+                    if (chartPlayback.Paused()) chartPlayback.Resume(now);
+                    else chartPlayback.Pause(now);
+                } else {
+                    if (transport.Paused()) transport.Resume(now);
+                    else transport.Pause(now);
+                }
             }
         } else if (state.screen == Screen::Listen) {
             if (loadedNewSong || input.restartPressed ||
@@ -770,30 +831,54 @@ int main(int argc, char** argv) {
             localSong.Update(now);
         }
         if (state.screen == Screen::Play) {
-            if (transport.Playing() && !transport.Paused()) {
-                // Two simultaneous key-downs are processed left first.
+            const bool playing = customChart ? chartPlayback.Playing() : transport.Playing();
+            const bool paused = customChart ? chartPlayback.Paused() : transport.Paused();
+            if (playing && !paused) {
+                // Fresh F/J key-downs are timestamped in music-time coordinates
+                // for either audio source. Player input never changes the route.
                 if (input.leftPressed) {
                     judge.Press(locus::core::Turn::Left,
-                                transport.SongSeconds(input.leftCapturedAt));
+                                customChart
+                                    ? chartPlayback.AudioSeconds(input.leftCapturedAt)
+                                    : transport.SongSeconds(input.leftCapturedAt));
                 }
                 if (input.rightPressed) {
                     judge.Press(locus::core::Turn::Right,
-                                transport.SongSeconds(input.rightCapturedAt));
+                                customChart
+                                    ? chartPlayback.AudioSeconds(input.rightCapturedAt)
+                                    : transport.SongSeconds(input.rightCapturedAt));
                 }
             }
-            transport.Update(now);
-            if (transport.Ready()) {
-                judge.Advance(transport.SongSeconds(now));
-            }
-            if (transport.Finished()) {
-                FinishSession(state, judge, demo);
+            if (customChart) chartPlayback.Update(now);
+            else transport.Update(now);
+            const double songTime = customChart ? chartPlayback.AudioSeconds(now)
+                                                 : transport.SongSeconds(now);
+            if (customChart || transport.Ready()) judge.Advance(songTime);
+            if (customChart ? chartPlayback.Finished() : transport.Finished()) {
+                FinishSession(state, judge, activeChart);
             }
         }
+        const double renderNow = MonotonicSeconds();
+        const double songTime = customChart ? chartPlayback.AudioSeconds(renderNow)
+                                            : transport.SongSeconds(renderNow);
+        const bool paused = customChart ? chartPlayback.Paused() : transport.Paused();
+        const bool finished = customChart ? chartPlayback.Finished() : transport.Finished();
+        const char* status = customChart
+            ? (finished ? "CHART FINISHED"
+               : paused ? "PAUSED  |  SPACE RESUME"
+               : songTime < 0.0 ? "SILENT PREROLL  |  F/J TO HIT"
+                                : "CUSTOM SONG  |  F/J TO HIT")
+            : transport.Status();
+        const GameplayView gameplay{activeChart, judge, chartTitle, songTime,
+                                    customChart ? chartPlayback.Beat(renderNow)
+                                                : transport.Beat(renderNow),
+                                    previewLead, paused, finished, customChart, status};
         RenderFrame(state, debugScreens, uiFont.value, demo,
-                    transport, localSong, judge, musicError, MonotonicSeconds());
+                    gameplay, localSong, musicError, renderNow);
     }
 
     // Unload both music streams before the shared raylib audio device.
+    chartPlayback.Stop();
     localSong.Shutdown();
     transport.Shutdown();
     if (uiFont.owned) {
