@@ -20,7 +20,8 @@ public:
     bool SetAudioPath(const std::string& relativePath);
 
     bool SelectBeat(int beat) noexcept;
-    bool ChangeBpm(int delta) noexcept; // integer BPM, 30..300
+    bool StepSelection(int deltaBeats) noexcept; // Clamped; does not modify chart.
+    bool ChangeBpm(int delta) noexcept; // No arbitrary upper BPM cap.
     bool SetBpm(double bpm) noexcept;
     bool ChangeOffsetMs(int deltaMs) noexcept; // signed milliseconds
     bool SetOffsetMs(double milliseconds) noexcept;

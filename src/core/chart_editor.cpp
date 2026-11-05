@@ -50,8 +50,18 @@ bool ChartEditor::SelectBeat(int beat) noexcept {
     return true;
 }
 
+bool ChartEditor::StepSelection(int deltaBeats) noexcept {
+    // Avoid out-of-range selections at either edge of a short timeline.
+    const long long next = std::clamp(
+        static_cast<long long>(selectedBeat_) + deltaBeats,
+        0LL, static_cast<long long>(chart_.route.lengthBeats - 1));
+    return SelectBeat(static_cast<int>(next));
+}
+
 bool ChartEditor::SetBpm(double bpm) noexcept {
-    if (!std::isfinite(bpm) || bpm < 30.0 || bpm > 300.0) return false;
+    // Chart JSON already accepts every finite positive BPM. The editor must
+    // not reject legitimate fast charts (e.g. 400 BPM) at an arbitrary 300.
+    if (!std::isfinite(bpm) || bpm <= 0.0) return false;
     if (bpm != chart_.route.bpm) {
         chart_.route.bpm = bpm;
         MarkDirty();
@@ -94,10 +104,7 @@ bool ChartEditor::SetTitle(const std::string& title) {
 
 bool ChartEditor::ChangeBpm(int delta) noexcept {
     const double target = chart_.route.bpm + delta;
-    if (target < 30.0 || target > 300.0 || target == chart_.route.bpm) return false;
-    chart_.route.bpm = target;
-    MarkDirty();
-    return true;
+    return target != chart_.route.bpm && SetBpm(target);
 }
 
 bool ChartEditor::ChangeOffsetMs(int deltaMs) noexcept {

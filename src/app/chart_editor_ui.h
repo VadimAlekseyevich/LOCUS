@@ -9,6 +9,7 @@ namespace locus::app {
 
 struct EditorControls {
     bool previousBeat = false, nextBeat = false;
+    bool previousBar = false, nextBar = false; // Four beats = one 4/4 bar.
     bool movePrevious = false, moveNext = false;
     bool addLeft = false, addRight = false, removeTurn = false;
     bool headingLeft = false, headingRight = false;

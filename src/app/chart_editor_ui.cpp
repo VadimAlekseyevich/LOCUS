@@ -259,8 +259,8 @@ void DrawTimeline(Font font, const core::ChartEditor& draft) {
     Label(font, TextFormat("TIMELINE   %d - %d",
                           page, std::min(page + 15, chart.lengthBeats - 1)),
           50, 422, 17, Color{209, 222, 234, 255});
-    Label(font, "CLICK BEAT   /   ARROWS STEP   /   SHIFT+ARROWS MOVE TURN",
-          357, 422, 14, Color{164, 188, 208, 255});
+    Label(font, "ARROWS 1 BEAT  /  CTRL+ARROWS 4 BEATS  /  SHIFT MOVE",
+          351, 422, 14, Color{164, 188, 208, 255});
     for (int index = 0; index < kVisibleBeats; ++index) {
         const int beat = page + index;
         if (beat >= chart.lengthBeats) continue;
@@ -303,10 +303,13 @@ Vector2 EditorVirtualMouse(Vector2 physical, int screenWidth, int screenHeight) 
 EditorControls PollEditorControls() {
     EditorControls input;
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-    input.previousBeat = IsKeyPressed(KEY_LEFT) && !shift;
-    input.nextBeat = IsKeyPressed(KEY_RIGHT) && !shift;
-    input.movePrevious = IsKeyPressed(KEY_LEFT) && shift;
-    input.moveNext = IsKeyPressed(KEY_RIGHT) && shift;
+    const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    input.previousBeat = IsKeyPressed(KEY_LEFT) && !shift && !control;
+    input.nextBeat = IsKeyPressed(KEY_RIGHT) && !shift && !control;
+    input.previousBar = IsKeyPressed(KEY_LEFT) && control && !shift;
+    input.nextBar = IsKeyPressed(KEY_RIGHT) && control && !shift;
+    input.movePrevious = IsKeyPressed(KEY_LEFT) && shift && !control;
+    input.moveNext = IsKeyPressed(KEY_RIGHT) && shift && !control;
     input.addLeft = IsKeyPressed(KEY_F);
     input.addRight = IsKeyPressed(KEY_J);
     input.removeTurn = IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE);
@@ -334,7 +337,6 @@ EditorControls PollEditorControls() {
         if (utf8 && bytes > 0) input.typedUtf8.append(utf8, bytes);
         codepoint = GetCharPressed();
     }
-    const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     if (control && IsKeyPressed(KEY_V)) {
         const char* clipboard = GetClipboardText();
         if (clipboard) input.typedUtf8 = clipboard; // Ctrl+V pastes the full value.
@@ -436,8 +438,10 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         }
     }
 
-    if (input.previousBeat) draft.SelectBeat(draft.SelectedBeat() - 1);
-    if (input.nextBeat) draft.SelectBeat(draft.SelectedBeat() + 1);
+    if (input.previousBeat) draft.StepSelection(-1);
+    if (input.nextBeat) draft.StepSelection(1);
+    if (input.previousBar) draft.StepSelection(-4);
+    if (input.nextBar) draft.StepSelection(4);
     if (input.movePrevious) action.changedChart |= draft.MoveTurn(-1);
     if (input.moveNext) action.changedChart |= draft.MoveTurn(1);
     if (input.addLeft) { draft.PutTurn(core::Turn::Left); action.changedChart = true; }

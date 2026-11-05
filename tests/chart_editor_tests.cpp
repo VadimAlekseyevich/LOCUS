@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 using namespace locus::core;
 
@@ -87,8 +88,14 @@ int main() {
     // Direct text-field setters: no repeated +/- clicking or drifting offsets.
     ok &= Check(draft.SetBpm(137.5) && draft.Data().route.bpm == 137.5,
                 "typed decimal BPM replaces the previous value");
-    ok &= Check(!draft.SetBpm(0.0) && !draft.SetBpm(400.0),
-                "invalid typed BPM is refused");
+    ok &= Check(draft.SetBpm(400.0) && draft.Data().route.bpm == 400.0 &&
+                draft.ChangeBpm(1) && draft.Data().route.bpm == 401.0 &&
+                draft.SetBpm(1200.5) && draft.Data().route.bpm == 1200.5,
+                "400 BPM and higher values are accepted without an arbitrary 300 cap");
+    ok &= Check(!draft.SetBpm(0.0) && !draft.SetBpm(-20.0) &&
+                !draft.SetBpm(std::numeric_limits<double>::infinity()) &&
+                !draft.ChangeBpm(-2000),
+                "nonpositive and nonfinite BPM values remain invalid");
     ok &= Check(draft.SetOffsetMs(-175.25) &&
                     std::abs(draft.Data().offsetSeconds + 0.17525) < 1e-10,
                 "typed millisecond offset can be fractional and negative");
@@ -105,6 +112,18 @@ int main() {
                     draft.Data().title == "Typed title" &&
                     !draft.SetTitle("   "),
                 "typed title is stored and empty titles rejected");
+
+    // Ctrl+arrow navigation jumps four beats (one 4/4 bar), with edge
+    // clamping and no accidental modification of the saved chart.
+    draft.NewDraft();
+    ok &= Check(draft.StepSelection(4) && draft.SelectedBeat() == 4 &&
+                draft.StepSelection(4) && draft.SelectedBeat() == 8 &&
+                draft.StepSelection(-4) && draft.SelectedBeat() == 4,
+                "Ctrl+arrows move the selection by four beats");
+    ok &= Check(draft.StepSelection(-100) && draft.SelectedBeat() == 0 &&
+                !draft.StepSelection(-4) && draft.StepSelection(100) &&
+                draft.SelectedBeat() == 31 && !draft.StepSelection(4) &&
+                !draft.Dirty(), "bar navigation clamps at both edges and stays non-destructive");
 
     // 173765 is an offset in milliseconds, not an excessively large BPM.
     // Space on beat 16 should seek to the correct *song* time.
