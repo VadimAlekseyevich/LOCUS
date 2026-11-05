@@ -95,6 +95,15 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_chart_json_tests PRIVATE locus_core)
     add_test(NAME locus_chart_v1_json COMMAND locus_chart_json_tests)
 
+    add_executable(locus_chart_file_tests
+        tests/chart_file_tests.cpp
+        src/app/chart_file.cpp
+        src/app/local_file_io.cpp
+    )
+    target_compile_features(locus_chart_file_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_chart_file_tests PRIVATE locus_core)
+    add_test(NAME locus_chart_local_file COMMAND locus_chart_file_tests)
+
     add_executable(locus_judgement_tests tests/judgement_tests.cpp)
     target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_judgement_tests PRIVATE locus_core)
