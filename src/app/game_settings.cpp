@@ -5,7 +5,13 @@
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
+// Win32 names collide with raylib's CloseWindow/ShowCursor declarations.
+// Only the filesystem replacement API is used here.
+#define CloseWindow Win32CloseWindow
+#define ShowCursor Win32ShowCursor
 #include <windows.h>
+#undef CloseWindow
+#undef ShowCursor
 #endif
 
 #include <algorithm>

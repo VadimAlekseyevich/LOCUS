@@ -37,7 +37,7 @@ void Button(Font font, Rectangle area, const std::string& label,
 }
 
 void Header(Font font, const char* section) {
-    Label(font, "LOCUS", 51.0f, 35.0f, 29.0f, kText);
+    // The app frame already draws the LOCUS wordmark.
     Label(font, section, 52.0f, 88.0f, 30.0f, kMint);
 }
 
