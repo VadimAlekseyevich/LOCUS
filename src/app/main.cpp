@@ -1074,6 +1074,7 @@ int main(int argc, char** argv) {
                     chartTitle = std::move(candidate.title);
                     previewLead = candidate.previewLeadBeats;
                     chartPlayback.Configure(activeChart.bpm, candidate.offsetSeconds);
+                    chartPlayback.SetSpeed(1.0, now); // Fresh Home charts start at normal speed.
                     judge.SetOffsetSeconds(candidate.offsetSeconds);
                     customChart = true;
                     loadedNewChart = true;
@@ -1111,6 +1112,7 @@ int main(int argc, char** argv) {
                 if (customChart) chartPlayback.Start(now);
                 else transport.Start(now);
             } else if (state.screen == Screen::Listen) {
+                localSong.SetSpeed(1.0, now); // Preview slowdown must not leak to Listen.
                 localSong.Start(now);
             }
         } else if (state.screen == Screen::Play) {
