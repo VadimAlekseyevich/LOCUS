@@ -2,6 +2,7 @@
 
 #include "core/route.h"
 
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -15,11 +16,17 @@ struct LoadedChart {
     std::string audioPath;
     double offsetSeconds = 0.0;
     double previewLeadBeats = 4.0;
+    // Explicit editor length; absent in older charts, where song duration sets it.
+    std::optional<int> authoredLengthBeats;
 };
 
 // No filesystem or audio device required. Reject malformed/duplicate/unknown
 // members instead of changing authored beat positions or directions.
 bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& error);
+
+// Stable, human-readable UTF-8 JSON, always writing offsetMs. No file IO.
+bool SerializeChartJson(const LoadedChart& chart, std::string& json,
+                        std::string& error);
 
 // A song path must be normalized chart-relative: no drive, URL, slash root,
 // empty, "." or ".." segments, or Windows backslashes.
