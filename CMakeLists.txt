@@ -16,6 +16,7 @@ add_library(locus_core STATIC
     src/core/judgement.cpp
     src/core/song_clock.cpp
     src/core/demo_audio.cpp
+    src/core/music_file.cpp
 )
 target_compile_features(locus_core PUBLIC cxx_std_17)
 set_target_properties(locus_core PROPERTIES
@@ -28,8 +29,13 @@ target_include_directories(locus_core PUBLIC
 add_executable(locus
     src/app/main.cpp
     src/app/demo_transport.cpp
+    src/app/local_music.cpp
+    src/app/music_picker.cpp
 )
 target_link_libraries(locus PRIVATE locus_core raylib)
+if(WIN32)
+    target_link_libraries(locus PRIVATE comdlg32)
+endif()
 set_target_properties(locus PROPERTIES
     CXX_EXTENSIONS OFF
 )
@@ -73,6 +79,11 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_music_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_music_tests PRIVATE locus_core)
     add_test(NAME locus_demo_audio_clock COMMAND locus_music_tests)
+
+    add_executable(locus_music_file_tests tests/music_file_tests.cpp)
+    target_compile_features(locus_music_file_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_music_file_tests PRIVATE locus_core)
+    add_test(NAME locus_local_music_files COMMAND locus_music_file_tests)
 
     add_executable(locus_judgement_tests tests/judgement_tests.cpp)
     target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)
