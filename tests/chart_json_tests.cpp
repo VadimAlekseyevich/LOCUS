@@ -106,6 +106,32 @@ int main() {
                  early.route.lengthBeats == 21,
                  "negative offsets include chart-side silent preroll");
 
+    // New format is milliseconds; legacy second-based charts remain valid.
+    std::string millis = valid;
+    const std::string secondsField = "\"offsetSeconds\": 0.25";
+    const auto position = millis.find(secondsField);
+    ok &= Expect(position != std::string::npos, "legacy offset fixture exists");
+    if (position != std::string::npos) {
+        millis.replace(position, secondsField.size(), "\"offsetMs\": 250");
+        LoadedChart millisecondChart;
+        ok &= Expect(ParseChartJson(millis, millisecondChart, error) &&
+                         millisecondChart.offsetSeconds == 0.25 &&
+                         PrepareChartForSong(millisecondChart, 11.0, error) &&
+                         millisecondChart.route.lengthBeats == parsed.route.lengthBeats,
+                     "offsetMs=250 must mean the same as legacy 0.25 seconds");
+        ok &= Expect(Reject(millis, "\"offsetMs\": 250",
+                            "\"offsetMs\": \"oops\"", "offsetMs"),
+                     "offsetMs must be numeric");
+        ok &= Expect(Reject(millis, "\"offsetMs\": 250",
+                            "\"offsetMs\": 250, \"offsetSeconds\": 0.25", "offsetMs"),
+                     "reject ambiguous units when both offset fields appear");
+        ok &= Expect(Reject(millis, "\"offsetMs\": 250",
+                            "\"offsetMs\": 250.0, \"offsetMs\": 300", "duplicate JSON key"),
+                     "duplicate offsetMs remains forbidden");
+    }
+    ok &= Expect(Reject(valid, "\"offsetSeconds\": 0.25", "\"wrongOffset\": 250",
+                        "offsetMs"), "an offset value is always required");
+
     if (!ok) return 1;
     std::cout << "CHART_JSON_PASS version=1 validation=1 wrap=1 preroll=1\n";
     return 0;
