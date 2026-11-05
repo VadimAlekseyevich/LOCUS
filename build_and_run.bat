@@ -253,13 +253,15 @@ echo  EDITOR: unsaved changes prompt - Y discard / N cancel
 echo  GAME: Space Pause/Resume  R Replay  H Home (rebindable)
 echo  MENUS: H/ESC = Back   HOME: ESC = Close
 echo  F11 = Fullscreen / Window   Window edges = Resize
-echo  DEBUG ONLY: F1 Home / F2 Play / F3 Editor / F4 Results
+echo  Diagnostics only: run locus.exe --debug-screens manually for F1-F4
 echo  No Fail: errors never change the correct route.
 echo  Close with ESC or the X button in the window title bar.
 echo ============================================================
 echo.
 pushd "%LOG_DIR%"
-"%GAME_EXE%" --debug-screens > "%LOG_DIR%\game-console.log" 2>&1
+rem Normal interactive runs must not show diagnostic F1-F4 text over gameplay/UI.
+rem For developer navigation, run locus.exe --debug-screens manually.
+"%GAME_EXE%" > "%LOG_DIR%\game-console.log" 2>&1
 set "GAME_EXIT=%ERRORLEVEL%"
 popd
 if not "%GAME_EXIT%"=="0" (

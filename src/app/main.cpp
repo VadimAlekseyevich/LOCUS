@@ -275,10 +275,12 @@ struct GameplayGrid {
 
     explicit GameplayGrid(const locus::core::Chart& chart) {
         const int span = std::max(chart.gridWidth - 1, chart.gridHeight - 1);
-        step = std::min(76.0f, 240.0f / static_cast<float>(std::max(1, span)));
-        left = kWindowWidth / 2.0f -
-               static_cast<float>(chart.gridWidth - 1) * step / 2.0f;
-        top = 278.0f - static_cast<float>(chart.gridHeight - 1) * step / 2.0f;
+        // Play is intentionally a full-screen rhythm view, unlike the
+        // editor. Reserve the right side for hit statistics and maximize
+        // the field without clipping Wrap exits at the half-cell seams.
+        step = std::min(195.0f, 350.0f / static_cast<float>(std::max(1, span)));
+        left = 426.0f - static_cast<float>(chart.gridWidth - 1) * step / 2.0f;
+        top = 280.0f - static_cast<float>(chart.gridHeight - 1) * step / 2.0f;
     }
 
     Vector2 Point(locus::core::Cell cell) const {
@@ -291,15 +293,13 @@ struct GameplayGrid {
     }
 };
 
- void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
+void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     const auto& chart = gameplay.chart;
-    const auto& judge = gameplay.judge;
     const GameplayGrid grid(chart);
-    DrawTextLabel(font, gameplay.custom ? "PLAY  /  YOUR CHART" : "PLAY  /  DEMO CHART",
-                  Vector2{50.0f, 98.0f}, 27.0f,
-                  Color{211, 239, 241, 255});
 
-    // Grid guides are quieter than the authored route overlay.
+    // Gameplay has its own deliberately quiet presentation. Editing
+    // instructions, next-note hints, timing data and technical transport
+    // information belong only to the editor, not the actual playfield.
     const Color guides{43, 50, 64, 255};
     for (int row = 0; row < chart.gridHeight; ++row) {
         DrawLineEx(grid.Point({0, row}),
@@ -325,7 +325,6 @@ struct GameplayGrid {
         }
     }
 
-    // Shared route renderer also owns fading turn junctions.
     locus::app::DrawRouteJunctions(
         chart, gameplay.beat, canvas, locus::app::RouteRenderMode::Gameplay);
     const float markerRadius = std::min(17.0f, grid.step * 0.47f);
@@ -337,92 +336,40 @@ struct GameplayGrid {
             marker, markerRadius, gameplay.hitFlash.Sample(now));
     }
 
-    DrawTextLabel(font, "RED   TURN JUNCTIONS", Vector2{665.0f, 216.0f}, 17.0f,
-                  Color{131, 232, 227, 255});
-    DrawTextLabel(font, "RED   1-BAR PREVIEW", Vector2{665.0f, 244.0f}, 17.0f,
-                  locus::app::kDefaultRouteVisualStyle.fullTrajectory);
-    DrawTextLabel(font, "WRAP   EDGE SPLIT", Vector2{665.0f, 272.0f}, 17.0f,
-                  Color{184, 189, 204, 255});
-
-    DrawTextLabel(font, "DIRECTION KEYS", Vector2{50.0f, 204.0f}, 21.0f,
-                  Color{236, 216, 160, 255});
-    DrawTextLabel(font, "DIAGONAL = TWO KEYS", Vector2{50.0f, 237.0f}, 18.0f,
-                  Color{236, 216, 160, 255});
-    DrawTextLabel(font, "HIT ON THE BEAT", Vector2{50.0f, 274.0f}, 18.0f,
-                  Color{171, 187, 210, 255});
-
-    if (const locus::core::TurnEvent* next = judge.NextEvent()) {
-        const auto incoming = locus::core::IncomingHeadingAt(chart, next->beat);
-        const auto outgoing = locus::core::HeadingAfterTurn(incoming, next->direction);
-        const char* arrows[] = {
-            "UP", "RIGHT", "DOWN", "LEFT",
-            "UP+RIGHT", "DOWN+RIGHT", "DOWN+LEFT", "UP+LEFT"
-        };
-        DrawTextLabel(font,
-                      TextFormat("NEXT: %s  /  BEAT %d",
-                                 arrows[static_cast<int>(outgoing)], next->beat),
-                      Vector2{50.0f, 318.0f}, 17.0f,
-                      Color{228, 231, 241, 255});
-    } else {
-        DrawTextLabel(font, "ALL TURNS RESOLVED",
-                      Vector2{50.0f, 318.0f}, 17.0f,
-                      Color{228, 231, 241, 255});
+    // The only persistent HUD is the four judgement counters. The latest
+    // judgement is transient feedback, not an editor diagnostic overlay.
+    const auto& counts = gameplay.judge.Counts();
+    DrawTextLabel(font, "HITS", {703.0f, 160.0f}, 22.0f,
+                  Color{157, 226, 221, 255});
+    const struct {
+        const char* label;
+        int count;
+        Color color;
+    } rows[] = {
+        {"PERFECT", counts.perfect, {133, 236, 201, 255}},
+        {"GOOD", counts.good, {143, 208, 239, 255}},
+        {"BAD", counts.bad, {242, 198, 135, 255}},
+        {"MISS", counts.miss, {237, 142, 149, 255}}
+    };
+    for (int i = 0; i < 4; ++i) {
+        const float y = 213.0f + 47.0f * i;
+        DrawTextLabel(font, rows[i].label, {703.0f, y}, 19.0f, rows[i].color);
+        const char* value = TextFormat("%d", rows[i].count);
+        const Vector2 measure = MeasureTextEx(font, value, 22.0f, 1.0f);
+        DrawTextLabel(font, value, {904.0f - measure.x, y - 2.0f}, 22.0f,
+                      Color{231, 237, 243, 255});
     }
-
-    const auto& counts = judge.Counts();
-    DrawTextLabel(font,
-                  TextFormat("PERFECT %d  GOOD %d", counts.perfect, counts.good),
-                  Vector2{665.0f, 322.0f}, 17.0f,
-                  Color{194, 225, 232, 255});
-    DrawTextLabel(font,
-                  TextFormat("BAD %d  MISS %d", counts.bad, counts.miss),
-                  Vector2{665.0f, 350.0f}, 17.0f,
-                  Color{202, 207, 218, 255});
-    if (const auto& last = judge.Last()) {
-        const char* label = locus::core::GradeName(last->grade);
-        if (last->grade == locus::core::Grade::Miss) {
-            label = last->wrongDirection ? "MISS (WRONG KEY)" : "MISS (NO INPUT)";
-        }
-        const Color feedback = last->grade == locus::core::Grade::Perfect
-                                   ? Color{131, 240, 207, 255}
-                               : last->grade == locus::core::Grade::Good
-                                   ? Color{131, 204, 235, 255}
-                               : last->grade == locus::core::Grade::Bad
-                                   ? Color{239, 195, 123, 255}
-                                   : Color{239, 136, 139, 255};
-        DrawTextLabel(font, label, Vector2{665.0f, 379.0f},
-                      17.0f, feedback);
+    if (const auto& last = gameplay.judge.Last()) {
+        const Color color = last->grade == locus::core::Grade::Perfect
+                                ? Color{133, 236, 201, 255}
+                            : last->grade == locus::core::Grade::Good
+                                ? Color{143, 208, 239, 255}
+                            : last->grade == locus::core::Grade::Bad
+                                ? Color{242, 198, 135, 255}
+                                : Color{237, 142, 149, 255};
+        DrawTextLabel(font, locus::core::GradeName(last->grade),
+                      {703.0f, 426.0f}, 19.0f, color);
     }
-
-    DrawTextLabel(font, TextFormat("%.1f BPM  |  %d BEATS  |  %d x %d GRID",
-                                     chart.bpm, chart.lengthBeats - chart.firstBeat,
-                                     chart.gridWidth, chart.gridHeight),
-                  Vector2{50.0f, 140.0f}, 20.0f,
-                  Color{204, 208, 222, 255});
-    const std::string gameplayControls =
-        locus::app::KeyboardKeyName(gameplay.bindings.Key(locus::app::GameAction::Pause)) +
-        " PAUSE  |  " +
-        locus::app::KeyboardKeyName(gameplay.bindings.Key(locus::app::GameAction::Retry)) +
-        " RETRY  |  " +
-        locus::app::KeyboardKeyName(gameplay.bindings.Key(locus::app::GameAction::Home)) +
-        " HOME";
-    DrawTextLabel(font, gameplayControls.c_str(),
-                  Vector2{50.0f, 380.0f}, 17.0f,
-                  Color{229, 214, 170, 255});
-    if (gameplay.custom) {
-        DrawTextLabel(font,
-                      TextFormat("SPEED %.0f%%  |  1-5 TO PRACTICE SLOWLY",
-                                 gameplay.practiceSpeed * 100.0),
-                      Vector2{665.0f, 413.0f}, 15.0f,
-                      Color{164, 210, 222, 255});
-    }
-    DrawTextLabel(font, gameplay.status, Vector2{50.0f, 412.0f}, 20.0f,
-                  Color{211, 239, 241, 255});
-    DrawTextLabel(font,
-                  TextFormat("SONG TIME  %.2f s     BEAT  %.2f",
-                             gameplay.songSeconds, gameplay.beat),
-                  Vector2{50.0f, 444.0f}, 20.0f,
-                  Color{204, 208, 222, 255});
 }
 
 void DrawHomeScreen(Font font, const locus::app::SongLibrary& library,
@@ -683,8 +630,11 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     camera.zoom = scale;
     BeginMode2D(camera);
 
-    DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
-                  Color{223, 225, 238, 255});
+    // No wordmark or global help text during scoring: only field + hits.
+    if (state.screen != Screen::Play) {
+        DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
+                      Color{223, 225, 238, 255});
+    }
 
     if (state.screen == Screen::Home) {
         DrawHomeScreen(font, library, menuStatus);
@@ -751,15 +701,59 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 112)},
                       22.0f, Color{208, 211, 225, 255});
     }
-    DrawTextLabel(font, "F11  FULLSCREEN", Vector2{665.0f, 61.0f}, 16.0f,
-                  Color{174, 191, 208, 255});
-    if (debugScreens && state.screen != Screen::Editor) {
+    // F11 still works; the fullscreen hint no longer floats across menu
+    // buttons or the editor. Debug overlays only belong to explicit diagnostics.
+    if (debugScreens && state.screen != Screen::Editor &&
+        state.screen != Screen::Settings && state.screen != Screen::Play) {
         DrawTextLabel(font, "DEBUG: F1 Home   F2 Play   F3 Editor   F4 Results",
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 65)},
                       22.0f, Color{232, 213, 160, 255});
     }
     EndMode2D();
     EndDrawing();
+}
+
+// Keep rendering-only layout regressions in the headless screen check.
+// This uses the same rectangles as the visible controls and hit testing.
+bool CheckPresentationLayout() {
+    const Rectangle left{52, 149, 408, 325};
+    const Rectangle right{486, 149, 432, 325};
+    const auto inside = [](Rectangle frame, Rectangle r) {
+        return r.x >= frame.x && r.y >= frame.y &&
+               r.x + r.width <= frame.x + frame.width &&
+               r.y + r.height <= frame.y + frame.height;
+    };
+    const Rectangle leftControls[] = {
+        locus::app::SettingsVolumeMinus(), locus::app::SettingsVolumePlus(),
+        locus::app::SettingsFlashButton(),
+        locus::app::SettingsChordMinus(), locus::app::SettingsChordPlus(),
+        locus::app::SettingsFullscreenButton()
+    };
+    for (const auto control : leftControls)
+        if (!inside(left, control)) return false;
+    for (int i = 0; i < locus::app::kGameActionCount; ++i) {
+        const auto button = locus::app::SettingsBindingButton(i);
+        if (!inside(right, button)) return false;
+        if (button.y + button.height >= 474.0f) return false;
+        if (i > 0) {
+            const auto previous = locus::app::SettingsBindingButton(i - 1);
+            if (button.y < previous.y + previous.height) return false;
+        }
+    }
+    // The gameplay board must fit fully to the left of the HUD, including
+    // wrap seams extending by half a cell beyond either edge.
+    for (int dimensions : {2, 4, 8, 16}) {
+        auto chart = locus::core::MakeDemoChart();
+        chart.gridWidth = dimensions;
+        chart.gridHeight = dimensions;
+        const GameplayGrid grid(chart);
+        if (grid.left - grid.step * 0.5f < 0.0f ||
+            grid.left + (dimensions - 0.5f) * grid.step >= 690.0f ||
+            grid.top - grid.step * 0.5f < 0.0f ||
+            grid.top + (dimensions - 0.5f) * grid.step >= kWindowHeight)
+            return false;
+    }
+    return true;
 }
 
 // Headless checks exercise the same update function without starting raylib.
@@ -806,7 +800,8 @@ bool CheckScreenTransitions() {
 
     // Closing takes precedence over a simultaneous screen-switch request.
     UpdateState(state, FrameInput{true, Screen::Editor}, false);
-    return !state.running && state.screen == Screen::Home &&
+    return CheckPresentationLayout() &&
+           !state.running && state.screen == Screen::Home &&
            state.frames == expectedFrames &&
            std::strcmp(ScreenName(Screen::Play), "Play") == 0 &&
            std::strcmp(ScreenName(Screen::Editor), "Editor") == 0 &&

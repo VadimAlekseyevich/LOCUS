@@ -1,5 +1,23 @@
 # LOCUS
 
+## Gameplay HUD and settings layout
+
+Normal **PLAY** now focuses on the enlarged route field, moving marker and
+live **Perfect / Good / Bad / Miss** counters (plus the latest grade). It
+does not show chart editing hints, BPM/beat/time readouts, input tutorials,
+technical playback status, or debug navigation labels. Pause still shows
+resume/retry/home controls, and Results retains the separate result summary.
+The **editor's** detailed workspace remains unchanged.
+
+The SETTINGS view has aligned two-column panels for audio, hit flashes,
+diagonal chord timing, fullscreen and gameplay key bindings. Messages appear
+beneath the panels, so they do not overlap any switches. The ordinary
+`build_and_run.bat` launcher no longer enables `--debug-screens`. Debug
+F1–F4 screen shortcuts remain available **only** when launching the
+executable explicitly with `--debug-screens`. Pressing **F11** still changes
+fullscreen without an intrusive floating banner.
+
+
 ## Home, song library and settings (current navigation)
 
 The starting screen now has four large clickable buttons: **PLAY**, **EDIT**,

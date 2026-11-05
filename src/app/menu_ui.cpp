@@ -57,14 +57,14 @@ Rectangle LibraryRefreshButton() { return {618, 82, 147, 34}; }
 Rectangle LibraryPlayButton() { return {504, 458, 192, 43}; }
 Rectangle LibraryEditButton() { return {706, 458, 199, 43}; }
 Rectangle SettingsBindingButton(int index) {
-    return {739.0f, 173.0f + 42.0f * index, 166.0f, 35.0f};
+    return {736.0f, 192.0f + 39.0f * index, 167.0f, 33.0f};
 }
-Rectangle SettingsVolumeMinus() { return {273, 192, 48, 38}; }
-Rectangle SettingsVolumePlus() { return {339, 192, 48, 38}; }
-Rectangle SettingsFlashButton() { return {272, 280, 115, 39}; }
-Rectangle SettingsChordMinus() { return {273, 363, 48, 38}; }
-Rectangle SettingsChordPlus() { return {339, 363, 48, 38}; }
-Rectangle SettingsFullscreenButton() { return {273, 447, 114, 38}; }
+Rectangle SettingsVolumeMinus() { return {300, 193, 43, 35}; }
+Rectangle SettingsVolumePlus() { return {354, 193, 43, 35}; }
+Rectangle SettingsFlashButton() { return {297, 255, 100, 37}; }
+Rectangle SettingsChordMinus() { return {300, 345, 43, 35}; }
+Rectangle SettingsChordPlus() { return {354, 345, 43, 35}; }
+Rectangle SettingsFullscreenButton() { return {297, 409, 100, 37}; }
 Rectangle MenuBackButton() { return {794, 78, 110, 37}; }
 
 void SongSelectUi::SelectSong(int index, const SongLibrary& songs) {
@@ -184,37 +184,54 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
     Header(font, "SETTINGS");
     Button(font, MenuBackButton(), "BACK", kMuted);
 
-    Label(font, "AUDIO  /  MASTER VOLUME", 69, 158, 18, kMuted);
+    // Both columns have explicit boundaries and consistent row spacing;
+    // controls no longer sink into a footer or overlap debugging text.
+    const Rectangle leftPanel{52, 149, 408, 325};
+    const Rectangle rightPanel{486, 149, 432, 325};
+    const Color panel{26, 30, 42, 255};
+    const Color edge{51, 62, 78, 255};
+    DrawRectangleRounded(leftPanel, 0.055f, 6, panel);
+    DrawRectangleRoundedLinesEx(leftPanel, 0.055f, 6, 1.0f, edge);
+    DrawRectangleRounded(rightPanel, 0.055f, 6, panel);
+    DrawRectangleRoundedLinesEx(rightPanel, 0.055f, 6, 1.0f, edge);
+
+    Label(font, "AUDIO  /  MASTER VOLUME", 73, 166, 17, kMuted);
     Label(font, TextFormat("%d%%", static_cast<int>(std::lround(settings.volume * 100))),
-          77, 198, 26, kText);
+          84, 198, 25, kText);
     Button(font, SettingsVolumeMinus(), "-", kMint);
     Button(font, SettingsVolumePlus(), "+", kMint);
+    DrawLine(72, 240, 441, 240, edge);
 
-    Label(font, "VISUAL  /  HIT FLASH", 69, 247, 18, kMuted);
+    Label(font, "VISUAL  /  HIT FLASH", 73, 260, 17, kMuted);
     Button(font, SettingsFlashButton(), settings.hitFlash ? "ON" : "OFF", kGold,
            settings.hitFlash);
+    DrawLine(72, 305, 441, 305, edge);
 
-    Label(font, "DIAGONAL CHORD WINDOW", 69, 332, 18, kMuted);
-    Label(font, TextFormat("%d MS", settings.chordWindowMs), 77, 371, 21, kText);
+    Label(font, "DIAGONAL CHORD WINDOW", 73, 324, 17, kMuted);
+    Label(font, TextFormat("%d MS", settings.chordWindowMs), 84, 355, 21, kText);
     Button(font, SettingsChordMinus(), "-", kViolet);
     Button(font, SettingsChordPlus(), "+", kViolet);
+    DrawLine(72, 396, 441, 396, edge);
 
-    Label(font, "WINDOW  /  FULLSCREEN", 69, 418, 18, kMuted);
+    Label(font, "WINDOW  /  FULLSCREEN", 73, 417, 17, kMuted);
     Button(font, SettingsFullscreenButton(),
            settings.fullscreen ? "ON" : "OFF", kMuted, settings.fullscreen);
 
-    Label(font, "GAMEPLAY KEY BINDINGS", 503, 143, 19, kMint);
+    Label(font, "GAMEPLAY KEY BINDINGS", 508, 161, 18, kMint);
     for (int i = 0; i < kGameActionCount; ++i) {
         const auto action = static_cast<GameAction>(i);
-        Label(font, ActionName(action), 515, 181.0f + i * 42.0f, 17, kText);
+        Label(font, ActionName(action), 506, 200.0f + i * 39.0f, 17, kText);
         Button(font, SettingsBindingButton(i),
                ui.capturing == i ? "PRESS KEY..." :
                KeyboardKeyName(settings.Key(action)), kViolet,
                ui.capturing == i);
     }
-    Label(font, "CLICK A KEY TO REBIND  /  ESC TO CANCEL", 508, 489, 13, kMuted);
-    Label(font, Clip(ui.notice, 95), 66, 515, 14,
+
+    // Footer notices are outside the two settings panels, not over controls.
+    Label(font, Clip(ui.notice, 49), 64, 495, 13,
           ui.noticeError ? Color{243, 142, 145, 255} : kGold);
+    Label(font, "CLICK A BINDING, PRESS A KEY  /  ESC CANCEL",
+          492, 495, 12, kMuted);
 }
 
 } // namespace locus::app
