@@ -27,6 +27,7 @@ enum class EditorField { None, Title, Bpm, OffsetMs, Length };
 struct EditorUiState {
     EditorField active = EditorField::None;
     std::string buffer;
+    bool replaceOnType = false;
     std::string feedback;
     bool EditingText() const noexcept { return active != EditorField::None; }
 };
