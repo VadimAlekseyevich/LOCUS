@@ -2,6 +2,8 @@
 
 #include "core/demo_audio.h"
 
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <limits>
 
@@ -42,10 +44,16 @@ bool DemoTransport::Initialize(const core::Chart& chart) {
         return false;
     }
     music_.looping = false;
-    SetMusicVolume(music_, 0.60f);
+    SetMusicVolume(music_, volume_);
     std::cout << "DEMO_AUDIO_READY bpm=" << bpm_
               << " beats=" << chart.lengthBeats << '\n';
     return true;
+}
+
+void DemoTransport::SetVolume(float level) {
+    if (!std::isfinite(level)) return;
+    volume_ = std::clamp(level, 0.0f, 1.0f);
+    if (musicLoaded_) SetMusicVolume(music_, volume_);
 }
 
 void DemoTransport::Start(double monotonicSeconds) {
