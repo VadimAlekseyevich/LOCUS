@@ -16,6 +16,7 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <vector>
 
 // F-07: placeholder screens share one window and one input/update/render loop.
 // Real screen controllers, routing, and musical timing arrive in later tasks.
@@ -140,13 +141,24 @@ UiFont LoadUiFont() {
     const std::string fontsDirectory = (windowsDirectory && windowsDirectory[0] != '\0')
                                            ? std::string(windowsDirectory) + "\\Fonts\\"
                                            : "C:\\Windows\\Fonts\\";
+    // Include Latin and Cyrillic glyphs for Unicode local track titles.
+    // Windows provides these font faces; no third-party fonts are bundled.
+    std::vector<int> glyphs;
+    glyphs.reserve(95 + 304);
+    for (int codepoint = 32; codepoint <= 126; ++codepoint) {
+        glyphs.push_back(codepoint);
+    }
+    for (int codepoint = 0x0400; codepoint <= 0x052F; ++codepoint) {
+        glyphs.push_back(codepoint);
+    }
     const char* fontFiles[] = {"segoeui.ttf", "arial.ttf"};
     for (const char* filename : fontFiles) {
         const std::string path = fontsDirectory + filename;
         if (!FileExists(path.c_str())) {
             continue;
         }
-        Font candidate = LoadFontEx(path.c_str(), 64, nullptr, 0);
+        Font candidate = LoadFontEx(path.c_str(), 64, glyphs.data(),
+                                    static_cast<int>(glyphs.size()));
         // LoadFontEx may return the default font if rasterization fails.
         if (IsFontValid(candidate) &&
             candidate.texture.id != GetFontDefault().texture.id) {
