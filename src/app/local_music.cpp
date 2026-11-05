@@ -46,6 +46,7 @@ bool LocalMusic::LoadFromFile(const std::wstring& path) {
     }
     candidate.looping = false;
     SetMusicVolume(candidate, 0.70f);
+    SetMusicPitch(candidate, static_cast<float>(speed_));
 
     // Only replace the previous working song after successful decoding.
     Shutdown();
@@ -63,6 +64,7 @@ void LocalMusic::Start(double monotonicSeconds) {
     if (!ready_) return;
     Stop();
     finished_ = false;
+    SetMusicPitch(music_, static_cast<float>(speed_));
     PlayMusicStream(music_);
     clock_.Start(monotonicSeconds);
     playing_ = true;
@@ -80,6 +82,13 @@ void LocalMusic::Resume(double monotonicSeconds) {
     ResumeMusicStream(music_);
     clock_.Resume(monotonicSeconds);
     paused_ = false;
+}
+
+void LocalMusic::SetSpeed(double fraction, double monotonicSeconds) {
+    if (!std::isfinite(fraction) || fraction < 0.1 || fraction > 1.0) return;
+    speed_ = fraction;
+    clock_.SetRate(fraction, monotonicSeconds);
+    if (ready_) SetMusicPitch(music_, static_cast<float>(fraction));
 }
 
 void LocalMusic::Stop() {
