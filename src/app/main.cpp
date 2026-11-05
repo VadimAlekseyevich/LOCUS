@@ -547,8 +547,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         DrawResultsScreen(font, gameplay);
     } else if (state.screen == Screen::Editor) {
         locus::app::RenderChartEditor(font, editor);
-        DrawTextLabel(font, editorStatus.c_str(), Vector2{416.0f, 129.0f},
-                      14.0f, Color{175, 212, 213, 255});
+        const std::string statusLine = editorStatus.substr(0, 59);
+        DrawTextLabel(font, statusLine.c_str(), Vector2{416.0f, 109.0f},
+                      13.0f, Color{175, 212, 213, 255});
         if (editorPending != EditorPending::None) {
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{10, 13, 21, 218});
             DrawTextLabel(font, "UNSAVED CHART CHANGES", {193.0f, 187.0f},
@@ -871,7 +872,11 @@ int main(int argc, char** argv) {
         }
         double now = MonotonicSeconds();
         bool loadedNewSong = false;
-        if (state.screen == Screen::Editor && editorPending == EditorPending::None) {
+        // Home uses E to enter Editor and E also rotates its heading.
+        // Ignore that initial key-down; start editing on the next frame.
+        if (state.screen == Screen::Editor &&
+            previousScreen == Screen::Editor &&
+            editorPending == EditorPending::None) {
             if (input.editorNew) {
                 editor.NewDraft();
                 editorChartPath.clear();
