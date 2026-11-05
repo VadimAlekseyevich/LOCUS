@@ -1,6 +1,6 @@
 # LOCUS
 
-LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete and owner-approved (2026-11-05).** It includes nine F/J turns, music-driven movement, smooth route reveal, fullscreen, pause/retry and Results. Development now focuses on **local songs and a practical custom-chart editor**, not additional infrastructure or benchmarks. Two Windows executables exist: the **LOCUS production app** (its Play screen now shows the G-02 board and plays the original G-03 120 BPM click track, launched by double-clicking `build_and_run.bat`) and the separate **A-07 audio/input timing probe** (BAT `audio` mode).
+LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete and owner-approved (2026-11-05).** It includes nine F/J turns, music-driven movement, smooth route reveal, fullscreen, pause/retry and Results. Development now focuses on **local songs and a practical custom-chart editor**, not additional infrastructure or benchmarks. Two Windows applications remain available: **LOCUS** (the 4×4 rhythm game, local WAV/MP3 playback, JSON charts and in-memory chart editor, launched by double-clicking `build_and_run.bat`) and the optional **A-07 audio/input diagnostic** (BAT `audio` mode).
 
 [Game Design Document](mvp/GDD.md) · **[Short playable-prototype roadmap](mvp/ROADMAP.md)** · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)
 
