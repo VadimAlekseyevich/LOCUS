@@ -40,6 +40,9 @@ add_executable(locus
     src/app/chart_save.cpp
     src/app/chart_playback.cpp
     src/app/game_session.cpp
+    src/app/song_library.cpp
+    src/app/game_settings.cpp
+    src/app/menu_ui.cpp
     src/app/chart_editor_ui.cpp
     src/app/chart_editor_actions.cpp
     src/app/route_renderer.cpp
@@ -137,6 +140,27 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_hit_flash_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_hit_flash_tests PRIVATE locus_core)
     add_test(NAME locus_player_hit_flash COMMAND locus_hit_flash_tests)
+
+    add_executable(locus_song_library_tests
+        tests/song_library_tests.cpp
+        src/app/song_library.cpp
+        src/app/chart_file.cpp
+        src/app/chart_save.cpp
+        src/app/local_file_io.cpp
+    )
+    target_compile_features(locus_song_library_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_song_library_tests PRIVATE locus_core)
+    add_test(NAME locus_persistent_song_library COMMAND locus_song_library_tests)
+
+    add_executable(locus_game_settings_tests
+        tests/game_settings_tests.cpp
+        src/app/game_settings.cpp
+    )
+    target_compile_features(locus_game_settings_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_game_settings_tests PRIVATE
+        raylib nlohmann_json::nlohmann_json
+    )
+    add_test(NAME locus_persistent_game_settings COMMAND locus_game_settings_tests)
 
     add_executable(locus_judgement_tests tests/judgement_tests.cpp)
     target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)

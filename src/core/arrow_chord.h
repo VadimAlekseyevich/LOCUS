@@ -27,10 +27,12 @@ class ArrowChordTracker {
 public:
     static constexpr double kMaxChordSkewSeconds = 0.085;
     void Reset() noexcept;
+    void SetChordWindowSeconds(double seconds) noexcept;
     std::optional<DirectionStroke> Observe(const ArrowKeys& input,
                                            Heading expected, Heading incoming) noexcept;
 private:
     std::array<double, 4> downAt_{{-1.0, -1.0, -1.0, -1.0}};
+    double chordWindowSeconds_ = kMaxChordSkewSeconds;
 };
 
 } // namespace locus::core

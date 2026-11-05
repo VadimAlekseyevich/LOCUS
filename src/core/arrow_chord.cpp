@@ -9,6 +9,11 @@ void ArrowChordTracker::Reset() noexcept {
     downAt_.fill(-1.0);
 }
 
+void ArrowChordTracker::SetChordWindowSeconds(double seconds) noexcept {
+    if (std::isfinite(seconds) && seconds >= 0.04 && seconds <= 0.16)
+        chordWindowSeconds_ = seconds;
+}
+
 std::optional<DirectionStroke> ArrowChordTracker::Observe(
     const ArrowKeys& input, Heading expected, Heading incoming) noexcept {
     unsigned heldMask = 0, freshMask = 0;
@@ -37,7 +42,7 @@ std::optional<DirectionStroke> ArrowChordTracker::Observe(
         }
         if (first >= 0 && second >= 0 &&
             downAt_[first] >= 0.0 && downAt_[second] >= 0.0 &&
-            std::abs(downAt_[first] - downAt_[second]) <= kMaxChordSkewSeconds)
+            std::abs(downAt_[first] - downAt_[second]) <= chordWindowSeconds_)
             return DirectionStroke{*direction,
                                    std::max(downAt_[first], downAt_[second])};
     }

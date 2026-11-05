@@ -25,6 +25,7 @@ public:
     void Resume(double monotonicSeconds);
     void Stop();
     void Update(double monotonicSeconds);
+    void SetVolume(float level);
     void Shutdown();
 
     bool Ready() const noexcept { return musicLoaded_; }
@@ -40,6 +41,7 @@ private:
     std::vector<std::uint8_t> wavData_;
     Music music_{};
     double bpm_ = 120.0;
+    float volume_ = 0.7f;
     double durationSeconds_ = 0.0;
     bool audioInitialized_ = false;
     bool musicLoaded_ = false;

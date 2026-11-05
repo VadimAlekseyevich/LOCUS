@@ -29,6 +29,7 @@ public:
     void Stop();
     void Update(double monotonicSeconds);
     void SetSpeed(double fraction, double monotonicSeconds);
+    void SetVolume(float level);
     void Shutdown();
 
     bool Ready() const noexcept { return ready_; }
@@ -51,6 +52,7 @@ private:
     double durationSeconds_ = 0.0;
     double startPositionSeconds_ = 0.0;
     double speed_ = 1.0;
+    float volume_ = 0.7f;
     bool ready_ = false;
     bool playing_ = false;
     bool paused_ = false;

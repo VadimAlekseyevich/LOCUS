@@ -43,6 +43,9 @@ public:
     void TogglePause(bool customChart, double now);
     void SetPracticeSpeed(bool customChart, double speed, double now);
     void Update(bool customChart, double now, const ArrowInput& arrows);
+    void SetChordWindowMs(int milliseconds) noexcept {
+        chord_.SetChordWindowSeconds(milliseconds / 1000.0);
+    }
     const HitFlash& Flash() const noexcept { return hitFlash_; }
 
 private:

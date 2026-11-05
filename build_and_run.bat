@@ -233,10 +233,14 @@ if /I "%MODE%"=="baseline" (
 
 echo.
 echo ============================================================
-echo  LOCUS - DEMO / LOCAL SONGS / JSON CHARTS / EDITOR
-echo  ENTER = Built-in demo    O = Listen to WAV/MP3
-echo  C = Open JSON chart + song   E = Open chart editor
-echo  F = Left turn  J = Right turn  (Play or Editor)
+echo  LOCUS - PLAY / EDIT / SKIN / SETTINGS
+echo  HOME: ENTER/P = Song library    E = Chart editor
+echo  HOME: K = Skin    S = Settings    O = WAV/MP3 listen
+echo  PLAY: C imports chart + song permanently, F5 refreshes library
+echo  PLAY: Up/Down songs, Left/Right difficulty, Enter starts chart
+echo  PLAY: E opens selected difficulty in the unchanged editor
+echo  SETTINGS: choose gameplay key binds, volume, hit FX, fullscreen
+echo  GAME: four direction keys, two keys together for diagonals
 echo  EDITOR: click LOAD SONG, PLAY/PAUSE, RESTART, TEST
 echo  EDITOR: click BPM / OFFSET MS / BEATS / TITLE to type; ENTER confirms
 echo  EDITOR: SPACE preview song+moving marker  R restart  Q/E heading
@@ -246,7 +250,8 @@ echo  EDITOR: Ctrl+S Save  Ctrl+Shift+S Save As  Ctrl+O Open
 echo  EDITOR: Ctrl+N New  T Test Play  H Home
 echo  PLAY: 1-5 adjust speed of custom song and moving chart
 echo  EDITOR: unsaved changes prompt - Y discard / N cancel
-echo  SPACE = Pause/Resume  R = Replay  H = Home  ESC = Close
+echo  GAME: Space Pause/Resume  R Replay  H Home (rebindable)
+echo  MENUS: H/ESC = Back   HOME: ESC = Close
 echo  F11 = Fullscreen / Window   Window edges = Resize
 echo  DEBUG ONLY: F1 Home / F2 Play / F3 Editor / F4 Results
 echo  No Fail: errors never change the correct route.

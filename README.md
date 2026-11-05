@@ -1,5 +1,40 @@
 # LOCUS
 
+## Home, song library and settings (current navigation)
+
+The starting screen now has four large clickable buttons: **PLAY**, **EDIT**,
+**SKIN**, and **SETTINGS** (keyboard: **P/Enter**, **E**, **K**, and **S**).
+**PLAY** opens the osu!-style song browser: the left column lists installed
+songs, and the right column lists all the separate charts/difficulties attached
+to the selected audio. Select songs with **Up/Down** or the mouse wheel, select
+difficulties with **Left/Right**, then use **Enter / PLAY**. The built-in click
+demo is permanently available as the first item. **H/Escape** goes back.
+
+**Import and permanent storage:** On PLAY choose **IMPORT (C)** to select an
+existing `.locus.json` with its corresponding WAV/MP3. LOCUS copies the
+audio and chart into **`%LOCALAPPDATA%\\LOCUS\\Songs`** (separate
+per-song folders, with multiple difficulties sharing a song) and keeps the
+parsed chart catalog in memory. The original files are not moved or deleted.
+The same original chart can be reimported without duplicating its difficulty.
+Installed songs remain available after closing or rebuilding the game, and
+playing a different difficulty on the same song reuses the decoded audio.
+Audio files are loaded into memory *only when needed* rather than loading
+every WAV/MP3 in the library at launch. **RESCAN (F5)** picks up files placed
+directly in the Songs tree. **Ctrl+S in the existing editor** still saves where
+you choose, and now also installs/updates a library copy. To change an
+installed chart, choose it in PLAY and press **E / EDIT CHART**; the unchanged
+editor opens that difficulty.
+
+**SKIN** is intentionally only a placeholder for later work. **SETTINGS**
+already works and saves to **`%LOCALAPPDATA%\\LOCUS\\settings.json`**:
+master music volume (built-in demo, songs and editor preview), the on/off hit
+flash, fullscreen, and the two-key diagonal chord window (40–160 ms). The
+**KEY BINDINGS** section changes four gameplay directions and the
+**Pause/Retry/Home** actions. Click an action, then press the new key; Escape
+cancels and conflicting or reserved keys are rejected. Defaults are
+Up/Right/Down/Left, Space, R, H. These keybinds control **gameplay**, not
+ROUTE editor keyboard shortcuts. Saved settings apply after relaunch.
+
 LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete and owner-approved (2026-11-05).** It includes nine F/J turns, music-driven movement, smooth route reveal, fullscreen, pause/retry and Results. Development now focuses on **local songs and a practical custom-chart editor**, not additional infrastructure or benchmarks. Two Windows applications remain available: **LOCUS** (the 4×4 rhythm game, local WAV/MP3 playback, JSON charts and an editor with JSON save/open/test-play, launched by double-clicking `build_and_run.bat`) and the optional **A-07 audio/input diagnostic** (BAT `audio` mode).
 
 [Game Design Document](mvp/GDD.md) · **[Short playable-prototype roadmap](mvp/ROADMAP.md)** · [Audio Evaluation](mvp/architecture/STACK_EVALUATION.md) · [Stack Decision](mvp/architecture/STACK_DECISION.md)

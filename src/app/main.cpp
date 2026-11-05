@@ -13,6 +13,9 @@
 #include "app/visual_style.h"
 #include "app/route_renderer.h"
 #include "app/game_session.h"
+#include "app/song_library.h"
+#include "app/game_settings.h"
+#include "app/menu_ui.h"
 
 #include "raylib.h"
 
@@ -47,7 +50,10 @@ enum class Screen {
     Play,
     Editor,
     Results,
-    Listen
+    Listen,
+    SongSelect,
+    Skin,
+    Settings
 };
 
 struct FrameInput {
@@ -61,6 +67,10 @@ struct FrameInput {
     bool chooseMusicPressed = false;
     bool chooseChartPressed = false;
     bool openEditorPressed = false;
+    bool openPlayPressed = false;
+    bool openSkinPressed = false;
+    bool openSettingsPressed = false;
+    bool backPressed = false;
     bool editorSave = false;
     bool editorSaveAs = false;
     bool editorOpen = false;
@@ -92,15 +102,23 @@ const char* ScreenName(Screen screen) {
         case Screen::Editor: return "Editor";
         case Screen::Results: return "Results";
         case Screen::Listen: return "Listen";
+        case Screen::SongSelect: return "Song Library";
+        case Screen::Skin: return "Skin";
+        case Screen::Settings: return "Settings";
     }
     return "Unknown";
 }
 
 // 1. Input: raylib already pumps native events at the end of each drawn frame.
 // F1-F4 are diagnostic shortcuts ONLY when --debug-screens is explicitly enabled.
-FrameInput PollInput(bool debugScreens) {
+FrameInput PollInput(bool debugScreens, Screen currentScreen,
+                     const locus::app::GameSettings& settings) {
     FrameInput input;
-    input.closeRequested = WindowShouldClose() || IsKeyPressed(KEY_ESCAPE);
+    const bool escape = IsKeyPressed(KEY_ESCAPE);
+    input.closeRequested = WindowShouldClose() ||
+        (escape && (currentScreen == Screen::Home || currentScreen == Screen::Editor));
+    input.backPressed = escape && currentScreen != Screen::Home &&
+                        currentScreen != Screen::Editor;
     if (debugScreens) {
         if (IsKeyPressed(KEY_F1)) input.requestedScreen = Screen::Home;
         else if (IsKeyPressed(KEY_F2)) input.requestedScreen = Screen::Play;
@@ -108,15 +126,23 @@ FrameInput PollInput(bool debugScreens) {
         else if (IsKeyPressed(KEY_F4)) input.requestedScreen = Screen::Results;
     }
     input.startPressed = IsKeyPressed(KEY_ENTER);
-    input.pausePressed = IsKeyPressed(KEY_SPACE);
-    input.restartPressed = IsKeyPressed(KEY_R);
-    input.homePressed = IsKeyPressed(KEY_H);
+    const bool gameplayKeys = currentScreen == Screen::Play ||
+                              currentScreen == Screen::Results;
+    input.pausePressed = IsKeyPressed(gameplayKeys
+        ? settings.Key(locus::app::GameAction::Pause) : KEY_SPACE);
+    input.restartPressed = IsKeyPressed(gameplayKeys
+        ? settings.Key(locus::app::GameAction::Retry) : KEY_R);
+    input.homePressed = IsKeyPressed(gameplayKeys
+        ? settings.Key(locus::app::GameAction::Home) : KEY_H);
     input.fullscreenPressed = IsKeyPressed(KEY_F11);
     input.chooseMusicPressed = IsKeyPressed(KEY_O);
     input.chooseChartPressed = IsKeyPressed(KEY_C);
     input.openEditorPressed = IsKeyPressed(KEY_E);
+    input.openPlayPressed = IsKeyPressed(KEY_P);
+    input.openSkinPressed = IsKeyPressed(KEY_K);
     const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    input.openSettingsPressed = !control && IsKeyPressed(KEY_S);
     input.editorSave = control && IsKeyPressed(KEY_S) && !shift;
     input.editorSaveAs = control && IsKeyPressed(KEY_S) && shift;
     input.editorOpen = control && IsKeyPressed(KEY_O);
@@ -131,10 +157,10 @@ FrameInput PollInput(bool debugScreens) {
     // Use the same steady clock origin as DemoTransport, not frame duration.
     // Absolute direction input; a diagonal is a two-key stroke.
     // The original four enum indices still map to Up, Right, Down, Left.
-    constexpr int keys[4] = {KEY_UP, KEY_RIGHT, KEY_DOWN, KEY_LEFT};
     for (int i = 0; i < 4; ++i) {
-        input.arrowPressed[i] = IsKeyPressed(keys[i]);
-        input.arrowHeld[i] = IsKeyDown(keys[i]);
+        const int key = settings.keys[static_cast<std::size_t>(i)];
+        input.arrowPressed[i] = IsKeyPressed(key);
+        input.arrowHeld[i] = IsKeyDown(key);
         if (input.arrowPressed[i]) input.arrowCapturedAt[i] = MonotonicSeconds();
     }
     input.editor = locus::app::PollEditorControls();
@@ -149,13 +175,17 @@ void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
     }
     if (input.requestedScreen.has_value()) {
         state.screen = *input.requestedScreen;
-    } else if (input.homePressed && state.screen != Screen::Home) {
+    } else if ((input.homePressed || input.backPressed) &&
+               state.screen != Screen::Home) {
         state.screen = Screen::Home;
-    } else if (state.screen == Screen::Home && input.openEditorPressed) {
-        state.screen = Screen::Editor;
-    } else if ((state.screen == Screen::Home && input.startPressed) ||
-               (state.screen == Screen::Results &&
-                (input.startPressed || input.restartPressed))) {
+    } else if (state.screen == Screen::Home) {
+        if (input.openEditorPressed) state.screen = Screen::Editor;
+        else if (input.openSkinPressed) state.screen = Screen::Skin;
+        else if (input.openSettingsPressed) state.screen = Screen::Settings;
+        else if (input.startPressed || input.openPlayPressed ||
+                 input.chooseChartPressed) state.screen = Screen::SongSelect;
+    } else if (state.screen == Screen::Results &&
+               (input.startPressed || input.restartPressed)) {
         state.screen = Screen::Play;
     }
     ++state.frames;
@@ -232,6 +262,8 @@ struct GameplayView {
     bool custom;
     double practiceSpeed;
     const char* status;
+    bool showHitFlash = true;
+    const locus::app::GameSettings& bindings;
 };
 
 // G-04: render the charted route and marker using one fractional song beat.
@@ -300,8 +332,10 @@ struct GameplayGrid {
     DrawCircleV(marker, markerRadius * 1.5f, Color{255, 75, 86, 45});
     DrawCircleV(marker, markerRadius, Color{255, 140, 149, 255});
     DrawCircleV(marker, markerRadius * 0.33f, Color{245, 253, 255, 255});
-    locus::app::DrawPlayerHitFlash(
-        marker, markerRadius, gameplay.hitFlash.Sample(now));
+    if (gameplay.showHitFlash) {
+        locus::app::DrawPlayerHitFlash(
+            marker, markerRadius, gameplay.hitFlash.Sample(now));
+    }
 
     DrawTextLabel(font, "RED   TURN JUNCTIONS", Vector2{665.0f, 216.0f}, 17.0f,
                   Color{131, 232, 227, 255});
@@ -310,9 +344,9 @@ struct GameplayGrid {
     DrawTextLabel(font, "WRAP   EDGE SPLIT", Vector2{665.0f, 272.0f}, 17.0f,
                   Color{184, 189, 204, 255});
 
-    DrawTextLabel(font, "ARROWS TO TURN", Vector2{50.0f, 204.0f}, 21.0f,
+    DrawTextLabel(font, "DIRECTION KEYS", Vector2{50.0f, 204.0f}, 21.0f,
                   Color{236, 216, 160, 255});
-    DrawTextLabel(font, "DIAGONAL = TWO ARROWS", Vector2{50.0f, 237.0f}, 18.0f,
+    DrawTextLabel(font, "DIAGONAL = TWO KEYS", Vector2{50.0f, 237.0f}, 18.0f,
                   Color{236, 216, 160, 255});
     DrawTextLabel(font, "HIT ON THE BEAT", Vector2{50.0f, 274.0f}, 18.0f,
                   Color{171, 187, 210, 255});
@@ -365,7 +399,14 @@ struct GameplayGrid {
                                      chart.gridWidth, chart.gridHeight),
                   Vector2{50.0f, 140.0f}, 20.0f,
                   Color{204, 208, 222, 255});
-    DrawTextLabel(font, "SPACE PAUSE  |  R RETRY  |  H HOME",
+    const std::string gameplayControls =
+        locus::app::KeyboardKeyName(gameplay.bindings.Key(locus::app::GameAction::Pause)) +
+        " PAUSE  |  " +
+        locus::app::KeyboardKeyName(gameplay.bindings.Key(locus::app::GameAction::Retry)) +
+        " RETRY  |  " +
+        locus::app::KeyboardKeyName(gameplay.bindings.Key(locus::app::GameAction::Home)) +
+        " HOME";
+    DrawTextLabel(font, gameplayControls.c_str(),
                   Vector2{50.0f, 380.0f}, 17.0f,
                   Color{229, 214, 170, 255});
     if (gameplay.custom) {
@@ -384,35 +425,9 @@ struct GameplayGrid {
                   Color{204, 208, 222, 255});
 }
 
-void DrawHomeScreen(Font font, const locus::core::Chart& demo,
-                    const std::string& musicError) {
-    DrawTextLabel(font, "THE FIRST PLAYABLE DEMO", Vector2{110.0f, 119.0f},
-                  25.0f, Color{136, 221, 218, 255});
-    DrawTextLabel(font, "FOLLOW THE RHYTHM", Vector2{110.0f, 172.0f},
-                  47.0f, Color{232, 240, 246, 255});
-    DrawTextLabel(font, "ENTER   PLAY BUILT-IN DEMO", Vector2{110.0f, 260.0f},
-                  27.0f, Color{237, 218, 157, 255});
-    DrawTextLabel(font, "O   LISTEN TO WAV / MP3", Vector2{110.0f, 298.0f},
-                  26.0f, Color{144, 224, 225, 255});
-    DrawTextLabel(font, "C   OPEN JSON CHART + SONG", Vector2{110.0f, 337.0f},
-                  25.0f, Color{177, 229, 206, 255});
-    DrawTextLabel(font, "E   EDIT BEATS + TURNS", Vector2{110.0f, 375.0f},
-                  22.0f, Color{184, 200, 239, 255});
-    DrawTextLabel(font,
-                  TextFormat("%d BEATS  |  %.0f BPM  |  %d TURNS  |  NO FAIL",
-                             demo.lengthBeats, demo.bpm,
-                             static_cast<int>(demo.turns.size())),
-                  Vector2{110.0f, 412.0f}, 19.0f,
-                  Color{182, 192, 209, 255});
-    if (!musicError.empty()) {
-        const std::string shortError = musicError.substr(0, 92);
-        DrawTextLabel(font, shortError.c_str(), Vector2{110.0f, 443.0f},
-                      16.0f, Color{241, 150, 150, 255});
-    } else {
-        DrawTextLabel(font, "F LEFT / J RIGHT  |  NO FAIL",
-                      Vector2{110.0f, 443.0f}, 17.0f,
-                      Color{165, 182, 203, 255});
-    }
+void DrawHomeScreen(Font font, const locus::app::SongLibrary& library,
+                    const std::string& message) {
+    locus::app::DrawMainMenu(font, library, message);
 }
 
 void DrawLocalMusicScreen(Font font, const locus::app::LocalMusic& song,
@@ -499,6 +514,146 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay) {
                   Color{187, 205, 220, 255});
 }
 
+// Menu controls use the same centered 960x540 coordinate space as drawing.
+// Keep Home/Play/Skin/Settings interactions separate from the editor handlers.
+struct MenuEvents {
+    bool import = false;
+    bool refresh = false;
+    bool playSelected = false;
+    bool editSelected = false;
+    bool saveSettings = false;
+    bool toggleFullscreen = false;
+};
+
+MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
+                           const locus::app::SongLibrary& library,
+                           locus::app::SongSelectUi& libraryUi,
+                           locus::app::GameSettings& settings,
+                           locus::app::SettingsUi& settingsUi) {
+    MenuEvents events;
+    if (state.screen == Screen::Settings && settingsUi.capturing >= 0) {
+        // Esc cancels rebind, not the settings screen or application. Using
+        // GetKeyPressed preserves arbitrary keys (WASD, arrows, numpad...)
+        // rather than only character input from GetCharPressed().
+        input.backPressed = false;
+        input.homePressed = false;
+        input.requestedScreen.reset();
+        input.fullscreenPressed = false;
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            settingsUi.capturing = -1;
+            settingsUi.notice = "KEY BINDING CANCELED";
+            settingsUi.noticeError = false;
+        } else {
+            const int key = GetKeyPressed();
+            if (key != KEY_NULL) {
+                std::string error;
+                if (settings.Rebind(
+                        static_cast<locus::app::GameAction>(settingsUi.capturing),
+                        key, error)) {
+                    settingsUi.notice = "KEY BINDING SAVED";
+                    settingsUi.noticeError = false;
+                    events.saveSettings = true;
+                    settingsUi.capturing = -1;
+                } else {
+                    settingsUi.notice = error;
+                    settingsUi.noticeError = true;
+                }
+            }
+        }
+        return events;
+    }
+
+    if (state.screen == Screen::SongSelect) {
+        if (IsKeyPressed(KEY_UP)) libraryUi.MoveSong(-1, library);
+        if (IsKeyPressed(KEY_DOWN)) libraryUi.MoveSong(1, library);
+        if (IsKeyPressed(KEY_LEFT)) libraryUi.MoveChart(-1, library);
+        if (IsKeyPressed(KEY_RIGHT)) libraryUi.MoveChart(1, library);
+        if (IsKeyPressed(KEY_F5)) events.refresh = true;
+        const float wheel = GetMouseWheelMove();
+        if (wheel != 0.0f)
+            libraryUi.MoveSong(wheel > 0.0f ? -1 : 1, library);
+        if (input.chooseChartPressed) events.import = true;
+        if (input.startPressed) events.playSelected = true;
+        if (IsKeyPressed(KEY_E)) events.editSelected = true;
+    }
+
+    if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return events;
+    const float scale = std::min(static_cast<float>(GetScreenWidth()) / 960.0f,
+                                 static_cast<float>(GetScreenHeight()) / 540.0f);
+    if (scale <= 0.0f) return events;
+    const Vector2 physical = GetMousePosition();
+    const Vector2 mouse{
+        (physical.x - (GetScreenWidth() - 960.0f * scale) / 2.0f) / scale,
+        (physical.y - (GetScreenHeight() - 540.0f * scale) / 2.0f) / scale
+    };
+    const auto hit = [&](Rectangle area) {
+        return CheckCollisionPointRec(mouse, area);
+    };
+
+    if (state.screen == Screen::Home) {
+        for (int i = 0; i < 4; ++i) {
+            if (!hit(locus::app::HomeMenuButton(i))) continue;
+            switch (i) {
+                case 0: input.requestedScreen = Screen::SongSelect; break;
+                case 1: input.requestedScreen = Screen::Editor; break;
+                case 2: input.requestedScreen = Screen::Skin; break;
+                case 3: input.requestedScreen = Screen::Settings; break;
+            }
+            return events;
+        }
+    } else if (state.screen == Screen::SongSelect) {
+        if (hit(locus::app::MenuBackButton())) input.backPressed = true;
+        if (hit(locus::app::LibraryImportButton())) events.import = true;
+        if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
+        if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
+        if (hit(locus::app::LibraryEditButton())) events.editSelected = true;
+        for (int i = 0; i < 6; ++i) {
+            if (hit(locus::app::LibrarySongRow(i)))
+                libraryUi.SelectSong(libraryUi.firstVisibleSong + i, library);
+        }
+        for (int i = 0; i < 5; ++i) {
+            if (hit(locus::app::LibraryChartRow(i)))
+                libraryUi.SelectChart(libraryUi.firstVisibleChart + i, library);
+        }
+    } else if (state.screen == Screen::Skin) {
+        if (hit(locus::app::MenuBackButton())) input.backPressed = true;
+    } else if (state.screen == Screen::Settings) {
+        if (hit(locus::app::MenuBackButton())) {
+            input.backPressed = true;
+            return events;
+        }
+        for (int i = 0; i < locus::app::kGameActionCount; ++i) {
+            if (!hit(locus::app::SettingsBindingButton(i))) continue;
+            settingsUi.capturing = i;
+            settingsUi.notice = "PRESS A NEW KEY  /  ESC CANCELS";
+            settingsUi.noticeError = false;
+            return events;
+        }
+        const auto changeVolume = [&](int delta) {
+            const int current = static_cast<int>(std::lround(settings.volume * 10.0f));
+            settings.volume = std::clamp(current + delta, 0, 10) / 10.0f;
+            events.saveSettings = true;
+        };
+        if (hit(locus::app::SettingsVolumeMinus())) changeVolume(-1);
+        else if (hit(locus::app::SettingsVolumePlus())) changeVolume(1);
+        else if (hit(locus::app::SettingsFlashButton())) {
+            settings.hitFlash = !settings.hitFlash;
+            events.saveSettings = true;
+        } else if (hit(locus::app::SettingsChordMinus())) {
+            settings.chordWindowMs = std::max(40, settings.chordWindowMs - 10);
+            events.saveSettings = true;
+        } else if (hit(locus::app::SettingsChordPlus())) {
+            settings.chordWindowMs = std::min(160, settings.chordWindowMs + 10);
+            events.saveSettings = true;
+        } else if (hit(locus::app::SettingsFullscreenButton())) {
+            settings.fullscreen = !settings.fullscreen;
+            events.toggleFullscreen = true;
+            events.saveSettings = true;
+        }
+    }
+    return events;
+}
+
 // 3. Render: display the selected state; never choose or modify it here.
 void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::core::Chart& demo,
@@ -508,7 +663,12 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::app::EditorUiState& editorUi,
                  const locus::app::ChartPlayback& editorTransport,
                  const std::string& editorStatus, EditorPending editorPending,
-                 const std::string& musicError, double now) {
+                 const std::string& musicError, double now,
+                  const locus::app::SongLibrary& library,
+                  const locus::app::SongSelectUi& libraryUi,
+                  const locus::app::GameSettings& settings,
+                  const locus::app::SettingsUi& settingsUi,
+                  const std::string& menuStatus) {
     BeginDrawing();
     ClearBackground(kBackground);
 
@@ -527,7 +687,13 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   Color{223, 225, 238, 255});
 
     if (state.screen == Screen::Home) {
-        DrawHomeScreen(font, demo, musicError);
+        DrawHomeScreen(font, library, menuStatus);
+    } else if (state.screen == Screen::SongSelect) {
+        locus::app::DrawSongSelectMenu(font, library, libraryUi);
+    } else if (state.screen == Screen::Skin) {
+        locus::app::DrawSkinMenu(font);
+    } else if (state.screen == Screen::Settings) {
+        locus::app::DrawSettingsMenu(font, settings, settingsUi);
     } else if (state.screen == Screen::Listen) {
         DrawLocalMusicScreen(font, localSong, now, musicError);
     } else if (state.screen == Screen::Play) {
@@ -537,10 +703,16 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                           Color{12, 14, 22, 204});
             DrawTextLabel(font, "PAUSED", Vector2{355.0f, 198.0f},
                           59.0f, Color{240, 246, 247, 255});
-            DrawTextLabel(font, "SPACE  -  RESUME",
+            const std::string resume = locus::app::KeyboardKeyName(
+                gameplay.bindings.Key(locus::app::GameAction::Pause)) + "  -  RESUME";
+            DrawTextLabel(font, resume.c_str(),
                           Vector2{325.0f, 287.0f}, 28.0f,
                           Color{239, 219, 164, 255});
-            DrawTextLabel(font, "R  -  RETRY      H  -  HOME",
+            const std::string controls = locus::app::KeyboardKeyName(
+                gameplay.bindings.Key(locus::app::GameAction::Retry)) +
+                "  RETRY      " + locus::app::KeyboardKeyName(
+                gameplay.bindings.Key(locus::app::GameAction::Home)) + "  HOME";
+            DrawTextLabel(font, controls.c_str(),
                           Vector2{277.0f, 335.0f}, 21.0f,
                           Color{204, 213, 232, 255});
         }
@@ -615,7 +787,9 @@ bool CheckScreenTransitions() {
         return false;
     }
 
-    const Screen transitions[] = {Screen::Play, Screen::Editor, Screen::Results, Screen::Home};
+    const Screen transitions[] = {Screen::SongSelect, Screen::Play,
+                                  Screen::Editor, Screen::Skin,
+                                  Screen::Settings, Screen::Results, Screen::Home};
     int expectedFrames = 0;
     for (Screen next : transitions) {
         UpdateState(state, FrameInput{false, next}, false);
@@ -648,6 +822,10 @@ bool CheckSessionFlow() {
     FrameInput start;
     start.startPressed = true;
     UpdateState(state, start, false);
+    if (state.screen != Screen::SongSelect) return false;
+    FrameInput chooseDemo;
+    chooseDemo.requestedScreen = Screen::Play;
+    UpdateState(state, chooseDemo, false);
     if (state.screen != Screen::Play) return false;
 
     // A turn can be judged without ever changing authored movement.
@@ -660,6 +838,8 @@ bool CheckSessionFlow() {
     UpdateState(state, goHome, false);
     if (state.screen != Screen::Home) return false;
     UpdateState(state, start, false);
+    if (state.screen != Screen::SongSelect) return false;
+    UpdateState(state, chooseDemo, false);
     if (state.screen != Screen::Play) return false;
     judge.Reset();
     if (judge.Counts().Resolved() != 0) return false;
@@ -783,7 +963,7 @@ int main(int argc, char** argv) {
             std::cerr << "SCREEN_STATE_FAIL\n";
             return 1;
         }
-        std::cout << "SCREEN_STATE_PASS transitions=4\n";
+        std::cout << "SCREEN_STATE_PASS transitions=7\n";
         return 0;
     }
     if (HasArgument(argc, argv, "--session-check")) {
@@ -815,6 +995,23 @@ int main(int argc, char** argv) {
     SetTargetFPS(60); // Visual smoke baseline only, never a musical clock.
     std::cout << "LOCUS_WINDOW_OPEN\n";
 
+    const auto userData = locus::app::UserDataDirectory();
+    locus::app::GameSettings settings;
+    locus::app::SettingsUi settingsUi;
+    std::string settingsError;
+    if (!locus::app::LoadGameSettings(userData / L"settings.json",
+                                      settings, settingsError)) {
+        settingsUi.notice = "DEFAULTS USED: " + settingsError;
+        settingsUi.noticeError = true;
+    }
+    locus::app::SongLibrary library(userData / L"Songs");
+    std::string menuStatus;
+    if (!library.Refresh(menuStatus))
+        std::cerr << "LIBRARY_SCAN_FAIL " << menuStatus << '\n';
+    locus::app::SongSelectUi libraryUi;
+    libraryUi.notice = menuStatus;
+    if (settings.fullscreen) ToggleBorderlessWindowed();
+
     AppState state;
     const locus::core::Chart demo = locus::core::MakeDemoChart();
     locus::core::Chart activeChart = demo;
@@ -828,14 +1025,42 @@ int main(int argc, char** argv) {
     bool customChart = false;
     std::wstring editorChartPath;
     std::wstring editorAudioPath;
+    std::wstring loadedAudioPath; // Reuse already-decoded audio for each difficulty.
     EditorPending editorPending = EditorPending::None;
     std::string editorStatus = "O ATTACH AUDIO  |  CTRL+S SAVE  |  T TEST PLAY";
     int editorPreviewStartBeat = 0; // R returns to this preview origin.
     std::string chartTitle = "BUILT-IN DEMO";
     std::string musicError;
     transport.Initialize(demo); // Owns the shared raylib audio output device.
+    transport.SetVolume(settings.volume);
+    localSong.SetVolume(settings.volume);
+    gameSession.SetChordWindowMs(settings.chordWindowMs);
+
+    const auto persistSettings = [&]() {
+        std::string failure;
+        if (!locus::app::SaveGameSettings(userData / L"settings.json",
+                                          settings, failure)) {
+            settingsUi.notice = "SETTINGS NOT SAVED: " + failure;
+            settingsUi.noticeError = true;
+        } else {
+            settingsUi.notice = "SETTINGS SAVED";
+            settingsUi.noticeError = false;
+        }
+    };
+
     while (state.running) {
-        FrameInput input = PollInput(debugScreens);
+        FrameInput input = PollInput(debugScreens, state.screen, settings);
+        const bool importFromHome =
+            state.screen == Screen::Home && input.chooseChartPressed;
+        const MenuEvents menuEvents = HandleMenuInput(
+            state, input, library, libraryUi, settings, settingsUi);
+        if (menuEvents.toggleFullscreen) ToggleBorderlessWindowed();
+        if (menuEvents.saveSettings) {
+            transport.SetVolume(settings.volume);
+            localSong.SetVolume(settings.volume);
+            gameSession.SetChordWindowMs(settings.chordWindowMs);
+            persistSettings();
+        }
         // Typing into a field cannot simultaneously leave the editor or
         // trigger a file dialog, shortcut, heading rotation, or Test Play.
         if (state.screen == Screen::Editor && editorUi.EditingText()) {
@@ -851,6 +1076,8 @@ int main(int argc, char** argv) {
         }
         if (input.fullscreenPressed) {
             ToggleBorderlessWindowed(); // F11: fullscreen desktop / resizable window
+            settings.fullscreen = !settings.fullscreen;
+            persistSettings();
         }
         const Screen previousScreen = state.screen;
         bool editorModalHandled = false;
@@ -964,6 +1191,7 @@ int main(int argc, char** argv) {
             if (input.editorNew) {
                 chartPlayback.Stop();
                 localSong.Shutdown();
+                loadedAudioPath.clear();
                 editor.NewDraft();
                 editorUi = locus::app::EditorUiState{};
                 editorChartPath.clear();
@@ -979,6 +1207,7 @@ int main(int argc, char** argv) {
                                           editorChartPath, editorAudioPath, musicError)) {
                         editorUi = locus::app::EditorUiState{};
                         editorPreviewStartBeat = 0;
+                        loadedAudioPath = editorAudioPath;
                         editorStatus = "CHART LOADED - SPACE PREVIEW / T TEST";
                     } else {
                         editorStatus = "OPEN FAILED: " + musicError;
@@ -995,6 +1224,7 @@ int main(int argc, char** argv) {
                         const bool timelineOk =
                             editor.SetSongDuration(localSong.DurationSeconds());
                         editorAudioPath = picked.path;
+                        loadedAudioPath = picked.path;
                         const std::string name =
                             std::filesystem::path(picked.path).filename().u8string();
                         editor.SetAudioPath(name);
@@ -1013,6 +1243,20 @@ int main(int argc, char** argv) {
                 if (SaveDraftToDisk(editor, localSong, editorChartPath,
                                     editorAudioPath, input.editorSaveAs, failure)) {
                     editorStatus = "SAVED - SPACE PREVIEW / T TEST / CTRL+O OPEN";
+                    // A save remains in the user's chosen folder, but also
+                    // installs/updates the permanent Songs library copy.
+                    std::filesystem::path installed;
+                    std::string installError;
+                    if (library.Import(std::filesystem::path(editorChartPath),
+                                       installed, installError)) {
+                        libraryUi.notice = "SAVED CHART INSTALLED IN SONG LIBRARY";
+                        menuStatus = "LIBRARY: " + std::to_string(library.Songs().size()) +
+                                     " SONGS / " + std::to_string(library.ChartCount()) +
+                                     " CHARTS";
+                    } else {
+                        libraryUi.notice = "LIBRARY IMPORT FAILED: " + installError;
+                        editorStatus = "SAVED (LIBRARY IMPORT FAILED - SEE PLAY)";
+                    }
                 } else if (!failure.empty()) {
                     editorStatus = "SAVE FAILED: " + failure;
                 }
@@ -1064,6 +1308,7 @@ int main(int argc, char** argv) {
             if (!picked.path.empty()) {
                 if (localSong.LoadFromFile(picked.path)) {
                     musicError.clear();
+                    loadedAudioPath = picked.path;
                     state.screen = Screen::Listen;
                     loadedNewSong = true;
                 } else {
@@ -1076,44 +1321,94 @@ int main(int argc, char** argv) {
         }
 
         bool loadedNewChart = false;
-        if (input.chooseChartPressed && state.screen == Screen::Home) {
-            // The same Play/Results route and F/J judge handle imported charts.
-            // Only commit a new chart after JSON + relative audio + duration
-            // have been validated. A canceled dialog keeps Home unchanged.
-            const auto selected = locus::app::ChooseChartFile();
-            now = MonotonicSeconds();
-            if (!selected.path.empty()) {
-                locus::core::LoadedChart candidate;
-                std::wstring songPath;
-                if (!locus::app::OpenChartWithAudioPath(
-                        selected.path, candidate, songPath, musicError)) {
-                    std::cerr << "CHART_LOAD_FAIL " << musicError << '\\n';
-                } else if (!localSong.LoadFromFile(songPath)) {
-                    musicError = "audioPath: " + localSong.Error();
-                } else if (!locus::core::PrepareChartForSong(
-                               candidate, localSong.DurationSeconds(), musicError)) {
-                    std::cerr << "CHART_TIMING_FAIL " << musicError << '\\n';
+        if (state.screen == Screen::SongSelect) {
+            if (menuEvents.refresh) {
+                if (!library.Refresh(libraryUi.notice)) {
+                    menuStatus = libraryUi.notice;
                 } else {
-                    editor.Load(candidate); // Reopen/edit imported routes.
-                    editor.SetSongDuration(localSong.DurationSeconds());
-                    editorChartPath = selected.path;
-                    editorAudioPath = songPath;
-                    editorStatus = "CHART LOADED - E EDIT / CTRL+S SAVE";
-                    activeChart = std::move(candidate.route);
-                    chartTitle = std::move(candidate.title);
-                    chartPlayback.Configure(activeChart.bpm, candidate.offsetSeconds);
-                    chartPlayback.SetSpeed(1.0, now); // Fresh Home charts start at normal speed.
-                    gameSession.ClearTestOrigin();
-                    judge.SetOffsetSeconds(candidate.offsetSeconds);
-                    customChart = true;
-                    loadedNewChart = true;
-                    state.screen = Screen::Play;
-                    musicError.clear();
-                    std::cout << "CHART_V1_READY turns=" << activeChart.turns.size()
-                              << " bpm=" << activeChart.bpm << '\\n';
+                    menuStatus = libraryUi.notice;
+                    libraryUi.SelectSong(libraryUi.selectedSong, library);
+                    libraryUi.SelectChart(libraryUi.selectedChart, library);
                 }
-            } else if (!selected.canceled) {
-                musicError = selected.error;
+            }
+            if (menuEvents.import || importFromHome) {
+                const auto selected = locus::app::ChooseChartFile();
+                now = MonotonicSeconds();
+                if (!selected.path.empty()) {
+                    std::filesystem::path installed;
+                    std::string error;
+                    if (library.Import(std::filesystem::path(selected.path),
+                                       installed, error)) {
+                        int song = -1, chart = -1;
+                        if (library.FindChart(installed, song, chart)) {
+                            libraryUi.SelectSong(song + 1, library);
+                            libraryUi.SelectChart(chart, library);
+                        }
+                        libraryUi.notice = "IMPORTED - SONG AND CHART SAVED PERMANENTLY";
+                        menuStatus = "LIBRARY: " +
+                            std::to_string(library.Songs().size()) + " SONGS / " +
+                            std::to_string(library.ChartCount()) + " CHARTS";
+                    } else {
+                        libraryUi.notice = "IMPORT FAILED: " + error;
+                    }
+                } else if (!selected.canceled) {
+                    libraryUi.notice = "IMPORT FAILED: " + selected.error;
+                }
+            }
+            if (menuEvents.editSelected) {
+                const auto* selected = libraryUi.Selected(library);
+                if (!selected) {
+                    state.screen = Screen::Editor; // Demo uses the existing draft.
+                } else {
+                    chartPlayback.Stop();
+                    if (LoadDraftFromDisk(selected->file.wstring(), editor, localSong,
+                                          editorChartPath, editorAudioPath, musicError)) {
+                        loadedAudioPath = editorAudioPath;
+                        editorUi = locus::app::EditorUiState{};
+                        editorPreviewStartBeat = editor.SelectedBeat();
+                        editorStatus = "LIBRARY CHART READY - EDIT AND CTRL+S";
+                        state.screen = Screen::Editor;
+                    } else {
+                        libraryUi.notice = "EDIT FAILED: " + musicError;
+                    }
+                }
+            } else if (menuEvents.playSelected) {
+                if (libraryUi.selectedSong == 0) {
+                    customChart = false;
+                    activeChart = demo;
+                    chartTitle = "BUILT-IN DEMO";
+                    gameSession.ClearTestOrigin();
+                    judge.SetOffsetSeconds(0.0);
+                    state.screen = Screen::Play;
+                } else if (const auto* selected = libraryUi.Selected(library)) {
+                    const auto& sourceSong =
+                        library.Songs()[static_cast<std::size_t>(
+                            libraryUi.selectedSong - 1)];
+                    const std::wstring audioPath = sourceSong.audioFile.wstring();
+                    locus::core::LoadedChart candidate = selected->data;
+                    if ((!localSong.Ready() || loadedAudioPath != audioPath) &&
+                        !localSong.LoadFromFile(audioPath)) {
+                        libraryUi.notice = "PLAY FAILED: " + localSong.Error();
+                    } else {
+                        loadedAudioPath = audioPath;
+                        if (!locus::core::PrepareChartForSong(
+                                candidate, localSong.DurationSeconds(), musicError)) {
+                            libraryUi.notice = "PLAY FAILED: " + musicError;
+                        } else {
+                            activeChart = std::move(candidate.route);
+                            chartTitle = std::move(candidate.title);
+                            chartPlayback.Configure(activeChart.bpm,
+                                                    candidate.offsetSeconds);
+                            chartPlayback.SetSpeed(1.0, now);
+                            gameSession.ClearTestOrigin();
+                            judge.SetOffsetSeconds(candidate.offsetSeconds);
+                            customChart = true;
+                            loadedNewChart = true;
+                            state.screen = Screen::Play;
+                            musicError.clear();
+                        }
+                    }
+                }
             }
         }
 
@@ -1208,10 +1503,12 @@ int main(int argc, char** argv) {
                                     customChart ? chartPlayback.Beat(renderNow)
                                                 : transport.Beat(renderNow),
                                     paused, finished, customChart,
-                                    customChart ? chartPlayback.Speed() : 1.0, status};
+                                    customChart ? chartPlayback.Speed() : 1.0,
+                                    status, settings.hitFlash, settings};
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
-                    editorStatus, editorPending, musicError, renderNow);
+                    editorStatus, editorPending, musicError, renderNow,
+                    library, libraryUi, settings, settingsUi, menuStatus);
     }
 
     // Unload both music streams before the shared raylib audio device.

@@ -124,9 +124,9 @@ double DemoTransport::Beat(double monotonicSeconds) const noexcept {
 const char* DemoTransport::Status() const noexcept {
     if (!musicLoaded_) return "Audio unavailable - check output device";
     if (finished_) return "Demo complete - see Results";
-    if (paused_) return "PAUSED - press SPACE to resume";
-    if (playing_) return "Playing - SPACE pause, R retry, H home";
-    return "Press F2 from Home to play the click track";
+    if (paused_) return "PAUSED - SEE SETTINGS FOR CONTROLS";
+    if (playing_) return "BUILT-IN DEMO - PRESS YOUR BOUND DIRECTION KEYS";
+    return "BUILT-IN CLICK TRACK READY";
 }
 
 } // namespace locus::app
