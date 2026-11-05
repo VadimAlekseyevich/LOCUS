@@ -34,6 +34,8 @@ add_executable(locus
     src/app/local_music.cpp
     src/app/local_file_io.cpp
     src/app/music_picker.cpp
+    src/app/chart_file.cpp
+    src/app/chart_playback.cpp
 )
 target_link_libraries(locus PRIVATE locus_core raylib)
 if(WIN32)
