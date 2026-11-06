@@ -21,7 +21,7 @@ void ChartEditor::NewDraft() {
     chart_.route.lengthBeats = 32;
     chart_.authoredLengthBeats.reset();
     songDurationSeconds_ = 0.0;
-    chart_.route.start = Cell{1, 1};
+    chart_.route.start = Cell{3, 3}; // Automatic centre of default 8x8 grid.
     chart_.route.initialHeading = Heading::Right;
     chart_.route.turns.clear();
     chart_.offsetSeconds = 0.0;
@@ -31,6 +31,12 @@ void ChartEditor::NewDraft() {
 
 void ChartEditor::Load(const LoadedChart& source) {
     chart_ = source;
+    // Older files may have rectangular editor windows. The current UI
+    // exposes one square size; leave their route events and start intact
+    // while normalising their visible viewport to the larger dimension.
+    const int square = std::max(chart_.route.gridWidth, chart_.route.gridHeight);
+    chart_.route.gridWidth = square;
+    chart_.route.gridHeight = square;
     songDurationSeconds_ = 0.0;
     selectedBeat_ = std::clamp(0, chart_.route.firstBeat,
                               chart_.route.lengthBeats - 1);
@@ -320,13 +326,18 @@ bool ChartEditor::ChangeOffsetMs(int deltaMs) {
 }
 
 bool ChartEditor::SetGridSize(int width, int height) {
-    if (width < kMinGridSize || width > kMaxGridSize ||
-        height < kMinGridSize || height > kMaxGridSize ||
-        chart_.route.start.x >= width || chart_.route.start.y >= height) return false;
-    if (width != chart_.route.gridWidth || height != chart_.route.gridHeight) {
+    // This is now one square visibility size, not two independent axes.
+    if (width != height || width < kMinGridSize || width > kMaxGridSize)
+        return false;
+    const Cell automaticStart{(width - 1) / 2, (width - 1) / 2};
+    if (width != chart_.route.gridWidth ||
+        height != chart_.route.gridHeight ||
+        chart_.route.start.x != automaticStart.x ||
+        chart_.route.start.y != automaticStart.y) {
         SaveUndo();
         chart_.route.gridWidth = width;
         chart_.route.gridHeight = height;
+        chart_.route.start = automaticStart;
         MarkDirty();
     }
     return true;
