@@ -167,7 +167,7 @@ std::string SerializeGameSettings(const GameSettings& settings) {
     for (int i = 0; i < kGameActionCount; ++i)
         bindings[kJsonKeys[i]] = settings.keys[i];
     Json object = {
-        {"version", 1},
+        {"version", 2},
         {"volume", settings.volume},
         {"hitFlash", settings.hitFlash},
         {"chordWindowMs", settings.chordWindowMs},
@@ -183,7 +183,8 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
         const auto object = nlohmann::json::parse(text.begin(), text.end());
         if (!object.is_object() || !object.contains("version") ||
             !object["version"].is_number_integer() ||
-            object["version"].get<int>() != 1) {
+            (object["version"].get<int>() != 1 &&
+             object["version"].get<int>() != 2)) {
             error = "Unsupported settings version.";
             return false;
         }
@@ -211,6 +212,20 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             parsed.keys[i] = bindings[kJsonKeys[i]].get<int>();
         }
         if (!parsed.Valid(error)) return false;
+        // Old v1 files commonly contain the prior default arrow bindings.
+        // Migrate only that exact untouched directional preset; customized
+        // old layouts remain untouched. V2 supports intentionally remapping
+        // back to arrows without any automatic migration on next launch.
+        if (object["version"].get<int>() == 1 &&
+            parsed.Key(GameAction::Up) == KEY_UP &&
+            parsed.Key(GameAction::Right) == KEY_RIGHT &&
+            parsed.Key(GameAction::Down) == KEY_DOWN &&
+            parsed.Key(GameAction::Left) == KEY_LEFT) {
+            parsed.keys[static_cast<int>(GameAction::Up)] = KEY_J;
+            parsed.keys[static_cast<int>(GameAction::Right)] = KEY_K;
+            parsed.keys[static_cast<int>(GameAction::Down)] = KEY_F;
+            parsed.keys[static_cast<int>(GameAction::Left)] = KEY_D;
+        }
         result = parsed;
         error.clear();
         return true;
