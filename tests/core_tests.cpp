@@ -1,5 +1,5 @@
-// F-04: minimal core-only CTest runner, independent of raylib and Windows APIs.
-// Replace this placeholder with focused Chart/Route/Timing tests as those modules arrive.
+// Core foundation smoke check (kept alongside established route/judge/editor tests).
+// It remains independent of raylib and Windows APIs.
 #include "core/foundation.h"
 
 #include <cstring>
@@ -7,7 +7,7 @@
 
 int main() {
     constexpr const char* expected =
-        "LOCUS foundation built. Game window is not implemented yet.";
+        "LOCUS foundation built. Playable Windows game available.";
     const char* actual = locus::core::FoundationStatus();
 
     if (actual == nullptr || std::strcmp(actual, expected) != 0) {
