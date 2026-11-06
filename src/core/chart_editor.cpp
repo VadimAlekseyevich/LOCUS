@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
+#include <numeric>
 #include <utility>
 
 namespace locus::core {
@@ -50,8 +52,8 @@ bool ChartEditor::ReflowSongRange() noexcept {
     if (songDurationSeconds_ <= 0.0) return true; // Temporary unbound draft.
     int first = 0, end = 0;
     std::string error;
-    if (!ComputeSongBeatRange(chart_.route.bpm, chart_.offsetSeconds,
-                              songDurationSeconds_, first, end, error)) return false;
+    if (!ComputeSongBeatRange(chart_.route.bpm * chart_.route.ticksPerBeat,
+                              chart_.offsetSeconds, songDurationSeconds_, first, end, error)) return false;
     if (!TurnRangeFits(first, end)) return false;
     chart_.route.firstBeat = first;
     chart_.route.lengthBeats = end;
@@ -129,7 +131,8 @@ bool ChartEditor::Redo() {
 
 double ChartEditor::AudioSecondsAtBeat(int beat) const noexcept {
     return chart_.offsetSeconds +
-           static_cast<double>(beat) * 60.0 / chart_.route.bpm;
+           static_cast<double>(beat) * 60.0 /
+               (chart_.route.bpm * chart_.route.ticksPerBeat);
 }
 
 bool ChartEditor::SetAudioPath(const std::string& relativePath) {
@@ -157,6 +160,62 @@ bool ChartEditor::StepSelection(int deltaBeats) noexcept {
     return SelectBeat(static_cast<int>(next));
 }
 
+bool ChartEditor::StepSnapSelection(int direction) noexcept {
+    if (direction == 0) return false;
+    const int step = chart_.route.ticksPerBeat / chart_.route.snapDivision;
+    const double base = static_cast<double>(selectedBeat_) / step;
+    const double next = (direction > 0 ? std::floor(base) + 1.0
+                                       : std::ceil(base) - 1.0) * step;
+    return SelectBeat(static_cast<int>(std::clamp(
+        static_cast<long long>(next),
+        static_cast<long long>(chart_.route.firstBeat),
+        static_cast<long long>(chart_.route.lengthBeats - 1))));
+}
+
+bool ChartEditor::SetSnapDivision(int division) {
+    constexpr int kAllowed[] = {1, 2, 3, 4, 6, 8, 12, 16, 24};
+    if (std::find(std::begin(kAllowed), std::end(kAllowed), division) ==
+        std::end(kAllowed)) return false;
+    if (division == chart_.route.snapDivision) return true;
+
+    const int oldTicks = chart_.route.ticksPerBeat;
+    const int newTicks = std::lcm(oldTicks, division);
+    if (newTicks > 48) return false;
+    const int factor = newTicks / oldTicks;
+    int first = chart_.route.firstBeat;
+    int end = chart_.route.lengthBeats;
+    if (factor > 1) {
+        if (HasSongDuration()) {
+            std::string error;
+            if (!ComputeSongBeatRange(chart_.route.bpm * newTicks,
+                                      chart_.offsetSeconds, songDurationSeconds_,
+                                      first, end, error)) return false;
+        } else {
+            if (static_cast<long long>(first) * factor < -65536 ||
+                static_cast<long long>(end) * factor > 65536 ||
+                static_cast<long long>(end - first) * factor > 65536)
+                return false;
+            first *= factor;
+            end *= factor;
+        }
+        for (const auto& event : chart_.route.turns) {
+            const long long tick = static_cast<long long>(event.beat) * factor;
+            if (tick < first || tick >= end || tick < -65536 || tick > 65535)
+                return false;
+        }
+    }
+
+    SaveUndo();
+    for (auto& event : chart_.route.turns) event.beat *= factor;
+    selectedBeat_ = std::clamp(selectedBeat_ * factor, first, end - 1);
+    chart_.route.firstBeat = first;
+    chart_.route.lengthBeats = end;
+    chart_.route.ticksPerBeat = newTicks;
+    chart_.route.snapDivision = division;
+    MarkDirty();
+    return true;
+}
+
 bool ChartEditor::SetBpm(double bpm) {
     // Chart JSON already accepts every finite positive BPM. The editor must
     // not reject legitimate fast charts (e.g. 400 BPM) at an arbitrary 300.
@@ -165,7 +224,8 @@ bool ChartEditor::SetBpm(double bpm) {
         int first = chart_.route.firstBeat, end = chart_.route.lengthBeats;
         std::string error;
         if (HasSongDuration() &&
-            !ComputeSongBeatRange(bpm, chart_.offsetSeconds,
+            !ComputeSongBeatRange(bpm * chart_.route.ticksPerBeat,
+                                 chart_.offsetSeconds,
                                   songDurationSeconds_, first, end, error)) return false;
         if (!TurnRangeFits(first, end)) return false;
         SaveUndo();
@@ -185,7 +245,8 @@ bool ChartEditor::SetOffsetMs(double milliseconds) {
         int first = chart_.route.firstBeat, end = chart_.route.lengthBeats;
         std::string error;
         if (HasSongDuration() &&
-            !ComputeSongBeatRange(chart_.route.bpm, milliseconds / 1000.0,
+            !ComputeSongBeatRange(chart_.route.bpm * chart_.route.ticksPerBeat,
+                                 milliseconds / 1000.0,
                                   songDurationSeconds_, first, end, error)) return false;
         if (!TurnRangeFits(first, end)) return false;
         SaveUndo();
@@ -348,6 +409,7 @@ ChartEditor::Pattern ChartEditor::CopyTurns(int firstBeat, int lastBeat) const {
     const int firstNote = start->beat;
     const int lastNote = (end - 1)->beat;
     result.span = lastNote - firstNote + 1;
+    result.ticksPerBeat = chart_.route.ticksPerBeat;
     for (auto note = start; note != end; ++note)
         result.notes.push_back({note->beat - firstNote, note->direction});
     return result;
