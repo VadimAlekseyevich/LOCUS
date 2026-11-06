@@ -182,7 +182,7 @@ int main() {
                 boundedCopy.Data().route.turns[2].beat == 15 &&
                 boundedCopy.Data().route.turns[3].beat == 18,
                 "paste aligns first note exactly to selected destination");
-    const auto noNotes = boundedCopy.CopyTurns(9, 11);
+    const auto noNotes = boundedCopy.CopyTurns(10, 11);
     ok &= Check(noNotes.span == 0 && noNotes.notes.empty(),
                 "empty selection copies no leading padding or phantom pattern");
 
