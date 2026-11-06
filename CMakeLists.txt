@@ -43,6 +43,7 @@ add_executable(locus
     src/app/song_library.cpp
     src/app/game_settings.cpp
     src/app/skin.cpp
+    src/app/skin_controls.cpp
     src/app/skin_menu.cpp
     src/app/menu_ui.cpp
     src/app/chart_editor_ui.cpp
@@ -173,6 +174,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_skin_tests
         tests/skin_tests.cpp
         src/app/skin.cpp
+        src/app/skin_controls.cpp
     )
     target_compile_features(locus_skin_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_skin_tests PRIVATE raylib nlohmann_json::nlohmann_json)
