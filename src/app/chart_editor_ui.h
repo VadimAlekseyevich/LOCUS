@@ -12,7 +12,7 @@ namespace locus::app {
 struct EditorControls {
     bool previousBeat = false, nextBeat = false;
     bool previousBar = false, nextBar = false; // Four beats = one 4/4 bar.
-    // Held Ctrl+arrow direction for deterministic continuous navigation.
+    // Held Ctrl+Left/Right or Ctrl+PgUp/PgDn for deterministic navigation.
     // UI input polls the key state; tests can supply elapsedSeconds directly.
     int heldBarDirection = 0; // -1 = left, +1 = right, 0 = released.
     float elapsedSeconds = 0.0f;
@@ -22,6 +22,7 @@ struct EditorControls {
     // Adjacent simultaneous keys form diagonals, using the game chord window.
     unsigned directionKeysHeld = 0; // Left=1 Down=2 Up=4 Right=8
     float directionChordWindowSeconds = 0.09f;
+    bool directionKeysSuppressed = false; // modifiers cancel an unfinished chord
     bool addLeft45 = false, addRight45 = false;
     bool addLeft135 = false, addRight135 = false;
     bool headingLeft = false, headingRight = false;
