@@ -376,9 +376,49 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     DrawRectangle(kWindowWidth - sidebar, 0, sidebar, kWindowHeight,
                   gameplay.skin.hudBackground);
 
-    DrawTextLabel(font, "LOCUS", {24.0f, 36.0f}, 30.0f,
-                  gameplay.skin.hudText);
     const auto& counts = gameplay.judge.Counts();
+    const float left = 24.0f;
+    const float right = kWindowWidth - sidebar + 24.0f;
+
+    // Non-score context stays on the left; all four running hit counters
+    // and weighted current accuracy remain together to the RIGHT of the
+    // central playfield square, visible during every scored session.
+    DrawTextLabel(font, "LOCUS", {left, 36.0f}, 30.0f,
+                  gameplay.skin.hudText);
+    DrawTextLabel(font, "LAST HIT", {left, 137.0f}, 16.0f,
+                  gameplay.skin.hudText);
+    if (const auto& last = gameplay.judge.Last()) {
+        const Color color = last->grade == locus::core::Grade::Perfect
+                                ? Color{133, 236, 201, 255}
+                            : last->grade == locus::core::Grade::Good
+                                ? Color{143, 208, 239, 255}
+                            : last->grade == locus::core::Grade::Bad
+                                ? Color{242, 198, 135, 255}
+                                : Color{237, 142, 149, 255};
+        DrawTextLabel(font, locus::core::GradeName(last->grade),
+                      {left, 169.0f}, 23.0f, color);
+    } else {
+        DrawTextLabel(font, "---", {left, 169.0f}, 23.0f,
+                      gameplay.skin.hudText);
+    }
+    DrawTextLabel(font, "SONG", {left, 271.0f}, 16.0f,
+                  gameplay.skin.hudText);
+    const std::string title = gameplay.title.substr(0, 16);
+    DrawTextLabel(font, title.c_str(), {left, 302.0f}, 16.0f,
+                  gameplay.skin.hudText);
+    DrawTextLabel(font, "SQUARE", {left, 406.0f}, 16.0f,
+                  gameplay.skin.hudText);
+    const int size = std::max(gameplay.chart.gridWidth,
+                              gameplay.chart.gridHeight);
+    DrawTextLabel(font, TextFormat("%d x %d VIEW", size, size),
+                  {left, 435.0f}, 16.0f, gameplay.skin.hudText);
+
+    DrawTextLabel(font, "ACCURACY", {right, 30.0f}, 17.0f,
+                  gameplay.skin.hudText);
+    DrawTextLabel(font, TextFormat("%.2f%%", counts.AccuracyPercent()),
+                  {right, 63.0f}, 30.0f, gameplay.skin.hudText);
+    DrawLineEx({right, 118.0f}, {kWindowWidth - 20.0f, 118.0f},
+               1.0f, WithOpacity(gameplay.skin.hudText, 0.28f));
     const struct {
         const char* label;
         int count;
@@ -390,38 +430,12 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
         {"MISS", counts.miss, {237, 142, 149, 255}}
     };
     for (int i = 0; i < 4; ++i) {
-        const float y = 116.0f + i * 91.0f;
-        DrawTextLabel(font, stats[i].label, {25.0f, y}, 17.0f,
+        const float y = 144.0f + i * 89.0f;
+        DrawTextLabel(font, stats[i].label, {right, y}, 17.0f,
                       stats[i].color);
         DrawTextLabel(font, TextFormat("%d", stats[i].count),
-                      {25.0f, y + 23.0f}, 29.0f, gameplay.skin.hudText);
+                      {right, y + 26.0f}, 28.0f, gameplay.skin.hudText);
     }
-    const float right = kWindowWidth - sidebar + 22.0f;
-    DrawTextLabel(font, "LAST HIT", {right, 110.0f}, 16.0f,
-                  gameplay.skin.hudText);
-    if (const auto& last = gameplay.judge.Last()) {
-        const Color color = last->grade == locus::core::Grade::Perfect
-                                ? Color{133, 236, 201, 255}
-                            : last->grade == locus::core::Grade::Good
-                                ? Color{143, 208, 239, 255}
-                            : last->grade == locus::core::Grade::Bad
-                                ? Color{242, 198, 135, 255}
-                                : Color{237, 142, 149, 255};
-        DrawTextLabel(font, locus::core::GradeName(last->grade),
-                      {right, 141.0f}, 24.0f, color);
-    }
-    DrawTextLabel(font, "SONG", {right, 253.0f}, 16.0f,
-                  gameplay.skin.hudText);
-    // Use a shortened title to stay inside the side panel.
-    const std::string title = gameplay.title.substr(0, 13);
-    DrawTextLabel(font, title.c_str(), {right, 283.0f}, 16.0f,
-                  gameplay.skin.hudText);
-    DrawTextLabel(font, "SQUARE", {right, 392.0f}, 16.0f,
-                  gameplay.skin.hudText);
-    const int size = std::max(gameplay.chart.gridWidth,
-                              gameplay.chart.gridHeight);
-    DrawTextLabel(font, TextFormat("%d x %d VIEW", size, size),
-                  {right, 420.0f}, 16.0f, gameplay.skin.hudText);
 }
 
 void DrawHomeScreen(Font font, const locus::app::SongLibrary& library,
@@ -475,16 +489,15 @@ void DrawLocalMusicScreen(Font font, const locus::app::LocalMusic& song,
 
 void DrawResultsScreen(Font font, const GameplayView& gameplay) {
     const auto& judge = gameplay.judge;
-    const auto& demo = gameplay.chart;
-    const bool completed = gameplay.completed;
-    DrawTextLabel(font, completed
+    const auto& counts = judge.Counts();
+    DrawTextLabel(font, gameplay.completed
                             ? (gameplay.custom ? "CHART COMPLETE" : "DEMO COMPLETE")
                             : "RESULTS PREVIEW",
                   Vector2{100.0f, 111.0f}, 41.0f,
                   Color{195, 237, 232, 255});
-    DrawTextLabel(font, gameplay.title.c_str(), Vector2{570.0f, 180.0f},
-                  18.0f, Color{170, 215, 222, 255});
-    const auto& counts = judge.Counts();
+    const std::string title = gameplay.title.substr(0, 29);
+    DrawTextLabel(font, title.c_str(), Vector2{570.0f, 167.0f},
+                  17.0f, Color{170, 215, 222, 255});
     DrawTextLabel(font, TextFormat("PERFECT   %d", counts.perfect),
                   Vector2{110.0f, 206.0f}, 27.0f,
                   Color{128, 238, 204, 255});
@@ -497,13 +510,19 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay) {
     DrawTextLabel(font, TextFormat("MISS      %d", counts.miss),
                   Vector2{110.0f, 338.0f}, 27.0f,
                   Color{243, 150, 151, 255});
+
+    DrawTextLabel(font, "ACCURACY", Vector2{570.0f, 215.0f}, 22.0f,
+                  Color{170, 215, 222, 255});
+    DrawTextLabel(font, TextFormat("%.2f%%", counts.AccuracyPercent()),
+                  Vector2{570.0f, 245.0f}, 43.0f,
+                  Color{225, 246, 229, 255});
     DrawTextLabel(font,
-                  TextFormat("TURNS RESOLVED  %d / %d", counts.Resolved(),
-                             static_cast<int>(demo.turns.size())),
-                  Vector2{570.0f, 227.0f}, 22.0f,
+                  TextFormat("NOTES JUDGED  %d / %d", counts.Resolved(),
+                             static_cast<int>(judge.ScorableCount())),
+                  Vector2{570.0f, 327.0f}, 19.0f,
                   Color{204, 225, 228, 255});
     DrawTextLabel(font, "NO FAIL  -  ROUTE UNCHANGED",
-                  Vector2{570.0f, 269.0f}, 17.0f,
+                  Vector2{570.0f, 367.0f}, 15.0f,
                   Color{158, 193, 204, 255});
     DrawTextLabel(font, "ENTER / R  -  PLAY AGAIN",
                   Vector2{110.0f, 409.0f}, 24.0f,
