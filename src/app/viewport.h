@@ -7,6 +7,9 @@
 
 namespace locus::app {
 
+inline constexpr int kVirtualWidth = 960;
+inline constexpr int kVirtualHeight = 540;
+
 // Logical 960x540 coordinates are independent of physical window pixels.
 // Gameplay fits its 540x540 square to the window's shorter physical side.
 struct PixelRect { int x = 0, y = 0, width = 0, height = 0; };
@@ -15,16 +18,17 @@ struct ViewportTransform {
     float scale = 1.0f, offsetX = 0.0f, offsetY = 0.0f;
 
     static ViewportTransform Menu(int width, int height) noexcept {
-        const float scale = std::min(width / 960.0f, height / 540.0f);
-        return {scale, (width - 960.0f * scale) * 0.5f,
-                       (height - 540.0f * scale) * 0.5f};
+        const float scale = std::min(width / static_cast<float>(kVirtualWidth),
+                                     height / static_cast<float>(kVirtualHeight));
+        return {scale, (width - kVirtualWidth * scale) * 0.5f,
+                       (height - kVirtualHeight * scale) * 0.5f};
     }
 
     static ViewportTransform Gameplay(int width, int height) noexcept {
         const float scale = width > 0 && height > 0
-            ? static_cast<float>(std::min(width, height)) / 540.0f : 1.0f;
-        return {scale, (width - 960.0f * scale) * 0.5f,
-                       (height - 540.0f * scale) * 0.5f};
+            ? static_cast<float>(std::min(width, height)) / kVirtualHeight : 1.0f;
+        return {scale, (width - kVirtualWidth * scale) * 0.5f,
+                       (height - kVirtualHeight * scale) * 0.5f};
     }
 
     Vector2 ToVirtual(Vector2 physical) const noexcept {

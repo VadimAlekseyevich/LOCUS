@@ -30,6 +30,7 @@ target_include_directories(locus_core PUBLIC
 
 add_executable(locus
     src/app/main.cpp
+    src/app/gameplay_ui.cpp
     src/app/screen_flow.cpp
     src/app/native_close.cpp
     src/app/demo_transport.cpp
