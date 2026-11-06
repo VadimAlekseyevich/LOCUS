@@ -50,11 +50,18 @@ void DirectionButton(Font font, Rectangle rect, const char* name,
                                 : Color{36, 43, 58, 255});
     DrawRectangleRoundedLinesEx(rect, 0.16f, 5, 1.7f, tint);
     const auto headingSize = MeasureTextEx(font, name, 13.0f, 1.0f);
-    const auto keySize = MeasureTextEx(font, keys, 10.0f, 1.0f);
+    // An arbitrary rebind can be longer than "J+K" (e.g. "LEFT+UP").
+    // Fit the actual shortcut inside the existing 52px button hitbox.
+    const float natural = MeasureTextEx(font, keys, 10.0f, 0.5f).x;
+    const float keyFont = natural > 0.0f
+        ? std::clamp(10.0f * (rect.width - 4.0f) / natural, 5.0f, 10.0f)
+        : 10.0f;
+    const auto keySize = MeasureTextEx(font, keys, keyFont, 0.5f);
     Label(font, name, rect.x + (rect.width - headingSize.x) / 2.0f,
           rect.y + 2.0f, 13.0f, Color{232, 238, 245, 255});
-    Label(font, keys, rect.x + (rect.width - keySize.x) / 2.0f,
-          rect.y + 20.0f, 10.0f, Color{196, 213, 235, 255});
+    DrawTextEx(font, keys,
+               {rect.x + (rect.width - keySize.x) / 2.0f, rect.y + 20.0f},
+               keyFont, 0.5f, Color{196, 213, 235, 255});
 }
 
 const char* HeadingName(core::Heading heading) {
@@ -285,7 +292,8 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
 void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const EditorUiState& ui, const std::string& songName,
                        bool hasAudio, bool previewPlaying, bool previewPaused,
-                       double previewBeat, double playbackSpeed) {
+                       double previewBeat, double playbackSpeed,
+                       const GameSettings& settings) {
     const auto& chart = draft.Data().route;
     Label(font, "CHART EDITOR", 49, 77, 26, Color{194, 236, 231, 255});
     Button(font, kTabRoute, "ROUTE", Color{126, 219, 209, 255},
@@ -326,13 +334,24 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
               744, 250, 12, Color{216, 232, 239, 255});
         const char* padNames[9] = {"UL", "U", "UR", "L", "DEL", "R",
                                    "DL", "D", "DR"};
-        const char* padKeys[9] = {"D+J", "J", "J+K", "D", "BKSP", "K",
-                                  "D+F", "F", "F+K"};
+        // Same per-direction bindings as PLAY, including custom rebinds.
+        const std::string padKeys[9] = {
+            EditorDirectionShortcut(settings, 5u),
+            EditorDirectionShortcut(settings, 4u),
+            EditorDirectionShortcut(settings, 12u),
+            EditorDirectionShortcut(settings, 1u),
+            "BKSP",
+            EditorDirectionShortcut(settings, 8u),
+            EditorDirectionShortcut(settings, 3u),
+            EditorDirectionShortcut(settings, 2u),
+            EditorDirectionShortcut(settings, 10u)
+        };
         for (int row = 0; row < 3; ++row)
             for (int col = 0; col < 3; ++col) {
                 const auto heading = DirectionPadHeading(row, col);
                 DirectionButton(font, DirectionPadBounds(row, col),
-                                padNames[row * 3 + col], padKeys[row * 3 + col],
+                                padNames[row * 3 + col],
+                                padKeys[row * 3 + col].c_str(),
                                 !heading ? Color{224, 150, 148, 255}
                                   : core::IsDiagonal(*heading)
                                     ? Color{186, 160, 235, 255}
@@ -340,7 +359,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                                 heading ? (turn && *heading == outgoing)
                                         : turn != nullptr);
             }
-        Label(font, "DFJK: TWO KEYS = DIAGONAL", 744, 398, 11,
+        Label(font, "GAME BINDS: 2=DIAGONAL", 744, 398, 11,
               Color{165, 198, 213, 255});
         Label(font, "PATTERN  /  DRAG RULER", 52, 188, 14,
               Color{193, 215, 226, 255});
