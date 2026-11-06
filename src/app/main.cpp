@@ -61,6 +61,8 @@ enum class Screen {
 
 struct FrameInput {
     bool closeRequested = false;
+    bool quitConfirmed = false;
+    bool quitCanceled = false;
     std::optional<Screen> requestedScreen;
     bool startPressed = false;
     bool pausePressed = false;
@@ -86,10 +88,11 @@ struct FrameInput {
     locus::app::EditorControls editor;
 };
 
-enum class EditorPending { None, Home, Exit, NewDraft, OpenChart };
+enum class EditorPending { None, Home, NewDraft, OpenChart };
 
 struct AppState {
     bool running = true;
+    bool quitConfirmation = false; // Actual app close always needs explicit approval.
     int frames = 0;
     Screen screen = Screen::Home;
 };
@@ -118,10 +121,11 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
                      const locus::app::GameSettings& settings) {
     FrameInput input;
     const bool escape = IsKeyPressed(KEY_ESCAPE);
+    // Esc always goes BACK outside Home, including ROUTE editor.
+    // Only Esc on Home or the window X requests app termination.
     input.closeRequested = WindowShouldClose() ||
-        (escape && (currentScreen == Screen::Home || currentScreen == Screen::Editor));
-    input.backPressed = escape && currentScreen != Screen::Home &&
-                        currentScreen != Screen::Editor;
+                           (escape && currentScreen == Screen::Home);
+    input.backPressed = escape && currentScreen != Screen::Home;
     if (debugScreens) {
         if (IsKeyPressed(KEY_F1)) input.requestedScreen = Screen::Home;
         else if (IsKeyPressed(KEY_F2)) input.requestedScreen = Screen::Play;
@@ -181,8 +185,22 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
 
 // 2. Update: only state transitions here. No drawing or gameplay logic.
 void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
-    if (input.closeRequested || (smokeWindow && state.frames >= kSmokeFrames)) {
+    if (smokeWindow && state.frames >= kSmokeFrames) {
         state.running = false;
+        return;
+    }
+    if (state.quitConfirmation) {
+        if (input.quitConfirmed) {
+            state.running = false;
+            return;
+        }
+        if (input.quitCanceled) state.quitConfirmation = false;
+        ++state.frames; // A modal blocks all unrelated navigation.
+        return;
+    }
+    if (input.closeRequested) {
+        state.quitConfirmation = true;
+        ++state.frames; // Show a modal; do not close LOCUS yet.
         return;
     }
     if (input.requestedScreen.has_value()) {
