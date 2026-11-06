@@ -416,19 +416,29 @@ ChartEditor::Pattern ChartEditor::CopyTurns(int firstBeat, int lastBeat) const {
 }
 
 bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
+    // Clipboard positions are expressed in its source tick resolution.
+    // A finer placement grid must not stretch a copied musical phrase.
     if (pattern.span < 1 || pattern.notes.empty() ||
-        destinationBeat < chart_.route.firstBeat ||
-        static_cast<long long>(destinationBeat) + pattern.span >
-            chart_.route.lengthBeats) return false;
+        pattern.ticksPerBeat < 1 ||
+        chart_.route.ticksPerBeat % pattern.ticksPerBeat != 0)
+        return false;
+    const int factor = chart_.route.ticksPerBeat / pattern.ticksPerBeat;
+    const long long span = static_cast<long long>(pattern.span - 1) * factor + 1;
+    if (destinationBeat < chart_.route.firstBeat ||
+        static_cast<long long>(destinationBeat) + span > chart_.route.lengthBeats)
+        return false;
     std::vector<TurnEvent> updated = chart_.route.turns;
     int lastRelative = -1;
     bool changed = false;
     for (const auto& note : pattern.notes) {
-        const long long absolute = static_cast<long long>(destinationBeat) + note.beat;
         if (note.beat < 0 || note.beat >= pattern.span ||
-            note.beat <= lastRelative || absolute >= chart_.route.lengthBeats)
-            return false; // Validate whole clipboard; never partially paste.
+            note.beat <= lastRelative) return false;
         lastRelative = note.beat;
+        const long long absolute =
+            static_cast<long long>(destinationBeat) +
+            static_cast<long long>(note.beat) * factor;
+        if (absolute < chart_.route.firstBeat ||
+            absolute >= chart_.route.lengthBeats) return false;
         const int beat = static_cast<int>(absolute);
         const auto found = std::lower_bound(updated.begin(), updated.end(), beat,
             [](const TurnEvent& event, int n) { return event.beat < n; });
