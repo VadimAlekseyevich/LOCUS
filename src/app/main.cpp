@@ -323,6 +323,15 @@ float GameplayViewportScale(int width, int height) noexcept {
     return static_cast<float>(std::min(width, height)) / kWindowHeight;
 }
 
+// Actual visible sidebar area in virtual coordinates. PLAY scales to the
+// window height, so fixed 960x540 HUD coordinates can otherwise be cropped
+// in resizable windows narrower than 16:9.
+float GameplayRightSidebarWidth(int width, int height) noexcept {
+    if (width <= 0 || height <= 0) return 0.0f;
+    const float visibleWidth = width / GameplayViewportScale(width, height);
+    return std::max(0.0f, (visibleWidth - kGameplayWorldViewport.width) * 0.5f);
+}
+
 struct GameplayCamera {
     static constexpr float kCenterX = kWindowWidth * 0.5f;
     static constexpr float kCenterY = kWindowHeight * 0.5f;
@@ -392,57 +401,46 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
          kGameplayWorldViewport.height - 1.5f},
         1.5f, gameplay.skin.fieldBorder);
 
-    // All scoring UI lives in the two 210px sidebars. It cannot cover the
-    // playfield's bottom edge or break the 540px square requirement.
+    // Keep the entire LEFT side empty. In non-16:9 windows, the virtual
+    // 960px canvas is cropped at both edges: the old LOCUS / LAST HIT /
+    // SONG / SQUARE labels were literally cut in half on the player's
+    // screen. Those labels are no longer part of scored gameplay.
+    // Only ACCURACY and the four judgement counts belong to the RIGHT.
     if (!gameplay.skin.showHud) return;
-    constexpr int sidebar = (kWindowWidth - kWindowHeight) / 2;
-    DrawRectangle(0, 0, sidebar, kWindowHeight, gameplay.skin.hudBackground);
-    DrawRectangle(kWindowWidth - sidebar, 0, sidebar, kWindowHeight,
-                  gameplay.skin.hudBackground);
+    const float sideWidth = GameplayRightSidebarWidth(
+        GetScreenWidth(), GetScreenHeight());
+    if (sideWidth <= 0.0f) return; // Portrait: square consumes all width.
+
+    const float squareRight = kGameplayWorldViewport.x +
+                              kGameplayWorldViewport.width;
+    DrawRectangleRec({squareRight, 0.0f, sideWidth,
+                      static_cast<float>(kWindowHeight)},
+                     gameplay.skin.hudBackground);
+
+    const float padding = std::min(24.0f, sideWidth * 0.10f);
+    const float right = squareRight + padding;
+    const float availableTextWidth = sideWidth - padding - 8.0f;
+    if (availableTextWidth < 20.0f) return;
+
+    // Fit each heading/value within the truly visible right sidebar
+    // rather than blindly drawing at positions outside the window.
+    const auto hudText = [&](const char* label, float y, float desiredSize,
+                             Color color) {
+        const float naturalWidth = MeasureTextEx(
+            font, label, desiredSize, 1.0f).x;
+        const float fitted = naturalWidth > availableTextWidth
+            ? desiredSize * availableTextWidth / naturalWidth
+            : desiredSize;
+        DrawTextLabel(font, label, {right, y}, fitted, color);
+    };
 
     const auto& counts = gameplay.judge.Counts();
-    const float left = 24.0f;
-    const float right = kWindowWidth - sidebar + 24.0f;
-
-    // Non-score context stays on the left; all four running hit counters
-    // and weighted current accuracy remain together to the RIGHT of the
-    // central playfield square, visible during every scored session.
-    DrawTextLabel(font, "LOCUS", {left, 36.0f}, 30.0f,
-                  gameplay.skin.hudText);
-    DrawTextLabel(font, "LAST HIT", {left, 137.0f}, 16.0f,
-                  gameplay.skin.hudText);
-    if (const auto& last = gameplay.judge.Last()) {
-        const Color color = last->grade == locus::core::Grade::Perfect
-                                ? Color{133, 236, 201, 255}
-                            : last->grade == locus::core::Grade::Good
-                                ? Color{143, 208, 239, 255}
-                            : last->grade == locus::core::Grade::Bad
-                                ? Color{242, 198, 135, 255}
-                                : Color{237, 142, 149, 255};
-        DrawTextLabel(font, locus::core::GradeName(last->grade),
-                      {left, 169.0f}, 23.0f, color);
-    } else {
-        DrawTextLabel(font, "---", {left, 169.0f}, 23.0f,
-                      gameplay.skin.hudText);
-    }
-    DrawTextLabel(font, "SONG", {left, 271.0f}, 16.0f,
-                  gameplay.skin.hudText);
-    const std::string title = gameplay.title.substr(0, 16);
-    DrawTextLabel(font, title.c_str(), {left, 302.0f}, 16.0f,
-                  gameplay.skin.hudText);
-    DrawTextLabel(font, "SQUARE", {left, 406.0f}, 16.0f,
-                  gameplay.skin.hudText);
-    const int size = std::max(gameplay.chart.gridWidth,
-                              gameplay.chart.gridHeight);
-    DrawTextLabel(font, TextFormat("%d x %d VIEW", size, size),
-                  {left, 435.0f}, 16.0f, gameplay.skin.hudText);
-
-    DrawTextLabel(font, "ACCURACY", {right, 30.0f}, 17.0f,
-                  gameplay.skin.hudText);
-    DrawTextLabel(font, TextFormat("%.2f%%", counts.AccuracyPercent()),
-                  {right, 63.0f}, 30.0f, gameplay.skin.hudText);
-    DrawLineEx({right, 118.0f}, {kWindowWidth - 20.0f, 118.0f},
-               1.0f, locus::app::WithOpacity(gameplay.skin.hudText, 0.28f));
+    hudText("ACCURACY", 30.0f, 17.0f, gameplay.skin.hudText);
+    hudText(TextFormat("%.2f%%", counts.AccuracyPercent()),
+            63.0f, 30.0f, gameplay.skin.hudText);
+    DrawLineEx({right, 118.0f},
+               {squareRight + sideWidth - 8.0f, 118.0f}, 1.0f,
+               locus::app::WithOpacity(gameplay.skin.hudText, 0.28f));
     const struct {
         const char* label;
         int count;
@@ -455,10 +453,9 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     };
     for (int i = 0; i < 4; ++i) {
         const float y = 144.0f + i * 89.0f;
-        DrawTextLabel(font, stats[i].label, {right, y}, 17.0f,
-                      stats[i].color);
-        DrawTextLabel(font, TextFormat("%d", stats[i].count),
-                      {right, y + 26.0f}, 28.0f, gameplay.skin.hudText);
+        hudText(stats[i].label, y, 17.0f, stats[i].color);
+        hudText(TextFormat("%d", stats[i].count), y + 26.0f,
+                28.0f, gameplay.skin.hudText);
     }
 }
 
@@ -926,6 +923,18 @@ bool CheckPresentationLayout() {
         const float expected = static_cast<float>(
             std::min(size.first, size.second));
         if (std::abs(side - expected) > 0.001f)
+            return false;
+        // The right-side statistics must never extend into invisible
+        // letterbox/cropped space, even in a 4:3 window.
+        const float rightWidth = GameplayRightSidebarWidth(
+            size.first, size.second);
+        const float projectedRight =
+            (kGameplayWorldViewport.x +
+             kGameplayWorldViewport.width + rightWidth -
+             GameplayCamera::kCenterX) * scale +
+            size.first * 0.5f;
+        if (std::abs(projectedRight - size.first) > 0.01f ||
+            rightWidth < 0.0f)
             return false;
     }
     const auto back = locus::app::detail::kEditorBack;
