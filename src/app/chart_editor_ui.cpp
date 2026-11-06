@@ -296,6 +296,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
            ui.tab == EditorTab::Audio);
     Button(font, kTabField, "FIELD", Color{239, 203, 129, 255},
            ui.tab == EditorTab::Field);
+    Button(font, kEditorBack, "BACK", Color{247, 202, 145, 255});
 
     // Transport and timeline persist across all editor tabs.
     // Any editor shortcut rebound to a gameplay direction loses its
@@ -439,7 +440,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             ? "WHEEL NAV" : "PGUP/PGDN NAV");
     const std::string message = ui.feedback.empty()
         ? (ui.EditingText() ? "TYPE VALUE, ENTER CONFIRMS, ESC CANCELS"
-           : navigationHint + "  CTRL+S SAVE  CTRL+O OPEN" +
+           : navigationHint + "  ESC BACK  CTRL+S SAVE  CTRL+O OPEN" +
              (IsGameDirectionKey(settings, KEY_H) ? "" : "  H HOME") +
              "  F11 FULLSCREEN")
         : ui.feedback;
