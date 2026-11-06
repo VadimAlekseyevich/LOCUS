@@ -15,6 +15,7 @@ public:
     struct Pattern {
         std::vector<TurnEvent> notes;
         int span = 0;
+        int ticksPerBeat = 1; // Clipboard survives grid-resolution changes.
     };
     ChartEditor();
     void NewDraft();
@@ -34,7 +35,12 @@ public:
     bool SetAudioPath(const std::string& relativePath);
 
     bool SelectBeat(int beat) noexcept;
-    bool StepSelection(int deltaBeats) noexcept; // Clamped; does not modify chart.
+    bool StepSelection(int deltaBeats) noexcept; // Tick steps, clamped.
+    bool StepSnapSelection(int direction) noexcept; // One visible subdivision line.
+    // Change grid snapping independently of BPM and real audio timestamps.
+    // Exact tick resolution grows only if needed (LCM); existing notes do
+    // not shift and reducing snap density never destroys finer notes.
+    bool SetSnapDivision(int division);
     bool ChangeBpm(int delta); // No arbitrary upper BPM cap.
     bool SetBpm(double bpm);
     bool ChangeOffsetMs(int deltaMs); // signed milliseconds
