@@ -29,6 +29,16 @@ struct GradeCounts {
     int miss = 0;
 
     int Resolved() const noexcept { return perfect + good + bad + miss; }
+
+    // The player's requested weighted accuracy in percent. Misses count
+    // in the denominator, despite contributing zero points. An unplayed
+    // chart starts at 100% until the first note is judged.
+    double AccuracyPercent() const noexcept {
+        const int resolved = Resolved();
+        return resolved == 0 ? 100.0
+            : static_cast<double>(100LL * perfect + 75LL * good + 50LL * bad)
+                / static_cast<double>(resolved);
+    }
 };
 
 const char* GradeName(Grade grade) noexcept;
@@ -68,12 +78,23 @@ public:
     const std::optional<Judgement>& Last() const noexcept { return last_; }
     const TurnEvent* NextEvent() const noexcept;
 
+    // Total includes only notes at/after the editor TEST start position.
+    // Once every playable note has a judgement (hit or Miss), Results may
+    // open immediately without waiting for the audio file to finish.
+    std::size_t ScorableCount() const noexcept {
+        return chart_.turns.size() - firstScoredEvent_;
+    }
+    bool AllScorableJudged() const noexcept {
+        return ScorableCount() != 0 && NextEvent() == nullptr;
+    }
+
 private:
     void Resolve(Grade grade, double errorSeconds, bool wrongDirection) noexcept;
 
     const Chart& chart_;
     double offsetSeconds_ = 0.0;
     std::size_t nextEvent_ = 0;
+    std::size_t firstScoredEvent_ = 0;
     GradeCounts counts_;
     std::optional<Judgement> last_;
 };
