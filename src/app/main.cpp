@@ -468,14 +468,37 @@ struct MenuEvents {
     bool editSelected = false;
     bool saveSettings = false;
     bool toggleFullscreen = false;
+    locus::app::SkinCommand skinCommand = locus::app::SkinCommand::None;
 };
 
 MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                            const locus::app::SongLibrary& library,
                            locus::app::SongSelectUi& libraryUi,
                            locus::app::GameSettings& settings,
-                           locus::app::SettingsUi& settingsUi) {
+                           locus::app::SettingsUi& settingsUi,
+                           locus::app::Skin& draftSkin,
+                           locus::app::SkinUi& skinUi) {
     MenuEvents events;
+    if (state.screen == Screen::Skin) {
+        if (skinUi.editingName) {
+            input.backPressed = false;
+            input.homePressed = false;
+            input.requestedScreen.reset();
+            locus::app::HandleSkinNameInput(draftSkin, skinUi);
+            return events;
+        }
+        const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+        const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+        if (ctrl && IsKeyPressed(KEY_S)) {
+            events.skinCommand = shift ? locus::app::SkinCommand::SaveAs
+                                       : locus::app::SkinCommand::Save;
+            return events;
+        }
+        if (ctrl && IsKeyPressed(KEY_O)) {
+            events.skinCommand = locus::app::SkinCommand::Load;
+            return events;
+        }
+    }
     if (state.screen == Screen::Settings && settingsUi.capturing >= 0) {
         // Esc cancels rebind, not the settings screen or application. Using
         // GetKeyPressed preserves arbitrary keys (WASD, arrows, numpad...)
@@ -562,6 +585,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         }
     } else if (state.screen == Screen::Skin) {
         if (hit(locus::app::MenuBackButton())) input.backPressed = true;
+        else events.skinCommand = locus::app::SkinMenuClick(mouse, draftSkin, skinUi);
     } else if (state.screen == Screen::Settings) {
         if (hit(locus::app::MenuBackButton())) {
             input.backPressed = true;
@@ -613,6 +637,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   const locus::app::SongSelectUi& libraryUi,
                   const locus::app::GameSettings& settings,
                   const locus::app::SettingsUi& settingsUi,
+                  const locus::app::Skin& draftSkin,
+                  const locus::app::SkinUi& skinUi,
                   const std::string& menuStatus) {
     BeginDrawing();
     ClearBackground(state.screen == Screen::Play
@@ -1015,6 +1041,18 @@ int main(int argc, char** argv) {
         settingsUi.notice = "DEFAULTS USED: " + settingsError;
         settingsUi.noticeError = true;
     }
+    // A single selected skin applies to every chart, independently of Songs.
+    const auto activeSkinFile = userData / L"Skins" / L"active.locus-skin.json";
+    locus::app::Skin activeSkin;
+    locus::app::Skin draftSkin;
+    locus::app::SkinUi skinUi;
+    std::string skinError;
+    if (!locus::app::LoadSkin(activeSkinFile, activeSkin, skinError)) {
+        skinUi.notice = "SKIN DEFAULTS USED: " + skinError;
+        skinUi.noticeError = true;
+    }
+    draftSkin = activeSkin;
+    skinUi.saved = activeSkin;
     locus::app::SongLibrary library(userData / L"Songs");
     std::string menuStatus;
     if (!library.Refresh(menuStatus))
@@ -1064,7 +1102,8 @@ int main(int argc, char** argv) {
         const bool importFromHome =
             state.screen == Screen::Home && input.chooseChartPressed;
         const MenuEvents menuEvents = HandleMenuInput(
-            state, input, library, libraryUi, settings, settingsUi);
+            state, input, library, libraryUi, settings, settingsUi,
+            draftSkin, skinUi);
         if (menuEvents.toggleFullscreen) ToggleBorderlessWindowed();
         if (menuEvents.saveSettings) {
             transport.SetVolume(settings.volume);
@@ -1132,6 +1171,12 @@ int main(int argc, char** argv) {
             }
         }
         UpdateState(state, input, smokeWindow);
+        if (previousScreen == Screen::Skin && state.screen != Screen::Skin) {
+            // Back/Esc cancels all unsaved skin edits.
+            draftSkin = activeSkin;
+            skinUi.dirty = false;
+            skinUi.editingName = false;
+        }
         if (!state.running) {
             break;
         }
@@ -1519,7 +1564,8 @@ int main(int argc, char** argv) {
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
                     editorStatus, editorPending, musicError, renderNow,
-                    library, libraryUi, settings, settingsUi, menuStatus);
+                    library, libraryUi, settings, settingsUi,
+                    draftSkin, skinUi, menuStatus);
     }
 
     // Unload both music streams before the shared raylib audio device.
