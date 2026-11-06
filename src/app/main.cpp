@@ -8,6 +8,8 @@
 #include "app/chart_playback.h"
 #include "app/music_picker.h"
 #include "app/chart_editor_ui.h"
+#include "app/app_input.h"
+#include "app/menu_controller.h"
 #include "app/chart_editor_layout.h"
 #include "app/chart_filename.h"
 #include "app/visual_style.h"
@@ -41,6 +43,10 @@
 // Production screens share one window and one input/update/render loop.
 namespace {
 using locus::app::AppState;
+using locus::app::FrameInput;
+using locus::app::PollInput;
+using locus::app::MenuEvents;
+using locus::app::HandleMenuInput;
 using locus::app::Screen;
 using locus::app::ScreenName;
 using locus::app::kSmokeFrames;
@@ -62,107 +68,10 @@ double MonotonicSeconds() {
     return std::chrono::duration<double>(Clock::now() - epoch).count();
 }
 
-struct FrameInput {
-    bool closeRequested = false;
-    std::optional<Screen> requestedScreen;
-    bool quitConfirmed = false;
-    bool quitCanceled = false;
-    bool startPressed = false;
-    bool pausePressed = false;
-    bool restartPressed = false;
-    bool homePressed = false;
-    bool fullscreenPressed = false;
-    bool chooseMusicPressed = false;
-    bool chooseChartPressed = false;
-    bool openEditorPressed = false;
-    bool openPlayPressed = false;
-    bool openSkinPressed = false;
-    bool openSettingsPressed = false;
-    bool backPressed = false;
-    bool editorSave = false;
-    bool editorSaveAs = false;
-    bool editorOpen = false;
-    bool editorNew = false;
-    bool editorTest = false;
-    int practiceSpeedIndex = -1;
-    std::array<bool, 4> arrowPressed{};
-    std::array<double, 4> arrowCapturedAt{};
-    std::array<bool, 4> arrowHeld{};
-    locus::app::EditorControls editor;
-};
-
 enum class EditorPending { None, Home, NewDraft, OpenChart };
 
 bool HasArgument(int argc, char** argv, const char* argument) {
     return argc == 2 && std::strcmp(argv[1], argument) == 0;
-}
-
-// 1. Input: raylib already pumps native events at the end of each drawn frame.
-// F1-F4 are diagnostic shortcuts ONLY when --debug-screens is explicitly enabled.
-FrameInput PollInput(bool debugScreens, Screen currentScreen,
-                     const locus::app::GameSettings& settings) {
-    FrameInput input;
-    const bool escape = IsKeyPressed(KEY_ESCAPE);
-    // Esc always goes BACK outside Home, including ROUTE editor.
-    // Only Esc on Home or the window X requests app termination.
-    input.closeRequested = locus::app::ConsumeNativeCloseRequest() ||
-                           (escape && currentScreen == Screen::Home);
-    input.backPressed = escape && currentScreen != Screen::Home;
-    if (debugScreens) {
-        if (IsKeyPressed(KEY_F1)) input.requestedScreen = Screen::Home;
-        else if (IsKeyPressed(KEY_F2)) input.requestedScreen = Screen::Play;
-        else if (IsKeyPressed(KEY_F3)) input.requestedScreen = Screen::Editor;
-        else if (IsKeyPressed(KEY_F4)) input.requestedScreen = Screen::Results;
-    }
-    input.startPressed = IsKeyPressed(KEY_ENTER);
-    const bool gameplayKeys = currentScreen == Screen::Play ||
-                              currentScreen == Screen::Results;
-    input.pausePressed = IsKeyPressed(gameplayKeys
-        ? settings.Key(locus::app::GameAction::Pause) : KEY_SPACE);
-    input.restartPressed = IsKeyPressed(gameplayKeys
-        ? settings.Key(locus::app::GameAction::Retry) : KEY_R);
-    input.homePressed = IsKeyPressed(gameplayKeys
-        ? settings.Key(locus::app::GameAction::Home) : KEY_H) &&
-        !(currentScreen == Screen::Editor &&
-          locus::app::IsGameDirectionKey(settings, KEY_H));
-    input.fullscreenPressed = IsKeyPressed(KEY_F11);
-    input.chooseMusicPressed = IsKeyPressed(KEY_O) &&
-        !(currentScreen == Screen::Editor &&
-          locus::app::IsGameDirectionKey(settings, KEY_O));
-    input.chooseChartPressed = IsKeyPressed(KEY_C);
-    input.openEditorPressed = IsKeyPressed(KEY_E);
-    input.openPlayPressed = IsKeyPressed(KEY_P);
-    input.openSkinPressed = IsKeyPressed(KEY_K);
-    const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
-    const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-    input.openSettingsPressed = !control && IsKeyPressed(KEY_S);
-    input.editorSave = control && IsKeyPressed(KEY_S) && !shift;
-    input.editorSaveAs = control && IsKeyPressed(KEY_S) && shift;
-    input.editorOpen = control && IsKeyPressed(KEY_O);
-    input.editorNew = control && IsKeyPressed(KEY_N);
-    input.editorTest = IsKeyPressed(KEY_T) &&
-        !(currentScreen == Screen::Editor &&
-          locus::app::IsGameDirectionKey(settings, KEY_T));
-    input.practiceSpeedIndex = IsKeyPressed(KEY_ONE) ? 0
-                              : IsKeyPressed(KEY_TWO) ? 1
-                              : IsKeyPressed(KEY_THREE) ? 2
-                              : IsKeyPressed(KEY_FOUR) ? 3
-                              : IsKeyPressed(KEY_FIVE) ? 4 : -1;
-    // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
-    // Use the same steady clock origin as DemoTransport, not frame duration.
-    // Absolute direction input; a diagonal is a two-key stroke.
-    // The original four enum indices still map to Up, Right, Down, Left.
-    for (int i = 0; i < 4; ++i) {
-        const int key = settings.keys[static_cast<std::size_t>(i)];
-        input.arrowPressed[i] = IsKeyPressed(key);
-        input.arrowHeld[i] = IsKeyDown(key);
-        if (input.arrowPressed[i]) input.arrowCapturedAt[i] = MonotonicSeconds();
-    }
-    // The chart editor consumes the raylib UTF-8 character queue.
-    // Never drain it on SKIN: its numeric/name text inputs own that queue.
-    if (currentScreen == Screen::Editor)
-        input.editor = locus::app::PollEditorControls(settings, input.arrowHeld);
-    return input;
 }
 
 // Platform-specific input is reduced to navigation actions. The screen
@@ -339,181 +248,6 @@ void DrawLocalMusicScreen(Font font, const locus::app::LocalMusic& song,
                                      : Color{241, 150, 150, 255});
 }
 
-// Menu controls use the same centered 960x540 coordinate space as drawing.
-// Keep Home/Play/Skin/Settings interactions separate from the editor handlers.
-struct MenuEvents {
-    bool import = false;
-    bool refresh = false;
-    bool playSelected = false;
-    bool editSelected = false;
-    bool saveSettings = false;
-    bool toggleFullscreen = false;
-    locus::app::SkinCommand skinCommand = locus::app::SkinCommand::None;
-};
-
-MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
-                           const locus::app::SongLibrary& library,
-                           locus::app::SongSelectUi& libraryUi,
-                           locus::app::GameSettings& settings,
-                           locus::app::SettingsUi& settingsUi,
-                           locus::app::Skin& draftSkin,
-                           locus::app::SkinUi& skinUi) {
-    MenuEvents events;
-    const bool mouseClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-    const auto transform = locus::app::ViewportTransform::Menu(
-        GetScreenWidth(), GetScreenHeight());
-    const bool validMouse = transform.scale > 0.0f;
-    const Vector2 mouse = transform.ToVirtual(GetMousePosition());
-
-    if (state.screen == Screen::Skin) {
-        if (locus::app::SkinMenuEditingText(skinUi)) {
-            // Enter and Escape belong to the field, not the menu navigation.
-            // Clicking away attempts a commit; invalid numbers keep focus.
-            input.backPressed = false;
-            input.homePressed = false;
-            input.requestedScreen.reset();
-            if (mouseClick && validMouse) {
-                if (!locus::app::FinishSkinTextInput(draftSkin, skinUi, true))
-                    return events;
-            } else {
-                locus::app::HandleSkinTextInput(draftSkin, skinUi);
-                return events;
-            }
-        }
-        if (validMouse) {
-            locus::app::UpdateSkinSliderDrag(
-                mouse, IsMouseButtonDown(MOUSE_BUTTON_LEFT), draftSkin, skinUi);
-        }
-        const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
-        const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-        if (ctrl && IsKeyPressed(KEY_S)) {
-            events.skinCommand = shift ? locus::app::SkinCommand::SaveAs
-                                       : locus::app::SkinCommand::Save;
-            return events;
-        }
-        if (ctrl && IsKeyPressed(KEY_O)) {
-            events.skinCommand = locus::app::SkinCommand::Load;
-            return events;
-        }
-    }
-    if (state.screen == Screen::Settings && settingsUi.capturing >= 0) {
-        // Esc cancels rebind, not the settings screen or application. Using
-        // GetKeyPressed preserves arbitrary keys (WASD, arrows, numpad...)
-        // rather than only character input from GetCharPressed().
-        input.backPressed = false;
-        input.homePressed = false;
-        input.requestedScreen.reset();
-        input.fullscreenPressed = false;
-        if (IsKeyPressed(KEY_ESCAPE)) {
-            settingsUi.capturing = -1;
-            settingsUi.notice = "KEY BINDING CANCELED";
-            settingsUi.noticeError = false;
-        } else {
-            const int key = GetKeyPressed();
-            if (key != KEY_NULL) {
-                std::string error;
-                if (settings.Rebind(
-                        static_cast<locus::app::GameAction>(settingsUi.capturing),
-                        key, error)) {
-                    settingsUi.notice = "KEY BINDING SAVED";
-                    settingsUi.noticeError = false;
-                    events.saveSettings = true;
-                    settingsUi.capturing = -1;
-                } else {
-                    settingsUi.notice = error;
-                    settingsUi.noticeError = true;
-                }
-            }
-        }
-        return events;
-    }
-
-    if (state.screen == Screen::SongSelect) {
-        if (IsKeyPressed(KEY_UP)) libraryUi.MoveSong(-1, library);
-        if (IsKeyPressed(KEY_DOWN)) libraryUi.MoveSong(1, library);
-        if (IsKeyPressed(KEY_LEFT)) libraryUi.MoveChart(-1, library);
-        if (IsKeyPressed(KEY_RIGHT)) libraryUi.MoveChart(1, library);
-        if (IsKeyPressed(KEY_F5)) events.refresh = true;
-        const float wheel = GetMouseWheelMove();
-        if (wheel != 0.0f)
-            libraryUi.MoveSong(wheel > 0.0f ? -1 : 1, library);
-        if (input.chooseChartPressed) events.import = true;
-        if (input.startPressed) events.playSelected = true;
-        if (IsKeyPressed(KEY_E)) events.editSelected = true;
-    }
-
-    if (!mouseClick || !validMouse) return events;
-    const auto hit = [&](Rectangle area) {
-        return CheckCollisionPointRec(mouse, area);
-    };
-
-    if (state.screen == Screen::Home) {
-        for (int i = 0; i < 5; ++i) {
-            if (!hit(locus::app::HomeMenuButton(i))) continue;
-            switch (i) {
-                case 0: input.requestedScreen = Screen::SongSelect; break;
-                case 1: input.requestedScreen = Screen::Editor; break;
-                case 2: input.requestedScreen = Screen::Skin; break;
-                case 3: input.requestedScreen = Screen::Settings; break;
-                case 4: input.closeRequested = true; break;
-            }
-            return events;
-        }
-    } else if (state.screen == Screen::SongSelect) {
-        if (hit(locus::app::MenuBackButton())) input.backPressed = true;
-        if (hit(locus::app::LibraryImportButton())) events.import = true;
-        if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
-        if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
-        if (hit(locus::app::LibraryEditButton())) events.editSelected = true;
-        for (int i = 0; i < 6; ++i) {
-            if (hit(locus::app::LibrarySongRow(i)))
-                libraryUi.SelectSong(libraryUi.firstVisibleSong + i, library);
-        }
-        for (int i = 0; i < 5; ++i) {
-            if (hit(locus::app::LibraryChartRow(i)))
-                libraryUi.SelectChart(libraryUi.firstVisibleChart + i, library);
-        }
-    } else if (state.screen == Screen::Skin) {
-        if (hit(locus::app::MenuBackButton())) input.backPressed = true;
-        else events.skinCommand = locus::app::SkinMenuClick(mouse, draftSkin, skinUi);
-    } else if (state.screen == Screen::Settings) {
-        if (hit(locus::app::MenuBackButton())) {
-            input.backPressed = true;
-            return events;
-        }
-        for (int i = 0; i < locus::app::kGameActionCount; ++i) {
-            if (!hit(locus::app::SettingsBindingButton(i))) continue;
-            settingsUi.capturing = i;
-            settingsUi.notice = "PRESS A NEW KEY  /  ESC CANCELS";
-            settingsUi.noticeError = false;
-            return events;
-        }
-        const auto changeVolume = [&](int delta) {
-            const int current = static_cast<int>(std::lround(settings.volume * 10.0f));
-            settings.volume = std::clamp(current + delta, 0, 10) / 10.0f;
-            events.saveSettings = true;
-        };
-        if (hit(locus::app::SettingsVolumeMinus())) changeVolume(-1);
-        else if (hit(locus::app::SettingsVolumePlus())) changeVolume(1);
-        else if (hit(locus::app::SettingsFlashButton())) {
-            settings.hitFlash = !settings.hitFlash;
-            events.saveSettings = true;
-        } else if (hit(locus::app::SettingsChordMinus())) {
-            settings.chordWindowMs = std::max(40, settings.chordWindowMs - 10);
-            events.saveSettings = true;
-        } else if (hit(locus::app::SettingsChordPlus())) {
-            settings.chordWindowMs = std::min(160, settings.chordWindowMs + 10);
-            events.saveSettings = true;
-        } else if (hit(locus::app::SettingsFullscreenButton())) {
-            settings.fullscreen = !settings.fullscreen;
-            events.toggleFullscreen = true;
-            events.saveSettings = true;
-        }
-    }
-    return events;
-}
-
-// 3. Render: display the selected state; never choose or modify it here.
 void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::core::Chart& demo,
                  const GameplayView& gameplay,
@@ -1145,7 +879,7 @@ int main(int argc, char** argv) {
         // While the modal is open, Y/N/Esc or its buttons are the ONLY
         // accepted actions; key presses cannot reach the editor or gameplay.
         FrameInput input = wasQuitConfirmation
-            ? FrameInput{} : PollInput(debugScreens, state.screen, settings);
+            ? FrameInput{} : PollInput(debugScreens, state.screen, settings, MonotonicSeconds());
         if (wasQuitConfirmation) {
             locus::app::ConsumeNativeCloseRequest(); // Discard repeated X while modal.
             input.quitConfirmed = IsKeyPressed(KEY_Y);
