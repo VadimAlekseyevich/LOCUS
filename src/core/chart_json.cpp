@@ -150,7 +150,7 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             }
 
         int version = 0;
-        if (!IntegerInRange(document["formatVersion"], 1, 1, version,
+        if (!IntegerInRange(document["formatVersion"], 1, 2, version,
                             "formatVersion", error)) return false;
 
         LoadedChart parsed;
@@ -177,9 +177,19 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             return false;
         }
         double offset = 0.0;
-        if (!Number(document[hasMs ? "offsetMs" : "offsetSeconds"], offset,
-                    hasMs ? "offsetMs" : "offsetSeconds", false, error))
+        if (version == 2 && !hasMs) {
+            error = "offsetMs: required for version 2";
             return false;
+        }
+        if (version == 2) {
+            int offsetInt = 0;
+            if (!IntegerInRange(document["offsetMs"], -3600000, 3600000,
+                                offsetInt, "offsetMs", error)) return false;
+            offset = static_cast<double>(offsetInt);
+        } else if (!Number(document[hasMs ? "offsetMs" : "offsetSeconds"], offset,
+                           hasMs ? "offsetMs" : "offsetSeconds", false, error)) {
+            return false;
+        }
         parsed.offsetSeconds = hasMs ? offset / 1000.0 : offset;
 
         if (!HasExactMembers(document["grid"], {"width", "height"}, "grid", error))
@@ -232,15 +242,39 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             return false;
         }
         int prior = -65537;
+        std::int64_t previousMs = std::numeric_limits<std::int64_t>::min();
         for (std::size_t i = 0; i < turns.size(); ++i) {
             const std::string where = "turns[" + std::to_string(i) + "]";
-            if (!HasExactMembers(turns[i], {"beat", "turn"}, where, error))
-                return false;
+            if (!HasExactMembers(turns[i],
+                    version == 2 ? std::initializer_list<const char*>{"timeMs", "turn"}
+                                 : std::initializer_list<const char*>{"beat", "turn"},
+                    where, error)) return false;
             int beat = 0;
-            if (!IntegerInRange(turns[i]["beat"], -65536, 65535, beat,
-                                where + ".beat", error)) return false;
+            std::int64_t timeMs = kNoTimeMs;
+            if (version == 2) {
+                const Json& stamp = turns[i]["timeMs"];
+                if (!stamp.is_number_integer()) {
+                    error = where + ".timeMs: expected whole milliseconds";
+                    return false;
+                }
+                timeMs = stamp.get<std::int64_t>();
+                if (timeMs < -3600000 || timeMs > 86400000 ||
+                    timeMs <= previousMs) {
+                    error = where + ".timeMs: time out of range or not strictly increasing";
+                    return false;
+                }
+                previousMs = timeMs;
+                beat = TickAtTimeMs(parsed.route.bpm, parsed.route.ticksPerBeat,
+                                    parsed.offsetSeconds, timeMs);
+                if (beat < -65536 || beat > 65535) {
+                    error = where + ".timeMs: outside tick range";
+                    return false;
+                }
+            } else if (!IntegerInRange(turns[i]["beat"], -65536, 65535, beat,
+                                       where + ".beat", error)) return false;
             if (beat <= prior) {
-                error = where + ".beat: events must be strictly increasing (no duplicates)";
+                error = where + (version == 2 ? ".timeMs: grid resolution merges notes"
+                                                : ".beat: duplicate/out of order");
                 return false;
             }
             prior = beat;
@@ -256,7 +290,7 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             bool recognizedTurn = false;
             for (int j = 0; j < 6; ++j) {
                 if (direction == turnNames[j]) {
-                    parsed.route.turns.push_back({beat, static_cast<Turn>(j)});
+                    parsed.route.turns.push_back({beat, static_cast<Turn>(j), timeMs});
                     recognizedTurn = true;
                     break;
                 }
@@ -288,7 +322,7 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
     try {
         using Ordered = nlohmann::ordered_json;
         Ordered document = Ordered::object();
-        document["formatVersion"] = 1;
+        document["formatVersion"] = 2;
         document["title"] = chart.title;
         document["audioPath"] = chart.audioPath;
         document["bpm"] = chart.route.bpm;
@@ -296,8 +330,10 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
             document["ticksPerBeat"] = chart.route.ticksPerBeat;
         if (chart.route.snapDivision != 1)
             document["snapDivision"] = chart.route.snapDivision;
-        // No loss of fractional milliseconds from older second-based charts.
-        document["offsetMs"] = chart.offsetSeconds * 1000.0;
+        // V2 uses ONLY integer absolute milliseconds for song time and
+        // offset; the authoring-grid resolution is separate metadata.
+        document["offsetMs"] = static_cast<std::int64_t>(
+            std::llround(chart.offsetSeconds * 1000.0));
         document["grid"] = {{"width", chart.route.gridWidth},
                              {"height", chart.route.gridHeight}};
 
@@ -327,7 +363,7 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
                 return false;
             }
             document["turns"].push_back({
-                {"beat", event.beat},
+                {"timeMs", EventTimeMs(chart.route, event, chart.offsetSeconds)},
                 {"turn", turnNames[turnIndex]}
             });
         }
@@ -387,9 +423,8 @@ bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
                               first, end, error)) return false;
     for (std::size_t i = 0; i < chart.route.turns.size(); ++i) {
         const auto& event = chart.route.turns[i];
-        const double timestamp =
-            chart.offsetSeconds + static_cast<double>(event.beat) * 60.0 /
-                (chart.route.bpm * chart.route.ticksPerBeat);
+        const double timestamp = static_cast<double>(
+            EventTimeMs(chart.route, event, chart.offsetSeconds)) / 1000.0;
         if (event.beat < first || event.beat >= end ||
             !std::isfinite(timestamp) ||
             (timestamp < 0.0 &&
