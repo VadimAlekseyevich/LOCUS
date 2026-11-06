@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
+#include <optional>
 #include <string>
 
 namespace locus::app {
@@ -174,12 +175,15 @@ EditorControls PollEditorControls() {
     input.elapsedSeconds = GetFrameTime();
     input.movePrevious = IsKeyPressed(KEY_LEFT) && shift && !control;
     input.moveNext = IsKeyPressed(KEY_RIGHT) && shift && !control;
-    input.addLeft = IsKeyPressed(KEY_F);
-    input.addRight = IsKeyPressed(KEY_J);
-    input.addLeft45 = IsKeyPressed(KEY_G) && !control;
-    input.addRight45 = IsKeyPressed(KEY_H) && !control;
-    input.addLeft135 = IsKeyPressed(KEY_V) && !control;
-    input.addRight135 = IsKeyPressed(KEY_N) && !control;
+    // Absolute eight-way placement: D/F/J/K alone or two adjacent together.
+    // Don't let modifier-based shortcuts enter an accidental note.
+    if (!control && !shift) {
+        input.directionKeysHeld =
+            (IsKeyDown(KEY_D) ? 1u : 0u) |
+            (IsKeyDown(KEY_F) ? 2u : 0u) |
+            (IsKeyDown(KEY_J) ? 4u : 0u) |
+            (IsKeyDown(KEY_K) ? 8u : 0u);
+    }
     input.removeTurn = IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE);
     input.headingLeft = IsKeyPressed(KEY_Q);
     input.headingRight = IsKeyPressed(KEY_E);
@@ -229,6 +233,9 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
     // Keep all editor shortcuts away from active text fields.
     if (ui.EditingText()) {
+        ui.pendingDirection = 0;
+        ui.pendingDirectionSeconds = 0.0f;
+        ui.directionKeysHandled = false;
         ui.heldBarDirection = 0;
         ui.heldBarSeconds = 0.0f;
         ui.barRepeatSeconds = 0.0f;
@@ -316,6 +323,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         const EditorTab nextTab = ClickedTab(mouse, ui.tab);
         if (nextTab != ui.tab) {
             ui.tab = nextTab;
+            ui.pendingDirection = 0;
+            ui.directionKeysHandled = false;
             return action;
         }
         const EditorField selected = ClickedField(mouse, ui.tab);
@@ -505,6 +514,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     }
 
     if (ui.tab == EditorTab::Route) {
+        ApplyDirectionChord(draft, ui, input, action);
         if (input.movePrevious && !ui.HasRange()) action.changedChart |= draft.MoveTurn(-1);
         if (input.moveNext && !ui.HasRange()) action.changedChart |= draft.MoveTurn(1);
         if (input.addLeft) { draft.PutTurn(core::Turn::Left); action.changedChart = true; }
@@ -522,9 +532,24 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             ui.clipboard = valid ? draft.CopyTurns(first, last)
                                  : core::ChartEditor::Pattern{};
             const bool any = !ui.clipboard.notes.empty();
+            if (any) {
+                // Reflect actual copied note bounds instead of empty ticks
+                // that the mouse happened to include before/after the notes.
+                const auto& turns = draft.Data().route.turns;
+                const auto lower = std::lower_bound(turns.begin(), turns.end(), first,
+                    [](const core::TurnEvent& event, int beat) {
+                        return event.beat < beat;
+                    });
+                const auto upper = std::upper_bound(lower, turns.end(), last,
+                    [](int beat, const core::TurnEvent& event) {
+                        return beat < event.beat;
+                    });
+                ui.rangeFirst = lower->beat;
+                ui.rangeLast = (upper - 1)->beat;
+            }
             if (cut && any) action.changedChart |= draft.DeleteTurns(first, last);
             notice(any ? (cut ? "TURNS CUT - CTRL+V TO PASTE"
-                              : "TURNS COPIED - SELECT DESTINATION BEAT")
+                              : "TURNS COPIED - NO LEADING/TRAILING GAPS")
                        : "NO TURNS IN SELECTION", !any);
         }
         if (paste) {
