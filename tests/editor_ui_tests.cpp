@@ -504,6 +504,34 @@ int main() {
     ok &= Check(compassUi.Data().route.initialHeading == Heading::DownRight,
                 "Q/E start heading supports diagonal increments");
 
+    // Placement subdivision controls are independent from zoom and BPM.
+    ChartEditor snapChart;
+    EditorUiState snapUi;
+    snapChart.SetBpm(250);
+    snapChart.SelectBeat(5);
+    snapChart.PutTurn(Turn::Left);
+    const auto originalTime = snapChart.Data().route.turns.front().timeMs;
+    const auto half = ApplyEditorControls(snapChart, snapUi, Click(614, 430));
+    const auto third = ApplyEditorControls(snapChart, snapUi, Click(614, 430));
+    ok &= Check(half.changedChart && third.changedChart &&
+                snapChart.Data().route.snapDivision == 3 &&
+                snapChart.Data().route.ticksPerBeat == 6 &&
+                snapChart.Data().route.bpm == 250 &&
+                snapChart.Data().route.turns.front().timeMs == originalTime &&
+                snapUi.timelineZoomIndex == 3,
+                "MORE grid button reaches triplets without changing BPM, notes or zoom");
+    const auto coarser = ApplyEditorControls(snapChart, snapUi, Click(541, 430));
+    ok &= Check(coarser.changedChart &&
+                snapChart.Data().route.snapDivision == 2 &&
+                snapChart.Data().route.turns.front().timeMs == originalTime,
+                "LESS grid button retains old note timestamp");
+    EditorControls zoomOnly;
+    zoomOnly.zoomIn = true;
+    ApplyEditorControls(snapChart, snapUi, zoomOnly);
+    ok &= Check(snapUi.timelineZoomIndex == 4 &&
+                snapChart.Data().route.snapDivision == 2,
+                "existing zoom buttons remain independent of snap division");
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS tabs=3 grid=8x8 preview=1 zoom=1\n";
     return 0;
