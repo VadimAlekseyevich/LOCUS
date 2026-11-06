@@ -16,13 +16,13 @@ Test the practical ergonomics of raylib's music stream API on **Windows**:
 
 ## Recommended local run (double-click Windows BAT)
 
-Double-click **`build_and_run.bat`** in the repository root using Windows Explorer, or open Windows Command Prompt there and run:
+The default launcher starts the **production game**, not this isolated spike. To run the optional A-07 probe, open Windows Command Prompt in the repository root and run:
 
 ~~~bat
-build_and_run.bat
+build_and_run.bat audio
 ~~~
 
-This pulls the latest Git commits (fast-forward only), configures/builds, runs the WAV and local audio smoke tests, launches the interactive probe, and creates a `LOCUS-A07-logs.zip` archive suitable for uploading to the assistant. See the [root README](../../../README.md) for prerequisites, troubleshooting, and the exact log location. The manual commands below are alternatives for debugging.
+This fast-forward pulls the latest Git commits, configures/builds the optional probe, runs the WAV self-test and backend smoke, launches the interactive probe, and creates a local `LOCUS-A07-logs.zip` diagnostic archive. It is **not uploaded automatically**. Use `build_and_run.bat test` for only the headless WAV self-test. See the [root README](../../../README.md) for prerequisites, troubleshooting, and the exact log location. The manual commands below are alternatives for debugging.
 
 **A-07 EARLY HUMAN GATE SATISFIED:** The owner reported the Windows interactive probe worked correctly. No diagnostic archive is required to close the functional spike. **No objective physical audio/input latency measurement has been made**, and a later stack or timing review may request targeted testing. The original BAT remains available for voluntary diagnostics.
 
