@@ -14,5 +14,7 @@ struct MusicPickResult {
 MusicPickResult ChooseLocalMusicFile();
 MusicPickResult ChooseChartFile();
 MusicPickResult ChooseChartSaveFile(const std::wstring& suggestedPath);
+MusicPickResult ChooseSkinFile();
+MusicPickResult ChooseSkinSaveFile(const std::wstring& suggestedPath);
 
 } // namespace locus::app
