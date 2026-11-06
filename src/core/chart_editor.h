@@ -28,6 +28,9 @@ public:
     double AudioSecondsAtBeat(int beat) const noexcept;
     bool Dirty() const noexcept { return dirty_; }
     void MarkSaved() noexcept;
+    // Accept validated bytes after saving without resetting cursor/history.
+    // Unlike Load(), this keeps the active editing session alive.
+    void ApplySavedChart(LoadedChart saved);
     bool SetAudioPath(const std::string& relativePath);
 
     bool SelectBeat(int beat) noexcept;
@@ -49,6 +52,8 @@ public:
     bool MoveTurn(int beats); // preserves sorted, unique turn events
     const TurnEvent* SelectedTurn() const noexcept;
 
+    // Copy only from the first included note through the last included note.
+    // Internal empty beats remain part of the pattern.
     Pattern CopyTurns(int firstBeat, int lastBeat) const;
     bool PasteTurns(int destinationBeat, const Pattern& pattern);
     bool ShiftTurns(int firstBeat, int lastBeat, int deltaBeats);
