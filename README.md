@@ -90,8 +90,9 @@ flash, fullscreen, and the two-key diagonal chord window (40–160 ms). The
 **KEY BINDINGS** section changes four gameplay directions and the
 **Pause/Retry/Home** actions. Click an action, then press the new key; Escape
 cancels and conflicting or reserved keys are rejected. Defaults are
-Up/Right/Down/Left, Space, R, H. These keybinds control **gameplay**, not
-ROUTE editor keyboard shortcuts. Saved settings apply after relaunch.
+Up/Right/Down/Left, Space, R, H. All four **directional bindings are
+shared with ROUTE editor note placement**, including diagonal chords.
+Saved settings apply after relaunch.
 
 LOCUS is a Windows rhythm game. **The first playable 16-second demo is complete and owner-approved (2026-11-05).** It includes nine F/J turns, music-driven movement, smooth route reveal, fullscreen, pause/retry and Results. Development now focuses on **local songs and a practical custom-chart editor**, not additional infrastructure or benchmarks. Two Windows applications remain available: **LOCUS** (the 4×4 rhythm game, local WAV/MP3 playback, JSON charts and an editor with JSON save/open/test-play, launched by double-clicking `build_and_run.bat`) and the optional **A-07 audio/input diagnostic** (BAT `audio` mode).
 
