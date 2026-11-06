@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/hit_flash.h"
+#include "app/skin.h"
 #include "core/route.h"
 #include "core/route_view.h"
 #include "raylib.h"
@@ -31,11 +32,14 @@ enum class RouteRenderMode { Editor, Gameplay };
 // Draw lines before grid nodes; draw junctions afterwards so they remain visible.
 // Returns the interpolated live marker position in screen coordinates.
 Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
-                            RouteCanvas canvas, RouteRenderMode mode);
+                            RouteCanvas canvas, RouteRenderMode mode,
+                            const Skin& skin = Skin{});
 void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
-                        RouteCanvas canvas, RouteRenderMode mode);
+                        RouteCanvas canvas, RouteRenderMode mode,
+                        const Skin& skin = Skin{});
 // A short radial feedback burst attached to the moving marker, never
 // the stationary junction dot. Only called for scored successful hits.
-void DrawPlayerHitFlash(Vector2 marker, float markerRadius, HitFlashFrame flash);
+void DrawPlayerHitFlash(Vector2 marker, float markerRadius, HitFlashFrame flash,
+                        const Skin& skin = Skin{});
 
 } // namespace locus::app
