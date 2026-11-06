@@ -304,11 +304,20 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
            ui.tab == EditorTab::Field);
 
     // Transport and timeline persist across all editor tabs.
-    Button(font, kSong, "LOAD SONG  O", Color{97, 222, 193, 255});
-    Button(font, kPlay, previewPlaying && !previewPaused ? "PAUSE SPACE" : "PLAY SPACE",
+    // Any editor shortcut rebound to a gameplay direction loses its
+    // keyboard action. Keep the buttons clickable but don't advertise
+    // a hotkey that now places a note instead.
+    Button(font, kSong, IsGameDirectionKey(settings, KEY_O)
+           ? "LOAD SONG" : "LOAD SONG  O", Color{97, 222, 193, 255});
+    const bool running = previewPlaying && !previewPaused;
+    Button(font, kPlay, IsGameDirectionKey(settings, KEY_SPACE)
+           ? (running ? "PAUSE" : "PLAY")
+           : (running ? "PAUSE SPACE" : "PLAY SPACE"),
            Color{137, 211, 235, 255});
-    Button(font, kStop, "RESTART R", Color{211, 178, 137, 255});
-    Button(font, kTest, "TEST T", Color{188, 176, 232, 255});
+    Button(font, kStop, IsGameDirectionKey(settings, KEY_R)
+           ? "RESTART" : "RESTART R", Color{211, 178, 137, 255});
+    Button(font, kTest, IsGameDirectionKey(settings, KEY_T)
+           ? "TEST" : "TEST T", Color{188, 176, 232, 255});
     Label(font, hasAudio ? Truncate(songName, 30).c_str()
                          : "NO SONG - LOAD SONG",
           626, 127, 15,
@@ -319,7 +328,10 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                               chart.gridWidth, chart.gridHeight),
               51, 166, 17, Color{188, 215, 227, 255});
         DrawPreviewGrid(font, draft, previewBeat);
-        Label(font, "START HEADING Q/E 45", 744, 177, 13,
+        Label(font, IsGameDirectionKey(settings, KEY_Q) ||
+                    IsGameDirectionKey(settings, KEY_E)
+               ? "START HEADING (CLICK)" : "START HEADING Q/E 45",
+              744, 177, 13,
               Color{172, 199, 218, 255});
         Button(font, kHeading, HeadingName(chart.initialHeading),
                Color{119, 229, 188, 255});
@@ -408,7 +420,10 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                            (chart.lengthBeats - 1) / chart.ticksPerBeat)
               : "SONG TIMELINE: LOAD AUDIO TO CALCULATE",
               104, 329, 15, Color{188, 218, 228, 255});
-        Label(font, "START HEADING  Q/E 45 DEG", 519, 299, 16,
+        Label(font, IsGameDirectionKey(settings, KEY_Q) ||
+                    IsGameDirectionKey(settings, KEY_E)
+               ? "START HEADING (CLICK)" : "START HEADING  Q/E 45 DEG",
+              519, 299, 16,
               Color{172, 199, 218, 255});
         Button(font, kFieldHeading, HeadingName(chart.initialHeading),
                Color{119, 229, 188, 255});
@@ -419,9 +434,15 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     }
 
     DrawTimeline(font, draft, ui, previewBeat);
+    const std::string navigationHint =
+        IsGameDirectionKey(settings, KEY_PAGE_UP) ||
+        IsGameDirectionKey(settings, KEY_PAGE_DOWN)
+        ? "WHEEL NAV" : "PGUP/PGDN NAV";
     const std::string message = ui.feedback.empty()
         ? (ui.EditingText() ? "TYPE VALUE, ENTER CONFIRMS, ESC CANCELS"
-                             : "CTRL+S SAVE  CTRL+O OPEN  H HOME  F11 FULLSCREEN")
+           : navigationHint + "  CTRL+S SAVE  CTRL+O OPEN" +
+             (IsGameDirectionKey(settings, KEY_H) ? "" : "  H HOME") +
+             "  F11 FULLSCREEN")
         : ui.feedback;
     Label(font, Truncate(message, 90).c_str(), 50, 508, 14,
           ui.feedback.empty() ? Color{177, 198, 218, 255}
