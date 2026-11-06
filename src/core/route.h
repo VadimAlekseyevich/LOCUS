@@ -51,9 +51,9 @@ struct Chart {
     // 1 tick = 1/ticksPerBeat musical beat; old charts use 1.
     int ticksPerBeat = 1;
     int snapDivision = 1; // editor lines/placement per musical beat
-    int gridWidth = 4;
-    int gridHeight = 4;
-    Cell start{0, 0};
+    int gridWidth = 8;
+    int gridHeight = 8;
+    Cell start{3, 3};
     Heading initialHeading = Heading::Right;
     // Inclusive first tick / exclusive end tick in song-aligned ruler.
     // firstBeat may be negative if audio precedes a positive offset.
@@ -75,8 +75,8 @@ struct RouteStep {
     Cell to;
     Heading heading;
     bool wraps = false; // Retained for old aggregate callers; ALWAYS false.
-    int gridWidth = 4;
-    int gridHeight = 4;
+    int gridWidth = 8;
+    int gridHeight = 8;
 };
 
 // A fixed, rights-clean gameplay chart for the first playable prototype.
