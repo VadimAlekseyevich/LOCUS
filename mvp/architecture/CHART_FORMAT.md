@@ -1,5 +1,7 @@
 # LOCUS — Current Chart Format v2
 
+**Current authoring reference (2026-11-06).** The shipped [sample chart](../examples/first-song.locus.json) now uses format v2 and absolute integer `timeMs` notes. The v1 material farther below is kept strictly for **backward-compatibility reference**, not instructions for new charts.
+
 ## Absolute millisecond timing (current writer)
 
 LOCUS now saves **integer audio timestamps**, independent of musical BPM
@@ -84,7 +86,7 @@ v1's `beat` events or fractional `offsetMs` in new saved charts.**
 
 **Task:** A-05 — Define the first chart schema  
 **Status:** Implemented chart v1; M-03 prefers millisecond offsets while keeping legacy charts readable  
-**Scope:** Unbounded route plane, 2..16 editor grid viewport (default 4×4), quarter-note steps, eight-way headings and relative angle turns  
+**Historical v1 scope:** Unbounded route plane, formerly independent 2..16 grid dimensions and 4×4 default, quarter-note steps, eight-way headings and relative angle turns  
 **Related:** [GDD](../GDD.md), [TIMING](./TIMING.md), [BOUNDARIES](./BOUNDARIES.md), [ROADMAP](../ROADMAP.md)
 
 > This file specifies data and validation rules, not executable parser/editor code. A chart is self-contained gameplay data with a local reference to a separate music file. There is no online service or embedded music.
