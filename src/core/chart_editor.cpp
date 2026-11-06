@@ -191,16 +191,16 @@ bool ChartEditor::SetSnapDivision(int division) {
                                       chart_.offsetSeconds, songDurationSeconds_,
                                       first, end, error)) return false;
         } else {
-            if (static_cast<long long>(first) * factor < -65536 ||
-                static_cast<long long>(end) * factor > 65536 ||
-                static_cast<long long>(end - first) * factor > 65536)
+            if (static_cast<long long>(first) * factor < -1000000 ||
+                static_cast<long long>(end) * factor > 1000000 ||
+                static_cast<long long>(end - first) * factor > 1000000)
                 return false;
             first *= factor;
             end *= factor;
         }
         for (const auto& event : chart_.route.turns) {
             const long long tick = static_cast<long long>(event.beat) * factor;
-            if (tick < first || tick >= end || tick < -65536 || tick > 65535)
+            if (tick < first || tick >= end || tick < -1000000 || tick > 999999)
                 return false;
         }
     }
