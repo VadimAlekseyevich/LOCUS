@@ -42,6 +42,8 @@ add_executable(locus
     src/app/game_session.cpp
     src/app/song_library.cpp
     src/app/game_settings.cpp
+    src/app/skin.cpp
+    src/app/skin_menu.cpp
     src/app/menu_ui.cpp
     src/app/chart_editor_ui.cpp
     src/app/chart_editor_actions.cpp
@@ -167,6 +169,15 @@ if(LOCUS_BUILD_TESTS)
         locus_core raylib nlohmann_json::nlohmann_json
     )
     add_test(NAME locus_persistent_game_settings COMMAND locus_game_settings_tests)
+
+    add_executable(locus_skin_tests
+        tests/skin_tests.cpp
+        src/app/skin.cpp
+    )
+    target_compile_features(locus_skin_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_skin_tests PRIVATE raylib nlohmann_json::nlohmann_json)
+    target_include_directories(locus_skin_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    add_test(NAME locus_independent_skin_json COMMAND locus_skin_tests)
 
     add_executable(locus_judgement_tests tests/judgement_tests.cpp)
     target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)
