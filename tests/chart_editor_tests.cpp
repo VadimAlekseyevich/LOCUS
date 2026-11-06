@@ -149,6 +149,43 @@ int main() {
                 SampleRouteStep(draft.Data().route, 0).from.y == 3,
                 "new starting cell is used by actual route geometry");
 
+    // Re-reading a just-saved chart must not behave like opening another
+    // document: the selected beat and Undo/Redo session must survive.
+    ChartEditor savedSession;
+    savedSession.NewDraft();
+    savedSession.SelectBeat(19);
+    savedSession.PutTurn(Turn::Left);
+    const auto onDisk = savedSession.Data();
+    ok &= Check(savedSession.Dirty() && savedSession.CanUndo(),
+                "newly-authored turn is undoable before save");
+    savedSession.ApplySavedChart(onDisk);
+    ok &= Check(savedSession.SelectedBeat() == 19 &&
+                !savedSession.Dirty() && savedSession.CanUndo(),
+                "saving does not rewind selected beat or clear undo history");
+    ok &= Check(savedSession.Undo() && savedSession.Dirty() &&
+                savedSession.Redo() && !savedSession.Dirty() &&
+                savedSession.SelectedBeat() == 19,
+                "undo and redo still work around saved revision");
+
+    // Empty leading/trailing tick marks are not part of copied content.
+    ChartEditor boundedCopy;
+    boundedCopy.NewDraft();
+    boundedCopy.SelectBeat(5);
+    boundedCopy.PutTurn(Turn::Left);
+    boundedCopy.SelectBeat(8);
+    boundedCopy.PutTurn(Turn::Right);
+    const auto clipped = boundedCopy.CopyTurns(0, 11);
+    ok &= Check(clipped.span == 4 && clipped.notes.size() == 2 &&
+                clipped.notes[0].beat == 0 && clipped.notes[1].beat == 3,
+                "clipboard starts at first turn and keeps only internal rests");
+    ok &= Check(boundedCopy.PasteTurns(15, clipped) &&
+                boundedCopy.Data().route.turns[2].beat == 15 &&
+                boundedCopy.Data().route.turns[3].beat == 18,
+                "paste aligns first note exactly to selected destination");
+    const auto noNotes = boundedCopy.CopyTurns(9, 11);
+    ok &= Check(noNotes.span == 0 && noNotes.notes.empty(),
+                "empty selection copies no leading padding or phantom pattern");
+
     // A range-based pattern copies relative notes, including gaps, rather than
     // copying the entire chart. All group edits must be a single undo step.
     ChartEditor group;
@@ -161,7 +198,7 @@ int main() {
     group.SelectBeat(8);
     group.PutTurn(Turn::Left);
     const auto pattern = group.CopyTurns(2, 5);
-    ok &= Check(pattern.span == 4 && pattern.notes.size() == 2 &&
+    ok &= Check(pattern.span == 3 && pattern.notes.size() == 2 &&
                 pattern.notes[0].beat == 0 && pattern.notes[1].beat == 2,
                 "pattern copy stores source span and relative note positions");
     ok &= Check(!group.PasteTurns(30, pattern) &&
