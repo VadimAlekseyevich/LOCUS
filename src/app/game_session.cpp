@@ -10,7 +10,7 @@ void GameSession::Start(bool customChart, double now) {
     judge_.Reset();
     if (customChart) {
         if (testOrigin_) {
-            judge_.ResetFromBeat(testOrigin_->firstScoredBeat);
+            judge_.ResetFromAudioSeconds(testOrigin_->audioSeconds);
             local_.StartAtAudioSeconds(testOrigin_->audioSeconds, now);
         } else {
             local_.Start(now);
