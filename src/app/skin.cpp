@@ -25,11 +25,13 @@ namespace {
 using Json = nlohmann::ordered_json;
 constexpr const char* kColorNames[kSkinColorCount] = {
     "BACKGROUND", "TRAJECTORY", "OUTLINE", "JUNCTION",
-    "PLAYER", "PLAYER CORE", "HUD BACKGROUND", "HUD TEXT", "HIT FLASH"
+    "PLAYER", "PLAYER CORE", "HUD BACKGROUND", "HUD TEXT", "HIT FLASH",
+    "FIELD BORDER"
 };
 constexpr const char* kColorKeys[kSkinColorCount] = {
     "background", "trajectory", "outline", "junction",
-    "player", "playerCore", "hudBackground", "hudText", "hitFlash"
+    "player", "playerCore", "hudBackground", "hudText", "hitFlash",
+    "fieldBorder"
 };
 
 Json EncodeColor(Color color) {
@@ -68,7 +70,8 @@ Color& SkinColor(Skin& skin, int index) noexcept {
         case 5: return skin.playerCore;
         case 6: return skin.hudBackground;
         case 7: return skin.hudText;
-        default: return skin.hitFlash;
+        case 8: return skin.hitFlash;
+        default: return skin.fieldBorder;
     }
 }
 
@@ -159,6 +162,10 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         parsed.showHud = object.at("hud").at("visible").get<bool>();
         const auto& colors = object.at("colors");
         for (int i = 0; i < kSkinColorCount; ++i) {
+            // Older skin files did not know about square playfield borders.
+            // Keep them usable and assign the new white default on load.
+            if (i == kSkinColorCount - 1 && !colors.contains(kColorKeys[i]))
+                continue;
             if (!DecodeColor(colors.at(kColorKeys[i]), SkinColor(parsed, i))) {
                 error = std::string("Invalid RGBA color: ") + kColorKeys[i];
                 return false;
