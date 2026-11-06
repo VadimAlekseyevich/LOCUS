@@ -168,17 +168,6 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
               : Color{240, 138, 142, 255});
 }
 
-void DrawSkinMenu(Font font) {
-    Header(font, "SKIN");
-    Button(font, MenuBackButton(), "BACK", kMuted);
-    Label(font, "VISUAL CUSTOMIZATION", 105, 190, 33, kViolet);
-    Label(font, "SKINS WILL CONTROL:", 106, 260, 20, kText);
-    Label(font, "MARKER  /  TRAJECTORY  /  HIT EFFECTS", 106, 310, 18, kMuted);
-    Label(font, "GRID  /  JUNCTIONS  /  COLORS  /  UI", 106, 346, 18, kMuted);
-    Label(font, "PLACEHOLDER ONLY - CURRENT SKIN IS UNCHANGED", 106, 413, 17, kGold);
-    Label(font, "H / ESC  BACK TO HOME", 106, 481, 16, kMuted);
-}
-
 void DrawSettingsMenu(Font font, const GameSettings& settings,
                       const SettingsUi& ui) {
     Header(font, "SETTINGS");
