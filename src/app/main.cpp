@@ -314,8 +314,12 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
 
     // Scissor coordinates are physical pixels while all world points remain
     // projected into the virtual 960x540 resolution.
-    const float scale = std::min(static_cast<float>(GetScreenWidth()) / kWindowWidth,
-                                 static_cast<float>(GetScreenHeight()) / kWindowHeight);
+    // Gameplay uses the actual window height, not the 16:9 letterboxed
+    // UI fitting scale. For any landscape window, the square reaches both
+    // top and bottom pixel edges; portrait windows are width-limited.
+    const float squarePixels = static_cast<float>(
+        std::min(GetScreenWidth(), GetScreenHeight()));
+    const float scale = squarePixels / kWindowHeight;
     const float offsetX = (GetScreenWidth() - kWindowWidth * scale) * 0.5f;
     const float offsetY = (GetScreenHeight() - kWindowHeight * scale) * 0.5f;
     BeginScissorMode(
@@ -696,10 +700,17 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     ClearBackground(state.screen == Screen::Play
                         ? gameplay.skin.background : kBackground);
 
-    // Keep UI and the authored game field at the original 16:9 proportions.
-    // Resizing/maximizing/fullscreen simply fits and centers this canvas.
-    const float scale = std::min(static_cast<float>(GetScreenWidth()) / kWindowWidth,
-                                 static_cast<float>(GetScreenHeight()) / kWindowHeight);
+    // Menus/editor retain their original 960x540 16:9 virtual viewport.
+    // Gameplay instead scales its 540x540 playfield to the actual window
+    // height, even when the window is not 16:9 (landscape assumption).
+    // For portrait windows, width limits the square so no side disappears.
+    const float windowFit = std::min(
+        static_cast<float>(GetScreenWidth()) / kWindowWidth,
+        static_cast<float>(GetScreenHeight()) / kWindowHeight);
+    const float scale = state.screen == Screen::Play
+        ? static_cast<float>(std::min(GetScreenWidth(), GetScreenHeight())) /
+              kWindowHeight
+        : windowFit;
     Camera2D camera{};
     camera.offset = Vector2{(GetScreenWidth() - kWindowWidth * scale) / 2.0f,
                             (GetScreenHeight() - kWindowHeight * scale) / 2.0f};
