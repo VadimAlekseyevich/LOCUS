@@ -286,7 +286,8 @@ struct GameplayCamera {
 
     GameplayCamera(const locus::core::Chart& chart, double beat,
                    const locus::app::Skin& skin = locus::app::Skin{})
-        : world(locus::core::RoutePositionAt(chart, beat)), step(skin.cameraStep) {}
+        : world(locus::core::RoutePositionAt(chart, beat)),
+          step(skin.cameraStep / chart.ticksPerBeat) {}
 
     locus::app::RouteCanvas Canvas() const noexcept {
         return {kCenterX, kCenterY, step, world};
