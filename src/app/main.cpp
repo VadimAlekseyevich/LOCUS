@@ -460,6 +460,46 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     }
 }
 
+// Shared virtual hitboxes for the global quit modal. Keeping them outside
+// the screen controller means pressing X from any screen is handled alike.
+constexpr Rectangle kQuitConfirmButton{263.0f, 329.0f, 196.0f, 54.0f};
+constexpr Rectangle kQuitCancelButton{502.0f, 329.0f, 196.0f, 54.0f};
+
+void DrawQuitConfirmation(Font font, const AppState& state,
+                          const locus::core::ChartEditor& editor,
+                          const locus::app::SkinUi& skinUi) {
+    if (!state.quitConfirmation) return;
+    // The outer application does not terminate until a second explicit
+    // action. Reassure users about unsaved edits before they choose.
+    DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{7, 11, 19, 220});
+    const Rectangle card{177.0f, 146.0f, 606.0f, 264.0f};
+    DrawRectangleRounded(card, 0.085f, 10, Color{34, 42, 59, 255});
+    DrawRectangleRoundedLinesEx(card, 0.085f, 10, 2.0f,
+                                Color{214, 183, 127, 255});
+    DrawTextLabel(font, "EXIT LOCUS?", {309.0f, 177.0f}, 36.0f,
+                  Color{246, 233, 211, 255});
+    DrawTextLabel(font, "This will close the game.", {307.0f, 236.0f},
+                  21.0f, Color{216, 227, 234, 255});
+    if (state.screen == Screen::Editor && editor.Dirty())
+        DrawTextLabel(font, "UNSAVED CHART CHANGES WILL BE LOST",
+                      {266.0f, 272.0f}, 17.0f,
+                      Color{251, 188, 164, 255});
+    else if (state.screen == Screen::Skin && skinUi.dirty)
+        DrawTextLabel(font, "UNSAVED SKIN CHANGES WILL BE LOST",
+                      {273.0f, 272.0f}, 17.0f,
+                      Color{251, 188, 164, 255});
+    DrawRectangleRounded(kQuitConfirmButton, 0.16f, 5,
+                         Color{91, 50, 54, 255});
+    DrawRectangleRounded(kQuitCancelButton, 0.16f, 5,
+                         Color{38, 91, 82, 255});
+    DrawTextLabel(font, "Y  -  QUIT", {305.0f, 343.0f}, 23.0f,
+                  Color{251, 226, 217, 255});
+    DrawTextLabel(font, "N  -  STAY", {545.0f, 343.0f}, 23.0f,
+                  Color{216, 251, 237, 255});
+    DrawTextLabel(font, "ESC ALSO CANCELS", {394.0f, 394.0f}, 13.0f,
+                  Color{170, 189, 205, 255});
+}
+
 void DrawHomeScreen(Font font, const locus::app::SongLibrary& library,
                     const std::string& message) {
     locus::app::DrawMainMenu(font, library, message);
@@ -848,6 +888,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 65)},
                       22.0f, Color{232, 213, 160, 255});
     }
+    DrawQuitConfirmation(font, state, editor, skinUi);
     EndMode2D();
     EndDrawing();
 }
