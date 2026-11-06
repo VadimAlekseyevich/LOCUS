@@ -81,7 +81,11 @@ bool InstallAudioFile(const fs::path& source, const fs::path& destination,
     temporary += L".tmp-" + std::to_wstring(nonce);
     std::error_code ec;
     if (!fs::copy_file(source, temporary, fs::copy_options::none, ec) || ec) {
-        error = "Failed to stage song audio: " + ec.message();
+        const std::string problem = ec ? ec.message() : "copy did not complete";
+        // copy_file may leave a truncated temporary file on I/O failure.
+        std::error_code cleanup;
+        fs::remove(temporary, cleanup);
+        error = "Failed to stage song audio: " + problem;
         return false;
     }
     const auto sourceTime = fs::last_write_time(source, ec);

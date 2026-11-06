@@ -50,6 +50,7 @@ SKIN edits path effects, marker size, **fixed cardinal movement speed** (default
 
 - [Game design](docs/GDD.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Architecture audit](docs/ARCHITECTURE.md)
 - [Chart format](docs/CHART_FORMAT.md)
 
 The Windows CI checks compilation, chart/editor behavior and scoring without a GUI. Physical audio latency and desktop appearance still require real-device testing.
