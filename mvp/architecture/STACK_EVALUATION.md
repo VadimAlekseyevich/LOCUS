@@ -1,5 +1,7 @@
 # LOCUS — A-07 raylib Audio/Packaging Evaluation
 
+**Historical evidence only (2026-11-04).** The normal `build_and_run.bat` now launches the full game; use `build_and_run.bat audio` for this isolated diagnostic. Current gameplay and outstanding work are documented in [GDD](../GDD.md) and [ROADMAP](../ROADMAP.md).
+
 **Roadmap task:** A-07 — Spike raylib audio time and packaging  
 **Current status:** A-07 **completed as a functional prototype verification** on 2026-11-04. The Windows x64 Release build and WAV self-test passed in CI, and the owner subsequently ran the BAT-launched probe on their own Windows PC and reported that **everything worked as intended**. They explicitly declined to send a ZIP/log bundle; no such file was supplied or analyzed. This confirms an owner-reported successful interactive run, **not** measured physical input-to-output latency or precision. The GitHub runner separately reported AUDIO_SMOKE_NO_DEVICE; that restriction did not prevent the owner's local test.  
 **Pinned candidate:** raylib **6.0** (via CMake FetchContent)  
@@ -37,10 +39,10 @@
 The retained Windows BAT can be run again for **optional future diagnostics** from File Explorer or Command Prompt. **No Git Bash is required:**
 
 ~~~bat
-build_and_run.bat
+build_and_run.bat audio
 ~~~
 
-The BAT fast-forward pulls Git, builds the isolated probe, performs WAV and audio-device smoke tests, starts the GUI, asks brief subjective questions, and can create `.locus-runs/a07-.../LOCUS-A07-logs.zip`. **The owner chose not to upload logs and is not obliged to do so for A-07.** Setup and error instructions are in [the repository README](../../README.md). The script never uploads logs itself and will not overwrite uncommitted changes.
+The BAT in **audio mode** fast-forward pulls Git, builds the isolated probe, performs WAV and audio-device smoke tests, starts the GUI, asks brief subjective questions, and can create `.locus-runs/a07-.../LOCUS-A07-logs.zip`. **The owner chose not to upload logs and is not obliged to do so for A-07.** Setup and error instructions are in [the repository README](../../README.md). The script never uploads logs itself and will not overwrite uncommitted changes.
 
 ### Local interactive acceptance procedure
 
