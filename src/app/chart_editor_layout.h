@@ -53,6 +53,7 @@ inline double ViewBeat(const core::ChartEditor& draft, double activeBeat) {
 constexpr Rectangle kTabRoute{388, 73, 155, 35};
 constexpr Rectangle kTabAudio{552, 73, 155, 35};
 constexpr Rectangle kTabField{716, 73, 155, 35};
+constexpr Rectangle kEditorBack{880, 73, 72, 35}; // Obvious exit from editor to Home.
 
 constexpr Rectangle kSong{49, 115, 162, 37};
 constexpr Rectangle kPlay{220, 115, 157, 37};
