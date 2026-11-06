@@ -1,235 +1,48 @@
-# LOCUS — Architectural Boundaries
+# LOCUS — Current Module Boundaries
 
-**Task:** A-01 — Define module ownership  
-**Status:** Active architecture contract, refreshed for implemented game/editor boundaries  
-**Scope:** MVP v0.1, Windows  
-**Design reference:** [GDD](../GDD.md)  
-**Execution plan:** [Roadmap](../ROADMAP.md)
+**Status:** Descriptive inventory, reconciled 2026-11-06.  
+This file describes the existing code organization; it does **not** authorize a new architectural layer or require a rewrite. The early 4×4 Wrap architecture proposal is retained in Git history, not enforced on the current eight-direction game.
 
-> This document specifies **who owns which responsibilities and which dependencies are allowed**. It does not select a graphics library, freeze the chart schema or timing values, or create an implementation framework. Those decisions belong to A-02 through A-09.
+## Guiding rules
 
-## Current implementation module map
+1. **Authored route is immutable while scoring.** Wrong input changes a grade, never route movement.
+2. **Music timestamps drive play.** Render FPS and window size never decide a note's saved audio time.
+3. **View boundaries are not world boundaries.** The red route moves in an infinite coordinate plane and is **visually clipped** to a centered square. No modulo Wrap.
+4. **Editor uses the same route and grading model as Play.** Authoring can alter a chart draft, scored TEST evaluates a snapshot.
+5. **Presentation is separate.** A global skin changes path/marker/HUD and border colors, not audio timestamps, route geometry or scoring.
+6. **Keep the scope small.** New abstraction layers, separate render engines or framework migrations require a concrete product problem, not speculative future tasks.
 
-```text
-src/core/route.*            deterministic route, Wrap, event-aware fast seeking
-src/core/route_view.*       wrap-safe line and marker geometry, raylib-free
-src/core/judgement.*        Perfect/Good/Bad/Miss, raylib-free
-src/core/song_clock.*       shared monotonic audio time
-src/core/chart_json.*       v1 parser, serializer and song-duration bounds
-src/core/chart_editor.*     chart editing, history and pattern operations
+## Code currently in the repository
 
-src/app/game_session.*      scored play/pause/restart, arrow -> turn grading
-src/app/route_renderer.*    shared one-bar red line and turn node drawing
-src/app/chart_editor_actions.cpp editor controls, selection and text actions
-src/app/chart_editor_ui.cpp editor drawing and timeline
-src/app/chart_editor_layout.h common editor button/grid positions
-src/app/chart_playback.*    timeline seeks and local audio clock
-src/app/local_music.*       raylib WAV/MP3 adapter
-src/app/chart_file.*        OS-safe JSON file access
-src/app/main.cpp            UI screens, file dialogs, session coordination
-```
-
-CMake builds `locus_core` as a static library without raylib, and `locus`
-as the raylib front end. All registered unit tests and headless smoke checks
-run in Windows CI. The original GDD/spike documents are historical and may
-describe older behavior; this map reflects the actual source ownership.
-
-## 1. Non-negotiable principles
-
-1. **The chart decides the route.** Player input affects judgements, not the marker's authoritative position or heading.
-2. **Audio-related musical time decides the moment.** Render frame count, frame delta, and animation position never determine timing or input grades.
-3. **There is only one route algorithm.** Play mode, editor preview, and test-play must share the same deterministic route sampler.
-4. **The default grid is 4×4, configurable from 2 to 16 cells per axis, with Wrap only.** Crossing an edge preserves heading and consumes one quarter-note step; seam visuals must not imply a line crossing the grid interior.
-5. **Core logic runs headlessly.** Chart validation, beat/time math, route sampling, and judgement logic can be tested without a window, audio device, or local filesystem.
-6. **Dependencies flow inward.** Platform, game UI, and editor may use core rules; core rules must not import their callers.
-7. **Keep code and scope controlled, not binary size artificially tiny.** Prioritize minimal input/audio latency, stable timing, and performance. Dependencies and even a large distributable package are acceptable if they materially help those goals; avoid an unnecessary plugin system, ECS, service locator, or class for each concept.
-
-## 2. Data-flow overview
-
-The diagram shows **runtime data flow**, not compile-time import direction. Solid arrows represent values/events passed to consumers. A single game session coordinates the components; the diagram intentionally does not require a separate executable process for each box.
-
-```mermaid
-flowchart TD
-    File["Local chart file"] --> Storage["Chart load / save adapter"]
-    Storage --> Parse["Chart parse + validation"]
-    Parse --> Chart["Validated, read-only Chart"]
-
-    AudioFile["Local audio file"] --> Audio["Audio backend"]
-    Audio --> Clock["SongClock / music time"]
-    Keys["Keyboard arrows"] --> Input["Timestamped absolute heading input"]
-
-    Chart --> Route["Pure Route sampler"]
-    Chart --> Judge["Pure Judgement rules"]
-    Clock --> Session["Play session coordinator"]
-    Input --> Session
-    Session --> Route
-    Session --> Judge
-    Route --> PlayUI["Game presentation"]
-    Judge --> PlayUI
-    Clock --> PlayUI
-
-    Draft["Editor ChartDraft"] --> EditValidation["Same chart validation"]
-    EditValidation --> PreviewChart["Validated chart snapshot"]
-    PreviewChart --> Route
-    PreviewChart --> TestPlay["Test-play session"]
-    TestPlay --> Session
-    Draft --> Storage
-    Clock --> EditorUI["Editor timeline + grid preview"]
-    Route --> EditorUI
-```
-
-**Important qualification:** The editor owns the mutable draft, while the renderer receives already computed snapshots and display parameters. In code, the session coordinator may call Route/Clock/Judgement and pass simple value objects to the UI; the UI is not required to call Route directly just because the diagram shows route data arriving there.
-
-## 3. Ownership table
-
-| Responsibility | Owner | Input / output | Does **not** own |
-| --- | --- | --- | --- |
-| Chart domain | **Chart** (pure core) | Parsed, validated chart data; format validation and deterministic serialization rules | Audio playback, file dialogs, movement animation, judgement |
-| Filesystem/chart I/O | **Platform storage adapter** | Local chart path ↔ chart bytes; chart-relative audio path resolution | Chart semantics or UI decisions |
-| Beat/time math | **Timing** (pure core) | BPM + offset + song time ↔ beat position | Reading wall-clock time, device management, rendering |
-| Audio playback and clock | **MusicClock/Audio** (platform adapter + small interface) | Audio load/play/pause/seek; coherent timestamped song position | Chart rules, moving the marker, judging turn direction |
-| Keyboard input capture | **Input adapter** (platform) | Fresh arrow key-down edges with monotonic timestamps | Scoring, auto-turns, renderer states |
-| Logical movement | **Route** (pure core) | Chart + requested beat → heading, grid segment, progress, Wrap seam information | User input, mutable score, drawing, audio-device calls |
-| Input evaluation | **Judgement** (pure core) | Expected chart events + timestamped actions + configured windows → per-event grade and result state | Authoritative route, graphics, low-level keyboard polling |
-| App/game session | **App** (orchestrator) | Chart + audio/clock + inputs + core outputs → lifecycle state and presentation snapshot | Duplicated turn math, duplicated judgement math, editor-only chart rules |
-| Game presentation | **Game UI** (view) | Read-only state → 4×4 grid, marker, future trajectory, HUD, results | Music clock authority, chart modifications, grading decisions |
-| Chart authoring | **Editor** (feature/controller) | Mutable ChartDraft + edit commands; validation; preview/test-play requests | A second route engine, a second timing convention, direct judgement in the timeline |
-| Editor presentation | **Editor UI** (view) | Draft/editor state → timeline widgets and synchronized grid preview | Chart parsing rules, authoritative marker positions |
-
-The core can be a handful of cohesive source files. These owners are **logical responsibilities**, not a mandate for eleven build targets or classes.
-
-## 4. Allowed compile-time dependency direction
-
-The arrows below mean "may import or call," not "must import or call."
-
-```text
-                        App / session orchestration
-                  /         |         |          \
-            Game UI     Editor UI   Editor      Platform adapters
-                 \          |         |          /
-                  \         |         |         /
-                     Pure core contracts
-                   /       |         |       \
-                Chart    Timing     Route    Judgement
-```
-
-### Allowed
-
-- **Chart** may use plain value types and a small chosen serialization library; it must remain graphics/audio independent.
-- **Timing** may use chart timing metadata/value types and standard numeric operations.
-- **Route** may use **Chart** and **Timing** values; it returns immutable route samples/segments and seam indicators.
-- **Judgement** may use chart event types, Timing conversions, timestamped input **values**, and a window configuration.
-- **Platform adapters** may use narrow core value types or interfaces, but contain the actual OS/audio/keyboard/filesystem API calls.
-- **App/session** may compose Chart, Timing, Route, Judgement, and the platform adapters, and provide snapshots/actions to UI.
-- **Game UI** may consume read-only core presentation values and use the chosen rendering library; it sends user commands to App rather than directly mutating the Chart.
-- **Editor feature/controller** may use Chart, Timing, Route, and App-provided clock/storage services. It owns ChartDraft and can request a validated, immutable play snapshot.
-- **Editor UI** may use shared rendering widgets, editor controller actions, and read-only preview data. It does not implement its own movement rules.
-- **Tests** may call pure core directly; integration tests may additionally invoke App and adapters.
-
-### Forbidden
-
-- **Core → App, UI, Editor, Platform** imports, callbacks, or graphical/audio device access.
-- **Route → keyboard, judgement, score, window, or audio backend** dependencies.
-- **Judgement → Route mutations, renderer frame time, screen coordinates, or audio playback commands**.
-- **Game UI or Editor UI → assigning grades, advancing the music clock, or deciding authoritative grid coordinates**.
-- **Editor → a private duplicate of the movement, Wrap, beat-to-time, or judgement implementation**.
-- **Input adapter → changing the chart route**.
-- **Platform storage → silently rewriting chart event rules during load/save**.
-- **Any module → implicitly assuming that crossing from (3, y) to (0, y) should be drawn as an interior diagonal/straight segment**.
-
-If a feature seems to require one of these dependencies, move the rule to the correct owner or have App pass explicit data rather than creating a circular import.
-
-## 5. Important boundary contracts
-
-These are conceptual contracts. Names and exact signatures are **not** frozen in A-01.
-
-### 5.1 Chart → Route
-
-- Input: a **validated chart** and any musical beat position within the derived song interval, including negative indices before positive offset.
-- Output: deterministic logical cell/heading, interpolation segment/progress, and whether the step crosses a Wrap seam.
-- Invariant: identical chart and beat position always return identical route data, regardless of player actions, FPS, or previous seeks.
-
-**MVP rule:** movement has four headings, one quarter-note grid step per beat, with Wrap across all four edges. Turn-at-node ordering is still to be finalized in A-02.
-
-### 5.2 Clock → App → Route/Presentation
-
-- Audio/Clock produces a coherent song-time snapshot; Timing converts it to a chart beat using BPM and offset.
-- App obtains that snapshot **once per logical update** and uses it consistently for route sampling, scheduled events, and presentation.
-- UI may interpolate already computed progress visually but cannot invent a separate authoritative music time.
-
-The precise alignment strategy, offset sign, and monotonic-to-audio timestamp correspondence are to be defined and tested in A-02 and A-07.
-
-### 5.3 Input → App → Judgement
-
-- Input produces discrete **absolute arrow key-down** events with timestamps; GameSession maps perpendicular headings at each event to authored Left/Right before grading.
-- GameSession maps timestamps onto the same song-time domain used by scheduled chart events.
-- Judgement determines Perfect/Good/Bad/Miss and exposes a one-result-per-event outcome.
-- App displays feedback and aggregates results; it **never redirects Route** due to a Miss.
-
-Numerical timing thresholds, simultaneous-press handling, and the exact arbitration policy belong to A-03 and later timing tasks.
-
-### 5.4 Editor → Chart snapshot → Play
-
-- Editor owns mutable **ChartDraft**, which may temporarily be invalid while a user edits values.
-- Before preview requiring reliable route data or before test-play, validate the relevant draft and construct a read-only Chart snapshot.
-- Route preview calls the **same Route owner** used during Play, with the editor's playhead/clock position.
-- Test-play starts an ordinary App play session from that validated snapshot and returns to the draft afterward.
-- Loading and saving use the same parser/serializer contract as gameplay chart loading.
-
-The editor may have a separate **interaction state** (selection, drag operation, zoom, undo stack), but not a separate musical time model or route algorithm.
-
-## 6. Lifecycle ownership
-
-| Operation | Coordinator action | Core behavior | UI behavior |
-| --- | --- | --- | --- |
-| Start play | App validates Chart, opens local audio, initializes play session | Route and Judgement start from chart-defined initial state | Show count-in / play view |
-| Advance song | App reads SongClock and input events | Route samples current position; Judgement resolves due events | Render snapshot and latest grade |
-| Wrong or missing input | App forwards input or window expiration to Judgement | Chart route unchanged; result records Miss | Show Miss without changing marker's path |
-| Pause/resume | App commands audio lifecycle and freezes/resumes session | No fake beat progression or premature Miss | Show/close pause overlay |
-| Editor scrub | Editor sets preview time via authorized clock/seek interface | Route samples requested time; no gameplay judgement awarded | Move playhead and preview consistently |
-| Save edit | Editor validates and requests storage write | Chart serialization represents same draft values | Show success/error and clear dirty flag only on success |
-
-Precise pause/seek judgement semantics will be recorded in A-02/A-03; this table gives **ownership**, not the final timing algorithm.
-
-## 7. Suggested source ownership (not a mandatory layout)
-
-```text
-src/
-  core/       # chart model/validation; beat math; route; judgement
-  platform/   # audio and clock bridge; keyboard capture; file I/O
-  app/        # play session, state transitions, editor controller
-  ui/         # game view, editor view, small shared controls
-tests/        # pure logic fixtures first; integration tests second
-mvp/
-  GDD.md
-  ROADMAP.md
-  architecture/
-    BOUNDARIES.md
-```
-
-Do not create empty directories or placeholder abstractions simply to match this diagram. Final build targets, source filenames, and third-party UI/rendering libraries are decisions for A-09 and the Foundation stage.
-
-## 8. Validation checklist for future tasks
-
-- [ ] Pure Chart/Timing/Route/Judgement tests can run without a display or audio device.
-- [ ] Miss/incorrect input cannot modify route state, including after replay or seek.
-- [ ] Both Game and Editor preview call the exact same route and Wrap logic.
-- [ ] No grade changes when the render frame rate or render load changes for identical input timestamps.
-- [ ] Wrap seam data stays explicit until presentation, where exit/re-entry pieces are drawn separately.
-- [ ] Chart file errors are surfaced without crashing or silently changing values.
-- [ ] No module brings in a heavyweight dependency unless a measured requirement justifies it.
-
-This checklist states architecture expectations; it is **not evidence** that the tests or features already exist.
-
-## 9. Deferred decisions
-
-| Roadmap task | Decision still required |
+| Area | Existing files / responsibility |
 | --- | --- |
-| A-02 | Beat-zero convention, offset sign, turn/step boundary ordering, song-end rule |
-| A-03 | Key-down arbitration, overlap/stray presses, pause/seek judgement rules |
-| A-04 | Visual details of Wrap exit/re-entry |
-| A-05 | Exact versioned JSON chart schema |
-| A-07/A-08 | Real audio-clock stability and packaging observations |
-| A-09 | Production stack, UI library approach, pinned dependencies |
+| Core spatial model | `src/core/route.*`, `route_view.*`: chart geometry, eight headings and sampled movement |
+| Core scoring | `src/core/judgement.*`: one grade/event, timing windows, weighted accuracy, scorable-event completion |
+| Core timing | `src/core/song_clock.*`: monotonic clock mapping and rate/pause behavior |
+| Core charts | `src/core/chart_json.*`: strict chart v2 persistence and legacy v1 reads |
+| Core editor state | `src/core/chart_editor.*`: note editing, groups, snap/tick projections and history |
+| App session/audio | `src/app/game_session.*`, `chart_playback.*`, `demo_transport.*`, `local_music.*`: start/retry/pause, audio transport, player input |
+| App rendering | `src/app/route_renderer.*`, `hit_flash.h`, `main.cpp`: route drawing, clipped square, results/HUD |
+| Editor UI | `src/app/chart_editor_ui.*`, `chart_editor_actions.cpp`, `chart_editor_layout.h`: tabs, navigation, hitboxes, text input |
+| Local files & library | `src/app/chart_file.*`, `chart_save.cpp`, `local_file_io.*`, `song_library.*`, `music_picker.*`: safe local import/save/select |
+| Settings & skins | `src/app/game_settings.*`, `skin.*`, `skin_menu.*`, `skin_controls.*`, `menu_ui.*`: rebinds, appearance, screens |
+| Native platform close | `src/app/native_close.*`: reversible Windows X/Alt+F4 handling and confirmation |
+| Application shell | `src/app/main.cpp`: screen state, menu workflow, gameplay-session coordination |
+| Tests & build | `tests/*`, `CMakeLists.txt`, `.github/workflows/windows_ci.yml`: headless model/integration regression checks and Windows x64 build |
 
-**A-01 completion condition:** This document defines Chart, MusicClock/Audio, Route, Judgement, App UI, and Editor ownership, includes a data-flow diagram, records allowed/forbidden dependency directions, and explicitly forbids renderer-driven timing and editor-specific route logic.
+`locus_core` contains the chart/route/timing/judgement core independent of raylib. `locus` is the Windows/raylib game executable. The A-07 sound probe is an **isolated historical diagnostic**, not the game executable.
+
+## Cross-cutting behavioral contracts
+
+- **Chart format:** new saves use v2 `timeMs` integer notes, `offsetMs` integer, independently chosen `snapDivision` and musical BPM. No save operation may inadvertently quantize or move existing audio timestamps.
+- **Input:** four configured directional keys are shared by Play and editor ROUTE; the default is D/F/J/K, and diagonals use two adjacent directions. Arrow keys primarily navigate/edit the timeline.
+- **World and view:** one square field-size parameter (default 8 logical cells), no editable start X/Y, screen-height centered gameplay square with a skin-adjustable outline. The left in-game sidebar is empty, the right holds grade counts/accuracy.
+- **Scoring:** last judged scorable note ends Play; the final Miss uses its full late window, including a silent tail beyond audio end where necessary. Unscored empty/test-after-last sessions end on audio completion.
+- **Persistence:** songs, charts, settings and skins reside in local user directories; relative audio references are checked to avoid escaping the chart folder. They are not remote uploads.
+- **Exit:** Esc navigates Back except on Home, where it requests confirmation; Windows X and Alt+F4 also request approval before actually closing.
+
+## Tests and limitations
+
+CTest and headless CLI flags cover the core, chart editing, serialization, score accuracy, basic app state/layout assertions and dependency builds. **Green CI is not a rendered screenshot or a measured speaker/keyboard latency test.** Any remaining interactive UX issue belongs to the short [roadmap](../ROADMAP.md).
+
+See [GDD](../GDD.md), [TIMING](TIMING.md), [UI_FLOW](UI_FLOW.md), [CHART_FORMAT](CHART_FORMAT.md), [VISUAL_SKINS](VISUAL_SKINS.md).
