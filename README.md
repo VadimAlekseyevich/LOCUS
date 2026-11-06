@@ -18,8 +18,10 @@ trajectory, turn targets, player and effects **inside the square** are rendered;
 the route continues infinitely beyond it but stays invisible there. A thin
 **white (by default) square border** can be recolored or made translucent under
 SKIN → COLORS → FIELD BORDER. The Perfect/Good/Bad/Miss counters and live accuracy are in the **right**
-sidebar; the latest hit and song information are on the left. They never
-cover the playing square. Camera zoom remains configurable in the skin,
+sidebar. The entire **left side is deliberately empty**: no title, recent
+hit, song name, grid-size logs, or truncated labels. Both the square and
+the right-side statistics remain within the actual window when it is
+resized away from 16:9. Camera zoom remains configurable in the skin,
 and with default zoom a size-8 chart shows eight world cells across 540px.
 There is no gameplay grid or grid-node clutter.
 
@@ -94,7 +96,7 @@ close flag that would immediately reopen the dialog.
 
 Normal **PLAY** now focuses on the enlarged route field, moving marker and
 live **Perfect / Good / Bad / Miss** counters and **accuracy** to the right
-of the square (with latest grade/song info on the left). It does not show
+of the square, with **no left-side text or logs**. It does not show
 chart editing hints, BPM/beat/time readouts, input tutorials, technical
 playback status, or debug navigation labels. Pause still shows
 resume/retry/home controls, and Results repeats the four counts and final
