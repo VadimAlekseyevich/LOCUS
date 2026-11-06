@@ -1308,7 +1308,8 @@ int main(int argc, char** argv) {
                     editorStatus = "PREVIEW FAILED: SELECTED BEAT / OFFSET IS AFTER SONG END";
                     return;
                 }
-                chartPlayback.Configure(editor.Data().route.bpm,
+                chartPlayback.Configure(editor.Data().route.bpm *
+                                         editor.Data().route.ticksPerBeat,
                                         editor.Data().offsetSeconds);
                 if (!chartPlayback.StartAtAudioSeconds(songTime, now)) {
                     editorStatus = "PREVIEW FAILED: COULD NOT START AUDIO";
@@ -1418,13 +1419,14 @@ int main(int argc, char** argv) {
                         editorStatus = "TEST FAILED: SELECT A POSITION BEFORE SONG END";
                     } else {
                         const double exactBeat = (editorSongPosition - checked.offsetSeconds)
-                            * checked.route.bpm / 60.0;
+                            * (checked.route.bpm * checked.route.ticksPerBeat) / 60.0;
                         const int firstScored = std::clamp(
                             static_cast<int>(std::ceil(exactBeat - 1e-6)),
                             checked.route.firstBeat, checked.route.lengthBeats);
                         activeChart = std::move(checked.route);
                         chartTitle = std::move(checked.title);
-                        chartPlayback.Configure(activeChart.bpm, checked.offsetSeconds);
+                        chartPlayback.Configure(activeChart.bpm * activeChart.ticksPerBeat,
+                                                checked.offsetSeconds);
                         judge.SetOffsetSeconds(checked.offsetSeconds);
                         gameSession.SetTestOrigin({editorSongPosition, firstScored});
                         customChart = true;
@@ -1536,8 +1538,8 @@ int main(int argc, char** argv) {
                         } else {
                             activeChart = std::move(candidate.route);
                             chartTitle = std::move(candidate.title);
-                            chartPlayback.Configure(activeChart.bpm,
-                                                    candidate.offsetSeconds);
+                            chartPlayback.Configure(activeChart.bpm * activeChart.ticksPerBeat,
+                                                     candidate.offsetSeconds);
                             chartPlayback.SetSpeed(1.0, now);
                             gameSession.ClearTestOrigin();
                             judge.SetOffsetSeconds(candidate.offsetSeconds);
