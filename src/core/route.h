@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <limits>
 #include <optional>
 #include <vector>
 
@@ -28,9 +30,14 @@ struct Cell {
     int y = 0;
 };
 
+// Editing uses exact integer musical-grid ticks for snapping. Persistent
+// notes use absolute song time in whole milliseconds instead: neither BPM
+// nor later grid-density changes modify their timestamp.
+constexpr std::int64_t kNoTimeMs = std::numeric_limits<std::int64_t>::min();
 struct TurnEvent {
-    int beat = 0; // integer tick index at chart.ticksPerBeat resolution
+    int beat = 0; // cached tick index for route/editor indexing
     Turn direction = Turn::Left;
+    std::int64_t timeMs = kNoTimeMs; // authoritative song position if specified
 };
 
 // Grid dimensions now describe only the editor's visible grid window.
@@ -54,6 +61,14 @@ struct Chart {
     int lengthBeats = 32;
     std::vector<TurnEvent> turns;
 };
+
+// Exact stored time if supplied (v2); otherwise old integer-beat timing.
+std::int64_t EventTimeMs(const Chart& chart, const TurnEvent& note,
+                         double offsetSeconds) noexcept;
+// Project an absolute song timestamp onto the editor's integer tick lattice.
+int TickAtTimeMs(double bpm, int ticksPerBeat, double offsetSeconds,
+                 std::int64_t timeMs) noexcept;
+
 
 struct RouteStep {
     Cell from;
