@@ -113,7 +113,7 @@ jobs:
             throw "F-06 loop state update failed"
           }
 
-      - name: Verify F-07 placeholder screen switching headlessly
+      - name: Verify production screen switching headlessly
         shell: pwsh
         run: |
           $result = & ".\build-a07\foundation\Release\locus.exe" --screen-check
@@ -121,7 +121,7 @@ jobs:
           $result | Set-Content screen-check.txt
           Write-Output $result
           if ($result -notmatch "SCREEN_STATE_PASS transitions=7") {
-            throw "F-07 placeholder transitions failed"
+            throw "Production screen transitions failed"
           }
 
       - name: Exercise F-05 blank window open draw and clean shutdown
