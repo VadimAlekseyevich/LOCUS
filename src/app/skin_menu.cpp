@@ -168,7 +168,7 @@ void PreviewPath(Font font, const Skin& skin) {
         DrawCircleV(marker, radius * 1.65f, WithOpacity(skin.player, 0.2f));
     DrawCircleV(marker, radius, skin.player);
     DrawCircleV(marker, radius * 0.33f, skin.playerCore);
-    DrawRectangleLinesEx({632.0f, 224.0f, 220.0f, 175.0f},
+    DrawRectangleLinesEx({653.0f, 218.0f, 180.0f, 180.0f},
                          1.5f, skin.fieldBorder);
     Label(font, "SLIDER: EVERYDAY RANGE", 618, 402, 12, kMuted);
     Label(font, "TYPE: EXTENDED VALUES", 618, 420, 12, kMuted);
