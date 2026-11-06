@@ -42,6 +42,21 @@ void Button(Font font, Rectangle rect, const char* text, Color tint, bool active
           17.0f, Color{232, 238, 245, 255});
 }
 
+// The nine compass pads remain clickable, with a small key-label line.
+void DirectionButton(Font font, Rectangle rect, const char* name,
+                     const char* keys, Color tint, bool active = false) {
+    DrawRectangleRounded(rect, 0.16f, 5,
+                         active ? Color{45, 81, 88, 255}
+                                : Color{36, 43, 58, 255});
+    DrawRectangleRoundedLinesEx(rect, 0.16f, 5, 1.7f, tint);
+    const auto headingSize = MeasureTextEx(font, name, 13.0f, 1.0f);
+    const auto keySize = MeasureTextEx(font, keys, 10.0f, 1.0f);
+    Label(font, name, rect.x + (rect.width - headingSize.x) / 2.0f,
+          rect.y + 2.0f, 13.0f, Color{232, 238, 245, 255});
+    Label(font, keys, rect.x + (rect.width - keySize.x) / 2.0f,
+          rect.y + 20.0f, 10.0f, Color{196, 213, 235, 255});
+}
+
 const char* HeadingName(core::Heading heading) {
     switch (heading) {
         case core::Heading::Up: return "UP";
@@ -292,19 +307,21 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
               744, 250, 12, Color{216, 232, 239, 255});
         const char* padNames[9] = {"UL", "U", "UR", "L", "DEL", "R",
                                    "DL", "D", "DR"};
+        const char* padKeys[9] = {"D+J", "J", "J+K", "D", "BKSP", "K",
+                                  "D+F", "F", "F+K"};
         for (int row = 0; row < 3; ++row)
             for (int col = 0; col < 3; ++col) {
                 const auto heading = DirectionPadHeading(row, col);
-                Button(font, DirectionPadBounds(row, col),
-                       padNames[row * 3 + col],
-                       !heading ? Color{224, 150, 148, 255}
-                         : core::IsDiagonal(*heading)
-                           ? Color{186, 160, 235, 255}
-                           : Color{110, 220, 198, 255},
-                       heading ? (turn && *heading == outgoing)
-                               : turn != nullptr);
+                DirectionButton(font, DirectionPadBounds(row, col),
+                                padNames[row * 3 + col], padKeys[row * 3 + col],
+                                !heading ? Color{224, 150, 148, 255}
+                                  : core::IsDiagonal(*heading)
+                                    ? Color{186, 160, 235, 255}
+                                    : Color{110, 220, 198, 255},
+                                heading ? (turn && *heading == outgoing)
+                                        : turn != nullptr);
             }
-        Label(font, "F/J 90  G/H 45  V/N 135", 744, 398, 11,
+        Label(font, "DFJK: TWO KEYS = DIAGONAL", 744, 398, 11,
               Color{165, 198, 213, 255});
         Label(font, "PATTERN  /  DRAG RULER", 52, 188, 14,
               Color{193, 215, 226, 255});
