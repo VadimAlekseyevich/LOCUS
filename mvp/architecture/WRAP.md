@@ -9,10 +9,12 @@ compass headings and one step per beat. The camera follows the fractional
 world position by *translation only*, keeping the player fixed on the screen.
 
 **PLAY and TEST:** no grid lines or grey dots; draw only the red route,
-red turn targets and player (plus hit statistics in PLAY).
+red turn targets and player in a centered window-height square (plus the **right-side**
+accuracy and hit statistics when enabled). The red route is simply **clipped**
+by the thin white-by-default, skinnable square border; the left side stays empty.
 
-**ROUTE editor:** a grid remains visible, but is a scrolling editor viewport
-whose width/height control density, never the movement boundaries.
+**ROUTE editor:** a grid remains visible, but is a scrolling square editor viewport.
+One editable size (default 8) controls visibility density, never movement boundaries.
 
 Old v1 JSON files stay valid. Their previously wrapping route coordinates
 intentionally produce a different, continuous path under this new mechanic.
