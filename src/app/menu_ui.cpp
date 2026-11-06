@@ -206,7 +206,8 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
     Button(font, SettingsFullscreenButton(),
            settings.fullscreen ? "ON" : "OFF", kMuted, settings.fullscreen);
 
-    Label(font, "GAMEPLAY KEY BINDINGS", 508, 161, 18, kMint);
+    Label(font, "GAME + EDITOR KEY BINDINGS", 508, 161, 18, kMint);
+    Label(font, "DIRECTIONS ALSO PLACE NOTES IN ROUTE", 508, 181, 12, kMuted);
     for (int i = 0; i < kGameActionCount; ++i) {
         const auto action = static_cast<GameAction>(i);
         Label(font, ActionName(action), 506, 200.0f + i * 39.0f, 17, kText);
