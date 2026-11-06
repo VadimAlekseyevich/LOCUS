@@ -69,7 +69,7 @@ int main() {
                      later.to.x == 5 && later.to.y == -4,
                      "legacy JSON now follows continuous infinite world geometry");
     }
-    ok &= Expect(Reject(valid, "\"formatVersion\": 1", "\"formatVersion\": 2",
+    ok &= Expect(Reject(valid, "\"formatVersion\": 1", "\"formatVersion\": 3",
                         "formatVersion"), "rejects unsupported future schema");
     ok &= Expect(Reject(valid, "\"width\": 4", "\"width\": 17", "grid.width") &&
                  Reject(valid, "\"height\": 4", "\"height\": 1", "grid.height"),
@@ -225,7 +225,7 @@ int main() {
                  beforeOffset.route.firstBeat == -5 &&
                  SampleRouteStep(beforeOffset.route, -3).heading == Heading::Up &&
                  SerializeChartJson(beforeOffset, saved, error) &&
-                 saved.find("\"beat\": -3") != std::string::npos,
+                 saved.find("\"timeMs\": 1000") != std::string::npos,
                  "negative beat turn before offset works across parse, route and save");
 
     // v1 extension: old left/right remains 90 degrees, new tokens carry angles.
@@ -253,7 +253,45 @@ int main() {
     ok &= Expect(Reject(diagonalJson, "\"up-right\"", "\"north-east\"",
                         "start.heading"), "unknown diagonal heading spelling is rejected");
 
+    // Version 2 keeps absolute integer millisecond timestamps.
+    const std::string msV2 = R"({
+        "formatVersion":2,"title":"Timing","audioPath":"song.mp3",
+        "bpm":250,"offsetMs":500,"ticksPerBeat":6,"snapDivision":3,
+        "grid":{"width":4,"height":4},
+        "start":{"x":0,"y":0,"heading":"right"},
+        "previewLeadBeats":4,
+        "turns":[{"timeMs":580,"turn":"left"},
+                 {"timeMs":660,"turn":"right"}]
+    })";
+    LoadedChart precise;
+    std::string v2saved;
+    ok &= Expect(ParseChartJson(msV2, precise, error) &&
+                 precise.route.turns.size() == 2 &&
+                 precise.route.turns[0].beat == 2 &&
+                 precise.route.turns[0].timeMs == 580 &&
+                 precise.route.turns[1].beat == 4 &&
+                 precise.route.turns[1].timeMs == 660 &&
+                 precise.route.bpm == 250 &&
+                 precise.route.snapDivision == 3,
+                 "v2 notes use whole song milliseconds, not musical beat indices");
+    ok &= Expect(SerializeChartJson(precise, v2saved, error) &&
+                 v2saved.find("\"formatVersion\": 2") != std::string::npos &&
+                 v2saved.find("\"timeMs\": 580") != std::string::npos &&
+                 v2saved.find("\"timeMs\": 660") != std::string::npos &&
+                 v2saved.find("\"offsetMs\": 500") != std::string::npos &&
+                 v2saved.find("\"beat\"") == std::string::npos,
+                 "v2 writes only integer audio timestamps for notes and offset");
+    ok &= Expect(Reject(msV2, "\"offsetMs\":500", "\"offsetMs\":500.5",
+                        "offsetMs"),
+                 "v2 rejects fractional offset milliseconds");
+    ok &= Expect(Reject(msV2, "\"timeMs\":580", "\"timeMs\":580.5",
+                        "timeMs"),
+                 "v2 rejects fractional note timestamps");
+    ok &= Expect(Reject(msV2, "\"timeMs\":660", "\"timeMs\":580",
+                        "timeMs"),
+                 "v2 rejects duplicate timestamps");
+
     if (!ok) return 1;
-    std::cout << "CHART_JSON_PASS version=1 validation=1 infinite=1 preroll=1\n";
+    std::cout << "CHART_JSON_PASS version=2 validation=1 infinite=1 preroll=1\n";
     return 0;
 }
