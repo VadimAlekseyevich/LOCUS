@@ -254,6 +254,10 @@ EditorControls PollEditorControls() {
                    IsKeyPressed(KEY_RIGHT_BRACKET);
     input.zoomOut = IsKeyPressed(KEY_MINUS) || IsKeyPressed(KEY_KP_SUBTRACT) ||
                     IsKeyPressed(KEY_LEFT_BRACKET);
+    // Grid density has different UI controls from visual timeline zoom.
+    // Explicit keys additionally let keyboard-only authors change snap.
+    input.snapMore = !control && IsKeyPressed(KEY_PERIOD);
+    input.snapLess = !control && IsKeyPressed(KEY_COMMA);
     input.previousBeat = IsKeyPressed(KEY_LEFT) && !shift && !control;
     input.nextBeat = IsKeyPressed(KEY_RIGHT) && !shift && !control;
     input.previousBar = IsKeyPressed(KEY_LEFT) && control && !shift;
@@ -400,6 +404,37 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return action;
     }
 
+    // Timeline placement grid, independent of the tempo and view zoom.
+    const auto changeSnap = [&](int direction) {
+        const int oldTicks = draft.Data().route.ticksPerBeat;
+        const int prior = draft.Data().route.snapDivision;
+        int index = 0;
+        while (index < 9 && kSnapDivisions[index] != prior) ++index;
+        if (index == 9) return;
+        const int next = std::clamp(index + direction, 0, 8);
+        if (next == index) return;
+        if (!draft.SetSnapDivision(kSnapDivisions[next])) {
+            notice("GRID TOO DENSE FOR SONG LENGTH (MAX 65536 TICKS)", true);
+            return;
+        }
+        const int factor = draft.Data().route.ticksPerBeat / oldTicks;
+        if (ui.HasRange()) {
+            ui.rangeFirst *= factor;
+            ui.rangeLast *= factor;
+        }
+        ui.dragAnchorBeat *= factor;
+        ui.dragViewBeat *= factor;
+        ui.draggingTimeline = false;
+        action.changedChart = true;
+        ui.feedback = "GRID 1/" + std::to_string(kSnapDivisions[next]) +
+                      " - ORIGINAL NOTES / BPM UNCHANGED";
+        ui.feedbackError = false;
+    };
+    if (input.snapMore || input.snapLess) {
+        changeSnap(input.snapMore ? 1 : -1);
+        return action;
+    }
+
     bool copy = input.copyRange && ui.tab == EditorTab::Route;
     bool cut = input.cutRange && ui.tab == EditorTab::Route;
     bool paste = input.pasteRange && ui.tab == EditorTab::Route;
@@ -422,6 +457,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             return action;
         }
 
+        if (Hit(kSnapLess, mouse)) { changeSnap(-1); return action; }
+        if (Hit(kSnapMore, mouse)) { changeSnap(1); return action; }
         if (Hit(kSong, mouse)) action.chooseAudio = true;
         else if (Hit(kPlay, mouse)) action.previewToggle = true;
         else if (Hit(kStop, mouse)) action.previewRestart = true;
@@ -484,10 +521,9 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                    mouse.x >= kTimelineX &&
                    mouse.x <= kTimelineX + kTimelineWidth) {
             const double anchor = ViewBeat(draft, input.timelineViewBeat);
-            const double clicked = anchor + (mouse.x - kPlayheadX) / PixelsPerBeat(ui);
-            const int beat = std::clamp(static_cast<int>(std::lround(clicked)),
-                                        draft.Data().route.firstBeat,
-                                        draft.Data().route.lengthBeats - 1);
+            const double clicked = anchor + (mouse.x - kPlayheadX) /
+                                                 PixelsPerTick(ui, draft.Data().route);
+            const int beat = SnapTick(clicked, draft.Data().route);
             if (ui.tab == EditorTab::Route && input.shiftHeld) {
                 const int origin = draft.SelectedBeat();
                 ui.rangeFirst = std::min(origin, beat);
@@ -543,7 +579,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                 const double beatsPerSecond = 8.0 + intensity * 16.0;
                 ui.dragViewBeat = std::clamp(
                     ui.dragViewBeat +
-                        (edge > 0.0f ? 1.0 : -1.0) * beatsPerSecond * dt,
+                        (edge > 0.0f ? 1.0 : -1.0) * beatsPerSecond * dt *
+                        draft.Data().route.ticksPerBeat,
                     static_cast<double>(draft.Data().route.firstBeat),
                     static_cast<double>(draft.Data().route.lengthBeats - 1));
             }
@@ -551,10 +588,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         const float x = std::clamp(input.mouse.x, kTimelineX,
                                     kTimelineX + kTimelineWidth);
         const double point = ui.dragViewBeat +
-                             (x - kPlayheadX) / PixelsPerBeat(ui);
-        const int beat = std::clamp(static_cast<int>(std::lround(point)),
-                                    draft.Data().route.firstBeat,
-                                    draft.Data().route.lengthBeats - 1);
+                             (x - kPlayheadX) / PixelsPerTick(ui, draft.Data().route);
+        const int beat = SnapTick(point, draft.Data().route);
         if (beat != ui.dragAnchorBeat) {
             ui.rangeFirst = std::min(ui.dragAnchorBeat, beat);
             ui.rangeLast = std::max(ui.dragAnchorBeat, beat);
@@ -568,10 +603,10 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
     if (input.zoomOut) ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
     if (input.zoomIn) ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
-    if (input.previousBeat) { draft.StepSelection(-1); ui.rangeFirst = ui.rangeLast = -1; }
-    if (input.nextBeat) { draft.StepSelection(1); ui.rangeFirst = ui.rangeLast = -1; }
-    if (input.previousBar) { draft.StepSelection(-4); ui.rangeFirst = ui.rangeLast = -1; }
-    if (input.nextBar) { draft.StepSelection(4); ui.rangeFirst = ui.rangeLast = -1; }
+    if (input.previousBeat) { draft.StepSnapSelection(-1); ui.rangeFirst = ui.rangeLast = -1; }
+    if (input.nextBeat) { draft.StepSnapSelection(1); ui.rangeFirst = ui.rangeLast = -1; }
+    if (input.previousBar) { draft.StepSelection(-4 * draft.Data().route.ticksPerBeat); ui.rangeFirst = ui.rangeLast = -1; }
+    if (input.nextBar) { draft.StepSelection(4 * draft.Data().route.ticksPerBeat); ui.rangeFirst = ui.rangeLast = -1; }
     // Use held key state instead of OS key-repeat: consistent on all PCs.
     // First key-down gets a single step above; continuous steps begin after
     // 230ms, then speed up after 1.2 seconds of holding.
@@ -593,7 +628,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             int repeats = 0;
             while (ui.barRepeatSeconds >= interval && repeats++ < 8) {
                 ui.barRepeatSeconds -= interval;
-                if (!draft.StepSelection(held * 4)) {
+                if (!draft.StepSelection(held * 4 * draft.Data().route.ticksPerBeat)) {
                     ui.barRepeatSeconds = 0.0f; // Stay at the chart boundary.
                     break;
                 }
@@ -604,8 +639,10 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
     if (ui.tab == EditorTab::Route) {
         ApplyDirectionChord(draft, ui, input, action);
-        if (input.movePrevious && !ui.HasRange()) action.changedChart |= draft.MoveTurn(-1);
-        if (input.moveNext && !ui.HasRange()) action.changedChart |= draft.MoveTurn(1);
+        if (input.movePrevious && !ui.HasRange()) action.changedChart |= draft.MoveTurn(-draft.Data().route.ticksPerBeat /
+                                                           draft.Data().route.snapDivision);
+        if (input.moveNext && !ui.HasRange()) action.changedChart |= draft.MoveTurn(draft.Data().route.ticksPerBeat /
+                                                          draft.Data().route.snapDivision);
         if (input.addLeft) { draft.PutTurn(core::Turn::Left); action.changedChart = true; }
         if (input.addRight) { draft.PutTurn(core::Turn::Right); action.changedChart = true; }
         if (input.addLeft45) { draft.PutTurn(core::Turn::Left45); action.changedChart = true; }
@@ -667,7 +704,9 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             notice(ok ? "SELECTED TURNS DELETED" : "NO TURNS TO DELETE", !ok);
         }
         if (input.shiftRangePrevious || input.shiftRangeNext) {
-            const int delta = input.shiftRangePrevious ? -1 : 1;
+            const int delta = (input.shiftRangePrevious ? -1 : 1) *
+                              (draft.Data().route.ticksPerBeat /
+                               draft.Data().route.snapDivision);
             const bool ok = ui.HasRange() && valid &&
                             draft.ShiftTurns(first, last, delta);
             action.changedChart |= ok;
@@ -684,8 +723,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         if (input.headingLeft) { draft.RotateHeading45(-1); action.changedChart = true; }
         if (input.headingRight) { draft.RotateHeading45(1); action.changedChart = true; }
     }
-    if (input.mouseWheel > 0) draft.StepSelection(-1);
-    if (input.mouseWheel < 0) draft.StepSelection(1);
+    if (input.mouseWheel > 0) draft.StepSnapSelection(-1);
+    if (input.mouseWheel < 0) draft.StepSnapSelection(1);
     action.previewToggle |= input.previewToggle;
     action.previewRestart |= input.previewRestart;
     if (input.speedIndex >= 0) action.speedIndex = input.speedIndex;
