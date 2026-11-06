@@ -22,7 +22,7 @@ std::string KeyboardKeyName(int key);
 // Escape/F11 remain system controls.
 struct GameSettings {
     std::array<int, kGameActionCount> keys{{
-        KEY_UP, KEY_RIGHT, KEY_DOWN, KEY_LEFT,
+        KEY_J, KEY_K, KEY_F, KEY_D,
         KEY_SPACE, KEY_R, KEY_H
     }};
     float volume = 0.7f;
