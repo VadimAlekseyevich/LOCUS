@@ -33,19 +33,6 @@ build.ninja
 *.locus.json.bak
 *.autosave.locus.json
 *.locus.json~
-/metronome.wav
-/raylib_probe_log.csv
-/windows-self-test.txt
-/windows-audio-smoke.txt
-/windows-build-metrics.txt
-/foundation-smoke.txt
-/dependency-smoke.txt
-/core-ctest.txt
-/window-smoke.txt
-/window-smoke-stderr.txt
-/window-smoke-result.txt
-/loop-check.txt
-/screen-check.txt
 
 # Operating-system metadata
 .DS_Store

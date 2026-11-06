@@ -1,4 +1,3 @@
-#include "core/foundation.h"
 #include "core/route.h"
 #include "core/route_view.h"
 #include "core/judgement.h"
@@ -1275,10 +1274,6 @@ bool SaveDraftToDisk(locus::core::ChartEditor& editor,
 } // namespace
 
 int main(int argc, char** argv) {
-    if (HasArgument(argc, argv, "--foundation-check")) {
-        std::cout << locus::core::FoundationStatus() << '\n';
-        return 0;
-    }
     if (HasArgument(argc, argv, "--loop-check")) {
         if (!CheckLoopState()) {
             std::cerr << "LOOP_STATE_FAIL\n";
@@ -1307,7 +1302,7 @@ int main(int argc, char** argv) {
     const bool smokeWindow = HasArgument(argc, argv, "--window-smoke");
     const bool debugScreens = HasArgument(argc, argv, "--debug-screens");
     if (argc != 1 && !smokeWindow && !debugScreens) {
-        std::cerr << "Usage: locus.exe [--foundation-check | --loop-check | --screen-check | "
+        std::cerr << "Usage: locus.exe [--loop-check | --screen-check | "
                      "--session-check | --window-smoke | --debug-screens]\n";
         return 2;
     }

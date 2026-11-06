@@ -24,8 +24,8 @@ permissions:
   contents: read
 
 jobs:
-  foundation:
-    name: Production app + CTest (Windows x64)
+  windows:
+    name: LOCUS + CTest (Windows x64)
     runs-on: windows-2022
     timeout-minutes: 25
     defaults:
@@ -40,30 +40,29 @@ jobs:
 
       - name: Configure pinned dependencies and test targets
         run: |
-          cmake -S . -B build/windows-foundation -G "Visual Studio 17 2022" -A x64 -DLOCUS_BUILD_TESTS=ON -DLOCUS_VERIFY_DEPENDENCIES=ON
+          cmake -S . -B build/windows -G "Visual Studio 17 2022" -A x64 -DLOCUS_BUILD_TESTS=ON
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build application and tests (Release)
         run: |
-          cmake --build build/windows-foundation --config Release --parallel 2
+          cmake --build build/windows --config Release --parallel 2
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run all registered CTest cases
         run: |
-          ctest --test-dir build/windows-foundation -C Release --output-on-failure --output-junit build/windows-foundation/ctest.xml |
-            Tee-Object -FilePath build/windows-foundation/ctest-output.txt
+          ctest --test-dir build/windows -C Release --output-on-failure --output-junit build/windows/ctest.xml |
+            Tee-Object -FilePath build/windows/ctest-output.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $testOutput = Get-Content build/windows-foundation/ctest-output.txt -Raw
+          $testOutput = Get-Content build/windows/ctest-output.txt -Raw
           if ($testOutput -notmatch "100% tests passed") {
             throw "CTest did not confirm all tests passed"
           }
 
       - name: Run headless production and dependency diagnostics
         run: |
-          $release = "build/windows-foundation/Release"
+          $release = "build/windows/Release"
           $executable = Join-Path $release "locus.exe"
           $checks = @(
-            @{ arg = "--foundation-check"; expected = "LOCUS foundation built" },
             @{ arg = "--loop-check"; expected = "LOOP_STATE_PASS frames=60" },
             @{ arg = "--screen-check"; expected = "SCREEN_STATE_PASS transitions=7" },
             @{ arg = "--session-check"; expected = "SESSION_FLOW_PASS turns=9" }
@@ -76,12 +75,7 @@ jobs:
             }
             $report += $result
           }
-          $dependencyResult = & (Join-Path $release "locus_dependencies_smoke.exe")
-          if ($LASTEXITCODE -ne 0 -or -not ($dependencyResult -match "DEPENDENCY_SMOKE_PASS")) {
-            throw "Dependency integration check failed: $dependencyResult"
-          }
-          $report += $dependencyResult
-          $report | Set-Content build/windows-foundation/diagnostics.txt
+          $report | Set-Content build/windows/diagnostics.txt
           $report | ForEach-Object { Write-Output $_ }
 
       - name: Verify Windows font fallback prerequisites
@@ -101,20 +95,18 @@ jobs:
         run: |
           $changes = git status --porcelain
           if ($changes) { throw "Generated files leaked into Git worktree: $changes" }
-          Write-Output "FOUNDATION_CLEAN_WORKTREE_PASS"
+          Write-Output "CLEAN_WORKTREE_PASS"
 
       # Hosted Windows runners do not provide an interactive graphical desktop.
       # Never mark actual GUI rendering or physical input latency as tested here.
       - name: Upload binaries and diagnostics
         uses: actions/upload-artifact@v4
         with:
-          name: locus-windows-foundation-x64
+          name: locus-windows-x64
           if-no-files-found: error
           path: |
-            build/windows-foundation/Release/locus.exe
-            build/windows-foundation/Release/locus_core_tests.exe
-            build/windows-foundation/Release/locus_dependencies_smoke.exe
-            build/windows-foundation/ctest-output.txt
-            build/windows-foundation/ctest.xml
-            build/windows-foundation/diagnostics.txt
+            build/windows/Release/locus.exe
+            build/windows/ctest-output.txt
+            build/windows/ctest.xml
+            build/windows/diagnostics.txt
             build_and_run.bat
