@@ -102,53 +102,28 @@ void DrawTextField(Font font, Rectangle rect, const char* label,
     }
 }
 
-void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBeat) {
+void DrawRoutePreview(Font font, const core::ChartEditor& draft, double previewBeat) {
     const auto& chart = draft.Data().route;
     const double bounded = std::clamp(previewBeat,
-                                      static_cast<double>(chart.firstBeat),
-                                      static_cast<double>(chart.lengthBeats));
-    const EditorGrid grid(chart, bounded);
-    const RouteCanvas canvas{grid.left, grid.top,
-                              grid.step / chart.ticksPerBeat, grid.origin};
+                                     static_cast<double>(chart.firstBeat),
+                                     static_cast<double>(chart.lengthBeats));
+    const EditorView view(chart, bounded);
+    const RouteCanvas canvas{view.left, view.top,
+                             view.step / chart.ticksPerBeat, view.origin};
 
-    // The editor lattice is a scrolling distance reference, not a constraint:
-    // equal-length diagonal steps may land between its grid nodes.
+    // Grid-free moving preview; the square is a clipping region only.
+    // The normalized route and its junctions need not land on grid nodes.
     const float x0 = kGridCenterX - kGridMaxSpan * 0.5f;
     const float y0 = kGridCenterY - kGridMaxSpan * 0.5f;
-    const float x1 = x0 + kGridMaxSpan, y1 = y0 + kGridMaxSpan;
     const auto clip = ViewportTransform::Menu(
         GetScreenWidth(), GetScreenHeight()).Scissor(
             {x0, y0, kGridMaxSpan, kGridMaxSpan});
     BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
 
-    const int halfCells = static_cast<int>(std::ceil(kGridMaxSpan / grid.step)) + 2;
-    const int cx = static_cast<int>(std::floor(
-        chart.start.x + (grid.origin.x - chart.start.x) / chart.ticksPerBeat));
-    const int cy = static_cast<int>(std::floor(
-        chart.start.y + (grid.origin.y - chart.start.y) / chart.ticksPerBeat));
-    for (int i = -halfCells; i <= halfCells; ++i) {
-        const float x = grid.Point(core::Cell{cx + i, cy}).x;
-        if (x >= x0 - 1.0f && x <= x1 + 1.0f)
-            DrawLineEx({x, y0}, {x, y1}, 1.25f, Color{51, 62, 79, 255});
-        const float y = grid.Point(core::Cell{cx, cy + i}).y;
-        if (y >= y0 - 1.0f && y <= y1 + 1.0f)
-            DrawLineEx({x0, y}, {x1, y}, 1.25f, Color{51, 62, 79, 255});
-    }
-
     const Vector2 marker = DrawRouteTrajectory(
         chart, bounded, canvas, RouteRenderMode::Editor);
-    const float dot = std::min(7.0f, grid.step * 0.25f);
-    for (int j = -halfCells; j <= halfCells; ++j) {
-        for (int i = -halfCells; i <= halfCells; ++i) {
-            const Vector2 position = grid.Point(core::Cell{cx + i, cy + j});
-            if (position.x < x0 || position.x > x1 ||
-                position.y < y0 || position.y > y1) continue;
-            DrawCircleV(position, dot, Color{105, 127, 148, 255});
-            DrawCircleV(position, dot * 0.41f, Color{207, 221, 234, 255});
-        }
-    }
     DrawRouteJunctions(chart, bounded, canvas, RouteRenderMode::Editor);
-    const float markerRadius = std::min(13.0f, grid.step * 0.39f);
+    const float markerRadius = std::min(13.0f, view.step * 0.39f);
     DrawCircleV(marker, markerRadius * 1.7f, Color{112, 219, 216, 48});
     DrawCircleV(marker, markerRadius, Color{124, 229, 225, 255});
     DrawCircleV(marker, markerRadius * 0.32f, Color{246, 251, 252, 255});
@@ -318,10 +293,10 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
           hasAudio ? Color{178, 227, 222, 255} : Color{242, 181, 164, 255});
 
     if (ui.tab == EditorTab::Route) {
-        Label(font, TextFormat("ROUTE  /  %d x %d EDITOR GRID",
+        Label(font, TextFormat("ROUTE  /  %d x %d VIEW",
                               chart.gridWidth, chart.gridHeight),
               51, 166, 17, Color{188, 215, 227, 255});
-        DrawPreviewGrid(font, draft, previewBeat);
+        DrawRoutePreview(font, draft, previewBeat);
         Label(font, IsGameDirectionKey(settings, KEY_Q) ||
                     IsGameDirectionKey(settings, KEY_E)
                ? "START HEADING (CLICK)" : "START HEADING Q/E 45",

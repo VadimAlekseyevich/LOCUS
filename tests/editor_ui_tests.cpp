@@ -62,15 +62,15 @@ int main() {
                 chart.Data().route.start.x == 3 &&
                 chart.Data().route.start.y == 3,
                 "editor opens with 8x8 square view and automatic route origin");
-    const detail::EditorGrid defaultGeometry(chart.Data().route, 0.0);
+    const detail::EditorView defaultGeometry(chart.Data().route, 0.0);
     ok &= Check(std::abs(defaultGeometry.step - 30.0f) < 0.001f,
-                "8 visible editor cells occupy the complete 240px square");
+                "8-unit preview scale is unchanged after removal of the drawn grid");
 
     Chart normalized = chart.Data().route;
     normalized.initialHeading = Heading::UpRight;
     normalized.lengthBeats = 8;
     normalized.turns = {{2, Turn::Right45}};
-    const detail::EditorGrid preview(normalized, 0.0);
+    const detail::EditorView preview(normalized, 0.0);
     const GridPoint firstPoint = RoutePositionAt(normalized, 0.0);
     const GridPoint nextPoint = RoutePositionAt(normalized, 1.0);
     const GridPoint junction = RoutePositionAt(normalized, 2.0);
@@ -88,7 +88,7 @@ int main() {
                 std::abs((screenJunction.x - screen0.x) / preview.step -
                          std::round((screenJunction.x - screen0.x) / preview.step)) >
                     0.1f,
-                "editor draws equal-length diagonal steps and accurate off-grid junctions");
+                "grid-free preview maintains equal-length diagonal steps and exact junctions");
 
     // Audio settings are no longer stacked on top of the route grid.
     ApplyEditorControls(chart, ui, Click(612, 89));
@@ -132,9 +132,9 @@ int main() {
                 chart.Data().route.start.y == 5,
                 "typing a single size 12 sets 12x12 with automatic start");
     ok &= Check(std::abs(
-                    detail::EditorGrid(chart.Data().route, 0.0).step - 20.0f) <
+                    detail::EditorView(chart.Data().route, 0.0).step - 20.0f) <
                     0.001f,
-                "12 cells still fit inside the same square editor preview");
+                "view size still determines square preview magnification");
     ApplyEditorControls(chart, ui, Click(598, 247));
     ok &= Check(!ui.EditingText(),
                 "removed start coordinate field cannot receive focus");

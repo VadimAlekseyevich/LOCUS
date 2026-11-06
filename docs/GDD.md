@@ -27,7 +27,7 @@
 - The virtual reference layout is 960×540, yielding a square from x=210 to 750; at 1920×1080 the square is 1080×1080. In portrait windows its side is constrained by the window width.
 - Route segments, junctions, marker and effects **outside this square are not rendered**. Clipping is visual only; the route and its scoring continue.
 - A thin rectangular outline is **white by default**, with its color and alpha editable in the global skin.
-- The authoring field has **one square side-length value** (2–16 logical cells; **default 8**), for editor viewing metadata. Gameplay scales its route from a global **fixed base movement speed**, not chart field size or BPM. Grid size is not a time signature or a world boundary. The editor retains the square lattice as a **distance reference**; diagonal junctions can lie between grid nodes, and editor/PLAY use the same continuous coordinates.
+- The authoring field has **one square side-length value** (2–16 logical cells; **default 8**), for editor viewing metadata. Gameplay scales its route from a global **fixed base movement speed**, not chart field size or BPM. Grid size is not a time signature or a world boundary. The ROUTE preview draws **no grid lines or dots**: only the route, player marker and upcoming turn markers appear inside the clipped square. The numeric field size still adjusts preview magnification, without constraining the trajectory. Editor and PLAY share continuous route coordinates.
 - The skin sets movement speed in **logical pixels per second** (default **135** on the virtual 540×540 playfield), identical in all eight directions. Each chart's visual step compensates for BPM, ticks per beat and practice playback rate. Physical speed scales with the resizable window's play square.
 - Starting X/Y is no longer an exposed control. New charts have an automatic centered internal origin; stored start metadata remains supported by the file reader.
 
@@ -87,7 +87,7 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 ## 5. Music, charting and practice
 
 - Local WAV/MP3 playback is supported, without any account or remote chart service. Installed songs/difficulties live under `%LOCALAPPDATA%\LOCUS\Songs`.
-- Chart editor tabs: **ROUTE** (moving preview, nine-direction pad, note and group actions), **AUDIO** (title, BPM, offset in whole milliseconds), **FIELD** (square visibility size and initial heading).
+- Chart editor tabs: **ROUTE** (grid-free moving preview, nine-direction pad, note and group actions), **AUDIO** (title, BPM, offset in whole milliseconds), **FIELD** (square visibility size and initial heading).
 - The scrolling timeline is visible on all editor tabs. Left/Right arrows navigate ticks; Up/Down change snap subdivision; PageUp/PageDown and the mouse wheel offer navigation. Modifier shortcuts support bar jumps, moving notes and groups.
 - Snap subdivision choices: **1, 2, 3, 4, 6, 8, 12, 16, 24** per musical beat. Snap, zoom and BPM are **different controls**.
 - Chart **v2** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.

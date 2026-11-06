@@ -103,34 +103,24 @@ inline Rectangle RouteSpeedBounds(int index) {
 
 inline bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(pos, bounds); }
 
-// The ROUTE editor keeps a scrolling lattice in an otherwise infinite world.
-// Its width/height determine grid density, not boundaries or Wrap behaviour.
-struct EditorGrid {
+// Camera for the uncluttered, continuous ROUTE preview.
+// The chart's view size only adjusts magnification, not route geometry.
+struct EditorView {
     float left = kGridCenterX, top = kGridCenterY, step = 1.0f;
-    core::GridPoint origin{}; // Raw tick-model coordinates.
-    core::Cell start{};
+    core::GridPoint origin{};
     int ticksPerBeat = 1;
 
-    explicit EditorGrid(const core::Chart& chart, double tick) {
+    explicit EditorView(const core::Chart& chart, double tick) {
         const int visibleCells = std::max(chart.gridWidth, chart.gridHeight);
-        // One size "8" means eight equal cells across the fixed square.
         step = kGridMaxSpan / static_cast<float>(std::max(1, visibleCells));
         origin = core::RoutePositionAt(chart, tick);
-        start = chart.start;
         ticksPerBeat = chart.ticksPerBeat;
     }
-    // A visual cell remains one musical beat long in any snap resolution.
     Vector2 Point(core::GridPoint raw) const {
         return {left + static_cast<float>((raw.x - origin.x) * step / ticksPerBeat),
                 top + static_cast<float>((raw.y - origin.y) * step / ticksPerBeat)};
     }
-    Vector2 Point(core::Cell cell) const {
-        return Point(core::GridPoint{
-            static_cast<double>(start.x + (cell.x - start.x) * ticksPerBeat),
-            static_cast<double>(start.y + (cell.y - start.y) * ticksPerBeat)});
-    }
 };
-
 inline EditorTab ClickedTab(Vector2 mouse, EditorTab previous) {
     if (Hit(kTabRoute, mouse)) return EditorTab::Route;
     if (Hit(kTabAudio, mouse)) return EditorTab::Audio;
