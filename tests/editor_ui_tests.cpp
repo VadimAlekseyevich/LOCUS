@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <utility>
 
 using namespace locus::app;
 using namespace locus::core;
