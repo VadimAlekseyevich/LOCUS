@@ -370,6 +370,110 @@ int main() {
     ok &= Check(longChart.SelectedBeat() == longChart.Data().route.firstBeat,
                 "repeating Ctrl+Left clamps at earliest song beat");
 
+    // Selecting extra empty ticks around notes must not shift the clipboard.
+    ChartEditor padded;
+    EditorUiState paddedUi;
+    padded.SelectBeat(6);
+    padded.PutTurn(Turn::Left);
+    padded.SelectBeat(9);
+    padded.PutTurn(Turn::Right);
+    padded.SelectBeat(13);
+    paddedUi.rangeFirst = 2;
+    paddedUi.rangeLast = 13; // 4 empty beats before + 4 after.
+    EditorControls paddedCopy;
+    paddedCopy.copyRange = true;
+    ApplyEditorControls(padded, paddedUi, paddedCopy);
+    ok &= Check(paddedUi.rangeFirst == 6 && paddedUi.rangeLast == 9 &&
+                paddedUi.clipboard.span == 4 &&
+                paddedUi.clipboard.notes.size() == 2 &&
+                paddedUi.clipboard.notes[0].beat == 0 &&
+                paddedUi.clipboard.notes[1].beat == 3,
+                "Ctrl+C trims empty range edges but keeps gaps inside pattern");
+    padded.SelectBeat(15);
+    EditorControls paddedPaste;
+    paddedPaste.pasteRange = true;
+    ApplyEditorControls(padded, paddedUi, paddedPaste);
+    ok &= Check(padded.Data().route.turns[2].beat == 15 &&
+                padded.Data().route.turns[3].beat == 18 &&
+                paddedUi.rangeFirst == 15 && paddedUi.rangeLast == 18,
+                "pasting aligns the first real note with the destination beat");
+
+    // DFJK absolute compass: J=up, F=down, D=left, K=right. The
+    // adjacent pairs place diagonals without an unwanted cardinal note.
+    const struct { unsigned keys; Heading heading; } diagonals[] = {
+        {1u | 4u, Heading::UpLeft}, {4u | 8u, Heading::UpRight},
+        {1u | 2u, Heading::DownLeft}, {2u | 8u, Heading::DownRight}
+    };
+    for (const auto& pair : diagonals) {
+        ChartEditor c;
+        EditorUiState u;
+        EditorControls keys;
+        keys.directionKeysHeld = pair.keys;
+        keys.elapsedSeconds = 0.016f;
+        const auto placed = ApplyEditorControls(c, u, keys);
+        ok &= Check(placed.changedChart && c.SelectedTurn() &&
+                    SampleRouteStep(c.Data().route, 0).heading == pair.heading,
+                    "simultaneous directional keys author diagonal compass heading");
+        const auto beforeCount = c.Data().route.turns.size();
+        for (int frame = 0; frame < 20; ++frame)
+            ApplyEditorControls(c, u, keys);
+        keys.directionKeysHeld = 0;
+        ApplyEditorControls(c, u, keys);
+        ok &= Check(c.Data().route.turns.size() == beforeCount,
+                    "holding and releasing diagonal keys places one note");
+    }
+    {
+        ChartEditor c;
+        EditorUiState u;
+        EditorControls keys;
+        keys.directionKeysHeld = 4u; // J pressed first
+        keys.elapsedSeconds = 0.016f;
+        ApplyEditorControls(c, u, keys);
+        ok &= Check(!c.SelectedTurn(), "single J waits briefly for diagonal partner");
+        keys.directionKeysHeld = 4u | 8u; // K joins within the grace period
+        ApplyEditorControls(c, u, keys);
+        ok &= Check(c.SelectedTurn() &&
+                    SampleRouteStep(c.Data().route, 0).heading == Heading::UpRight,
+                    "closely staggered J+K places diagonal, not an initial up note");
+    }
+    {
+        ChartEditor c;
+        EditorUiState u;
+        EditorControls tap;
+        tap.directionKeysHeld = 2u; // F = down
+        tap.elapsedSeconds = 0.016f;
+        ApplyEditorControls(c, u, tap);
+        tap.directionKeysHeld = 0u;
+        const auto applied = ApplyEditorControls(c, u, tap);
+        ok &= Check(applied.changedChart && c.SelectedTurn() &&
+                    SampleRouteStep(c.Data().route, 0).heading == Heading::Down,
+                    "a quickly tapped F still places one down note on release");
+    }
+    for (const unsigned invalid : {1u | 8u, 2u | 4u, 15u}) {
+        ChartEditor c;
+        EditorUiState u;
+        EditorControls keys;
+        keys.directionKeysHeld = invalid;
+        const auto blocked = ApplyEditorControls(c, u, keys);
+        ok &= Check(!blocked.changedChart && !c.SelectedTurn(),
+                    "opposite or 3+ compass keys never create an ambiguous note");
+    }
+    for (const auto& cardinal : {std::pair<unsigned, Heading>{1u, Heading::Left},
+                                 {8u, Heading::Right}}) {
+        ChartEditor c;
+        c.RotateHeading45(-2); // Start upward so neither is opposite.
+        EditorUiState u;
+        EditorControls keys;
+        keys.directionKeysHeld = cardinal.first;
+        keys.elapsedSeconds = 0.05f;
+        ApplyEditorControls(c, u, keys);
+        ApplyEditorControls(c, u, keys);
+        ApplyEditorControls(c, u, keys);
+        ok &= Check(c.SelectedTurn() &&
+                    SampleRouteStep(c.Data().route, 0).heading == cardinal.second,
+                    "D and K single keys select their absolute compass headings");
+    }
+
     // Eight-way compass on ROUTE authors actual diagonal route notes.
     ChartEditor compassUi;
     EditorUiState diagonalUi;
