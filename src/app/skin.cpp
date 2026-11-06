@@ -83,15 +83,15 @@ bool Skin::Valid(std::string& error) const {
         return false;
     }
     const struct { float value, min, max; const char* label; } fields[] = {
-        {lookaheadBeats, 0.5f, 16.0f, "Trajectory length"},
-        {pathWidth, 1.0f, 16.0f, "Trajectory width"},
-        {outlineScale, 1.0f, 4.0f, "Outline scale"},
-        {fadePower, 0.25f, 4.0f, "Fade curve"},
-        {pathOpacity, 0.1f, 1.0f, "Trajectory opacity"},
-        {junctionRadius, 2.0f, 24.0f, "Junction radius"},
-        {playerRadius, 4.0f, 30.0f, "Player radius"},
-        {cameraStep, 25.0f, 100.0f, "Camera zoom"},
-        {hitFlashScale, 0.5f, 3.0f, "Hit flash scale"}
+        {lookaheadBeats, 0.25f, 64.0f, "Trajectory length"},
+        {pathWidth, 0.25f, 40.0f, "Trajectory width"},
+        {outlineScale, 1.0f, 8.0f, "Outline scale"},
+        {fadePower, 0.1f, 8.0f, "Fade curve"},
+        {pathOpacity, 0.0f, 1.0f, "Trajectory opacity"},
+        {junctionRadius, 1.0f, 64.0f, "Junction radius"},
+        {playerRadius, 1.0f, 80.0f, "Player radius"},
+        {cameraStep, 10.0f, 250.0f, "Camera zoom"},
+        {hitFlashScale, 0.1f, 8.0f, "Hit flash scale"}
     };
     for (const auto& field : fields) {
         if (!InRange(field.value, field.min, field.max)) {
