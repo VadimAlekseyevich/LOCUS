@@ -9,6 +9,7 @@
 #include "app/chart_playback.h"
 #include "app/music_picker.h"
 #include "app/chart_editor_ui.h"
+#include "app/chart_editor_layout.h"
 #include "app/chart_filename.h"
 #include "app/visual_style.h"
 #include "app/route_renderer.h"
@@ -1401,6 +1402,12 @@ int main(int argc, char** argv) {
                         input.quitCanceled = true;
                 }
             }
+        }
+        if (!wasQuitConfirmation && state.screen == Screen::Editor &&
+            input.editor.mouseClick &&
+            CheckCollisionPointRec(input.editor.mouse,
+                                   locus::app::detail::kEditorBack)) {
+            input.backPressed = true;
         }
         const bool importFromHome =
             !wasQuitConfirmation && state.screen == Screen::Home &&
