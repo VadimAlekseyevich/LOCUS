@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace locus::core {
@@ -73,6 +74,31 @@ Cell StepInHeading(Cell cell, Heading heading) noexcept {
 }
 
 } // namespace
+
+std::int64_t EventTimeMs(const Chart& chart, const TurnEvent& note,
+                         double offsetSeconds) noexcept {
+    if (note.timeMs != kNoTimeMs) return note.timeMs;
+    if (!std::isfinite(chart.bpm) || chart.bpm <= 0.0 ||
+        chart.ticksPerBeat <= 0 || !std::isfinite(offsetSeconds))
+        return 0;
+    const double ms = offsetSeconds * 1000.0 +
+        static_cast<double>(note.beat) * 60000.0 /
+            (chart.bpm * chart.ticksPerBeat);
+    return std::isfinite(ms) ? static_cast<std::int64_t>(std::llround(ms)) : 0;
+}
+
+int TickAtTimeMs(double bpm, int ticksPerBeat, double offsetSeconds,
+                 std::int64_t timeMs) noexcept {
+    if (!std::isfinite(bpm) || bpm <= 0.0 || ticksPerBeat <= 0 ||
+        !std::isfinite(offsetSeconds)) return 0;
+    const double tick = (static_cast<double>(timeMs) -
+                         offsetSeconds * 1000.0) * bpm * ticksPerBeat / 60000.0;
+    if (!std::isfinite(tick)) return 0;
+    const double bounded = std::clamp(tick,
+        static_cast<double>(std::numeric_limits<int>::min()),
+        static_cast<double>(std::numeric_limits<int>::max()));
+    return static_cast<int>(std::llround(bounded));
+}
 
 bool ValidHeading(Heading heading) noexcept {
     const int value = static_cast<int>(heading);
