@@ -310,7 +310,7 @@ All build output is kept locally and ignored by Git. Nothing is uploaded automat
 | `build_and_run.bat run` | Same as double-click |
 | `build_and_run.bat build` | Pull and compile the production game without launching a window |
 | `build_and_run.bat game` | Open LOCUS with F1–F4 debug screen switching |
-| `build_and_run.bat baseline` | Build LOCUS, measure startup and 12 seconds of GUI idle CPU/memory; then close with Esc/X |
+| `build_and_run.bat baseline` | Build LOCUS, measure startup and 12 seconds of GUI idle CPU/memory; then close with Esc on Home / X and confirm with Y |
 | `build_and_run.bat audio` | Run the original A-07 metronome/audio-input experiment |
 | `build_and_run.bat test` | Run A-07 WAV self-test without a graphical window |
 | `build_and_run.bat smoke` | Run A-07 WAV and audio-device smoke tests |
