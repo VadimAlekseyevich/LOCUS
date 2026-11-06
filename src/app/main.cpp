@@ -135,9 +135,13 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     input.restartPressed = IsKeyPressed(gameplayKeys
         ? settings.Key(locus::app::GameAction::Retry) : KEY_R);
     input.homePressed = IsKeyPressed(gameplayKeys
-        ? settings.Key(locus::app::GameAction::Home) : KEY_H);
+        ? settings.Key(locus::app::GameAction::Home) : KEY_H) &&
+        !(currentScreen == Screen::Editor &&
+          locus::app::IsGameDirectionKey(settings, KEY_H));
     input.fullscreenPressed = IsKeyPressed(KEY_F11);
-    input.chooseMusicPressed = IsKeyPressed(KEY_O);
+    input.chooseMusicPressed = IsKeyPressed(KEY_O) &&
+        !(currentScreen == Screen::Editor &&
+          locus::app::IsGameDirectionKey(settings, KEY_O));
     input.chooseChartPressed = IsKeyPressed(KEY_C);
     input.openEditorPressed = IsKeyPressed(KEY_E);
     input.openPlayPressed = IsKeyPressed(KEY_P);
@@ -149,7 +153,9 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     input.editorSaveAs = control && IsKeyPressed(KEY_S) && shift;
     input.editorOpen = control && IsKeyPressed(KEY_O);
     input.editorNew = control && IsKeyPressed(KEY_N);
-    input.editorTest = IsKeyPressed(KEY_T);
+    input.editorTest = IsKeyPressed(KEY_T) &&
+        !(currentScreen == Screen::Editor &&
+          locus::app::IsGameDirectionKey(settings, KEY_T));
     input.practiceSpeedIndex = IsKeyPressed(KEY_ONE) ? 0
                               : IsKeyPressed(KEY_TWO) ? 1
                               : IsKeyPressed(KEY_THREE) ? 2
@@ -168,7 +174,7 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     // The chart editor consumes the raylib UTF-8 character queue.
     // Never drain it on SKIN: its numeric/name text inputs own that queue.
     if (currentScreen == Screen::Editor)
-        input.editor = locus::app::PollEditorControls();
+        input.editor = locus::app::PollEditorControls(settings, input.arrowHeld);
     return input;
 }
 
@@ -716,7 +722,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         locus::app::RenderChartEditor(font, editor, editorUi,
                                      localSong.DisplayName(), localSong.Ready(),
                                      editorTransport.Playing(), editorTransport.Paused(),
-                                     selectedBeat, editorTransport.Speed());
+                                     selectedBeat, editorTransport.Speed(), gameplay.bindings);
         const std::string statusLine = editorStatus.substr(0, 68);
         DrawTextLabel(font, statusLine.c_str(), Vector2{50.0f, 525.0f},
                       12.0f, Color{175, 212, 213, 255});
