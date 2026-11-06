@@ -1425,9 +1425,10 @@ int main(int argc, char** argv) {
             input.backPressed = true;
         }
         const bool importFromHome =
-            !wasQuitConfirmation && state.screen == Screen::Home &&
-            input.chooseChartPressed;
-        const MenuEvents menuEvents = wasQuitConfirmation ? MenuEvents{} :
+            !wasQuitConfirmation && !input.closeRequested &&
+            state.screen == Screen::Home && input.chooseChartPressed;
+        const MenuEvents menuEvents =
+            (wasQuitConfirmation || input.closeRequested) ? MenuEvents{} :
             HandleMenuInput(state, input, library, libraryUi, settings,
                             settingsUi, draftSkin, skinUi);
         if (menuEvents.toggleFullscreen) ToggleBorderlessWindowed();
@@ -1515,7 +1516,7 @@ int main(int argc, char** argv) {
             input.chooseMusicPressed = false;
             input.editorTest = false;
         }
-        if (input.fullscreenPressed) {
+        if (input.fullscreenPressed && !input.closeRequested) {
             ToggleBorderlessWindowed(); // F11: fullscreen desktop / resizable window
             settings.fullscreen = !settings.fullscreen;
             persistSettings();
@@ -1563,6 +1564,7 @@ int main(int argc, char** argv) {
             }
         }
         UpdateState(state, input, smokeWindow);
+        if (state.quitConfirmation) input = FrameInput{}; // No actions beneath dialog.
         if (previousScreen == Screen::Skin && state.screen != Screen::Skin) {
             // Back/Esc cancels all unsaved skin edits.
             draftSkin = activeSkin;
