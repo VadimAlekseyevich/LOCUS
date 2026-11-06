@@ -1574,6 +1574,14 @@ int main(int argc, char** argv) {
         }
 
         if (state.screen != previousScreen) {
+            if (state.screen == Screen::Editor) {
+                // A key used to open EDIT may itself be rebound to a game
+                // direction. Do not turn that held menu key into a new note;
+                // re-arm placement only once the player releases it.
+                editorUi.pendingDirection = 0;
+                editorUi.pendingDirectionSeconds = 0.0f;
+                editorUi.directionKeysHandled = true;
+            }
             if (previousScreen == Screen::Play) {
                 gameSession.Stop(customChart);
             }
