@@ -19,6 +19,7 @@
 #include "app/skin_menu.h"
 #include "app/menu_ui.h"
 #include "app/native_close.h"
+#include "app/screen_flow.h"
 
 #include "raylib.h"
 
@@ -37,9 +38,13 @@
 
 // Production screens share one window and one input/update/render loop.
 namespace {
+using locus::app::AppState;
+using locus::app::Screen;
+using locus::app::ScreenName;
+using locus::app::kSmokeFrames;
+
 constexpr int kWindowWidth = 960;
 constexpr int kWindowHeight = 540;
-constexpr int kSmokeFrames = 60;
 constexpr Color kBackground = {21, 23, 33, 255};
 
 double MonotonicSeconds() {
@@ -47,17 +52,6 @@ double MonotonicSeconds() {
     static const auto epoch = Clock::now();
     return std::chrono::duration<double>(Clock::now() - epoch).count();
 }
-
-enum class Screen {
-    Home,
-    Play,
-    Editor,
-    Results,
-    Listen,
-    SongSelect,
-    Skin,
-    Settings
-};
 
 struct FrameInput {
     bool closeRequested = false;
@@ -90,29 +84,8 @@ struct FrameInput {
 
 enum class EditorPending { None, Home, NewDraft, OpenChart };
 
-struct AppState {
-    bool running = true;
-    bool quitConfirmation = false; // Actual app close always needs explicit approval.
-    int frames = 0;
-    Screen screen = Screen::Home;
-};
-
 bool HasArgument(int argc, char** argv, const char* argument) {
     return argc == 2 && std::strcmp(argv[1], argument) == 0;
-}
-
-const char* ScreenName(Screen screen) {
-    switch (screen) {
-        case Screen::Home: return "Home";
-        case Screen::Play: return "Play";
-        case Screen::Editor: return "Editor";
-        case Screen::Results: return "Results";
-        case Screen::Listen: return "Listen";
-        case Screen::SongSelect: return "Song Library";
-        case Screen::Skin: return "Skin";
-        case Screen::Settings: return "Settings";
-    }
-    return "Unknown";
 }
 
 // 1. Input: raylib already pumps native events at the end of each drawn frame.
@@ -183,42 +156,18 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     return input;
 }
 
-// 2. Update: only state transitions here. No drawing or gameplay logic.
+// Platform-specific input is reduced to navigation actions. The screen
+// transition policy stays independently testable without a window.
 void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
-    if (smokeWindow && state.frames >= kSmokeFrames) {
-        state.running = false;
-        return;
-    }
-    if (state.quitConfirmation) {
-        if (input.quitConfirmed) {
-            state.running = false;
-            return;
-        }
-        if (input.quitCanceled) state.quitConfirmation = false;
-        ++state.frames; // A modal blocks all unrelated navigation.
-        return;
-    }
-    if (input.closeRequested) {
-        state.quitConfirmation = true;
-        ++state.frames; // Show a modal; do not close LOCUS yet.
-        return;
-    }
-    if (input.requestedScreen.has_value()) {
-        state.screen = *input.requestedScreen;
-    } else if ((input.homePressed || input.backPressed) &&
-               state.screen != Screen::Home) {
-        state.screen = Screen::Home;
-    } else if (state.screen == Screen::Home) {
-        if (input.openEditorPressed) state.screen = Screen::Editor;
-        else if (input.openSkinPressed) state.screen = Screen::Skin;
-        else if (input.openSettingsPressed) state.screen = Screen::Settings;
-        else if (input.startPressed || input.openPlayPressed ||
-                 input.chooseChartPressed) state.screen = Screen::SongSelect;
-    } else if (state.screen == Screen::Results &&
-               (input.startPressed || input.restartPressed)) {
-        state.screen = Screen::Play;
-    }
-    ++state.frames;
+    locus::app::UpdateScreenFlow(state, {
+        input.closeRequested, input.requestedScreen,
+        input.quitConfirmed, input.quitCanceled,
+        input.startPressed, input.restartPressed,
+        input.homePressed, input.backPressed,
+        input.openEditorPressed, input.openSkinPressed,
+        input.openSettingsPressed, input.openPlayPressed,
+        input.chooseChartPressed
+    }, smokeWindow);
 }
 
 // A scored chart ends when its LAST eligible note has been judged, not when
