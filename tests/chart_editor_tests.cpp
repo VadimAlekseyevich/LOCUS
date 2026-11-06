@@ -300,6 +300,67 @@ int main() {
                 SampleRouteStep(compass.Data().route, 1).heading == Heading::Down,
                 "editor can set a diagonal initial heading in 45 degree increments");
 
+    // A 250 BPM chart can gain triplets AFTER authoring without moving
+    // existing notes in song time or modifying the musical BPM.
+    ChartEditor subdivisions;
+    subdivisions.NewDraft();
+    ok &= Check(subdivisions.SetBpm(250) && subdivisions.SetOffsetMs(500) &&
+                subdivisions.SetSongDuration(10.0) &&
+                subdivisions.SelectBeat(5),
+                "setup 250 BPM song with integer millisecond offset");
+    subdivisions.PutTurn(Turn::Left);
+    ok &= Check(subdivisions.Data().route.turns[0].timeMs == 1700,
+                "newly placed note stores absolute timeMs, not beat");
+    ok &= Check(subdivisions.SetSnapDivision(2) &&
+                subdivisions.Data().route.ticksPerBeat == 2 &&
+                subdivisions.Data().route.turns[0].beat == 10 &&
+                subdivisions.Data().route.turns[0].timeMs == 1700,
+                "half-beat grid preserves time of original note");
+    ok &= Check(subdivisions.SetSnapDivision(3) &&
+                subdivisions.Data().route.bpm == 250 &&
+                subdivisions.Data().route.ticksPerBeat == 6 &&
+                subdivisions.Data().route.turns[0].beat == 30 &&
+                subdivisions.Data().route.turns[0].timeMs == 1700,
+                "triplet grid expands LCM ticks but keeps BPM and note time");
+    ok &= Check(subdivisions.StepSnapSelection(1) &&
+                subdivisions.SelectedBeat() == 32,
+                "right-arrow moves to next 1/3 musical-beat grid line");
+    subdivisions.PutTurn(Turn::Right);
+    ok &= Check(subdivisions.Data().route.turns.size() == 2 &&
+                subdivisions.Data().route.turns[1].timeMs == 1780,
+                "new triplet note falls exactly 80 ms after existing note at 250 BPM");
+    ok &= Check(subdivisions.SetSnapDivision(1) &&
+                subdivisions.Data().route.turns[0].timeMs == 1700 &&
+                subdivisions.Data().route.turns[1].timeMs == 1780,
+                "reducing grid density does not delete off-grid notes");
+    ok &= Check(subdivisions.SetBpm(300) &&
+                subdivisions.Data().route.bpm == 300 &&
+                subdivisions.Data().route.turns[0].timeMs == 1700 &&
+                subdivisions.Data().route.turns[1].timeMs == 1780,
+                "changing BPM preserves absolute note timestamps");
+    ok &= Check(subdivisions.SetOffsetMs(750) &&
+                subdivisions.Data().route.turns[0].timeMs == 1700 &&
+                subdivisions.Data().route.turns[1].timeMs == 1780 &&
+                !subdivisions.SetOffsetMs(750.5),
+                "offset changes preserve absolute notes and disallow fractional ms");
+    ok &= Check(subdivisions.Undo() &&
+                subdivisions.Data().route.turns[0].timeMs == 1700 &&
+                subdivisions.Redo() &&
+                subdivisions.Data().route.turns[1].timeMs == 1780,
+                "undo/redo preserves millisecond timestamps through timing changes");
+
+    // Even a timestamp slightly between grid ticks must be scored at its
+    // exact integer ms instead of the nearest visual snap position.
+    Chart preciseChart;
+    preciseChart.bpm = 250;
+    preciseChart.ticksPerBeat = 6;
+    preciseChart.turns.push_back({2, Turn::Left, 583});
+    TurnJudge exactJudge(preciseChart);
+    const auto exactHit = exactJudge.Press(Turn::Left, 0.583);
+    ok &= Check(exactHit && exactHit->grade == Grade::Perfect &&
+                std::abs(exactHit->timingErrorSeconds) < 1e-12,
+                "scoring uses exact stored 583 ms, not 580 ms grid projection");
+
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 wrap=1\n";
     return 0;
