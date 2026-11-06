@@ -1,4 +1,5 @@
 #include "app/chart_editor_ui.h"
+#include "app/chart_editor_layout.h"
 #include "app/visual_style.h"
 
 #include <cmath>
@@ -41,6 +42,9 @@ int main() {
                 chart.Data().route.start.x == 3 &&
                 chart.Data().route.start.y == 3,
                 "editor opens with 8x8 square view and automatic route origin");
+    const detail::EditorGrid defaultGeometry(chart.Data().route, 0.0);
+    ok &= Check(std::abs(defaultGeometry.step - 30.0f) < 0.001f,
+                "8 visible editor cells occupy the complete 240px square");
 
     // Audio settings are no longer stacked on top of the route grid.
     ApplyEditorControls(chart, ui, Click(612, 89));
@@ -83,6 +87,10 @@ int main() {
                 chart.Data().route.start.x == 5 &&
                 chart.Data().route.start.y == 5,
                 "typing a single size 12 sets 12x12 with automatic start");
+    ok &= Check(std::abs(
+                    detail::EditorGrid(chart.Data().route, 0.0).step - 20.0f) <
+                    0.001f,
+                "12 cells still fit inside the same square editor preview");
     ApplyEditorControls(chart, ui, Click(598, 247));
     ok &= Check(!ui.EditingText(),
                 "removed start coordinate field cannot receive focus");
