@@ -20,6 +20,7 @@ Reviewed: 2026-11-06. Scope: current Windows/raylib rhythm game, not prospective
 - Chart v2 timestamps are authoritative in song milliseconds; editor snapping and visualization do not rewrite timing.
 - Movement speed is independent of BPM, snap subdivisions and heading; diagonals are Euclidean unit steps.
 - **2026-11-06:** Visible-route range sampling replaces repeated full-history scans for each preview segment. Random-access geometry remains available. The dense 240-tick window regression compares batched and standalone samples.
+- **2026-11-06:** Editor document loading/saving is isolated in `src/app/editor_document.*`. Failed loads validate their replacement chart, audio decoder and timeline before swapping; failed saves do not discard the active editor draft. Headless tests verify rejection paths.
 - **2026-11-06:** Import stages each audio version into an immutable content-fingerprinted file before publishing chart JSON atomically. A crashed or failed import can leave an unreferenced version, but cannot silently change audio bytes used by previously installed difficulties. Each difficulty owns its selected audio path, while the song browser groups versions under one logical song.
 - Windows CI builds Release, runs CTests and headless checks, checks worktree cleanliness, exercises the actual BAT launcher, and uploads diagnostics. GUI behavior and acoustic latency are not proven by CI.
 
@@ -31,7 +32,7 @@ The chart JSON is the sole publication point. Imported audio is immutable and ch
 
 ### P1 — Reduce `main.cpp` session orchestration
 
-`main.cpp` still contains roughly 1,500 lines, including editor commands, file dialogs, draft saves, chart/audio selection, scored-session transitions and quit modal handling. Extract **one cohesive editor/session coordinator at a time**, retaining stable chart references and the existing atomic load behavior. Do not split functions merely by length or introduce a general-purpose event framework. Add transition tests for Editor → Test → Results → Editor, failed reloads, and quit confirmation during playback.
+`main.cpp` still orchestrates editor commands, song selection, scored-session transitions and quit modal handling. Editor document load/save has been extracted, but most screen/session coordination remains. Extract **one cohesive editor/session coordinator at a time**, retaining stable chart references and the existing atomic load behavior. Do not split functions merely by length or introduce a general-purpose event framework. Add transition tests for Editor → Test → Results → Editor, failed reloads, and quit confirmation during playback.
 
 ### P2 — Make audio-device ownership explicit
 

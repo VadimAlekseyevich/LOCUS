@@ -41,6 +41,7 @@ add_executable(locus
     src/app/music_picker.cpp
     src/app/chart_file.cpp
     src/app/chart_save.cpp
+    src/app/editor_document.cpp
     src/app/chart_playback.cpp
     src/app/game_session.cpp
     src/app/song_library.cpp
@@ -132,6 +133,25 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_chart_file_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_chart_file_tests PRIVATE locus_core)
     add_test(NAME locus_chart_local_file COMMAND locus_chart_file_tests)
+
+    # Document load/save orchestration must preserve an unsaved editor draft
+    # across malformed charts, failed audio validation and failed saves.
+    add_executable(locus_editor_document_tests
+        tests/editor_document_tests.cpp
+        src/app/editor_document.cpp
+        src/app/local_music.cpp
+        src/app/local_file_io.cpp
+        src/app/chart_file.cpp
+        src/app/chart_save.cpp
+        src/app/music_picker.cpp
+    )
+    target_compile_features(locus_editor_document_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_editor_document_tests PRIVATE
+        locus_core raylib nlohmann_json::nlohmann_json)
+    if(WIN32)
+        target_link_libraries(locus_editor_document_tests PRIVATE comdlg32 user32)
+    endif()
+    add_test(NAME locus_editor_document_lifecycle COMMAND locus_editor_document_tests)
 
     add_executable(locus_path_fade_tests tests/path_fade_tests.cpp)
     target_compile_features(locus_path_fade_tests PRIVATE cxx_std_17)
