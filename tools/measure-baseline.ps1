@@ -96,7 +96,7 @@ Add-Metric "input_latency_measured" "false"
 if ($Mode -eq "Interactive") {
     Write-Host ""
     Write-Host "[LOCUS] A blank LOCUS window will open. Do not interact with it for $SampleSeconds seconds."
-    Write-Host "[LOCUS] After sampling ends, close it using Esc or X."
+    Write-Host "[LOCUS] After sampling, press Esc on Home or X, then Y to confirm exit."
     $guiStdout = Join-Path $output "baseline-gui-output.txt"
     $guiStderr = Join-Path $output "baseline-gui-error.txt"
     $guiWatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -168,7 +168,7 @@ if ($Mode -eq "Interactive") {
         Add-Metric "gui_idle_observation" "insufficient_samples"
     }
     if (-not $gui.HasExited) {
-        Write-Host "[LOCUS] Sampling complete. Please close the LOCUS window (Esc or X)."
+        Write-Host "[LOCUS] Sampling complete. Press Esc on Home or X, then Y / QUIT in the confirmation."
         $gui.WaitForExit()
     }
     $gui.Refresh()
