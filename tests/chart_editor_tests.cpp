@@ -362,6 +362,13 @@ int main() {
     ok &= Check(exactHit && exactHit->grade == Grade::Perfect &&
                 std::abs(exactHit->timingErrorSeconds) < 1e-12,
                 "scoring uses exact stored 583 ms, not 580 ms grid projection");
+    exactJudge.ResetFromAudioSeconds(0.581);
+    ok &= Check(exactJudge.NextEvent() &&
+                exactJudge.NextEvent()->timeMs == 583,
+                "TEST beginning at 581ms retains the 583ms note despite snap rounding");
+    exactJudge.ResetFromAudioSeconds(0.584);
+    ok &= Check(!exactJudge.NextEvent(),
+                "TEST beginning after the 583ms note correctly skips it");
 
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 wrap=1\n";
