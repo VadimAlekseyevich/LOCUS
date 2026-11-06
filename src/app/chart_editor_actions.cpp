@@ -17,8 +17,7 @@ const char* FieldName(EditorField field) {
         case EditorField::Title: return "TITLE";
         case EditorField::Bpm: return "BPM";
         case EditorField::OffsetMs: return "OFFSET (MS)";
-        case EditorField::GridSize: return "GRID SIZE (W/H)";
-        case EditorField::StartCell: return "START (X/Y)";
+        case EditorField::GridSize: return "SQUARE SIZE";
         case EditorField::None: break;
     }
     return "";
@@ -29,8 +28,7 @@ Rectangle FieldBounds(EditorField field) {
         case EditorField::Title: return kTitle;
         case EditorField::Bpm: return kBpm;
         case EditorField::OffsetMs: return kOffset;
-         case EditorField::GridSize: return kGridSize;
-        case EditorField::StartCell: return kStartCell;
+        case EditorField::GridSize: return kGridSize;
         case EditorField::None: break;
     }
     return {0, 0, 0, 0};
@@ -43,10 +41,7 @@ EditorField ClickedField(Vector2 mouse, EditorTab tab) {
             if (Hit(FieldBounds(field), mouse)) return field;
         }
     } else if (tab == EditorTab::Field) {
-        for (const auto field : {EditorField::GridSize, EditorField::StartCell,
-                                  }) {
-            if (Hit(FieldBounds(field), mouse)) return field;
-        }
+        if (Hit(kGridSize, mouse)) return EditorField::GridSize;
     }
     return EditorField::None;
 }
@@ -61,12 +56,8 @@ std::string InitialValue(const core::ChartEditor& draft, EditorField field) {
         case EditorField::OffsetMs:
             std::snprintf(text, sizeof(text), "%.0f", draft.Data().offsetSeconds * 1000.0);
             return text;
-         case EditorField::GridSize:
-            return std::to_string(draft.Data().route.gridWidth) + "/" +
-                   std::to_string(draft.Data().route.gridHeight);
-        case EditorField::StartCell:
-            return std::to_string(draft.Data().route.start.x) + "/" +
-                   std::to_string(draft.Data().route.start.y);
+        case EditorField::GridSize:
+            return std::to_string(draft.Data().route.gridWidth);
         default: return "";
     }
 }
@@ -85,22 +76,14 @@ bool ParseNumeric(const std::string& string, double& result) {
     return end && end != string.c_str() && *end == '\0' && std::isfinite(result);
 }
 
-// A field size like 8/8 (or 8x8) is two game-field dimensions,
-// not a musical time signature. Coordinates are zero-based.
-bool ParsePair(const std::string& value, int& first, int& second) {
-    if (value.empty()) return false;
-    char* middle = nullptr;
-    const long a = std::strtol(value.c_str(), &middle, 10);
-    if (middle == value.c_str() ||
-        (*middle != '/' && *middle != 'x' && *middle != 'X')) return false;
-    char* end = nullptr;
-    const long b = std::strtol(middle + 1, &end, 10);
-    if (end == middle + 1 || *end != '\0' ||
-        a < 0 || a > std::numeric_limits<int>::max() ||
-        b < 0 || b > std::numeric_limits<int>::max()) return false;
-    first = static_cast<int>(a);
-    second = static_cast<int>(b);
-    return true;
+// One integer controls the square's side: never accept a width/height pair.
+bool ParseSquareSize(const std::string& value, int& size) {
+    if (value.empty() || value.size() > 2 ||
+        !std::all_of(value.begin(), value.end(),
+                     [](unsigned char c) { return c >= '0' && c <= '9'; }))
+        return false;
+    size = std::atoi(value.c_str());
+    return size >= core::kMinGridSize && size <= core::kMaxGridSize;
 }
 
 bool CommitField(EditorUiState& ui, core::ChartEditor& draft) {
@@ -109,14 +92,10 @@ bool CommitField(EditorUiState& ui, core::ChartEditor& draft) {
     bool valid = false;
     if (field == EditorField::Title) {
         valid = draft.SetTitle(ui.buffer);
-    } else if (field == EditorField::GridSize || field == EditorField::StartCell) {
-        int x = 0, y = 0;
-        if (ParsePair(ui.buffer, x, y)) {
-            if (field == EditorField::GridSize) valid = draft.SetGridSize(x, y);
-            else valid = draft.SetStart({x, y}) ||
-                         (draft.Data().route.start.x == x &&
-                          draft.Data().route.start.y == y);
-        }
+    } else if (field == EditorField::GridSize) {
+        int size = 0;
+        if (ParseSquareSize(ui.buffer, size))
+            valid = draft.SetGridSize(size, size);
     } else {
         double value = 0.0;
         if (ParseNumeric(ui.buffer, value)) {
@@ -383,13 +362,12 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                 ui.replaceOnType = false;
             }
             for (unsigned char c : input.typedUtf8) {
-                const bool pairField = ui.active == EditorField::GridSize ||
-                                       ui.active == EditorField::StartCell;
+                const bool wholeGrid = ui.active == EditorField::GridSize;
                 if (ui.active == EditorField::Title ||
-                    (pairField && (c == '/' || c == 'x' || c == 'X')) ||
-                    ((c == '.' || c == ',') &&
+                    (!wholeGrid && (c == '.' || c == ',') &&
                      ui.active != EditorField::OffsetMs) ||
-                    c == '-' || (c >= '0' && c <= '9')) {
+                    (!wholeGrid && c == '-') ||
+                    (c >= '0' && c <= '9')) {
                     if (ui.buffer.size() < 100)
                         ui.buffer.push_back(static_cast<char>(
                             c == ',' && ui.active != EditorField::Title ? '.' : c));
@@ -570,27 +548,6 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                 ui.dragViewBeat = anchor;
             }
             draft.SelectBeat(beat);
-        } else if (ui.tab == EditorTab::Route) {
-            const auto& chart = draft.Data().route;
-            const EditorGrid grid(chart, ViewBeat(draft, input.timelineViewBeat));
-            const float tolerance = std::clamp(grid.step * 0.38f, 7.0f, 19.0f);
-            for (int y = 0; y < chart.gridHeight; ++y)
-                for (int x = 0; x < chart.gridWidth; ++x) {
-                    const auto center = grid.Point(core::Cell{x, y});
-                    if (std::abs(mouse.x - center.x) <= tolerance &&
-                        std::abs(mouse.y - center.y) <= tolerance &&
-                        mouse.x >= kGridCenterX - kGridMaxSpan * 0.5f &&
-                        mouse.x <= kGridCenterX + kGridMaxSpan * 0.5f &&
-                        mouse.y >= kGridCenterY - kGridMaxSpan * 0.5f &&
-                        mouse.y <= kGridCenterY + kGridMaxSpan * 0.5f) {
-                        if (draft.SetStart({x, y})) {
-                            draft.SelectBeat(draft.Data().route.firstBeat);
-                            action.changedChart = true;
-                        }
-                        return action;
-                    }
-                }
-        }
     }
 
     // Dragging past the visible ruler now autoscrolls the *view* as well as
