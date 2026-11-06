@@ -17,6 +17,10 @@ struct EditorControls {
     float elapsedSeconds = 0.0f;
     bool movePrevious = false, moveNext = false;
     bool addLeft = false, addRight = false, removeTurn = false;
+    // D=Left, F=Down, J=Up, K=Right. Adjacent held keys form
+    // diagonal chords; singles wait briefly so a chord never inserts
+    // an unwanted cardinal note first.
+    unsigned directionKeysHeld = 0; // D=1 F=2 J=4 K=8
     bool addLeft45 = false, addRight45 = false;
     bool addLeft135 = false, addRight135 = false;
     bool headingLeft = false, headingRight = false;
@@ -49,6 +53,9 @@ struct EditorUiState {
     bool feedbackError = false;
     int rangeFirst = -1, rangeLast = -1; // Inclusive selected beats.
     bool draggingTimeline = false;
+    unsigned pendingDirection = 0;
+    float pendingDirectionSeconds = 0.0f;
+    bool directionKeysHandled = false; // one note per chord/hold
     int dragAnchorBeat = 0;
     double dragViewBeat = 0.0;
     int heldBarDirection = 0;
