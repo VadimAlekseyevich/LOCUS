@@ -156,7 +156,9 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
     DrawCircleV(marker, markerRadius * 0.32f, Color{246, 251, 252, 255});
     EndScissorMode();
 
-    Label(font, TextFormat("BEAT %.2f / %d", bounded, chart.lengthBeats - 1),
+    Label(font, TextFormat("BEAT %.3f / %.2f", bounded / chart.ticksPerBeat,
+                           static_cast<double>(chart.lengthBeats - 1) /
+                               chart.ticksPerBeat),
           52, 405, 15, Color{158, 225, 212, 255});
     Label(font, TextFormat("START %d/%d", chart.start.x, chart.start.y),
           266, 405, 15, Color{247, 213, 131, 255});
@@ -167,18 +169,25 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     const auto& chart = draft.Data().route;
     const double anchor = ui.draggingTimeline
         ? ui.dragViewBeat : ViewBeat(draft, previewBeat);
-    const float pixels = PixelsPerBeat(ui);
+    const float pixels = PixelsPerTick(ui, chart);
+    const int ticks = chart.ticksPerBeat;
+    const int snapStep = ticks / chart.snapDivision;
 
     if (ui.HasRange()) {
-        Label(font, TextFormat("RANGE %d-%d", ui.rangeFirst, ui.rangeLast),
+        Label(font, TextFormat("RANGE %.3f-%.3f",
+                               static_cast<double>(ui.rangeFirst) / ticks,
+                               static_cast<double>(ui.rangeLast) / ticks),
               50, 422, 17, Color{239, 207, 131, 255});
     } else {
-        Label(font, TextFormat("TIMELINE  %.2f / %d", anchor, chart.lengthBeats),
+        Label(font, TextFormat("TIMELINE %.2f / %.2f", anchor / ticks,
+                               static_cast<double>(chart.lengthBeats) / ticks),
               50, 422, 17, Color{209, 222, 234, 255});
     }
-    Label(font, "ARROWS 1  CTRL+ARROWS 4", 328, 423, 13,
+    Label(font, TextFormat("GRID 1/%d", chart.snapDivision), 367, 423, 13,
           Color{164, 188, 208, 255});
-    Label(font, TextFormat("%d PX/BEAT", static_cast<int>(pixels)),
+    Button(font, kSnapLess, "LESS", Color{128, 221, 202, 255});
+    Button(font, kSnapMore, "MORE", Color{128, 221, 202, 255});
+    Label(font, TextFormat("%d PX/BEAT", static_cast<int>(PixelsPerBeat(ui))),
           693, 423, 13, Color{174, 205, 229, 255});
     Button(font, kZoomOut, "-", Color{125, 167, 205, 255});
     Button(font, kZoomIn, "+", Color{125, 167, 205, 255});
@@ -190,9 +199,9 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                      Color{41, 62, 70, 255}); // Past the fixed cursor.
     if (ui.tab == EditorTab::Route && ui.HasRange()) {
         const float a = kPlayheadX +
-            static_cast<float>((ui.rangeFirst - 0.5 - anchor) * pixels);
+            static_cast<float>((ui.rangeFirst - snapStep * 0.5 - anchor) * pixels);
         const float b = kPlayheadX +
-            static_cast<float>((ui.rangeLast + 0.5 - anchor) * pixels);
+            static_cast<float>((ui.rangeLast + snapStep * 0.5 - anchor) * pixels);
         const float x1 = std::max(a, kTimelineX + 2.0f);
         const float x2 = std::min(b, kTimelineX + kTimelineWidth - 2.0f);
         if (x2 > x1) {
@@ -212,21 +221,24 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     const int last = std::min(chart.lengthBeats - 1,
         static_cast<int>(std::ceil(
             anchor + (kTimelineX + kTimelineWidth - kPlayheadX) / pixels)) + 1);
-    const int barLabelStride = pixels < 20.0f ? 8 : 4;
+    const int barLabelStride = PixelsPerBeat(ui) < 20.0f ? 8 : 4;
 
-    for (int beat = first; beat <= last; ++beat) {
+    for (int tick = first; tick <= last; ++tick) {
+        if (tick % snapStep != 0) continue;
         const float x = kPlayheadX +
-                        static_cast<float>((static_cast<double>(beat) - anchor) * pixels);
+                        static_cast<float>((static_cast<double>(tick) - anchor) * pixels);
         if (x < kTimelineX + 5.0f || x > kTimelineX + kTimelineWidth - 5.0f)
             continue;
-        const bool bar = beat % 4 == 0;
-        DrawLineEx({x, bar ? 462.0f : 470.0f}, {x, 486.0f},
-                   bar ? 2.5f : 1.25f,
+        const bool bar = tick % (4 * ticks) == 0;
+        const bool major = tick % ticks == 0;
+        DrawLineEx({x, bar ? 462.0f : major ? 468.0f : 474.0f},
+                   {x, 486.0f}, bar ? 2.5f : major ? 1.5f : 1.0f,
                    bar ? Color{199, 220, 234, 255}
-                       : Color{113, 141, 163, 255});
-        if (bar && beat % barLabelStride == 0 &&
+                     : major ? Color{113, 141, 163, 255}
+                             : Color{81, 126, 135, 220});
+        if (bar && tick % (barLabelStride * ticks) == 0 &&
             x < kTimelineX + kTimelineWidth - 55.0f) {
-            Label(font, TextFormat("%d", beat), x + 4.0f, 450.0f, 13,
+            Label(font, TextFormat("%d", tick / ticks), x + 4.0f, 450.0f, 13,
                   Color{195, 215, 229, 255});
         }
     }
@@ -243,8 +255,10 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
         const bool left = event.direction == core::Turn::Left ||
                           event.direction == core::Turn::Left45 ||
                           event.direction == core::Turn::Left135;
-        const bool narrow = pixels < 26.0f;
-        const float width = narrow ? 12.0f : std::min(pixels - 3.0f, 32.0f);
+        const float spacing = pixels * snapStep;
+        const bool narrow = spacing < 26.0f;
+        const float width = narrow ? std::max(5.0f, std::min(spacing - 1.0f, 12.0f))
+                                   : std::min(spacing - 3.0f, 32.0f);
         DrawRectangleRec({x - width * 0.5f, 481.0f, width, 15.0f},
                          left ? Color{96, 220, 193, 255}
                               : Color{175, 155, 236, 255});
@@ -305,7 +319,9 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         const auto incoming = core::IncomingHeadingAt(chart, draft.SelectedBeat());
         const auto outgoing = turn ? core::HeadingAfterTurn(incoming, turn->direction)
                                    : incoming;
-        Label(font, TextFormat("BEAT %d / %s", draft.SelectedBeat(),
+        Label(font, TextFormat("BEAT %.3f / %s",
+                              static_cast<double>(draft.SelectedBeat()) /
+                                  chart.ticksPerBeat,
                               turn ? core::TurnName(turn->direction) : "STRAIGHT"),
               744, 250, 12, Color{216, 232, 239, 255});
         const char* padNames[9] = {"UL", "U", "UR", "L", "DEL", "R",
