@@ -141,13 +141,25 @@ void DrawSlider(Rectangle track, double value, const SkinNumberRange& range) {
 
 void PreviewPath(Font font, const Skin& skin) {
     const Rectangle area{605.0f, 193.0f, 298.0f, 248.0f};
+    const Rectangle frame{653.0f, 220.0f, 200.0f, 200.0f};
     DrawRectangleRounded(area, 0.07f, 6, skin.background);
     DrawRectangleRoundedLinesEx(area, 0.07f, 6, 1.2f, kMuted);
-    Label(font, "LIVE PREVIEW", 622, 206, 14.0f, kMuted);
+    Label(font, "LIVE GAMEPLAY SQUARE", 622, 202, 14.0f, kMuted);
+
+    // The SKIN preview clips exactly like the real centred gameplay window,
+    // including thick outline strokes and partially visible junctions.
+    const float scale = std::min(static_cast<float>(GetScreenWidth()) / 960.0f,
+                                 static_cast<float>(GetScreenHeight()) / 540.0f);
+    const float ox = (GetScreenWidth() - 960.0f * scale) * 0.5f;
+    const float oy = (GetScreenHeight() - 540.0f * scale) * 0.5f;
+    BeginScissorMode(static_cast<int>(std::floor(ox + frame.x * scale)),
+                     static_cast<int>(std::floor(oy + frame.y * scale)),
+                     static_cast<int>(std::ceil(frame.width * scale)),
+                     static_cast<int>(std::ceil(frame.height * scale)));
     const auto point = [&](float beats) {
         const float progress = beats / skin.lookaheadBeats;
-        return Vector2{630.0f + 241.0f * progress,
-                       336.0f - 46.0f * std::sin(progress * 5.2f)};
+        return Vector2{687.0f + 188.0f * progress,
+                       335.0f - 46.0f * std::sin(progress * 5.2f)};
     };
     for (int i = 95; i >= 0; --i) {
         const float a = skin.lookaheadBeats * i / 96.0f;
@@ -168,10 +180,12 @@ void PreviewPath(Font font, const Skin& skin) {
         DrawCircleV(marker, radius * 1.65f, WithOpacity(skin.player, 0.2f));
     DrawCircleV(marker, radius, skin.player);
     DrawCircleV(marker, radius * 0.33f, skin.playerCore);
-    DrawRectangleLinesEx({653.0f, 218.0f, 180.0f, 180.0f},
+    EndScissorMode();
+
+    DrawRectangleLinesEx({frame.x + 0.75f, frame.y + 0.75f,
+                          frame.width - 1.5f, frame.height - 1.5f},
                          1.5f, skin.fieldBorder);
-    Label(font, "SLIDER: EVERYDAY RANGE", 618, 402, 12, kMuted);
-    Label(font, "TYPE: EXTENDED VALUES", 618, 420, 12, kMuted);
+    Label(font, "FIELD BORDER COLOUR IN COLORS", 616, 425, 11.0f, kMuted);
 }
 
 void StartNumberEdit(const Skin& skin, SkinUi& ui, int row) {
