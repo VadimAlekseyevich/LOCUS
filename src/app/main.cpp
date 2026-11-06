@@ -289,14 +289,19 @@ constexpr Rectangle kGameplayWorldViewport{
 struct GameplayCamera {
     static constexpr float kCenterX = kWindowWidth * 0.5f;
     static constexpr float kCenterY = kWindowHeight * 0.5f;
-    static constexpr float kStep = 51.0f; // Less zoomed than the old 75px/beat.
+    // The skin's original 51px cameraStep is the default 100% zoom. At
+    // that zoom, the square shows gridWidth logical cells along each axis.
+    static constexpr float kDefaultSkinStep = 51.0f;
     locus::core::GridPoint world{};
-    float step = kStep;
+    float step = kDefaultSkinStep;
 
     GameplayCamera(const locus::core::Chart& chart, double beat,
                    const locus::app::Skin& skin = locus::app::Skin{})
         : world(locus::core::RoutePositionAt(chart, beat)),
-          step(skin.cameraStep / chart.ticksPerBeat) {}
+          step(kGameplayWorldViewport.width /
+               static_cast<float>(std::max(chart.gridWidth, chart.gridHeight)) *
+               (skin.cameraStep / kDefaultSkinStep) /
+               chart.ticksPerBeat) {}
 
     locus::app::RouteCanvas Canvas() const noexcept {
         return {kCenterX, kCenterY, step, world};
@@ -398,8 +403,9 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
                   gameplay.skin.hudText);
     DrawTextLabel(font, "SQUARE", {right, 392.0f}, 16.0f,
                   gameplay.skin.hudText);
-    DrawTextLabel(font, TextFormat("%d x %d VIEW",
-                  gameplay.chart.gridWidth, gameplay.chart.gridWidth),
+    const int size = std::max(gameplay.chart.gridWidth,
+                              gameplay.chart.gridHeight);
+    DrawTextLabel(font, TextFormat("%d x %d VIEW", size, size),
                   {right, 420.0f}, 16.0f, gameplay.skin.hudText);
 }
 
@@ -827,6 +833,8 @@ bool CheckPresentationLayout() {
     }
     // A moving world MUST project the interpolated marker to exactly the
     // same screen point regardless of chart size, heading or beat.
+    // At default skin zoom, width/height in cells determine the camera
+    // scale of the fixed square (8 -> 540/8 = 67.5px per cell).
     for (int dimensions : {2, 4, 8, 16}) {
         auto chart = locus::core::MakeDemoChart();
         chart.gridWidth = dimensions;
@@ -834,8 +842,10 @@ bool CheckPresentationLayout() {
         for (double beat : {0.0, 1.5, 4.75, 15.125, 30.5}) {
             const GameplayCamera camera(chart, beat);
             const Vector2 projected = camera.Canvas().Position(camera.world);
+            const float expected = static_cast<float>(kWindowHeight) / dimensions;
             if (std::abs(projected.x - GameplayCamera::kCenterX) > 0.001f ||
-                std::abs(projected.y - GameplayCamera::kCenterY) > 0.001f)
+                std::abs(projected.y - GameplayCamera::kCenterY) > 0.001f ||
+                std::abs(camera.step - expected / chart.ticksPerBeat) > 0.001f)
                 return false;
         }
     }
