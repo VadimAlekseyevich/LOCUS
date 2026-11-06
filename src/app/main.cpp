@@ -469,6 +469,7 @@ constexpr Rectangle kQuitCancelButton{502.0f, 329.0f, 196.0f, 54.0f};
 
 void DrawQuitConfirmation(Font font, const AppState& state,
                           const locus::core::ChartEditor& editor,
+                          const locus::app::EditorUiState& editorUi,
                           const locus::app::SkinUi& skinUi) {
     if (!state.quitConfirmation) return;
     // The outer application does not terminate until a second explicit
@@ -482,11 +483,13 @@ void DrawQuitConfirmation(Font font, const AppState& state,
                   Color{246, 233, 211, 255});
     DrawTextLabel(font, "This will close the game.", {307.0f, 236.0f},
                   21.0f, Color{216, 227, 234, 255});
-    if (state.screen == Screen::Editor && editor.Dirty())
+    if (state.screen == Screen::Editor &&
+        (editor.Dirty() || editorUi.EditingText()))
         DrawTextLabel(font, "UNSAVED CHART CHANGES WILL BE LOST",
                       {266.0f, 272.0f}, 17.0f,
                       Color{251, 188, 164, 255});
-    else if (state.screen == Screen::Skin && skinUi.dirty)
+    else if (state.screen == Screen::Skin &&
+             (skinUi.dirty || skinUi.editingName || skinUi.editingNumberRow >= 0))
         DrawTextLabel(font, "UNSAVED SKIN CHANGES WILL BE LOST",
                       {273.0f, 272.0f}, 17.0f,
                       Color{251, 188, 164, 255});
@@ -891,7 +894,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 65)},
                       22.0f, Color{232, 213, 160, 255});
     }
-    DrawQuitConfirmation(font, state, editor, skinUi);
+    DrawQuitConfirmation(font, state, editor, editorUi, skinUi);
     EndMode2D();
     EndDrawing();
 }
