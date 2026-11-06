@@ -122,29 +122,32 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             error = "offsetMs: provide exactly one of offsetMs or legacy offsetSeconds";
             return false;
         }
-        if (hasMs) {
-            if (!HasExactMembers(document,
-                    {"formatVersion", "title", "audioPath", "bpm", "offsetMs",
-                     "grid", "start", "previewLeadBeats", "turns"},
-                    "chart", error)) {
-                // Repeat only when the documented optional length is present;
-                // never let extra/unknown JSON members slip through.
-                if (!document.contains("lengthBeats") ||
-                    !HasExactMembers(document,
-                        {"formatVersion", "title", "audioPath", "bpm", "offsetMs",
-                         "grid", "start", "previewLeadBeats", "turns", "lengthBeats"},
-                        "chart", error)) return false;
-            }
-        } else if (!HasExactMembers(document,
-                    {"formatVersion", "title", "audioPath", "bpm", "offsetSeconds",
-                     "grid", "start", "previewLeadBeats", "turns"},
-                    "chart", error)) {
-            if (!document.contains("lengthBeats") ||
-                !HasExactMembers(document,
-                    {"formatVersion", "title", "audioPath", "bpm", "offsetSeconds",
-                     "grid", "start", "previewLeadBeats", "turns", "lengthBeats"},
-                    "chart", error)) return false;
+        // Optional integer tick resolution for exact halves/triplets.
+        const bool hasTicks = document.is_object() && document.contains("ticksPerBeat");
+        const bool hasSnap = document.is_object() && document.contains("snapDivision");
+        const bool hasLength = document.is_object() && document.contains("lengthBeats");
+        std::set<std::string> expected = {
+            "formatVersion", "title", "audioPath", "bpm",
+            hasMs ? "offsetMs" : "offsetSeconds",
+            "grid", "start", "previewLeadBeats", "turns"
+        };
+        if (hasTicks) expected.insert("ticksPerBeat");
+        if (hasSnap) expected.insert("snapDivision");
+        if (hasLength) expected.insert("lengthBeats");
+        if (!document.is_object()) {
+            error = "chart: expected an object";
+            return false;
         }
+        for (const auto& member : document.items())
+            if (!expected.count(member.key())) {
+                error = "chart." + member.key() + ": unknown field";
+                return false;
+            }
+        for (const auto& name : expected)
+            if (!document.contains(name)) {
+                error = "chart." + name + ": required field is missing";
+                return false;
+            }
 
         int version = 0;
         if (!IntegerInRange(document["formatVersion"], 1, 1, version,
@@ -161,6 +164,18 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
         if (!Number(document["bpm"], parsed.route.bpm, "bpm", true, error) ||
             !Number(document["previewLeadBeats"], parsed.previewLeadBeats,
                     "previewLeadBeats", true, error)) return false;
+        if (hasTicks && !IntegerInRange(document["ticksPerBeat"], 1, 48,
+                parsed.route.ticksPerBeat, "ticksPerBeat", error)) return false;
+        if (hasSnap && !IntegerInRange(document["snapDivision"], 1, 24,
+                parsed.route.snapDivision, "snapDivision", error)) return false;
+        const int divisor = parsed.route.snapDivision;
+        if ((divisor != 1 && divisor != 2 && divisor != 3 &&
+             divisor != 4 && divisor != 6 && divisor != 8 &&
+             divisor != 12 && divisor != 16 && divisor != 24) ||
+            parsed.route.ticksPerBeat % divisor != 0) {
+            error = "snapDivision: must divide ticksPerBeat exactly";
+            return false;
+        }
         double offset = 0.0;
         if (!Number(document[hasMs ? "offsetMs" : "offsetSeconds"], offset,
                     hasMs ? "offsetMs" : "offsetSeconds", false, error))
@@ -277,6 +292,10 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
         document["title"] = chart.title;
         document["audioPath"] = chart.audioPath;
         document["bpm"] = chart.route.bpm;
+        if (chart.route.ticksPerBeat != 1)
+            document["ticksPerBeat"] = chart.route.ticksPerBeat;
+        if (chart.route.snapDivision != 1)
+            document["snapDivision"] = chart.route.snapDivision;
         // No loss of fractional milliseconds from older second-based charts.
         document["offsetMs"] = chart.offsetSeconds * 1000.0;
         document["grid"] = {{"width", chart.route.gridWidth},
@@ -357,12 +376,20 @@ bool ComputeSongBeatRange(double bpm, double offsetSeconds, double durationSecon
 bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
                          std::string& error) {
     int first = 0, end = 0;
-    if (!ComputeSongBeatRange(chart.route.bpm, chart.offsetSeconds,
-                              songDurationSeconds, first, end, error)) return false;
+    if (chart.route.ticksPerBeat < 1 || chart.route.ticksPerBeat > 48 ||
+        chart.route.snapDivision < 1 ||
+        chart.route.ticksPerBeat % chart.route.snapDivision != 0) {
+        error = "ticksPerBeat/snapDivision: unsupported tick resolution";
+        return false;
+    }
+    if (!ComputeSongBeatRange(chart.route.bpm * chart.route.ticksPerBeat,
+                              chart.offsetSeconds, songDurationSeconds,
+                              first, end, error)) return false;
     for (std::size_t i = 0; i < chart.route.turns.size(); ++i) {
         const auto& event = chart.route.turns[i];
         const double timestamp =
-            chart.offsetSeconds + static_cast<double>(event.beat) * 60.0 / chart.route.bpm;
+            chart.offsetSeconds + static_cast<double>(event.beat) * 60.0 /
+                (chart.route.bpm * chart.route.ticksPerBeat);
         if (event.beat < first || event.beat >= end ||
             !std::isfinite(timestamp) ||
             (timestamp < 0.0 &&
