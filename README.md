@@ -73,8 +73,8 @@ square**; on Results, the same counts and final accuracy appear together.
 ## Menu navigation and safe exit
 
 **Esc means Back, not an immediate game shutdown.** From the chart editor,
-**Esc or H** returns to Home (while typing into a text field, the first Esc
-cancels text editing only). From PLAY, Results, Listen, song selection,
+**Esc, H, or the visible BACK button** returns to Home (while typing
+into a text field, the first Esc cancels text editing only). From PLAY, Results, Listen, song selection,
 SKIN, and SETTINGS, **Esc** also returns Home. The Song Select/Skin/Settings
 screens additionally have a visible **BACK** button. If an unsaved chart
 would be discarded by leaving the editor, it still asks **Y to discard /
