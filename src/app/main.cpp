@@ -285,6 +285,12 @@ constexpr Rectangle kGameplayWorldViewport{
     (kWindowWidth - kWindowHeight) * 0.5f, 0.0f,
     static_cast<float>(kWindowHeight), static_cast<float>(kWindowHeight)
 };
+// In landscape windows, the square uses the FULL physical window height,
+// rather than the 16:9 menu letterbox. Portrait is necessarily width-limited.
+float GameplayViewportScale(int width, int height) noexcept {
+    if (width <= 0 || height <= 0) return 1.0f;
+    return static_cast<float>(std::min(width, height)) / kWindowHeight;
+}
 
 struct GameplayCamera {
     static constexpr float kCenterX = kWindowWidth * 0.5f;
@@ -317,9 +323,7 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     // Gameplay uses the actual window height, not the 16:9 letterboxed
     // UI fitting scale. For any landscape window, the square reaches both
     // top and bottom pixel edges; portrait windows are width-limited.
-    const float squarePixels = static_cast<float>(
-        std::min(GetScreenWidth(), GetScreenHeight()));
-    const float scale = squarePixels / kWindowHeight;
+    const float scale = GameplayViewportScale(GetScreenWidth(), GetScreenHeight());
     const float offsetX = (GetScreenWidth() - kWindowWidth * scale) * 0.5f;
     const float offsetY = (GetScreenHeight() - kWindowHeight * scale) * 0.5f;
     BeginScissorMode(
@@ -708,8 +712,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         static_cast<float>(GetScreenWidth()) / kWindowWidth,
         static_cast<float>(GetScreenHeight()) / kWindowHeight);
     const float scale = state.screen == Screen::Play
-        ? static_cast<float>(std::min(GetScreenWidth(), GetScreenHeight())) /
-              kWindowHeight
+        ? GameplayViewportScale(GetScreenWidth(), GetScreenHeight())
         : windowFit;
     Camera2D camera{};
     camera.offset = Vector2{(GetScreenWidth() - kWindowWidth * scale) / 2.0f,
@@ -818,6 +821,18 @@ bool CheckPresentationLayout() {
         kGameplayWorldViewport.y + kGameplayWorldViewport.height * 0.5f !=
             GameplayCamera::kCenterY)
         return false;
+    for (const auto& size : {
+             std::pair<int, int>{960, 540}, {1920, 1080},
+             {1280, 800}, {800, 600}, {600, 800}}) {
+        // In landscape the square's side equals the height of the actual
+        // window; portrait windows cannot contain a height-wide square.
+        const float scale = GameplayViewportScale(size.first, size.second);
+        const float side = kGameplayWorldViewport.width * scale;
+        const float expected = static_cast<float>(
+            std::min(size.first, size.second));
+        if (std::abs(side - expected) > 0.001f)
+            return false;
+    }
     const Rectangle left{52, 149, 408, 325};
     const Rectangle right{486, 149, 432, 325};
     const auto inside = [](Rectangle frame, Rectangle r) {
