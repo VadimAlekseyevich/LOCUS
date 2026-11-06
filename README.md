@@ -17,9 +17,9 @@ from x=210 to x=750. The stationary player is at the exact center. Only the
 trajectory, turn targets, player and effects **inside the square** are rendered;
 the route continues infinitely beyond it but stays invisible there. A thin
 **white (by default) square border** can be recolored or made translucent under
-SKIN → COLORS → FIELD BORDER. The Perfect/Good/Bad/Miss HUD is in the left
-sidebar and the latest hit/song information is in the right sidebar; it never
-covers the playing square. Camera zoom remains configurable in the skin,
+SKIN → COLORS → FIELD BORDER. The Perfect/Good/Bad/Miss counters and live accuracy are in the **right**
+sidebar; the latest hit and song information are on the left. They never
+cover the playing square. Camera zoom remains configurable in the skin,
 and with default zoom a size-8 chart shows eight world cells across 540px.
 There is no gameplay grid or grid-node clutter.
 
@@ -46,13 +46,39 @@ although paths previously wrapping now extend naturally beyond the former
 grid instead.
 
 
+## Scoring accuracy and chart completion
+
+**A scored playthrough ends when the last playable note has been judged**,
+regardless of how much audio remains. A final Perfect, Good, Bad, or
+wrong-direction Miss opens **Results immediately**, stopping the music. An
+unpressed last note is scored Miss only after its **180 ms late judgement
+window**, including a short silent tail when the WAV/MP3 ends just before
+that window closes. The route remains deterministic and **No Fail** still
+applies. A chart with no notes, or an editor TEST whose start position is
+after every note, falls back to ending when its audio finishes.
+
+The live percentage and Results percentage use the same weighted average:
+
+`accuracy = (100 × Perfect + 75 × Good + 50 × Bad + 0 × Miss) / (Perfect + Good + Bad + Miss)`
+
+Counts represent **judged notes**, not key presses: ignored stray keys do
+not count, and a missed note still counts in the denominator. For example,
+one of each grade yields **56.25%** accuracy. Before the first judgement,
+accuracy is shown as **100.00%**. Percentages are displayed to two decimal
+places. In scored TEST from the editor timeline, earlier skipped notes
+**are excluded** from both the counts and accuracy denominator. On PLAY,
+the counts and live accuracy appear together **to the right of the centered
+square**; on Results, the same counts and final accuracy appear together.
+
 ## Gameplay HUD and settings layout
 
 Normal **PLAY** now focuses on the enlarged route field, moving marker and
-live **Perfect / Good / Bad / Miss** counters (plus the latest grade). It
-does not show chart editing hints, BPM/beat/time readouts, input tutorials,
-technical playback status, or debug navigation labels. Pause still shows
-resume/retry/home controls, and Results retains the separate result summary.
+live **Perfect / Good / Bad / Miss** counters and **accuracy** to the right
+of the square (with latest grade/song info on the left). It does not show
+chart editing hints, BPM/beat/time readouts, input tutorials, technical
+playback status, or debug navigation labels. Pause still shows
+resume/retry/home controls, and Results repeats the four counts and final
+accuracy.
 The **editor's** detailed workspace remains unchanged.
 
 The SETTINGS view has aligned two-column panels for audio, hit flashes,
@@ -152,7 +178,7 @@ Use the **E** editor on Home. For a new chart, press **O** *inside the editor* t
 
 **Unsaved changes:** The editor visibly marks changed drafts. Before discarding them with Home, Ctrl+N or Ctrl+O, LOCUS asks you to confirm: **Y** discards, **N** cancels. You can use Ctrl+S first. Save uses a temporary file plus replacement so a failed write should not destroy the previous chart. A missing song, out-of-range turn, invalid path or too-long timeline shows an error rather than silently writing broken game data. Force quitting can still lose unsaved edits.
 
-**Try the full round trip:** E → O to choose a song → add notes with DFJK (or your rebound gameplay direction keys) → Ctrl+S to save `MyChart.locus.json` beside the song → Ctrl+O to reopen it → T to test → song finishes → Results. Go Home and E to continue editing the chart.
+**Try the full round trip:** E → O to choose a song → add notes with DFJK (or your rebound gameplay direction keys) → Ctrl+S to save `MyChart.locus.json` beside the song → Ctrl+O to reopen it → T to test → last note is judged → Results. Go Home and E to continue editing the chart.
 
 Windows CI verifies file serialization, actual disk save/reopen, unchanged gameplay tests and compiler linkage without a graphical desktop. The appearance of Save/Open dialogs and subjective rhythm synchronization on your monitor remain for manual playtesting.
 
@@ -194,7 +220,7 @@ CI tests chart editing, speed-adjusted/pause-resume song clocks, JSON round trip
 
 ## Load and play your own JSON chart (M-02)
 
-On **Home**, press **C** to open a local `.locus.json` / `.json` chart. The chart must contain an `audioPath` pointing to a **WAV/MP3 in the chart folder or a subfolder**, plus its beat map. LOCUS loads the song, centers the marker inside the square viewport, judges **single and two-arrow direction inputs**, and shows the normal Results screen at song end. **Space** pauses/resumes both audio and chart, **R** restarts the selected chart, and **H** returns Home. From Results, **Enter/R** plays the same chart again. **Enter on Home always starts the built-in demo**; **O** remains the listening-only music picker.
+On **Home**, press **C** to open a local `.locus.json` / `.json` chart. The chart must contain an `audioPath` pointing to a **WAV/MP3 in the chart folder or a subfolder**, plus its beat map. LOCUS loads the song, centers the marker inside the square viewport, judges **single and two-arrow direction inputs**, and shows Results as soon as the last note is judged. **Space** pauses/resumes both audio and chart, **R** restarts the selected chart, and **H** returns Home. From Results, **Enter/R** plays the same chart again. **Enter on Home always starts the built-in demo**; **O** remains the listening-only music picker.
 
 **Try the included sample chart:** Copy [`mvp/examples/first-song.locus.json`](mvp/examples/first-song.locus.json) into a folder with your own MP3 (at least 16 seconds long), rename that file to `song.mp3`, then press **C** and choose `first-song.locus.json`. This sample is authored at **120 BPM**, so its F/J turns will align musically only if the chosen song actually matches 120 BPM and beat zero at its start. Press **E** on Home to open the in-game editor for BPM, millisecond offset, square size, starting heading and turns. Save with **Ctrl+S** or **Ctrl+Shift+S**, then test with **T**; no external JSON editor is needed. For another filename, change `audioPath` accordingly. No music is included in the repository or uploaded.
 
