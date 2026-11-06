@@ -136,6 +136,95 @@ bool CommitField(EditorUiState& ui, core::ChartEditor& draft) {
     return true;
 }
 
+// Key masks correspond to the visual 3x3 direction pad, not relative
+// left/right turn types. The chart editor resolves these into a turn using
+// its incoming route heading; no chart or timing semantics change.
+std::optional<core::Heading> DirectionForKeys(unsigned mask) {
+    switch (mask) {
+        case 1u: return core::Heading::Left;       // D
+        case 2u: return core::Heading::Down;       // F
+        case 4u: return core::Heading::Up;         // J
+        case 8u: return core::Heading::Right;      // K
+        case 3u: return core::Heading::DownLeft;   // D+F
+        case 5u: return core::Heading::UpLeft;     // D+J
+        case 10u: return core::Heading::DownRight; // F+K
+        case 12u: return core::Heading::UpRight;   // J+K
+        default: return std::nullopt;              // opposite or 3+ keys
+    }
+}
+
+void ApplyDirectionChord(core::ChartEditor& draft, EditorUiState& ui,
+                         const EditorControls& input, EditorUiAction& action) {
+    const unsigned held = input.directionKeysHeld & 15u;
+    // Exactly one insertion for a held key / chord, even if a key is released
+    // earlier than the other. Re-arm only after *all* keys are released.
+    if (ui.directionKeysHandled) {
+        if (held == 0) {
+            ui.directionKeysHandled = false;
+            ui.pendingDirection = 0;
+            ui.pendingDirectionSeconds = 0.0f;
+        }
+        return;
+    }
+    const auto commit = [&](unsigned keys) {
+        const auto heading = DirectionForKeys(keys);
+        if (!heading) {
+            ui.feedback = "DFJK: USE A SINGLE KEY OR TWO ADJACENT KEYS";
+            ui.feedbackError = true;
+            return;
+        }
+        const bool changed = draft.SetOutgoingHeading(*heading);
+        action.changedChart |= changed;
+        if (!changed) {
+            ui.feedback = "NO CHANGE - STRAIGHT OR OPPOSITE DIRECTION";
+            ui.feedbackError = true;
+        } else {
+            ui.feedback.clear();
+            ui.feedbackError = false;
+        }
+    };
+
+    if (ui.pendingDirection == 0) {
+        if (held == 0) return;
+        if ((held & (held - 1u)) != 0u) {
+            commit(held); // Multiple keys pressed in the same frame.
+            ui.directionKeysHandled = true;
+            return;
+        }
+        ui.pendingDirection = held;
+        ui.pendingDirectionSeconds = 0.0f;
+        return;
+    }
+
+    if (held == 0) {
+        commit(ui.pendingDirection); // Quick tap: resolve on release.
+        ui.pendingDirection = 0;
+        ui.pendingDirectionSeconds = 0.0f;
+        return;
+    }
+    if (held != ui.pendingDirection) {
+        if ((held & (held - 1u)) != 0u) {
+            commit(held); // Chord resolves before its first single note.
+            ui.pendingDirection = 0;
+            ui.pendingDirectionSeconds = 0.0f;
+            ui.directionKeysHandled = true;
+            return;
+        }
+        // Non-overlapping keys changed in one frame. Do not lose the tap.
+        commit(ui.pendingDirection);
+        ui.pendingDirection = held;
+        ui.pendingDirectionSeconds = 0.0f;
+        return;
+    }
+    ui.pendingDirectionSeconds += std::clamp(input.elapsedSeconds, 0.0f, 0.1f);
+    if (ui.pendingDirectionSeconds >= 0.09f) {
+        commit(held);
+        ui.pendingDirection = 0;
+        ui.pendingDirectionSeconds = 0.0f;
+        ui.directionKeysHandled = true;
+    }
+}
+
 } // namespace
 
 Vector2 EditorVirtualMouse(Vector2 physical, int screenWidth, int screenHeight) {
