@@ -210,7 +210,11 @@ void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
 // misses so the session never stalls with unjudged events.
 bool ChartReadyForResults(const locus::core::TurnJudge& judge,
                           bool audioFinished) noexcept {
-    return judge.AllScorableJudged() || audioFinished;
+    // If there are scorable notes, all of them must actually be evaluated.
+    // Audio can stop before the final note's 180ms Miss window expires;
+    // GameSession keeps a silent judgement tail in that case.
+    return judge.AllScorableJudged() ||
+           (audioFinished && judge.ScorableCount() == 0);
 }
 
 void FinishSession(AppState& state, locus::core::TurnJudge& judge) {
