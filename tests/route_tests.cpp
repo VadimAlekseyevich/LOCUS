@@ -216,6 +216,53 @@ int main() {
                           ReferenceStep(longSong, 65535)),
                  "65536-beat chart samples correctly without scanning every beat");
 
+    // Window sampling must match the single-step model even on a long,
+    // densely authored chart. This specifically guards 1/24-snap previews.
+    Chart dense;
+    dense.start = {3, 3};
+    dense.gridWidth = dense.gridHeight = 8;
+    dense.firstBeat = -10;
+    dense.lengthBeats = 65536;
+    dense.initialHeading = Heading::UpRight;
+    for (int tick = dense.firstBeat; tick < dense.lengthBeats; tick += 2) {
+        const Turn turn = ((tick - dense.firstBeat) % 6 == 0)
+            ? Turn::Right45 : Turn::Left135;
+        dense.turns.push_back({tick, turn});
+    }
+    const auto denseWindow = SampleRouteWindow(dense, 62000, 62239);
+    ok &= Expect(denseWindow.size() == 240,
+                 "dense 240-tick route window returns precisely the requested range");
+    for (int index = 0; index < static_cast<int>(denseWindow.size()); ++index) {
+        const auto& sampled = denseWindow[static_cast<std::size_t>(index)];
+        const RouteStep direct = SampleRouteStep(dense, 62000 + index);
+        if (!SameStep(sampled, direct)) {
+            ok &= Expect(false, "dense route window matches individual samples");
+            break;
+        }
+        if (index > 0 && !CellIs(denseWindow[static_cast<std::size_t>(index - 1)].to,
+                                 sampled.from.x, sampled.from.y)) {
+            ok &= Expect(false, "dense route window joins segments without gaps");
+            break;
+        }
+    }
+    const auto negativeWindow = SampleRouteWindow(early, -4, -2);
+    ok &= Expect(negativeWindow.size() == 3 &&
+                 SameStep(negativeWindow.front(), SampleRouteStep(early, -4)) &&
+                 SameStep(negativeWindow.back(), SampleRouteStep(early, -2)),
+                 "window sampler supports negative starting ticks");
+    const auto singleWindow = SampleRouteWindow(demo, 5, 5);
+    ok &= Expect(singleWindow.size() == 1 &&
+                 SameStep(singleWindow.front(), SampleRouteStep(demo, 5)),
+                 "one-tick window is identical to random access");
+    try {
+        (void)SampleRouteWindow(demo, 5, 4);
+        ok &= Expect(false, "reversed route window must throw");
+    } catch (const std::out_of_range&) {}
+    try {
+        (void)SampleRouteWindow(demo, 0, demo.lengthBeats);
+        ok &= Expect(false, "overrunning route window must throw");
+    } catch (const std::out_of_range&) {}
+
     try {
         (void)SampleRouteStep(demo, demo.lengthBeats);
         ok &= Expect(false, "out-of-range beat must throw");

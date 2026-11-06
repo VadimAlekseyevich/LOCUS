@@ -31,14 +31,14 @@ void DrawScoredPath(const core::Chart& chart, double beat,
     const int first = CurrentBeat(chart, beat);
     const float horizon = skin.lookaheadBeats * chart.ticksPerBeat;
     // A fractional musical-beat window may cross many finer ticks.
-    const int last = std::min(
-        chart.lengthBeats - 1,
-        first + static_cast<int>(std::ceil(horizon)));
+    const int last = first + std::min(
+        chart.lengthBeats - 1 - first, static_cast<int>(std::ceil(horizon)));
+    const auto steps = core::SampleRouteWindow(chart, first, last);
     for (int target = last; target >= first; --target) {
         const ScoredPathInterval visible = ScoredPathVisibleInterval(beat, target, horizon);
         if (!visible.Visible()) continue;
         const double begin = visible.begin, end = visible.end;
-        const core::RouteStep step = core::SampleRouteStep(chart, target);
+        const core::RouteStep& step = steps[static_cast<std::size_t>(target - first)];
         const double fromX = static_cast<double>(step.from.x);
         const double fromY = static_cast<double>(step.from.y);
         const double dx = static_cast<double>(step.to.x - step.from.x);
@@ -87,40 +87,35 @@ Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
         return canvas.Position(core::RoutePositionAt(chart, beat));
     }
     const double progress = std::clamp(beat - current, 0.0, 1.0);
-    const bool editor = true;
-    const float scale = std::clamp(canvas.step * chart.ticksPerBeat / (editor ? 80.0f : 76.0f),
-                                   0.4f, 1.0f);
-    const float width = editor ? style.editorNextStepWidth : style.gameNextStepWidth;
+    const float scale = std::clamp(
+        canvas.step * chart.ticksPerBeat / 80.0f, 0.4f, 1.0f);
+    const float width = style.editorNextStepWidth;
 
-    // One four-beat bar including the current step, farthest step first.
-    for (int ahead = RouteVisualStyle::lookaheadBeats * chart.ticksPerBeat - 1;
-         ahead >= 1; --ahead) {
-        const int target = current + ahead;
-        if (target >= chart.lengthBeats) continue;
+    // Sample the future bar once, without replaying all earlier turns
+    // for every line segment. The editor uses this exact route geometry.
+    const int lookahead = RouteVisualStyle::lookaheadBeats * chart.ticksPerBeat;
+    const int last = current + std::min(
+        chart.lengthBeats - 1 - current, lookahead - 1);
+    const auto steps = core::SampleRouteWindow(chart, current, last);
+    for (int target = last; target > current; --target) {
         const float opacity = TrajectoryOpacity((target - beat) / chart.ticksPerBeat);
         if (opacity <= 0.0f) continue;
         const core::StepView future = core::ViewRouteStep(
-            core::SampleRouteStep(chart, target), 1.0);
+            steps[static_cast<std::size_t>(target - current)], 1.0);
         DrawSegments(future, canvas, WithOpacity(style.routeOutline, opacity),
                      width * style.outlineScale * scale);
         DrawSegments(future, canvas, WithOpacity(style.fullTrajectory, opacity),
                      width * scale);
     }
 
-    const core::StepView whole = core::ViewRouteStep(
-        core::SampleRouteStep(chart, current), progress);
-    const core::StepView trace = core::TraceRouteStep(
-        core::SampleRouteStep(chart, current), progress);
+    const core::RouteStep& currentStep = steps.front();
+    const core::StepView whole = core::ViewRouteStep(currentStep, progress);
+    const core::StepView trace = core::TraceRouteStep(currentStep, progress);
 
-    if (editor) {
-        // The editor intentionally also shows the full current step for
-        // authoring; both screens share exactly the same future segments.
-        DrawSegments(whole, canvas, style.fullTrajectory, 4.0f * scale);
-        DrawSegments(trace, canvas, style.combinedTrajectory, 5.5f * scale);
-    } else {
-        DrawSegments(trace, canvas, style.routeOutline, 7.0f * scale);
-        DrawSegments(trace, canvas, style.combinedTrajectory, 5.5f * scale);
-    }
+    // The editor intentionally shows both the complete current step and
+    // the traced portion, to allow precise note placement.
+    DrawSegments(whole, canvas, style.fullTrajectory, 4.0f * scale);
+    DrawSegments(trace, canvas, style.combinedTrajectory, 5.5f * scale);
     return canvas.Position(whole.marker);
 }
 
@@ -144,16 +139,24 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
             [](const core::TurnEvent& e, int index) {
                 return e.beat < index;
             });
-        for (auto turn = first; turn != chart.turns.end() &&
-                          static_cast<double>(turn->beat) <
-                              beat + skin.lookaheadBeats * chart.ticksPerBeat; ++turn) {
+        const auto last = std::lower_bound(
+            first, chart.turns.end(), beat + skin.lookaheadBeats * chart.ticksPerBeat,
+            [](const core::TurnEvent& event, double limit) {
+                return event.beat < limit;
+            });
+        if (first == last) return;
+        // One window even if every visible tick contains a turn.
+        const int base = first->beat;
+        const int end = (last - 1)->beat;
+        const auto steps = core::SampleRouteWindow(chart, base, end);
+        for (auto turn = first; turn != last; ++turn) {
             const float opacity = ScoredPathOpacity(turn->beat - beat,
                                                     skin.lookaheadBeats * chart.ticksPerBeat,
                                                     skin.fadePower)
                 * skin.pathOpacity;
             if (opacity <= 0.0005f) continue;
             const core::GridPoint position =
-                core::SampleRouteStep(chart, turn->beat).from;
+                steps[static_cast<std::size_t>(turn->beat - base)].from;
             const Vector2 point = canvas.Position(position);
             const float radius = std::min(skin.junctionRadius, canvas.step * chart.ticksPerBeat * 0.45f);
             if (skin.junctionGlow)

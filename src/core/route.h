@@ -111,4 +111,12 @@ std::vector<PreviewTurnPoint> PreviewTurnPoints(
     const Chart& chart, double fractionalBeat, int lookaheadBeats);
 RouteStep SampleRouteStep(const Chart& chart, int beat);
 
+// Samples an inclusive interval in O(turns before end + visible ticks),
+// instead of resampling the full chart for every visible line segment.
+// The returned steps share the exact same model-space geometry as
+// SampleRouteStep; callers must not store them across chart edits.
+// Throws std::out_of_range for invalid/empty intervals or outside chart.
+std::vector<RouteStep> SampleRouteWindow(const Chart& chart, int firstBeat,
+                                         int lastBeat);
+
 } // namespace locus::core

@@ -29,7 +29,7 @@ struct RouteCanvas {
 enum class RouteRenderMode { Editor, Gameplay };
 
 // The same geometry, one-bar fade and style rules are used in both screens.
-// Draw lines before grid nodes; draw junctions afterwards so they remain visible.
+// Draw the route before junctions so turn targets remain visible.
 // Returns the interpolated live marker position in screen coordinates.
 Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
                             RouteCanvas canvas, RouteRenderMode mode,

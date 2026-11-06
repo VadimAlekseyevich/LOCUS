@@ -190,19 +190,27 @@ std::vector<PreviewTurnPoint> PreviewTurnPoints(
     // Its destination P[first+lookaheadBeats] is already touched by the
     // preview, so the turn junction there should light *before* the player
     // arrives. Future turns beyond it are not lit.
-    const int last = std::min(chart.lengthBeats - 1,
-                              first + lookaheadBeats);
-    for (const TurnEvent& event : chart.turns) {
-        if (event.beat < first) continue; // No lingering historical dots.
-        if (event.beat > last) break;
-        const GridPoint position = SampleRouteStep(chart, event.beat).from;
+    const int last = first + std::min(lookaheadBeats,
+                                      chart.lengthBeats - 1 - first);
+    const auto begin = std::lower_bound(
+        chart.turns.begin(), chart.turns.end(), first,
+        [](const TurnEvent& event, int tick) { return event.beat < tick; });
+    if (begin == chart.turns.end() || begin->beat > last) return points;
+
+    // Sample once per visible window, not once from the chart start for
+    // each turn dot. This also keeps a dense 1/24 snap responsive.
+    const int base = begin->beat;
+    const auto steps = SampleRouteWindow(chart, base, last);
+    for (auto event = begin; event != chart.turns.end() &&
+                             event->beat <= last; ++event) {
+        const GridPoint position = steps[static_cast<std::size_t>(event->beat - base)].from;
         const auto existing = std::find_if(
             points.begin(), points.end(), [position](const PreviewTurnPoint& point) {
                 return std::abs(point.position.x - position.x) < 1e-8 &&
                        std::abs(point.position.y - position.y) < 1e-8;
             });
         if (existing == points.end())
-            points.push_back({position, event.beat});
+            points.push_back({position, event->beat});
     }
     return points;
 }
@@ -250,6 +258,40 @@ RouteStep SampleRouteStep(const Chart& chart, int beat) {
     const GridPoint destination = AdvanceStraight(position, heading, 1);
     return RouteStep{position, destination, heading, false,
                      chart.gridWidth, chart.gridHeight};
+}
+
+std::vector<RouteStep> SampleRouteWindow(const Chart& chart, int firstBeat,
+                                         int lastBeat) {
+    // Reuse the single-step sampler's validation and initial position:
+    // no chart cache that might become stale while the editor is changing it.
+    if (firstBeat > lastBeat || firstBeat < chart.firstBeat ||
+        lastBeat >= chart.lengthBeats)
+        throw std::out_of_range("route window is outside chart duration");
+
+    const RouteStep initial = SampleRouteStep(chart, firstBeat);
+    std::vector<RouteStep> steps;
+    steps.reserve(static_cast<std::size_t>(lastBeat - firstBeat) + 1);
+    steps.push_back(initial);
+
+    GridPoint position = initial.to;
+    Heading heading = initial.heading;
+    auto nextTurn = std::upper_bound(
+        chart.turns.begin(), chart.turns.end(), firstBeat,
+        [](int tick, const TurnEvent& event) { return tick < event.beat; });
+    // Advance the cursor only across the visible window. Each authored
+    // direction change is applied exactly once at its own tick boundary.
+    for (int tick = firstBeat; tick < lastBeat; ++tick) {
+        const int nextTick = tick + 1;
+        while (nextTurn != chart.turns.end() && nextTurn->beat == nextTick) {
+            heading = HeadingAfterTurn(heading, nextTurn->direction);
+            ++nextTurn;
+        }
+        const GridPoint to = AdvanceStraight(position, heading, 1);
+        steps.push_back({position, to, heading, false,
+                         chart.gridWidth, chart.gridHeight});
+        position = to;
+    }
+    return steps;
 }
 
 } // namespace locus::core
