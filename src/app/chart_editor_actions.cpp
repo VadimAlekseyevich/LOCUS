@@ -156,6 +156,12 @@ std::optional<core::Heading> DirectionForKeys(unsigned mask) {
 void ApplyDirectionChord(core::ChartEditor& draft, EditorUiState& ui,
                          const EditorControls& input, EditorUiAction& action) {
     const unsigned held = input.directionKeysHeld & 15u;
+    if (input.directionKeysSuppressed) {
+        ui.pendingDirection = 0;
+        ui.pendingDirectionSeconds = 0.0f;
+        ui.directionKeysHandled = true; // re-arm only after release
+        return;
+    }
     // Exactly one insertion for a held key / chord, even if a key is released
     // earlier than the other. Re-arm only after *all* keys are released.
     if (ui.directionKeysHandled) {
@@ -169,7 +175,7 @@ void ApplyDirectionChord(core::ChartEditor& draft, EditorUiState& ui,
     const auto commit = [&](unsigned keys) {
         const auto heading = DirectionForKeys(keys);
         if (!heading) {
-            ui.feedback = "DFJK: USE A SINGLE KEY OR TWO ADJACENT KEYS";
+            ui.feedback = "USE ONE GAME DIRECTION OR TWO ADJACENT KEYS";
             ui.feedbackError = true;
             return;
         }
@@ -217,7 +223,8 @@ void ApplyDirectionChord(core::ChartEditor& draft, EditorUiState& ui,
         return;
     }
     ui.pendingDirectionSeconds += std::clamp(input.elapsedSeconds, 0.0f, 0.1f);
-    if (ui.pendingDirectionSeconds >= 0.09f) {
+    if (ui.pendingDirectionSeconds >=
+        std::clamp(input.directionChordWindowSeconds, 0.04f, 0.16f)) {
         commit(held);
         ui.pendingDirection = 0;
         ui.pendingDirectionSeconds = 0.0f;
@@ -236,7 +243,8 @@ Vector2 EditorVirtualMouse(Vector2 physical, int screenWidth, int screenHeight) 
     return {(physical.x - x) / scale, (physical.y - y) / scale};
 }
 
-EditorControls PollEditorControls() {
+EditorControls PollEditorControls(const GameSettings& settings,
+                                  const std::array<bool, 4>& gameplayHeld) {
     EditorControls input;
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
@@ -244,53 +252,72 @@ EditorControls PollEditorControls() {
     input.copyRange = control && IsKeyPressed(KEY_C);
     input.cutRange = control && IsKeyPressed(KEY_X);
     input.pasteRange = control && IsKeyPressed(KEY_V);
-    input.invertRange = !control && IsKeyPressed(KEY_I);
     input.undo = control && !shift && IsKeyPressed(KEY_Z);
     input.redo = (control && IsKeyPressed(KEY_Y)) ||
                  (control && shift && IsKeyPressed(KEY_Z));
-    input.shiftRangePrevious = control && shift && IsKeyPressed(KEY_LEFT);
-    input.shiftRangeNext = control && shift && IsKeyPressed(KEY_RIGHT);
-    input.zoomIn = IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_KP_ADD) ||
-                   IsKeyPressed(KEY_RIGHT_BRACKET);
-    input.zoomOut = IsKeyPressed(KEY_MINUS) || IsKeyPressed(KEY_KP_SUBTRACT) ||
-                    IsKeyPressed(KEY_LEFT_BRACKET);
-    // Grid density has different UI controls from visual timeline zoom.
-    // Explicit keys additionally let keyboard-only authors change snap.
-    input.snapMore = !control && IsKeyPressed(KEY_PERIOD);
-    input.snapLess = !control && IsKeyPressed(KEY_COMMA);
-    input.previousBeat = IsKeyPressed(KEY_LEFT) && !shift && !control;
-    input.nextBeat = IsKeyPressed(KEY_RIGHT) && !shift && !control;
-    input.previousBar = IsKeyPressed(KEY_LEFT) && control && !shift;
-    input.nextBar = IsKeyPressed(KEY_RIGHT) && control && !shift;
+
+    // A configured gameplay direction always wins over a bare editor shortcut.
+    // Modifier shortcuts can still use Left/Right or PgUp/PgDn deliberately,
+    // because modifiers suppress direction placement.
+    const auto available = [&](int key) {
+        return !IsGameDirectionKey(settings, key);
+    };
+    const auto plain = [&](int key) {
+        return !control && !shift && available(key) && IsKeyPressed(key);
+    };
+    const auto navigation = [&](int key) {
+        return (control || shift || available(key)) && IsKeyPressed(key);
+    };
+    const auto navigationHeld = [&](int key) {
+        return (control || shift || available(key)) && IsKeyDown(key);
+    };
+    const bool previous = navigation(KEY_LEFT) || navigation(KEY_PAGE_UP);
+    const bool next = navigation(KEY_RIGHT) || navigation(KEY_PAGE_DOWN);
+    input.previousBeat = !control && !shift && previous;
+    input.nextBeat = !control && !shift && next;
+    input.previousBar = control && !shift && previous;
+    input.nextBar = control && !shift && next;
+    input.shiftRangePrevious = control && shift && previous;
+    input.shiftRangeNext = control && shift && next;
+    input.movePrevious = shift && !control && previous;
+    input.moveNext = shift && !control && next;
     input.heldBarDirection = control && !shift
-        ? (static_cast<int>(IsKeyDown(KEY_RIGHT)) -
-           static_cast<int>(IsKeyDown(KEY_LEFT))) : 0;
+        ? (static_cast<int>(navigationHeld(KEY_RIGHT) || navigationHeld(KEY_PAGE_DOWN)) -
+           static_cast<int>(navigationHeld(KEY_LEFT) || navigationHeld(KEY_PAGE_UP)))
+        : 0;
+
+    // The exact four game-direction key states are reused, not polled from a
+    // hard-coded DFJK set. Modifier-based chart actions never place notes.
+    input.directionKeysSuppressed = control || shift;
+    input.directionKeysHeld = input.directionKeysSuppressed
+        ? 0u : EditorDirectionMask(gameplayHeld);
+    input.directionChordWindowSeconds = settings.chordWindowMs / 1000.0f;
     input.elapsedSeconds = GetFrameTime();
-    input.movePrevious = IsKeyPressed(KEY_LEFT) && shift && !control;
-    input.moveNext = IsKeyPressed(KEY_RIGHT) && shift && !control;
-    // Absolute eight-way placement: D/F/J/K alone or two adjacent together.
-    // Don't let modifier-based shortcuts enter an accidental note.
-    if (!control && !shift) {
-        input.directionKeysHeld =
-            (IsKeyDown(KEY_D) ? 1u : 0u) |
-            (IsKeyDown(KEY_F) ? 2u : 0u) |
-            (IsKeyDown(KEY_J) ? 4u : 0u) |
-            (IsKeyDown(KEY_K) ? 8u : 0u);
-    }
-    input.removeTurn = IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE);
-    input.headingLeft = IsKeyPressed(KEY_Q);
-    input.headingRight = IsKeyPressed(KEY_E);
-    input.previewToggle = IsKeyPressed(KEY_SPACE);
-    input.previewRestart = IsKeyPressed(KEY_R);
+
+    input.invertRange = plain(KEY_I);
+    input.zoomIn = (available(KEY_EQUAL) && IsKeyPressed(KEY_EQUAL)) ||
+                   (available(KEY_KP_ADD) && IsKeyPressed(KEY_KP_ADD)) ||
+                   (available(KEY_RIGHT_BRACKET) && IsKeyPressed(KEY_RIGHT_BRACKET));
+    input.zoomOut = (available(KEY_MINUS) && IsKeyPressed(KEY_MINUS)) ||
+                    (available(KEY_KP_SUBTRACT) && IsKeyPressed(KEY_KP_SUBTRACT)) ||
+                    (available(KEY_LEFT_BRACKET) && IsKeyPressed(KEY_LEFT_BRACKET));
+    input.snapMore = plain(KEY_PERIOD);
+    input.snapLess = plain(KEY_COMMA);
+    input.removeTurn = IsKeyPressed(KEY_BACKSPACE) ||
+                       (available(KEY_DELETE) && IsKeyPressed(KEY_DELETE));
+    input.headingLeft = plain(KEY_Q);
+    input.headingRight = plain(KEY_E);
+    input.previewToggle = plain(KEY_SPACE);
+    input.previewRestart = plain(KEY_R);
     input.enter = IsKeyPressed(KEY_ENTER);
     input.escape = IsKeyPressed(KEY_ESCAPE);
     input.backspace = IsKeyPressed(KEY_BACKSPACE);
     input.tab = IsKeyPressed(KEY_TAB);
-    input.speedIndex = IsKeyPressed(KEY_ONE) ? 0
-                     : IsKeyPressed(KEY_TWO) ? 1
-                     : IsKeyPressed(KEY_THREE) ? 2
-                     : IsKeyPressed(KEY_FOUR) ? 3
-                     : IsKeyPressed(KEY_FIVE) ? 4 : -1;
+    input.speedIndex = plain(KEY_ONE) ? 0
+                     : plain(KEY_TWO) ? 1
+                     : plain(KEY_THREE) ? 2
+                     : plain(KEY_FOUR) ? 3
+                     : plain(KEY_FIVE) ? 4 : -1;
     input.mouseClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     input.mouseHeld = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     input.mouseReleased = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
@@ -311,7 +338,7 @@ EditorControls PollEditorControls() {
     }
     if (control && IsKeyPressed(KEY_V)) {
         const char* clipboard = GetClipboardText();
-        if (clipboard) input.typedUtf8 = clipboard; // Ctrl+V pastes the full value.
+        if (clipboard) input.typedUtf8 = clipboard;
     }
     return input;
 }
