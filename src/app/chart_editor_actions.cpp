@@ -59,7 +59,7 @@ std::string InitialValue(const core::ChartEditor& draft, EditorField field) {
             std::snprintf(text, sizeof(text), "%.3f", draft.Data().route.bpm);
             return text;
         case EditorField::OffsetMs:
-            std::snprintf(text, sizeof(text), "%.3f", draft.Data().offsetSeconds * 1000.0);
+            std::snprintf(text, sizeof(text), "%.0f", draft.Data().offsetSeconds * 1000.0);
             return text;
          case EditorField::GridSize:
             return std::to_string(draft.Data().route.gridWidth) + "/" +
@@ -360,7 +360,9 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                                        ui.active == EditorField::StartCell;
                 if (ui.active == EditorField::Title ||
                     (pairField && (c == '/' || c == 'x' || c == 'X')) ||
-                    c == '.' || c == ',' || c == '-' || (c >= '0' && c <= '9')) {
+                    ((c == '.' || c == ',') &&
+                     ui.active != EditorField::OffsetMs) ||
+                    c == '-' || (c >= '0' && c <= '9')) {
                     if (ui.buffer.size() < 100)
                         ui.buffer.push_back(static_cast<char>(
                             c == ',' && ui.active != EditorField::Title ? '.' : c));
@@ -687,7 +689,9 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                 // between notes, for immediate shift / flip / copy / delete.
                 // PasteTurns already checks that the whole span fits.
                 ui.rangeFirst = destination;
-                ui.rangeLast = destination + ui.clipboard.span - 1;
+                ui.rangeLast = destination +
+                    (ui.clipboard.span - 1) *
+                    (draft.Data().route.ticksPerBeat / ui.clipboard.ticksPerBeat);
                 ui.draggingTimeline = false;
             }
             notice(ok ? "PATTERN PASTED - RANGE STILL SELECTED"
