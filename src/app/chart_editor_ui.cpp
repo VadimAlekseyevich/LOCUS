@@ -428,10 +428,15 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     }
 
     DrawTimeline(font, draft, ui, previewBeat);
-    const std::string navigationHint =
-        IsGameDirectionKey(settings, KEY_PAGE_UP) ||
-        IsGameDirectionKey(settings, KEY_PAGE_DOWN)
-        ? "WHEEL NAV" : "PGUP/PGDN NAV";
+    const bool horizontalArrows = !IsGameDirectionKey(settings, KEY_LEFT) &&
+                                 !IsGameDirectionKey(settings, KEY_RIGHT);
+    const bool verticalArrows = !IsGameDirectionKey(settings, KEY_UP) &&
+                               !IsGameDirectionKey(settings, KEY_DOWN);
+    const std::string navigationHint = horizontalArrows
+        ? (verticalArrows ? "LR NAV / UP-DOWN GRID" : "LR NAV / GRID +/-")
+        : (IsGameDirectionKey(settings, KEY_PAGE_UP) ||
+           IsGameDirectionKey(settings, KEY_PAGE_DOWN)
+            ? "WHEEL NAV" : "PGUP/PGDN NAV");
     const std::string message = ui.feedback.empty()
         ? (ui.EditingText() ? "TYPE VALUE, ENTER CONFIRMS, ESC CANCELS"
            : navigationHint + "  CTRL+S SAVE  CTRL+O OPEN" +
