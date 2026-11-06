@@ -395,13 +395,18 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
     // Undo/redo also cover non-pattern edits (BPM, grid size, individual turns).
     if (input.undo || input.redo) {
+        const int originalTicks = draft.Data().route.ticksPerBeat;
         const bool ok = input.undo ? draft.Undo() : draft.Redo();
         action.changedChart = ok;
         notice(ok ? (input.undo ? "UNDO APPLIED" : "REDO APPLIED")
                   : (input.undo ? "NOTHING TO UNDO" : "NOTHING TO REDO"), !ok);
-        if (ok && ui.HasRange()) {
-            if (ui.rangeLast >= draft.Data().route.lengthBeats)
-                ui.rangeFirst = ui.rangeLast = -1;
+        if (ok && originalTicks != draft.Data().route.ticksPerBeat) {
+            // A range from the old tick domain would select wrong notes.
+            ui.rangeFirst = ui.rangeLast = -1;
+            ui.draggingTimeline = false;
+        } else if (ok && ui.HasRange() &&
+                   ui.rangeLast >= draft.Data().route.lengthBeats) {
+            ui.rangeFirst = ui.rangeLast = -1;
         }
         return action;
     }
