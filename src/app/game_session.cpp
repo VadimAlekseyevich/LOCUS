@@ -2,11 +2,15 @@
 
 #include "core/route.h"
 
+#include <algorithm>
+
 namespace locus::app {
 
 void GameSession::Start(bool customChart, double now) {
     chord_.Reset();
     hitFlash_.Reset();
+    audioEndedAt_ = -1.0;
+    audioEndSongSeconds_ = 0.0;
     judge_.Reset();
     if (customChart) {
         if (testOrigin_) {
@@ -27,6 +31,8 @@ void GameSession::Restart(bool customChart, double now) {
 void GameSession::Stop(bool customChart) {
     chord_.Reset();
     hitFlash_.Reset();
+    audioEndedAt_ = -1.0;
+    audioEndSongSeconds_ = 0.0;
     if (customChart) local_.Stop();
     else demo_.Stop();
 }
@@ -50,7 +56,10 @@ void GameSession::SetPracticeSpeed(bool customChart, double speed, double now) {
 void GameSession::Update(bool customChart, double now, const ArrowInput& arrows) {
     const bool playing = customChart ? local_.Playing() : demo_.Playing();
     const bool paused = customChart ? local_.Paused() : demo_.Paused();
-    if (playing && !paused) {
+    const bool audioAlreadyFinished = customChart ? local_.Finished() : demo_.Finished();
+    // During the silent tail, allow late directional input up to the
+    // standard judgement window after the final chart note.
+    if ((playing && !paused) || audioAlreadyFinished) {
         if (const auto* target = judge_.NextEvent()) {
             const core::Heading incoming = core::IncomingHeadingAt(chart_, target->beat);
             const core::Heading expected =
@@ -59,9 +68,12 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 {arrows.pressed, arrows.held, arrows.capturedAt},
                 expected, incoming);
             if (stroke) {
-                const double timestamp = customChart
-                    ? local_.AudioSeconds(stroke->capturedAt)
-                    : demo_.SongSeconds(stroke->capturedAt);
+                const double timestamp = audioEndedAt_ >= 0.0
+                    ? audioEndSongSeconds_ +
+                        std::max(0.0, stroke->capturedAt - audioEndedAt_) *
+                            (customChart ? local_.Speed() : 1.0)
+                    : (customChart ? local_.AudioSeconds(stroke->capturedAt)
+                                   : demo_.SongSeconds(stroke->capturedAt));
                 const auto judgement = judge_.PressHeading(stroke->outgoing, timestamp);
                 if (judgement && !judgement->wrongDirection &&
                     judgement->grade != core::Grade::Miss)
@@ -73,7 +85,20 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     else demo_.Update(now);
     const double songTime = customChart ? local_.AudioSeconds(now)
                                          : demo_.SongSeconds(now);
-    if (customChart || demo_.Ready()) judge_.Advance(songTime);
+    if (customChart || demo_.Ready()) {
+        const bool finished = customChart ? local_.Finished() : demo_.Finished();
+        if (finished) {
+            if (audioEndedAt_ < 0.0) {
+                audioEndedAt_ = now;
+                audioEndSongSeconds_ = songTime;
+            }
+            judge_.Advance(audioEndSongSeconds_ +
+                           std::max(0.0, now - audioEndedAt_) *
+                               (customChart ? local_.Speed() : 1.0));
+        } else {
+            judge_.Advance(songTime);
+        }
+    }
 }
 
 } // namespace locus::app
