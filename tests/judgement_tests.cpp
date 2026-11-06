@@ -27,6 +27,34 @@ bool SameRoute(const RouteStep& a, const RouteStep& b) {
 
 int main() {
     bool ok = true;
+    // Every resolved note contributes once. Miss = 0, and its denominator
+    // still counts; otherwise missing notes would never reduce accuracy.
+    GradeCounts accuracy;
+    ok &= Check(accuracy.Resolved() == 0 &&
+                std::abs(accuracy.AccuracyPercent() - 100.0) < 1e-9,
+                "no resolved notes show neutral initial 100 percent");
+    ++accuracy.perfect;
+    ok &= Check(accuracy.AccuracyPercent() == 100.0,
+                "Perfect contributes 100 percent");
+    ++accuracy.good;
+    ok &= Check(accuracy.AccuracyPercent() == 87.5,
+                "Good contributes 75 points and averages with Perfect");
+    ++accuracy.bad;
+    ok &= Check(accuracy.AccuracyPercent() == 75.0,
+                "Bad contributes 50 points");
+    ++accuracy.miss;
+    ok &= Check(accuracy.Resolved() == 4 &&
+                accuracy.AccuracyPercent() == 56.25,
+                "Miss contributes zero but reduces the 4-note accuracy");
+    accuracy.miss += 2;
+    ok &= Check(accuracy.Resolved() == 6 &&
+                accuracy.AccuracyPercent() == 37.5,
+                "additional misses continue lowering accuracy without false hits");
+    GradeCounts allMiss;
+    allMiss.miss = 3;
+    ok &= Check(allMiss.AccuracyPercent() == 0.0,
+                "chart with only misses has 0 percent accuracy");
+
     const Chart demo = MakeDemoChart();
     TurnJudge judge(demo);
 
@@ -156,6 +184,70 @@ int main() {
     ok &= Check(fromMiddle.NextEvent() == nullptr &&
                 fromMiddle.Counts().Resolved() == 0,
                 "test after final event has no phantom misses");
+
+    // Last-note completion is event-driven, not a percentage of the
+    // backing audio duration. A 20-second song with two events at
+    // 0.5/1.5 s must be complete at 1.5 s after a successful last hit.
+    Chart sparse;
+    sparse.lengthBeats = 40; // 20 seconds at 120 BPM.
+    sparse.turns = {{1, Turn::Left}, {3, Turn::Right}};
+    TurnJudge lastNote(sparse);
+    ok &= Check(lastNote.ScorableCount() == 2 &&
+                !lastNote.AllScorableJudged(),
+                "a chart cannot finish while any scorable note is pending");
+    ok &= Check(Is(lastNote.Press(Turn::Left, 0.5), Grade::Perfect, 1) &&
+                !lastNote.AllScorableJudged(),
+                "judging the first note does not finish the chart");
+    ok &= Check(Is(lastNote.Press(Turn::Right, 1.5), Grade::Perfect, 3) &&
+                lastNote.AllScorableJudged() &&
+                lastNote.Counts().Resolved() == 2 &&
+                lastNote.NextEvent() == nullptr,
+                "last successful note finishes chart before 20-second music end");
+    lastNote.Advance(20.0);
+    ok &= Check(lastNote.Counts().perfect == 2 &&
+                lastNote.Counts().miss == 0,
+                "post-completion time does not create phantom misses");
+
+    lastNote.Reset();
+    lastNote.Press(Turn::Left, 0.5);
+    lastNote.Advance(1.68);
+    ok &= Check(!lastNote.AllScorableJudged() &&
+                lastNote.NextEvent() != nullptr,
+                "last missed note stays eligible through exact Bad-window edge");
+    lastNote.Advance(1.681);
+    ok &= Check(lastNote.AllScorableJudged() &&
+                lastNote.Counts().miss == 1 &&
+                lastNote.Counts().perfect == 1 &&
+                lastNote.Counts().AccuracyPercent() == 50.0,
+                "last Miss ends chart only after the late judgement window");
+
+    lastNote.ResetFromBeat(3);
+    ok &= Check(lastNote.ScorableCount() == 1 &&
+                lastNote.Counts().Resolved() == 0 &&
+                !lastNote.AllScorableJudged(),
+                "editor TEST excludes earlier events from accuracy denominator");
+    lastNote.Press(Turn::Right, 1.5);
+    ok &= Check(lastNote.AllScorableJudged() &&
+                lastNote.Counts().perfect == 1 &&
+                lastNote.Counts().AccuracyPercent() == 100.0,
+                "mid-song test completes on the last eligible note");
+    lastNote.ResetFromAudioSeconds(1.501);
+    ok &= Check(lastNote.ScorableCount() == 0 &&
+                !lastNote.AllScorableJudged(),
+                "test starting after last event does not instantly auto-finish");
+    Chart emptyChart;
+    TurnJudge empty(emptyChart);
+    ok &= Check(empty.ScorableCount() == 0 &&
+                !empty.AllScorableJudged(),
+                "chart without events uses audio-end completion fallback");
+
+    Chart absoluteMs;
+    absoluteMs.turns = {{2, Turn::Left, 1250}};
+    TurnJudge millisecondJudge(absoluteMs);
+    ok &= Check(!millisecondJudge.AllScorableJudged() &&
+                Is(millisecondJudge.Press(Turn::Left, 1.25), Grade::Perfect, 2) &&
+                millisecondJudge.AllScorableJudged(),
+                "absolute millisecond last note is judged at exact stored time");
 
     Chart diagonalChart;
     diagonalChart.initialHeading = Heading::Right;
