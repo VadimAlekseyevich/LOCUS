@@ -22,15 +22,17 @@ int CurrentBeat(const core::Chart& chart, double beat) {
                       chart.firstBeat, chart.lengthBeats - 1);
 }
 
-// Only the part of the authored path with song-beat coordinates in
-// [beat, beat+1] is displayed in scored PLAY/TEST. A segment can span
-// the current and next integer beat; their visible portions are clipped
-// at exact fractional beats, so there is never a lingering tail or a
-// whole beat appearing/disappearing in a single frame.
+// Draw a full four-beat measure of future authored path in PLAY/TEST.
+// Each source segment is clipped to [beat, beat+4] using fractional
+// song beats. The rear edge follows the player; nothing lingers behind,
+// and new parts emerge at zero opacity instead of popping into view.
 void DrawScoredPath(const core::Chart& chart, double beat,
                     RouteCanvas canvas, const RouteVisualStyle& style) {
     const int first = CurrentBeat(chart, beat);
-    const int last = std::min(chart.lengthBeats - 1, first + 1);
+    // A fractional four-beat window can intersect five integer beats.
+    const int last = std::min(
+        chart.lengthBeats - 1,
+        first + static_cast<int>(std::ceil(kScoredPathLengthBeats)));
     for (int target = last; target >= first; --target) {
         const ScoredPathInterval visible = ScoredPathVisibleInterval(beat, target);
         if (!visible.Visible()) continue;
@@ -128,8 +130,9 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
     const bool editor = mode == RouteRenderMode::Editor;
     const auto& style = kDefaultRouteVisualStyle;
     if (!editor) {
-        // Same one-beat visibility envelope as the path. Targets never
-        // linger after the player passes them; they approach smoothly.
+        // Same full-measure preview envelope as the path. Red turn targets
+        // appear early enough to read and vanish once the player reaches
+        // them; no completed targets linger behind the avatar.
         const int next = static_cast<int>(std::ceil(beat));
         const auto first = std::lower_bound(
             chart.turns.begin(), chart.turns.end(), next,

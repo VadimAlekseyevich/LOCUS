@@ -48,23 +48,28 @@ inline float TrajectoryOpacity(double beatsAhead) noexcept {
         RouteVisualStyle::fadeBeats);
 }
 
-// PLAY/TEST displays exactly ONE continuous beat of future trajectory.
-// Anything behind the moving marker disappears immediately. The red route
-// starts opaque and wide directly ahead; both opacity and width taper to
-// zero at the next beat. Evaluate fractional song beats every frame.
-inline constexpr double kScoredPathLengthBeats = 1.0;
+// PLAY/TEST previews an entire four-beat measure, not a single beat.
+// Anything behind the moving marker disappears immediately. Ahead, the
+// trajectory stays readable for upcoming turns while thinning and fading
+// continuously to zero at the end of the fourth beat.
+inline constexpr double kScoredPathLengthBeats = 4.0;
 inline constexpr int kScoredPathSlices = 32;
 
 inline float ScoredPathOpacity(double ahead) noexcept {
     if (!std::isfinite(ahead) || ahead < 0.0 ||
         ahead >= kScoredPathLengthBeats) return 0.0f;
-    const float t = std::clamp(static_cast<float>(ahead), 0.0f, 1.0f);
-    const float smooth = t * t * (3.0f - 2.0f * t);
+    const float t = std::clamp(
+        static_cast<float>(ahead / kScoredPathLengthBeats), 0.0f, 1.0f);
+    // Keep turns visible several beats ahead; still reach exactly zero
+    // with a smooth endpoint (no sudden whole-segment disappearance).
+    const float u = t * t;
+    const float smooth = u * u * (3.0f - 2.0f * u);
     return 1.0f - smooth;
 }
 
-// Clip an authored beat segment against the one-beat window ahead of
-// the player. Never draw any time earlier than 'beat'.
+// Clip each authored beat segment against the four-beat lookahead
+// measured from the player's current fractional beat. Nothing behind
+// the player is drawn, and no integer-beat boundaries cause popping.
 struct ScoredPathInterval {
     double begin = 0.0;
     double end = 0.0;

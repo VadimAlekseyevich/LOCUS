@@ -12,63 +12,88 @@ bool Expect(bool condition, const char* name) {
     return condition;
 }
 bool Near(double x, double y) { return std::abs(x - y) < 1e-8; }
-}
+} // namespace
 
 int main() {
     bool ok = true;
+    ok &= Expect(Near(kScoredPathLengthBeats, 4.0),
+                 "scored path must preview four beats, one full measure");
     ok &= Expect(Near(ScoredPathOpacity(0.0), 1.0) &&
                  Near(ScoredPathWidth(0.0), 6.0),
-                 "line is opaque and wide directly ahead of marker");
+                 "line is opaque and thick immediately ahead of the player");
     ok &= Expect(ScoredPathOpacity(-0.000001) == 0.0f &&
-                 ScoredPathOpacity(-0.5) == 0.0f &&
+                 ScoredPathOpacity(-1.0) == 0.0f &&
                  ScoredPathWidth(-0.1) == 0.0f,
-                 "nothing at all visible after player passes a point");
-    ok &= Expect(Near(ScoredPathOpacity(.5), .5) &&
-                 ScoredPathOpacity(.25) > ScoredPathOpacity(.5) &&
-                 ScoredPathOpacity(.5) > ScoredPathOpacity(.75) &&
-                 ScoredPathWidth(.25) > ScoredPathWidth(.5) &&
-                 ScoredPathWidth(.5) > ScoredPathWidth(.75),
-                 "farther line gets steadily dimmer and thinner");
-    ok &= Expect(ScoredPathOpacity(1.0) == 0.0f &&
-                 ScoredPathOpacity(1.001) == 0.0f &&
-                 ScoredPathWidth(1.0) == 0.0f &&
+                 "traversed line vanishes immediately behind the player");
+    ok &= Expect(ScoredPathOpacity(1.0) > 0.80f &&
+                 ScoredPathOpacity(2.0) > 0.65f &&
+                 ScoredPathOpacity(3.0) > 0.30f &&
+                 ScoredPathWidth(3.0) > 2.0f,
+                 "route and turn targets stay readable multiple beats ahead");
+    ok &= Expect(ScoredPathOpacity(0.0) > ScoredPathOpacity(1.0) &&
+                 ScoredPathOpacity(1.0) > ScoredPathOpacity(2.0) &&
+                 ScoredPathOpacity(2.0) > ScoredPathOpacity(3.0) &&
+                 ScoredPathOpacity(3.0) > ScoredPathOpacity(3.9) &&
+                 ScoredPathWidth(0.0) > ScoredPathWidth(1.0) &&
+                 ScoredPathWidth(1.0) > ScoredPathWidth(2.0) &&
+                 ScoredPathWidth(2.0) > ScoredPathWidth(3.0),
+                 "trajectory gradually fades and narrows across the measure");
+    ok &= Expect(ScoredPathOpacity(4.0) == 0.0f &&
+                 ScoredPathOpacity(4.001) == 0.0f &&
+                 ScoredPathWidth(4.0) == 0.0f &&
                  ScoredPathOpacity(std::numeric_limits<double>::quiet_NaN()) == 0.0f &&
                  ScoredPathOpacity(std::numeric_limits<double>::infinity()) == 0.0f,
-                 "exact end of next beat is invisible and invalid values are safe");
+                 "exact end of the four-beat preview is invisible");
 
-    const auto before = ScoredPathVisibleInterval(8.25, 7);
+    const auto behind = ScoredPathVisibleInterval(8.25, 7);
     const auto current = ScoredPathVisibleInterval(8.25, 8);
     const auto next = ScoredPathVisibleInterval(8.25, 9);
-    const auto far = ScoredPathVisibleInterval(8.25, 10);
-    ok &= Expect(!before.Visible() && !far.Visible() &&
+    const auto third = ScoredPathVisibleInterval(8.25, 10);
+    const auto fourth = ScoredPathVisibleInterval(8.25, 11);
+    const auto fifth = ScoredPathVisibleInterval(8.25, 12);
+    const auto beyond = ScoredPathVisibleInterval(8.25, 13);
+    ok &= Expect(!behind.Visible() && !beyond.Visible() &&
                  Near(current.begin, 8.25) && Near(current.end, 9.0) &&
-                 Near(next.begin, 9.0) && Near(next.end, 9.25),
-                 "visible interval is only one beat ahead, even across a turn");
+                 Near(next.begin, 9.0) && Near(next.end, 10.0) &&
+                 Near(third.begin, 10.0) && Near(third.end, 11.0) &&
+                 Near(fourth.begin, 11.0) && Near(fourth.end, 12.0) &&
+                 Near(fifth.begin, 12.0) && Near(fifth.end, 12.25),
+                 "fractional four-beat window spans five contiguous beat segments");
 
-    const auto atEnd = ScoredPathVisibleInterval(8.9999, 8);
-    const auto atNext = ScoredPathVisibleInterval(9.0, 9);
-    const auto behind = ScoredPathVisibleInterval(9.0, 8);
-    ok &= Expect(Near(atEnd.begin, 8.9999) && Near(atEnd.end, 9.0) &&
-                 Near(atNext.begin, 9.0) && Near(atNext.end, 10.0) &&
-                 !behind.Visible(),
-                 "past line clips exactly at marker when crossing integer beat");
+    const auto endOfBeat = ScoredPathVisibleInterval(8.9999, 8);
+    const auto beginningNext = ScoredPathVisibleInterval(9.0, 9);
+    const auto alreadyPassed = ScoredPathVisibleInterval(9.0, 8);
+    ok &= Expect(Near(endOfBeat.begin, 8.9999) &&
+                 Near(endOfBeat.end, 9.0) &&
+                 Near(beginningNext.begin, 9.0) &&
+                 Near(beginningNext.end, 10.0) &&
+                 !alreadyPassed.Visible(),
+                 "current beat clips exactly to marker on integer beat change");
 
-    // A few thousand samples protect against regressions where the front
-    // and back of the visible window jump at a frame boundary.
+    // Exercise 4,001 successive sub-beat positions. The future path always
+    // covers exactly four beats, including across turns, with no past tail.
     for (int i = 0; i <= 4000; ++i) {
         const double beat = 11.0 + i / 4000.0;
-        const int first = static_cast<int>(std::floor(beat));
-        const auto sliceA = ScoredPathVisibleInterval(beat, first);
-        const auto sliceB = ScoredPathVisibleInterval(beat, first + 1);
-        if (sliceA.Visible() && (sliceA.begin < beat || sliceA.end > beat + 1.0))
-            ok &= Expect(false, "current beat never trails marker");
-        if (sliceB.Visible() && (sliceB.begin < beat || sliceB.end > beat + 1.0))
-            ok &= Expect(false, "next beat never exceeds one-beat visibility");
-        if (sliceA.Visible() && sliceB.Visible() && !Near(sliceA.end, sliceB.begin))
-            ok &= Expect(false, "visible path remains joined across the turn");
+        const int firstBeat = static_cast<int>(std::floor(beat));
+        double covered = 0.0;
+        double previousEnd = beat;
+        for (int target = firstBeat; target <= firstBeat + 4; ++target) {
+            const auto interval = ScoredPathVisibleInterval(beat, target);
+            if (!interval.Visible()) continue;
+            if (interval.begin < beat - 1e-8 ||
+                interval.end > beat + 4.0 + 1e-8 ||
+                !Near(interval.begin, previousEnd))
+                ok &= Expect(false, "window contains only connected upcoming path");
+            covered += interval.end - interval.begin;
+            previousEnd = interval.end;
+        }
+        if (!Near(covered, 4.0) || !Near(previousEnd, beat + 4.0)) {
+            ok &= Expect(false, "every fractional frame shows a full four beats");
+            break;
+        }
     }
 
     if (!ok) return 1;
-    std::cout << "PATH_FADE_PASS forward-only=1 one-beat=1 continuous=1\n";
+    std::cout << "PATH_FADE_PASS forward-only=1 measure=4 continuous=1\n";
     return 0;
 }
