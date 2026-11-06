@@ -50,6 +50,8 @@ public:
     void Reset() noexcept;
     // Skip earlier turns without recording misses in a midway practice test.
     void ResetFromBeat(int firstScoredBeat) noexcept;
+    // Editor TEST excludes only notes before this exact audio timestamp.
+    void ResetFromAudioSeconds(double audioSeconds) noexcept;
 
     // Mark every unplayed event whose late window has elapsed as Miss.
     void Advance(double songSeconds) noexcept;
