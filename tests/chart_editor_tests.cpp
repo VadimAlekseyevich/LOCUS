@@ -22,7 +22,12 @@ int main() {
     ChartEditor draft;
     ok &= Check(draft.Data().route.lengthBeats == 32 &&
                 draft.Data().route.turns.empty() && !draft.Dirty() &&
-                draft.Data().offsetSeconds == 0.0, "fresh draft is editable");
+                draft.Data().route.gridWidth == 8 &&
+                draft.Data().route.gridHeight == 8 &&
+                draft.Data().route.start.x == 3 &&
+                draft.Data().route.start.y == 3 &&
+                draft.Data().offsetSeconds == 0.0,
+                "fresh draft defaults to 8x8 square and automatic origin");
 
     ok &= Check(draft.ChangeBpm(5) && draft.Data().route.bpm == 125.0 &&
                 draft.ChangeOffsetMs(150) &&
@@ -31,19 +36,23 @@ int main() {
     ok &= Check(draft.ChangeOffsetMs(-180) &&
                 std::abs(draft.Data().offsetSeconds + 0.03) < 1e-9,
                 "negative millisecond preroll");
-    ok &= Check(draft.SetStart({3, 0}) && !draft.SetStart({4, 0}),
-                "default start-cell bounds");
-    ok &= Check(draft.SetGridSize(8, 8) && draft.SetStart({7, 7}) &&
-                draft.Data().route.gridWidth == 8 &&
-                draft.Data().route.gridHeight == 8,
-                "8/8 game field expands selectable start cells");
-    ok &= Check(!draft.SetGridSize(4, 4) &&
-                draft.Data().route.gridWidth == 8 &&
-                draft.Data().route.start.x == 7 &&
-                !draft.SetGridSize(17, 8),
-                "resizing never silently discards an out-of-bounds start cell");
-    ok &= Check(draft.SetStart({1, 1}) && draft.SetGridSize(4, 4),
-                "shrinking succeeds after moving the start inside the field");
+    ok &= Check(draft.SetStart({3, 0}) && !draft.SetStart({8, 0}),
+                "internal legacy start setter still honours 8x8 bounds");
+    ok &= Check(!draft.SetGridSize(8, 6) &&
+                !draft.SetGridSize(17, 17),
+                "square-only visible size rejects rectangles and invalid dimensions");
+    ok &= Check(draft.SetGridSize(12, 12) &&
+                draft.Data().route.gridWidth == 12 &&
+                draft.Data().route.gridHeight == 12 &&
+                draft.Data().route.start.x == 5 &&
+                draft.Data().route.start.y == 5,
+                "one square size automatically sets both dimensions and origin");
+    ok &= Check(draft.SetGridSize(4, 4) &&
+                draft.Data().route.gridWidth == 4 &&
+                draft.Data().route.gridHeight == 4 &&
+                draft.Data().route.start.x == 1 &&
+                draft.Data().route.start.y == 1,
+                "shrinking square no longer requires editing hidden coordinates");
     draft.RotateHeading(-1);
     ok &= Check(draft.Data().route.initialHeading == Heading::Up,
                 "left heading rotation");
@@ -239,9 +248,9 @@ int main() {
                 group.Undo() && group.Data().route.turns[3].beat == 12 &&
                 group.Data().route.turns[4].beat == 14,
                 "multiple undo steps restore earlier pattern positions");
-    ok &= Check(group.SetGridSize(8, 8) && group.Undo() &&
-                group.Data().route.gridWidth == 4 &&
-                group.Redo() && group.Data().route.gridWidth == 8,
+    ok &= Check(group.SetGridSize(12, 12) && group.Undo() &&
+                group.Data().route.gridWidth == 8 &&
+                group.Redo() && group.Data().route.gridWidth == 12,
                 "undo and redo also cover ordinary field edits");
     ChartEditor saved;
     saved.NewDraft();
