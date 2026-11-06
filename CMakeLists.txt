@@ -32,6 +32,7 @@ target_include_directories(locus_core PUBLIC
 
 add_executable(locus
     src/app/main.cpp
+    src/app/native_close.cpp
     src/app/demo_transport.cpp
     src/app/local_music.cpp
     src/app/local_file_io.cpp
@@ -52,7 +53,7 @@ add_executable(locus
 )
 target_link_libraries(locus PRIVATE locus_core raylib nlohmann_json::nlohmann_json)
 if(WIN32)
-    target_link_libraries(locus PRIVATE comdlg32)
+    target_link_libraries(locus PRIVATE comdlg32 user32)
 endif()
 set_target_properties(locus PROPERTIES
     CXX_EXTENSIONS OFF
