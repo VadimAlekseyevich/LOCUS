@@ -111,8 +111,9 @@ struct EditorGrid {
     int ticksPerBeat = 1;
 
     explicit EditorGrid(const core::Chart& chart, double tick) {
-        const int span = std::max(chart.gridWidth - 1, chart.gridHeight - 1);
-        step = kGridMaxSpan / static_cast<float>(std::max(1, span));
+        const int visibleCells = std::max(chart.gridWidth, chart.gridHeight);
+        // One size "8" means eight equal cells across the fixed square.
+        step = kGridMaxSpan / static_cast<float>(std::max(1, visibleCells));
         origin = core::RoutePositionAt(chart, tick);
         start = chart.start;
         ticksPerBeat = chart.ticksPerBeat;
