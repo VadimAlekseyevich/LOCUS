@@ -15,6 +15,8 @@
 #include "app/game_session.h"
 #include "app/song_library.h"
 #include "app/game_settings.h"
+#include "app/skin.h"
+#include "app/skin_menu.h"
 #include "app/menu_ui.h"
 
 #include "raylib.h"
@@ -264,6 +266,7 @@ struct GameplayView {
     const char* status;
     bool showHitFlash = true;
     const locus::app::GameSettings& bindings;
+    const locus::app::Skin& skin;
 };
 
 // Fixed screen-centre avatar: only the world translates. The gameplay
@@ -276,17 +279,19 @@ struct GameplayCamera {
     static constexpr float kCenterY = kWindowHeight * 0.5f;
     static constexpr float kStep = 51.0f; // Less zoomed than the old 75px/beat.
     locus::core::GridPoint world{};
+    float step = kStep;
 
-    GameplayCamera(const locus::core::Chart& chart, double beat)
-        : world(locus::core::RoutePositionAt(chart, beat)) {}
+    GameplayCamera(const locus::core::Chart& chart, double beat,
+                   const locus::app::Skin& skin = locus::app::Skin{})
+        : world(locus::core::RoutePositionAt(chart, beat)), step(skin.cameraStep) {}
 
     locus::app::RouteCanvas Canvas() const noexcept {
-        return {kCenterX, kCenterY, kStep, world};
+        return {kCenterX, kCenterY, step, world};
     }
 };
 
 void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
-    const GameplayCamera camera(gameplay.chart, gameplay.beat);
+    const GameplayCamera camera(gameplay.chart, gameplay.beat, gameplay.skin);
     const auto canvas = camera.Canvas();
 
     // Scissor coordinates are physical pixels while all world points remain
@@ -306,24 +311,27 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     // No past-route trail, grid or debug overlay.
     const Vector2 marker = locus::app::DrawRouteTrajectory(
         gameplay.chart, gameplay.beat, canvas,
-        locus::app::RouteRenderMode::Gameplay);
+        locus::app::RouteRenderMode::Gameplay, gameplay.skin);
     locus::app::DrawRouteJunctions(
         gameplay.chart, gameplay.beat, canvas,
-        locus::app::RouteRenderMode::Gameplay);
-    constexpr float markerRadius = 12.5f;
-    DrawCircleV(marker, markerRadius * 1.65f, Color{255, 75, 86, 43});
-    DrawCircleV(marker, markerRadius, Color{255, 140, 149, 255});
-    DrawCircleV(marker, markerRadius * 0.33f, Color{245, 253, 255, 255});
+        locus::app::RouteRenderMode::Gameplay, gameplay.skin);
+    const float markerRadius = gameplay.skin.playerRadius;
+    if (gameplay.skin.playerGlow)
+        DrawCircleV(marker, markerRadius * 1.65f,
+                    locus::app::WithOpacity(gameplay.skin.player, 0.22f));
+    DrawCircleV(marker, markerRadius, gameplay.skin.player);
+    DrawCircleV(marker, markerRadius * 0.33f, gameplay.skin.playerCore);
     if (gameplay.showHitFlash) {
         locus::app::DrawPlayerHitFlash(
-            marker, markerRadius, gameplay.hitFlash.Sample(now));
+            marker, markerRadius, gameplay.hitFlash.Sample(now), gameplay.skin);
     }
     EndScissorMode();
 
-    // Hit feedback lives in a dedicated bottom bar, not on top of the route.
+    // The HUD stays separate from the playing field and can be hidden.
+    if (!gameplay.skin.showHud) return;
     DrawRectangle(0, static_cast<int>(kGameplayHudTop), kWindowWidth,
                   kWindowHeight - static_cast<int>(kGameplayHudTop),
-                  Color{22, 26, 37, 255});
+                  gameplay.skin.hudBackground);
     DrawLine(0, static_cast<int>(kGameplayHudTop),
              kWindowWidth, static_cast<int>(kGameplayHudTop),
              Color{47, 57, 73, 255});
@@ -344,7 +352,7 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
         DrawTextLabel(font, stat.label, {stat.x, 488.0f}, 15.0f, stat.color);
         DrawTextLabel(font, TextFormat("%d", stat.count),
                       {stat.x, 508.0f}, 22.0f,
-                      Color{231, 237, 243, 255});
+                      gameplay.skin.hudText);
     }
     DrawLine(750, 488, 750, 531, Color{47, 57, 73, 255});
     DrawTextLabel(font, "LAST", {775.0f, 488.0f}, 14.0f,
@@ -607,7 +615,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   const locus::app::SettingsUi& settingsUi,
                   const std::string& menuStatus) {
     BeginDrawing();
-    ClearBackground(kBackground);
+    ClearBackground(state.screen == Screen::Play
+                        ? gameplay.skin.background : kBackground);
 
     // Keep UI and the authored game field at the original 16:9 proportions.
     // Resizing/maximizing/fullscreen simply fits and centers this canvas.
@@ -631,7 +640,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::SongSelect) {
         locus::app::DrawSongSelectMenu(font, library, libraryUi);
     } else if (state.screen == Screen::Skin) {
-        locus::app::DrawSkinMenu(font);
+        locus::app::DrawSkinMenu(font, draftSkin, skinUi);
     } else if (state.screen == Screen::Settings) {
         locus::app::DrawSettingsMenu(font, settings, settingsUi);
     } else if (state.screen == Screen::Listen) {
@@ -1506,7 +1515,7 @@ int main(int argc, char** argv) {
                                                 : transport.Beat(renderNow),
                                     paused, finished, customChart,
                                     customChart ? chartPlayback.Speed() : 1.0,
-                                    status, settings.hitFlash, settings};
+                                    status, settings.hitFlash, settings, activeSkin};
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
                     editorStatus, editorPending, musicError, renderNow,
