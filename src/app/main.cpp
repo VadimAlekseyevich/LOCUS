@@ -18,6 +18,7 @@
 #include "app/skin.h"
 #include "app/skin_menu.h"
 #include "app/menu_ui.h"
+#include "app/native_close.h"
 
 #include "raylib.h"
 
@@ -61,9 +62,9 @@ enum class Screen {
 
 struct FrameInput {
     bool closeRequested = false;
+    std::optional<Screen> requestedScreen;
     bool quitConfirmed = false;
     bool quitCanceled = false;
-    std::optional<Screen> requestedScreen;
     bool startPressed = false;
     bool pausePressed = false;
     bool restartPressed = false;
@@ -123,7 +124,7 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     const bool escape = IsKeyPressed(KEY_ESCAPE);
     // Esc always goes BACK outside Home, including ROUTE editor.
     // Only Esc on Home or the window X requests app termination.
-    input.closeRequested = WindowShouldClose() ||
+    input.closeRequested = locus::app::ConsumeNativeCloseRequest() ||
                            (escape && currentScreen == Screen::Home);
     input.backPressed = escape && currentScreen != Screen::Home;
     if (debugScreens) {
@@ -707,13 +708,14 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     };
 
     if (state.screen == Screen::Home) {
-        for (int i = 0; i < 4; ++i) {
+        for (int i = 0; i < 5; ++i) {
             if (!hit(locus::app::HomeMenuButton(i))) continue;
             switch (i) {
                 case 0: input.requestedScreen = Screen::SongSelect; break;
                 case 1: input.requestedScreen = Screen::Editor; break;
                 case 2: input.requestedScreen = Screen::Skin; break;
                 case 3: input.requestedScreen = Screen::Settings; break;
+                case 4: input.closeRequested = true; break;
             }
             return events;
         }
@@ -1241,7 +1243,12 @@ int main(int argc, char** argv) {
         return 1;
     }
     SetWindowMinSize(800, 450);
-    SetExitKey(KEY_NULL); // Route Esc through unsaved-editor confirmation.
+    SetExitKey(KEY_NULL); // Esc is Back; quitting always needs explicit consent.
+    if (!locus::app::InstallNativeCloseGuard()) {
+        std::cerr << "WINDOW_CLOSE_GUARD_FAILED\n";
+        CloseWindow();
+        return 1;
+    }
     UiFont uiFont = LoadUiFont();
     SetTargetFPS(60); // Visual smoke baseline only, never a musical clock.
     std::cout << "LOCUS_WINDOW_OPEN\n";
@@ -1888,6 +1895,7 @@ int main(int argc, char** argv) {
     if (uiFont.owned) {
         UnloadFont(uiFont.value);
     }
+    locus::app::RemoveNativeCloseGuard();
     CloseWindow();
     std::cout << "LOCUS_WINDOW_CLOSED\n";
     if (smokeWindow) {
