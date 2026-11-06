@@ -112,7 +112,10 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_chart_json_tests tests/chart_json_tests.cpp)
     target_compile_features(locus_chart_json_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_chart_json_tests PRIVATE locus_core)
-    add_test(NAME locus_chart_v1_json COMMAND locus_chart_json_tests)
+    add_test(NAME locus_chart_json_compatibility COMMAND locus_chart_json_tests)
+    # Keep the shipped example checked by the same parser as real files.
+    set_tests_properties(locus_chart_json_compatibility PROPERTIES
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
     add_executable(locus_chart_editor_tests tests/chart_editor_tests.cpp)
     target_compile_features(locus_chart_editor_tests PRIVATE cxx_std_17)
