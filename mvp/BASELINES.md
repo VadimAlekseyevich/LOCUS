@@ -62,7 +62,7 @@ The BAT fast-forward pulls, compiles **LOCUS Release**, and calls:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/measure-baseline.ps1 -Executable build-a07/foundation/Release/locus.exe -OutputDirectory .locus-runs/manual-example -Mode Interactive -SampleSeconds 12
 ~~~
 
-**Procedure:** Leave the LOCUS window **uninteracted with for 12 seconds** while one sample is collected per second. Then close it using Esc or X when prompted. The launcher prints a human-readable `baseline-summary.txt` and packages it with `baseline-idle-samples.csv` into `LOCUS-game-logs.zip`, saved under the local Git-ignored `.locus-runs/` folder.
+**Procedure:** Leave the LOCUS window **uninteracted with for 12 seconds** while one sample is collected per second. Then close it with **Esc on Home or window X**, and press **Y** in the quit confirmation. The launcher prints a human-readable `baseline-summary.txt` and packages it with `baseline-idle-samples.csv` into `LOCUS-game-logs.zip`, saved under the local Git-ignored `.locus-runs/` folder.
 
 - **Time to a detected GUI window:** Stopwatch from launching the actual GUI to the first nonzero Windows `MainWindowHandle`, with a 10-second timeout. This measures existence of an interactive top-level window; it **does not** measure the first fully drawn frame or keyboard-to-pixel latency.
 - **Idle RAM:** Mean and maximum `WorkingSet64` (resident process working set) and mean `PrivateMemorySize64` over the quiet window interval, in MiB.
