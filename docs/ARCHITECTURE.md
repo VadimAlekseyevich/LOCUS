@@ -20,6 +20,7 @@ Reviewed: 2026-11-06. Scope: current Windows/raylib rhythm game, not prospective
 - Chart v2 timestamps are authoritative in song milliseconds; editor snapping and visualization do not rewrite timing.
 - Movement speed is independent of BPM, snap subdivisions and heading; diagonals are Euclidean unit steps.
 - **2026-11-06:** Visible-route range sampling replaces repeated full-history scans for each preview segment. Random-access geometry remains available. The dense 240-tick window regression compares batched and standalone samples.
+- **2026-11-07:** Screen-boundary lifecycle side effects live in `session_transition.*`, independent of screen navigation decisions. Tests exercise Editor → TEST → Results → retry → Editor, demo fallback, and new library chart loads without a desktop.
 - **2026-11-07:** `AudioDevice` is the sole raylib audio owner, constructed before borrowed `DemoTransport`/`LocalMusic` streams and closed after they unload. A demo decode failure cannot shut down the local song's output; headless lifecycle checks cover absence of an audio device.
 - **2026-11-06:** Editor document loading/saving is isolated in `src/app/editor_document.*`. Failed loads validate their replacement chart, audio decoder and timeline before swapping; failed saves do not discard the active editor draft. Headless tests verify rejection paths.
 - **2026-11-06:** Import stages each audio version into an immutable content-fingerprinted file before publishing chart JSON atomically. A crashed or failed import can leave an unreferenced version, but cannot silently change audio bytes used by previously installed difficulties. Each difficulty owns its selected audio path, while the song browser groups versions under one logical song.
@@ -31,9 +32,9 @@ Reviewed: 2026-11-06. Scope: current Windows/raylib rhythm game, not prospective
 
 The chart JSON is the sole publication point. Imported audio is immutable and chart references remain valid through interrupted updates; existing v1/v2 JSON and installed audio files stay supported. New imports store audio under `.locus-versions/<16-hex fingerprint>/<original audio filename>`. Remaining limitations: an interrupted import may leave unused staged/revision files; do not garbage-collect versions without cross-process safety. Test permission and power-loss paths on a real Windows machine.
 
-### P1 — Reduce `main.cpp` session orchestration
+### P1 — Reduce remaining `main.cpp` session orchestration
 
-`main.cpp` still orchestrates editor commands, song selection, scored-session transitions and quit modal handling. Editor document load/save has been extracted, but most screen/session coordination remains. Extract **one cohesive editor/session coordinator at a time**, retaining stable chart references and the existing atomic load behavior. Do not split functions merely by length or introduce a general-purpose event framework. Add transition tests for Editor → Test → Results → Editor, failed reloads, and quit confirmation during playback.
+Editor document persistence and screen-boundary lifecycle side effects have been extracted, with tests for failed document loads and editor/test/results transitions. `main.cpp` still handles file dialogs, editor commands, application quit-confirmation media pausing, song selection and in-play actions. Next target: extract one coherent modal/selection lifecycle at a time, preserving stable references and existing atomic chart loading.
 
 ### P2 — Validate real-device audio lifecycle
 

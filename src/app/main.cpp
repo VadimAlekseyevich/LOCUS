@@ -24,6 +24,7 @@
 #include "app/menu_ui.h"
 #include "app/native_close.h"
 #include "app/screen_flow.h"
+#include "app/session_transition.h"
 #include "app/viewport.h"
 
 #include "raylib.h"
@@ -776,6 +777,10 @@ int main(int argc, char** argv) {
     int editorPreviewStartBeat = 0; // R returns to this preview origin.
     std::string chartTitle = "BUILT-IN DEMO";
     std::string musicError;
+    const locus::app::SessionTransitionContext transitions{
+        activeChart, demo, judge, gameSession, chartPlayback, localSong, editorUi,
+        customChart, sessionCompleted, chartTitle
+    };
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
@@ -1338,39 +1343,8 @@ int main(int argc, char** argv) {
         }
 
         if (state.screen != previousScreen) {
-            if (state.screen == Screen::Editor) {
-                // A key used to open EDIT may itself be rebound to a game
-                // direction. Do not turn that held menu key into a new note;
-                // re-arm placement only once the player releases it.
-                editorUi.pendingDirection = 0;
-                editorUi.pendingDirectionSeconds = 0.0f;
-                editorUi.directionKeysHandled = true;
-            }
-            if (previousScreen == Screen::Play) {
-                gameSession.Stop(customChart);
-            }
-            if (previousScreen == Screen::Listen) localSong.Stop();
-            if (previousScreen == Screen::Editor && state.screen != Screen::Editor)
-                chartPlayback.Stop();
-            if (state.screen == Screen::Play) {
-                sessionCompleted = false;
-                if (previousScreen != Screen::Results && !loadedNewChart &&
-                    previousScreen != Screen::Editor) {
-                    // Enter on Home always selects the built-in original demo;
-                    // replay from Results keeps the chart just completed.
-                    customChart = false;
-                    activeChart = demo;
-                    chartTitle = "BUILT-IN DEMO";
-                    gameSession.ClearTestOrigin();
-                    judge.SetOffsetSeconds(0.0);
-                } else {
-                    judge.Reset();
-                }
-                gameSession.Start(customChart, now);
-            } else if (state.screen == Screen::Listen) {
-                localSong.SetSpeed(1.0, now); // Preview slowdown must not leak to Listen.
-                localSong.Start(now);
-            }
+            locus::app::ApplySessionTransition(
+                transitions, previousScreen, state.screen, loadedNewChart, now);
         } else if (state.screen == Screen::Play) {
             if (input.baseSpeedDelta != 0) {
                 const float next = locus::app::AdjustBaseSpeed(

@@ -34,6 +34,7 @@ add_executable(locus
     src/app/menu_controller.cpp
     src/app/gameplay_ui.cpp
     src/app/screen_flow.cpp
+    src/app/session_transition.cpp
     src/app/native_close.cpp
     src/app/demo_transport.cpp
     src/app/audio_device.cpp
@@ -156,6 +157,21 @@ if(LOCUS_BUILD_TESTS)
 
     # No physical device needed: a failed demo initialization cannot claim
     # or close the audio device owned by the application.
+    # Exercise screen-boundary effects without a window or audio device.
+    # The pure navigation policy remains in screen_flow.
+    add_executable(locus_session_transition_tests
+        tests/session_transition_tests.cpp
+        src/app/session_transition.cpp
+        src/app/game_session.cpp
+        src/app/chart_playback.cpp
+        src/app/demo_transport.cpp
+        src/app/local_music.cpp
+        src/app/local_file_io.cpp
+    )
+    target_compile_features(locus_session_transition_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_session_transition_tests PRIVATE locus_core raylib)
+    add_test(NAME locus_session_transition_lifecycle COMMAND locus_session_transition_tests)
+
     add_executable(locus_audio_lifecycle_tests
         tests/audio_lifecycle_tests.cpp
         src/app/audio_device.cpp
