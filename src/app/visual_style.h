@@ -55,16 +55,18 @@ inline float TrajectoryOpacity(double beatsAhead) noexcept {
 inline constexpr double kScoredPathLengthBeats = 4.0;
 inline constexpr int kScoredPathSlices = 32;
 
-inline float ScoredPathOpacity(double ahead) noexcept {
-    if (!std::isfinite(ahead) || ahead < 0.0 ||
-        ahead >= kScoredPathLengthBeats) return 0.0f;
-    const float t = std::clamp(
-        static_cast<float>(ahead / kScoredPathLengthBeats), 0.0f, 1.0f);
-    // Keep turns visible several beats ahead; still reach exactly zero
-    // with a smooth endpoint (no sudden whole-segment disappearance).
+inline float ScoredPathOpacity(double ahead,
+                               double length = kScoredPathLengthBeats,
+                               float fadePower = 1.0f) noexcept {
+    if (!std::isfinite(ahead) || !std::isfinite(length) ||
+        !std::isfinite(fadePower) || length <= 0.0 ||
+        ahead < 0.0 || ahead >= length) return 0.0f;
+    const float t = std::clamp(static_cast<float>(ahead / length), 0.0f, 1.0f);
+    // Same smooth four-beat default as before; user skins can change
+    // the distance and curve without altering chart beats or timing.
     const float u = t * t;
     const float smooth = u * u * (3.0f - 2.0f * u);
-    return 1.0f - smooth;
+    return std::pow(1.0f - smooth, fadePower);
 }
 
 // Clip each authored beat segment against the four-beat lookahead
@@ -76,18 +78,22 @@ struct ScoredPathInterval {
     bool Visible() const noexcept { return end > begin; }
 };
 
-inline ScoredPathInterval ScoredPathVisibleInterval(double beat,
-                                                   int segmentBeat) noexcept {
-    if (!std::isfinite(beat)) return {};
+inline ScoredPathInterval ScoredPathVisibleInterval(
+    double beat, int segmentBeat,
+    double length = kScoredPathLengthBeats) noexcept {
+    if (!std::isfinite(beat) || !std::isfinite(length) || length <= 0.0) return {};
     const double begin = std::max(beat, static_cast<double>(segmentBeat));
-    const double end = std::min(beat + kScoredPathLengthBeats,
-                                 static_cast<double>(segmentBeat + 1));
+    const double end = std::min(beat + length, static_cast<double>(segmentBeat + 1));
     return {begin, std::max(begin, end)};
 }
 
-inline float ScoredPathWidth(double ahead) noexcept {
-    const float opacity = ScoredPathOpacity(ahead);
-    return opacity <= 0.0f ? 0.0f : 0.7f + 5.3f * opacity;
+inline float ScoredPathWidth(double ahead,
+                             double length = kScoredPathLengthBeats,
+                             float thickness = 6.0f,
+                             float fadePower = 1.0f) noexcept {
+    const float opacity = ScoredPathOpacity(ahead, length, fadePower);
+    return opacity <= 0.0f ? 0.0f
+        : thickness * (0.7f / 6.0f + (5.3f / 6.0f) * opacity);
 }
 
 inline Color WithOpacity(Color color, float opacity) noexcept {
