@@ -40,8 +40,9 @@ struct TurnEvent {
     std::int64_t timeMs = kNoTimeMs; // authoritative song position if specified
 };
 
-// Grid dimensions now describe only the editor's visible grid window.
-// They never constrain the route or cause world-space wrapping.
+// Grid size is the author-facing number of cells along the square's side.
+// It determines editor-grid and clipped gameplay-camera density, never
+// constrains the infinite route or causes world-space wrapping.
 constexpr int kMinGridSize = 2;
 constexpr int kMaxGridSize = 16;
 
