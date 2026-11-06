@@ -100,7 +100,8 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
                                       static_cast<double>(chart.firstBeat),
                                       static_cast<double>(chart.lengthBeats));
     const EditorGrid grid(chart, bounded);
-    const RouteCanvas canvas{grid.left, grid.top, grid.step, grid.origin};
+    const RouteCanvas canvas{grid.left, grid.top,
+                              grid.step / chart.ticksPerBeat, grid.origin};
 
     // The grid is retained only in ROUTE; it is a scrolling view over the
     // limitless world, not a wall that routes bounce from or teleport across.
@@ -117,8 +118,10 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
                      static_cast<int>(std::ceil(kGridMaxSpan * scale)));
 
     const int halfCells = static_cast<int>(std::ceil(kGridMaxSpan / grid.step)) + 2;
-    const int cx = static_cast<int>(std::floor(grid.origin.x));
-    const int cy = static_cast<int>(std::floor(grid.origin.y));
+    const int cx = static_cast<int>(std::floor(
+        chart.start.x + (grid.origin.x - chart.start.x) / chart.ticksPerBeat));
+    const int cy = static_cast<int>(std::floor(
+        chart.start.y + (grid.origin.y - chart.start.y) / chart.ticksPerBeat));
     for (int i = -halfCells; i <= halfCells; ++i) {
         const float x = grid.Point(core::Cell{cx + i, cy}).x;
         if (x >= x0 - 1.0f && x <= x1 + 1.0f)
