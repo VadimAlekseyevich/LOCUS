@@ -35,7 +35,7 @@ bool Hit(Vector2 mouse, Rectangle area) {
     return CheckCollisionPointRec(mouse, area);
 }
 
-Rectangle Minus(int row) { return {429.0f, 200.0f + row * 36.0f, 34.0f, 29.0f}; }
+Rectangle Minus(int row) { return {389.0f, 200.0f + row * 36.0f, 34.0f, 29.0f}; }
 Rectangle Plus(int row) { return {526.0f, 200.0f + row * 36.0f, 34.0f, 29.0f}; }
 Rectangle ColorRow(int row) { return {70.0f, 199.0f + row * 28.0f, 485.0f, 26.0f}; }
 Rectangle ChannelMinus(int channel) {
@@ -166,7 +166,7 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
             Label(font, RowName(ui.page, row), 70.0f, 206.0f + row * 36.0f,
                   15.0f, kMuted);
             Button(font, Minus(row), "-");
-            Label(font, RowValue(skin, ui.page, row), 472.0f,
+            Label(font, RowValue(skin, ui.page, row), 435.0f,
                   206.0f + row * 36.0f, 13.0f);
             Button(font, Plus(row), "+");
         }
@@ -271,9 +271,10 @@ bool HandleSkinNameInput(Skin& skin, SkinUi& ui) {
     }
     if (IsKeyPressed(KEY_BACKSPACE) && !skin.name.empty()) {
         // Remove the last UTF-8 code point, not just one byte.
-        do { skin.name.pop_back(); }
         while (!skin.name.empty() &&
-               (static_cast<unsigned char>(skin.name.back()) & 0xc0) == 0x80);
+               (static_cast<unsigned char>(skin.name.back()) & 0xc0) == 0x80)
+            skin.name.pop_back();
+        if (!skin.name.empty()) skin.name.pop_back();
     }
     int codepoint = 0;
     while ((codepoint = GetCharPressed()) != 0) {
