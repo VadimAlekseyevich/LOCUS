@@ -206,8 +206,8 @@ void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
 // A scored chart ends when its LAST eligible note has been judged, not when
 // the remaining song audio runs out. Empty charts and editor TEST positions
 // after the last note have no scorable event: only these need the audio-end
-// fallback. If audio unexpectedly ends first, resolve remaining turns as
-// misses so the session never stalls with unjudged events.
+// fallback. GameSession extends the scoring clock briefly past audio end
+// so a final late hit or Miss is evaluated before showing Results.
 bool ChartReadyForResults(const locus::core::TurnJudge& judge,
                           bool audioFinished) noexcept {
     // If there are scorable notes, all of them must actually be evaluated.
@@ -1031,6 +1031,30 @@ bool CheckSessionFlow() {
     if (state.screen != Screen::Play) return false;
     judge.Reset();
     if (judge.Counts().Resolved() != 0) return false;
+
+    // Even when audio has just ended, a pending last note must keep its
+    // full late-hit window; completion requires a real final judgement.
+    judge.Advance(15.17);
+    if (ChartReadyForResults(judge, true)) return false;
+    judge.Advance(15.181);
+    if (!ChartReadyForResults(judge, true) ||
+        judge.Counts().miss != static_cast<int>(chart.turns.size()) ||
+        judge.Counts().AccuracyPercent() != 0.0)
+        return false;
+
+    // An empty chart (or a TEST beginning after its final note) has no
+    // scorable notes, so only there may the song end trigger Results.
+    locus::core::Chart emptyChart;
+    locus::core::TurnJudge noNotes(emptyChart);
+    if (ChartReadyForResults(noNotes, false) ||
+        !ChartReadyForResults(noNotes, true))
+        return false;
+    locus::core::TurnJudge noTestNotes(chart);
+    noTestNotes.ResetFromBeat(31);
+    if (noTestNotes.ScorableCount() != 0 ||
+        ChartReadyForResults(noTestNotes, false) ||
+        !ChartReadyForResults(noTestNotes, true))
+        return false;
 
     // Closing the window wins even if a screen change is requested.
     FrameInput close;
