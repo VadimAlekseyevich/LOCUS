@@ -24,6 +24,9 @@ constexpr float kBarRepeatInterval = 0.075f;
 constexpr float kBarRepeatFastInterval = 0.04f;
 constexpr Rectangle kZoomOut{807, 416, 34, 27};
 constexpr Rectangle kZoomIn{863, 416, 34, 27};
+constexpr Rectangle kSnapLess{511, 416, 64, 27};
+constexpr Rectangle kSnapMore{583, 416, 64, 27};
+constexpr int kSnapDivisions[9] = {1, 2, 3, 4, 6, 8, 12, 16, 24};
 
 inline float PixelsPerBeat(const EditorUiState& ui) {
     return kZoomPixelsPerBeat[std::clamp(ui.timelineZoomIndex, 0, kZoomMax)];
@@ -94,20 +97,26 @@ inline bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(p
 // Its width/height determine grid density, not boundaries or Wrap behaviour.
 struct EditorGrid {
     float left = kGridCenterX, top = kGridCenterY, step = 1.0f;
-    core::GridPoint origin{};
+    core::GridPoint origin{}; // Raw tick-model coordinates.
+    core::Cell start{};
+    int ticksPerBeat = 1;
 
-    explicit EditorGrid(const core::Chart& chart, double beat) {
+    explicit EditorGrid(const core::Chart& chart, double tick) {
         const int span = std::max(chart.gridWidth - 1, chart.gridHeight - 1);
         step = kGridMaxSpan / static_cast<float>(std::max(1, span));
-        origin = core::RoutePositionAt(chart, beat);
+        origin = core::RoutePositionAt(chart, tick);
+        start = chart.start;
+        ticksPerBeat = chart.ticksPerBeat;
     }
-    Vector2 Point(core::GridPoint point) const {
-        return {left + static_cast<float>((point.x - origin.x) * step),
-                top + static_cast<float>((point.y - origin.y) * step)};
+    // A visual cell remains one musical beat long in any snap resolution.
+    Vector2 Point(core::GridPoint raw) const {
+        return {left + static_cast<float>((raw.x - origin.x) * step / ticksPerBeat),
+                top + static_cast<float>((raw.y - origin.y) * step / ticksPerBeat)};
     }
-    Vector2 Point(core::Cell point) const {
-        return Point(core::GridPoint{static_cast<double>(point.x),
-                                    static_cast<double>(point.y)});
+    Vector2 Point(core::Cell cell) const {
+        return Point(core::GridPoint{
+            static_cast<double>(start.x + (cell.x - start.x) * ticksPerBeat),
+            static_cast<double>(start.y + (cell.y - start.y) * ticksPerBeat)});
     }
 };
 
