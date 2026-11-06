@@ -3,7 +3,7 @@
 namespace locus::core {
 
 const char* FoundationStatus() noexcept {
-    return "LOCUS foundation built. Game window is not implemented yet.";
+    return "LOCUS foundation built. Playable Windows game available.";
 }
 
 } // namespace locus::core
