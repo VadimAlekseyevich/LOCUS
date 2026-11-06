@@ -93,6 +93,34 @@ int main() {
         }
     }
 
+    // A skin may shorten or extend the forward preview without modifying
+    // the chart sampler, hiding any part behind the moving player.
+    for (double length : {0.5, 1.0, 3.5, 8.0, 16.0}) {
+        const double beat = 6.375;
+        double covered = 0.0;
+        double lastEnd = beat;
+        for (int segment = 5; segment <= 24; ++segment) {
+            const auto visible = ScoredPathVisibleInterval(beat, segment, length);
+            if (!visible.Visible()) continue;
+            if (visible.begin < beat || visible.end > beat + length + 1e-8 ||
+                !Near(visible.begin, lastEnd)) {
+                ok &= Expect(false, "custom lookahead contains only connected future");
+                break;
+            }
+            covered += visible.end - visible.begin;
+            lastEnd = visible.end;
+        }
+        ok &= Expect(Near(covered, length) && Near(lastEnd, beat + length),
+                     "skin-selected preview length is exact");
+        ok &= Expect(Near(ScoredPathOpacity(0.0, length), 1.0f) &&
+                     ScoredPathOpacity(length, length) == 0.0f &&
+                     ScoredPathOpacity(-0.1, length) == 0.0f &&
+                     ScoredPathWidth(0.0, length, 9.0f) > 8.99f,
+                     "skin length, width, and forward-only fading");
+    }
+    ok &= Expect(ScoredPathOpacity(1.0, 4.0, 0.5f) >
+                 ScoredPathOpacity(1.0, 4.0, 2.0f),
+                 "fade exponent changes the display curve");
     if (!ok) return 1;
     std::cout << "PATH_FADE_PASS forward-only=1 measure=4 continuous=1\n";
     return 0;
