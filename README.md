@@ -70,6 +70,26 @@ places. In scored TEST from the editor timeline, earlier skipped notes
 the counts and live accuracy appear together **to the right of the centered
 square**; on Results, the same counts and final accuracy appear together.
 
+## Menu navigation and safe exit
+
+**Esc means Back, not an immediate game shutdown.** From the chart editor,
+**Esc or H** returns to Home (while typing into a text field, the first Esc
+cancels text editing only). From PLAY, Results, Listen, song selection,
+SKIN, and SETTINGS, **Esc** also returns Home. The Song Select/Skin/Settings
+screens additionally have a visible **BACK** button. If an unsaved chart
+would be discarded by leaving the editor, it still asks **Y to discard /
+N or Esc to keep editing**.
+
+The Home screen has a dedicated **EXIT** button. **Esc on Home**, clicking
+EXIT, clicking the Windows window **X**, or pressing **Alt+F4** from any
+screen opens the same **EXIT LOCUS?** confirmation. Choose **Y / QUIT**
+or **N / STAY** (also **Esc**); both options are clickable. The confirmation
+warns if the chart or skin has unsaved changes. Playback is paused while
+the modal is open and resumed when canceled. No close request can
+terminate the application without explicit confirmation. The Windows
+native close guard prevents a canceled X/Alt+F4 from leaving a latched
+close flag that would immediately reopen the dialog.
+
 ## Gameplay HUD and settings layout
 
 Normal **PLAY** now focuses on the enlarged route field, moving marker and
@@ -176,7 +196,7 @@ Use the **E** editor on Home. For a new chart, press **O** *inside the editor* t
 
 **Where should the JSON go?** Save in the **same folder as your WAV/MP3** (or one of its parent folders). The game writes a safe *relative audioPath*, so a chart and its song can move together. Saved v2 JSON uses **integer `offsetMs`** and **absolute integer `timeMs` for every note**, so changing BPM or snap density does not rewrite their audio timestamps. Old v1 `beat`-based charts still open and migrate on save. The timeline covers the full audio duration automatically; older files containing `lengthBeats` are still readable but the field is ignored and no longer saved.
 
-**Unsaved changes:** The editor visibly marks changed drafts. Before discarding them with Home, Ctrl+N or Ctrl+O, LOCUS asks you to confirm: **Y** discards, **N** cancels. You can use Ctrl+S first. Save uses a temporary file plus replacement so a failed write should not destroy the previous chart. A missing song, out-of-range turn, invalid path or too-long timeline shows an error rather than silently writing broken game data. Force quitting can still lose unsaved edits.
+**Unsaved changes:** The editor visibly marks changed drafts. Before discarding them with H / Esc (Back to Home), Ctrl+N or Ctrl+O, LOCUS asks you to confirm: **Y** discards, **N or Esc** cancels. You can use Ctrl+S first. Save uses a temporary file plus replacement so a failed write should not destroy the previous chart. A missing song, out-of-range turn, invalid path or too-long timeline shows an error rather than silently writing broken game data. Force quitting can still lose unsaved edits.
 
 **Try the full round trip:** E → O to choose a song → add notes with DFJK (or your rebound gameplay direction keys) → Ctrl+S to save `MyChart.locus.json` beside the song → Ctrl+O to reopen it → T to test → last note is judged → Results. Go Home and E to continue editing the chart.
 
@@ -214,7 +234,7 @@ After owner playtesting revealed the previous editor was not usable enough, its 
 
 **Future-route contrast:** The next step is now a bright, opaque blue stroke with a dark outline, both in the editor and during gameplay. Shared values live in `src/app/visual_style.h`, the first separation between presentation and route logic; this is groundwork for future skin colors/layouts, **not** an editable skin system yet. See [visual customization architecture](mvp/architecture/VISUAL_SKINS.md).
 
-**Save and test:** Ctrl+S saves; Ctrl+Shift+S uses Save As; Ctrl+N starts a fresh chart; **T** runs a normal scored playthrough under the attached song; **H** returns Home. Unsaved changes retain the earlier Y/N confirmation. Editing a numeric field prevents conflicting game shortcuts until Enter/Esc. The [full save/reopen instructions](#save-reopen-and-test-play-your-chart-m-04) remain valid.
+**Save and test:** Ctrl+S saves; Ctrl+Shift+S uses Save As; Ctrl+N starts a fresh chart; **T** runs a normal scored playthrough under the attached song; **H / Esc** returns Home. Unsaved changes retain the Y/N confirmation. Editing a numeric field prevents conflicting game shortcuts until Enter/Esc. The [full save/reopen instructions](#save-reopen-and-test-play-your-chart-m-04) remain valid.
 
 CI tests chart editing, speed-adjusted/pause-resume song clocks, JSON round trips and Windows compilation. The visual editor and 10% audio playback **still require actual Windows playtesting** before M-05 can be accepted.
 
@@ -240,7 +260,7 @@ Malformed versions, unknown or duplicate fields, invalid beats, missing WAV/MP3 
 | **Enter** | Replay after the track has ended |
 | **H** | Return Home (stops playback) |
 | **F11** | Toggle fullscreen |
-| **Esc** | Close the application |
+| **Esc** | Back to Home; on Home, ask for confirmation to quit |
 
 To play the original rhythm demo instead, return **Home** and press **Enter**. **F/J turn judgements do not apply in Listen mode**; choose **C** on Home with a corresponding JSON chart to play a custom rhythm level. No chart is invented for a song selected with O.
 
@@ -276,7 +296,7 @@ If you already have the LOCUS repository, **double-click `build_and_run.bat` in 
 2. Checks for local uncommitted files; runs `git pull --ff-only` only if safe. It does **not** delete or overwrite your changes.
 3. Checks build prerequisites and asks before installing anything missing.
 4. **By default:** configures the root production CMake project and builds `locus.exe` in `build-a07/foundation/Release/`.
-5. Opens **LOCUS Home**. Press **Enter** to start the full moving-route demo with click track and F/J timing judgements. **Space** pauses/resumes, **R** retries, **H** returns Home, and **Esc/X** closes. Results appear automatically at the end. F1–F4 remain developer shortcuts.
+5. Opens **LOCUS Home**. Press **Enter** to start the full moving-route demo with click track and F/J timing judgements. **Space** pauses/resumes, **R** retries, **H** returns Home, and **Esc on Home / EXIT / X / Alt+F4** requests confirmation before closing. Results appear automatically at the end. F1–F4 remain developer shortcuts.
 6. Saves compile errors and window-open/close status to **`LOCUS-game-logs.zip`** if available; a ZIP is produced even when the build fails after log-folder creation.
 7. **Optional `audio` mode:** runs the previously tested A-07 metronome, transport tests, key-press CSV, and its separate `LOCUS-a07-logs.zip` bundle.
 
@@ -343,7 +363,7 @@ The final playable game and its Windows installer are future roadmap tasks. The 
 
 ## Production foundation and first blank window (F-01–F-05)
 
-**Stage 1 architecture/stack approved by the owner on 2026-11-04.** The root `CMakeLists.txt` builds the production Windows executable (`locus.exe`) and pure C++17 game-core library (`locus_core`). **G-06 now implements the complete 16-second demo session** in a 960×540 raylib window; Home, Play, Results and the M-03 Editor are functional; editor changes are in memory until M-04 adds saving. **Esc/X** closes cleanly. The `--foundation-check` and `--session-check` flags run headless diagnostics in CI.
+**Stage 1 architecture/stack approved by the owner on 2026-11-04.** The root `CMakeLists.txt` builds the production Windows executable (`locus.exe`) and pure C++17 game-core library (`locus_core`). **G-06 now implements the complete 16-second demo session** in a 960×540 raylib window; Home, Play, Results and the M-03 Editor are functional; editor changes are in memory until M-04 adds saving. **Esc on Home / X / Alt+F4** opens an exit confirmation before closing. The `--foundation-check` and `--session-check` flags run headless diagnostics in CI.
 
 For a direct Windows Visual Studio 2022 build in Command Prompt:
 
