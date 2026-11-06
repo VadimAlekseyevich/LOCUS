@@ -989,8 +989,9 @@ bool SaveDraftToDisk(locus::core::ChartEditor& editor,
             destination, reopened, resolvedSong, error) ||
         !locus::core::PrepareChartForSong(reopened, song.DurationSeconds(), error))
         return false;
-    editor.Load(reopened);
-    editor.SetSongDuration(song.DurationSeconds());
+    // Saving must not rewind the timeline or wipe the user's undo history.
+    // Load() is for opening another chart; this is the same editing session.
+    editor.ApplySavedChart(std::move(reopened));
     chartPath = destination;
     error.clear();
     return true;
