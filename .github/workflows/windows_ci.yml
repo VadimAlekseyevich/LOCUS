@@ -91,6 +91,31 @@ jobs:
             Write-Output "Windows UI font found; GUI rasterization is NOT tested on this runner."
           }
 
+      # Exercise the actual user-facing BAT as well as the direct CMake build.
+      # Reuse the already populated CI tree: no second dependency download.
+      - name: Verify Windows launcher, Git diagnostics and ZIP report
+        run: |
+          $env:LOCUS_SKIP_PULL = "1"
+          $env:LOCUS_NO_PAUSE = "1"
+          $env:LOCUS_BUILD_DIR = Join-Path (Get-Location) "build/windows"
+          & cmd.exe /d /c "call build_and_run.bat build"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows launcher returned failure ($LASTEXITCODE)"
+          }
+          $archives = @(Get-ChildItem -LiteralPath ".locus-runs" -Filter "LOCUS-game-logs.zip" -Recurse -File)
+          if ($archives.Count -ne 1) {
+            throw "Windows launcher must produce exactly one diagnostic ZIP"
+          }
+          $logDir = $archives[0].DirectoryName
+          $gitLog = Get-Content -LiteralPath (Join-Path $logDir "git-update.log") -Raw
+          $info = Get-Content -LiteralPath (Join-Path $logDir "run-info.txt") -Raw
+          if ($gitLog -notmatch "skipped by LOCUS_SKIP_PULL" -or
+              $info -notmatch "exit_code=0" -or
+              $info -notmatch "mode=build") {
+            throw "Windows launcher did not record expected Git/build diagnostics"
+          }
+          Write-Output "BAT_LAUNCHER_PASS: build=1 git-log=1 diagnostics-zip=1"
+
       - name: Check clean worktree after the build
         run: |
           $changes = git status --porcelain

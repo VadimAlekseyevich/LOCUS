@@ -48,6 +48,8 @@ set "LOCUS_LOG_ARCHIVE=%LOG_ARCHIVE%"
 rem Restore the established local incremental build tree. GitHub CI keeps
 rem its separate build/windows tree.
 set "BUILD=%ROOT%\build-a07\foundation"
+rem CI can reuse its already populated build tree instead of recloning dependencies.
+if defined LOCUS_BUILD_DIR set "BUILD=%LOCUS_BUILD_DIR%"
 set "STATUS=1"
 > "%LOG_DIR%\run-info.txt" echo mode=%MODE%
 >> "%LOG_DIR%\run-info.txt" echo launcher=build_and_run.bat
