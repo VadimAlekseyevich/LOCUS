@@ -278,10 +278,13 @@ struct GameplayView {
     const locus::app::Skin& skin;
 };
 
-// Fixed screen-centre avatar: only the world translates. The gameplay
-// viewport is grid-free and the entire HUD is isolated in a bottom strip.
-constexpr float kGameplayHudTop = 478.0f;
-constexpr Rectangle kGameplayWorldViewport{0.0f, 0.0f, 960.0f, kGameplayHudTop};
+// The visible playfield is exactly one screen-height square, centred in
+// the virtual 960x540 viewport: x=210..750 and y=0..540. The entire
+// infinite route continues mathematically outside this clipped window.
+constexpr Rectangle kGameplayWorldViewport{
+    (kWindowWidth - kWindowHeight) * 0.5f, 0.0f,
+    static_cast<float>(kWindowHeight), static_cast<float>(kWindowHeight)
+};
 
 struct GameplayCamera {
     static constexpr float kCenterX = kWindowWidth * 0.5f;
@@ -337,36 +340,45 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     }
     EndScissorMode();
 
-    // The HUD stays separate from the playing field and can be hidden.
-    if (!gameplay.skin.showHud) return;
-    DrawRectangle(0, static_cast<int>(kGameplayHudTop), kWindowWidth,
-                  kWindowHeight - static_cast<int>(kGameplayHudTop),
-                  gameplay.skin.hudBackground);
-    DrawLine(0, static_cast<int>(kGameplayHudTop),
-             kWindowWidth, static_cast<int>(kGameplayHudTop),
-             Color{47, 57, 73, 255});
+    // Draw the frame AFTER all clipped route/player primitives. Alpha is
+    // supplied by the skin and the thin line remains inside the viewport.
+    DrawRectangleLinesEx(
+        {kGameplayWorldViewport.x + 0.75f, kGameplayWorldViewport.y + 0.75f,
+         kGameplayWorldViewport.width - 1.5f,
+         kGameplayWorldViewport.height - 1.5f},
+        1.5f, gameplay.skin.fieldBorder);
 
+    // All scoring UI lives in the two 210px sidebars. It cannot cover the
+    // playfield's bottom edge or break the 540px square requirement.
+    if (!gameplay.skin.showHud) return;
+    constexpr int sidebar = (kWindowWidth - kWindowHeight) / 2;
+    DrawRectangle(0, 0, sidebar, kWindowHeight, gameplay.skin.hudBackground);
+    DrawRectangle(kWindowWidth - sidebar, 0, sidebar, kWindowHeight,
+                  gameplay.skin.hudBackground);
+
+    DrawTextLabel(font, "LOCUS", {24.0f, 36.0f}, 30.0f,
+                  gameplay.skin.hudText);
     const auto& counts = gameplay.judge.Counts();
     const struct {
         const char* label;
         int count;
-        float x;
         Color color;
     } stats[] = {
-        {"PERFECT", counts.perfect, 42.0f, {133, 236, 201, 255}},
-        {"GOOD", counts.good, 224.0f, {143, 208, 239, 255}},
-        {"BAD", counts.bad, 401.0f, {242, 198, 135, 255}},
-        {"MISS", counts.miss, 558.0f, {237, 142, 149, 255}}
+        {"PERFECT", counts.perfect, {133, 236, 201, 255}},
+        {"GOOD", counts.good, {143, 208, 239, 255}},
+        {"BAD", counts.bad, {242, 198, 135, 255}},
+        {"MISS", counts.miss, {237, 142, 149, 255}}
     };
-    for (const auto& stat : stats) {
-        DrawTextLabel(font, stat.label, {stat.x, 488.0f}, 15.0f, stat.color);
-        DrawTextLabel(font, TextFormat("%d", stat.count),
-                      {stat.x, 508.0f}, 22.0f,
-                      gameplay.skin.hudText);
+    for (int i = 0; i < 4; ++i) {
+        const float y = 116.0f + i * 91.0f;
+        DrawTextLabel(font, stats[i].label, {25.0f, y}, 17.0f,
+                      stats[i].color);
+        DrawTextLabel(font, TextFormat("%d", stats[i].count),
+                      {25.0f, y + 23.0f}, 29.0f, gameplay.skin.hudText);
     }
-    DrawLine(750, 488, 750, 531, Color{47, 57, 73, 255});
-    DrawTextLabel(font, "LAST", {775.0f, 488.0f}, 14.0f,
-                  Color{164, 188, 207, 255});
+    const float right = kWindowWidth - sidebar + 22.0f;
+    DrawTextLabel(font, "LAST HIT", {right, 110.0f}, 16.0f,
+                  gameplay.skin.hudText);
     if (const auto& last = gameplay.judge.Last()) {
         const Color color = last->grade == locus::core::Grade::Perfect
                                 ? Color{133, 236, 201, 255}
@@ -376,8 +388,18 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
                                 ? Color{242, 198, 135, 255}
                                 : Color{237, 142, 149, 255};
         DrawTextLabel(font, locus::core::GradeName(last->grade),
-                      {775.0f, 509.0f}, 20.0f, color);
+                      {right, 141.0f}, 24.0f, color);
     }
+    DrawTextLabel(font, "SONG", {right, 253.0f}, 16.0f,
+                  gameplay.skin.hudText);
+    // Use a shortened title to stay inside the side panel.
+    const std::string title = gameplay.title.substr(0, 13);
+    DrawTextLabel(font, title.c_str(), {right, 283.0f}, 16.0f,
+                  gameplay.skin.hudText);
+    DrawTextLabel(font, "SQUARE", {right, 392.0f}, 16.0f,
+                  gameplay.skin.hudText);
+    DrawTextLabel(font, "8 x 8 VIEW", {right, 420.0f}, 16.0f,
+                  gameplay.skin.hudText);
 }
 
 void DrawHomeScreen(Font font, const locus::app::SongLibrary& library,
@@ -764,12 +786,19 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
 // Keep rendering-only layout regressions in the headless screen check.
 // This uses the same rectangles as the visible controls and hit testing.
 bool CheckPresentationLayout() {
-    // World is truly screen-centred, and scoring is on a separate strip.
+    // Every edge of the gameplay window must form a fully visible,
+    // centered 540x540 square; the marker sits at its exact midpoint.
     if (GameplayCamera::kCenterX != kWindowWidth * 0.5f ||
         GameplayCamera::kCenterY != kWindowHeight * 0.5f ||
-        GameplayCamera::kCenterY >= kGameplayHudTop ||
-        kGameplayWorldViewport.height != kGameplayHudTop ||
-        kGameplayWorldViewport.width != kWindowWidth)
+        kGameplayWorldViewport.x != 210.0f ||
+        kGameplayWorldViewport.y != 0.0f ||
+        kGameplayWorldViewport.width != static_cast<float>(kWindowHeight) ||
+        kGameplayWorldViewport.height != static_cast<float>(kWindowHeight) ||
+        kGameplayWorldViewport.x + kGameplayWorldViewport.width != 750.0f ||
+        kGameplayWorldViewport.x + kGameplayWorldViewport.width * 0.5f !=
+            GameplayCamera::kCenterX ||
+        kGameplayWorldViewport.y + kGameplayWorldViewport.height * 0.5f !=
+            GameplayCamera::kCenterY)
         return false;
     const Rectangle left{52, 149, 408, 325};
     const Rectangle right{486, 149, 432, 325};
