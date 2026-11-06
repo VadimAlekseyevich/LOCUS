@@ -994,7 +994,18 @@ bool CheckLoopState() {
 
     AppState closedByUser;
     UpdateState(closedByUser, FrameInput{true, std::nullopt}, false);
-    return !closedByUser.running && closedByUser.frames == 0;
+    if (!closedByUser.running || !closedByUser.quitConfirmation ||
+        closedByUser.frames != 1) return false;
+    FrameInput cancel;
+    cancel.quitCanceled = true;
+    UpdateState(closedByUser, cancel, false);
+    if (!closedByUser.running || closedByUser.quitConfirmation ||
+        closedByUser.frames != 2) return false;
+    UpdateState(closedByUser, FrameInput{true, std::nullopt}, false);
+    FrameInput approve;
+    approve.quitConfirmed = true;
+    UpdateState(closedByUser, approve, false);
+    return !closedByUser.running && closedByUser.frames == 3;
 }
 
 bool CheckScreenTransitions() {
@@ -1020,8 +1031,36 @@ bool CheckScreenTransitions() {
         return false;
     }
 
-    // Closing takes precedence over a simultaneous screen-switch request.
+    // An X/Alt+F4 or Home Esc requires approval, taking priority over
+    // any simultaneous navigation. No wrong screen should open underneath.
     UpdateState(state, FrameInput{true, Screen::Editor}, false);
+    if (!state.running || !state.quitConfirmation ||
+        state.screen != Screen::Home || state.frames != ++expectedFrames)
+        return false;
+    UpdateState(state, FrameInput{false, Screen::Play}, false);
+    if (state.screen != Screen::Home || !state.quitConfirmation ||
+        state.frames != ++expectedFrames) return false;
+    FrameInput cancel;
+    cancel.quitCanceled = true;
+    UpdateState(state, cancel, false);
+    if (!state.running || state.quitConfirmation ||
+        state.screen != Screen::Home || state.frames != ++expectedFrames)
+        return false;
+    // Back from Editor is an ordinary screen navigation, not a close.
+    state.screen = Screen::Editor;
+    FrameInput back;
+    back.backPressed = true;
+    UpdateState(state, back, false);
+    if (!state.running || state.screen != Screen::Home ||
+        state.quitConfirmation || state.frames != ++expectedFrames)
+        return false;
+    // The confirmation can reopen repeatedly; only Y terminates.
+    UpdateState(state, FrameInput{true, std::nullopt}, false);
+    if (!state.running || !state.quitConfirmation ||
+        state.frames != ++expectedFrames) return false;
+    FrameInput approve;
+    approve.quitConfirmed = true;
+    UpdateState(state, approve, false);
     return CheckPresentationLayout() &&
            !state.running && state.screen == Screen::Home &&
            state.frames == expectedFrames &&
@@ -1117,11 +1156,23 @@ bool CheckSessionFlow() {
         !ChartReadyForResults(noTestNotes, true))
         return false;
 
-    // Closing the window wins even if a screen change is requested.
+    // Closing the window blocks other navigation, and only a confirmed
+    // exit may terminate the current game session.
     FrameInput close;
     close.closeRequested = true;
     close.requestedScreen = Screen::Home;
     UpdateState(state, close, false);
+    if (!state.running || !state.quitConfirmation ||
+        state.screen != Screen::Play) return false;
+    FrameInput canceled;
+    canceled.quitCanceled = true;
+    UpdateState(state, canceled, false);
+    if (!state.running || state.quitConfirmation ||
+        state.screen != Screen::Play) return false;
+    UpdateState(state, close, false);
+    FrameInput confirmed;
+    confirmed.quitConfirmed = true;
+    UpdateState(state, confirmed, false);
     return !state.running && state.screen == Screen::Play;
 }
 
