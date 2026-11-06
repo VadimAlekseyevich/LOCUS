@@ -104,9 +104,10 @@ int main() {
                 !draft.SetBpm(std::numeric_limits<double>::infinity()) &&
                 !draft.ChangeBpm(-2000),
                 "nonpositive and nonfinite BPM values remain invalid");
-    ok &= Check(draft.SetOffsetMs(-175.25) &&
-                    std::abs(draft.Data().offsetSeconds + 0.17525) < 1e-10,
-                "typed millisecond offset can be fractional and negative");
+    ok &= Check(draft.SetOffsetMs(-175) &&
+                    std::abs(draft.Data().offsetSeconds + 0.175) < 1e-10 &&
+                    !draft.SetOffsetMs(-175.25),
+                "typed millisecond offset must be whole-number and can be negative");
     ok &= Check(!draft.SetOffsetMs(4000000.0) &&
                     draft.SetSongDuration(10.0) &&
                     draft.Data().route.lengthBeats > 64,
