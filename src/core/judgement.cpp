@@ -64,7 +64,10 @@ void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection) n
 void TurnJudge::Advance(double songSeconds) noexcept {
     if (!std::isfinite(songSeconds)) return;
     while (const TurnEvent* next = NextEvent()) {
-        const double expectedSeconds = offsetSeconds_ + next->beat * 60.0 / (chart_.bpm * chart_.ticksPerBeat);
+        const double expectedSeconds = next->timeMs == kNoTimeMs
+            ? offsetSeconds_ + next->beat * 60.0 /
+                (chart_.bpm * chart_.ticksPerBeat)
+            : static_cast<double>(next->timeMs) / 1000.0;
         if (songSeconds <= expectedSeconds + kBadWindowSeconds) break;
         Resolve(Grade::Miss, 0.0, false);
     }
@@ -80,7 +83,10 @@ std::optional<Judgement> TurnJudge::Press(Turn direction, double songSeconds) no
     const TurnEvent* next = NextEvent();
     if (!next) return std::nullopt;
 
-    const double expectedSeconds = offsetSeconds_ + next->beat * 60.0 / (chart_.bpm * chart_.ticksPerBeat);
+    const double expectedSeconds = next->timeMs == kNoTimeMs
+            ? offsetSeconds_ + next->beat * 60.0 /
+                (chart_.bpm * chart_.ticksPerBeat)
+            : static_cast<double>(next->timeMs) / 1000.0;
     const double error = songSeconds - expectedSeconds;
     if (std::abs(error) > kBadWindowSeconds) {
         return std::nullopt; // Stray presses never consume chart turns.
@@ -105,7 +111,10 @@ std::optional<Judgement> TurnJudge::PressHeading(Heading outgoing,
     const TurnEvent* next = NextEvent();
     if (!next) return std::nullopt;
 
-    const double expectedSeconds = offsetSeconds_ + next->beat * 60.0 / (chart_.bpm * chart_.ticksPerBeat);
+    const double expectedSeconds = next->timeMs == kNoTimeMs
+            ? offsetSeconds_ + next->beat * 60.0 /
+                (chart_.bpm * chart_.ticksPerBeat)
+            : static_cast<double>(next->timeMs) / 1000.0;
     const double error = songSeconds - expectedSeconds;
     if (std::abs(error) > kBadWindowSeconds) return std::nullopt;
 
