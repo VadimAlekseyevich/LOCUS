@@ -19,7 +19,7 @@ bool Check(bool ok, const char* message) {
     if (!ok) std::cerr << "ROUTE_VIEW_FAIL: " << message << '\n';
     return ok;
 }
-bool CheckStraight(Cell from, Cell to, Heading heading) {
+bool CheckStraight(GridPoint from, GridPoint to, Heading heading) {
     const RouteStep route{from, to, heading, false};
     const StepView start = ViewRouteStep(route, 0.0);
     const StepView quarter = ViewRouteStep(route, 0.25);
@@ -60,12 +60,13 @@ int main() {
     ok &= Check(flag.segmentCount == 1 && PointIs(flag.marker, 3.5, 1),
                 "legacy RouteStep wraps flag has no visual effect");
 
-    // Diagonals cross both old editor-grid edges smoothly in one beat.
-    ok &= Check(CheckStraight({3, 0}, {4, -1}, Heading::UpRight) &&
-                CheckStraight({7, 9}, {8, 10}, Heading::DownRight) &&
-                CheckStraight({0, 0}, {-1, -1}, Heading::UpLeft) &&
-                CheckStraight({0, 9}, {-1, 10}, Heading::DownLeft),
-                "all four diagonal headings interpolate without teleportation");
+    // A normalized diagonal is still a straight continuous line.
+    const double u = std::sqrt(0.5);
+    ok &= Check(CheckStraight({3, 0}, {3 + u, -u}, Heading::UpRight) &&
+                CheckStraight({7, 9}, {7 + u, 9 + u}, Heading::DownRight) &&
+                CheckStraight({0, 0}, {-u, -u}, Heading::UpLeft) &&
+                CheckStraight({0, 9}, {-u, 9 + u}, Heading::DownLeft),
+                "all four unit-length diagonals interpolate without teleportation");
 
     const StepView noLine = TraceRouteStep(straight, 0.0);
     const StepView grown = TraceRouteStep(straight, 0.35);
@@ -119,10 +120,10 @@ int main() {
     longRoute.start = {0, 0};
     longRoute.initialHeading = Heading::UpRight;
     ok &= Check(PointIs(RoutePositionAt(longRoute, 65432.125),
-                        65432.125, -65432.125) &&
+                        65432.125 * u, -65432.125 * u) &&
                 PointIs(RoutePositionAt(longRoute, 65536),
-                        65536, -65536),
-                "camera position stays precise far into a long diagonal song");
+                        65536 * u, -65536 * u),
+                "camera position stays precise far into a normalized diagonal song");
 
     if (!ok) return 1;
     std::cout << "ROUTE_VIEW_PASS infinite=1 interpolation=1 fixed-camera=1\n";

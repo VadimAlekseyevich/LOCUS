@@ -111,8 +111,8 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
     const RouteCanvas canvas{grid.left, grid.top,
                               grid.step / chart.ticksPerBeat, grid.origin};
 
-    // The grid is retained only in ROUTE; it is a scrolling view over the
-    // limitless world, not a wall that routes bounce from or teleport across.
+    // The editor lattice is a scrolling distance reference, not a constraint:
+    // equal-length diagonal steps may land between its grid nodes.
     const float x0 = kGridCenterX - kGridMaxSpan * 0.5f;
     const float y0 = kGridCenterY - kGridMaxSpan * 0.5f;
     const float x1 = x0 + kGridMaxSpan, y1 = y0 + kGridMaxSpan;
@@ -160,6 +160,8 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
           52, 405, 15, Color{158, 225, 212, 255});
     Label(font, TextFormat("SQUARE VIEW %d", chart.gridWidth),
           266, 405, 15, Color{247, 213, 131, 255});
+    Label(font, "45 DEG = 1 STEP", 430, 406, 13,
+          Color{168, 195, 218, 255});
 }
 
 void DrawTimeline(Font font, const core::ChartEditor& draft,

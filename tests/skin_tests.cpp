@@ -112,9 +112,10 @@ int main() {
                 const double rate = bpm * ticks * practice / 60.0;
                 check(std::abs(step * rate - 135.0) < 0.001,
                       "cardinal speed fixed across BPM/ticks/practice");
-                check(std::abs(std::hypot(step, step) * rate -
-                               135.0 * std::sqrt(2.0)) < 0.001,
-                      "diagonal speed is sqrt(2) times cardinal");
+                check(std::abs(std::hypot(step / std::sqrt(2.0),
+                                       step / std::sqrt(2.0)) * rate -
+                               135.0) < 0.001,
+                      "normalized diagonal speed equals cardinal");
             }
     check(StepForFixedSpeed(135.0f, 0.0, 1) == 0.0f &&
           StepForFixedSpeed(135.0f, 120.0, 0) == 0.0f,

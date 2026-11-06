@@ -4,7 +4,7 @@
 
 namespace locus::app {
 
-// Movement speed is logical px/s on the virtual 540px playfield.
+// Speed for all eight directions in logical px/s on the virtual 540px playfield.
 // It is independent of song tempo, snap resolution and playback rate.
 inline constexpr float kDefaultBaseSpeed = 135.0f;
 inline constexpr float kMinBaseSpeed = 20.0f;

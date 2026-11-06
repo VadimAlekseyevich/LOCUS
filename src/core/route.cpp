@@ -56,21 +56,23 @@ void HeadingDelta(Heading heading, int& dx, int& dy) noexcept {
     }
 }
 
-// The route is on an unbounded integer plane. Grid dimensions are editor
-// viewport metadata, never movement boundaries or wrap periods.
-Cell AdvanceStraight(Cell cell, Heading heading, int beats) noexcept {
-    if (beats <= 0) return cell;
+// A normalized geometric embedding of the authored eight-way headings.
+// Event-run multiplication stays O(number of turns), not O(chart length).
+constexpr double kInvSqrt2 = 0.707106781186547524400844362104849039;
+
+GridPoint UnitDirection(Heading heading) noexcept {
     int dx = 0, dy = 0;
     HeadingDelta(heading, dx, dy);
-    cell.x += dx * beats;
-    cell.y += dy * beats;
-    return cell;
+    const double scale = (dx != 0 && dy != 0) ? kInvSqrt2 : 1.0;
+    return {dx * scale, dy * scale};
 }
 
-Cell StepInHeading(Cell cell, Heading heading) noexcept {
-    int dx = 0, dy = 0;
-    HeadingDelta(heading, dx, dy);
-    return {cell.x + dx, cell.y + dy};
+GridPoint AdvanceStraight(GridPoint position, Heading heading, int ticks) noexcept {
+    if (ticks <= 0) return position;
+    const GridPoint direction = UnitDirection(heading);
+    position.x += direction.x * ticks;
+    position.y += direction.y * ticks;
+    return position;
 }
 
 } // namespace
@@ -193,13 +195,14 @@ std::vector<PreviewTurnPoint> PreviewTurnPoints(
     for (const TurnEvent& event : chart.turns) {
         if (event.beat < first) continue; // No lingering historical dots.
         if (event.beat > last) break;
-        const Cell cell = SampleRouteStep(chart, event.beat).from;
+        const GridPoint position = SampleRouteStep(chart, event.beat).from;
         const auto existing = std::find_if(
-            points.begin(), points.end(), [cell](const PreviewTurnPoint& point) {
-                return point.cell.x == cell.x && point.cell.y == cell.y;
+            points.begin(), points.end(), [position](const PreviewTurnPoint& point) {
+                return std::abs(point.position.x - position.x) < 1e-8 &&
+                       std::abs(point.position.y - position.y) < 1e-8;
             });
         if (existing == points.end())
-            points.push_back({cell, event.beat});
+            points.push_back({position, event.beat});
     }
     return points;
 }
@@ -230,7 +233,8 @@ RouteStep SampleRouteStep(const Chart& chart, int beat) {
         throw std::invalid_argument("route grid or starting cell is invalid");
     }
 
-    Cell cell = chart.start;
+    GridPoint position{static_cast<double>(chart.start.x),
+                       static_cast<double>(chart.start.y)};
     Heading heading = chart.initialHeading;
     int cursor = chart.firstBeat;
     // The authored turn events are sorted. Only the handful of actual
@@ -238,13 +242,13 @@ RouteStep SampleRouteStep(const Chart& chart, int beat) {
     for (const auto& event : chart.turns) {
         if (event.beat > beat) break;
         if (event.beat < cursor) continue;
-        cell = AdvanceStraight(cell, heading, event.beat - cursor);
+        position = AdvanceStraight(position, heading, event.beat - cursor);
         heading = HeadingAfterTurn(heading, event.direction);
         cursor = event.beat;
     }
-    cell = AdvanceStraight(cell, heading, beat - cursor);
-    const Cell destination = StepInHeading(cell, heading);
-    return RouteStep{cell, destination, heading, false,
+    position = AdvanceStraight(position, heading, beat - cursor);
+    const GridPoint destination = AdvanceStraight(position, heading, 1);
+    return RouteStep{position, destination, heading, false,
                      chart.gridWidth, chart.gridHeight};
 }
 

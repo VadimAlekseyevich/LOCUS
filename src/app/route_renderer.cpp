@@ -152,8 +152,9 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
                                                     skin.fadePower)
                 * skin.pathOpacity;
             if (opacity <= 0.0005f) continue;
-            const core::Cell cell = core::SampleRouteStep(chart, turn->beat).from;
-            const Vector2 point = canvas.Point(cell);
+            const core::GridPoint position =
+                core::SampleRouteStep(chart, turn->beat).from;
+            const Vector2 point = canvas.Position(position);
             const float radius = std::min(skin.junctionRadius, canvas.step * chart.ticksPerBeat * 0.45f);
             if (skin.junctionGlow)
                 DrawCircleV(point, radius * 1.45f,
@@ -170,7 +171,7 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
             ? 1.0f : TrajectoryOpacity((turn.beat - chart.ticksPerBeat - beat) /
                                         chart.ticksPerBeat);
         if (opacity <= 0.0f) continue;
-        const Vector2 point = canvas.Point(turn.cell);
+        const Vector2 point = canvas.Position(turn.position);
         DrawCircleV(point, std::min(11.0f, canvas.step * chart.ticksPerBeat * (editor ? 0.39f : 0.38f)),
                     WithOpacity(style.reachedTurnPoint, opacity));
         DrawCircleV(point, std::min(4.0f, canvas.step * chart.ticksPerBeat * 0.16f),

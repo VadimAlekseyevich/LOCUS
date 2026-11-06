@@ -16,7 +16,7 @@
 ### 2.1 Infinite world and camera
 
 - The route lives on an **unbounded two-dimensional plane**. There is **no Wrap, teleport, bounce, physical grid edge or collision** at the viewing boundary.
-- At each musical step the chart's heading determines the next displacement. Eight compass directions are available: up, up-right, right, down-right, down, down-left, left, up-left. Diagonal travel moves one logical unit on each active axis.
+- At each musical tick the chart's heading determines the next displacement. Eight compass directions are available: up, up-right, right, down-right, down, down-left, left, up-left. Every tick moves **one unit of distance**: cardinals change one axis by 1; diagonals change both axes by **1/√2**. All eight headings therefore have the same speed.
 - The route's **relative turn events** change heading by 45°, 90° or 135° left/right. Straight travel needs no event; direct 180° reversal is not an authorable turn.
 - The marker stays fixed at the screen center. The route translates with the instantaneous fractional song beat; the camera does not rotate or lag behind.
 - Missing a note or pressing the wrong direction never changes any later route position.
@@ -27,8 +27,8 @@
 - The virtual reference layout is 960×540, yielding a square from x=210 to 750; at 1920×1080 the square is 1080×1080. In portrait windows its side is constrained by the window width.
 - Route segments, junctions, marker and effects **outside this square are not rendered**. Clipping is visual only; the route and its scoring continue.
 - A thin rectangular outline is **white by default**, with its color and alpha editable in the global skin.
-- The authoring field has **one square side-length value** (2–16 logical cells; **default 8**), for editor viewing metadata. Gameplay scales its route from a global **fixed base movement speed**, not chart field size or BPM. Grid size is not a time signature or a world boundary.
-- The skin sets cardinal travel in **logical pixels per second** (default **135** on the virtual 540×540 playfield). Each chart's visual step compensates for BPM, ticks per beat and practice playback rate. Diagonals retain **√2 times the base speed** because both axes advance. Physical speed scales with the resizable window's play square.
+- The authoring field has **one square side-length value** (2–16 logical cells; **default 8**), for editor viewing metadata. Gameplay scales its route from a global **fixed base movement speed**, not chart field size or BPM. Grid size is not a time signature or a world boundary. The editor retains the square lattice as a **distance reference**; diagonal junctions can lie between grid nodes, and editor/PLAY use the same continuous coordinates.
+- The skin sets movement speed in **logical pixels per second** (default **135** on the virtual 540×540 playfield), identical in all eight directions. Each chart's visual step compensates for BPM, ticks per beat and practice playback rate. Physical speed scales with the resizable window's play square.
 - Starting X/Y is no longer an exposed control. New charts have an automatic centered internal origin; stored start metadata remains supported by the file reader.
 
 ### 2.3 Path preview and feedback

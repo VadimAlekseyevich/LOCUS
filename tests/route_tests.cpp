@@ -1,5 +1,6 @@
 #include "core/route.h"
 
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 
@@ -7,8 +8,9 @@ using namespace locus::core;
 
 namespace {
 
-bool CellIs(Cell cell, int x, int y) {
-    return cell.x == x && cell.y == y;
+bool CellIs(GridPoint point, double x, double y) {
+    return std::abs(point.x - x) < 1e-6 &&
+           std::abs(point.y - y) < 1e-6;
 }
 
 bool Expect(bool condition, const char* message) {
@@ -18,10 +20,11 @@ bool Expect(bool condition, const char* message) {
     return condition;
 }
 
-// Intentionally slow, independent reference implementation used to ensure
-// the optimized random-access sampler produces exactly the old route.
+// Intentionally slow, independent per-tick reference validates the sparse
+// event sampler even when diagonal junctions fall between integer nodes.
 RouteStep ReferenceStep(const Chart& chart, int requestedBeat) {
-    Cell cell = chart.start;
+    GridPoint position{static_cast<double>(chart.start.x),
+                       static_cast<double>(chart.start.y)};
     Heading heading = chart.initialHeading;
     std::size_t index = 0;
     for (int beat = chart.firstBeat; beat <= requestedBeat; ++beat) {
@@ -34,11 +37,13 @@ RouteStep ReferenceStep(const Chart& chart, int requestedBeat) {
                        static_cast<int>((mask & 8u) != 0u);
         const int dy = static_cast<int>((mask & 4u) != 0u) -
                        static_cast<int>((mask & 1u) != 0u);
-        const Cell target{cell.x + dx, cell.y + dy};
+        const double factor = (dx != 0 && dy != 0) ? std::sqrt(0.5) : 1.0;
+        const GridPoint target{position.x + dx * factor,
+                               position.y + dy * factor};
         if (beat == requestedBeat)
-            return {cell, target, heading, false,
+            return {position, target, heading, false,
                     chart.gridWidth, chart.gridHeight};
-        cell = target;
+        position = target;
     }
     throw std::logic_error("reference beat outside chart");
 }
@@ -218,8 +223,8 @@ int main() {
         // Expected.
     }
 
-    // Eight-direction deterministic geometry: one diagonal beat changes
-    // both axes even when coordinates leave the editor grid.
+    // Eight-direction deterministic geometry: diagonal steps change both
+    // axes by 1/sqrt(2) and can finish between editor grid nodes.
     Chart diagonal;
     diagonal.start = {3, 0};
     diagonal.initialHeading = Heading::Right;
@@ -229,15 +234,16 @@ int main() {
     const auto diagonal0 = SampleRouteStep(diagonal, 0);
     const auto diagonal1 = SampleRouteStep(diagonal, 1);
     const auto diagonal2 = SampleRouteStep(diagonal, 2);
+    const double unit = std::sqrt(0.5);
     ok &= Expect(diagonal0.heading == Heading::UpRight &&
                  CellIs(diagonal0.from, 3, 0) &&
-                 CellIs(diagonal0.to, 4, -1) && !diagonal0.wraps &&
-                 CellIs(diagonal1.from, 4, -1) &&
-                 CellIs(diagonal1.to, 5, -2) &&
+                 CellIs(diagonal0.to, 3 + unit, -unit) && !diagonal0.wraps &&
+                 CellIs(diagonal1.from, 3 + unit, -unit) &&
+                 CellIs(diagonal1.to, 3 + 2 * unit, -2 * unit) &&
                  diagonal2.heading == Heading::Down &&
-                 CellIs(diagonal2.from, 5, -2) &&
-                 CellIs(diagonal2.to, 5, -1),
-                 "45 and 135 degree changes preserve world-space continuity");
+                 CellIs(diagonal2.from, 3 + 2 * unit, -2 * unit) &&
+                 CellIs(diagonal2.to, 3 + 2 * unit, 1 - 2 * unit),
+                 "45 and 135 degree changes preserve normalized continuity");
     ok &= Expect(HeadingAfterTurn(Heading::Right, Turn::Left) == Heading::Up &&
                  HeadingAfterTurn(Heading::Right, Turn::Right) == Heading::Down &&
                  HeadingAfterTurn(Heading::UpRight, Turn::Left45) == Heading::Up &&
@@ -253,10 +259,32 @@ int main() {
     longDiagonal.initialHeading = Heading::DownRight;
     longDiagonal.lengthBeats = 32000;
     const auto longStep = SampleRouteStep(longDiagonal, 25001);
-    ok &= Expect(longStep.from.x == 25001 && longStep.from.y == 25001 &&
-                 longStep.to.x == 25002 && longStep.to.y == 25002 &&
+    ok &= Expect(CellIs(longStep.from, 25001 * unit, 25001 * unit) &&
+                 CellIs(longStep.to, 25002 * unit, 25002 * unit) &&
                  !longStep.wraps,
-                 "long diagonal run crosses 25000 cells without any modulo");
+                 "long diagonal run is normalized without wrapping");
+
+    // All eight directions have precisely one unit per tick. A regular
+    // eight-sided loop closes even though its diagonal points are off-grid.
+    Chart octagon;
+    octagon.start = {3, 3};
+    octagon.lengthBeats = 9;
+    octagon.initialHeading = Heading::Right;
+    for (int beat = 1; beat < 8; ++beat)
+        octagon.turns.push_back({beat, Turn::Right45});
+    for (int beat = 0; beat < 8; ++beat) {
+        const RouteStep side = SampleRouteStep(octagon, beat);
+        ok &= Expect(std::abs(std::hypot(side.to.x - side.from.x,
+                                        side.to.y - side.from.y) - 1.0) < 1e-10,
+                     "cardinal and diagonal sides have identical length");
+        if (beat > 0) {
+            const RouteStep previous = SampleRouteStep(octagon, beat - 1);
+            ok &= Expect(CellIs(previous.to, side.from.x, side.from.y),
+                         "no gaps between normalized turns");
+        }
+    }
+    ok &= Expect(CellIs(SampleRouteStep(octagon, 8).from, 3.0, 3.0),
+                 "eight equal-distance headings produce a closed octagon");
 
     // Changing the editor-only grid metadata cannot change the path.
     Chart smallView = longDiagonal;

@@ -66,6 +66,30 @@ int main() {
     ok &= Check(std::abs(defaultGeometry.step - 30.0f) < 0.001f,
                 "8 visible editor cells occupy the complete 240px square");
 
+    Chart normalized = chart.Data().route;
+    normalized.initialHeading = Heading::UpRight;
+    normalized.lengthBeats = 8;
+    normalized.turns = {{2, Turn::Right45}};
+    const detail::EditorGrid preview(normalized, 0.0);
+    const GridPoint firstPoint = RoutePositionAt(normalized, 0.0);
+    const GridPoint nextPoint = RoutePositionAt(normalized, 1.0);
+    const GridPoint junction = RoutePositionAt(normalized, 2.0);
+    const Vector2 screen0 = preview.Point(firstPoint);
+    const Vector2 screen1 = preview.Point(nextPoint);
+    const Vector2 screenJunction = preview.Point(junction);
+    const auto visibleTurns = PreviewTurnPoints(normalized, 0.0, 4);
+    ok &= Check(std::abs(std::hypot(screen1.x - screen0.x,
+                                     screen1.y - screen0.y) - preview.step) < 0.001f &&
+                visibleTurns.size() == 1 &&
+                std::abs(screenJunction.x - preview.Point(visibleTurns[0].position).x)
+                    < 0.001f &&
+                std::abs(screenJunction.y - preview.Point(visibleTurns[0].position).y)
+                    < 0.001f &&
+                std::abs((screenJunction.x - screen0.x) / preview.step -
+                         std::round((screenJunction.x - screen0.x) / preview.step)) >
+                    0.1f,
+                "editor draws equal-length diagonal steps and accurate off-grid junctions");
+
     // Audio settings are no longer stacked on top of the route grid.
     ApplyEditorControls(chart, ui, Click(612, 89));
     ok &= Check(ui.tab == EditorTab::Audio, "Audio tab opens");

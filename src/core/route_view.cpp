@@ -19,8 +19,8 @@ GridPoint FromCell(Cell cell) noexcept {
 
 StepView ViewRouteStep(const RouteStep& step, double progress) noexcept {
     const double t = std::isfinite(progress) ? std::clamp(progress, 0.0, 1.0) : 0.0;
-    const GridPoint from = FromCell(step.from);
-    const GridPoint to = FromCell(step.to);
+    const GridPoint from = step.from;
+    const GridPoint to = step.to;
     StepView view;
     // Every beat is a single continuous world-space segment, even outside
     // the editor's visible grid. A camera translates it; nothing teleports.

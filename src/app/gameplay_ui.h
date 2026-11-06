@@ -59,7 +59,7 @@ inline float GameplayRightSidebarWidth(int width, int height) noexcept {
 struct GameplayCamera {
     static constexpr float kCenterX = kVirtualWidth * 0.5f;
     static constexpr float kCenterY = kVirtualHeight * 0.5f;
-    // Cardinal speed stays constant; diagonal movement is sqrt(2)x.
+    // All eight headings travel one world unit per tick: equal px/s.
     locus::core::GridPoint world{};
     float step = 1.0f;
 

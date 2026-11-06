@@ -21,7 +21,7 @@ struct Skin {
     bool junctionGlow = true;
 
     float playerRadius = 12.5f;
-    float baseSpeedPxPerSecond = kDefaultBaseSpeed; // cardinal speed
+    float baseSpeedPxPerSecond = kDefaultBaseSpeed; // all headings
     bool playerGlow = true;
     float hitFlashScale = 1.0f;
     bool showHud = true;

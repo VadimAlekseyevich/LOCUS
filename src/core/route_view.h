@@ -8,11 +8,6 @@ namespace locus::core {
 
 // World coordinates are unbounded. Editor grid dimensions are irrelevant
 // to these positions. The camera translates the world, never rotates.
-struct GridPoint {
-    double x = 0.0;
-    double y = 0.0;
-};
-
 struct RouteLine {
     GridPoint from;
     GridPoint to;

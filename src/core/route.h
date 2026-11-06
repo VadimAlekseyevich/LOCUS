@@ -17,8 +17,8 @@ enum class Turn { Left, Right, Left45, Right45, Left135, Right135 };
 
 bool ValidHeading(Heading heading) noexcept;
 bool IsDiagonal(Heading heading) noexcept;
-// A tick advances one model unit; render-world coordinates are scaled by
-// ticksPerBeat, so visible speed is one cell per musical beat.
+// Each tick advances one unit of Euclidean distance in all eight directions.
+// Render-world coordinates are scaled by ticksPerBeat.
 // Opposite direction and straight are not notes.
 Heading HeadingAfterTurn(Heading incoming, Turn turn) noexcept;
 Turn InverseTurn(Turn turn) noexcept;
@@ -28,6 +28,13 @@ std::optional<Heading> HeadingFromArrowMask(unsigned keys) noexcept;
 struct Cell {
     int x = 0;
     int y = 0;
+};
+
+// Chart start/grid cells are integral; the continuous route is not.
+// Normalized diagonal junctions can lie between editor-grid nodes.
+struct GridPoint {
+    double x = 0.0;
+    double y = 0.0;
 };
 
 // Editing uses exact integer musical-grid ticks for snapping. Persistent
@@ -72,8 +79,8 @@ int TickAtTimeMs(double bpm, int ticksPerBeat, double offsetSeconds,
 
 
 struct RouteStep {
-    Cell from;
-    Cell to;
+    GridPoint from;
+    GridPoint to;
     Heading heading;
     bool wraps = false; // Retained for old aggregate callers; ALWAYS false.
     int gridWidth = 8;
@@ -83,8 +90,9 @@ struct RouteStep {
 // Built-in 120 BPM demo route with a locally generated, original click track.
 Chart MakeDemoChart();
 
-// Pure deterministic eight-way route on an infinite plane: apply a turn at
-// the beat boundary, then advance one unit on each active axis. No wrapping,
+// Pure deterministic eight-way route on an infinite plane: turn on tick
+// boundaries, then advance one Euclidean unit (diagonal axes use 1/sqrt(2)).
+// No wrapping,
 // teleportation, camera limits or connection to the editor grid dimensions.
 // Input/judgements never influence the route.
 // Throws std::out_of_range outside [chart.firstBeat, chart.lengthBeats).
@@ -96,7 +104,7 @@ Heading IncomingHeadingAt(const Chart& chart, int beat);
 // step N-1; it stops lighting once that segment scrolls out of the preview.
 // This is NOT a persistent history of cells the character visited.
 struct PreviewTurnPoint {
-    Cell cell;
+    GridPoint position;
     int beat = 0;
 };
 std::vector<PreviewTurnPoint> PreviewTurnPoints(
