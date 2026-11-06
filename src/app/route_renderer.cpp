@@ -44,11 +44,12 @@ void DrawScoredPath(const core::Chart& chart, double beat,
         const double dx = static_cast<double>(step.to.x - step.from.x);
         const double dy = static_cast<double>(step.to.y - step.from.y);
 
-        // Subdivide only the visible interval. Its near endpoint follows
-        // the player exactly; it never draws past the marker.
-        for (int i = kScoredPathSlices - 1; i >= 0; --i) {
-            const double a = begin + (end - begin) * i / kScoredPathSlices;
-            const double b = begin + (end - begin) * (i + 1) / kScoredPathSlices;
+        // Keep roughly the same gradient sampling per MUSICAL beat.
+        // Otherwise a 1/24 snap would multiply renderer work by 24.
+        const int slices = std::max(1, kScoredPathSlices / chart.ticksPerBeat);
+        for (int i = slices - 1; i >= 0; --i) {
+            const double a = begin + (end - begin) * i / slices;
+            const double b = begin + (end - begin) * (i + 1) / slices;
             const double ahead = (a + b) * 0.5 - beat;
             const float opacity = ScoredPathOpacity(ahead, horizon, skin.fadePower)
                 * skin.pathOpacity;
