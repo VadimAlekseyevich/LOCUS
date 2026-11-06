@@ -1283,9 +1283,14 @@ int main(int argc, char** argv) {
             if (editor.Data().route.ticksPerBeat != beforeTicksPerBeat) {
                 // Snap change has just expanded the tick domain without
                 // moving any authored note or changing the musical BPM.
-                const int factor = editor.Data().route.ticksPerBeat /
-                                   beforeTicksPerBeat;
-                editorPreviewStartBeat *= factor;
+                const int currentTicks = editor.Data().route.ticksPerBeat;
+                const double originalSongBeat =
+                    static_cast<double>(editorPreviewStartBeat) /
+                        beforeTicksPerBeat;
+                editorPreviewStartBeat = std::clamp(
+                    static_cast<int>(std::llround(originalSongBeat * currentTicks)),
+                    editor.Data().route.firstBeat,
+                    editor.Data().route.lengthBeats - 1);
             }
             if (uiAction.chooseAudio) input.chooseMusicPressed = true;
             if (uiAction.testPlay) input.editorTest = true;
