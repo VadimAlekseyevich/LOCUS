@@ -31,6 +31,16 @@ constexpr int kSnapDivisions[9] = {1, 2, 3, 4, 6, 8, 12, 16, 24};
 inline float PixelsPerBeat(const EditorUiState& ui) {
     return kZoomPixelsPerBeat[std::clamp(ui.timelineZoomIndex, 0, kZoomMax)];
 }
+inline float PixelsPerTick(const EditorUiState& ui, const core::Chart& chart) {
+    return PixelsPerBeat(ui) / chart.ticksPerBeat;
+}
+inline int SnapTick(double rawTick, const core::Chart& chart) {
+    const int step = chart.ticksPerBeat / chart.snapDivision;
+    const long long snapped = static_cast<long long>(std::llround(rawTick / step)) * step;
+    return static_cast<int>(std::clamp(snapped,
+        static_cast<long long>(chart.firstBeat),
+        static_cast<long long>(chart.lengthBeats - 1)));
+}
 
 inline double ViewBeat(const core::ChartEditor& draft, double activeBeat) {
     return std::isfinite(activeBeat)
