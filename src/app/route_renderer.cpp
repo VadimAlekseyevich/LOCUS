@@ -27,14 +27,14 @@ int CurrentBeat(const core::Chart& chart, double beat) {
 // song beats. The rear edge follows the player; nothing lingers behind,
 // and new parts emerge at zero opacity instead of popping into view.
 void DrawScoredPath(const core::Chart& chart, double beat,
-                    RouteCanvas canvas, const RouteVisualStyle& style) {
+                    RouteCanvas canvas, const Skin& skin) {
     const int first = CurrentBeat(chart, beat);
     // A fractional four-beat window can intersect five integer beats.
     const int last = std::min(
         chart.lengthBeats - 1,
-        first + static_cast<int>(std::ceil(kScoredPathLengthBeats)));
+        first + static_cast<int>(std::ceil(skin.lookaheadBeats)));
     for (int target = last; target >= first; --target) {
-        const ScoredPathInterval visible = ScoredPathVisibleInterval(beat, target);
+        const ScoredPathInterval visible = ScoredPathVisibleInterval(beat, target, skin.lookaheadBeats);
         if (!visible.Visible()) continue;
         const double begin = visible.begin, end = visible.end;
         const core::RouteStep step = core::SampleRouteStep(chart, target);
@@ -49,19 +49,21 @@ void DrawScoredPath(const core::Chart& chart, double beat,
             const double a = begin + (end - begin) * i / kScoredPathSlices;
             const double b = begin + (end - begin) * (i + 1) / kScoredPathSlices;
             const double ahead = (a + b) * 0.5 - beat;
-            const float opacity = ScoredPathOpacity(ahead);
+            const float opacity = ScoredPathOpacity(ahead, skin.lookaheadBeats, skin.fadePower)
+                * skin.pathOpacity;
             if (opacity <= 0.0005f) continue;
-            const float width = ScoredPathWidth(ahead);
+            const float width = ScoredPathWidth(ahead, skin.lookaheadBeats,
+                                                skin.pathWidth, skin.fadePower);
             const auto screen = [&](double time) {
                 const double t = time - target;
                 return canvas.Position({fromX + dx * t, fromY + dy * t});
             };
             const Vector2 p0 = screen(a);
             const Vector2 p1 = screen(b);
-            DrawLineEx(p0, p1, width * style.outlineScale,
-                       WithOpacity(style.routeOutline, opacity));
+            DrawLineEx(p0, p1, width * skin.outlineScale,
+                       WithOpacity(skin.outline, opacity));
             DrawLineEx(p0, p1, width,
-                       WithOpacity(style.fullTrajectory, opacity));
+                       WithOpacity(skin.trajectory, opacity));
         }
     }
 }
@@ -69,7 +71,7 @@ void DrawScoredPath(const core::Chart& chart, double beat,
 } // namespace
 
 Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
-                            RouteCanvas canvas, RouteRenderMode mode) {
+                            RouteCanvas canvas, RouteRenderMode mode, const Skin& skin) {
     if (chart.lengthBeats <= chart.firstBeat || !std::isfinite(fractionalBeat))
         return canvas.Point(chart.start);
 
@@ -79,7 +81,7 @@ Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
                                   static_cast<double>(chart.lengthBeats));
     const int current = CurrentBeat(chart, beat);
     if (mode == RouteRenderMode::Gameplay) {
-        DrawScoredPath(chart, beat, canvas, style);
+        DrawScoredPath(chart, beat, canvas, skin);
         return canvas.Position(core::RoutePositionAt(chart, beat));
     }
     const double progress = std::clamp(beat - current, 0.0, 1.0);
@@ -120,7 +122,7 @@ Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
 }
 
 void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
-                        RouteCanvas canvas, RouteRenderMode mode) {
+                        RouteCanvas canvas, RouteRenderMode mode, const Skin& skin) {
     if (chart.lengthBeats <= chart.firstBeat || !std::isfinite(fractionalBeat))
         return;
     const double beat = std::clamp(fractionalBeat,
@@ -141,18 +143,20 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
             });
         for (auto turn = first; turn != chart.turns.end() &&
                           static_cast<double>(turn->beat) <
-                              beat + kScoredPathLengthBeats; ++turn) {
-            const float opacity = ScoredPathOpacity(turn->beat - beat);
+                              beat + skin.lookaheadBeats; ++turn) {
+            const float opacity = ScoredPathOpacity(turn->beat - beat,
+                                                    skin.lookaheadBeats, skin.fadePower)
+                * skin.pathOpacity;
             if (opacity <= 0.0005f) continue;
             const core::Cell cell = core::SampleRouteStep(chart, turn->beat).from;
             const Vector2 point = canvas.Point(cell);
-            const float radius = std::min(9.5f, canvas.step * 0.25f);
-            DrawCircleV(point, radius * 1.45f,
-                        WithOpacity(Color{255, 70, 84, 65}, opacity));
-            DrawCircleV(point, radius,
-                        WithOpacity(style.reachedTurnPoint, opacity));
+            const float radius = std::min(skin.junctionRadius, canvas.step * 0.45f);
+            if (skin.junctionGlow)
+                DrawCircleV(point, radius * 1.45f,
+                            WithOpacity(skin.junction, opacity * 0.26f));
+            DrawCircleV(point, radius, WithOpacity(skin.junction, opacity));
             DrawCircleV(point, radius * 0.35f,
-                        WithOpacity(Color{255, 225, 228, 255}, opacity));
+                        WithOpacity(skin.playerCore, opacity));
         }
         return;
     }
@@ -170,16 +174,18 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
     }
 }
 
-void DrawPlayerHitFlash(Vector2 marker, float markerRadius, HitFlashFrame flash) {
+void DrawPlayerHitFlash(Vector2 marker, float markerRadius, HitFlashFrame flash,
+                        const Skin& skin) {
     if (flash.intensity <= 0.0f) return;
-    const float radius = markerRadius + 4.0f + 17.0f * flash.progress;
+    const float radius = markerRadius + (4.0f + 17.0f * flash.progress)
+        * skin.hitFlashScale;
     // Tiny halo, expanding ring and bright core. All decay within 180 ms.
     DrawCircleV(marker, markerRadius * (1.48f + 0.27f * flash.progress),
-                WithOpacity(Color{153, 255, 235, 90}, flash.intensity));
+                WithOpacity(skin.hitFlash, flash.intensity * 0.36f));
     DrawRing(marker, radius - 1.5f, radius + 1.5f, 0.0f, 360.0f, 40,
-             WithOpacity(Color{255, 233, 174, 235}, flash.intensity));
+             WithOpacity(skin.hitFlash, flash.intensity));
     DrawCircleV(marker, markerRadius * 0.68f,
-                WithOpacity(Color{250, 255, 255, 125}, flash.intensity));
+                WithOpacity(skin.playerCore, flash.intensity * 0.5f));
 }
 
 } // namespace locus::app
