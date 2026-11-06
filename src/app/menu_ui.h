@@ -51,7 +51,6 @@ void DrawMainMenu(Font font, const SongLibrary& library,
                   const std::string& status);
 void DrawSongSelectMenu(Font font, const SongLibrary& library,
                         const SongSelectUi& ui);
-void DrawSkinMenu(Font font);
 void DrawSettingsMenu(Font font, const GameSettings& settings,
                       const SettingsUi& ui);
 
