@@ -37,7 +37,8 @@ bool Hit(Vector2 mouse, Rectangle rect) {
 }
 
 Rectangle ColorRow(int row) {
-    return {70.0f, 199.0f + row * 28.0f, 485.0f, 26.0f};
+    // Ten colours must fit above the skin action row at y=473.
+    return {70.0f, 194.0f + row * 25.0f, 485.0f, 24.0f};
 }
 Rectangle NameField() { return {615.0f, 128.0f, 302.0f, 36.0f}; }
 Rectangle SwitchRect(int row) {
@@ -167,6 +168,8 @@ void PreviewPath(Font font, const Skin& skin) {
         DrawCircleV(marker, radius * 1.65f, WithOpacity(skin.player, 0.2f));
     DrawCircleV(marker, radius, skin.player);
     DrawCircleV(marker, radius * 0.33f, skin.playerCore);
+    DrawRectangleLinesEx({632.0f, 224.0f, 220.0f, 175.0f},
+                         1.5f, skin.fieldBorder);
     Label(font, "SLIDER: EVERYDAY RANGE", 618, 402, 12, kMuted);
     Label(font, "TYPE: EXTENDED VALUES", 618, 420, 12, kMuted);
 }
