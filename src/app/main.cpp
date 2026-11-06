@@ -398,8 +398,9 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
                   gameplay.skin.hudText);
     DrawTextLabel(font, "SQUARE", {right, 392.0f}, 16.0f,
                   gameplay.skin.hudText);
-    DrawTextLabel(font, "8 x 8 VIEW", {right, 420.0f}, 16.0f,
-                  gameplay.skin.hudText);
+    DrawTextLabel(font, TextFormat("%d x %d VIEW",
+                  gameplay.chart.gridWidth, gameplay.chart.gridWidth),
+                  {right, 420.0f}, 16.0f, gameplay.skin.hudText);
 }
 
 void DrawHomeScreen(Font font, const locus::app::SongLibrary& library,
