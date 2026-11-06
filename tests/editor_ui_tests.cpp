@@ -36,9 +36,11 @@ int main() {
     ChartEditor chart;
     EditorUiState ui;
     ok &= Check(ui.tab == EditorTab::Route &&
-                chart.Data().route.gridWidth == 4 &&
-                chart.Data().route.gridHeight == 4,
-                "editor opens with a 4x4 main Route tab");
+                chart.Data().route.gridWidth == 8 &&
+                chart.Data().route.gridHeight == 8 &&
+                chart.Data().route.start.x == 3 &&
+                chart.Data().route.start.y == 3,
+                "editor opens with 8x8 square view and automatic route origin");
 
     // Audio settings are no longer stacked on top of the route grid.
     ApplyEditorControls(chart, ui, Click(612, 89));
@@ -70,37 +72,43 @@ int main() {
     ok &= Check(audioEmpty.speedIndex == -1,
                 "practice speed buttons are no longer in the Audio tab");
 
-    // Geometry is a separate authoring tab, accepting size WxH as 8/8.
+    // FIELD has one integer square size, no editable start coordinates.
     ApplyEditorControls(chart, ui, Click(783, 89));
     ok &= Check(ui.tab == EditorTab::Field, "Field tab opens");
     ApplyEditorControls(chart, ui, Click(157, 247));
+    ApplyEditorControls(chart, ui, Type("12"));
+    ApplyEditorControls(chart, ui, enter);
+    ok &= Check(chart.Data().route.gridWidth == 12 &&
+                chart.Data().route.gridHeight == 12 &&
+                chart.Data().route.start.x == 5 &&
+                chart.Data().route.start.y == 5,
+                "typing a single size 12 sets 12x12 with automatic start");
+    ApplyEditorControls(chart, ui, Click(598, 247));
+    ok &= Check(!ui.EditingText(),
+                "removed start coordinate field cannot receive focus");
+    ApplyEditorControls(chart, ui, Click(157, 247));
     ApplyEditorControls(chart, ui, Type("8/8"));
     ApplyEditorControls(chart, ui, enter);
-    ok &= Check(chart.Data().route.gridWidth == 8 &&
-                chart.Data().route.gridHeight == 8,
-                "8/8 sets eight rows and eight columns");
-
-    ApplyEditorControls(chart, ui, Click(598, 247));
-    ApplyEditorControls(chart, ui, Type("7/7"));
-    ApplyEditorControls(chart, ui, enter);
-    ok &= Check(chart.Data().route.start.x == 7 &&
-                chart.Data().route.start.y == 7,
-                "Field tab supports start cells beyond 4x4");
-
-    ApplyEditorControls(chart, ui, Click(157, 247));
-    ApplyEditorControls(chart, ui, Type("4/4"));
-    ApplyEditorControls(chart, ui, enter);
     ok &= Check(ui.EditingText() &&
-                chart.Data().route.gridWidth == 8 &&
+                chart.Data().route.gridWidth == 12 &&
                 !ui.feedback.empty(),
-                "cannot shrink a grid over an authored start cell");
+                "width/height matrix input is no longer accepted");
     EditorControls escape;
     escape.escape = true;
     ApplyEditorControls(chart, ui, escape);
-
+    ApplyEditorControls(chart, ui, Click(157, 247));
+    ApplyEditorControls(chart, ui, Type("4"));
+    ApplyEditorControls(chart, ui, enter);
+    ok &= Check(!ui.EditingText() &&
+                chart.Data().route.gridWidth == 4 &&
+                chart.Data().route.gridHeight == 4 &&
+                chart.Data().route.start.x == 1 &&
+                chart.Data().route.start.y == 1,
+                "shrinking square automatically re-centers the hidden start");
     ApplyEditorControls(chart, ui, Click(155, 343));
     ok &= Check(!ui.EditingText(),
-                "manual Total Beats is not an editable field anymore");
+                "song duration stays read-only on Field");
+
     ok &= Check(chart.SetSongDuration(10.0) &&
                 chart.Data().route.lengthBeats > 0,
                 "loading audio derives timeline length");
@@ -161,17 +169,16 @@ int main() {
     ok &= Check(chart.SelectedBeat() == chart.Data().route.firstBeat,
                 "timeline navigation clamps to derived earliest song beat");
 
-    // The editor grid follows the route camera but keeps clickable nodes.
-    // At the first beat the marker is at start (7,7), centered at 448,282.
-    // Clicking one grid unit up-left changes start to (6,6).
+    // ROUTE grid is for preview only; clicking nodes cannot reposition
+    // the hidden automatic chart origin.
     chart.SelectBeat(chart.Data().route.firstBeat);
-    const float editorStep = 240.0f / 7.0f;
-    ApplyEditorControls(chart, ui,
-                        Click(448.0f - editorStep, 282.0f - editorStep));
-    ok &= Check(chart.Data().route.start.x == 6 &&
-                chart.Data().route.start.y == 6 &&
-                chart.SelectedBeat() == chart.Data().route.firstBeat,
-                "camera-following editor lattice keeps start-node editing working");
+    const auto untouchedStart = chart.Data().route.start;
+    const auto clickedGrid = ApplyEditorControls(
+        chart, ui, Click(420.0f, 253.0f));
+    ok &= Check(!clickedGrid.changedChart &&
+                chart.Data().route.start.x == untouchedStart.x &&
+                chart.Data().route.start.y == untouchedStart.y,
+                "clicking editor lattice never edits starting coordinates");
 
     const Vector2 mapped = EditorVirtualMouse({1920, 1080}, 3840, 2160);
     ok &= Check(std::abs(mapped.x - 480) < 1e-4 &&
@@ -404,10 +411,10 @@ int main() {
     // the same diagonal as Up+Right rather than using hard-coded J+K.
     GameSettings rebound;
     std::string bindError;
-    ok &= Check(rebound.Rebind(GameAction::Up, KEY_W, bindError) &&
+    ok &= Check(rebound.Rebind(GameAction::Left, KEY_A, bindError) &&
+                rebound.Rebind(GameAction::Up, KEY_W, bindError) &&
                 rebound.Rebind(GameAction::Right, KEY_D, bindError) &&
-                rebound.Rebind(GameAction::Down, KEY_S, bindError) &&
-                rebound.Rebind(GameAction::Left, KEY_A, bindError),
+                rebound.Rebind(GameAction::Down, KEY_S, bindError),
                 "all four gameplay direction bindings can be customized");
     ChartEditor sharedKeys;
     EditorUiState sharedUi;
