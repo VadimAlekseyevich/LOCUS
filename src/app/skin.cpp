@@ -93,7 +93,7 @@ bool Skin::Valid(std::string& error) const {
         {pathOpacity, 0.0f, 1.0f, "Trajectory opacity"},
         {junctionRadius, 1.0f, 64.0f, "Junction radius"},
         {playerRadius, 1.0f, 80.0f, "Player radius"},
-        {cameraStep, 10.0f, 250.0f, "Camera zoom"},
+        {baseSpeedPxPerSecond, kMinBaseSpeed, kMaxBaseSpeed, "Base movement speed"},
         {hitFlashScale, 0.1f, 8.0f, "Hit flash scale"}
     };
     for (const auto& field : fields) {
@@ -111,7 +111,7 @@ std::string SerializeSkin(const Skin& skin) {
     for (int i = 0; i < kSkinColorCount; ++i)
         colors[kColorKeys[i]] = EncodeColor(SkinColor(skin, i));
     const Json object = {
-        {"version", 1},
+        {"version", 2},
         {"name", skin.name},
         {"path", {
             {"lookaheadBeats", skin.lookaheadBeats},
@@ -124,7 +124,7 @@ std::string SerializeSkin(const Skin& skin) {
         }},
         {"player", {
             {"radius", skin.playerRadius},
-            {"cameraStep", skin.cameraStep},
+            {"speedPxPerSecond", skin.baseSpeedPxPerSecond},
             {"glow", skin.playerGlow},
             {"hitFlashScale", skin.hitFlashScale}
         }},
@@ -138,8 +138,12 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
     try {
         const auto object = nlohmann::json::parse(text.begin(), text.end());
         if (!object.is_object() || !object.contains("version") ||
-            !object.at("version").is_number_integer() ||
-            object.at("version").get<int>() != 1) {
+            !object.at("version").is_number_integer()) {
+            error = "Unsupported skin version.";
+            return false;
+        }
+        const int version = object.at("version").get<int>();
+        if (version != 1 && version != 2) {
             error = "Unsupported skin version.";
             return false;
         }
@@ -156,7 +160,17 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         parsed.junctionGlow = path.at("junctionGlow").get<bool>();
         const auto& player = object.at("player");
         parsed.playerRadius = player.at("radius").get<float>();
-        parsed.cameraStep = player.at("cameraStep").get<float>();
+        if (version == 1) {
+            // Legacy zoom implied speed on 8x8 at 120 BPM.
+            const float legacy = player.at("cameraStep").get<float>();
+            if (!InRange(legacy, 10.0f, 250.0f)) {
+                error = "Legacy camera zoom is out of range.";
+                return false;
+            }
+            parsed.baseSpeedPxPerSecond = legacy * (kDefaultBaseSpeed / 51.0f);
+        } else {
+            parsed.baseSpeedPxPerSecond = player.at("speedPxPerSecond").get<float>();
+        }
         parsed.playerGlow = player.at("glow").get<bool>();
         parsed.hitFlashScale = player.at("hitFlashScale").get<float>();
         parsed.showHud = object.at("hud").at("visible").get<bool>();

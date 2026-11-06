@@ -1,34 +1,84 @@
 {
-  "version": 1,
+  "version": 2,
   "name": "Default",
   "path": {
-    "lookaheadBeats": 4.0,
-    "width": 6.0,
+    "lookaheadBeats": 4,
+    "width": 6,
     "outlineScale": 1.8,
-    "fadePower": 1.0,
-    "opacity": 1.0,
+    "fadePower": 1,
+    "opacity": 1,
     "junctionRadius": 9.5,
     "junctionGlow": true
   },
   "player": {
     "radius": 12.5,
-    "cameraStep": 51.0,
     "glow": true,
-    "hitFlashScale": 1.0
+    "hitFlashScale": 1,
+    "speedPxPerSecond": 135
   },
   "hud": {
     "visible": true
   },
   "colors": {
-    "background": [21, 23, 33, 255],
-    "trajectory": [255, 70, 84, 255],
-    "outline": [49, 13, 24, 245],
-    "junction": [255, 63, 72, 255],
-    "player": [255, 140, 149, 255],
-    "playerCore": [245, 253, 255, 255],
-    "hudBackground": [22, 26, 37, 255],
-    "hudText": [231, 237, 243, 255],
-    "hitFlash": [255, 233, 174, 235],
-    "fieldBorder": [245, 248, 252, 255]
+    "background": [
+      21,
+      23,
+      33,
+      255
+    ],
+    "trajectory": [
+      255,
+      70,
+      84,
+      255
+    ],
+    "outline": [
+      49,
+      13,
+      24,
+      245
+    ],
+    "junction": [
+      255,
+      63,
+      72,
+      255
+    ],
+    "player": [
+      255,
+      140,
+      149,
+      255
+    ],
+    "playerCore": [
+      245,
+      253,
+      255,
+      255
+    ],
+    "hudBackground": [
+      22,
+      26,
+      37,
+      255
+    ],
+    "hudText": [
+      231,
+      237,
+      243,
+      255
+    ],
+    "hitFlash": [
+      255,
+      233,
+      174,
+      235
+    ],
+    "fieldBorder": [
+      245,
+      248,
+      252,
+      255
+    ]
   }
 }

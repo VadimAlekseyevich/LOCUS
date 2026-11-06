@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/movement_speed.h"
 #include "raylib.h"
 
 #include <filesystem>
@@ -20,7 +21,7 @@ struct Skin {
     bool junctionGlow = true;
 
     float playerRadius = 12.5f;
-    float cameraStep = 51.0f;    // pixels per world cell
+    float baseSpeedPxPerSecond = kDefaultBaseSpeed; // cardinal speed
     bool playerGlow = true;
     float hitFlashScale = 1.0f;
     bool showHud = true;

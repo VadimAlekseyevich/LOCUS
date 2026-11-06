@@ -32,6 +32,7 @@ struct FrameInput {
     bool editorNew = false;
     bool editorTest = false;
     int practiceSpeedIndex = -1;
+    int baseSpeedDelta = 0; // [ / ] and numpad - / + while playing
     std::array<bool, 4> arrowPressed{};
     std::array<double, 4> arrowCapturedAt{};
     std::array<bool, 4> arrowHeld{};

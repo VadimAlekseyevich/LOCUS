@@ -52,7 +52,7 @@ const char* RowName(int page, int row) {
         "FADE CURVE", "PATH OPACITY", "TURN SIZE", "TURN GLOW"
     };
     static constexpr const char* player[] = {
-        "PLAYER SIZE", "CAMERA ZOOM", "PLAYER GLOW",
+        "PLAYER SIZE", "SPEED (PX/S)", "PLAYER GLOW",
         "HIT FLASH SIZE", "SHOW HUD"
     };
     return page == 0 ? path[row] : player[row];
@@ -145,16 +145,19 @@ void PreviewPath(Font font, const Skin& skin) {
     const Rectangle frame{653.0f, 220.0f, 200.0f, 200.0f};
     DrawRectangleRounded(area, 0.07f, 6, skin.background);
     DrawRectangleRoundedLinesEx(area, 0.07f, 6, 1.2f, kMuted);
-    Label(font, "LIVE GAMEPLAY SQUARE", 622, 202, 14.0f, kMuted);
+    Label(font, "SPEED PREVIEW / 120 BPM", 622, 202, 14.0f, kMuted);
 
     // The SKIN preview clips exactly like the real centred gameplay window,
     // including thick outline strokes and partially visible junctions.
     const auto clip = ViewportTransform::Menu(
         GetScreenWidth(), GetScreenHeight()).Scissor(frame);
     BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
+    const float pixelsPerBeat =
+        StepForFixedSpeed(skin.baseSpeedPxPerSecond, 120.0, 1) *
+        frame.width / kVirtualHeight;
     const auto point = [&](float beats) {
         const float progress = beats / skin.lookaheadBeats;
-        return Vector2{687.0f + 188.0f * progress,
+        return Vector2{687.0f + beats * pixelsPerBeat,
                        335.0f - 46.0f * std::sin(progress * 5.2f)};
     };
     for (int i = 95; i >= 0; --i) {
@@ -181,7 +184,7 @@ void PreviewPath(Font font, const Skin& skin) {
     DrawRectangleLinesEx({frame.x + 0.75f, frame.y + 0.75f,
                           frame.width - 1.5f, frame.height - 1.5f},
                          1.5f, skin.fieldBorder);
-    Label(font, "FIELD BORDER COLOUR IN COLORS", 616, 425, 11.0f, kMuted);
+    Label(font, "PLAY: [ / ] OR NUM - / +  (10 PX/S)", 610, 425, 11.0f, kMuted);
 }
 
 void StartNumberEdit(const Skin& skin, SkinUi& ui, int row) {

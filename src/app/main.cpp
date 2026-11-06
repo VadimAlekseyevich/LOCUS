@@ -442,10 +442,7 @@ bool CheckPresentationLayout() {
             if (button.y < previous.y + previous.height) return false;
         }
     }
-    // A moving world MUST project the interpolated marker to exactly the
-    // same screen point regardless of chart size, heading or beat.
-    // At default skin zoom, width/height in cells determine the camera
-    // scale of the fixed square (8 -> 540/8 = 67.5px per cell).
+    // Player remains centered and speed must not depend on chart grid size.
     for (int dimensions : {2, 4, 8, 16}) {
         auto chart = locus::core::MakeDemoChart();
         chart.gridWidth = dimensions;
@@ -453,10 +450,11 @@ bool CheckPresentationLayout() {
         for (double beat : {0.0, 1.5, 4.75, 15.125, 30.5}) {
             const GameplayCamera camera(chart, beat);
             const Vector2 projected = camera.Canvas().Position(camera.world);
-            const float expected = static_cast<float>(kWindowHeight) / dimensions;
+            const float expected = locus::app::StepForFixedSpeed(
+                locus::app::kDefaultBaseSpeed, chart.bpm, chart.ticksPerBeat);
             if (std::abs(projected.x - GameplayCamera::kCenterX) > 0.001f ||
                 std::abs(projected.y - GameplayCamera::kCenterY) > 0.001f ||
-                std::abs(camera.step - expected / chart.ticksPerBeat) > 0.001f)
+                std::abs(camera.step - expected) > 0.001f)
                 return false;
         }
     }
@@ -826,6 +824,7 @@ int main(int argc, char** argv) {
     }
     draftSkin = activeSkin;
     skinUi.saved = activeSkin;
+    double speedNoticeUntil = -1.0;
     locus::app::SongLibrary library(userData / L"Songs");
     std::string menuStatus;
     if (!library.Refresh(menuStatus))
@@ -1450,6 +1449,21 @@ int main(int argc, char** argv) {
                 localSong.Start(now);
             }
         } else if (state.screen == Screen::Play) {
+            if (input.baseSpeedDelta != 0) {
+                const float next = locus::app::AdjustBaseSpeed(
+                    activeSkin.baseSpeedPxPerSecond, input.baseSpeedDelta);
+                if (next != activeSkin.baseSpeedPxPerSecond) {
+                    activeSkin.baseSpeedPxPerSecond = next;
+                    std::string error;
+                    if (!locus::app::SaveSkin(activeSkinFile, activeSkin, error)) {
+                        std::cerr << "SKIN_SPEED_SAVE_FAILED " << error << '\n';
+                        menuStatus = "SPEED NOT SAVED: " + error;
+                    }
+                    draftSkin = activeSkin;
+                    skinUi.saved = activeSkin;
+                    speedNoticeUntil = now + 1.5;
+                }
+            }
             if (customChart && input.practiceSpeedIndex >= 0) {
                 const double speeds[] = {1.0, 0.75, 0.5, 0.25, 0.1};
                 gameSession.SetPracticeSpeed(customChart, speeds[input.practiceSpeedIndex], now);
@@ -1524,7 +1538,8 @@ int main(int argc, char** argv) {
                                                 : transport.Beat(renderNow),
                                     paused, sessionCompleted, customChart,
                                     customChart ? chartPlayback.Speed() : 1.0,
-                                    status, settings.hitFlash, settings, activeSkin};
+                                    status, settings.hitFlash, settings, activeSkin,
+                                    speedNoticeUntil};
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
                     editorStatus, editorPending, musicError, renderNow,

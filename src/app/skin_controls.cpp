@@ -26,7 +26,7 @@ bool GetSkinNumberRange(int page, int row, SkinNumberRange& range) noexcept {
     if (page == 1) {
         switch (row) {
             case 0: range = {6.0, 22.0, 1.0, 80.0}; return true;
-            case 1: range = {30.0, 80.0, 10.0, 250.0}; return true;
+            case 1: range = {60.0, 320.0, kMinBaseSpeed, kMaxBaseSpeed}; return true;
             case 3: range = {0.5, 2.0, 0.1, 8.0}; return true;
             default: return false;
         }
@@ -53,7 +53,7 @@ double GetSkinNumber(const Skin& skin, int page, int row,
     } else if (page == 1) {
         switch (row) {
             case 0: return skin.playerRadius;
-            case 1: return skin.cameraStep;
+            case 1: return skin.baseSpeedPxPerSecond;
             case 3: return skin.hitFlashScale;
         }
     } else if (page == 2 && selectedColor >= 0 &&
@@ -115,7 +115,7 @@ bool SetSkinNumber(Skin& skin, int page, int row, int selectedColor,
         } else if (page == 1) {
             switch (row) {
                 case 0: skin.playerRadius = number; break;
-                case 1: skin.cameraStep = number; break;
+                case 1: skin.baseSpeedPxPerSecond = number; break;
                 case 3: skin.hitFlashScale = number; break;
                 default: return false;
             }

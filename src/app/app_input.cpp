@@ -57,6 +57,22 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
                               : IsKeyPressed(KEY_THREE) ? 2
                               : IsKeyPressed(KEY_FOUR) ? 3
                               : IsKeyPressed(KEY_FIVE) ? 4 : -1;
+    if (currentScreen == Screen::Play && !control && !shift) {
+        // Gameplay bindings take priority over speed hotkeys.
+        const auto available = [&](int key) {
+            for (int bound : settings.keys)
+                if (key == bound) return false;
+            return true;
+        };
+        const bool decrease =
+            (available(KEY_LEFT_BRACKET) && IsKeyPressed(KEY_LEFT_BRACKET)) ||
+            (available(KEY_KP_SUBTRACT) && IsKeyPressed(KEY_KP_SUBTRACT));
+        const bool increase =
+            (available(KEY_RIGHT_BRACKET) && IsKeyPressed(KEY_RIGHT_BRACKET)) ||
+            (available(KEY_KP_ADD) && IsKeyPressed(KEY_KP_ADD));
+        input.baseSpeedDelta = static_cast<int>(increase) -
+                               static_cast<int>(decrease);
+    }
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
     // Absolute direction input; a diagonal is a two-key stroke.

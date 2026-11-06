@@ -15,7 +15,8 @@ void DrawTextLabel(Font font, const char* message, Vector2 position,
 } // namespace
 
 void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
-    const GameplayCamera camera(gameplay.chart, gameplay.beat, gameplay.skin);
+    const GameplayCamera camera(gameplay.chart, gameplay.beat, gameplay.skin,
+                                gameplay.practiceSpeed);
     const auto canvas = camera.Canvas();
 
     // Scissor coordinates are physical pixels while all world points remain
@@ -61,11 +62,27 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     // 960px canvas is cropped at both edges: the old LOCUS / LAST HIT /
     // SONG / SQUARE labels were literally cut in half on the player's
     // screen. Those labels are no longer part of scored gameplay.
-    // Only ACCURACY and the four judgement counts belong to the RIGHT.
-    if (!gameplay.skin.showHud) return;
+    // Display speed below the stats, or briefly in the square when no HUD
+    // can be displayed (including portrait windows).
     const float sideWidth = GameplayRightSidebarWidth(
         GetScreenWidth(), GetScreenHeight());
-    if (sideWidth <= 0.0f) return; // Portrait: square consumes all width.
+    if (!gameplay.skin.showHud || sideWidth <= 0.0f) {
+        if (now < gameplay.speedNoticeUntil) {
+            const char* value = TextFormat("SPEED %.0f PX/S",
+                                          gameplay.skin.baseSpeedPxPerSecond);
+            const float size = 17.0f;
+            const Vector2 measured = MeasureTextEx(font, value, size, 1.0f);
+            const Rectangle panel{
+                kGameplayWorldViewport.x +
+                    (kGameplayWorldViewport.width - measured.x) * 0.5f - 12.0f,
+                17.0f, measured.x + 24.0f, 32.0f};
+            DrawRectangleRounded(panel, 0.2f, 4,
+                                 locus::app::WithOpacity(gameplay.skin.hudBackground, 0.87f));
+            DrawTextLabel(font, value, {panel.x + 12.0f, panel.y + 7.0f},
+                          size, gameplay.skin.hudText);
+        }
+        return;
+    }
 
     const float squareRight = kGameplayWorldViewport.x +
                               kGameplayWorldViewport.width;
@@ -113,6 +130,8 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
         hudText(TextFormat("%d", stats[i].count), y + 26.0f,
                 28.0f, gameplay.skin.hudText);
     }
+    hudText(TextFormat("SPEED %.0f PX/S", gameplay.skin.baseSpeedPxPerSecond),
+            502.0f, 15.0f, gameplay.skin.hudText);
 }
 
 void DrawResultsScreen(Font font, const GameplayView& gameplay) {

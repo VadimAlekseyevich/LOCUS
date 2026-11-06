@@ -1,5 +1,6 @@
 #include "app/skin.h"
 #include "app/skin_controls.h"
+#include "app/movement_speed.h"
 #include <nlohmann/json.hpp>
 
 #include <cmath>
@@ -18,7 +19,7 @@ int main() {
     Skin original;
     original.name = "Blue practice";
     original.lookaheadBeats = 11.5f;
-    original.cameraStep = 70.0f;
+    original.baseSpeedPxPerSecond = 185.0f;
     original.trajectory = Color{12, 99, 180, 222};
     original.fieldBorder = Color{39, 207, 255, 196};
     original.junctionGlow = false;
@@ -29,7 +30,7 @@ int main() {
     check(ParseSkin(json, restored, error), "round trip parse");
     check(restored.name == original.name &&
           restored.lookaheadBeats == 11.5f &&
-          restored.cameraStep == 70.0f &&
+          restored.baseSpeedPxPerSecond == 185.0f &&
           restored.trajectory.b == 180 &&
           restored.trajectory.a == 222 &&
           restored.fieldBorder.r == 39 &&
@@ -43,18 +44,29 @@ int main() {
           SkinColor(original, 9).g == 207,
           "square border is available as tenth editable RGBA colour");
     auto oldFile = nlohmann::json::parse(json);
+    oldFile["version"] = 1;
+    oldFile["player"].erase("speedPxPerSecond");
+    oldFile["player"]["cameraStep"] = 70.0;
     oldFile["colors"].erase("fieldBorder");
     Skin migrated;
     check(ParseSkin(oldFile.dump(), migrated, error) &&
           migrated.fieldBorder.r == Skin{}.fieldBorder.r &&
-          migrated.fieldBorder.a == 255,
-          "older skins without a border colour load with default white frame");
+          migrated.fieldBorder.a == 255 &&
+          std::abs(migrated.baseSpeedPxPerSecond -
+                   70.0f * kDefaultBaseSpeed / 51.0f) < 0.001f,
+          "v1 skin zoom migrates to fixed speed and frame colour");
     oldFile["colors"]["fieldBorder"] = nlohmann::json::array({256, 0, 0, 255});
     Skin unmodified;
     unmodified.name = "Keep";
     check(!ParseSkin(oldFile.dump(), unmodified, error) &&
           unmodified.name == "Keep",
           "invalid border channel rejected atomically");
+    auto invalidLegacy = oldFile;
+    invalidLegacy["colors"]["fieldBorder"] = nlohmann::json::array({255,255,255,255});
+    invalidLegacy["player"]["cameraStep"] = 251;
+    Skin legacyGuard;
+    check(!ParseSkin(invalidLegacy.dump(), legacyGuard, error),
+          "reject invalid legacy zoom without mutation");
     Skin sentinel;
     sentinel.name = "Unchanged";
     check(!ParseSkin("{\"version\":1}", sentinel, error) &&
@@ -63,16 +75,16 @@ int main() {
     invalid.lookaheadBeats = 0.0f;
     check(!invalid.Valid(error), "reject invalid lookahead");
     invalid = original;
-    invalid.cameraStep = 251.0f;
-    check(!invalid.Valid(error), "reject invalid camera zoom");
+    invalid.baseSpeedPxPerSecond = 701.0f;
+    check(!invalid.Valid(error), "reject invalid base speed");
     // Draggers have modest limits, but exact input can go further.
     SkinNumberRange limits;
     check(GetSkinNumberRange(0, 0, limits) &&
           limits.sliderMax == 12.0 && limits.inputMax == 64.0,
           "lookahead slider range and extended typed limit differ");
     check(GetSkinNumberRange(1, 1, limits) &&
-          limits.sliderMax == 80.0 && limits.inputMax == 250.0,
-          "camera zoom has extended typed limit");
+          limits.sliderMax == 320.0 && limits.inputMax == 700.0,
+          "fixed speed has extended typed limit");
     Skin edited;
     double parsed = 0.0;
     check(ParseSkinNumber("24,75", parsed) && parsed == 24.75,
@@ -83,6 +95,30 @@ int main() {
           !ParseSkinNumber("nan", parsed) &&
           !ParseSkinNumber("1e999", parsed),
           "invalid, non-finite, and overflowing numbers rejected");
+    check(SetSkinNumber(edited, 1, 1, 1, 235.25, false, error) &&
+          std::abs(edited.baseSpeedPxPerSecond - 235.25f) < 0.001f,
+          "typed speed is stored in skin");
+    check(!SetSkinNumber(edited, 1, 1, 1, 701.0, false, error) &&
+          std::abs(edited.baseSpeedPxPerSecond - 235.25f) < 0.001f,
+          "invalid speed is not applied");
+    check(AdjustBaseSpeed(135.0f, 1) == 145.0f &&
+          AdjustBaseSpeed(135.0f, -1) == 125.0f &&
+          AdjustBaseSpeed(kMaxBaseSpeed, 1) == kMaxBaseSpeed,
+          "hotkeys change and clamp the persisted base speed");
+    for (double bpm : {60.0, 120.0, 250.0})
+        for (int ticks : {1, 6, 24})
+            for (double practice : {1.0, 0.75, 0.5, 0.1}) {
+                const double step = StepForFixedSpeed(135.0f, bpm, ticks, practice);
+                const double rate = bpm * ticks * practice / 60.0;
+                check(std::abs(step * rate - 135.0) < 0.001,
+                      "cardinal speed fixed across BPM/ticks/practice");
+                check(std::abs(std::hypot(step, step) * rate -
+                               135.0 * std::sqrt(2.0)) < 0.001,
+                      "diagonal speed is sqrt(2) times cardinal");
+            }
+    check(StepForFixedSpeed(135.0f, 0.0, 1) == 0.0f &&
+          StepForFixedSpeed(135.0f, 120.0, 0) == 0.0f,
+          "invalid chart timing does not generate invalid camera step");
     check(SetSkinNumber(edited, 0, 0, 1, 48.25, false, error) &&
           edited.lookaheadBeats == 48.25f,
           "typed path horizon may exceed the slider's maximum");

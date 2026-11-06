@@ -27,7 +27,8 @@
 - The virtual reference layout is 960×540, yielding a square from x=210 to 750; at 1920×1080 the square is 1080×1080. In portrait windows its side is constrained by the window width.
 - Route segments, junctions, marker and effects **outside this square are not rendered**. Clipping is visual only; the route and its scoring continue.
 - A thin rectangular outline is **white by default**, with its color and alpha editable in the global skin.
-- The authoring field has **one square side-length value** (2–16 logical cells; **default 8**). With the default camera zoom, eight cell widths fit across the square. It is **not** a pair of x/y inputs, not a time signature and not a bound on world travel.
+- The authoring field has **one square side-length value** (2–16 logical cells; **default 8**), for editor viewing metadata. Gameplay scales its route from a global **fixed base movement speed**, not chart field size or BPM. Grid size is not a time signature or a world boundary.
+- The skin sets cardinal travel in **logical pixels per second** (default **135** on the virtual 540×540 playfield). Each chart's visual step compensates for BPM, ticks per beat and practice playback rate. Diagonals retain **√2 times the base speed** because both axes advance. Physical speed scales with the resizable window's play square.
 - Starting X/Y is no longer an exposed control. New charts have an automatic centered internal origin; stored start metadata remains supported by the file reader.
 
 ### 2.3 Path preview and feedback
@@ -69,6 +70,7 @@ Accuracy (%) = (100 × Perfect + 75 × Good + 50 × Bad)
 - **Center:** only the square, route, marker, configurable border and optional hit effects.
 - **Right of square:** live **Accuracy**, **Perfect**, **Good**, **Bad**, **Miss**. On narrower windows values fit the actually visible right region.
 - **Left of square:** intentionally **empty**. No cut-off LOCUS logo, latest-hit readout, song title, field-size log, labels or debug text.
+- PLAY hotkeys **[ / ]** or numpad **- / +** adjust base speed by **10 logical px/s**, save it to the global skin, and do not override rebound gameplay keys. Speed is shown beneath the right-side grades, or briefly within the square when no sidebar is visible.
 - A pause overlay offers pause/retry/home information without editing the chart. The built-in demo and local charts use the same gameplay and results presentation.
 
 ### 4.2 Results
@@ -91,12 +93,13 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 - Chart **v2** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
 - The writer stores the underlying route turn as one of six **relative angles** and the initial heading; gameplay input still uses absolute directions.
 - Editor can add/edit/cut/copy/paste/invert/shift/undo turns, save/open JSON, and TEST from the selected audio position. Previously saved v1 charts remain readable and migrate to v2 on save.
-- Editor preview and scored custom-song play can use **100%, 75%, 50%, 25%, 10%** audio speeds. The present slowdown changes pitch; it is **not** pitch-preserving time stretch.
+- Editor preview and scored custom-song play can use **100%, 75%, 50%, 25%, 10%** audio speeds. The present slowdown changes pitch; it is **not** pitch-preserving time stretch. In scored practice, screen-space movement speed remains fixed even as playback slows.
 
 ## 6. Skins and accessibility
 
 - One independent **global skin** affects presentation across Play and editor TEST; no skin is embedded in a chart.
-- PATH, PLAYER/HUD and COLORS pages expose path width/opacity/fade, marker size, camera zoom, hit-effect scale, visibility of gameplay stats, and ten separately editable RGBA colors including **FIELD BORDER**.
+- PATH, PLAYER/HUD and COLORS pages expose path width/opacity/fade, marker size, fixed base speed (20–700 logical px/s), hit-effect scale, gameplay HUD visibility, and ten editable RGBA colors including **FIELD BORDER**.
+- Skin JSON v2 saves `player.speedPxPerSecond`. Legacy v1 `cameraStep` is converted on load to the same approximate speed at 120 BPM on the default 8×8 chart.
 - The skin cannot alter chart timestamps, judgement rules or authored route geometry.
 - Windows system fonts are used when available; gameplay readability at non-16:9 aspect ratios must be checked on actual displays.
 

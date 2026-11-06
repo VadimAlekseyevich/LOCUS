@@ -31,6 +31,7 @@ struct GameplayView {
     bool showHitFlash = true;
     const locus::app::GameSettings& bindings;
     const locus::app::Skin& skin;
+    double speedNoticeUntil = -1.0;
 };
 
 // The visible playfield is exactly one screen-height square, centred in
@@ -58,19 +59,16 @@ inline float GameplayRightSidebarWidth(int width, int height) noexcept {
 struct GameplayCamera {
     static constexpr float kCenterX = kVirtualWidth * 0.5f;
     static constexpr float kCenterY = kVirtualHeight * 0.5f;
-    // The skin's original 51px cameraStep is the default 100% zoom. At
-    // that zoom, the square shows gridWidth logical cells along each axis.
-    static constexpr float kDefaultSkinStep = 51.0f;
+    // Cardinal speed stays constant; diagonal movement is sqrt(2)x.
     locus::core::GridPoint world{};
-    float step = kDefaultSkinStep;
+    float step = 1.0f;
 
     GameplayCamera(const locus::core::Chart& chart, double beat,
-                   const locus::app::Skin& skin = locus::app::Skin{})
+                   const locus::app::Skin& skin = locus::app::Skin{},
+                   double practiceRate = 1.0)
         : world(locus::core::RoutePositionAt(chart, beat)),
-          step(kGameplayWorldViewport.width /
-               static_cast<float>(std::max(chart.gridWidth, chart.gridHeight)) *
-               (skin.cameraStep / kDefaultSkinStep) /
-               chart.ticksPerBeat) {}
+          step(StepForFixedSpeed(skin.baseSpeedPxPerSecond, chart.bpm,
+                                 chart.ticksPerBeat, practiceRate)) {}
 
     locus::app::RouteCanvas Canvas() const noexcept {
         return {kCenterX, kCenterY, step, world};
