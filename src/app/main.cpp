@@ -1092,8 +1092,8 @@ bool CheckScreenTransitions() {
            std::strcmp(ScreenName(Screen::Editor), "Editor") == 0 &&
            std::strcmp(ScreenName(Screen::Results), "Results") == 0;
 }
-// Headless G-06 check: start, return Home, retry, resolve the demo, retry
-// from Results. The real music device/presentation is tested by owner in G-07.
+// Headless session check: start, return Home, retry, resolve the demo,
+// and retry from Results. Desktop and real-audio behavior need manual testing.
 bool CheckSessionFlow() {
     AppState state;
     const locus::core::Chart chart = locus::core::MakeDemoChart();
@@ -1321,7 +1321,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     UiFont uiFont = LoadUiFont();
-    SetTargetFPS(60); // Visual smoke baseline only, never a musical clock.
+    SetTargetFPS(60); // Rendering cadence never determines musical time.
     std::cout << "LOCUS_WINDOW_OPEN\n";
 
     const auto userData = locus::app::UserDataDirectory();

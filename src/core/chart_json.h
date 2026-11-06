@@ -8,8 +8,8 @@
 
 namespace locus::core {
 
-// v1 authoring data plus the already-shared route value object.
-// Chart.lengthBeats is derived from the selected song length after loading.
+// Chart metadata and route value object.
+// Chart.lengthBeats is derived from song duration after loading.
 struct LoadedChart {
     Chart route;
     std::string title;
@@ -24,7 +24,7 @@ struct LoadedChart {
 // members instead of changing authored beat positions or directions.
 bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& error);
 
-// Stable, human-readable UTF-8 JSON, always writing offsetMs. No file IO.
+// Stable UTF-8 chart v2 JSON with absolute timeMs and offsetMs. No file IO.
 bool SerializeChartJson(const LoadedChart& chart, std::string& json,
                         std::string& error);
 

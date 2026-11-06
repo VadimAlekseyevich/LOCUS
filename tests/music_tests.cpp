@@ -60,7 +60,7 @@ int main() {
     ok &= Expect(std::abs(clock.BeatAt(201.0, 120.0) - 2.0) < 1e-10,
                  "restarting establishes a new independent monotonic anchor");
 
-    // G-06: pausing and resuming must freeze the same clock used for route
+    // Pausing and resuming freeze the clock used for route
     // animation and A/D judgements; wall-clock pause time is excluded.
     clock.Pause(201.25);
     ok &= Expect(clock.Paused() && clock.Running() &&

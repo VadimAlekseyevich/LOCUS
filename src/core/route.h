@@ -80,8 +80,7 @@ struct RouteStep {
     int gridHeight = 8;
 };
 
-// A fixed, rights-clean gameplay chart for the first playable prototype.
-// The original 120 BPM click track is generated in src/core/demo_audio.cpp.
+// Built-in 120 BPM demo route with a locally generated, original click track.
 Chart MakeDemoChart();
 
 // Pure deterministic eight-way route on an infinite plane: apply a turn at

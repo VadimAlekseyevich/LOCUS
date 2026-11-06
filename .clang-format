@@ -1,4 +1,4 @@
-# LOCUS C++17 formatting policy (F-03). Keep options stable across platforms.
+# LOCUS C++17 formatting policy. Keep options stable across platforms.
 BasedOnStyle: LLVM
 Language: Cpp
 Standard: c++17
