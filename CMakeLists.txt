@@ -44,6 +44,7 @@ add_executable(locus
     src/app/chart_playback.cpp
     src/app/game_session.cpp
     src/app/song_library.cpp
+    src/app/audio_revision.cpp
     src/app/game_settings.cpp
     src/app/skin.cpp
     src/app/skin_controls.cpp
@@ -146,6 +147,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_song_library_tests
         tests/song_library_tests.cpp
         src/app/song_library.cpp
+        src/app/audio_revision.cpp
         src/app/chart_file.cpp
         src/app/chart_save.cpp
         src/app/local_file_io.cpp

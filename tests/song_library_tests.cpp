@@ -5,6 +5,9 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <cstdint>
+#include <iomanip>
+#include <sstream>
 #include <string>
 
 using namespace locus::app;
@@ -14,6 +17,21 @@ namespace fs = std::filesystem;
 bool Check(bool condition, const char* label) {
     if (!condition) std::cerr << "SONG_LIBRARY_FAIL " << label << '\n';
     return condition;
+}
+std::string ReadBytes(const fs::path& file) {
+    std::ifstream stream(file, std::ios::binary);
+    return std::string(std::istreambuf_iterator<char>(stream),
+                       std::istreambuf_iterator<char>());
+}
+std::string SourcePathHash(const fs::path& path) {
+    std::uint64_t hash = 14695981039346656037ull;
+    for (unsigned char c : fs::canonical(path).generic_u8string()) {
+        hash ^= c;
+        hash *= 1099511628211ull;
+    }
+    std::ostringstream output;
+    output << std::hex << std::setfill('0') << std::setw(16) << hash;
+    return output.str();
 }
 bool WriteChart(const fs::path& file, const std::string& name) {
     const std::string json =
@@ -85,29 +103,81 @@ int main() {
                 easyInstalled == again && library.ChartCount() == 2,
                 "changing chart title updates the same installed difficulty");
 
-    // A re-import of modified audio must replace the file after a successful
-    // complete copy, without leaving temporary artifacts or losing charts.
-    const fs::path installedAudio = library.Songs()[0].audioFile;
+    // Every difficulty initially references the same immutable revision.
+    const auto selectedAudio = [&](const fs::path& chartPath) {
+        int songIndex = -1, chartIndex = -1;
+        if (!library.FindChart(chartPath, songIndex, chartIndex)) return fs::path{};
+        return library.Songs()[static_cast<std::size_t>(songIndex)]
+            .charts[static_cast<std::size_t>(chartIndex)].audioFile;
+    };
+    const fs::path initialAudio = selectedAudio(easyInstalled);
+    ok &= Check(!initialAudio.empty() &&
+                initialAudio == selectedAudio(hardInstalled) &&
+                library.Songs().size() == 1 &&
+                library.Songs()[0].title == "song",
+                "identical imports share one revision and one song browser entry");
+
+    // Changed song bytes produce a NEW version and rebind only the updated
+    // difficulty. Other charts cannot silently change during this operation.
+    const std::string changedAudio = "RIFFtest-library-reimported-new-bytes";
     {
         std::ofstream audio(source / "song.wav", std::ios::binary | std::ios::trunc);
-        audio << "RIFFtest-library-file-reimported-with-new-content";
+        audio << changedAudio;
     }
-    bool replaced = library.Import(hard, again, error);
-    std::string bytes;
+    const bool replaced = library.Import(hard, again, error);
+    const fs::path hardRevision = selectedAudio(hardInstalled);
+    ok &= Check(replaced && again == hardInstalled &&
+                hardRevision != initialAudio &&
+                library.Songs().size() == 1 && library.ChartCount() == 2 &&
+                selectedAudio(easyInstalled) == initialAudio &&
+                ReadBytes(initialAudio) == "RIFFtest-library-file" &&
+                ReadBytes(hardRevision) == changedAudio,
+                "changed audio publishes a new revision while old difficulty is stable");
+    const auto repeatRevision = hardRevision;
+    ok &= Check(library.Import(hard, again, error) &&
+                selectedAudio(hardInstalled) == repeatRevision,
+                "repeated import of identical bytes reuses the existing revision");
+
+    // Deterministically simulate a failed JSON publication AFTER audio staging:
+    // replace the installed chart file with a directory, then restore it.
+    // A failure must not alter the old audio referenced by either difficulty.
+    const std::string thirdAudio = "RIFFtest-library-third-version";
     {
-        std::ifstream stream(installedAudio, std::ios::binary);
-        bytes.assign(std::istreambuf_iterator<char>(stream),
-                     std::istreambuf_iterator<char>());
+        std::ofstream audio(source / "song.wav", std::ios::binary | std::ios::trunc);
+        audio << thirdAudio;
     }
+    const fs::path backupChart = hardInstalled.wstring() + L".test-backup";
+    fs::rename(hardInstalled, backupChart, ec);
+    const bool renamed = !ec;
+    if (renamed) fs::create_directory(hardInstalled, ec);
+    const bool blocked = renamed && !ec;
+    bool importFailed = false;
+    if (blocked) importFailed = !library.Import(hard, again, error);
+    if (blocked) fs::remove(hardInstalled, ec);
+    if (renamed) fs::rename(backupChart, hardInstalled, ec);
+    ok &= Check(blocked && importFailed && !ec &&
+                ReadBytes(hardRevision) == changedAudio &&
+                ReadBytes(initialAudio) == "RIFFtest-library-file",
+                "failed chart publication preserves all existing audio revisions");
+    ok &= Check(library.Refresh(notice) &&
+                selectedAudio(hardInstalled) == hardRevision &&
+                selectedAudio(easyInstalled) == initialAudio &&
+                library.ChartCount() == 2,
+                "library refresh recovers unchanged difficulty references after failure");
+
+    // Retry after the failed commit should reuse staged bytes safely.
+    ok &= Check(library.Import(hard, again, error) &&
+                ReadBytes(selectedAudio(hardInstalled)) == thirdAudio &&
+                selectedAudio(easyInstalled) == initialAudio &&
+                library.Songs().size() == 1,
+                "retry publishes new audio only with a successful chart update");
     bool noTemporary = true;
-    for (const auto& entry : fs::directory_iterator(installedAudio.parent_path())) {
-        if (entry.path().filename().wstring().find(L".tmp-") != std::wstring::npos)
+    for (const auto& entry : fs::directory_iterator(
+             selectedAudio(hardInstalled).parent_path().parent_path())) {
+        if (entry.path().filename().wstring().find(L".stage-") != std::wstring::npos)
             noTemporary = false;
     }
-    ok &= Check(replaced && library.ChartCount() == 2 &&
-                bytes == "RIFFtest-library-file-reimported-with-new-content" &&
-                noTemporary,
-                "changed audio reimport replaces full file without leftover temporary files");
+    ok &= Check(noTemporary, "normal and failed imports leave no staging files");
     int songIndex = -1, chartIndex = -1;
     ok &= Check(library.FindChart(easyInstalled, songIndex, chartIndex) &&
                 songIndex == 0 &&
@@ -118,11 +188,14 @@ int main() {
     ok &= Check(afterRestart.Refresh(notice) &&
                 afterRestart.Songs().size() == 1 &&
                 afterRestart.ChartCount() == 2 &&
-                fs::exists(afterRestart.Songs()[0].audioFile),
-                "library survives process restart and deletion of imported originals");
+                !afterRestart.Songs()[0].charts[0].audioFile.empty() &&
+                !afterRestart.Songs()[0].charts[1].audioFile.empty() &&
+                afterRestart.Songs()[0].charts[0].audioFile !=
+                    afterRestart.Songs()[0].charts[1].audioFile,
+                "library restart retains different difficulty/audio revisions");
 
     fs::remove_all(folder, ec);
     if (!ok) return 1;
-    std::cout << "SONG_LIBRARY_PASS on-disk albums, grouped charts, cache, reimport\n";
+    std::cout << "SONG_LIBRARY_PASS atomic-chart-version=1 grouped-revisions=1\n";
     return 0;
 }

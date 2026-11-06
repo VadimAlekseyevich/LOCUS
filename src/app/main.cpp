@@ -1369,10 +1369,8 @@ int main(int argc, char** argv) {
                     judge.SetOffsetSeconds(0.0);
                     state.screen = Screen::Play;
                 } else if (const auto* selected = libraryUi.Selected(library)) {
-                    const auto& sourceSong =
-                        library.Songs()[static_cast<std::size_t>(
-                            libraryUi.selectedSong - 1)];
-                    const std::wstring audioPath = sourceSong.audioFile.wstring();
+                    // A difficulty pins its own immutable song version.
+                    const std::wstring audioPath = selected->audioFile.wstring();
                     locus::core::LoadedChart candidate = selected->data;
                     const bool newAudio =
                         !localSong.Ready() || loadedAudioPath != audioPath;

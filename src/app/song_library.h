@@ -15,11 +15,12 @@ std::filesystem::path UserDataDirectory();
 struct LibraryChart {
     std::filesystem::path file;
     core::LoadedChart data; // Parsed once per library refresh.
+    std::filesystem::path audioFile; // Actual revision for this difficulty.
 };
 
 struct LibrarySong {
-    std::filesystem::path audioFile;
-    std::string title; // Display name, derived from the audio filename.
+    std::filesystem::path audioFile; // Representative; play LibraryChart::audioFile.
+    std::string title; // Original filename, without version metadata.
     std::vector<LibraryChart> charts; // Different authored difficulties.
 };
 
@@ -31,9 +32,9 @@ public:
     explicit SongLibrary(std::filesystem::path root) : root_(std::move(root)) {}
 
     bool Refresh(std::string& message);
-    // Import copies song+chart into Songs. Reimporting the same source chart
-    // updates its existing copy without duplicating that difficulty. Audio
-    // replacement is staged on disk before replacing the installed file.
+    // Import stages immutable audio, then atomically saves the chart JSON.
+    // Repeat imports update a difficulty without modifying any other chart's
+    // audio; multiple revisions still appear under one logical song.
     bool Import(const std::filesystem::path& sourceChart,
                 std::filesystem::path& installedChart, std::string& error);
     bool FindChart(const std::filesystem::path& path,

@@ -1,6 +1,7 @@
 #include "app/song_library.h"
 
 #include "app/chart_file.h"
+#include "app/audio_revision.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -9,7 +10,6 @@
 #endif
 
 #include <algorithm>
-#include <chrono>
 #include <cctype>
 #include <cstdint>
 #include <filesystem>
@@ -70,55 +70,6 @@ std::string SongDisplayTitle(const fs::path& audio) {
     return name.empty() ? std::string("Unknown song") : name;
 }
 
-// Never truncate an installed song when reimporting a changed source audio.
-// The temporary copy lives alongside the destination, so the final
-// replacement takes place on the same volume. A failed copy or move leaves
-// the previous audio untouched; temporary bytes are discarded.
-bool InstallAudioFile(const fs::path& source, const fs::path& destination,
-                      std::string& error) {
-    const auto nonce = std::chrono::steady_clock::now().time_since_epoch().count();
-    fs::path temporary = destination;
-    temporary += L".tmp-" + std::to_wstring(nonce);
-    std::error_code ec;
-    if (!fs::copy_file(source, temporary, fs::copy_options::none, ec) || ec) {
-        const std::string problem = ec ? ec.message() : "copy did not complete";
-        // copy_file may leave a truncated temporary file on I/O failure.
-        std::error_code cleanup;
-        fs::remove(temporary, cleanup);
-        error = "Failed to stage song audio: " + problem;
-        return false;
-    }
-    const auto sourceTime = fs::last_write_time(source, ec);
-    if (!ec) fs::last_write_time(temporary, sourceTime, ec);
-    if (ec) {
-        const std::string problem = ec.message();
-        std::error_code cleanup;
-        fs::remove(temporary, cleanup);
-        error = "Failed to preserve song metadata: " + problem;
-        return false;
-    }
-#ifdef _WIN32
-    if (!MoveFileExW(temporary.c_str(), destination.c_str(),
-                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        const DWORD code = GetLastError();
-        std::error_code cleanup;
-        fs::remove(temporary, cleanup);
-        error = "Failed to replace installed song audio (Windows error " +
-                std::to_string(code) + "). Existing audio was preserved.";
-        return false;
-    }
-#else
-    fs::rename(temporary, destination, ec);
-    if (ec) {
-        const std::string problem = ec.message();
-        std::error_code cleanup;
-        fs::remove(temporary, cleanup);
-        error = "Failed to replace installed song audio: " + problem;
-        return false;
-    }
-#endif
-    return true;
-}
 } // namespace
 
 std::filesystem::path UserDataDirectory() {
@@ -160,7 +111,7 @@ bool SongLibrary::Refresh(std::string& message) {
     }
 
     std::vector<LibrarySong> next;
-    std::map<fs::path, std::size_t> byAudio;
+    std::map<fs::path, std::size_t> byAudio; // Logical song, not specific revision.
     std::size_t skipped = 0;
     std::size_t scanned = 0;
     fs::recursive_directory_iterator entry(
@@ -199,16 +150,17 @@ bool SongLibrary::Refresh(std::string& message) {
             continue;
         }
 
-        const auto found = byAudio.find(audioFile);
+        const fs::path logicalAudio = LogicalSongAudioPath(audioFile);
+        const auto found = byAudio.find(logicalAudio);
         std::size_t index = 0;
         if (found == byAudio.end()) {
             index = next.size();
-            byAudio.emplace(audioFile, index);
-            next.push_back({audioFile, SongDisplayTitle(audioFile), {}});
+            byAudio.emplace(logicalAudio, index);
+            next.push_back({audioFile, SongDisplayTitle(logicalAudio), {}});
         } else {
             index = found->second;
         }
-        next[index].charts.push_back({path, std::move(chart)});
+        next[index].charts.push_back({path, std::move(chart), audioFile});
     }
     if (scanned >= 8192) ++skipped;
     for (auto& song : next) {
@@ -279,15 +231,11 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     fs::create_directories(folder, ec);
     if (ec) { error = "Cannot create song folder: " + ec.message(); return false; }
 
-    // Preserve the source audio filename for the song browser (and Unicode
-    // names), while the enclosing folder hash prevents name collisions.
-    const auto destinationAudio = folder / sourceAudio.filename();
-    const bool sameFile = fs::exists(destinationAudio, ec) &&
-        fs::file_size(sourceAudio, ec) == fs::file_size(destinationAudio, ec) &&
-        fs::last_write_time(sourceAudio, ec) ==
-            fs::last_write_time(destinationAudio, ec);
-    if (ec) { error = "Cannot inspect audio file metadata."; return false; }
-    if (!sameFile && !InstallAudioFile(sourceAudio, destinationAudio, error))
+    // Stage an immutable audio revision first, then atomically publish the
+    // chart reference. An interrupted import cannot rewrite another
+    // difficulty's existing audio file.
+    fs::path destinationAudio;
+    if (!InstallAudioRevision(sourceAudio, folder, destinationAudio, error))
         return false;
 
     // Stable source filename; changing a chart title updates the same library

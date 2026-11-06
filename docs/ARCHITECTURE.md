@@ -20,14 +20,14 @@ Reviewed: 2026-11-06. Scope: current Windows/raylib rhythm game, not prospective
 - Chart v2 timestamps are authoritative in song milliseconds; editor snapping and visualization do not rewrite timing.
 - Movement speed is independent of BPM, snap subdivisions and heading; diagonals are Euclidean unit steps.
 - **2026-11-06:** Visible-route range sampling replaces repeated full-history scans for each preview segment. Random-access geometry remains available. The dense 240-tick window regression compares batched and standalone samples.
-- **2026-11-06:** Audio reimports stage a complete temporary file alongside the existing audio before an on-volume replacement; incomplete copies are discarded. This protects individual audio files, **not** the entire two-file import as a single transaction.
+- **2026-11-06:** Import stages each audio version into an immutable content-fingerprinted file before publishing chart JSON atomically. A crashed or failed import can leave an unreferenced version, but cannot silently change audio bytes used by previously installed difficulties. Each difficulty owns its selected audio path, while the song browser groups versions under one logical song.
 - Windows CI builds Release, runs CTests and headless checks, checks worktree cleanliness, exercises the actual BAT launcher, and uploads diagnostics. GUI behavior and acoustic latency are not proven by CI.
 
 ## Outstanding work, in priority order
 
 ### P1 — Safer import and storage lifecycle
 
-An import updates two persistent objects: audio and chart JSON. Although each replacement can now be individually safe, **the pair is not an atomic transaction**. An interruption after updating audio but before updating the chart can expose mismatched revisions. Design a staging/publish strategy that preserves existing installed chart/audio as a consistent pair, with tests for interrupted imports, failed reads/writes and repeated difficulty updates. Preserve the external folder format or explicitly migrate it.
+The chart JSON is the sole publication point. Imported audio is immutable and chart references remain valid through interrupted updates; existing v1/v2 JSON and installed audio files stay supported. New imports store audio under `.locus-versions/<16-hex fingerprint>/<original audio filename>`. Remaining limitations: an interrupted import may leave unused staged/revision files; do not garbage-collect versions without cross-process safety. Test permission and power-loss paths on a real Windows machine.
 
 ### P1 — Reduce `main.cpp` session orchestration
 
