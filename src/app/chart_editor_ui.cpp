@@ -365,10 +365,10 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                       EditorField::Title, ui);
         char bpm[40]{}, offset[40]{};
         std::snprintf(bpm, sizeof(bpm), "%.3f", chart.bpm);
-        std::snprintf(offset, sizeof(offset), "%.3f",
+        std::snprintf(offset, sizeof(offset), "%.0f",
                       draft.Data().offsetSeconds * 1000.0);
         DrawTextField(font, kBpm, "BPM (TYPE)", bpm, EditorField::Bpm, ui);
-        DrawTextField(font, kOffset, "OFFSET IN MILLISECONDS (TYPE)",
+        DrawTextField(font, kOffset, "OFFSET MS (WHOLE NUMBER)",
                       offset, EditorField::OffsetMs, ui);
         Label(font, "PRACTICE SPEED: SET ON ROUTE (KEYS 1-5 WORK HERE TOO)",
               92, 374, 16, Color{172, 199, 218, 255});
@@ -385,7 +385,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                       std::to_string(chart.start.y), EditorField::StartCell, ui);
         Label(font, draft.HasSongDuration()
               ? TextFormat("SONG TIMELINE: %d TO %d (AUTO FROM BPM / OFFSET)",
-                           chart.firstBeat, chart.lengthBeats - 1)
+                           chart.firstBeat / chart.ticksPerBeat,
+                           (chart.lengthBeats - 1) / chart.ticksPerBeat)
               : "SONG TIMELINE: LOAD AUDIO TO CALCULATE",
               104, 329, 15, Color{188, 218, 228, 255});
         Label(font, "START HEADING  Q/E 45 DEG", 519, 299, 16,
