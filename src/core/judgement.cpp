@@ -43,6 +43,20 @@ void TurnJudge::ResetFromBeat(int firstScoredBeat) noexcept {
                          }) - chart_.turns.begin());
 }
 
+void TurnJudge::ResetFromAudioSeconds(double audioSeconds) noexcept {
+    Reset();
+    if (!std::isfinite(audioSeconds)) return;
+    nextEvent_ = static_cast<std::size_t>(
+        std::lower_bound(chart_.turns.begin(), chart_.turns.end(),
+                         audioSeconds, [&](const TurnEvent& event, double seconds) {
+                             const double time = event.timeMs == kNoTimeMs
+                                 ? offsetSeconds_ + event.beat * 60.0 /
+                                       (chart_.bpm * chart_.ticksPerBeat)
+                                 : static_cast<double>(event.timeMs) / 1000.0;
+                             return time < seconds - 1e-9;
+                         }) - chart_.turns.begin());
+}
+
 const TurnEvent* TurnJudge::NextEvent() const noexcept {
     return nextEvent_ < chart_.turns.size() ? &chart_.turns[nextEvent_] : nullptr;
 }
