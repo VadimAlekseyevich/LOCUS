@@ -103,9 +103,11 @@ const LibraryChart* SongSelectUi::Selected(const SongLibrary& songs) const {
 void DrawMainMenu(Font font, const SongLibrary& library,
                   const std::string& status) {
     Header(font, "FOLLOW THE RHYTHM");
-    const char* names[] = {"PLAY", "EDIT", "SKIN", "SETTINGS"};
-    const Color colors[] = {kMint, kViolet, kGold, Color{147, 195, 240, 255}};
-    for (int i = 0; i < 4; ++i)
+    const char* names[] = {"PLAY", "EDIT", "SKIN", "SETTINGS", "EXIT"};
+    const Color colors[] = {kMint, kViolet, kGold,
+                            Color{147, 195, 240, 255},
+                            Color{241, 162, 165, 255}};
+    for (int i = 0; i < 5; ++i)
         Button(font, HomeMenuButton(i), names[i], colors[i]);
 
     Label(font, "YOUR MUSIC. YOUR ROUTES.", 456, 181, 25, kText);
