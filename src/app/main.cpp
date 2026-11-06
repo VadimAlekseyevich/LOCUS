@@ -1105,6 +1105,69 @@ int main(int argc, char** argv) {
             state, input, library, libraryUi, settings, settingsUi,
             draftSkin, skinUi);
         if (menuEvents.toggleFullscreen) ToggleBorderlessWindowed();
+        if (state.screen == Screen::Skin) {
+            const auto applySkin = [&]() {
+                std::string error;
+                if (!locus::app::SaveSkin(activeSkinFile, draftSkin, error)) {
+                    skinUi.notice = "SAVE FAILED: " + error;
+                    skinUi.noticeError = true;
+                    return;
+                }
+                activeSkin = draftSkin;
+                skinUi.saved = activeSkin;
+                skinUi.dirty = false;
+                skinUi.notice = "SKIN SAVED AND APPLIED TO ALL CHARTS";
+                skinUi.noticeError = false;
+            };
+            switch (menuEvents.skinCommand) {
+                case locus::app::SkinCommand::Load: {
+                    const auto picked = locus::app::ChooseSkinFile();
+                    if (!picked.path.empty()) {
+                        locus::app::Skin loaded;
+                        std::string error;
+                        if (locus::app::LoadSkin(picked.path, loaded, error)) {
+                            draftSkin = loaded;
+                            skinUi.dirty = true;
+                            skinUi.notice = "SKIN LOADED - SAVE TO ACTIVATE";
+                            skinUi.noticeError = false;
+                        } else {
+                            skinUi.notice = "LOAD FAILED: " + error;
+                            skinUi.noticeError = true;
+                        }
+                    } else if (!picked.canceled) {
+                        skinUi.notice = picked.error;
+                        skinUi.noticeError = true;
+                    }
+                    break;
+                }
+                case locus::app::SkinCommand::Save:
+                    applySkin();
+                    break;
+                case locus::app::SkinCommand::SaveAs: {
+                    const auto picked = locus::app::ChooseSkinSaveFile(L"My-Skin.locus-skin.json");
+                    if (!picked.path.empty()) {
+                        std::string error;
+                        if (locus::app::SaveSkin(picked.path, draftSkin, error))
+                            applySkin();
+                        else {
+                            skinUi.notice = "EXPORT FAILED: " + error;
+                            skinUi.noticeError = true;
+                        }
+                    } else if (!picked.canceled) {
+                        skinUi.notice = picked.error;
+                        skinUi.noticeError = true;
+                    }
+                    break;
+                }
+                case locus::app::SkinCommand::Reset:
+                    draftSkin = locus::app::Skin{};
+                    skinUi.dirty = true;
+                    skinUi.notice = "DEFAULT SKIN - SAVE TO ACTIVATE";
+                    skinUi.noticeError = false;
+                    break;
+                case locus::app::SkinCommand::None: break;
+            }
+        }
         if (menuEvents.saveSettings) {
             transport.SetVolume(settings.volume);
             localSong.SetVolume(settings.volume);
