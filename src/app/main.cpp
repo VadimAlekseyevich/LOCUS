@@ -203,11 +203,17 @@ void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
     ++state.frames;
 }
 
-// Resolve all remaining events at the end of the authored track, even if the
-// player never pressed a key. Final results cannot alter the route.
-void FinishSession(AppState& state, locus::core::TurnJudge& judge,
-                   const locus::core::Chart& chart) {
-    (void)chart; // Completion is defined by music duration, not the next whole beat.
+// A scored chart ends when its LAST eligible note has been judged, not when
+// the remaining song audio runs out. Empty charts and editor TEST positions
+// after the last note have no scorable event: only these need the audio-end
+// fallback. If audio unexpectedly ends first, resolve remaining turns as
+// misses so the session never stalls with unjudged events.
+bool ChartReadyForResults(const locus::core::TurnJudge& judge,
+                          bool audioFinished) noexcept {
+    return judge.AllScorableJudged() || audioFinished;
+}
+
+void FinishSession(AppState& state, locus::core::TurnJudge& judge) {
     judge.FinishRemainingMisses();
     state.screen = Screen::Results;
 }
@@ -971,10 +977,18 @@ bool CheckSessionFlow() {
     judge.Reset();
     if (judge.Counts().Resolved() != 0) return false;
 
-    // A clean run resolves every missing turn at song end and shows Results.
-    FinishSession(state, judge, chart);
+    // Audio finishing is no longer the primary completion condition.
+    // Even a very long song finishes at the instant the final note is
+    // judged (both correct hits and late-window misses).
+    if (ChartReadyForResults(judge, false)) return false;
+    judge.Advance(14.819); // The last demo note is at 15 seconds.
+    if (ChartReadyForResults(judge, false)) return false;
+    judge.Advance(15.181);
+    if (!ChartReadyForResults(judge, false)) return false;
+    FinishSession(state, judge);
     if (state.screen != Screen::Results ||
-        judge.Counts().miss != static_cast<int>(chart.turns.size()) ||
+        judge.Counts().perfect != 1 ||
+        judge.Counts().miss != static_cast<int>(chart.turns.size()) - 1 ||
         judge.Counts().Resolved() != static_cast<int>(chart.turns.size())) {
         return false;
     }
@@ -1163,6 +1177,7 @@ int main(int argc, char** argv) {
     locus::app::ChartPlayback chartPlayback(localSong);
     locus::app::GameSession gameSession(activeChart, judge, transport, chartPlayback);
     bool customChart = false;
+    bool sessionCompleted = false;
     std::wstring editorChartPath;
     std::wstring editorAudioPath;
     std::wstring loadedAudioPath; // Reuse already-decoded audio for each difficulty.
@@ -1656,6 +1671,7 @@ int main(int argc, char** argv) {
             if (previousScreen == Screen::Editor && state.screen != Screen::Editor)
                 chartPlayback.Stop();
             if (state.screen == Screen::Play) {
+                sessionCompleted = false;
                 if (previousScreen != Screen::Results && !loadedNewChart &&
                     previousScreen != Screen::Editor) {
                     // Enter on Home always selects the built-in original demo;
@@ -1680,6 +1696,7 @@ int main(int argc, char** argv) {
             }
             if (input.restartPressed ||
                 (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
+                sessionCompleted = false;
                 gameSession.Restart(customChart, now);
             } else if (input.pausePressed) {
                 gameSession.TogglePause(customChart, now);
@@ -1719,8 +1736,15 @@ int main(int argc, char** argv) {
         if (state.screen == Screen::Play) {
             gameSession.Update(customChart, now,
                                {input.arrowPressed, input.arrowCapturedAt, input.arrowHeld});
-            if (customChart ? chartPlayback.Finished() : transport.Finished()) {
-                FinishSession(state, judge, activeChart);
+            const bool audioFinished = customChart
+                ? chartPlayback.Finished() : transport.Finished();
+            if (ChartReadyForResults(judge, audioFinished)) {
+                FinishSession(state, judge);
+                sessionCompleted = true;
+                // Stop the music immediately if the last judged note occurs
+                // before the end of the WAV/MP3. The transport and chart
+                // playback are not allowed to keep running on Results.
+                gameSession.Stop(customChart);
             }
         }
         const double renderNow = MonotonicSeconds();
@@ -1738,7 +1762,7 @@ int main(int argc, char** argv) {
                                      chartTitle, songTime,
                                     customChart ? chartPlayback.Beat(renderNow)
                                                 : transport.Beat(renderNow),
-                                    paused, finished, customChart,
+                                    paused, sessionCompleted, customChart,
                                     customChart ? chartPlayback.Speed() : 1.0,
                                     status, settings.hitFlash, settings, activeSkin};
         RenderFrame(state, debugScreens, uiFont.value, demo,
