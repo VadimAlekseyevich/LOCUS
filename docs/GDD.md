@@ -1,11 +1,5 @@
 # LOCUS — Game Design Document
 
-**Status:** Current playable-game concept, reconciled with the code on 2026-11-06.  
-**Scope:** Windows desktop rhythm game, local charting, gameplay, results and skins.  
-**Ownership:** A living product description. This revision documents decisions already expressed in the game and owner feedback; it is **not** a claim that every future feature has been approved or implemented.
-
-> LOCUS is **not** the old 4×4, two-button, edge-wrapping prototype. The former design remains in Git history and in the completed A/G milestones; it must not be used as an implementation specification. For the active user flow see [UI_FLOW](architecture/UI_FLOW.md), for file details see [CHART_FORMAT](architecture/CHART_FORMAT.md), and for genuinely pending work see [ROADMAP](ROADMAP.md).
-
 ## 1. Identity and design pillars
 
 **One-sentence pitch:** Follow an endlessly moving route, read the next bend, and perform its outgoing direction in rhythm.
@@ -34,7 +28,7 @@
 - Route segments, junctions, marker and effects **outside this square are not rendered**. Clipping is visual only; the route and its scoring continue.
 - A thin rectangular outline is **white by default**, with its color and alpha editable in the global skin.
 - The authoring field has **one square side-length value** (2–16 logical cells; **default 8**). With the default camera zoom, eight cell widths fit across the square. It is **not** a pair of x/y inputs, not a time signature and not a bound on world travel.
-- Starting X/Y is no longer an exposed control. New charts have an automatic centered internal origin; a legacy chart's stored start metadata can still be read.
+- Starting X/Y is no longer an exposed control. New charts have an automatic centered internal origin; stored start metadata remains supported by the file reader.
 
 ### 2.3 Path preview and feedback
 
@@ -96,7 +90,7 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 - Snap subdivision choices: **1, 2, 3, 4, 6, 8, 12, 16, 24** per musical beat. Snap, zoom and BPM are **different controls**.
 - Chart **v2** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
 - The writer stores the underlying route turn as one of six **relative angles** and the initial heading; gameplay input still uses absolute directions.
-- Editor can add/edit/cut/copy/paste/invert/shift/undo turns, save/open JSON, and TEST from the selected audio position. A saved v1 chart is still readable and migrates on save.
+- Editor can add/edit/cut/copy/paste/invert/shift/undo turns, save/open JSON, and TEST from the selected audio position. Previously saved v1 charts remain readable and migrate to v2 on save.
 - Editor preview and scored custom-song play can use **100%, 75%, 50%, 25%, 10%** audio speeds. The present slowdown changes pitch; it is **not** pitch-preserving time stretch.
 
 ## 6. Skins and accessibility
@@ -108,11 +102,11 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 
 ## 7. Not yet committed as finished
 
-These are **open areas**, not secretly completed features or promised deadlines:
+The following areas are not implemented or verified:
 
 - A verified, straightforward Windows distributable/installer independent of local build tools.
 - Hands-on display, keyboard/audio synchronization and accessibility checks on multiple real machines and aspect ratios. Windows CI cannot judge these.
 - Tempo maps, hold notes, richer note mechanics, waveform editing, pitch-preserving slowdown and measured input/audio latency.
 - Online hosting/accounts/leaderboards, multiplayer and non-Windows ports.
 
-The active work queue is intentionally short in [ROADMAP.md](ROADMAP.md). Do not reintroduce the old 4×4 Wrap game, two-button model or premature infrastructure as current requirements.
+Remaining work is tracked in [ROADMAP.md](ROADMAP.md).

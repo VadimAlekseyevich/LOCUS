@@ -295,7 +295,7 @@ int main() {
 
     // The public example is part of the product experience; ensure it
     // remains a REAL current-format chart rather than stale v1 docs.
-    std::ifstream fixture("mvp/examples/first-song.locus.json", std::ios::binary);
+    std::ifstream fixture("examples/first-song.locus.json", std::ios::binary);
     ok &= Expect(fixture.good(), "shipped first-song chart file exists");
     if (fixture.good()) {
         const std::string example((std::istreambuf_iterator<char>(fixture)),
