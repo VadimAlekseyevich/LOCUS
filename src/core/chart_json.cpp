@@ -266,7 +266,7 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 previousMs = timeMs;
                 beat = TickAtTimeMs(parsed.route.bpm, parsed.route.ticksPerBeat,
                                     parsed.offsetSeconds, timeMs);
-                if (beat < -65536 || beat > 65535) {
+                if (beat < -1000000 || beat > 999999) {
                     error = where + ".timeMs: outside tick range";
                     return false;
                 }
@@ -398,9 +398,9 @@ bool ComputeSongBeatRange(double bpm, double offsetSeconds, double durationSecon
     const double first = std::min(0.0, std::floor(earliest));
     const double end = std::ceil(latest);
     if (!std::isfinite(first) || !std::isfinite(end) ||
-        first < -65536.0 || end > 65536.0 || end - first < 1.0 ||
-        end - first > 65536.0) {
-        error = "bpm/offsetMs: song must contain 1 to 65536 timeline beats";
+        first < -1000000.0 || end > 1000000.0 || end - first < 1.0 ||
+        end - first > 1000000.0) {
+        error = "bpm/offsetMs: song must contain 1 to 1000000 timeline ticks";
         return false;
     }
     firstBeat = static_cast<int>(first);
