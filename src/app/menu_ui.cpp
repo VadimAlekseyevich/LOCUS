@@ -117,7 +117,8 @@ void DrawMainMenu(Font font, const SongLibrary& library,
     Label(font, "SONGS STAY INSTALLED BETWEEN SESSIONS", 456, 316, 14, kMuted);
     Label(font, "PLAY TO BROWSE MUSIC AND DIFFICULTIES", 456, 343, 14, kMuted);
     Label(font, "EDIT OPENS THE EXISTING CHART EDITOR", 456, 370, 14, kMuted);
-    Label(font, "P PLAY   E EDIT   K SKIN   S SETTINGS", 84, 484, 15, kMuted);
+    Label(font, "P PLAY  E EDIT  K SKIN  S SETTINGS", 456, 413, 14, kMuted);
+    Label(font, "ESC / EXIT  -  CONFIRM QUIT", 456, 442, 15, kGold);
     if (!status.empty()) Label(font, Clip(status, 96), 83, 514, 13, kGold);
 }
 
