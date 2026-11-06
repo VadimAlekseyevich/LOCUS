@@ -1319,13 +1319,44 @@ int main(int argc, char** argv) {
         }
     };
 
+    enum class ExitPausedMedia { None, Gameplay, Listen, EditorPreview };
+    ExitPausedMedia pausedForExit = ExitPausedMedia::None;
+
     while (state.running) {
-        FrameInput input = PollInput(debugScreens, state.screen, settings);
+        const bool wasQuitConfirmation = state.quitConfirmation;
+        // While the modal is open, Y/N/Esc or its buttons are the ONLY
+        // accepted actions; key presses cannot reach the editor or gameplay.
+        FrameInput input = wasQuitConfirmation
+            ? FrameInput{} : PollInput(debugScreens, state.screen, settings);
+        if (wasQuitConfirmation) {
+            locus::app::ConsumeNativeCloseRequest(); // Discard repeated X while modal.
+            input.quitConfirmed = IsKeyPressed(KEY_Y);
+            input.quitCanceled = IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE);
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                const float fit = std::min(
+                    static_cast<float>(GetScreenWidth()) / kWindowWidth,
+                    static_cast<float>(GetScreenHeight()) / kWindowHeight);
+                const float scale = state.screen == Screen::Play
+                    ? GameplayViewportScale(GetScreenWidth(), GetScreenHeight())
+                    : fit;
+                if (scale > 0.0f) {
+                    const Vector2 physical = GetMousePosition();
+                    const Vector2 virtualMouse{
+                        (physical.x - (GetScreenWidth() - kWindowWidth * scale) * 0.5f) / scale,
+                        (physical.y - (GetScreenHeight() - kWindowHeight * scale) * 0.5f) / scale};
+                    if (CheckCollisionPointRec(virtualMouse, kQuitConfirmButton))
+                        input.quitConfirmed = true;
+                    else if (CheckCollisionPointRec(virtualMouse, kQuitCancelButton))
+                        input.quitCanceled = true;
+                }
+            }
+        }
         const bool importFromHome =
-            state.screen == Screen::Home && input.chooseChartPressed;
-        const MenuEvents menuEvents = HandleMenuInput(
-            state, input, library, libraryUi, settings, settingsUi,
-            draftSkin, skinUi);
+            !wasQuitConfirmation && state.screen == Screen::Home &&
+            input.chooseChartPressed;
+        const MenuEvents menuEvents = wasQuitConfirmation ? MenuEvents{} :
+            HandleMenuInput(state, input, library, libraryUi, settings,
+                            settingsUi, draftSkin, skinUi);
         if (menuEvents.toggleFullscreen) ToggleBorderlessWindowed();
         if (state.screen == Screen::Skin) {
             const auto applySkin = [&]() {
@@ -1400,7 +1431,9 @@ int main(int argc, char** argv) {
         // trigger a file dialog, shortcut, heading rotation, or Test Play.
         if (state.screen == Screen::Editor && editorUi.EditingText()) {
             input.homePressed = false;
-            input.closeRequested = false;
+            input.backPressed = false;
+            // An OS window-close request must still show confirmation,
+            // even when a chart text field currently has focus.
             input.requestedScreen.reset();
             input.editorNew = false;
             input.editorOpen = false;
@@ -1415,44 +1448,45 @@ int main(int argc, char** argv) {
             persistSettings();
         }
         const Screen previousScreen = state.screen;
-        bool editorModalHandled = false;
-        if (previousScreen == Screen::Editor) {
-            if (editorPending != EditorPending::None) {
-                editorModalHandled = true;
+        if (previousScreen == Screen::Editor && !wasQuitConfirmation) {
+            // The OS X / Alt+F4 triggers the universal exit modal, which
+            // already warns about dirty charts. Never stack two prompts.
+            if (input.closeRequested) {
+                editorPending = EditorPending::None;
+            } else if (editorPending != EditorPending::None) {
                 const EditorPending requested = editorPending;
-                if (IsKeyPressed(KEY_Y)) {
+                const bool approve = IsKeyPressed(KEY_Y);
+                const bool cancel = IsKeyPressed(KEY_N) ||
+                                    IsKeyPressed(KEY_ESCAPE);
+                if (approve) {
                     editorPending = EditorPending::None;
                     if (requested == EditorPending::Home) input.homePressed = true;
-                    if (requested == EditorPending::Exit) input.closeRequested = true;
                     if (requested == EditorPending::NewDraft) input.editorNew = true;
                     if (requested == EditorPending::OpenChart) input.editorOpen = true;
-                } else if (IsKeyPressed(KEY_N)) {
+                } else if (cancel) {
                     editorPending = EditorPending::None;
                     editorStatus = "CHANGES KEPT - CTRL+S TO SAVE";
                 }
-                if (editorPending != EditorPending::None ||
-                    !IsKeyPressed(KEY_Y)) {
+                if (!approve) {
                     input.homePressed = false;
-                    input.closeRequested = false;
+                    input.backPressed = false;
                     input.editorNew = false;
                     input.editorOpen = false;
                     input.requestedScreen.reset();
                 }
             } else if (editor.Dirty() &&
-                       (input.closeRequested || input.homePressed ||
+                       (input.homePressed || input.backPressed ||
                         input.editorNew || input.editorOpen ||
                         (input.requestedScreen &&
                          *input.requestedScreen != Screen::Editor))) {
-                editorPending = input.closeRequested ? EditorPending::Exit
-                              : input.editorNew ? EditorPending::NewDraft
+                editorPending = input.editorNew ? EditorPending::NewDraft
                               : input.editorOpen ? EditorPending::OpenChart
                                                  : EditorPending::Home;
-                input.closeRequested = false;
                 input.homePressed = false;
+                input.backPressed = false;
                 input.editorNew = false;
                 input.editorOpen = false;
                 input.requestedScreen.reset();
-                editorModalHandled = true;
             }
         }
         UpdateState(state, input, smokeWindow);
@@ -1469,11 +1503,38 @@ int main(int argc, char** argv) {
             break;
         }
         double now = MonotonicSeconds();
+        // Freeze active music while the exit dialog is open. If canceled,
+        // resume only what was playing before the dialog appeared.
+        if (!wasQuitConfirmation && state.quitConfirmation) {
+            pausedForExit = ExitPausedMedia::None;
+            if (state.screen == Screen::Play &&
+                !(customChart ? chartPlayback.Paused() : transport.Paused())) {
+                gameSession.TogglePause(customChart, now);
+                pausedForExit = ExitPausedMedia::Gameplay;
+            } else if (state.screen == Screen::Listen &&
+                       localSong.Playing() && !localSong.Paused()) {
+                localSong.Pause(now);
+                pausedForExit = ExitPausedMedia::Listen;
+            } else if (state.screen == Screen::Editor &&
+                       chartPlayback.Playing() && !chartPlayback.Paused()) {
+                chartPlayback.Pause(now);
+                pausedForExit = ExitPausedMedia::EditorPreview;
+            }
+        } else if (wasQuitConfirmation && !state.quitConfirmation) {
+            if (pausedForExit == ExitPausedMedia::Gameplay)
+                gameSession.TogglePause(customChart, now);
+            else if (pausedForExit == ExitPausedMedia::Listen)
+                localSong.Resume(now);
+            else if (pausedForExit == ExitPausedMedia::EditorPreview)
+                chartPlayback.Resume(now);
+            pausedForExit = ExitPausedMedia::None;
+        }
         bool loadedNewSong = false;
         // Home uses E to enter Editor and E also rotates its heading.
         // Ignore that initial key-down; start editing on the next frame.
         if (state.screen == Screen::Editor &&
             previousScreen == Screen::Editor &&
+            !state.quitConfirmation &&
             editorPending == EditorPending::None) {
             const int beforeBeat = editor.SelectedBeat();
             const int beforeTicksPerBeat = editor.Data().route.ticksPerBeat;
