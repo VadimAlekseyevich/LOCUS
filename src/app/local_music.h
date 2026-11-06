@@ -37,6 +37,10 @@ public:
     bool Paused() const noexcept { return paused_; }
     bool Finished() const noexcept { return finished_; }
     double Speed() const noexcept { return speed_; }
+    float Volume() const noexcept { return volume_; }
+    // Commit a fully decoded and validated replacement without losing the old
+    // song on failure. Stop playback before swapping.
+    void SwapWith(LocalMusic& other) noexcept;
     double DurationSeconds() const noexcept { return durationSeconds_; }
     double SongSeconds(double monotonicSeconds) const noexcept;
     const std::string& DisplayName() const noexcept { return displayName_; }

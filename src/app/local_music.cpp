@@ -18,6 +18,23 @@ LocalMusic::~LocalMusic() {
     Shutdown();
 }
 
+void LocalMusic::SwapWith(LocalMusic& other) noexcept {
+    using std::swap;
+    swap(clock_, other.clock_);
+    swap(fileBytes_, other.fileBytes_);
+    swap(music_, other.music_);
+    swap(displayName_, other.displayName_);
+    swap(error_, other.error_);
+    swap(durationSeconds_, other.durationSeconds_);
+    swap(startPositionSeconds_, other.startPositionSeconds_);
+    swap(speed_, other.speed_);
+    swap(volume_, other.volume_);
+    swap(ready_, other.ready_);
+    swap(playing_, other.playing_);
+    swap(paused_, other.paused_);
+    swap(finished_, other.finished_);
+}
+
 bool LocalMusic::LoadFromFile(const std::wstring& path) {
     const core::MusicFileType type = core::DetectMusicFileType(path);
     if (type == core::MusicFileType::Unsupported) {

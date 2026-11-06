@@ -36,7 +36,6 @@
 #include <vector>
 
 // Production screens share one window and one input/update/render loop.
-// Real screen controllers, routing, and musical timing arrive in later tasks.
 namespace {
 constexpr int kWindowWidth = 960;
 constexpr int kWindowHeight = 540;
@@ -1209,14 +1208,25 @@ bool LoadDraftFromDisk(const std::wstring& file, locus::core::ChartEditor& edito
     std::wstring selectedAudio;
     if (!locus::app::OpenChartWithAudioPath(file, candidate, selectedAudio, error))
         return false;
-    if (!song.LoadFromFile(selectedAudio)) {
-        error = song.Error();
+    // Decode and validate before modifying the open document or its audio.
+    locus::app::LocalMusic replacement;
+    replacement.SetVolume(song.Volume());
+    replacement.SetSpeed(song.Speed(), 0.0);
+    if (!replacement.LoadFromFile(selectedAudio)) {
+        error = replacement.Error();
         return false;
     }
-    if (!locus::core::PrepareChartForSong(candidate, song.DurationSeconds(), error))
+    if (!locus::core::PrepareChartForSong(
+            candidate, replacement.DurationSeconds(), error))
         return false;
-    editor.Load(candidate);
-    editor.SetSongDuration(song.DurationSeconds());
+    locus::core::ChartEditor preparedEditor;
+    preparedEditor.Load(candidate);
+    if (!preparedEditor.SetSongDuration(replacement.DurationSeconds())) {
+        error = "Chart timeline is incompatible with its audio.";
+        return false;
+    }
+    song.SwapWith(replacement);
+    editor = std::move(preparedEditor);
     chartPath = file;
     audioPath = selectedAudio;
     error.clear();
@@ -1718,19 +1728,32 @@ int main(int argc, char** argv) {
                 const auto picked = locus::app::ChooseLocalMusicFile();
                 now = MonotonicSeconds();
                 if (!picked.path.empty()) {
-                    if (localSong.LoadFromFile(picked.path)) {
-                        const bool timelineOk =
-                            editor.SetSongDuration(localSong.DurationSeconds());
-                        editorAudioPath = picked.path;
-                        loadedAudioPath = picked.path;
+                    locus::app::LocalMusic replacement;
+                    replacement.SetVolume(localSong.Volume());
+                    replacement.SetSpeed(localSong.Speed(), now);
+                    if (!replacement.LoadFromFile(picked.path)) {
+                        editorStatus = "SONG FAILED: " + replacement.Error();
+                    } else {
+                        locus::core::ChartEditor preparedEditor = editor;
                         const std::string name =
                             std::filesystem::path(picked.path).filename().u8string();
-                        editor.SetAudioPath(name);
-                        editorStatus = timelineOk
-                            ? "SONG LOADED - TIMELINE FITS THE WHOLE TRACK"
-                            : "SONG LOADED - BPM / OFFSET EXCEEDS TIMELINE LIMIT";
-                    } else {
-                        editorStatus = "SONG FAILED: " + localSong.Error();
+                        locus::core::LoadedChart checked = editor.Data();
+                        std::string validationError;
+                        if (!preparedEditor.SetSongDuration(replacement.DurationSeconds()) ||
+                            !locus::core::PrepareChartForSong(
+                                checked, replacement.DurationSeconds(), validationError) ||
+                            !preparedEditor.SetAudioPath(name)) {
+                            editorStatus = "SONG NOT CHANGED: " +
+                                (validationError.empty()
+                                    ? std::string("CHART DOES NOT FIT SELECTED AUDIO")
+                                    : validationError);
+                        } else {
+                            localSong.SwapWith(replacement);
+                            editor = std::move(preparedEditor);
+                            editorAudioPath = picked.path;
+                            loadedAudioPath = picked.path;
+                            editorStatus = "SONG LOADED - TIMELINE FITS THE WHOLE TRACK";
+                        }
                     }
                 } else if (!picked.canceled) {
                     editorStatus = "SONG PICKER FAILED: " + picked.error;
@@ -1885,19 +1908,33 @@ int main(int argc, char** argv) {
                             libraryUi.selectedSong - 1)];
                     const std::wstring audioPath = sourceSong.audioFile.wstring();
                     locus::core::LoadedChart candidate = selected->data;
-                    if ((!localSong.Ready() || loadedAudioPath != audioPath) &&
-                        !localSong.LoadFromFile(audioPath)) {
-                        libraryUi.notice = "PLAY FAILED: " + localSong.Error();
-                    } else {
-                        loadedAudioPath = audioPath;
+                    const bool newAudio =
+                        !localSong.Ready() || loadedAudioPath != audioPath;
+                    locus::app::LocalMusic replacement;
+                    bool audioReady = true;
+                    double duration = localSong.DurationSeconds();
+                    if (newAudio) {
+                        replacement.SetVolume(localSong.Volume());
+                        if (!replacement.LoadFromFile(audioPath)) {
+                            audioReady = false;
+                            libraryUi.notice = "PLAY FAILED: " + replacement.Error();
+                        } else {
+                            duration = replacement.DurationSeconds();
+                        }
+                    }
+                    if (audioReady) {
                         if (!locus::core::PrepareChartForSong(
-                                candidate, localSong.DurationSeconds(), musicError)) {
+                                candidate, duration, musicError)) {
                             libraryUi.notice = "PLAY FAILED: " + musicError;
                         } else {
+                            if (newAudio) {
+                                localSong.SwapWith(replacement);
+                                loadedAudioPath = audioPath;
+                            }
                             activeChart = std::move(candidate.route);
                             chartTitle = std::move(candidate.title);
                             chartPlayback.Configure(activeChart.bpm * activeChart.ticksPerBeat,
-                                                     candidate.offsetSeconds);
+                                                    candidate.offsetSeconds);
                             chartPlayback.SetSpeed(1.0, now);
                             gameSession.ClearTestOrigin();
                             judge.SetOffsetSeconds(candidate.offsetSeconds);
