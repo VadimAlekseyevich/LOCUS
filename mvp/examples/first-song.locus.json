@@ -1,28 +1,57 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "title": "My First Song",
   "audioPath": "song.mp3",
   "bpm": 120,
   "offsetMs": 0,
+  "ticksPerBeat": 1,
+  "snapDivision": 1,
   "grid": {
-    "width": 4,
-    "height": 4
+    "width": 8,
+    "height": 8
   },
   "start": {
-    "x": 1,
-    "y": 1,
+    "x": 3,
+    "y": 3,
     "heading": "right"
   },
   "previewLeadBeats": 4,
   "turns": [
-    {"beat": 2, "turn": "right"},
-    {"beat": 5, "turn": "left"},
-    {"beat": 8, "turn": "left"},
-    {"beat": 12, "turn": "right"},
-    {"beat": 16, "turn": "right"},
-    {"beat": 19, "turn": "right"},
-    {"beat": 23, "turn": "left"},
-    {"beat": 27, "turn": "left"},
-    {"beat": 30, "turn": "left"}
+    {
+      "timeMs": 1000,
+      "turn": "right"
+    },
+    {
+      "timeMs": 2500,
+      "turn": "left"
+    },
+    {
+      "timeMs": 4000,
+      "turn": "left"
+    },
+    {
+      "timeMs": 6000,
+      "turn": "right"
+    },
+    {
+      "timeMs": 8000,
+      "turn": "right"
+    },
+    {
+      "timeMs": 9500,
+      "turn": "right"
+    },
+    {
+      "timeMs": 11500,
+      "turn": "left"
+    },
+    {
+      "timeMs": 13500,
+      "turn": "left"
+    },
+    {
+      "timeMs": 15000,
+      "turn": "left"
+    }
   ]
 }
