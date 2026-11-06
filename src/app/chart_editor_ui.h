@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/game_settings.h"
 #include "core/chart_editor.h"
 #include "raylib.h"
 
@@ -17,10 +18,10 @@ struct EditorControls {
     float elapsedSeconds = 0.0f;
     bool movePrevious = false, moveNext = false;
     bool addLeft = false, addRight = false, removeTurn = false;
-    // D=Left, F=Down, J=Up, K=Right. Adjacent held keys form
-    // diagonal chords; singles wait briefly so a chord never inserts
-    // an unwanted cardinal note first.
-    unsigned directionKeysHeld = 0; // D=1 F=2 J=4 K=8
+    // Reuse gameplay's configurable direction keys in ROUTE.
+    // Adjacent simultaneous keys form diagonals, using the game chord window.
+    unsigned directionKeysHeld = 0; // Left=1 Down=2 Up=4 Right=8
+    float directionChordWindowSeconds = 0.09f;
     bool addLeft45 = false, addRight45 = false;
     bool addLeft135 = false, addRight135 = false;
     bool headingLeft = false, headingRight = false;
@@ -80,12 +81,14 @@ struct EditorUiAction {
 };
 
 Vector2 EditorVirtualMouse(Vector2 physicalMouse, int screenWidth, int screenHeight);
-EditorControls PollEditorControls();
+EditorControls PollEditorControls(const GameSettings& settings,
+                                  const std::array<bool, 4>& gameplayHeld);
 EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                                   const EditorControls& controls);
 void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const EditorUiState& ui, const std::string& songName,
                        bool hasAudio, bool previewPlaying, bool previewPaused,
-                       double previewBeat, double playbackSpeed);
+                       double previewBeat, double playbackSpeed,
+                       const GameSettings& settings);
 
 } // namespace locus::app
