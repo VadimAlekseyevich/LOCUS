@@ -29,6 +29,7 @@ const char* TurnName(Turn turn) noexcept {
 
 void TurnJudge::Reset() noexcept {
     nextEvent_ = 0;
+    firstScoredEvent_ = 0;
     counts_ = GradeCounts{};
     last_.reset();
 }
@@ -41,6 +42,7 @@ void TurnJudge::ResetFromBeat(int firstScoredBeat) noexcept {
                          [](const TurnEvent& event, int beat) {
                              return event.beat < beat;
                          }) - chart_.turns.begin());
+    firstScoredEvent_ = nextEvent_;
 }
 
 void TurnJudge::ResetFromAudioSeconds(double audioSeconds) noexcept {
@@ -55,6 +57,7 @@ void TurnJudge::ResetFromAudioSeconds(double audioSeconds) noexcept {
                                  : static_cast<double>(event.timeMs) / 1000.0;
                              return time < seconds - 1e-9;
                          }) - chart_.turns.begin());
+    firstScoredEvent_ = nextEvent_;
 }
 
 const TurnEvent* TurnJudge::NextEvent() const noexcept {
