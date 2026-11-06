@@ -34,12 +34,13 @@ struct Skin {
     Color hudBackground{22, 26, 37, 255};
     Color hudText{231, 237, 243, 255};
     Color hitFlash{255, 233, 174, 235};
+    Color fieldBorder{245, 248, 252, 255}; // Thin square gameplay border.
 
     bool Valid(std::string& error) const;
 };
 
 // Stable names and indices used by the interactive color editor.
-constexpr int kSkinColorCount = 9;
+constexpr int kSkinColorCount = 10;
 const char* SkinColorLabel(int index) noexcept;
 Color& SkinColor(Skin& skin, int index) noexcept;
 const Color& SkinColor(const Skin& skin, int index) noexcept;
