@@ -1,7 +1,9 @@
 #include "core/chart_json.h"
 #include "core/route.h"
 
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 
 using namespace locus::core;
@@ -291,7 +293,33 @@ int main() {
                         "timeMs"),
                  "v2 rejects duplicate timestamps");
 
+    // The public example is part of the product experience; ensure it
+    // remains a REAL current-format chart rather than stale v1 docs.
+    std::ifstream fixture("mvp/examples/first-song.locus.json", std::ios::binary);
+    ok &= Expect(fixture.good(), "shipped first-song chart file exists");
+    if (fixture.good()) {
+        const std::string example((std::istreambuf_iterator<char>(fixture)),
+                                  std::istreambuf_iterator<char>());
+        LoadedChart sample;
+        ok &= Expect(ParseChartJson(example, sample, error),
+                     "shipped v2 example parses: " + error);
+        ok &= Expect(sample.route.gridWidth == 8 &&
+                     sample.route.gridHeight == 8 &&
+                     sample.route.turns.size() == 9 &&
+                     sample.route.turns.front().timeMs == 1000 &&
+                     sample.route.turns.back().timeMs == 15000 &&
+                     sample.route.snapDivision == 1,
+                     "shipped example has a square view and absolute ms timestamps");
+        ok &= Expect(PrepareChartForSong(sample, 20.0, error),
+                     "shipped sample validates for a 20-second audio file: " + error);
+        std::string current;
+        ok &= Expect(SerializeChartJson(sample, current, error) &&
+                     current.find("\"formatVersion\": 2") != std::string::npos &&
+                     current.find("\"timeMs\": 15000") != std::string::npos,
+                     "shipped example round-trips with the current v2 writer");
+    }
+
     if (!ok) return 1;
-    std::cout << "CHART_JSON_PASS version=2 validation=1 infinite=1 preroll=1\n";
+    std::cout << "CHART_JSON_PASS version=2 validation=1 infinite=1 preroll=1 example=1\n";
     return 0;
 }
