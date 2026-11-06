@@ -20,6 +20,7 @@
 #include "app/menu_ui.h"
 #include "app/native_close.h"
 #include "app/screen_flow.h"
+#include "app/viewport.h"
 
 #include "raylib.h"
 
@@ -266,8 +267,7 @@ constexpr Rectangle kGameplayWorldViewport{
 // In landscape windows, the square uses the FULL physical window height,
 // rather than the 16:9 menu letterbox. Portrait is necessarily width-limited.
 float GameplayViewportScale(int width, int height) noexcept {
-    if (width <= 0 || height <= 0) return 1.0f;
-    return static_cast<float>(std::min(width, height)) / kWindowHeight;
+    return locus::app::ViewportTransform::Gameplay(width, height).scale;
 }
 
 // Actual visible sidebar area in virtual coordinates. PLAY scales to the
@@ -310,14 +310,10 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     // Gameplay uses the actual window height, not the 16:9 letterboxed
     // UI fitting scale. For any landscape window, the square reaches both
     // top and bottom pixel edges; portrait windows are width-limited.
-    const float scale = GameplayViewportScale(GetScreenWidth(), GetScreenHeight());
-    const float offsetX = (GetScreenWidth() - kWindowWidth * scale) * 0.5f;
-    const float offsetY = (GetScreenHeight() - kWindowHeight * scale) * 0.5f;
-    BeginScissorMode(
-        static_cast<int>(std::floor(offsetX + kGameplayWorldViewport.x * scale)),
-        static_cast<int>(std::floor(offsetY + kGameplayWorldViewport.y * scale)),
-        static_cast<int>(std::ceil(kGameplayWorldViewport.width * scale)),
-        static_cast<int>(std::ceil(kGameplayWorldViewport.height * scale)));
+    const auto transform = locus::app::ViewportTransform::Gameplay(
+        GetScreenWidth(), GetScreenHeight());
+    const auto clip = transform.Scissor(kGameplayWorldViewport);
+    BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
 
     // PLAY and editor TEST: only a gradually thinning/fading red route
     // *ahead* of the marker, red turn targets and the centred avatar.
@@ -564,14 +560,10 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                            locus::app::SkinUi& skinUi) {
     MenuEvents events;
     const bool mouseClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-    const float scale = std::min(static_cast<float>(GetScreenWidth()) / 960.0f,
-                                 static_cast<float>(GetScreenHeight()) / 540.0f);
-    const bool validMouse = scale > 0.0f;
-    const Vector2 physical = GetMousePosition();
-    const Vector2 mouse = validMouse
-        ? Vector2{(physical.x - (GetScreenWidth() - 960.0f * scale) / 2.0f) / scale,
-                  (physical.y - (GetScreenHeight() - 540.0f * scale) / 2.0f) / scale}
-        : Vector2{-1000.0f, -1000.0f};
+    const auto transform = locus::app::ViewportTransform::Menu(
+        GetScreenWidth(), GetScreenHeight());
+    const bool validMouse = transform.scale > 0.0f;
+    const Vector2 mouse = transform.ToVirtual(GetMousePosition());
 
     if (state.screen == Screen::Skin) {
         if (locus::app::SkinMenuEditingText(skinUi)) {
@@ -746,17 +738,13 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     // Gameplay instead scales its 540x540 playfield to the actual window
     // height, even when the window is not 16:9 (landscape assumption).
     // For portrait windows, width limits the square so no side disappears.
-    const float windowFit = std::min(
-        static_cast<float>(GetScreenWidth()) / kWindowWidth,
-        static_cast<float>(GetScreenHeight()) / kWindowHeight);
-    const float scale = state.screen == Screen::Play
-        ? GameplayViewportScale(GetScreenWidth(), GetScreenHeight())
-        : windowFit;
+    const auto transform = state.screen == Screen::Play
+        ? locus::app::ViewportTransform::Gameplay(GetScreenWidth(), GetScreenHeight())
+        : locus::app::ViewportTransform::Menu(GetScreenWidth(), GetScreenHeight());
     Camera2D camera{};
-    camera.offset = Vector2{(GetScreenWidth() - kWindowWidth * scale) / 2.0f,
-                            (GetScreenHeight() - kWindowHeight * scale) / 2.0f};
+    camera.offset = Vector2{transform.offsetX, transform.offsetY};
     camera.target = Vector2{0.0f, 0.0f};
-    camera.zoom = scale;
+    camera.zoom = transform.scale;
     BeginMode2D(camera);
 
     // No wordmark or global help text during scoring: only field + hits.
@@ -1363,17 +1351,13 @@ int main(int argc, char** argv) {
             input.quitConfirmed = IsKeyPressed(KEY_Y);
             input.quitCanceled = IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE);
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                const float fit = std::min(
-                    static_cast<float>(GetScreenWidth()) / kWindowWidth,
-                    static_cast<float>(GetScreenHeight()) / kWindowHeight);
-                const float scale = state.screen == Screen::Play
-                    ? GameplayViewportScale(GetScreenWidth(), GetScreenHeight())
-                    : fit;
-                if (scale > 0.0f) {
-                    const Vector2 physical = GetMousePosition();
-                    const Vector2 virtualMouse{
-                        (physical.x - (GetScreenWidth() - kWindowWidth * scale) * 0.5f) / scale,
-                        (physical.y - (GetScreenHeight() - kWindowHeight * scale) * 0.5f) / scale};
+                const auto transform = state.screen == Screen::Play
+                    ? locus::app::ViewportTransform::Gameplay(
+                          GetScreenWidth(), GetScreenHeight())
+                    : locus::app::ViewportTransform::Menu(
+                          GetScreenWidth(), GetScreenHeight());
+                if (transform.scale > 0.0f) {
+                    const Vector2 virtualMouse = transform.ToVirtual(GetMousePosition());
                     if (CheckCollisionPointRec(virtualMouse, kQuitConfirmButton))
                         input.quitConfirmed = true;
                     else if (CheckCollisionPointRec(virtualMouse, kQuitCancelButton))

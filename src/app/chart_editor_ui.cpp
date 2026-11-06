@@ -2,6 +2,7 @@
 #include "app/chart_editor_layout.h"
 #include "core/judgement.h"
 #include "app/route_renderer.h"
+#include "app/viewport.h"
 
 #include <algorithm>
 #include <cmath>
@@ -115,14 +116,10 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
     const float x0 = kGridCenterX - kGridMaxSpan * 0.5f;
     const float y0 = kGridCenterY - kGridMaxSpan * 0.5f;
     const float x1 = x0 + kGridMaxSpan, y1 = y0 + kGridMaxSpan;
-    const float scale = std::min(static_cast<float>(GetScreenWidth()) / kVirtualWidth,
-                                 static_cast<float>(GetScreenHeight()) / kVirtualHeight);
-    const float ox = (GetScreenWidth() - kVirtualWidth * scale) * 0.5f;
-    const float oy = (GetScreenHeight() - kVirtualHeight * scale) * 0.5f;
-    BeginScissorMode(static_cast<int>(std::floor(ox + x0 * scale)),
-                     static_cast<int>(std::floor(oy + y0 * scale)),
-                     static_cast<int>(std::ceil(kGridMaxSpan * scale)),
-                     static_cast<int>(std::ceil(kGridMaxSpan * scale)));
+    const auto clip = ViewportTransform::Menu(
+        GetScreenWidth(), GetScreenHeight()).Scissor(
+            {x0, y0, kGridMaxSpan, kGridMaxSpan});
+    BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
 
     const int halfCells = static_cast<int>(std::ceil(kGridMaxSpan / grid.step)) + 2;
     const int cx = static_cast<int>(std::floor(

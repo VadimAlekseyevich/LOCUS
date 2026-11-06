@@ -1,6 +1,7 @@
 #include "app/chart_editor_ui.h"
 #include "app/chart_editor_layout.h"
 #include "app/visual_style.h"
+#include "app/viewport.h"
 
 #include <cmath>
 #include <iostream>
@@ -29,6 +30,25 @@ EditorControls Type(const char* text) {
 
 int main() {
     bool ok = true;
+    // A physical window maps both drawing and hitboxes to the same virtual
+    // positions, with the gameplay square touching the limiting window edge.
+    const auto wide = ViewportTransform::Gameplay(1280, 800);
+    const auto portrait = ViewportTransform::Gameplay(600, 800);
+    const auto menu = ViewportTransform::Menu(1280, 800);
+    const auto wideClip = wide.Scissor({210, 0, 540, 540});
+    const auto portraitClip = portrait.Scissor({210, 0, 540, 540});
+    const auto menuPoint = menu.ToVirtual({menu.offsetX + 450 * menu.scale,
+                                            menu.offsetY + 270 * menu.scale});
+    ok &= Check(std::abs(wideClip.x - 240) <= 1 &&
+                wideClip.y == 0 && std::abs(wideClip.width - 800) <= 2 &&
+                wideClip.height == 800 &&
+                std::abs(portraitClip.x) <= 1 &&
+                std::abs(portraitClip.y - 100) <= 1 &&
+                std::abs(portraitClip.width - 600) <= 2 &&
+                std::abs(portraitClip.height - 600) <= 2 &&
+                std::abs(menuPoint.x - 450.0f) < 0.001f &&
+                std::abs(menuPoint.y - 270.0f) < 0.001f,
+                "shared viewport keeps square, clipping and input aligned");
     ok &= Check(RouteVisualStyle::lookaheadBeats == 4 &&
                 std::abs(TrajectoryOpacity(0.0) - 1.0f) < 1e-6f &&
                 std::abs(TrajectoryOpacity(2.0) - 0.5f) < 1e-6f &&

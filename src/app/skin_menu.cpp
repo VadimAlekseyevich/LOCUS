@@ -3,6 +3,7 @@
 #include "app/menu_ui.h"
 #include "app/skin_controls.h"
 #include "app/visual_style.h"
+#include "app/viewport.h"
 
 #include <algorithm>
 #include <cmath>
@@ -148,14 +149,9 @@ void PreviewPath(Font font, const Skin& skin) {
 
     // The SKIN preview clips exactly like the real centred gameplay window,
     // including thick outline strokes and partially visible junctions.
-    const float scale = std::min(static_cast<float>(GetScreenWidth()) / 960.0f,
-                                 static_cast<float>(GetScreenHeight()) / 540.0f);
-    const float ox = (GetScreenWidth() - 960.0f * scale) * 0.5f;
-    const float oy = (GetScreenHeight() - 540.0f * scale) * 0.5f;
-    BeginScissorMode(static_cast<int>(std::floor(ox + frame.x * scale)),
-                     static_cast<int>(std::floor(oy + frame.y * scale)),
-                     static_cast<int>(std::ceil(frame.width * scale)),
-                     static_cast<int>(std::ceil(frame.height * scale)));
+    const auto clip = ViewportTransform::Menu(
+        GetScreenWidth(), GetScreenHeight()).Scissor(frame);
+    BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
     const auto point = [&](float beats) {
         const float progress = beats / skin.lookaheadBeats;
         return Vector2{687.0f + 188.0f * progress,

@@ -1,4 +1,5 @@
 #include "app/chart_editor_layout.h"
+#include "app/viewport.h"
 
 #include <algorithm>
 #include <cmath>
@@ -214,12 +215,9 @@ void ApplyDirectionChord(core::ChartEditor& draft, EditorUiState& ui,
 } // namespace
 
 Vector2 EditorVirtualMouse(Vector2 physical, int screenWidth, int screenHeight) {
-    const float scale = std::min(static_cast<float>(screenWidth) / kVirtualWidth,
-                                 static_cast<float>(screenHeight) / kVirtualHeight);
-    if (scale <= 0.0f) return {-1, -1};
-    const float x = (screenWidth - kVirtualWidth * scale) / 2.0f;
-    const float y = (screenHeight - kVirtualHeight * scale) / 2.0f;
-    return {(physical.x - x) / scale, (physical.y - y) / scale};
+    const auto transform = ViewportTransform::Menu(screenWidth, screenHeight);
+    return transform.scale > 0.0f ? transform.ToVirtual(physical)
+                                  : Vector2{-1.0f, -1.0f};
 }
 
 EditorControls PollEditorControls(const GameSettings& settings,
