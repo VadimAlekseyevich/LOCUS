@@ -36,7 +36,7 @@
 #include <utility>
 #include <vector>
 
-// F-07: placeholder screens share one window and one input/update/render loop.
+// Production screens share one window and one input/update/render loop.
 // Real screen controllers, routing, and musical timing arrive in later tasks.
 namespace {
 constexpr int kWindowWidth = 960;
@@ -879,7 +879,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                       Vector2{(static_cast<float>(kWindowWidth) - textSize.x) / 2.0f,
                               static_cast<float>(kWindowHeight) / 2.0f - 38.0f},
                       kScreenFontSize, Color{211, 239, 241, 255});
-        DrawTextLabel(font, "Placeholder screen - game functionality is not implemented",
+        DrawTextLabel(font, "Unexpected screen state - return Home or restart LOCUS",
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 112)},
                       22.0f, Color{208, 211, 225, 255});
     }
