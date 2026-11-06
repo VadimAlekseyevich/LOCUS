@@ -123,10 +123,12 @@ if(LOCUS_BUILD_TESTS)
         tests/editor_ui_tests.cpp
         src/app/chart_editor_ui.cpp
         src/app/chart_editor_actions.cpp
+        src/app/game_settings.cpp
         src/app/route_renderer.cpp
     )
     target_compile_features(locus_editor_ui_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_editor_ui_tests PRIVATE locus_core raylib)
+    target_link_libraries(locus_editor_ui_tests PRIVATE
+        locus_core raylib nlohmann_json::nlohmann_json)
     add_test(NAME locus_editor_controls COMMAND locus_editor_ui_tests)
 
     add_executable(locus_chart_file_tests
