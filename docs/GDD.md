@@ -97,6 +97,7 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 
 ## 6. Skins and accessibility
 
+- Persistent song imports stage replacement audio beside the installed file, then replace it only after the copy and file metadata are complete; a failed file copy leaves existing audio intact. Chart JSON continues to use atomic saves. A multi-file import is not yet one atomic transaction.
 - One independent **global skin** affects presentation across Play and editor TEST; no skin is embedded in a chart.
 - PATH, PLAYER/HUD and COLORS pages expose path width/opacity/fade, marker size, fixed base speed (20–700 logical px/s), hit-effect scale, gameplay HUD visibility, and ten editable RGBA colors including **FIELD BORDER**.
 - Skin JSON v2 saves `player.speedPxPerSecond`. Legacy v1 `cameraStep` is converted on load to the same approximate speed at 120 BPM on the default 8×8 chart.

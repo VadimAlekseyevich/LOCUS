@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 
 using namespace locus::app;
@@ -83,6 +84,30 @@ int main() {
                 library.Import(easy, again, error) &&
                 easyInstalled == again && library.ChartCount() == 2,
                 "changing chart title updates the same installed difficulty");
+
+    // A re-import of modified audio must replace the file after a successful
+    // complete copy, without leaving temporary artifacts or losing charts.
+    const fs::path installedAudio = library.Songs()[0].audioFile;
+    {
+        std::ofstream audio(source / "song.wav", std::ios::binary | std::ios::trunc);
+        audio << "RIFFtest-library-file-reimported-with-new-content";
+    }
+    bool replaced = library.Import(hard, again, error);
+    std::string bytes;
+    {
+        std::ifstream stream(installedAudio, std::ios::binary);
+        bytes.assign(std::istreambuf_iterator<char>(stream),
+                     std::istreambuf_iterator<char>());
+    }
+    bool noTemporary = true;
+    for (const auto& entry : fs::directory_iterator(installedAudio.parent_path())) {
+        if (entry.path().filename().wstring().find(L".tmp-") != std::wstring::npos)
+            noTemporary = false;
+    }
+    ok &= Check(replaced && library.ChartCount() == 2 &&
+                bytes == "RIFFtest-library-file-reimported-with-new-content" &&
+                noTemporary,
+                "changed audio reimport replaces full file without leftover temporary files");
     int songIndex = -1, chartIndex = -1;
     ok &= Check(library.FindChart(easyInstalled, songIndex, chartIndex) &&
                 songIndex == 0 &&

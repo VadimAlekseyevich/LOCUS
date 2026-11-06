@@ -32,7 +32,8 @@ public:
 
     bool Refresh(std::string& message);
     // Import copies song+chart into Songs. Reimporting the same source chart
-    // updates its existing copy without duplicating that difficulty.
+    // updates its existing copy without duplicating that difficulty. Audio
+    // replacement is staged on disk before replacing the installed file.
     bool Import(const std::filesystem::path& sourceChart,
                 std::filesystem::path& installedChart, std::string& error);
     bool FindChart(const std::filesystem::path& path,

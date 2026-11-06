@@ -9,6 +9,7 @@
 #endif
 
 #include <algorithm>
+#include <chrono>
 #include <cctype>
 #include <cstdint>
 #include <filesystem>
@@ -67,6 +68,52 @@ std::string FilenamePart(std::string raw) {
 std::string SongDisplayTitle(const fs::path& audio) {
     const auto name = audio.stem().u8string();
     return name.empty() ? std::string("Unknown song") : name;
+}
+
+// Never truncate an installed song when reimporting a changed source audio.
+// The temporary copy lives alongside the destination, so the final
+// replacement takes place on the same volume. A failed copy or move leaves
+// the previous audio untouched; temporary bytes are discarded.
+bool InstallAudioFile(const fs::path& source, const fs::path& destination,
+                      std::string& error) {
+    const auto nonce = std::chrono::steady_clock::now().time_since_epoch().count();
+    fs::path temporary = destination;
+    temporary += L".tmp-" + std::to_wstring(nonce);
+    std::error_code ec;
+    if (!fs::copy_file(source, temporary, fs::copy_options::none, ec) || ec) {
+        error = "Failed to stage song audio: " + ec.message();
+        return false;
+    }
+    const auto sourceTime = fs::last_write_time(source, ec);
+    if (!ec) fs::last_write_time(temporary, sourceTime, ec);
+    if (ec) {
+        const std::string problem = ec.message();
+        std::error_code cleanup;
+        fs::remove(temporary, cleanup);
+        error = "Failed to preserve song metadata: " + problem;
+        return false;
+    }
+#ifdef _WIN32
+    if (!MoveFileExW(temporary.c_str(), destination.c_str(),
+                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        const DWORD code = GetLastError();
+        std::error_code cleanup;
+        fs::remove(temporary, cleanup);
+        error = "Failed to replace installed song audio (Windows error " +
+                std::to_string(code) + "). Existing audio was preserved.";
+        return false;
+    }
+#else
+    fs::rename(temporary, destination, ec);
+    if (ec) {
+        const std::string problem = ec.message();
+        std::error_code cleanup;
+        fs::remove(temporary, cleanup);
+        error = "Failed to replace installed song audio: " + problem;
+        return false;
+    }
+#endif
+    return true;
 }
 } // namespace
 
@@ -236,16 +283,8 @@ bool SongLibrary::Import(const fs::path& sourceChart,
         fs::last_write_time(sourceAudio, ec) ==
             fs::last_write_time(destinationAudio, ec);
     if (ec) { error = "Cannot inspect audio file metadata."; return false; }
-    if (!sameFile) {
-        if (!fs::copy_file(sourceAudio, destinationAudio,
-                           fs::copy_options::overwrite_existing, ec) || ec) {
-            error = "Failed to copy song audio: " + ec.message();
-            return false;
-        }
-        // Avoid needless copies on repeated imports of the same song.
-        fs::last_write_time(destinationAudio, fs::last_write_time(sourceAudio, ec), ec);
-        ec.clear();
-    }
+    if (!sameFile && !InstallAudioFile(sourceAudio, destinationAudio, error))
+        return false;
 
     // Stable source filename; changing a chart title updates the same library
     // difficulty rather than creating an accidental duplicate.
