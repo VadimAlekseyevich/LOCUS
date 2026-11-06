@@ -548,6 +548,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                 ui.dragViewBeat = anchor;
             }
             draft.SelectBeat(beat);
+        }
     }
 
     // Dragging past the visible ruler now autoscrolls the *view* as well as
