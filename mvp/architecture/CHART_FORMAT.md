@@ -17,8 +17,8 @@ allowed only where the existing preroll rules permit it. The chart's
   "offsetMs": 500,
   "ticksPerBeat": 6,
   "snapDivision": 3,
-  "grid": {"width": 4, "height": 4},
-  "start": {"x": 3, "y": 0, "heading": "right"},
+  "grid": {"width": 8, "height": 8},
+  "start": {"x": 3, "y": 3, "heading": "right"},
   "previewLeadBeats": 4,
   "turns": [
     {"timeMs": 580, "turn": "left"},
@@ -49,7 +49,19 @@ type are still interpreted by the same route logic.
   placement only; coarser divisions never destroy finer notes.
 - `bpm`: finite positive musical tempo. It controls ruler/grid snapping,
   not the absolute timestamp of any existing note.
-- `grid`, `start`, `previewLeadBeats`, `audioPath`, and the six relative
+- `grid.width` and `grid.height` are both generated from the editor's
+  **single square size** (default **8**, allowable **2–16**).
+  The reader accepts legacy rectangular charts, but editor loading uses
+  their larger side as the square size.
+- `start.x/y` remain serialization metadata for old charts and route
+  calculations; **they are no longer user-editable**. New charts automatically
+  select the internal square centre and resizing recentres it.
+  `start.heading` is still selectable by Q/E or the heading button.
+- Gameplay renders a centred **540×540** clip square on the 960×540
+  virtual screen. The world moves infinitely but route primitives outside
+  that window do not render. The frame's white-by-default RGBA colour is
+  stored in the independent SKIN file as `colors.fieldBorder`.
+- `previewLeadBeats`, `audioPath`, and the six relative
   turn variants retain their v1 meanings. Derived song length is never
   stored in the file.
 
