@@ -31,6 +31,7 @@ struct EditorControls {
     // NaN means use the selected beat. -1 is a legitimate pre-offset beat.
     double timelineViewBeat = std::numeric_limits<double>::quiet_NaN();
     bool zoomIn = false, zoomOut = false;
+    bool snapMore = false, snapLess = false; // Placement grid, NOT BPM or zoom.
     bool copyRange = false, cutRange = false, pasteRange = false;
     bool invertRange = false, undo = false, redo = false;
     bool shiftRangePrevious = false, shiftRangeNext = false;
