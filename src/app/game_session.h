@@ -56,6 +56,12 @@ private:
     std::optional<EditorTestOrigin> testOrigin_;
     core::ArrowChordTracker chord_;
     HitFlash hitFlash_;
+
+    // Audio is allowed to end before the last note's late 180ms window.
+    // In that case, scoring continues for a brief SILENT tail using the
+    // monotonic clock, so a final miss is not assigned prematurely.
+    double audioEndedAt_ = -1.0;
+    double audioEndSongSeconds_ = 0.0;
 };
 
 } // namespace locus::app
