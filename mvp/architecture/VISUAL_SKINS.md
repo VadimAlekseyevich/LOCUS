@@ -9,7 +9,10 @@ the same underlying geometry and judgement under any skin.
 - `src/app/skin.h/.cpp`: versioned `Skin` model, JSON parsing, validation,
   default values, atomic file save.
 - `src/app/skin_menu.h/.cpp`: standalone SKIN menu with PATH, PLAYER/HUD,
-  and COLORS pages, live path preview, optional UTF-8 skin name.
+  and COLORS pages, slider controls, numeric text inputs, live path preview,
+  switch controls, and an editable UTF-8 skin name.
+- `src/app/skin_controls.h/.cpp`: centralized values and independent slider
+  and typed-value safety bounds; shared by UI and tests.
 - The active profile is loaded at startup from
   `UserDataDirectory()/Skins/active.locus-skin.json`. On Windows this is
   typically `%LOCALAPPDATA%\\LOCUS\\Skins\\active.locus-skin.json`.
@@ -23,14 +26,42 @@ the same underlying geometry and judgement under any skin.
 
 ## Editable profile fields (version 1)
 
-- PATH: ahead distance `lookaheadBeats` (0.5–16, default **4 beats**),
+- PATH: ahead distance `lookaheadBeats` (default **4 beats**),
   width, outline scale, fade-curve exponent, opacity, junction radius
-  and glow toggle.
+  and glow switch.
 - PLAYER/HUD: marker radius, camera pixels per route cell, marker glow,
   hit-effect scale, visibility of the bottom score HUD.
-- COLORS: independent RGBA (0–255 each channel) for background, path,
+- COLORS: independent RGBA (0–255 integer channels) for background, path,
   outline, junctions, player, player core, HUD background, HUD text,
-  and hit flash.
+  and hit flash. Every channel has its own slider and numeric input.
+
+## Sliders, manual input, and interaction
+
+Numeric parameters use a **draggable slider** for everyday values and an
+adjacent **typeable field** for precise or more extreme values. Click a field
+to select its current number; type the replacement, then press Enter or click
+outside to validate and apply. Escape restores the previous value. Invalid,
+NaN/infinite, nonnumeric, or out-of-bounds entries are rejected without
+mutating the preview. Dot and comma decimal separators are supported.
+
+| Parameter | Slider range | Typed range |
+| --- | --- | --- |
+| Path lookahead (beats) | 0.5–12 | 0.25–64 |
+| Path width (px) | 1–12 | 0.25–40 |
+| Outline scale | 1–3 | 1–8 |
+| Fade curve exponent | 0.5–2.5 | 0.1–8 |
+| Path opacity | 0–1 | 0–1 |
+| Junction size (px) | 3–18 | 1–64 |
+| Player size (px) | 6–22 | 1–80 |
+| Camera scale (px/cell) | 30–80 | 10–250 |
+| Hit flash scale | 0.5–2 | 0.1–8 |
+| RGBA channels | 0–255 | 0–255 (integer) |
+
+A number outside the slider range stays intact and the slider thumb remains
+pinned to the nearest end (in gold); only explicitly dragging the slider
+brings the number into the slider range. The three boolean presentation
+options are now **switches**, not plus/minus buttons.
+The JSON schema remains version 1 and stays separate from charts.
 
 Defaults preserve the existing forward-only four-beat path behavior and
 existing route authoring look. The playfield clips drawn segments against
