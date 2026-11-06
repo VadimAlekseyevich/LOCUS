@@ -928,6 +928,18 @@ bool CheckPresentationLayout() {
         if (std::abs(side - expected) > 0.001f)
             return false;
     }
+    const auto back = locus::app::detail::kEditorBack;
+    const auto tab = locus::app::detail::kTabField;
+    const auto exit = locus::app::HomeMenuButton(4);
+    // Dedicated Back and Exit actions must stay visible and not overlap
+    // the editor FIELD tab or the Home SETTINGS button.
+    if (back.x < tab.x + tab.width ||
+        back.x + back.width > kWindowWidth ||
+        back.y + back.height > kWindowHeight ||
+        exit.y < locus::app::HomeMenuButton(3).y +
+                     locus::app::HomeMenuButton(3).height ||
+        exit.y + exit.height > kWindowHeight)
+        return false;
     const Rectangle left{52, 149, 408, 325};
     const Rectangle right{486, 149, 432, 325};
     const auto inside = [](Rectangle frame, Rectangle r) {
