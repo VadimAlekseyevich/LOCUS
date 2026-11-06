@@ -29,12 +29,13 @@ int CurrentBeat(const core::Chart& chart, double beat) {
 void DrawScoredPath(const core::Chart& chart, double beat,
                     RouteCanvas canvas, const Skin& skin) {
     const int first = CurrentBeat(chart, beat);
-    // A fractional four-beat window can intersect five integer beats.
+    const float horizon = skin.lookaheadBeats * chart.ticksPerBeat;
+    // A fractional musical-beat window may cross many finer ticks.
     const int last = std::min(
         chart.lengthBeats - 1,
-        first + static_cast<int>(std::ceil(skin.lookaheadBeats)));
+        first + static_cast<int>(std::ceil(horizon)));
     for (int target = last; target >= first; --target) {
-        const ScoredPathInterval visible = ScoredPathVisibleInterval(beat, target, skin.lookaheadBeats);
+        const ScoredPathInterval visible = ScoredPathVisibleInterval(beat, target, horizon);
         if (!visible.Visible()) continue;
         const double begin = visible.begin, end = visible.end;
         const core::RouteStep step = core::SampleRouteStep(chart, target);
@@ -49,10 +50,10 @@ void DrawScoredPath(const core::Chart& chart, double beat,
             const double a = begin + (end - begin) * i / kScoredPathSlices;
             const double b = begin + (end - begin) * (i + 1) / kScoredPathSlices;
             const double ahead = (a + b) * 0.5 - beat;
-            const float opacity = ScoredPathOpacity(ahead, skin.lookaheadBeats, skin.fadePower)
+            const float opacity = ScoredPathOpacity(ahead, horizon, skin.fadePower)
                 * skin.pathOpacity;
             if (opacity <= 0.0005f) continue;
-            const float width = ScoredPathWidth(ahead, skin.lookaheadBeats,
+            const float width = ScoredPathWidth(ahead, horizon,
                                                 skin.pathWidth, skin.fadePower);
             const auto screen = [&](double time) {
                 const double t = time - target;
@@ -86,15 +87,16 @@ Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
     }
     const double progress = std::clamp(beat - current, 0.0, 1.0);
     const bool editor = true;
-    const float scale = std::clamp(canvas.step / (editor ? 80.0f : 76.0f),
+    const float scale = std::clamp(canvas.step * chart.ticksPerBeat / (editor ? 80.0f : 76.0f),
                                    0.4f, 1.0f);
     const float width = editor ? style.editorNextStepWidth : style.gameNextStepWidth;
 
     // One four-beat bar including the current step, farthest step first.
-    for (int ahead = RouteVisualStyle::lookaheadBeats - 1; ahead >= 1; --ahead) {
+    for (int ahead = RouteVisualStyle::lookaheadBeats * chart.ticksPerBeat - 1;
+         ahead >= 1; --ahead) {
         const int target = current + ahead;
         if (target >= chart.lengthBeats) continue;
-        const float opacity = TrajectoryOpacity(target - beat);
+        const float opacity = TrajectoryOpacity((target - beat) / chart.ticksPerBeat);
         if (opacity <= 0.0f) continue;
         const core::StepView future = core::ViewRouteStep(
             core::SampleRouteStep(chart, target), 1.0);
@@ -143,14 +145,15 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
             });
         for (auto turn = first; turn != chart.turns.end() &&
                           static_cast<double>(turn->beat) <
-                              beat + skin.lookaheadBeats; ++turn) {
+                              beat + skin.lookaheadBeats * chart.ticksPerBeat; ++turn) {
             const float opacity = ScoredPathOpacity(turn->beat - beat,
-                                                    skin.lookaheadBeats, skin.fadePower)
+                                                    skin.lookaheadBeats * chart.ticksPerBeat,
+                                                    skin.fadePower)
                 * skin.pathOpacity;
             if (opacity <= 0.0005f) continue;
             const core::Cell cell = core::SampleRouteStep(chart, turn->beat).from;
             const Vector2 point = canvas.Point(cell);
-            const float radius = std::min(skin.junctionRadius, canvas.step * 0.45f);
+            const float radius = std::min(skin.junctionRadius, canvas.step * chart.ticksPerBeat * 0.45f);
             if (skin.junctionGlow)
                 DrawCircleV(point, radius * 1.45f,
                             WithOpacity(skin.junction, opacity * 0.26f));
@@ -161,14 +164,15 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
         return;
     }
     for (const auto& turn : core::PreviewTurnPoints(
-             chart, beat, RouteVisualStyle::lookaheadBeats)) {
+             chart, beat, RouteVisualStyle::lookaheadBeats * chart.ticksPerBeat)) {
         const float opacity = turn.beat <= current
-            ? 1.0f : TrajectoryOpacity(turn.beat - 1 - beat);
+            ? 1.0f : TrajectoryOpacity((turn.beat - chart.ticksPerBeat - beat) /
+                                        chart.ticksPerBeat);
         if (opacity <= 0.0f) continue;
         const Vector2 point = canvas.Point(turn.cell);
-        DrawCircleV(point, std::min(11.0f, canvas.step * (editor ? 0.39f : 0.38f)),
+        DrawCircleV(point, std::min(11.0f, canvas.step * chart.ticksPerBeat * (editor ? 0.39f : 0.38f)),
                     WithOpacity(style.reachedTurnPoint, opacity));
-        DrawCircleV(point, std::min(4.0f, canvas.step * 0.16f),
+        DrawCircleV(point, std::min(4.0f, canvas.step * chart.ticksPerBeat * 0.16f),
                     WithOpacity(editor ? Color{255, 225, 228, 255}
                                        : Color{255, 229, 230, 255}, opacity));
     }
