@@ -1,6 +1,7 @@
 #include "app/skin_menu.h"
 
 #include "app/menu_ui.h"
+#include "app/skin_controls.h"
 #include "app/visual_style.h"
 
 #include <algorithm>
@@ -31,87 +32,118 @@ void Button(Font font, Rectangle r, const char* text, bool active = false) {
           r.y + (r.height - size.y) * 0.5f, 15.0f);
 }
 
-bool Hit(Vector2 mouse, Rectangle area) {
-    return CheckCollisionPointRec(mouse, area);
+bool Hit(Vector2 mouse, Rectangle rect) {
+    return CheckCollisionPointRec(mouse, rect);
 }
 
-Rectangle Minus(int row) { return {389.0f, 200.0f + row * 36.0f, 34.0f, 29.0f}; }
-Rectangle Plus(int row) { return {526.0f, 200.0f + row * 36.0f, 34.0f, 29.0f}; }
-Rectangle ColorRow(int row) { return {70.0f, 199.0f + row * 28.0f, 485.0f, 26.0f}; }
-Rectangle ChannelMinus(int channel) {
-    return {723.0f, 252.0f + channel * 42.0f, 36.0f, 30.0f};
-}
-Rectangle ChannelPlus(int channel) {
-    return {854.0f, 252.0f + channel * 42.0f, 36.0f, 30.0f};
+Rectangle ColorRow(int row) {
+    return {70.0f, 199.0f + row * 28.0f, 485.0f, 26.0f};
 }
 Rectangle NameField() { return {615.0f, 128.0f, 302.0f, 36.0f}; }
+Rectangle SwitchRect(int row) {
+    return {468.0f, 200.0f + row * 36.0f, 84.0f, 28.0f};
+}
 
 const char* RowName(int page, int row) {
-    const char* path[] = {"LOOKAHEAD", "PATH WIDTH", "OUTLINE SCALE",
-                          "FADE CURVE", "PATH OPACITY", "TURN SIZE", "TURN GLOW"};
-    const char* player[] = {"PLAYER SIZE", "CAMERA ZOOM", "PLAYER GLOW",
-                            "HIT FLASH SIZE", "SHOW HUD"};
+    static constexpr const char* path[] = {
+        "LOOKAHEAD (BEATS)", "PATH WIDTH", "OUTLINE SCALE",
+        "FADE CURVE", "PATH OPACITY", "TURN SIZE", "TURN GLOW"
+    };
+    static constexpr const char* player[] = {
+        "PLAYER SIZE", "CAMERA ZOOM", "PLAYER GLOW",
+        "HIT FLASH SIZE", "SHOW HUD"
+    };
     return page == 0 ? path[row] : player[row];
 }
 
 int RowCount(int page) { return page == 0 ? 7 : 5; }
 
-std::string RowValue(const Skin& skin, int page, int row) {
-    if (page == 0) {
-        switch (row) {
-            case 0: return TextFormat("%.1f BEATS", skin.lookaheadBeats);
-            case 1: return TextFormat("%.1f PX", skin.pathWidth);
-            case 2: return TextFormat("%.1f X", skin.outlineScale);
-            case 3: return TextFormat("%.2f", skin.fadePower);
-            case 4: return TextFormat("%d%%", static_cast<int>(std::lround(skin.pathOpacity * 100)));
-            case 5: return TextFormat("%.1f PX", skin.junctionRadius);
-            default: return skin.junctionGlow ? "ON" : "OFF";
-        }
+bool ToggleValue(const Skin& skin, int page, int row) {
+    return page == 0 ? skin.junctionGlow
+         : row == 2 ? skin.playerGlow : skin.showHud;
+}
+
+void FlipToggle(Skin& skin, int page, int row) {
+    if (page == 0 && row == 6) skin.junctionGlow = !skin.junctionGlow;
+    else if (page == 1 && row == 2) skin.playerGlow = !skin.playerGlow;
+    else if (page == 1 && row == 4) skin.showHud = !skin.showHud;
+}
+
+void DrawSwitch(Font font, Rectangle rect, bool enabled) {
+    const Color fill = enabled ? Color{65, 114, 113, 255}
+                               : Color{63, 67, 81, 255};
+    DrawRectangleRounded(rect, 0.5f, 8, fill);
+    DrawCircleV({enabled ? rect.x + rect.width - 16.0f : rect.x + 16.0f,
+                 rect.y + rect.height * 0.5f}, 10.5f, kText);
+    Label(font, enabled ? "ON" : "OFF", enabled ? rect.x + 10.0f : rect.x + 38.0f,
+          rect.y + 6.0f, 13.0f, enabled ? Color{209, 246, 229, 255} : kMuted);
+}
+
+void Panel(Rectangle area) {
+    DrawRectangleRounded(area, 0.05f, 6, kPanel);
+    DrawRectangleRoundedLinesEx(area, 0.05f, 6, 1.0f,
+                                Color{51, 62, 78, 255});
+}
+
+std::string FitText(Font font, std::string text, float width, float fontSize) {
+    // Display the tail of a long edit buffer without cutting a UTF-8 codepoint.
+    while (!text.empty() &&
+           MeasureTextEx(font, text.c_str(), fontSize, 1.0f).x > width) {
+        std::size_t advance = 1;
+        while (advance < text.size() &&
+               (static_cast<unsigned char>(text[advance]) & 0xc0) == 0x80)
+            ++advance;
+        text.erase(0, advance);
     }
-    switch (row) {
-        case 0: return TextFormat("%.1f PX", skin.playerRadius);
-        case 1: return TextFormat("%.0f PX", skin.cameraStep);
-        case 2: return skin.playerGlow ? "ON" : "OFF";
-        case 3: return TextFormat("%.1f X", skin.hitFlashScale);
-        default: return skin.showHud ? "ON" : "OFF";
+    return text;
+}
+
+void DrawInput(Font font, Rectangle rect, const std::string& value,
+               bool focused, bool selected = false) {
+    DrawRectangleRounded(rect, 0.14f, 5,
+                         focused ? Color{53, 62, 83, 255}
+                                 : Color{31, 38, 52, 255});
+    DrawRectangleRoundedLinesEx(rect, 0.14f, 5, focused ? 2.0f : 1.0f,
+                                focused ? kGold : Color{89, 103, 119, 255});
+    const std::string shown = FitText(font, value, rect.width - 17.0f, 15.0f);
+    if (focused && selected) {
+        DrawRectangle(static_cast<int>(rect.x + 6.0f),
+                      static_cast<int>(rect.y + 5.0f),
+                      static_cast<int>(rect.width - 12.0f), 21,
+                      Color{85, 80, 121, 255});
+    }
+    Label(font, shown, rect.x + 8.0f, rect.y + 7.0f, 15.0f, kText);
+    if (focused && !selected) {
+        const float caretX = std::min(rect.x + rect.width - 7.0f,
+            rect.x + 10.0f + MeasureTextEx(font, shown.c_str(), 15.0f, 1.0f).x);
+        DrawLineV({caretX, rect.y + 6.0f},
+                  {caretX, rect.y + rect.height - 6.0f}, kGold);
     }
 }
 
-void ChangeRow(Skin& skin, int page, int row, int direction) {
-    const auto update = [&](float& value, float step, float low, float high) {
-        value = std::clamp(value + step * direction, low, high);
-        // Avoid cumulative decimal drift in UI controls.
-        value = std::round(value * 100.0f) / 100.0f;
-    };
-    if (page == 0) {
-        switch (row) {
-            case 0: update(skin.lookaheadBeats, 0.5f, 0.5f, 16.0f); break;
-            case 1: update(skin.pathWidth, 0.5f, 1.0f, 16.0f); break;
-            case 2: update(skin.outlineScale, 0.1f, 1.0f, 4.0f); break;
-            case 3: update(skin.fadePower, 0.25f, 0.25f, 4.0f); break;
-            case 4: update(skin.pathOpacity, 0.05f, 0.1f, 1.0f); break;
-            case 5: update(skin.junctionRadius, 0.5f, 2.0f, 24.0f); break;
-            case 6: skin.junctionGlow = !skin.junctionGlow; break;
-        }
-    } else {
-        switch (row) {
-            case 0: update(skin.playerRadius, 0.5f, 4.0f, 30.0f); break;
-            case 1: update(skin.cameraStep, 5.0f, 25.0f, 100.0f); break;
-            case 2: skin.playerGlow = !skin.playerGlow; break;
-            case 3: update(skin.hitFlashScale, 0.1f, 0.5f, 3.0f); break;
-            case 4: skin.showHud = !skin.showHud; break;
-        }
-    }
+Rectangle SliderHit(Rectangle rect) {
+    return {rect.x - 7.0f, rect.y - 12.0f, rect.width + 14.0f, 30.0f};
 }
 
-void PreviewPath(const Skin& skin) {
+void DrawSlider(Rectangle track, double value, const SkinNumberRange& range) {
+    const double t = std::clamp(
+        (value - range.sliderMin) / (range.sliderMax - range.sliderMin), 0.0, 1.0);
+    DrawRectangleRounded(track, 0.9f, 5, Color{61, 70, 88, 255});
+    DrawRectangleRounded({track.x, track.y, track.width * static_cast<float>(t),
+                          track.height}, 0.9f, 5, kAccent);
+    const Vector2 knob{track.x + track.width * static_cast<float>(t),
+                       track.y + track.height * 0.5f};
+    const bool outside = value < range.sliderMin || value > range.sliderMax;
+    DrawCircleV(knob, 8.0f, outside ? kGold : kText);
+    DrawCircleV(knob, 3.0f, Color{75, 69, 108, 255});
+}
+
+void PreviewPath(Font font, const Skin& skin) {
     const Rectangle area{605.0f, 193.0f, 298.0f, 248.0f};
     DrawRectangleRounded(area, 0.07f, 6, skin.background);
     DrawRectangleRoundedLinesEx(area, 0.07f, 6, 1.2f, kMuted);
-    Label(GetFontDefault(), "LIVE PREVIEW", 622, 206, 14.0f, kMuted);
-
+    Label(font, "LIVE PREVIEW", 622, 206, 14.0f, kMuted);
     const auto point = [&](float beats) {
-        // Fit the entire configured horizon into the preview pane.
         const float progress = beats / skin.lookaheadBeats;
         return Vector2{630.0f + 241.0f * progress,
                        336.0f - 46.0f * std::sin(progress * 5.2f)};
@@ -135,14 +167,68 @@ void PreviewPath(const Skin& skin) {
         DrawCircleV(marker, radius * 1.65f, WithOpacity(skin.player, 0.2f));
     DrawCircleV(marker, radius, skin.player);
     DrawCircleV(marker, radius * 0.33f, skin.playerCore);
-    Label(GetFontDefault(), "SAVE TO USE IN PLAY / TEST", 618, 408, 12, kMuted);
+    Label(font, "SLIDER: EVERYDAY RANGE", 618, 402, 12, kMuted);
+    Label(font, "TYPE: EXTENDED VALUES", 618, 420, 12, kMuted);
 }
 
-void Panel(Rectangle area) {
-    DrawRectangleRounded(area, 0.05f, 6, kPanel);
-    DrawRectangleRoundedLinesEx(area, 0.05f, 6, 1.0f,
-                                Color{51, 62, 78, 255});
+void StartNumberEdit(const Skin& skin, SkinUi& ui, int row) {
+    ui.editingNumberRow = row;
+    ui.numberBuffer = FormatSkinNumber(
+        GetSkinNumber(skin, ui.page, row, ui.selectedColor));
+    ui.numberSelectAll = true;
+    ui.draggingRow = -1;
+    SkinNumberRange range;
+    GetSkinNumberRange(ui.page, row, range);
+    ui.notice = "INPUT: " + FormatSkinNumber(range.inputMin) + " .. " +
+                FormatSkinNumber(range.inputMax) + "  /  ENTER APPLY  /  ESC CANCEL";
+    ui.noticeError = false;
 }
+
+void SetSliderAt(Vector2 mouse, Skin& skin, SkinUi& ui) {
+    if (ui.draggingRow < 0) return;
+    SkinNumberRange range;
+    if (!GetSkinNumberRange(ui.page, ui.draggingRow, range)) return;
+    const Rectangle track = SkinSliderRect(ui.page, ui.draggingRow);
+    const double t = std::clamp(
+        static_cast<double>((mouse.x - track.x) / track.width), 0.0, 1.0);
+    const double next = range.sliderMin + t * (range.sliderMax - range.sliderMin);
+    std::string error;
+    const double previous = GetSkinNumber(skin, ui.page,
+                                          ui.draggingRow, ui.selectedColor);
+    if (SetSkinNumber(skin, ui.page, ui.draggingRow, ui.selectedColor,
+                      next, true, error) &&
+        GetSkinNumber(skin, ui.page, ui.draggingRow, ui.selectedColor) != previous)
+        ui.dirty = true;
+}
+
+std::string CodepointUtf8(int point) {
+    if (point < 32 || point > 0x10ffff ||
+        (point >= 0xd800 && point <= 0xdfff)) return {};
+    std::string utf8;
+    if (point < 0x80) utf8 += static_cast<char>(point);
+    else if (point < 0x800) {
+        utf8 += static_cast<char>(0xc0 | (point >> 6));
+        utf8 += static_cast<char>(0x80 | (point & 0x3f));
+    } else if (point < 0x10000) {
+        utf8 += static_cast<char>(0xe0 | (point >> 12));
+        utf8 += static_cast<char>(0x80 | ((point >> 6) & 0x3f));
+        utf8 += static_cast<char>(0x80 | (point & 0x3f));
+    } else {
+        utf8 += static_cast<char>(0xf0 | (point >> 18));
+        utf8 += static_cast<char>(0x80 | ((point >> 12) & 0x3f));
+        utf8 += static_cast<char>(0x80 | ((point >> 6) & 0x3f));
+        utf8 += static_cast<char>(0x80 | (point & 0x3f));
+    }
+    return utf8;
+}
+
+void DeleteLastCodepoint(std::string& text) {
+    while (!text.empty() &&
+           (static_cast<unsigned char>(text.back()) & 0xc0) == 0x80)
+        text.pop_back();
+    if (!text.empty()) text.pop_back();
+}
+
 } // namespace
 
 Rectangle SkinTabButton(int index) {
@@ -150,6 +236,14 @@ Rectangle SkinTabButton(int index) {
 }
 Rectangle SkinActionButton(int index) {
     return {52.0f + index * 135.0f, 473.0f, 125.0f, 34.0f};
+}
+Rectangle SkinNumberInputRect(int page, int row) {
+    return page == 2 ? Rectangle{814.0f, 248.0f + row * 42.0f, 91.0f, 30.0f}
+                     : Rectangle{438.0f, 199.0f + row * 36.0f, 116.0f, 30.0f};
+}
+Rectangle SkinSliderRect(int page, int row) {
+    return page == 2 ? Rectangle{687.0f, 259.0f + row * 42.0f, 113.0f, 6.0f}
+                     : Rectangle{224.0f, 210.0f + row * 36.0f, 196.0f, 6.0f};
 }
 
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
@@ -164,59 +258,72 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     if (ui.page != 2) {
         for (int row = 0; row < RowCount(ui.page); ++row) {
             Label(font, RowName(ui.page, row), 70.0f, 206.0f + row * 36.0f,
-                  15.0f, kMuted);
-            Button(font, Minus(row), "-");
-            Label(font, RowValue(skin, ui.page, row), 435.0f,
-                  206.0f + row * 36.0f, 13.0f);
-            Button(font, Plus(row), "+");
+                  14.0f, kMuted);
+            SkinNumberRange range;
+            if (GetSkinNumberRange(ui.page, row, range)) {
+                const double value = GetSkinNumber(skin, ui.page, row, ui.selectedColor);
+                DrawSlider(SkinSliderRect(ui.page, row), value, range);
+                const bool editing = ui.editingNumberRow == row;
+                DrawInput(font, SkinNumberInputRect(ui.page, row),
+                          editing ? ui.numberBuffer : FormatSkinNumber(value),
+                          editing, editing && ui.numberSelectAll);
+            } else {
+                DrawSwitch(font, SwitchRect(row), ToggleValue(skin, ui.page, row));
+            }
         }
-        PreviewPath(skin);
+        PreviewPath(font, skin);
     } else {
         for (int index = 0; index < kSkinColorCount; ++index) {
             const Rectangle row = ColorRow(index);
-            if (index == ui.selectedColor) {
+            if (index == ui.selectedColor)
                 DrawRectangleRounded(row, 0.08f, 3, Color{43, 59, 72, 255});
-            }
             Label(font, SkinColorLabel(index), row.x + 9, row.y + 5, 13,
                   index == ui.selectedColor ? kGold : kText);
             DrawRectangle(static_cast<int>(row.x + 393),
                           static_cast<int>(row.y + 4), 62, 17,
                           SkinColor(skin, index));
         }
-        Label(font, SkinColorLabel(ui.selectedColor), 612, 199, 17, kAccent);
-        const Color color = SkinColor(skin, ui.selectedColor);
-        const int channels[] = {color.r, color.g, color.b, color.a};
-        const char* labels[] = {"RED", "GREEN", "BLUE", "ALPHA"};
+        Label(font, SkinColorLabel(ui.selectedColor), 611, 198, 17, kAccent);
+        const char* labels[] = {"R", "G", "B", "A"};
         for (int i = 0; i < 4; ++i) {
-            Label(font, labels[i], 612, 258.0f + i * 42.0f, 13, kMuted);
-            Button(font, ChannelMinus(i), "-");
-            Label(font, std::to_string(channels[i]), 783.0f,
-                  258.0f + i * 42.0f, 17);
-            Button(font, ChannelPlus(i), "+");
+            Label(font, labels[i], 612, 255.0f + i * 42.0f, 16, kMuted);
+            SkinNumberRange range;
+            GetSkinNumberRange(2, i, range);
+            const double value = GetSkinNumber(skin, 2, i, ui.selectedColor);
+            DrawSlider(SkinSliderRect(2, i), value, range);
+            const bool editing = ui.editingNumberRow == i;
+            DrawInput(font, SkinNumberInputRect(2, i),
+                      editing ? ui.numberBuffer : FormatSkinNumber(value),
+                      editing, editing && ui.numberSelectAll);
         }
-        Label(font, "SHIFT + CLICK = 1 STEP", 611, 426, 12, kMuted);
+        Label(font, "RGBA: 0 .. 255", 613, 427, 13, kMuted);
     }
-    Label(font, "NAME", 616, 112, 12, kMuted);
-    Button(font, NameField(), ui.editingName ? "TYPE NAME + ENTER" : "RENAME");
-    Label(font, skin.name.substr(0, 29) + (ui.dirty ? " *" : ""),
-          637, 170, 12, kGold);
+    Label(font, "SKIN NAME", 616, 111, 12, kMuted);
+    DrawInput(font, NameField(), skin.name, ui.editingName,
+              ui.editingName && ui.nameSelectAll);
+    Label(font, ui.dirty ? "UNSAVED CHANGES" : "ACTIVE PROFILE",
+          630, 171, 12, ui.dirty ? kGold : kMuted);
     const char* actions[] = {"LOAD", "SAVE", "SAVE AS", "RESET"};
     for (int i = 0; i < 4; ++i)
         Button(font, SkinActionButton(i), actions[i]);
-    Label(font, ui.notice.substr(0, 101), 53, 515, 13,
+    Label(font, ui.notice.substr(0, 112), 53, 515, 13,
           ui.noticeError ? Color{245, 150, 150, 255} : kGold);
 }
 
 SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
+    ui.draggingRow = -1;
     for (int i = 0; i < 3; ++i)
         if (Hit(mouse, SkinTabButton(i))) {
             ui.page = i;
+            ui.editingNumberRow = -1;
             return SkinCommand::None;
         }
     if (Hit(mouse, NameField())) {
         ui.editingName = true;
+        ui.nameSelectAll = true;
         ui.previousName = skin.name;
-        ui.notice = "TYPE A NAME / ENTER TO APPLY / ESC TO CANCEL";
+        ui.notice = "TYPE NAME / ENTER APPLY / ESC CANCEL";
+        ui.noticeError = false;
         return SkinCommand::None;
     }
     for (int i = 0; i < 4; ++i)
@@ -229,74 +336,132 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
                 ui.selectedColor = i;
                 return SkinCommand::None;
             }
-        for (int i = 0; i < 4; ++i) {
-            const int dir = Hit(mouse, ChannelMinus(i)) ? -1
-                          : Hit(mouse, ChannelPlus(i)) ? 1 : 0;
-            if (dir == 0) continue;
-            Color& color = SkinColor(skin, ui.selectedColor);
-            unsigned char* channels[] = {&color.r, &color.g, &color.b, &color.a};
-            const int increment = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)
-                ? 1 : 8;
-            *channels[i] = static_cast<unsigned char>(
-                std::clamp(static_cast<int>(*channels[i]) + dir * increment, 0, 255));
-            ui.dirty = true;
+    } else {
+        for (int row = 0; row < RowCount(ui.page); ++row) {
+            SkinNumberRange range;
+            if (GetSkinNumberRange(ui.page, row, range)) continue;
+            if (Hit(mouse, {69.0f, 199.0f + row * 36.0f, 489.0f, 30.0f})) {
+                FlipToggle(skin, ui.page, row);
+                ui.dirty = true;
+                return SkinCommand::None;
+            }
+        }
+    }
+    const int count = ui.page == 2 ? 4 : RowCount(ui.page);
+    for (int row = 0; row < count; ++row) {
+        SkinNumberRange range;
+        if (!GetSkinNumberRange(ui.page, row, range)) continue;
+        if (Hit(mouse, SkinNumberInputRect(ui.page, row))) {
+            StartNumberEdit(skin, ui, row);
             return SkinCommand::None;
         }
-    } else {
-        for (int i = 0; i < RowCount(ui.page); ++i) {
-            const int dir = Hit(mouse, Minus(i)) ? -1 : Hit(mouse, Plus(i)) ? 1 : 0;
-            if (dir == 0) continue;
-            ChangeRow(skin, ui.page, i, dir);
-            ui.dirty = true;
+        if (Hit(mouse, SliderHit(SkinSliderRect(ui.page, row)))) {
+            ui.draggingRow = row;
+            SetSliderAt(mouse, skin, ui);
+            ui.notice = "DRAG SLIDER / TYPE IN FIELD FOR EXTENDED VALUES";
+            ui.noticeError = false;
             return SkinCommand::None;
         }
     }
     return SkinCommand::None;
 }
 
-bool HandleSkinNameInput(Skin& skin, SkinUi& ui) {
-    if (!ui.editingName) return false;
-    if (IsKeyPressed(KEY_ESCAPE)) {
-        skin.name = ui.previousName;
-        ui.editingName = false;
-        ui.notice = "NAME EDIT CANCELED";
-        return true;
+void UpdateSkinSliderDrag(Vector2 mouse, bool leftHeld, Skin& skin, SkinUi& ui) {
+    if (!leftHeld) {
+        ui.draggingRow = -1;
+        return;
     }
-    if (IsKeyPressed(KEY_ENTER)) {
-        if (skin.name.empty()) skin.name = ui.previousName;
-        ui.editingName = false;
-        ui.dirty = skin.name != ui.previousName || ui.dirty;
-        ui.notice = "NAME UPDATED - SAVE TO APPLY";
-        return true;
-    }
-    if (IsKeyPressed(KEY_BACKSPACE) && !skin.name.empty()) {
-        // Remove the last UTF-8 code point, not just one byte.
-        while (!skin.name.empty() &&
-               (static_cast<unsigned char>(skin.name.back()) & 0xc0) == 0x80)
-            skin.name.pop_back();
-        if (!skin.name.empty()) skin.name.pop_back();
-    }
-    int codepoint = 0;
-    while ((codepoint = GetCharPressed()) != 0) {
-        if (codepoint < 32 || codepoint > 0x10ffff) continue;
-        std::string utf8;
-        if (codepoint < 0x80) utf8 += static_cast<char>(codepoint);
-        else if (codepoint < 0x800) {
-            utf8 += static_cast<char>(0xc0 | (codepoint >> 6));
-            utf8 += static_cast<char>(0x80 | (codepoint & 0x3f));
-        } else if (codepoint < 0x10000) {
-            utf8 += static_cast<char>(0xe0 | (codepoint >> 12));
-            utf8 += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3f));
-            utf8 += static_cast<char>(0x80 | (codepoint & 0x3f));
+    if (ui.draggingRow >= 0 && !SkinMenuEditingText(ui))
+        SetSliderAt(mouse, skin, ui);
+}
+
+bool SkinMenuEditingText(const SkinUi& ui) noexcept {
+    return ui.editingName || ui.editingNumberRow >= 0;
+}
+
+bool FinishSkinTextInput(Skin& skin, SkinUi& ui, bool apply) {
+    if (ui.editingName) {
+        if (apply) {
+            std::string error;
+            if (!skin.Valid(error)) {
+                ui.notice = "INVALID NAME: " + error;
+                ui.noticeError = true;
+                return false;
+            }
+            ui.dirty |= skin.name != ui.previousName;
         } else {
-            utf8 += static_cast<char>(0xf0 | (codepoint >> 18));
-            utf8 += static_cast<char>(0x80 | ((codepoint >> 12) & 0x3f));
-            utf8 += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3f));
-            utf8 += static_cast<char>(0x80 | (codepoint & 0x3f));
+            skin.name = ui.previousName;
         }
-        if (skin.name.size() + utf8.size() <= 64) skin.name += utf8;
+        ui.editingName = false;
+        ui.nameSelectAll = false;
+    } else if (ui.editingNumberRow >= 0) {
+        if (apply) {
+            double number = 0.0;
+            if (!ParseSkinNumber(ui.numberBuffer, number)) {
+                ui.notice = "INVALID NUMBER - ENTER A FINITE NUMERIC VALUE";
+                ui.noticeError = true;
+                return false;
+            }
+            const double previous = GetSkinNumber(
+                skin, ui.page, ui.editingNumberRow, ui.selectedColor);
+            std::string error;
+            if (!SetSkinNumber(skin, ui.page, ui.editingNumberRow,
+                               ui.selectedColor, number, false, error)) {
+                ui.notice = error;
+                ui.noticeError = true;
+                return false;
+            }
+            ui.dirty |= GetSkinNumber(skin, ui.page, ui.editingNumberRow,
+                                      ui.selectedColor) != previous;
+        }
+        ui.editingNumberRow = -1;
+        ui.numberBuffer.clear();
+        ui.numberSelectAll = false;
     }
+    ui.noticeError = false;
+    ui.notice = apply ? "VALUE APPLIED TO PREVIEW - SAVE TO USE IN PLAY"
+                      : "EDIT CANCELED";
     return true;
+}
+
+void HandleSkinTextInput(Skin& skin, SkinUi& ui) {
+    if (!SkinMenuEditingText(ui)) return;
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        FinishSkinTextInput(skin, ui, false);
+        return;
+    }
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
+        FinishSkinTextInput(skin, ui, true);
+        return;
+    }
+    const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    if (ctrl && IsKeyPressed(KEY_A)) {
+        if (ui.editingName) ui.nameSelectAll = true;
+        else ui.numberSelectAll = true;
+        return;
+    }
+
+    std::string& buffer = ui.editingName ? skin.name : ui.numberBuffer;
+    bool& selected = ui.editingName ? ui.nameSelectAll : ui.numberSelectAll;
+    if (IsKeyPressed(KEY_BACKSPACE)) {
+        if (selected) buffer.clear();
+        else DeleteLastCodepoint(buffer);
+        selected = false;
+    }
+    int point = 0;
+    while ((point = GetCharPressed()) != 0) {
+        if (ctrl) continue;
+        const std::string character = CodepointUtf8(point);
+        if (character.empty()) continue;
+        if (!ui.editingName && character.find_first_not_of("0123456789+-.,eE")
+                                != std::string::npos) continue;
+        const std::size_t limit = ui.editingName ? 64 : 32;
+        const std::size_t used = selected ? 0 : buffer.size();
+        if (used + character.size() > limit) continue;
+        if (selected) buffer.clear();
+        buffer += character;
+        selected = false;
+    }
 }
 
 } // namespace locus::app
