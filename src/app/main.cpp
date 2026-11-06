@@ -165,7 +165,10 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
         input.arrowHeld[i] = IsKeyDown(key);
         if (input.arrowPressed[i]) input.arrowCapturedAt[i] = MonotonicSeconds();
     }
-    input.editor = locus::app::PollEditorControls();
+    // The chart editor consumes the raylib UTF-8 character queue.
+    // Never drain it on SKIN: its numeric/name text inputs own that queue.
+    if (currentScreen == Screen::Editor)
+        input.editor = locus::app::PollEditorControls();
     return input;
 }
 
