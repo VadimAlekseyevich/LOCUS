@@ -151,13 +151,7 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
         }
     }
     DrawRouteJunctions(chart, bounded, canvas, RouteRenderMode::Editor);
-    const Vector2 start = grid.Point(chart.start);
     const float markerRadius = std::min(13.0f, grid.step * 0.39f);
-    if (start.x >= x0 && start.x <= x1 && start.y >= y0 && start.y <= y1) {
-        DrawCircleV(start, markerRadius * 1.32f, Color{245, 203, 112, 48});
-        DrawCircleLines(static_cast<int>(start.x), static_cast<int>(start.y),
-                        markerRadius * 1.36f, Color{246, 209, 112, 255});
-    }
     DrawCircleV(marker, markerRadius * 1.7f, Color{112, 219, 216, 48});
     DrawCircleV(marker, markerRadius, Color{124, 229, 225, 255});
     DrawCircleV(marker, markerRadius * 0.32f, Color{246, 251, 252, 255});
@@ -167,7 +161,7 @@ void DrawPreviewGrid(Font font, const core::ChartEditor& draft, double previewBe
                            static_cast<double>(chart.lengthBeats - 1) /
                                chart.ticksPerBeat),
           52, 405, 15, Color{158, 225, 212, 255});
-    Label(font, TextFormat("START %d/%d", chart.start.x, chart.start.y),
+    Label(font, TextFormat("SQUARE VIEW %d", chart.gridWidth),
           266, 405, 15, Color{247, 213, 131, 255});
 }
 
@@ -408,12 +402,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
               Color{239, 210, 159, 255});
         Label(font, "NOT A MUSIC TIME SIGNATURE", 548, 172, 14,
               Color{161, 187, 210, 255});
-        DrawTextField(font, kGridSize, "EDITOR GRID  W/H  (2..16)",
-                      std::to_string(chart.gridWidth) + "/" +
-                      std::to_string(chart.gridHeight), EditorField::GridSize, ui);
-        DrawTextField(font, kStartCell, "START CELL X/Y  (FROM 0)",
-                      std::to_string(chart.start.x) + "/" +
-                      std::to_string(chart.start.y), EditorField::StartCell, ui);
+        DrawTextField(font, kGridSize, "VISIBLE SQUARE SIDE (2..16)",
+                      std::to_string(chart.gridWidth), EditorField::GridSize, ui);
+        Label(font, "ONE NUMBER = EQUAL WIDTH / HEIGHT", 505, 231, 14,
+              Color{169, 204, 218, 255});
+        Label(font, "AUTOMATIC ROUTE ORIGIN", 505, 255, 13,
+              Color{169, 204, 218, 255});
         Label(font, draft.HasSongDuration()
               ? TextFormat("SONG TIMELINE: %d TO %d (AUTO FROM BPM / OFFSET)",
                            chart.firstBeat / chart.ticksPerBeat,
@@ -427,9 +421,9 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
               Color{172, 199, 218, 255});
         Button(font, kFieldHeading, HeadingName(chart.initialHeading),
                Color{119, 229, 188, 255});
-        Label(font, "BEATS COVER THE ENTIRE SONG, INCLUDING BEFORE OFFSET.",
+        Label(font, "SONG TIME IS INDEPENDENT OF VISIBLE SQUARE SIZE.",
               104, 384, 14, Color{169, 204, 218, 255});
-        Label(font, "GRID SIZE IS DISPLAY ONLY: WORLD NEVER WRAPS.",
+        Label(font, "PLAY CLIPS THE ROUTE TO ITS CENTRED SQUARE FRAME.",
               104, 403, 13, Color{226, 197, 146, 255});
     }
 
