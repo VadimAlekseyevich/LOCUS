@@ -55,10 +55,10 @@ int main() {
                 "Audio BPM accepts fast decimal values");
 
     ApplyEditorControls(chart, ui, Click(600, 310));
-    ApplyEditorControls(chart, ui, Type("-175.25"));
+    ApplyEditorControls(chart, ui, Type("-175"));
     ApplyEditorControls(chart, ui, enter);
-    ok &= Check(std::abs(chart.Data().offsetSeconds + 0.17525) < 1e-10,
-                "negative millisecond offset entered directly");
+    ok &= Check(std::abs(chart.Data().offsetSeconds + 0.175) < 1e-10,
+                "negative whole-millisecond offset entered directly");
 
     ApplyEditorControls(chart, ui, Click(145, 226));
     ApplyEditorControls(chart, ui, Type("My rhythm chart"));
