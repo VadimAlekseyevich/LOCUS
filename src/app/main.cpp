@@ -418,7 +418,7 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     DrawTextLabel(font, TextFormat("%.2f%%", counts.AccuracyPercent()),
                   {right, 63.0f}, 30.0f, gameplay.skin.hudText);
     DrawLineEx({right, 118.0f}, {kWindowWidth - 20.0f, 118.0f},
-               1.0f, WithOpacity(gameplay.skin.hudText, 0.28f));
+               1.0f, locus::app::WithOpacity(gameplay.skin.hudText, 0.28f));
     const struct {
         const char* label;
         int count;
@@ -1002,8 +1002,11 @@ bool CheckSessionFlow() {
     if (ChartReadyForResults(judge, false)) return false;
     judge.Advance(14.819); // The last demo note is at 15 seconds.
     if (ChartReadyForResults(judge, false)) return false;
-    judge.Advance(15.181);
-    if (!ChartReadyForResults(judge, false)) return false;
+    // Beat 30 is the last turn (LEFT) at 15.0 seconds. A hit here
+    // ends immediately; the synthesized demo click track lasts 16 s.
+    const auto finalHit = judge.Press(locus::core::Turn::Left, 15.0);
+    if (!finalHit || finalHit->grade != locus::core::Grade::Perfect ||
+        !ChartReadyForResults(judge, false)) return false;
     FinishSession(state, judge);
     if (state.screen != Screen::Results ||
         judge.Counts().perfect != 1 ||
