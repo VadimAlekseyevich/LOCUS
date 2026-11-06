@@ -80,6 +80,16 @@ void ChartEditor::MarkSaved() noexcept {
     dirty_ = false;
 }
 
+void ChartEditor::ApplySavedChart(LoadedChart saved) {
+    // Save-to-disk has already validated/reopened the file. Replacing only the
+    // serialized snapshot avoids Load() resetting the user's current beat
+    // (and erasing the Undo/Redo history) on every Ctrl+S.
+    chart_ = std::move(saved);
+    selectedBeat_ = std::clamp(selectedBeat_, chart_.route.firstBeat,
+                               chart_.route.lengthBeats - 1);
+    MarkSaved();
+}
+
 void ChartEditor::MarkDirty() noexcept {
     revision_ = ++nextRevision_;
     dirty_ = revision_ != savedRevision_;
@@ -325,12 +335,21 @@ ChartEditor::Pattern ChartEditor::CopyTurns(int firstBeat, int lastBeat) const {
     Pattern result;
     if (firstBeat < chart_.route.firstBeat || lastBeat < firstBeat ||
         lastBeat >= chart_.route.lengthBeats) return result;
-    result.span = lastBeat - firstBeat + 1;
-    for (const auto& event : chart_.route.turns) {
-        if (event.beat < firstBeat) continue;
-        if (event.beat > lastBeat) break;
-        result.notes.push_back({event.beat - firstBeat, event.direction});
-    }
+
+    // Empty ticks outside the selected notes should never offset a paste.
+    // Keep all the spacing BETWEEN notes by anchoring to the first real event
+    // and ending at the last real event, regardless of drag direction.
+    const auto start = std::lower_bound(chart_.route.turns.begin(),
+                                       chart_.route.turns.end(), firstBeat,
+        [](const TurnEvent& event, int beat) { return event.beat < beat; });
+    const auto end = std::upper_bound(start, chart_.route.turns.end(), lastBeat,
+        [](int beat, const TurnEvent& event) { return beat < event.beat; });
+    if (start == end) return result; // No note => empty clipboard.
+    const int firstNote = start->beat;
+    const int lastNote = (end - 1)->beat;
+    result.span = lastNote - firstNote + 1;
+    for (auto note = start; note != end; ++note)
+        result.notes.push_back({note->beat - firstNote, note->direction});
     return result;
 }
 
