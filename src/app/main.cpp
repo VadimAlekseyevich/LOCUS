@@ -1272,6 +1272,7 @@ int main(int argc, char** argv) {
             previousScreen == Screen::Editor &&
             editorPending == EditorPending::None) {
             const int beforeBeat = editor.SelectedBeat();
+            const int beforeTicksPerBeat = editor.Data().route.ticksPerBeat;
             // Use the fractional transport beat for timeline hit testing,
             // matching the animated ruler even between whole beat markers.
             input.editor.timelineViewBeat = chartPlayback.Playing()
@@ -1279,6 +1280,13 @@ int main(int argc, char** argv) {
                 : static_cast<double>(editor.SelectedBeat());
             const auto uiAction = locus::app::ApplyEditorControls(
                 editor, editorUi, input.editor);
+            if (editor.Data().route.ticksPerBeat != beforeTicksPerBeat) {
+                // Snap change has just expanded the tick domain without
+                // moving any authored note or changing the musical BPM.
+                const int factor = editor.Data().route.ticksPerBeat /
+                                   beforeTicksPerBeat;
+                editorPreviewStartBeat *= factor;
+            }
             if (uiAction.chooseAudio) input.chooseMusicPressed = true;
             if (uiAction.testPlay) input.editorTest = true;
 
