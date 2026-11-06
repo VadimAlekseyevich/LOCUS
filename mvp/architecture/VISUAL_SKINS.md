@@ -1,4 +1,6 @@
-# LOCUS — independent gameplay skins
+# LOCUS — Independent Gameplay Skins
+
+**Status:** Implemented current skin UI and storage (2026-11-06).
 
 Skins are a **global rendering profile**, not part of a song, chart,
 difficulty, scoring rules, timing, or authored route. A chart renders exactly
@@ -29,11 +31,15 @@ the same underlying geometry and judgement under any skin.
 - PATH: ahead distance `lookaheadBeats` (default **4 beats**),
   width, outline scale, fade-curve exponent, opacity, junction radius
   and glow switch.
-- PLAYER/HUD: marker radius, camera pixels per route cell, marker glow,
-  hit-effect scale, visibility of the bottom score HUD.
-- COLORS: independent RGBA (0–255 integer channels) for background, path,
-  outline, junctions, player, player core, HUD background, HUD text,
-  and hit flash. Every channel has its own slider and numeric input.
+- PLAYER/HUD: marker radius, camera zoom relative to the default 51-unit
+  skin parameter, marker glow, hit-effect scale, visibility of the
+  **right-side** accuracy/judgement HUD.
+- COLORS: **ten** independent RGBA (0–255 integer channels) for
+  background, path, outline, junctions, player, player core,
+  HUD background, HUD text, hit flash and **FIELD BORDER**.
+  The gameplay border is a thin white-by-default outline around the
+  centered square; the color and opacity can be changed without
+  changing world geometry. Every channel has its own slider and numeric input.
 
 ## Sliders, manual input, and interaction
 
@@ -62,9 +68,12 @@ pinned to the nearest end (in gold); only explicitly dragging the slider
 brings the number into the slider range. The three boolean presentation
 options are now **switches**, not plus/minus buttons.
 The JSON schema remains version 1 and stays separate from charts.
+  This does not change the chart's independent `formatVersion: 2`.
 
 Defaults preserve the existing forward-only four-beat path behavior and
-existing route authoring look. The playfield clips drawn segments against
+existing route authoring look. Gameplay is clipped to a
+**centered screen-height square**, whose border uses `fieldBorder`;
+the **left side is intentionally empty** and the score HUD is on the right. The playfield clips drawn segments against
 `[currentBeat, currentBeat + lookaheadBeats]`, so changing the number of beats
 never exposes a trail *behind* the player. The opacity/width functions share
 the same configured horizon. All chart timing and scoring code remains
@@ -74,8 +83,11 @@ the global skin.
 
 ## Safety and compatibility
 
-- JSON `version: 1` is required; missing keys, malformed colors, excessive
-  file size, non-finite or out-of-range numbers are rejected.
+- JSON `version: 1` remains the skin schema. The **new
+  `colors.fieldBorder` key is optional when loading older files**,
+  defaulting to white; saved current skins include it. Other required
+  keys, malformed colors, excessive file size and out-of-range
+  numerical fields are rejected.
 - Failed LOAD does not change the draft or active skin. Failed SAVE does not
   activate the draft. Corrupt active skin on startup falls back to defaults.
 - No texture paths, scripts or resources from skins are loaded.
