@@ -53,6 +53,41 @@ MusicPickResult ChooseChartFile() {
 }
 
 
+MusicPickResult ChooseSkinFile() {
+    return PickFile(L"LOCUS - Load Gameplay Skin",
+                    L"LOCUS skins (*.locus-skin.json;*.json)\0*.locus-skin.json;*.json\0"
+                    L"JSON (*.json)\0*.json\0\0");
+}
+
+MusicPickResult ChooseSkinSaveFile(const std::wstring& suggestedPath) {
+#ifdef _WIN32
+    std::vector<wchar_t> buffer(32768, L'\0');
+    const std::wstring suggestion = suggestedPath.empty()
+        ? L"My-Skin.locus-skin.json" : suggestedPath;
+    if (suggestion.size() >= buffer.size()) {
+        return MusicPickResult{L"", "Skin filename is too long.", false};
+    }
+    std::copy(suggestion.begin(), suggestion.end(), buffer.begin());
+    OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog);
+    dialog.hwndOwner = GetActiveWindow();
+    dialog.lpstrFile = buffer.data();
+    dialog.nMaxFile = static_cast<DWORD>(buffer.size());
+    dialog.lpstrTitle = L"LOCUS - Export Gameplay Skin";
+    dialog.lpstrFilter = L"LOCUS skins (*.locus-skin.json;*.json)\0*.locus-skin.json;*.json\0\0";
+    dialog.lpstrDefExt = L"json";
+    dialog.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST |
+                   OFN_NOCHANGEDIR | OFN_HIDEREADONLY;
+    if (GetSaveFileNameW(&dialog))
+        return MusicPickResult{std::wstring(buffer.data()), "", false};
+    if (CommDlgExtendedError() == 0) return MusicPickResult{L"", "", true};
+    return MusicPickResult{L"", "Windows could not open the skin Save As dialog.", false};
+#else
+    (void)suggestedPath;
+    return MusicPickResult{L"", "Skin export requires Windows.", false};
+#endif
+}
+
 MusicPickResult ChooseChartSaveFile(const std::wstring& suggestedPath) {
 #ifdef _WIN32
     std::vector<wchar_t> buffer(32768, L'\0');
