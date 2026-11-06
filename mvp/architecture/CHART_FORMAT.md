@@ -1,4 +1,74 @@
-# LOCUS — Chart File Format v1
+# LOCUS — Current Chart Format v2
+
+## Absolute millisecond timing (current writer)
+
+LOCUS now saves **integer audio timestamps**, independent of musical BPM
+and editor snap subdivisions. An authored turn has an absolute `timeMs`
+relative to the beginning of its WAV/MP3 file. A negative timestamp is
+allowed only where the existing preroll rules permit it. The chart's
+`offsetMs` is also a signed **integer**, not a floating-point millisecond.
+
+```json
+{
+  "formatVersion": 2,
+  "title": "Example",
+  "audioPath": "audio/example.wav",
+  "bpm": 250,
+  "offsetMs": 500,
+  "ticksPerBeat": 6,
+  "snapDivision": 3,
+  "grid": {"width": 4, "height": 4},
+  "start": {"x": 3, "y": 0, "heading": "right"},
+  "previewLeadBeats": 4,
+  "turns": [
+    {"timeMs": 580, "turn": "left"},
+    {"timeMs": 660, "turn": "right"}
+  ]
+}
+```
+
+In this example the two turn events occur at audio times **580 ms**
+and **660 ms**. Musical BPM remains **250**. The editor shows three equal
+snap intervals per musical beat, but the timestamps are authoritative
+and do **not** change when the author selects 1/2, 1/4, or 1/3 snapping,
+or changes the BPM or chart offset. Incoming direction and relative turn
+type are still interpreted by the same route logic.
+
+- `formatVersion`: exactly **2** for new files. The reader still accepts
+  legacy **1**, converting beat-index events to millisecond timing when saved.
+- `offsetMs`: whole signed milliseconds in **[-3,600,000, 3,600,000]**;
+  this is the audio timestamp of musical beat zero.
+- `turns[i].timeMs`: a signed integer audio position, valid from
+  **-3,600,000 to 86,400,000 ms**. Events must be strictly increasing.
+  Two different millisecond times that cannot be distinguished by the
+  current tick resolution are rejected rather than silently merged.
+- `ticksPerBeat`: optional integer **1–48**, storing the exact grid tick
+  resolution necessary for previously authored triplets and halves.
+- `snapDivision`: optional value from **1, 2, 3, 4, 6, 8, 12, 16, 24**,
+  dividing `ticksPerBeat`. This controls visible lines and authoring
+  placement only; coarser divisions never destroy finer notes.
+- `bpm`: finite positive musical tempo. It controls ruler/grid snapping,
+  not the absolute timestamp of any existing note.
+- `grid`, `start`, `previewLeadBeats`, `audioPath`, and the six relative
+  turn variants retain their v1 meanings. Derived song length is never
+  stored in the file.
+
+Internally the editor uses integer **ticks** to snap exact musical halves
+and triplets. For instance at 250 BPM a beat is 240 ms and a third is
+80 ms. A tick position is mapped to a whole-millisecond timestamp on
+insertion. Gameplay judges against the **saved millisecond time** rather
+than recomputing the note's time from BPM. An off-grid millisecond
+timestamp remains exact in judging; the ruler projects it to its nearest
+available tick for visual editing.
+
+---
+
+## Historical reference: v1 charts (readable, not written)
+
+The following sections document the original beat-indexed v1 schema.
+They are retained for interpreting old files and migration. **Do not use
+v1's `beat` events or fractional `offsetMs` in new saved charts.**
+
 
 **Task:** A-05 — Define the first chart schema  
 **Status:** Implemented chart v1; M-03 prefers millisecond offsets while keeping legacy charts readable  
