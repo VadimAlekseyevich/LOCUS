@@ -20,11 +20,11 @@ int main() {
     GameSettings options;
     std::string error;
     ok &= Check(options.Valid(error) &&
-                options.Key(GameAction::Up) == KEY_UP &&
-                options.Key(GameAction::Right) == KEY_RIGHT &&
-                options.Key(GameAction::Down) == KEY_DOWN &&
-                options.Key(GameAction::Left) == KEY_LEFT,
-                "defaults preserve four arrow bindings");
+                options.Key(GameAction::Up) == KEY_J &&
+                options.Key(GameAction::Right) == KEY_K &&
+                options.Key(GameAction::Down) == KEY_F &&
+                options.Key(GameAction::Left) == KEY_D,
+                "defaults share DFJK direction bindings between game and chart editor");
     // Gameplay input ordering (Up,Right,Down,Left) must resolve to the
     // same absolute directions used to author notes in ROUTE.
     ok &= Check(EditorDirectionMask({true, false, false, false}) == 4u &&
@@ -34,23 +34,24 @@ int main() {
                 EditorDirectionMask({true, true, false, false}) == 12u &&
                 EditorDirectionMask({false, false, true, true}) == 3u,
                 "game directions and diagonal chords map consistently to editor pad");
-    ok &= Check(EditorDirectionShortcut(options, 5u) == "LEFT+UP" &&
-                EditorDirectionShortcut(options, 12u) == "UP+RIGHT" &&
-                IsGameDirectionKey(options, KEY_LEFT) &&
-                !IsGameDirectionKey(options, KEY_D),
-                "default editor labels and conflict detection use arrow bindings");
-    ok &= Check(options.Rebind(GameAction::Up, KEY_W, error) &&
+    ok &= Check(EditorDirectionShortcut(options, 5u) == "D+J" &&
+                EditorDirectionShortcut(options, 12u) == "J+K" &&
+                IsGameDirectionKey(options, KEY_D) &&
+                !IsGameDirectionKey(options, KEY_LEFT),
+                "default editor labels use DFJK, arrows are free for navigation");
+    ok &= Check(options.Rebind(GameAction::Left, KEY_A, error) &&
+                options.Rebind(GameAction::Up, KEY_W, error) &&
                 options.Rebind(GameAction::Right, KEY_D, error) &&
                 options.Key(GameAction::Up) == KEY_W,
                 "gameplay directions can use WASD or other keyboard keys");
     ok &= Check(EditorDirectionShortcut(options, 12u) == "W+D" &&
-                EditorDirectionShortcut(options, 5u) == "LEFT+W" &&
+                EditorDirectionShortcut(options, 5u) == "A+W" &&
                 IsGameDirectionKey(options, KEY_W) &&
                 IsGameDirectionKey(options, KEY_D) &&
                 !IsGameDirectionKey(options, KEY_UP),
                 "rebound gameplay keys immediately update editor compass shortcuts");
     ok &= Check(!options.Rebind(GameAction::Left, KEY_W, error) &&
-                options.Key(GameAction::Left) == KEY_LEFT,
+                options.Key(GameAction::Left) == KEY_A,
                 "duplicate binding is rejected without changing old key");
     ok &= Check(!options.Rebind(GameAction::Pause, KEY_ESCAPE, error) &&
                 !options.Rebind(GameAction::Retry, KEY_F11, error) &&
@@ -73,10 +74,34 @@ int main() {
     ok &= Check(EditorDirectionShortcut(parsed, 12u) == "W+D" &&
                 EditorDirectionMask({true, true, false, false}) == 12u,
                 "persisted bindings drive the same editor chords after restarting");
+    // Previously saved untouched arrow defaults move to the new DFJK preset,
+    // but explicit arrow bindings stored by v2 remain customizable.
+    GameSettings previousDefault;
+    previousDefault.keys = {{KEY_UP, KEY_RIGHT, KEY_DOWN, KEY_LEFT,
+                              KEY_SPACE, KEY_R, KEY_H}};
+    std::string oldConfig = SerializeGameSettings(previousDefault);
+    const auto oldVersion = oldConfig.find("\"version\": 2");
+    if (oldVersion != std::string::npos)
+        oldConfig.replace(oldVersion, sizeof("\"version\": 2") - 1,
+                          "\"version\": 1");
+    GameSettings migrated;
+    ok &= Check(ParseGameSettings(oldConfig, migrated, error) &&
+                migrated.Key(GameAction::Up) == KEY_J &&
+                migrated.Key(GameAction::Right) == KEY_K &&
+                migrated.Key(GameAction::Down) == KEY_F &&
+                migrated.Key(GameAction::Left) == KEY_D,
+                "legacy default arrow settings automatically migrate once");
+    GameSettings deliberateArrows;
+    ok &= Check(ParseGameSettings(SerializeGameSettings(previousDefault),
+                                  deliberateArrows, error) &&
+                deliberateArrows.Key(GameAction::Up) == KEY_UP &&
+                deliberateArrows.Key(GameAction::Left) == KEY_LEFT,
+                "explicit arrow bindings in current settings version are preserved");
+
     GameSettings unchanged = parsed;
     const std::string corrupt =
-        std::string(serialized).replace(serialized.find("\"version\": 1"),
-                                        sizeof("\"version\": 1") - 1,
+        std::string(serialized).replace(serialized.find("\"version\": 2"),
+                                        sizeof("\"version\": 2") - 1,
                                         "\"version\": 999");
     ok &= Check(!ParseGameSettings(corrupt, unchanged, error) &&
                 unchanged.Key(GameAction::Up) == KEY_W,
@@ -89,8 +114,8 @@ int main() {
     const auto file = folder / "settings.json";
     GameSettings onDisk;
     ok &= Check(LoadGameSettings(file, onDisk, error) &&
-                onDisk.Key(GameAction::Up) == KEY_UP,
-                "missing settings file uses defaults");
+                onDisk.Key(GameAction::Up) == KEY_J,
+                "missing settings file uses new shared DFJK defaults");
     ok &= Check(SaveGameSettings(file, options, error) &&
                 LoadGameSettings(file, onDisk, error) &&
                 onDisk.Key(GameAction::Up) == KEY_W &&
