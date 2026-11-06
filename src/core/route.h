@@ -15,8 +15,9 @@ enum class Turn { Left, Right, Left45, Right45, Left135, Right135 };
 
 bool ValidHeading(Heading heading) noexcept;
 bool IsDiagonal(Heading heading) noexcept;
-// A beat always advances exactly one cell on each active axis (one beat,
-// including diagonals); the opposite direction and straight are not notes.
+// A tick advances one model unit; render-world coordinates are scaled by
+// ticksPerBeat, so visible speed is one cell per musical beat.
+// Opposite direction and straight are not notes.
 Heading HeadingAfterTurn(Heading incoming, Turn turn) noexcept;
 Turn InverseTurn(Turn turn) noexcept;
 unsigned HeadingArrowMask(Heading heading) noexcept;
@@ -28,7 +29,7 @@ struct Cell {
 };
 
 struct TurnEvent {
-    int beat = 0;
+    int beat = 0; // integer tick index at chart.ticksPerBeat resolution
     Turn direction = Turn::Left;
 };
 
@@ -38,13 +39,17 @@ constexpr int kMinGridSize = 2;
 constexpr int kMaxGridSize = 16;
 
 struct Chart {
-    double bpm = 120.0;
+    double bpm = 120.0; // musical BPM, NEVER multiplied when changing the grid
+    // All turn indices, firstBeat and lengthBeats are in integer ticks.
+    // 1 tick = 1/ticksPerBeat musical beat; old charts use 1.
+    int ticksPerBeat = 1;
+    int snapDivision = 1; // editor lines/placement per musical beat
     int gridWidth = 4;
     int gridHeight = 4;
     Cell start{0, 0};
     Heading initialHeading = Heading::Right;
-    // Inclusive first beat / exclusive end beat in the song-aligned ruler.
-    // firstBeat can be negative when audio precedes a positive offset.
+    // Inclusive first tick / exclusive end tick in song-aligned ruler.
+    // firstBeat may be negative if audio precedes a positive offset.
     int firstBeat = 0;
     int lengthBeats = 32;
     std::vector<TurnEvent> turns;
