@@ -25,10 +25,30 @@ int main() {
                 options.Key(GameAction::Down) == KEY_DOWN &&
                 options.Key(GameAction::Left) == KEY_LEFT,
                 "defaults preserve four arrow bindings");
+    // Gameplay input ordering (Up,Right,Down,Left) must resolve to the
+    // same absolute directions used to author notes in ROUTE.
+    ok &= Check(EditorDirectionMask({true, false, false, false}) == 4u &&
+                EditorDirectionMask({false, true, false, false}) == 8u &&
+                EditorDirectionMask({false, false, true, false}) == 2u &&
+                EditorDirectionMask({false, false, false, true}) == 1u &&
+                EditorDirectionMask({true, true, false, false}) == 12u &&
+                EditorDirectionMask({false, false, true, true}) == 3u,
+                "game directions and diagonal chords map consistently to editor pad");
+    ok &= Check(EditorDirectionShortcut(options, 5u) == "LEFT+UP" &&
+                EditorDirectionShortcut(options, 12u) == "UP+RIGHT" &&
+                IsGameDirectionKey(options, KEY_LEFT) &&
+                !IsGameDirectionKey(options, KEY_D),
+                "default editor labels and conflict detection use arrow bindings");
     ok &= Check(options.Rebind(GameAction::Up, KEY_W, error) &&
                 options.Rebind(GameAction::Right, KEY_D, error) &&
                 options.Key(GameAction::Up) == KEY_W,
                 "gameplay directions can use WASD or other keyboard keys");
+    ok &= Check(EditorDirectionShortcut(options, 12u) == "W+D" &&
+                EditorDirectionShortcut(options, 5u) == "LEFT+W" &&
+                IsGameDirectionKey(options, KEY_W) &&
+                IsGameDirectionKey(options, KEY_D) &&
+                !IsGameDirectionKey(options, KEY_UP),
+                "rebound gameplay keys immediately update editor compass shortcuts");
     ok &= Check(!options.Rebind(GameAction::Left, KEY_W, error) &&
                 options.Key(GameAction::Left) == KEY_LEFT,
                 "duplicate binding is rejected without changing old key");
@@ -50,6 +70,9 @@ int main() {
                 !parsed.hitFlash && parsed.fullscreen &&
                 parsed.chordWindowMs == 120,
                 "all audio, visuals, chords and custom keys survive JSON roundtrip");
+    ok &= Check(EditorDirectionShortcut(parsed, 12u) == "W+D" &&
+                EditorDirectionMask({true, true, false, false}) == 12u,
+                "persisted bindings drive the same editor chords after restarting");
     GameSettings unchanged = parsed;
     const std::string corrupt =
         std::string(serialized).replace(serialized.find("\"version\": 1"),
