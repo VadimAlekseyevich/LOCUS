@@ -2,7 +2,7 @@
 setlocal EnableExtensions DisableDelayedExpansion
 
 rem LOCUS Windows launcher. Double-click or run from Command Prompt.
-rem Default: F-07 placeholder screens with debug F1-F4 navigation; 'audio' runs A-07.
+rem Default: production LOCUS game; 'audio' explicitly runs the optional A-07 probe.
 rem Run a temporary copy so git pull can safely update this BAT file.
 
 if /I "%LOCUS_BAT_WORKER%"=="1" goto :worker
