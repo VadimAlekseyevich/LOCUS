@@ -1,5 +1,6 @@
 #include "app/skin.h"
 #include "app/skin_controls.h"
+#include <nlohmann/json.hpp>
 
 #include <cmath>
 #include <filesystem>
@@ -19,6 +20,7 @@ int main() {
     original.lookaheadBeats = 11.5f;
     original.cameraStep = 70.0f;
     original.trajectory = Color{12, 99, 180, 222};
+    original.fieldBorder = Color{39, 207, 255, 196};
     original.junctionGlow = false;
     original.showHud = false;
     const std::string json = SerializeSkin(original);
@@ -30,8 +32,29 @@ int main() {
           restored.cameraStep == 70.0f &&
           restored.trajectory.b == 180 &&
           restored.trajectory.a == 222 &&
+          restored.fieldBorder.r == 39 &&
+          restored.fieldBorder.g == 207 &&
+          restored.fieldBorder.b == 255 &&
+          restored.fieldBorder.a == 196 &&
           !restored.junctionGlow && !restored.showHud,
           "all values round trip");
+    check(kSkinColorCount == 10 &&
+          std::string(SkinColorLabel(9)) == "FIELD BORDER" &&
+          SkinColor(original, 9).g == 207,
+          "square border is available as tenth editable RGBA colour");
+    auto oldFile = nlohmann::json::parse(json);
+    oldFile["colors"].erase("fieldBorder");
+    Skin migrated;
+    check(ParseSkin(oldFile.dump(), migrated, error) &&
+          migrated.fieldBorder.r == Skin{}.fieldBorder.r &&
+          migrated.fieldBorder.a == 255,
+          "older skins without a border colour load with default white frame");
+    oldFile["colors"]["fieldBorder"] = nlohmann::json::array({256, 0, 0, 255});
+    Skin unmodified;
+    unmodified.name = "Keep";
+    check(!ParseSkin(oldFile.dump(), unmodified, error) &&
+          unmodified.name == "Keep",
+          "invalid border channel rejected atomically");
     Skin sentinel;
     sentinel.name = "Unchanged";
     check(!ParseSkin("{\"version\":1}", sentinel, error) &&
@@ -74,6 +97,12 @@ int main() {
     check(SetSkinNumber(edited, 0, 4, 1, 0.0, false, error) &&
           edited.pathOpacity == 0.0f && edited.Valid(error),
           "zero opacity is valid through text field and JSON model");
+    check(SetSkinNumber(edited, 2, 0, 9, 111.0, false, error) &&
+          edited.fieldBorder.r == 111,
+          "frame border R channel supports exact RGBA editing");
+    check(SetSkinNumber(edited, 2, 3, 9, 156.0, false, error) &&
+          edited.fieldBorder.a == 156,
+          "frame border transparency adjustable from skin editor");
     check(SetSkinNumber(edited, 2, 2, 1, 243.0, false, error) &&
           edited.trajectory.b == 243,
           "color channels support exact typed integers");
