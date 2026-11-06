@@ -10,8 +10,8 @@
 
 namespace locus::app {
 
-// Owns the generated WAV bytes for as long as raylib's memory decoder uses
-// them. One monotonic music-time anchor drives all future game consumers.
+// Borrows the shared raylib audio device from AudioDevice; owns only its WAV
+// stream/bytes. One monotonic music-time anchor drives all game consumers.
 class DemoTransport {
 public:
     DemoTransport() = default;
@@ -43,7 +43,6 @@ private:
     double bpm_ = 120.0;
     float volume_ = 0.7f;
     double durationSeconds_ = 0.0;
-    bool audioInitialized_ = false;
     bool musicLoaded_ = false;
     bool playing_ = false;
     bool paused_ = false;

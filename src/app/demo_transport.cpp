@@ -18,11 +18,10 @@ bool DemoTransport::Initialize(const core::Chart& chart) {
     bpm_ = chart.bpm;
     durationSeconds_ = chart.lengthBeats * 60.0 / bpm_;
 
-    InitAudioDevice();
-    audioInitialized_ = IsAudioDeviceReady();
-    if (!audioInitialized_) {
+    // AudioDevice initializes the shared output before any transport.
+    // A failed demo decoder must not close LocalMusic's audio device.
+    if (!IsAudioDeviceReady()) {
         std::cerr << "DEMO_AUDIO_NO_DEVICE\n";
-        CloseAudioDevice();
         return false;
     }
 
@@ -114,10 +113,6 @@ void DemoTransport::Shutdown() {
     }
     // The raylib memory decoder no longer references this buffer.
     wavData_.clear();
-    if (audioInitialized_) {
-        CloseAudioDevice();
-        audioInitialized_ = false;
-    }
     finished_ = false;
 }
 

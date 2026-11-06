@@ -36,6 +36,7 @@ add_executable(locus
     src/app/screen_flow.cpp
     src/app/native_close.cpp
     src/app/demo_transport.cpp
+    src/app/audio_device.cpp
     src/app/local_music.cpp
     src/app/local_file_io.cpp
     src/app/music_picker.cpp
@@ -152,6 +153,17 @@ if(LOCUS_BUILD_TESTS)
         target_link_libraries(locus_editor_document_tests PRIVATE comdlg32 user32)
     endif()
     add_test(NAME locus_editor_document_lifecycle COMMAND locus_editor_document_tests)
+
+    # No physical device needed: a failed demo initialization cannot claim
+    # or close the audio device owned by the application.
+    add_executable(locus_audio_lifecycle_tests
+        tests/audio_lifecycle_tests.cpp
+        src/app/audio_device.cpp
+        src/app/demo_transport.cpp
+    )
+    target_compile_features(locus_audio_lifecycle_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_audio_lifecycle_tests PRIVATE locus_core raylib)
+    add_test(NAME locus_audio_device_lifecycle COMMAND locus_audio_lifecycle_tests)
 
     add_executable(locus_path_fade_tests tests/path_fade_tests.cpp)
     target_compile_features(locus_path_fade_tests PRIVATE cxx_std_17)

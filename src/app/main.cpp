@@ -3,6 +3,7 @@
 #include "core/judgement.h"
 #include "core/chart_json.h"
 #include "app/demo_transport.h"
+#include "app/audio_device.h"
 #include "app/local_music.h"
 #include "app/chart_file.h"
 #include "app/chart_playback.h"
@@ -760,6 +761,7 @@ int main(int argc, char** argv) {
     locus::core::ChartEditor editor;
     locus::app::EditorUiState editorUi;
     locus::core::TurnJudge judge(activeChart); // Stable reference across chart loads.
+    locus::app::AudioDevice audioDevice; // Outlives every borrowed music stream.
     locus::app::DemoTransport transport;
     locus::app::LocalMusic localSong;
     locus::app::ChartPlayback chartPlayback(localSong);
@@ -774,7 +776,9 @@ int main(int argc, char** argv) {
     int editorPreviewStartBeat = 0; // R returns to this preview origin.
     std::string chartTitle = "BUILT-IN DEMO";
     std::string musicError;
-    transport.Initialize(demo); // Owns the shared raylib audio output device.
+    if (!audioDevice.Initialize())
+        std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
+    transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
     transport.SetVolume(settings.volume);
     localSong.SetVolume(settings.volume);
     gameSession.SetChordWindowMs(settings.chordWindowMs);
@@ -1466,10 +1470,11 @@ int main(int argc, char** argv) {
                     draftSkin, skinUi, menuStatus);
     }
 
-    // Unload both music streams before the shared raylib audio device.
+    // Both borrowed streams must unload BEFORE closing the shared device.
     chartPlayback.Stop();
     localSong.Shutdown();
     transport.Shutdown();
+    audioDevice.Shutdown();
     if (uiFont.owned) {
         UnloadFont(uiFont.value);
     }
