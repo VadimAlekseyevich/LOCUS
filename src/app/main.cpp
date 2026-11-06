@@ -479,13 +479,34 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                            locus::app::Skin& draftSkin,
                            locus::app::SkinUi& skinUi) {
     MenuEvents events;
+    const bool mouseClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    const float scale = std::min(static_cast<float>(GetScreenWidth()) / 960.0f,
+                                 static_cast<float>(GetScreenHeight()) / 540.0f);
+    const bool validMouse = scale > 0.0f;
+    const Vector2 physical = GetMousePosition();
+    const Vector2 mouse = validMouse
+        ? Vector2{(physical.x - (GetScreenWidth() - 960.0f * scale) / 2.0f) / scale,
+                  (physical.y - (GetScreenHeight() - 540.0f * scale) / 2.0f) / scale}
+        : Vector2{-1000.0f, -1000.0f};
+
     if (state.screen == Screen::Skin) {
-        if (skinUi.editingName) {
+        if (locus::app::SkinMenuEditingText(skinUi)) {
+            // Enter and Escape belong to the field, not the menu navigation.
+            // Clicking away attempts a commit; invalid numbers keep focus.
             input.backPressed = false;
             input.homePressed = false;
             input.requestedScreen.reset();
-            locus::app::HandleSkinNameInput(draftSkin, skinUi);
-            return events;
+            if (mouseClick && validMouse) {
+                if (!locus::app::FinishSkinTextInput(draftSkin, skinUi, true))
+                    return events;
+            } else {
+                locus::app::HandleSkinTextInput(draftSkin, skinUi);
+                return events;
+            }
+        }
+        if (validMouse) {
+            locus::app::UpdateSkinSliderDrag(
+                mouse, IsMouseButtonDown(MOUSE_BUTTON_LEFT), draftSkin, skinUi);
         }
         const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
         const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
@@ -545,15 +566,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (IsKeyPressed(KEY_E)) events.editSelected = true;
     }
 
-    if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return events;
-    const float scale = std::min(static_cast<float>(GetScreenWidth()) / 960.0f,
-                                 static_cast<float>(GetScreenHeight()) / 540.0f);
-    if (scale <= 0.0f) return events;
-    const Vector2 physical = GetMousePosition();
-    const Vector2 mouse{
-        (physical.x - (GetScreenWidth() - 960.0f * scale) / 2.0f) / scale,
-        (physical.y - (GetScreenHeight() - 540.0f * scale) / 2.0f) / scale
-    };
+    if (!mouseClick || !validMouse) return events;
     const auto hit = [&](Rectangle area) {
         return CheckCollisionPointRec(mouse, area);
     };
@@ -1239,6 +1252,9 @@ int main(int argc, char** argv) {
             draftSkin = activeSkin;
             skinUi.dirty = false;
             skinUi.editingName = false;
+            skinUi.editingNumberRow = -1;
+            skinUi.numberBuffer.clear();
+            skinUi.draggingRow = -1;
         }
         if (!state.running) {
             break;
