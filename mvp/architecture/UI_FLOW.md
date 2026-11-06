@@ -5,7 +5,7 @@ The original proposed 4×4 wireframes are retained in Git history, not as an act
 
 ## 1. Screens
 
-\`\`\`text
+```text
 HOME
 ├── PLAY ── Song library + difficulty selector ── Scored PLAY ── RESULTS
 │          ├── Built-in demo               ↑        │          ├── Retry
@@ -21,7 +21,7 @@ HOME
 ├── SKIN ── Global visual profile editor
 ├── SETTINGS ── Volume, hit flash, fullscreen, chord timing, key binds
 └── EXIT ── Confirmation: Y quit / N stay
-\`\`\`
+```
 
 The separate **LISTEN** view is for playback of a local WAV/MP3 without chart judgements. The built-in demo is always available without selecting a user audio file.
 
@@ -41,7 +41,7 @@ The separate **LISTEN** view is for playback of a local WAV/MP3 without chart ju
 
 ## 3. Scored Play and Results
 
-\`\`\`text
+```text
 +---------+----------------------------+------------------+
 |         | thin white/custom frame    | ACCURACY         |
 |  empty  |                            |  87.50%          |
@@ -51,7 +51,7 @@ The separate **LISTEN** view is for playback of a local WAV/MP3 without chart ju
 |         |                            | MISS             |
 |         |                            |                  |
 +---------+----------------------------+------------------+
-\`\`\`
+```
 
 The diagram is schematic. In landscape, the square's side matches the *actual window height*; a 960×540 reference contains a centered 540×540 square. The world does **not** wrap when the trajectory reaches the white border. The path is simply clipped. The left side must stay **completely empty**, with no clipped wordmark or debug labels. On non-16:9 windows, the right HUD must fit the actually visible sidebar width. On portrait windows, the square is width-limited.
 
