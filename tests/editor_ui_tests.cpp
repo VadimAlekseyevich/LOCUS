@@ -399,8 +399,72 @@ int main() {
                 paddedUi.rangeFirst == 15 && paddedUi.rangeLast == 18,
                 "pasting aligns the first real note with the destination beat");
 
-    // DFJK absolute compass: J=up, F=down, D=left, K=right. The
-    // adjacent pairs place diagonals without an unwanted cardinal note.
+    // ROUTE consumes exactly the same four direction bindings as PLAY.
+    // Here the gameplay keys are rebound to WASD; the editor must author
+    // the same diagonal as Up+Right rather than using hard-coded J+K.
+    GameSettings rebound;
+    std::string bindError;
+    ok &= Check(rebound.Rebind(GameAction::Up, KEY_W, bindError) &&
+                rebound.Rebind(GameAction::Right, KEY_D, bindError) &&
+                rebound.Rebind(GameAction::Down, KEY_S, bindError) &&
+                rebound.Rebind(GameAction::Left, KEY_A, bindError),
+                "all four gameplay direction bindings can be customized");
+    ChartEditor sharedKeys;
+    EditorUiState sharedUi;
+    EditorControls sharedChord;
+    sharedChord.directionKeysHeld =
+        EditorDirectionMask({true, true, false, false}); // W + D
+    sharedChord.directionChordWindowSeconds = rebound.chordWindowMs / 1000.0f;
+    sharedChord.elapsedSeconds = 0.016f;
+    const auto sharedApplied =
+        ApplyEditorControls(sharedKeys, sharedUi, sharedChord);
+    ok &= Check(sharedApplied.changedChart &&
+                sharedKeys.SelectedTurn() &&
+                SampleRouteStep(sharedKeys.Data().route, 0).heading ==
+                    Heading::UpRight &&
+                EditorDirectionShortcut(rebound, 12u) == "W+D",
+                "rebound gameplay W+D inserts an UpRight editor note and updates label");
+
+    // When Ctrl/Shift is introduced halfway through a chord, an unfinished
+    // direction must be canceled rather than inserting a stray note.
+    ChartEditor modified;
+    EditorUiState modifiedUi;
+    EditorControls singleDirection;
+    singleDirection.directionKeysHeld =
+        EditorDirectionMask({true, false, false, false}); // rebound W
+    singleDirection.directionChordWindowSeconds = 0.16f;
+    singleDirection.elapsedSeconds = 0.016f;
+    ApplyEditorControls(modified, modifiedUi, singleDirection);
+    EditorControls withModifier;
+    withModifier.directionKeysSuppressed = true;
+    ApplyEditorControls(modified, modifiedUi, withModifier);
+    ApplyEditorControls(modified, modifiedUi, singleDirection);
+    singleDirection.directionKeysHeld = 0;
+    ApplyEditorControls(modified, modifiedUi, singleDirection);
+    ok &= Check(!modified.SelectedTurn(),
+                "modifier navigation cancels unfinished gameplay-key placement");
+
+    // The editor's single-key grace window follows the gameplay option.
+    ChartEditor customChordTime;
+    EditorUiState chordTimeUi;
+    EditorControls longWindow;
+    longWindow.directionKeysHeld = EditorDirectionMask({true, false, false, false});
+    longWindow.directionChordWindowSeconds = 0.16f;
+    longWindow.elapsedSeconds = 0.03f;
+    for (int frame = 0; frame < 5; ++frame)
+        ApplyEditorControls(customChordTime, chordTimeUi, longWindow);
+    ok &= Check(!customChordTime.SelectedTurn(),
+                "160 ms game chord window also delays single editor key placement");
+    for (int frame = 0; frame < 2; ++frame)
+        ApplyEditorControls(customChordTime, chordTimeUi, longWindow);
+    ok &= Check(customChordTime.SelectedTurn() &&
+                SampleRouteStep(customChordTime.Data().route, 0).heading ==
+                    Heading::Up,
+                "single direction places once after configurable game chord window");
+
+    // Absolute compass masks represent game Left/Down/Up/Right regardless
+    // of which physical keys are bound in Settings.
+    // The adjacent pairs place diagonals without an unwanted cardinal note.
     const struct { unsigned keys; Heading heading; } diagonals[] = {
         {1u | 4u, Heading::UpLeft}, {4u | 8u, Heading::UpRight},
         {1u | 2u, Heading::DownLeft}, {2u | 8u, Heading::DownRight}
