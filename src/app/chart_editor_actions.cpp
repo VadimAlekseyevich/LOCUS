@@ -280,8 +280,11 @@ EditorControls PollEditorControls(const GameSettings& settings,
     input.zoomOut = (available(KEY_MINUS) && IsKeyPressed(KEY_MINUS)) ||
                     (available(KEY_KP_SUBTRACT) && IsKeyPressed(KEY_KP_SUBTRACT)) ||
                     (available(KEY_LEFT_BRACKET) && IsKeyPressed(KEY_LEFT_BRACKET));
-    input.snapMore = plain(KEY_PERIOD);
-    input.snapLess = plain(KEY_COMMA);
+    // With the new DFJK default, vertical arrows adjust placement
+    // density while horizontal arrows move between timeline grid lines.
+    // Rebinding an arrow to gameplay suppresses this editor shortcut.
+    input.snapMore = plain(KEY_PERIOD) || plain(KEY_UP);
+    input.snapLess = plain(KEY_COMMA) || plain(KEY_DOWN);
     input.removeTurn = IsKeyPressed(KEY_BACKSPACE) ||
                        (available(KEY_DELETE) && IsKeyPressed(KEY_DELETE));
     input.headingLeft = plain(KEY_Q);
