@@ -15,6 +15,7 @@
 #include "app/editor_document.h"
 #include "app/editor_session.h"
 #include "app/editor_file_actions.h"
+#include "app/listen_session.h"
 #include "app/visual_style.h"
 #include "app/route_renderer.h"
 #include "app/game_session.h"
@@ -815,6 +816,10 @@ int main(int argc, char** argv) {
     };
 
     locus::app::QuitMediaCoordinator quitMedia;
+    locus::app::ListenSession listener{
+        localSong, loadedAudioPath, musicError,
+        locus::app::ChooseLocalMusicFile, MonotonicSeconds
+    };
 
     while (state.running) {
         const bool wasQuitConfirmation = state.quitConfirmation;
@@ -1002,26 +1007,8 @@ int main(int argc, char** argv) {
         }
         if (input.chooseMusicPressed &&
             (state.screen == Screen::Home || state.screen == Screen::Listen)) {
-            // File dialog is modal. Freeze playback while Windows owns focus,
-            // and preserve the current song if selection fails or is canceled.
-            const bool resume = state.screen == Screen::Listen &&
-                                localSong.Playing() && !localSong.Paused();
-            if (resume) localSong.Pause(now);
-            const auto picked = locus::app::ChooseLocalMusicFile();
-            now = MonotonicSeconds();
-            if (!picked.path.empty()) {
-                if (localSong.LoadFromFile(picked.path)) {
-                    musicError.clear();
-                    loadedAudioPath = picked.path;
-                    state.screen = Screen::Listen;
-                    loadedNewSong = true;
-                } else {
-                    musicError = localSong.Error();
-                }
-            } else if (!picked.canceled) {
-                musicError = picked.error;
-            }
-            if (resume && !loadedNewSong) localSong.Resume(now);
+            loadedNewSong = listener.ChooseAudio(state.screen, now);
+            if (loadedNewSong) state.screen = Screen::Listen;
         }
 
         bool loadedNewChart = false;
@@ -1105,19 +1092,10 @@ int main(int argc, char** argv) {
             } else if (input.pausePressed) {
                 gameSession.TogglePause(customChart, now);
             }
-        } else if (state.screen == Screen::Listen) {
-            if (loadedNewSong || input.restartPressed ||
-                (input.startPressed && localSong.Finished())) {
-                localSong.Start(now);
-            } else if (input.pausePressed) {
-                if (localSong.Paused()) localSong.Resume(now);
-                else localSong.Pause(now);
-            }
         }
-
-        if (state.screen == Screen::Listen) {
-            localSong.Update(now);
-        }
+        if (state.screen == Screen::Listen)
+            listener.Update(loadedNewSong, input.restartPressed,
+                            input.startPressed, input.pausePressed, now);
         if (state.screen == Screen::Editor)
             editorSession.UpdatePreview(now);
         if (state.screen == Screen::Play) {

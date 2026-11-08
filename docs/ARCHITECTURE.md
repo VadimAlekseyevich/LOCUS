@@ -20,6 +20,7 @@ Reviewed: 2026-11-06. Scope: current Windows/raylib rhythm game, not prospective
 - Chart v2 timestamps are authoritative in song milliseconds; editor snapping and visualization do not rewrite timing.
 - Movement speed is independent of BPM, snap subdivisions and heading; diagonals are Euclidean unit steps.
 - **2026-11-06:** Visible-route range sampling replaces repeated full-history scans for each preview segment. Random-access geometry remains available. The dense 240-tick window regression compares batched and standalone samples.
+- **2026-11-08:** `ListenSession` owns the standalone WAV/MP3 picker and listening controls. Canceled/failed selections leave the old audio intact; clock timestamps are refreshed after native dialogs. Headless tests cover the no-device and canceled-dialog paths.
 - **2026-11-08:** `EditorFileActions` coordinates New/Open/Attach/Save and library editing with injected native file pickers. Opening or decoding failures preserve the active draft; successful Save still imports an installed library copy. Tests cover cancel, missing chart/audio, rejected save and New Draft cleanup.
 - **2026-11-08:** `EditorSession` owns ROUTE input/preview interaction and the atomic preparation of Editor → TEST. Preview follows the existing audio-time clock; headless tests cover invalid song duration, playhead boundaries and unavailable audio without changing the current scored chart.
 - **2026-11-08:** Library import and browser refresh are coordinated by `library_browser.*`: refresh keeps a selected difficulty by its installed path (even if library sorting changes), and failed imports retain the previous selection/status. Native file dialogs remain in the UI composition.
@@ -40,7 +41,7 @@ The chart JSON is the sole publication point. Imported audio is immutable and ch
 
 ### P1 — Reduce remaining `main.cpp` session orchestration
 
-Editor persistence, screen transitions and the quit-modal audio policy have been extracted and covered by headless tests. `main.cpp` now concentrates on application composition, global input, screen selection and per-frame PLAY/Listen actions. Editor preview/TEST and editor file actions have separate coordinators, with injected native dialog operations and dedicated CTests. Deeper changes to cross-screen input dispatch should be justified by a real feature or regression, not a target line count.
+Editor persistence, screen transitions and the quit-modal audio policy have been extracted and covered by headless tests. `main.cpp` now concentrates on application composition, global input, screen selection and PLAY actions. Editor preview/TEST, editor file actions and standalone listening have separate coordinators with injected native dialogs and dedicated CTests. Remaining Skin profile dialogs can be similarly isolated; deeper cross-screen input rewrites should be justified by actual regressions.
 
 ### P2 — Validate real-device audio lifecycle
 

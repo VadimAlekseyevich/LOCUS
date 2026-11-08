@@ -48,6 +48,7 @@ add_executable(locus
     src/app/editor_document.cpp
     src/app/editor_session.cpp
     src/app/editor_file_actions.cpp
+    src/app/listen_session.cpp
     src/app/chart_playback.cpp
     src/app/game_session.cpp
     src/app/song_library.cpp
@@ -148,6 +149,18 @@ if(LOCUS_BUILD_TESTS)
     # dependency: invalid transport states must preserve game chart/session.
     # Native dialogs are injected; missing audio and failed/canceled selection
     # cannot erase an existing draft, chart path or browser state.
+    # Listening picker can be canceled or fail without losing loaded-song
+    # identity, and all transport actions use post-dialog monotonic time.
+    add_executable(locus_listen_session_tests
+        tests/listen_session_tests.cpp
+        src/app/listen_session.cpp
+        src/app/local_music.cpp
+        src/app/local_file_io.cpp
+    )
+    target_compile_features(locus_listen_session_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_listen_session_tests PRIVATE locus_core raylib)
+    add_test(NAME locus_listening_picker_lifecycle COMMAND locus_listen_session_tests)
+
     add_executable(locus_editor_file_actions_tests
         tests/editor_file_actions_tests.cpp
         src/app/editor_file_actions.cpp
