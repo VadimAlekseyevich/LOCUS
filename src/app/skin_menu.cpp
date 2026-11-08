@@ -383,7 +383,7 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
 
     Panel({52, 181, 519, 276});
     Panel({590, 181, 329, 276});
-    if (ui.page != 2) {
+    if (ui.page == 0 || ui.page == 1) {
         for (int row = 0; row < RowCount(ui.page); ++row) {
             Label(font, RowName(ui.page, row), 70.0f,
                    206.0f + row * RowPitch(ui.page),
