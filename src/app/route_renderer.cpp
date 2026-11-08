@@ -52,11 +52,19 @@ void RibbonVertex(Vector2 point, Color tint, float opacity) {
 
 void DrawRibbonLayer(const std::vector<PathRibbonRow>& rows,
                      Color tint, float scale) {
-    // Match raylib's own front-facing quad winding (e.g. DrawRectangle).
-    // The former reversed triangles were back-face culled on Windows,
-    // leaving ONLY the junction dots visible.
-    rlSetTexture(0);
+    // Match raylib's DrawRectangleGradientEx exactly: same shape texture,
+    // front-face vertex order and UV coordinates, with our own taper/alpha.
+    // The previous reversed triangles could be back-face culled, making the
+    // entire path invisible while the separately drawn turn dots remained.
+    const Texture2D shapeTexture = GetShapesTexture();
+    const Rectangle uvRect = GetShapesTextureRectangle();
+    const float tx0 = uvRect.x / shapeTexture.width;
+    const float ty0 = uvRect.y / shapeTexture.height;
+    const float tx1 = (uvRect.x + uvRect.width) / shapeTexture.width;
+    const float ty1 = (uvRect.y + uvRect.height) / shapeTexture.height;
+    rlSetTexture(shapeTexture.id);
     rlBegin(RL_QUADS);
+    rlNormal3f(0.0f, 0.0f, 1.0f);
     // Draw far-to-near, as the old renderer did. When a route retraces
     // itself, the part closer to the player should remain visually on top.
     for (std::size_t i = rows.size() - 1; i > 0; --i) {
@@ -65,9 +73,13 @@ void DrawRibbonLayer(const std::vector<PathRibbonRow>& rows,
         if (to.startsRun || (from.opacity <= 0.0f && to.opacity <= 0.0f))
             continue;
         const PathRibbonQuad quad = MakePathRibbonQuad(from, to, scale);
+        rlTexCoord2f(tx0, ty0);
         RibbonVertex(quad.vertices[0], tint, from.opacity);
+        rlTexCoord2f(tx0, ty1);
         RibbonVertex(quad.vertices[1], tint, from.opacity);
+        rlTexCoord2f(tx1, ty1);
         RibbonVertex(quad.vertices[2], tint, to.opacity);
+        rlTexCoord2f(tx1, ty0);
         RibbonVertex(quad.vertices[3], tint, to.opacity);
     }
     rlEnd();
