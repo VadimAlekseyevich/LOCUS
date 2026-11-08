@@ -36,6 +36,7 @@ add_executable(locus
     src/app/screen_flow.cpp
     src/app/session_transition.cpp
     src/app/quit_media.cpp
+    src/app/editor_discard_guard.cpp
     src/app/native_close.cpp
     src/app/demo_transport.cpp
     src/app/audio_device.cpp
@@ -175,6 +176,15 @@ if(LOCUS_BUILD_TESTS)
 
     # Exit modal policy is pure; test playback state changes without opening
     # a native window or relying on an actual sound device.
+    # Editor discard confirmation is independent of native keyboard polling.
+    add_executable(locus_editor_discard_tests
+        tests/editor_discard_tests.cpp
+        src/app/editor_discard_guard.cpp
+    )
+    target_compile_features(locus_editor_discard_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_editor_discard_tests PRIVATE locus_core raylib)
+    add_test(NAME locus_editor_unsaved_discard_guard COMMAND locus_editor_discard_tests)
+
     add_executable(locus_quit_media_tests
         tests/quit_media_tests.cpp
         src/app/quit_media.cpp

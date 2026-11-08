@@ -26,6 +26,7 @@
 #include "app/screen_flow.h"
 #include "app/session_transition.h"
 #include "app/quit_media.h"
+#include "app/editor_discard_guard.h"
 #include "app/viewport.h"
 
 #include "raylib.h"
@@ -52,6 +53,7 @@ using locus::app::MenuEvents;
 using locus::app::HandleMenuInput;
 using locus::app::Screen;
 using locus::app::ScreenName;
+using locus::app::EditorPending;
 using locus::app::kSmokeFrames;
 using locus::app::GameplayView;
 using locus::app::GameplayCamera;
@@ -72,8 +74,6 @@ double MonotonicSeconds() {
     static const auto epoch = Clock::now();
     return std::chrono::duration<double>(Clock::now() - epoch).count();
 }
-
-enum class EditorPending { None, Home, NewDraft, OpenChart };
 
 bool HasArgument(int argc, char** argv, const char* argument) {
     return argc == 2 && std::strcmp(argv[1], argument) == 0;
@@ -773,7 +773,7 @@ int main(int argc, char** argv) {
     std::wstring editorChartPath;
     std::wstring editorAudioPath;
     std::wstring loadedAudioPath; // Reuse already-decoded audio for each difficulty.
-    EditorPending editorPending = EditorPending::None;
+    locus::app::EditorDiscardGuard editorDiscard;
     std::string editorStatus = "O ATTACH AUDIO  |  CTRL+S SAVE  |  T TEST PLAY";
     int editorPreviewStartBeat = 0; // R returns to this preview origin.
     std::string chartTitle = "BUILT-IN DEMO";
@@ -933,45 +933,11 @@ int main(int argc, char** argv) {
         }
         const Screen previousScreen = state.screen;
         if (previousScreen == Screen::Editor && !wasQuitConfirmation) {
-            // The OS X / Alt+F4 triggers the universal exit modal, which
-            // already warns about dirty charts. Never stack two prompts.
-            if (input.closeRequested) {
-                editorPending = EditorPending::None;
-            } else if (editorPending != EditorPending::None) {
-                const EditorPending requested = editorPending;
-                const bool approve = IsKeyPressed(KEY_Y);
-                const bool cancel = IsKeyPressed(KEY_N) ||
-                                    IsKeyPressed(KEY_ESCAPE);
-                if (approve) {
-                    editorPending = EditorPending::None;
-                    if (requested == EditorPending::Home) input.homePressed = true;
-                    if (requested == EditorPending::NewDraft) input.editorNew = true;
-                    if (requested == EditorPending::OpenChart) input.editorOpen = true;
-                } else if (cancel) {
-                    editorPending = EditorPending::None;
-                    editorStatus = "CHANGES KEPT - CTRL+S TO SAVE";
-                }
-                if (!approve) {
-                    input.homePressed = false;
-                    input.backPressed = false;
-                    input.editorNew = false;
-                    input.editorOpen = false;
-                    input.requestedScreen.reset();
-                }
-            } else if (editor.Dirty() &&
-                       (input.homePressed || input.backPressed ||
-                        input.editorNew || input.editorOpen ||
-                        (input.requestedScreen &&
-                         *input.requestedScreen != Screen::Editor))) {
-                editorPending = input.editorNew ? EditorPending::NewDraft
-                              : input.editorOpen ? EditorPending::OpenChart
-                                                 : EditorPending::Home;
-                input.homePressed = false;
-                input.backPressed = false;
-                input.editorNew = false;
-                input.editorOpen = false;
-                input.requestedScreen.reset();
-            }
+            const auto outcome = editorDiscard.Handle(
+                input, editor.Dirty(), IsKeyPressed(KEY_Y),
+                IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE));
+            if (outcome == locus::app::EditorDiscardOutcome::ChangesKept)
+                editorStatus = "CHANGES KEPT - CTRL+S TO SAVE";
         }
         UpdateState(state, input, smokeWindow);
         if (state.quitConfirmation) input = FrameInput{}; // No actions beneath dialog.
@@ -998,7 +964,7 @@ int main(int argc, char** argv) {
         if (state.screen == Screen::Editor &&
             previousScreen == Screen::Editor &&
             !state.quitConfirmation &&
-            editorPending == EditorPending::None) {
+            editorDiscard.Pending() == EditorPending::None) {
             const int beforeBeat = editor.SelectedBeat();
             const int beforeTicksPerBeat = editor.Data().route.ticksPerBeat;
             // Use the fractional transport beat for timeline hit testing,
@@ -1417,7 +1383,7 @@ int main(int argc, char** argv) {
                                     speedNoticeUntil};
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
-                    editorStatus, editorPending, musicError, renderNow,
+                    editorStatus, editorDiscard.Pending(), musicError, renderNow,
                     library, libraryUi, settings, settingsUi,
                     draftSkin, skinUi, menuStatus);
     }
