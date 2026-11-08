@@ -168,10 +168,20 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   const locus::app::Skin& draftSkin,
                   const locus::app::SkinUi& skinUi,
                   const std::string& menuStatus,
-                  float screenFadeOpacity) {
+                  float screenFadeOpacity,
+                  const ImageAssetTexture* background) {
     BeginDrawing();
     ClearBackground(state.screen == Screen::Play
                         ? gameplay.skin.background : kBackground);
+    // Draw in physical pixels before the virtual UI camera: cover fills any
+    // aspect ratio without distortion and crops the excess at the edges.
+    if (background && background->Ready() &&
+        (state.screen == Screen::Play || state.screen == Screen::Results ||
+         state.screen == Screen::SongSelect)) {
+        const unsigned char veil = state.screen == Screen::Play ? 160
+            : state.screen == Screen::SongSelect ? 216 : 190;
+        background->DrawCover(GetScreenWidth(), GetScreenHeight(), veil);
+    }
 
     // Menus/editor retain their original 960x540 16:9 virtual viewport.
     // Gameplay instead scales its 540x540 playfield to the actual window

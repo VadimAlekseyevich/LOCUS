@@ -14,6 +14,7 @@
 #include "app/screen_fade_transition.h"
 #include "app/app_smoke_checks.h"
 #include "app/app_frame_renderer.h"
+#include "app/image_asset_texture.h"
 #include "app/menu_controller.h"
 #include "app/editor_session.h"
 #include "app/editor_file_actions.h"
@@ -250,6 +251,7 @@ int main(int argc, char** argv) {
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
     locus::app::MenuMusicPreview menuMusic;
     menuMusic.Initialize(demo);
+    locus::app::ImageAssetTexture songBackground;
     locus::app::AudioVolumeFade gameplayVolume;
     gameplayVolume.Full();
     bool drainingGameplayAudio = false;
@@ -547,6 +549,20 @@ int main(int argc, char** argv) {
                                     adjustmentNoticeUntil,
                                     adjustmentNotice.c_str(),
                                     playOutro.Frame(renderNow)};
+        // Artwork lives at Song Set scope, independent of difficulty/BPM.
+        // Cached GPU resources change only when the selected image changes.
+        std::filesystem::path artPath;
+        if (visibleState.screen == Screen::SongSelect ||
+            ((visibleState.screen == Screen::Play ||
+              visibleState.screen == Screen::Results) && customChart)) {
+            if (libraryUi.selectedSong > 0 &&
+                libraryUi.selectedSong <= static_cast<int>(library.Songs().size()))
+                artPath = library.Songs()[static_cast<std::size_t>(
+                    libraryUi.selectedSong - 1)].backgroundImage;
+        }
+        std::string imageError;
+        if (!songBackground.Sync(artPath, imageError) && !imageError.empty())
+            libraryUi.notice = "BACKGROUND FAILED: " + imageError;
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
                     editorStatus, editorDiscard.Pending(),
@@ -554,13 +570,15 @@ int main(int argc, char** argv) {
                     musicError, renderNow,
                     library, libraryUi, settings, settingsUi,
                     draftSkin, skinUi, menuStatus,
-                    state.quitConfirmation ? 0.0f : fadeFrame.opacity);
+                    state.quitConfirmation ? 0.0f : fadeFrame.opacity,
+                    &songBackground);
     }
 
     persistHotkeySkin(); // Flush pending adjustments on exit.
     // Both borrowed streams must unload BEFORE closing the shared device.
     chartPlayback.Stop();
     menuMusic.Shutdown();
+    songBackground.Shutdown(); // GPU texture before CloseWindow.
     localSong.Shutdown();
     transport.Shutdown();
     audioDevice.Shutdown();
