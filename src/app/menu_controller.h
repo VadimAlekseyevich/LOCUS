@@ -13,6 +13,11 @@ struct MenuEvents {
     bool refresh = false;
     bool playSelected = false;
     bool editSelected = false;
+    bool newDifficulty = false;
+    bool duplicateDifficulty = false;
+    bool trashDifficulty = false;
+    bool trashSongSet = false;
+    bool restoreDeleted = false;
     bool saveSettings = false;
     bool toggleFullscreen = false;
     bool applyDisplaySettings = false;

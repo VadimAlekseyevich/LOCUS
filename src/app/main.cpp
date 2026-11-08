@@ -993,7 +993,75 @@ int main(int argc, char** argv) {
                     libraryUi.notice = "IMPORT FAILED: " + selected.error;
                 }
             }
-            if (menuEvents.editSelected) {
+            if (menuEvents.restoreDeleted) {
+                if (!library.RestoreLastDeleted(musicError))
+                    libraryUi.notice = "RESTORE FAILED: " + musicError;
+                else
+                    libraryUi.notice = "RESTORED FROM TRASH";
+                libraryUi.SelectSong(libraryUi.selectedSong, library);
+            }
+            if (menuEvents.trashDifficulty) {
+                if (const auto* selected = libraryUi.Selected(library)) {
+                    const auto oldSong = libraryUi.selectedSong;
+                    const auto oldChart = libraryUi.selectedChart;
+                    const auto file = selected->file;
+                    if (!library.TrashDifficulty(file, musicError))
+                        libraryUi.notice = "DELETE FAILED: " + musicError;
+                    else {
+                        libraryUi.SelectSong(oldSong, library);
+                        libraryUi.SelectChart(oldChart, library);
+                        libraryUi.notice = "DIFFICULTY MOVED TO TRASH - U RESTORE";
+                    }
+                }
+            }
+            if (menuEvents.trashSongSet) {
+                if (libraryUi.selectedSong > 0 &&
+                    libraryUi.selectedSong <=
+                        static_cast<int>(library.Songs().size())) {
+                    const auto folder =
+                        library.Songs()[libraryUi.selectedSong - 1].folder;
+                    if (!library.TrashSongSet(folder, musicError))
+                        libraryUi.notice = "DELETE FAILED: " + musicError;
+                    else {
+                        libraryUi.SelectSong(libraryUi.selectedSong, library);
+                        libraryUi.notice = "SONG SET MOVED TO TRASH - U RESTORE";
+                    }
+                }
+            }
+            if (menuEvents.duplicateDifficulty) {
+                if (const auto* selected = libraryUi.Selected(library)) {
+                    const auto original = selected->file;
+                    std::filesystem::path copy;
+                    if (!library.DuplicateDifficulty(original, copy, musicError))
+                        libraryUi.notice = "COPY FAILED: " + musicError;
+                    else {
+                        int s = -1, c = -1;
+                        if (library.FindChart(copy, s, c)) {
+                            libraryUi.SelectSong(s + 1, library);
+                            libraryUi.SelectChart(c, library);
+                        }
+                        libraryUi.notice = "DIFFICULTY COPIED";
+                    }
+                }
+            }
+            if (menuEvents.newDifficulty) {
+                if (libraryUi.selectedSong > 0 &&
+                    libraryUi.selectedSong <=
+                        static_cast<int>(library.Songs().size())) {
+                    const auto& set = library.Songs()[libraryUi.selectedSong - 1];
+                    if (!set.managed) {
+                        libraryUi.notice = "IMPORT LEGACY CHART AS A NEW SONG SET FIRST";
+                    } else if (editorFiles.NewDifficultyFromLibrary(
+                                   set.audioFile.wstring(), set.folder.wstring(),
+                                   musicError)) {
+                        state.screen = Screen::Editor;
+                    } else {
+                        libraryUi.notice = "NEW DIFFICULTY FAILED: " + musicError;
+                    }
+                } else {
+                    libraryUi.notice = "SELECT AN INSTALLED SONG FIRST";
+                }
+            } else if (menuEvents.editSelected) {
                 const auto* selected = libraryUi.Selected(library);
                 if (!selected) {
                     state.screen = Screen::Editor; // Demo uses the existing draft.

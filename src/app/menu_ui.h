@@ -8,6 +8,8 @@
 
 namespace locus::app {
 
+enum class LibraryDeletePending { None, Difficulty, SongSet };
+
 struct SongSelectUi {
     // 0 = the built-in demo, 1..N = permanent user Songs.
     int selectedSong = 0;
@@ -15,6 +17,7 @@ struct SongSelectUi {
     int firstVisibleSong = 0;
     int firstVisibleChart = 0;
     std::string notice;
+    LibraryDeletePending pendingDelete = LibraryDeletePending::None;
 
     void SelectSong(int index, const SongLibrary& songs);
     void MoveSong(int delta, const SongLibrary& songs);
@@ -41,6 +44,7 @@ Rectangle LibraryImportButton();
 Rectangle LibraryRefreshButton();
 Rectangle LibraryPlayButton();
 Rectangle LibraryEditButton();
+Rectangle LibraryNewDifficultyButton();
 Rectangle SettingsBindingButton(int action);
 Rectangle SettingsGameTab();
 Rectangle SettingsDisplayTab();

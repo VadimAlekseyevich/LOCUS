@@ -54,8 +54,9 @@ Rectangle LibraryChartRow(int row) {
 }
 Rectangle LibraryImportButton() { return {465, 82, 142, 34}; }
 Rectangle LibraryRefreshButton() { return {618, 82, 147, 34}; }
-Rectangle LibraryPlayButton() { return {504, 458, 192, 43}; }
-Rectangle LibraryEditButton() { return {706, 458, 199, 43}; }
+Rectangle LibraryPlayButton() { return {501, 458, 125, 43}; }
+Rectangle LibraryEditButton() { return {637, 458, 122, 43}; }
+Rectangle LibraryNewDifficultyButton() { return {770, 458, 135, 43}; }
 Rectangle SettingsBindingButton(int index) {
     return {736.0f, 192.0f + 39.0f * index, 167.0f, 33.0f};
 }
@@ -168,13 +169,25 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     } else {
         Label(font, "BUILT-IN CLICK TRACK / CLASSIC ROUTE", 501, 402, 16, kMuted);
     }
-    Button(font, LibraryPlayButton(), "PLAY  ENTER", kMint);
-    Button(font, LibraryEditButton(), "EDIT CHART  E", kViolet);
-    Label(font, "UP/DOWN SONGS  LEFT/RIGHT CHARTS  H/ESC BACK",
-          54, 463, 14, kMuted);
+    Button(font, LibraryPlayButton(), "PLAY", kMint);
+    Button(font, LibraryEditButton(), "EDIT", kViolet);
+    Button(font, LibraryNewDifficultyButton(), "NEW  N", kGold);
+    Label(font, "N NEW  CTRL+D COPY  DEL DIFFICULTY", 54, 421, 13, kMuted);
+    Label(font, "SHIFT+DEL SONG  U RESTORE  ESC BACK", 54, 442, 13, kMuted);
     Label(font, Clip(ui.notice, 100), 54, 517, 13,
           ui.notice.find("FAILED") == std::string::npos ? kGold
               : Color{240, 138, 142, 255});
+    if (ui.pendingDelete != LibraryDeletePending::None) {
+        DrawRectangleRounded({164, 200, 636, 167}, 0.08f, 8,
+                             Color{22, 27, 40, 252});
+        DrawRectangleRoundedLinesEx({164, 200, 636, 167}, 0.08f, 8,
+                                    2.5f, Color{240, 138, 142, 255});
+        Label(font, ui.pendingDelete == LibraryDeletePending::SongSet
+              ? "MOVE ENTIRE SONG SET TO TRASH?"
+              : "MOVE THIS DIFFICULTY TO TRASH?",
+              195, 234, 23, kGold);
+        Label(font, "Y CONFIRM     N / ESC CANCEL", 225, 305, 20, kText);
+    }
 }
 
 void DrawSettingsMenu(Font font, const GameSettings& settings,
