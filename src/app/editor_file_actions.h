@@ -2,6 +2,7 @@
 
 #include "app/music_picker.h"
 
+#include <filesystem>
 #include <string>
 
 namespace locus::core { class ChartEditor; }
@@ -47,6 +48,10 @@ public:
     void Open(double& now, std::string& error);
     void AttachAudio(double& now);
     void Save(bool saveAs, double& now);
+
+    // Managed set of the current installed chart, or a new unsaved difficulty.
+    // Empty for an unrelated external chart / an unattached new song.
+    std::filesystem::path ActiveSetFolder() const;
 
     // The library already selected a specific installed difficulty. No
     // native dialog; caller decides whether to navigate to Editor.

@@ -49,6 +49,7 @@ add_executable(locus
     src/app/editor_document.cpp
     src/app/editor_session.cpp
     src/app/editor_file_actions.cpp
+    src/app/editor_set_controller.cpp
     src/app/listen_session.cpp
     src/app/chart_playback.cpp
     src/app/game_session.cpp
@@ -171,6 +172,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_editor_file_actions_tests
         tests/editor_file_actions_tests.cpp
         src/app/editor_file_actions.cpp
+        src/app/editor_set_controller.cpp
         src/app/editor_document.cpp
         src/app/music_picker.cpp
         src/app/local_music.cpp

@@ -33,12 +33,12 @@ void EditorFileActions::NewDraft() {
 
 bool EditorFileActions::OpenFromLibrary(const std::wstring& chartFile,
                                         std::string& error) {
-    newDifficultySet_.clear();
     context_.preview.Stop();
     if (!LoadDraftFromDisk(
             chartFile, context_.editor, context_.music,
             context_.chartPath, context_.audioPath, error))
         return false;
+    newDifficultySet_.clear();
     context_.loadedAudioPath = context_.audioPath;
     context_.ui = EditorUiState{};
     context_.previewStartBeat = context_.editor.SelectedBeat();
@@ -137,6 +137,20 @@ bool EditorFileActions::NewDifficultyFromLibrary(
     context_.status = "NEW DIFFICULTY - CTRL+S TO ADD TO SONG SET";
     error.clear();
     return true;
+}
+
+std::filesystem::path EditorFileActions::ActiveSetFolder() const {
+    if (!newDifficultySet_.empty())
+        return std::filesystem::path(newDifficultySet_);
+    int song = -1, chart = -1;
+    if (!context_.chartPath.empty() &&
+        context_.library.FindChart(
+            std::filesystem::path(context_.chartPath), song, chart) &&
+        song >= 0 &&
+        song < static_cast<int>(context_.library.Songs().size()) &&
+        context_.library.Songs()[static_cast<std::size_t>(song)].managed)
+        return context_.library.Songs()[static_cast<std::size_t>(song)].folder;
+    return {};
 }
 
 void EditorFileActions::Save(bool saveAs, double& now) {
