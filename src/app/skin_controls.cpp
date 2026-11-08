@@ -102,8 +102,13 @@ bool SetSkinNumber(Skin& skin, int page, int row, int selectedColor,
             default: return false;
         }
     } else {
-        // Sliders are rounded to two decimals; typing retains more precision.
-        if (fromSlider) value = std::round(value * 100.0) / 100.0;
+        // All skin values have a predictable editable precision. Preview
+        // duration is integral milliseconds; the other numeric properties
+        // support hundredths. Quantize before converting to float to prevent
+        // values such as "1.8200001" after dragging a slider.
+        value = page == 0 && row == 0
+            ? std::round(value)
+            : std::round(value * 100.0) / 100.0;
         const float number = static_cast<float>(value);
         if (page == 0) {
             switch (row) {
@@ -144,10 +149,19 @@ bool ParseSkinNumber(std::string_view text, double& result) noexcept {
 }
 
 std::string FormatSkinNumber(double value) {
+    if (!std::isfinite(value)) return "INVALID";
+    // Fixed decimals avoid exposing binary-float noise (1.8200001). Strip
+    // insignificant zeroes so integer settings are shown as "800", not
+    // "800.00"; never display negative zero after rounding.
+    const double rounded = std::round(value * 100.0) / 100.0;
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
-    stream << std::setprecision(8) << value;
-    return stream.str();
+    stream << std::fixed << std::setprecision(2)
+           << (rounded == 0.0 ? 0.0 : rounded);
+    std::string result = stream.str();
+    while (!result.empty() && result.back() == '0') result.pop_back();
+    if (!result.empty() && result.back() == '.') result.pop_back();
+    return result;
 }
 
 SkinHsv SkinColorToHsv(Color color) noexcept {

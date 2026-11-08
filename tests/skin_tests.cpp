@@ -111,6 +111,11 @@ int main() {
     check(GetSkinNumberRange(0, 0, limits) &&
           limits.sliderMax == 2000.0 && limits.inputMax == 10000.0,
           "lookahead slider range and extended typed limit differ");
+    check(FormatSkinNumber(1.8200001) == "1.82" &&
+          FormatSkinNumber(2.00000001) == "2" &&
+          FormatSkinNumber(800.0f) == "800" &&
+          FormatSkinNumber(-0.000001) == "0",
+          "skin UI hides floating-point residue and trailing zeroes");
     check(GetSkinNumberRange(0, 7, limits) &&
           limits.sliderMin == 0.0 && limits.sliderMax == 6.0 &&
           limits.inputMin == 0.0 && limits.inputMax == 12.0,
@@ -154,9 +159,16 @@ int main() {
           StepForFixedSpeed(135.0f, 120.0, 0) == 0.0f,
           "invalid chart timing does not generate invalid camera step");
     check(SetSkinNumber(edited, 0, 0, 1, 4800.25, false, error) &&
-          edited.lookaheadMs == 4800.25f,
+          edited.lookaheadMs == 4800.0f,
           "typed path horizon may exceed the slider's maximum");
     check(edited.Valid(error), "extended input still passes skin serialization validation");
+    check(SetSkinNumber(edited, 0, 2, 1, 1.8200001, false, error) &&
+          std::abs(edited.outlineScale - 1.82f) < 0.00001f &&
+          FormatSkinNumber(edited.outlineScale) == "1.82",
+          "typed outline scale uses hundredths and renders without noise");
+    check(SetSkinNumber(edited, 0, 0, 1, 845.67, true, error) &&
+          edited.lookaheadMs == 846.0f,
+          "preview slider always rounds to whole milliseconds");
     check(GetSkinNumber(edited, 0, 7, 1) == kDefaultReverseCapScale &&
           SetSkinNumber(edited, 0, 7, 1, 5.5, false, error) &&
           edited.reverseCapScale == 5.5f &&
