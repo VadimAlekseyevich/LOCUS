@@ -39,10 +39,12 @@ int main() {
                     {270.0f, 604.0f}, 720, 1080) ==
                     QuitDialogChoice::Confirm,
                 "portrait menu keeps quit confirmation clickable");
+    // Gameplay's 720-pixel square is also centered vertically inside
+    // the 1080-pixel window: the viewport adds a 180-pixel Y offset.
     ok &= Check(QuitDialogPointerChoice(Screen::Play,
-                    {201.0f, 474.0f}, 720, 1080) ==
+                    {201.0f, 654.0f}, 720, 1080) ==
                     QuitDialogChoice::Confirm,
-                "portrait gameplay uses the correct off-center viewport");
+                "portrait gameplay uses both viewport offsets");
     ok &= Check(QuitDialogPointerChoice(Screen::Home,
                     {10.0f, 10.0f}, 720, 1080) ==
                     QuitDialogChoice::None,
