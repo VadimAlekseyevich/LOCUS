@@ -78,6 +78,15 @@ int main() {
                 reopened.name == "IMPORTED",
                 "Save As exports a copy and applies a global active profile");
 
+    // Startup fallback remains supported, but an explicit picker is strict.
+    Skin fallback;
+    fallback.name = "PREVIOUS";
+    ok &= Check(LoadSkin(root / "not-created-yet.json", fallback, error) &&
+                fallback.name == "Default" &&
+                !LoadSkin(root / "not-created-yet.json", fallback, error, false) &&
+                fallback.name == "Default" && !error.empty(),
+                "startup skin defaults and strict file-picker behavior are distinct");
+
     SkinProfileActions bad{active, draft, ui, activeFile,
                            {BadLoad, CancelExport}};
     bad.Apply(SkinCommand::Load);

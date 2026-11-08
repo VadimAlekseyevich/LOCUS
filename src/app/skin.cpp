@@ -195,7 +195,8 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
     }
 }
 
-bool LoadSkin(const std::filesystem::path& file, Skin& result, std::string& error) {
+bool LoadSkin(const std::filesystem::path& file, Skin& result,
+              std::string& error, bool allowMissing) {
     std::error_code ec;
     const bool exists = std::filesystem::exists(file, ec);
     if (ec) {
@@ -203,6 +204,10 @@ bool LoadSkin(const std::filesystem::path& file, Skin& result, std::string& erro
         return false;
     }
     if (!exists) {
+        if (!allowMissing) {
+            error = "Selected skin file does not exist.";
+            return false;
+        }
         result = Skin{};
         error.clear();
         return true;

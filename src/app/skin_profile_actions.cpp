@@ -32,7 +32,9 @@ void SkinProfileActions::Apply(SkinCommand command) {
             }
             Skin selected;
             std::string error;
-            if (!LoadSkin(picked.path, selected, error)) {
+            // Unlike startup defaults, an explicit picker must reject a
+            // vanished file. Never replace the draft with silent defaults.
+            if (!LoadSkin(picked.path, selected, error, false)) {
                 ui_.notice = "LOAD FAILED: " + error;
                 ui_.noticeError = true;
                 return;

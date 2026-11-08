@@ -48,7 +48,11 @@ const Color& SkinColor(const Skin& skin, int index) noexcept;
 
 std::string SerializeSkin(const Skin& skin);
 bool ParseSkin(std::string_view json, Skin& result, std::string& error);
-bool LoadSkin(const std::filesystem::path& file, Skin& result, std::string& error);
+// Startup may use a default if the active skin file was never created.
+ // Explicit user-selected files must pass allowMissing=false so a missing
+ // file is an error and cannot silently replace a draft with defaults.
+bool LoadSkin(const std::filesystem::path& file, Skin& result,
+              std::string& error, bool allowMissing = true);
 bool SaveSkin(const std::filesystem::path& file, const Skin& skin, std::string& error);
 
 } // namespace locus::app
