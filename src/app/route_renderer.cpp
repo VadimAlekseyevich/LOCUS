@@ -50,13 +50,13 @@ void RibbonVertex(Vector2 point, Color tint, float opacity) {
     rlVertex2f(point.x, point.y);
 }
 
-Vector2 Offset(Vector2 center, Vector2 normal, float scale) {
-    return {center.x + normal.x * scale, center.y + normal.y * scale};
-}
-
 void DrawRibbonLayer(const std::vector<PathRibbonRow>& rows,
                      Color tint, float scale) {
-    rlBegin(RL_TRIANGLES);
+    // Match raylib's own front-facing quad winding (e.g. DrawRectangle).
+    // The former reversed triangles were back-face culled on Windows,
+    // leaving ONLY the junction dots visible.
+    rlSetTexture(0);
+    rlBegin(RL_QUADS);
     // Draw far-to-near, as the old renderer did. When a route retraces
     // itself, the part closer to the player should remain visually on top.
     for (std::size_t i = rows.size() - 1; i > 0; --i) {
@@ -64,20 +64,14 @@ void DrawRibbonLayer(const std::vector<PathRibbonRow>& rows,
         const auto& to = rows[i];
         if (to.startsRun || (from.opacity <= 0.0f && to.opacity <= 0.0f))
             continue;
-        const Vector2 a = Offset(from.center, from.offset, scale);
-        const Vector2 b = Offset(from.center, from.offset, -scale);
-        const Vector2 c = Offset(to.center, to.offset, scale);
-        const Vector2 d = Offset(to.center, to.offset, -scale);
-
-        RibbonVertex(a, tint, from.opacity);
-        RibbonVertex(b, tint, from.opacity);
-        RibbonVertex(c, tint, to.opacity);
-
-        RibbonVertex(c, tint, to.opacity);
-        RibbonVertex(b, tint, from.opacity);
-        RibbonVertex(d, tint, to.opacity);
+        const PathRibbonQuad quad = MakePathRibbonQuad(from, to, scale);
+        RibbonVertex(quad.vertices[0], tint, from.opacity);
+        RibbonVertex(quad.vertices[1], tint, from.opacity);
+        RibbonVertex(quad.vertices[2], tint, to.opacity);
+        RibbonVertex(quad.vertices[3], tint, to.opacity);
     }
     rlEnd();
+    rlSetTexture(0);
 }
 
 void DrawScoredPath(const core::Chart& chart, double beat,

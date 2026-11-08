@@ -198,6 +198,56 @@ int main() {
                     canvas, skin).empty(),
                 "empty, invalid or completed playback has no ribbon");
 
+    // REGRESSION: valid mesh geometry is not enough. Wrong GPU-facing
+    // winding caused ALL trajectory triangles to be culled while the
+    // separately drawn junction dots remained visible on Windows.
+    // Raylib's quads use triangles (0,1,2) and (0,2,3). Screen Y is down:
+    // both signed areas must be NEGATIVE for the visible front side.
+    auto winding = [](Vector2 a, Vector2 b, Vector2 c) {
+        return (b.x - a.x) * (c.y - a.y) -
+               (b.y - a.y) * (c.x - a.x);
+    };
+    core::Chart straight = chart;
+    straight.turns.clear();
+    const core::Heading directions[] = {
+        core::Heading::Up, core::Heading::UpRight,
+        core::Heading::Right, core::Heading::DownRight,
+        core::Heading::Down, core::Heading::DownLeft,
+        core::Heading::Left, core::Heading::UpLeft
+    };
+    for (const auto heading : directions) {
+        straight.initialHeading = heading;
+        const auto rows = app::BuildScoredPathRibbon(
+            straight, 1.25, canvas, skin);
+        int visibleQuads = 0;
+        for (std::size_t i = 1; i < rows.size(); ++i) {
+            if (rows[i].startsRun || rows[i - 1].opacity <= 0.5f ||
+                rows[i].opacity <= 0.5f) continue;
+            const auto quad = app::MakePathRibbonQuad(
+                rows[i - 1], rows[i], 1.0f);
+            const float front1 = winding(quad.vertices[0],
+                                          quad.vertices[1],
+                                          quad.vertices[2]);
+            const float front2 = winding(quad.vertices[0],
+                                          quad.vertices[2],
+                                          quad.vertices[3]);
+            if (front1 < -1e-3f && front2 < -1e-3f) ++visibleQuads;
+        }
+        ok &= Check(visibleQuads > 20,
+                    "quad faces the GPU's visible side in all eight headings");
+    }
+    // Winding is preserved for BOTH outline and foreground stroke widths.
+    const auto rows = app::BuildScoredPathRibbon(straight, 2.25, canvas, skin);
+    for (float scale : {1.0f, 1.8f}) {
+        const auto quad = app::MakePathRibbonQuad(
+            rows[4], rows[5], scale);
+        ok &= Check(winding(quad.vertices[0], quad.vertices[1],
+                             quad.vertices[2]) < -1e-3f &&
+                    winding(quad.vertices[0], quad.vertices[2],
+                             quad.vertices[3]) < -1e-3f,
+                    "path outline and foreground both use front-facing winding");
+    }
+
     if (!ok) return 1;
     std::cout << "PATH_MESH_PASS joined=90,135 reverse=180 dense=24 continuous=1\n";
     return 0;

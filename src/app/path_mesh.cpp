@@ -153,4 +153,23 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
     return rows;
 }
 
+PathRibbonQuad MakePathRibbonQuad(
+    const PathRibbonRow& from, const PathRibbonRow& to, float scale) noexcept {
+    const Vector2 fromLeft{
+        from.center.x - from.offset.x * scale,
+        from.center.y - from.offset.y * scale};
+    const Vector2 fromRight{
+        from.center.x + from.offset.x * scale,
+        from.center.y + from.offset.y * scale};
+    const Vector2 toRight{
+        to.center.x + to.offset.x * scale,
+        to.center.y + to.offset.y * scale};
+    const Vector2 toLeft{
+        to.center.x - to.offset.x * scale,
+        to.center.y - to.offset.y * scale};
+    // In raylib's screen coordinates this is clockwise. In GL's
+    // Y-up projection it is front-facing (counter-clockwise).
+    return {{fromLeft, fromRight, toRight, toLeft}};
+}
+
 } // namespace locus::app
