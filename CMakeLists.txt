@@ -54,6 +54,7 @@ add_executable(locus
     src/app/editor_session.cpp
     src/app/editor_file_actions.cpp
     src/app/editor_set_controller.cpp
+    src/app/editor_screen_actions.cpp
     src/app/listen_session.cpp
     src/app/chart_playback.cpp
     src/app/game_session.cpp

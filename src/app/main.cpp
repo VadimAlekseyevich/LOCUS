@@ -20,6 +20,7 @@
 #include "app/editor_session.h"
 #include "app/editor_file_actions.h"
 #include "app/editor_set_controller.h"
+#include "app/editor_screen_actions.h"
 #include "app/listen_session.h"
 #include "app/skin_profile_actions.h"
 #include "app/visual_style.h"
@@ -231,6 +232,11 @@ int main(int argc, char** argv) {
         {locus::app::ChooseLibraryImportFile,
          locus::app::ChooseSongSetExportFile}
     };
+    locus::app::EditorScreenActions editorActions{
+        {editorSession, editorFiles, editorSet, editorUi,
+         {activeChart, chartTitle, judge, gameSession, customChart},
+         musicError, MonotonicSeconds}
+    };
     locus::app::LibraryFileActions libraryFiles{
         library, libraryUi, menuStatus, musicError,
         {locus::app::ChooseLibraryImportFile,
@@ -407,34 +413,8 @@ int main(int argc, char** argv) {
             previousScreen == Screen::Editor &&
             !state.quitConfirmation &&
             editorDiscard.Pending() == EditorPending::None) {
-            const auto uiAction = editorSession.ApplyControls(input.editor, now);
-            // The Song Set tab owns its own hitboxes. A click there must
-            // never accidentally edit a route or bypass the discard prompt.
-            if (editorUi.tab == locus::app::EditorTab::Set) {
-                editorSet.HandleClick(input.editor.mouse,
-                                      input.editor.mouseClick,
-                                      input.editor.mouseWheel);
-                // Import/export can invoke a native Windows file picker.
-                now = MonotonicSeconds();
-            }
-            if (uiAction.chooseAudio) input.chooseMusicPressed = true;
-            if (uiAction.testPlay) input.editorTest = true;
-
-            if (input.editorNew) {
-                editorFiles.NewDraft();
-            } else if (input.editorOpen) {
-                editorFiles.Open(now, musicError);
-            } else if (input.chooseMusicPressed) {
-                editorFiles.AttachAudio(now);
-            } else if (input.editorSave || input.editorSaveAs) {
-                editorFiles.Save(input.editorSaveAs, now);
-            } else if (input.editorTest) {
-                const locus::app::EditorTestTarget target{
-                    activeChart, chartTitle, judge, gameSession, customChart
-                };
-                if (editorSession.BeginTest(target, now, musicError))
-                    state.screen = Screen::Play;
-            }
+            if (editorActions.Apply(input, now))
+                state.screen = Screen::Play;
         }
         if (input.chooseMusicPressed &&
             (state.screen == Screen::Home || state.screen == Screen::Listen)) {

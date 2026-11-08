@@ -1,4 +1,5 @@
 #include "app/editor_session.h"
+#include "app/editor_screen_actions.h"
 #include "app/chart_playback.h"
 #include "app/demo_transport.h"
 #include "app/game_session.h"
@@ -96,6 +97,34 @@ int main() {
                 "idle update cannot make preview position invalid");
     session.UpdatePreview(4.5);
     ok &= Check(!playback.Playing(), "editor transport stays stopped on idle tick");
+    // Editor file actions have a pure priority policy, testable without UI.
+    app::FrameInput command{};
+    app::EditorUiAction action{};
+    ok &= Check(app::ChooseEditorCommand(command, action) ==
+                    app::EditorFileCommand::None,
+                "idle editor frame performs no file operation");
+    action.chooseAudio = true;
+    ok &= Check(app::ChooseEditorCommand(command, action) ==
+                    app::EditorFileCommand::AttachAudio,
+                "LOAD SONG requests audio attachment");
+    action = {};
+    action.testPlay = true;
+    command.editorSave = true;
+    ok &= Check(app::ChooseEditorCommand(command, action) ==
+                    app::EditorFileCommand::Save,
+                "save wins over simultaneous TEST button");
+    command.editorSaveAs = true;
+    ok &= Check(app::ChooseEditorCommand(command, action) ==
+                    app::EditorFileCommand::SaveAs,
+                "Save As is a distinct operation");
+    command.editorNew = true;
+    ok &= Check(app::ChooseEditorCommand(command, action) ==
+                    app::EditorFileCommand::NewDraft,
+                "New Draft takes precedence over competing shortcuts");
+    command = {};
+    ok &= Check(app::ChooseEditorCommand(command, action) ==
+                    app::EditorFileCommand::TestPlay,
+                "editor TEST command is dispatched independently");
     if (!ok) return 1;
     std::cout << "EDITOR_SESSION_PASS test-plan=1 preview=1 failed-test=1\n";
     return 0;
