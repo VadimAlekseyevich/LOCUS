@@ -20,6 +20,7 @@
 #include "app/editor_screen_actions.h"
 #include "app/listen_session.h"
 #include "app/menu_music_preview.h"
+#include "app/audio_volume_fade.h"
 #include "app/skin_profile_actions.h"
 #include "app/visual_style.h"
 #include "app/game_session.h"
@@ -247,6 +248,10 @@ int main(int argc, char** argv) {
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
     locus::app::MenuMusicPreview menuMusic;
     menuMusic.Initialize(demo);
+    locus::app::AudioVolumeFade gameplayVolume;
+    gameplayVolume.Full();
+    bool drainingGameplayAudio = false;
+    bool drainingCustomAudio = false;
     transport.SetVolume(settings.volume);
     localSong.SetVolume(settings.volume);
     gameSession.SetChordWindowMs(settings.chordWindowMs);
@@ -430,7 +435,20 @@ int main(int argc, char** argv) {
             menuMusic.FadeOut(now);
         }
         if (state.screen != previousScreen) {
-            if (state.screen == Screen::Play) playOutro.Reset();
+            if (state.screen == Screen::Play) {
+                playOutro.Reset();
+                drainingGameplayAudio = false;
+                // The outgoing menu song fades first; the new gameplay
+                // stream starts silent and eases up just afterwards.
+                gameplayVolume.FadeIn(now, locus::app::kAudioFadeOutSeconds);
+            } else if (previousScreen == Screen::Play ||
+                       previousScreen == Screen::Results) {
+                if (state.screen != Screen::Results) {
+                    drainingGameplayAudio = true;
+                    drainingCustomAudio = customChart;
+                    gameplayVolume.FadeOut(now);
+                }
+            }
             locus::app::ApplySessionTransition(
                 transitions, previousScreen, state.screen, loadedNewChart, now);
         } else if (state.screen == Screen::Play) {
@@ -467,6 +485,26 @@ int main(int argc, char** argv) {
         else if (state.screen == Screen::Results) {
             if (customChart) chartPlayback.Update(now);
             else transport.Update(now);
+        }
+        if (drainingGameplayAudio && state.screen != Screen::Play &&
+            state.screen != Screen::Results) {
+            if (drainingCustomAudio) chartPlayback.Update(now);
+            else transport.Update(now);
+            if (gameplayVolume.Finished(now)) {
+                if (drainingCustomAudio) chartPlayback.Stop();
+                else transport.Stop();
+                drainingGameplayAudio = false;
+            }
+        }
+        if (state.screen == Screen::Play || state.screen == Screen::Results ||
+            drainingGameplayAudio) {
+            const float gain = settings.volume * gameplayVolume.Gain(now);
+            if (customChart) localSong.SetVolume(gain);
+            else transport.SetVolume(gain);
+        } else {
+            // Editor/Listen own the same decoder and need unattenuated audio.
+            localSong.SetVolume(settings.volume);
+            transport.SetVolume(settings.volume);
         }
         if (hotkeySkinSavePending &&
             (now >= hotkeySkinSaveAfter || state.screen != Screen::Play))
