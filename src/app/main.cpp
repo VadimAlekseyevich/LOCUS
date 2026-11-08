@@ -926,11 +926,6 @@ int main(int argc, char** argv) {
             input.chooseMusicPressed = false;
             input.editorTest = false;
         }
-        if (input.fullscreenPressed && !input.closeRequested) {
-            ToggleBorderlessWindowed(); // F11: fullscreen desktop / resizable window
-            settings.fullscreen = !settings.fullscreen;
-            persistSettings();
-        }
         const Screen previousScreen = state.screen;
         if (previousScreen == Screen::Editor && !wasQuitConfirmation) {
             const auto outcome = editorDiscard.Handle(
@@ -938,6 +933,13 @@ int main(int argc, char** argv) {
                 IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE));
             if (outcome == locus::app::EditorDiscardOutcome::ChangesKept)
                 editorStatus = "CHANGES KEPT - CTRL+S TO SAVE";
+        }
+        // Editor discard confirmation must filter F11 before any UI action
+        // takes effect; only the approved navigation request may proceed.
+        if (input.fullscreenPressed && !input.closeRequested) {
+            ToggleBorderlessWindowed(); // F11: fullscreen desktop / resizable window
+            settings.fullscreen = !settings.fullscreen;
+            persistSettings();
         }
         UpdateState(state, input, smokeWindow);
         if (state.quitConfirmation) input = FrameInput{}; // No actions beneath dialog.

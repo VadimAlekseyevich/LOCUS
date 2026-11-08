@@ -28,12 +28,14 @@ int main() {
     waiting.editorOpen = true; // Other input must not reach the editor.
     waiting.editorTest = true;
     waiting.pausePressed = true;
+    waiting.fullscreenPressed = true;
     waiting.editor.addLeft = true;
     ok &= Check(guard.Handle(waiting, true, false, false) ==
                     EditorDiscardOutcome::None &&
                 guard.Pending() == EditorPending::Home &&
                 !waiting.editorOpen && !waiting.editorTest &&
-                !waiting.pausePressed && !waiting.editor.addLeft,
+                !waiting.pausePressed && !waiting.fullscreenPressed &&
+                !waiting.editor.addLeft,
                 "pending confirmation blocks unrelated file open");
 
     FrameInput cancel;
