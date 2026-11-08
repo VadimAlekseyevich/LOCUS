@@ -42,6 +42,15 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (validMouse) {
             locus::app::UpdateSkinSliderDrag(
                 mouse, IsMouseButtonDown(MOUSE_BUTTON_LEFT), draftSkin, skinUi);
+            if (skinUi.page == 3) {
+                const float wheel = GetMouseWheelMove();
+                const int maximum = std::max(
+                    0, static_cast<int>(skinUi.profiles.size()) - 5);
+                if (wheel != 0.0f)
+                    skinUi.profileOffset = std::clamp(
+                        skinUi.profileOffset + (wheel > 0.0f ? -1 : 1),
+                        0, maximum);
+            }
         }
         const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
         const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
