@@ -33,8 +33,8 @@
 
 ### 2.3 Path preview and feedback
 
-- Only the **future red route** is drawn, beginning at the marker and normally extending **four musical beats** ahead.
-- Width and opacity gradually fade towards the far end; **past trajectory is absent**. Upcoming turn junctions share the forward horizon.
+- Only the **future red route** is drawn, beginning at the marker and extending **800 ms of original song time by default** (SKIN → PATH → PREVIEW TIME (MS), adjustable). At 0.5x practice playback this covers the same chart events, giving the player twice as much real time to read them.
+- Width and opacity gradually fade towards the far end; **past trajectory is absent**. Upcoming turn junctions and 180° semicircular caps share that time horizon, getting **brighter and larger** as they approach the player.
 - The path is clipped at the square edge, even when it would continue beyond it; clipping does not truncate the underlying chart.
 - The marker can display a restrained Perfect/Good/Bad flash; Miss has no success flash. The skin customizes path, marker and frame colors.
 
@@ -102,7 +102,7 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 - One independent **global skin** affects presentation across Play and editor TEST; no skin is embedded in a chart.
 - PATH, PLAYER and COLORS pages expose path width/opacity/fade, marker size, fixed base speed (20–700 logical px/s), hit-effect scale, gameplay HUD visibility, and ten editable RGBA colors including **FIELD BORDER**. COLORS uses a hue wheel, a saturation/value square, and exact `#RRGGBBAA` entry; the live preview is visible on every page. Only the non-color numeric settings retain sliders.
 - MY SKINS is a personal profile library at `%LOCALAPPDATA%/LOCUS/Skins/Profiles`. STORE COPY saves a new named JSON profile, ACTIVATE selects it without losing unsaved drafts, and REFRESH discovers external additions. The chosen skin is copied to the global active file so gameplay and chart testing use the same appearance.
-- Skin JSON v2 saves `player.speedPxPerSecond`. Legacy v1 `cameraStep` is converted on load to the same approximate speed at 120 BPM on the default 8×8 chart.
+- Skin JSON v2 saves `player.speedPxPerSecond` and `path.lookaheadMs` (default 800). Legacy skins with `path.lookaheadBeats` still load; their preview duration resets to 800 ms because BPM-independent conversion from beats is impossible. Legacy v1 `cameraStep` is converted on load to the same approximate speed at 120 BPM on the default 8×8 chart.
 - The skin cannot alter chart timestamps, judgement rules or authored route geometry.
 - Windows system fonts are used when available; gameplay readability at non-16:9 aspect ratios must be checked on actual displays.
 

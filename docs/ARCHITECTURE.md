@@ -7,7 +7,7 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 | Area | Ownership and contract |
 | --- | --- |
 | `src/core` | Timing, eight-heading route geometry, turn judgement, chart parsing and the editor model. No raylib window or Windows file dialogs. |
-| `src/app/route_renderer.*`, `path_mesh.*`, `gameplay_ui.*`, `chart_editor_ui.*` | Convert one continuous model-space route into gameplay/editor visuals. Both views share the same normalized geometry; editor view is grid-free. |
+| `src/app/route_renderer.*`, `path_mesh.*`, `gameplay_ui.*`, `chart_editor_ui.*` | Convert one continuous model-space route into gameplay/editor visuals. PLAY/TEST uses an 800 ms default song-time preview; its path, turn dots and 180° reverse caps share proximity-based fades and scaling. Authored geometry/judgement are unchanged. |
 | `src/app/app_input.*`, `menu_controller.*`, `screen_flow.*` | Collect and route native input. The exit modal and editor BACK hitbox are handled before screen commands, with shared viewport-aware geometry and a headless pointer test. |
 | `src/app/audio_device.*`, `chart_playback.*`, `game_session.*`, `local_music.*`, `demo_transport.*` | Explicit shared audio-device lifetime, playback clocks, scored sessions and non-owning streams. |
 | `src/app/chart_file.*`, `chart_save.cpp`, `song_library.*`, `song_set_storage.*` | Validate chart-relative paths, serialize per-library/per-Set writers, persist shared audio, back up overwrites, and manage recoverable Trash. |

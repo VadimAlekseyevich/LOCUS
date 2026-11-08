@@ -18,7 +18,7 @@ int main() {
     };
     Skin original;
     original.name = "Blue practice";
-    original.lookaheadBeats = 11.5f;
+    original.lookaheadMs = 1150.0f;
     original.baseSpeedPxPerSecond = 185.0f;
     original.trajectory = Color{12, 99, 180, 222};
     original.fieldBorder = Color{39, 207, 255, 196};
@@ -30,7 +30,7 @@ int main() {
     std::string error;
     check(ParseSkin(json, restored, error), "round trip parse");
     check(restored.name == original.name &&
-          restored.lookaheadBeats == 11.5f &&
+          restored.lookaheadMs == 1150.0f &&
           restored.baseSpeedPxPerSecond == 185.0f &&
           restored.trajectory.b == 180 &&
           restored.trajectory.a == 222 &&
@@ -52,13 +52,21 @@ int main() {
           olderProfile.reverseCapScale == kDefaultReverseCapScale &&
           kDefaultReverseCapScale == 3.2f,
           "preexisting skin JSON adopts the doubled default cap size");
+    auto newFile = nlohmann::json::parse(json);
+    check(newFile["path"].contains("lookaheadMs") &&
+          !newFile["path"].contains("lookaheadBeats") &&
+          newFile["path"]["lookaheadMs"] == 1150.0f,
+          "new skin saves only millisecond preview duration");
     auto oldFile = nlohmann::json::parse(json);
     oldFile["version"] = 1;
+    oldFile["path"].erase("lookaheadMs");
+    oldFile["path"]["lookaheadBeats"] = 4.0f;
     oldFile["player"].erase("speedPxPerSecond");
     oldFile["player"]["cameraStep"] = 70.0;
     oldFile["colors"].erase("fieldBorder");
     Skin migrated;
     check(ParseSkin(oldFile.dump(), migrated, error) &&
+          migrated.lookaheadMs == 800.0f &&
           migrated.fieldBorder.r == Skin{}.fieldBorder.r &&
           migrated.fieldBorder.a == 255 &&
           std::abs(migrated.baseSpeedPxPerSecond -
@@ -91,8 +99,9 @@ int main() {
     check(!ParseSkin(brokenCap.dump(), intact, error) &&
           intact.name == "Retain",
           "negative cap size is invalid");
+    check(Skin{}.lookaheadMs == 800.0f, "default 800 ms preview");
     auto invalid = original;
-    invalid.lookaheadBeats = 0.0f;
+    invalid.lookaheadMs = 0.0f;
     check(!invalid.Valid(error), "reject invalid lookahead");
     invalid = original;
     invalid.baseSpeedPxPerSecond = 701.0f;
@@ -100,7 +109,7 @@ int main() {
     // Draggers have modest limits, but exact input can go further.
     SkinNumberRange limits;
     check(GetSkinNumberRange(0, 0, limits) &&
-          limits.sliderMax == 12.0 && limits.inputMax == 64.0,
+          limits.sliderMax == 2000.0 && limits.inputMax == 10000.0,
           "lookahead slider range and extended typed limit differ");
     check(GetSkinNumberRange(0, 7, limits) &&
           limits.sliderMin == 0.0 && limits.sliderMax == 6.0 &&
@@ -144,8 +153,8 @@ int main() {
     check(StepForFixedSpeed(135.0f, 0.0, 1) == 0.0f &&
           StepForFixedSpeed(135.0f, 120.0, 0) == 0.0f,
           "invalid chart timing does not generate invalid camera step");
-    check(SetSkinNumber(edited, 0, 0, 1, 48.25, false, error) &&
-          edited.lookaheadBeats == 48.25f,
+    check(SetSkinNumber(edited, 0, 0, 1, 4800.25, false, error) &&
+          edited.lookaheadMs == 4800.25f,
           "typed path horizon may exceed the slider's maximum");
     check(edited.Valid(error), "extended input still passes skin serialization validation");
     check(GetSkinNumber(edited, 0, 7, 1) == kDefaultReverseCapScale &&
@@ -165,12 +174,12 @@ int main() {
     check(ParseSkin(editedCapJson, savedCap, error) &&
           savedCap.reverseCapScale == 6.0f,
           "selected reverse cap size survives skin serialization");
-    const float before = edited.lookaheadBeats;
-    check(!SetSkinNumber(edited, 0, 0, 1, 65.0, false, error) &&
-          edited.lookaheadBeats == before,
+    const float before = edited.lookaheadMs;
+    check(!SetSkinNumber(edited, 0, 0, 1, 10001.0, false, error) &&
+          edited.lookaheadMs == before,
           "unsafe typed value rejected without mutation");
     check(SetSkinNumber(edited, 0, 0, 1, 99.0, true, error) &&
-          edited.lookaheadBeats == 12.0f,
+          edited.lookaheadMs == 2000.0f,
           "slider clamps to its friendly range");
     check(SetSkinNumber(edited, 0, 4, 1, 0.0, false, error) &&
           edited.pathOpacity == 0.0f && edited.Valid(error),
@@ -219,7 +228,7 @@ int main() {
     check(SaveSkin(file, original, error), "save to independent file");
     Skin loaded;
     check(LoadSkin(file, loaded, error) &&
-          loaded.lookaheadBeats == original.lookaheadBeats,
+          loaded.lookaheadMs == original.lookaheadMs,
           "load from independent file");
     std::error_code ec;
     std::filesystem::remove_all(file.parent_path(), ec);

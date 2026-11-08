@@ -30,7 +30,8 @@ bool CheckRibbon(const std::vector<locus::app::PathRibbonRow>& rows,
     if (rows.size() < 2 || !Near(rows.front().tick, start) ||
         !Near(rows.back().tick, end) || !rows.front().startsRun)
         return Check(false, message);
-    const double horizon = skin.lookaheadBeats * ticksPerBeat;
+    const double horizon = locus::app::ScoredPreviewTicks(
+        skin.lookaheadMs, 120.0, ticksPerBeat);
     const double maxStep = 1.0 /
         std::max(1, locus::app::kScoredPathSlices / ticksPerBeat);
     for (std::size_t i = 0; i < rows.size(); ++i) {
@@ -67,12 +68,36 @@ bool CheckRibbon(const std::vector<locus::app::PathRibbonRow>& rows,
 int main() {
     using namespace locus;
     bool ok = true;
-    const app::Skin skin;
+    app::Skin skin;
+    skin.lookaheadMs = 2000.0f; // 4 beats at 120 BPM for existing mesh fixtures.
     const app::RouteCanvas canvas{
         240.0f, 300.0f, 40.0f, {1.0, 1.0}
     };
     const core::Chart chart = core::MakeDemoChart();
 
+    const app::Skin defaults;
+    ok &= Check(defaults.lookaheadMs == 800.0f &&
+                Near(app::ScoredPreviewTicks(defaults.lookaheadMs,
+                                             chart.bpm, chart.ticksPerBeat), 1.6),
+                "800 ms means 1.6 beats at 120 BPM");
+    const auto defaultRibbon = app::BuildScoredPathRibbon(
+        chart, 1.25, canvas, defaults);
+    ok &= Check(!defaultRibbon.empty() &&
+                Near(defaultRibbon.back().tick, 2.85),
+                "800 ms clips at a fractional tick rather than a whole beat");
+    core::Chart faster = chart;
+    faster.bpm = 240.0;
+    const auto fasterRibbon = app::BuildScoredPathRibbon(
+        faster, 1.25, canvas, defaults);
+    ok &= Check(!fasterRibbon.empty() &&
+                Near(fasterRibbon.back().tick, 4.45),
+                "same 800 ms horizon spans twice as many beats at double BPM");
+    const float near = app::ScoredPathOpacity(0.0, 1.6, defaults.fadePower);
+    const float far = app::ScoredPathOpacity(1.55, 1.6, defaults.fadePower);
+    ok &= Check(Near(app::ScoredTurnSize(near), 1.0) &&
+                app::ScoredTurnSize(far) < app::ScoredTurnSize(near) &&
+                app::ScoredTurnSize(far) >= 0.4f,
+                "future turn indicators brighten and grow toward the player");
     const double playhead = 1.25;
     const auto ribbon = app::BuildScoredPathRibbon(
         chart, playhead, canvas, skin);
@@ -93,7 +118,7 @@ int main() {
         if (Near(row.tick, 2.0)) {
             ++joinedAtNinety;
             const double ordinaryHalfWidth = app::ScoredPathWidth(
-                row.tick - playhead, skin.lookaheadBeats,
+                row.tick - playhead, locus::app::ScoredPreviewTicks(skin.lookaheadMs, chart.bpm, chart.ticksPerBeat),
                 skin.pathWidth, skin.fadePower) / 2.0;
             ok &= Check(!row.startsRun &&
                         Near(std::hypot(row.offset.x, row.offset.y) /
@@ -113,7 +138,7 @@ int main() {
         if (!Near(row.tick, 2.0)) continue;
         ++sharpJunctions;
         const double base = app::ScoredPathWidth(
-            row.tick - playhead, skin.lookaheadBeats,
+            row.tick - playhead, locus::app::ScoredPreviewTicks(skin.lookaheadMs, chart.bpm, chart.ticksPerBeat),
             skin.pathWidth, skin.fadePower) / 2.0;
         ok &= Check(Near(std::hypot(row.offset.x, row.offset.y) / base,
                          1.0 / std::cos(135.0 * 3.141592653589793 /
