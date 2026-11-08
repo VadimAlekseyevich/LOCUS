@@ -242,8 +242,7 @@ bool CheckSessionFlow() {
     FrameInput goHome;
     goHome.homePressed = true;
     UpdateState(state, goHome, false);
-    if (state.screen != Screen::Home) return false;
-    UpdateState(state, start, false);
+    // Play returns to the selected song to resume its menu preview.
     if (state.screen != Screen::SongSelect) return false;
     UpdateState(state, chooseDemo, false);
     if (state.screen != Screen::Play) return false;
