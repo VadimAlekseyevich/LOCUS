@@ -1,6 +1,7 @@
 #include "app/skin_profile_actions.h"
 
 #include <chrono>
+#include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -112,6 +113,72 @@ int main() {
                 ui.notice.find("SAVE FAILED: ") == 0,
                 "invalid skin remains draft and cannot overwrite active file");
 
+    // A personal library lives alongside (not inside) the one active skin
+    // configuration. It is not a list of arbitrary external file paths.
+    draft.name = "Personal blue";
+    ui.dirty = true;
+    bad.Apply(SkinCommand::StoreProfile);
+    const fs::path profileDir = activeFile.parent_path() / "Profiles";
+    ok &= Check(!ui.noticeError && !ui.dirty &&
+                fs::exists(profileDir / "Personal-blue.locus-skin.json") &&
+                !ui.profiles.empty() && ui.selectedProfile >= 0 &&
+                active.name == "Personal blue",
+                "store copy creates an independently reusable personal skin");
+    const fs::path firstProfile = profileDir / "Personal-blue.locus-skin.json";
+
+    draft.name = "Personal red";
+    draft.trajectory = Color{240, 34, 70, 201};
+    ui.dirty = true;
+    bad.Apply(SkinCommand::StoreProfile);
+    ok &= Check(active.name == "Personal red" &&
+                ui.profiles.size() == 2 &&
+                fs::exists(profileDir / "Personal-red.locus-skin.json"),
+                "another personal profile does not overwrite previous skin");
+
+    int blueIndex = -1;
+    for (std::size_t i = 0; i < ui.profiles.size(); ++i)
+        if (ui.profiles[i].path == firstProfile)
+            blueIndex = static_cast<int>(i);
+    ui.selectedProfile = blueIndex;
+    draft.name = "UNSAVED";
+    ui.dirty = true;
+    bad.Apply(SkinCommand::ActivateProfile);
+    ok &= Check(blueIndex >= 0 && ui.noticeError &&
+                active.name == "Personal red" &&
+                draft.name == "UNSAVED",
+                "switching profiles cannot discard unsaved edits");
+    draft = active;
+    ui.dirty = false;
+    bad.Apply(SkinCommand::ActivateProfile);
+    ok &= Check(!ui.noticeError && !ui.dirty &&
+                active.name == "Personal blue" &&
+                draft.name == "Personal blue" &&
+                ui.saved.name == "Personal blue",
+                "activating a stored profile updates active, draft and saved state");
+    draft.pathWidth = 9.75f;
+    ui.dirty = true;
+    bad.Apply(SkinCommand::Save);
+    Skin updatedPersonal;
+    ok &= Check(LoadSkin(firstProfile, updatedPersonal, error, false) &&
+                updatedPersonal.pathWidth == 9.75f &&
+                active.pathWidth == 9.75f,
+                "Save updates active skin and the currently activated personal copy");
+
+    // Corrupted user-controlled profile files remain visible, but are never
+    // applied to the game. The current active skin stays untouched.
+    const fs::path broken = profileDir / "Broken.locus-skin.json";
+    {
+        std::ofstream stream(broken, std::ios::binary | std::ios::trunc);
+        stream << "{ invalid json";
+    }
+    ok &= Check(bad.RefreshProfiles() && ui.profiles.size() == 3,
+                "corrupt profiles may be inspected without aborting folder scan");
+    for (std::size_t i = 0; i < ui.profiles.size(); ++i)
+        if (ui.profiles[i].path == broken)
+            ui.selectedProfile = static_cast<int>(i);
+    bad.Apply(SkinCommand::ActivateProfile);
+    ok &= Check(ui.noticeError && active.name == "Personal blue",
+                "corrupt selected profile cannot replace active skin");
     std::error_code ec;
     fs::remove_all(root, ec);
     if (!ok) return 1;
