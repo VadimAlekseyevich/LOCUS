@@ -1,54 +1,48 @@
 #include "app/song_library.h"
+#include "app/song_set_storage.h"
+#include "app/chart_file.h"
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
-#include <cstdint>
-#include <iomanip>
-#include <sstream>
 #include <string>
 
 using namespace locus::app;
 
 namespace {
 namespace fs = std::filesystem;
+
 bool Check(bool condition, const char* label) {
-    if (!condition) std::cerr << "SONG_LIBRARY_FAIL " << label << '\n';
+    if (!condition) std::cerr << "SONG_SET_FAIL " << label << '\n';
     return condition;
 }
-std::string ReadBytes(const fs::path& file) {
-    std::ifstream stream(file, std::ios::binary);
+std::string Read(const fs::path& path) {
+    std::ifstream stream(path, std::ios::binary);
     return std::string(std::istreambuf_iterator<char>(stream),
                        std::istreambuf_iterator<char>());
 }
-std::string SourcePathHash(const fs::path& path) {
-    std::uint64_t hash = 14695981039346656037ull;
-    for (unsigned char c : fs::canonical(path).generic_u8string()) {
-        hash ^= c;
-        hash *= 1099511628211ull;
-    }
-    std::ostringstream output;
-    output << std::hex << std::setfill('0') << std::setw(16) << hash;
-    return output.str();
+void Write(const fs::path& file, const std::string& data) {
+    std::ofstream stream(file, std::ios::binary | std::ios::trunc);
+    stream << data;
 }
 bool WriteChart(const fs::path& file, const std::string& name) {
     const std::string json =
-        "{\n"
-        "  \"formatVersion\": 1,\n"
-        "  \"title\": \"" + name + "\",\n"
-        "  \"audioPath\": \"song.wav\",\n"
-        "  \"bpm\": 120,\n"
-        "  \"offsetMs\": 0,\n"
-        "  \"grid\": {\"width\": 4, \"height\": 4},\n"
-        "  \"start\": {\"x\": 1, \"y\": 1, \"heading\": \"right\"},\n"
-        "  \"previewLeadBeats\": 4,\n"
-        "  \"turns\": [{\"beat\": 2, \"turn\": \"left\"}]\n"
-        "}\n";
-    std::ofstream stream(file, std::ios::binary | std::ios::trunc);
-    stream << json;
-    return static_cast<bool>(stream);
+        "{"
+        "\"formatVersion\":2,"
+        "\"title\":\"" + name + "\","
+        "\"audioPath\":\"song.wav\","
+        "\"bpm\":120,\"offsetMs\":0,"
+        "\"ticksPerBeat\":1,\"snapDivision\":1,"
+        "\"grid\":{\"width\":8,\"height\":8},"
+        "\"start\":{\"x\":3,\"y\":3,\"heading\":\"right\"},"
+        "\"previewLeadBeats\":4,"
+        "\"turns\":[{\"timeMs\":1000,\"turn\":\"left\"}]"
+        "}";
+    Write(file, json);
+    return fs::exists(file) && Read(file) == json;
 }
 } // namespace
 
@@ -57,145 +51,131 @@ int main() {
     const auto unique = std::to_string(
         std::chrono::steady_clock::now().time_since_epoch().count());
     const fs::path folder = fs::temp_directory_path() /
-                            ("locus-library-test-" + unique);
-    const fs::path source = folder / "source" / "My Song";
-    const fs::path installedRoot = folder / "user-data" / "Songs";
+                            ("locus-song-sets-test-" + unique);
+    const fs::path source = folder / "sources" / "My Song";
+    const fs::path root = folder / "user" / "Songs";
     std::error_code ec;
     fs::create_directories(source, ec);
-    if (ec) {
-        std::cerr << "Cannot create temporary source fixture\n";
-        return 1;
-    }
-    {
-        std::ofstream audio(source / "song.wav", std::ios::binary);
-        audio << "RIFFtest-library-file"; // Scanner only checks file paths, not decoding.
-    }
+    if (ec) return 1;
+    const fs::path audio = source / "song.wav";
+    const std::string firstBytes = "RIFF-song-set-test-audio-v1";
+    Write(audio, firstBytes);
     const fs::path easy = source / "easy.locus.json";
     const fs::path hard = source / "hard.locus.json";
     ok &= Check(WriteChart(easy, "Easy") && WriteChart(hard, "Hard"),
-                "create two chart files for the same audio");
-    SongLibrary library(installedRoot);
-    std::string notice;
-    ok &= Check(library.Refresh(notice) && library.Songs().empty(),
-                "empty persistent library indexes successfully");
+                "create two difficulties referencing one audio");
+
+    SongLibrary library(root);
+    std::string note, error;
+    ok &= Check(library.Refresh(note) && library.Songs().empty(),
+                "empty library can be indexed");
+
     fs::path easyInstalled, hardInstalled;
-    std::string error;
     const bool importedEasy = library.Import(easy, easyInstalled, error);
-    if (!importedEasy) std::cerr << "IMPORT_EASY_ERROR " << error << '\n';
-    ok &= Check(importedEasy && library.Songs().size() == 1 &&
-                library.ChartCount() == 1 &&
-                fs::exists(easyInstalled) && fs::exists(library.Songs()[0].audioFile),
-                "import installs both chart and audio inside persistent Songs");
+    if (!importedEasy) std::cerr << "IMPORT_ERROR " << error << '\n';
+    ok &= Check(importedEasy && fs::exists(easyInstalled) &&
+                library.ChartCount() == 1 && library.Songs().size() == 1 &&
+                library.Songs()[0].managed &&
+                fs::exists(easyInstalled.parent_path() / "set.locus.json"),
+                "import creates a managed Song Set with metadata");
     const bool importedHard = library.Import(hard, hardInstalled, error);
-    if (!importedHard) std::cerr << "IMPORT_HARD_ERROR " << error << '\n';
     ok &= Check(importedHard && library.Songs().size() == 1 &&
                 library.ChartCount() == 2 &&
                 library.Songs()[0].charts[0].data.title == "Easy" &&
                 library.Songs()[0].charts[1].data.title == "Hard",
-                "two difficulties sharing song audio are grouped together");
-    fs::path again;
-    ok &= Check(library.Import(easy, again, error) &&
-                easyInstalled == again && library.ChartCount() == 2,
-                "repeat import of the same chart does not create duplicates");
+                "two difficulties are grouped in one Song Set");
+    const fs::path sharedAudio = library.Songs()[0].audioFile;
+    SongSetManifest metadata;
+    ok &= Check(LoadSongSetManifest(
+                    easyInstalled.parent_path() / "set.locus.json", metadata, error) &&
+                !metadata.id.empty() && metadata.title == "song" &&
+                metadata.audioFile == "song.wav" &&
+                sharedAudio == library.Songs()[0].charts[0].audioFile &&
+                sharedAudio == library.Songs()[0].charts[1].audioFile &&
+                Read(sharedAudio) == firstBytes,
+                "manifest and all difficulties refer to one immutable audio");
+    fs::path repeated;
+    ok &= Check(library.Import(easy, repeated, error) &&
+                repeated == easyInstalled && library.ChartCount() == 2,
+                "repeated import updates same difficulty instead of duplicating");
 
-    ok &= Check(WriteChart(easy, "Expert") &&
-                library.Import(easy, again, error) &&
-                easyInstalled == again && library.ChartCount() == 2,
-                "changing chart title updates the same installed difficulty");
-
-    // Every difficulty initially references the same immutable revision.
-    const auto selectedAudio = [&](const fs::path& chartPath) {
-        int songIndex = -1, chartIndex = -1;
-        if (!library.FindChart(chartPath, songIndex, chartIndex)) return fs::path{};
-        return library.Songs()[static_cast<std::size_t>(songIndex)]
-            .charts[static_cast<std::size_t>(chartIndex)].audioFile;
-    };
-    const fs::path initialAudio = selectedAudio(easyInstalled);
-    ok &= Check(!initialAudio.empty() &&
-                initialAudio == selectedAudio(hardInstalled) &&
-                library.Songs().size() == 1 &&
-                library.Songs()[0].title == "song",
-                "identical imports share one revision and one song browser entry");
-
-    // Changed song bytes produce a NEW version and rebind only the updated
-    // difficulty. Other charts cannot silently change during this operation.
-    const std::string changedAudio = "RIFFtest-library-reimported-new-bytes";
-    {
-        std::ofstream audio(source / "song.wav", std::ios::binary | std::ios::trunc);
-        audio << changedAudio;
-    }
-    const bool replaced = library.Import(hard, again, error);
-    const fs::path hardRevision = selectedAudio(hardInstalled);
-    ok &= Check(replaced && again == hardInstalled &&
-                hardRevision != initialAudio &&
-                library.Songs().size() == 1 && library.ChartCount() == 2 &&
-                selectedAudio(easyInstalled) == initialAudio &&
-                ReadBytes(initialAudio) == "RIFFtest-library-file" &&
-                ReadBytes(hardRevision) == changedAudio,
-                "changed audio publishes a new revision while old difficulty is stable");
-    const auto repeatRevision = hardRevision;
-    ok &= Check(library.Import(hard, again, error) &&
-                selectedAudio(hardInstalled) == repeatRevision,
-                "repeated import of identical bytes reuses the existing revision");
-
-    // Deterministically simulate a failed JSON publication AFTER audio staging:
-    // replace the installed chart file with a directory, then restore it.
-    // A failure must not alter the old audio referenced by either difficulty.
-    const std::string thirdAudio = "RIFFtest-library-third-version";
-    {
-        std::ofstream audio(source / "song.wav", std::ios::binary | std::ios::trunc);
-        audio << thirdAudio;
-    }
-    const fs::path backupChart = hardInstalled.wstring() + L".test-backup";
-    fs::rename(hardInstalled, backupChart, ec);
-    const bool renamed = !ec;
-    if (renamed) fs::create_directory(hardInstalled, ec);
-    const bool blocked = renamed && !ec;
-    bool importFailed = false;
-    if (blocked) importFailed = !library.Import(hard, again, error);
-    if (blocked) fs::remove(hardInstalled, ec);
-    if (renamed) fs::rename(backupChart, hardInstalled, ec);
-    ok &= Check(blocked && importFailed && !ec &&
-                ReadBytes(hardRevision) == changedAudio &&
-                ReadBytes(initialAudio) == "RIFFtest-library-file",
-                "failed chart publication preserves all existing audio revisions");
-    ok &= Check(library.Refresh(notice) &&
-                selectedAudio(hardInstalled) == hardRevision &&
-                selectedAudio(easyInstalled) == initialAudio &&
+    // A change to source audio must NOT silently replace bytes referenced
+    // by any existing difficulty.
+    Write(audio, "RIFF-different-audio-never-overwrite");
+    ok &= Check(!library.Import(hard, repeated, error) &&
+                error.find("different audio") != std::string::npos &&
+                Read(sharedAudio) == firstBytes &&
                 library.ChartCount() == 2,
-                "library refresh recovers unchanged difficulty references after failure");
+                "changed audio is rejected without touching existing set");
+    Write(audio, firstBytes);
 
-    // Retry after the failed commit should reuse staged bytes safely.
-    ok &= Check(library.Import(hard, again, error) &&
-                ReadBytes(selectedAudio(hardInstalled)) == thirdAudio &&
-                selectedAudio(easyInstalled) == initialAudio &&
-                library.Songs().size() == 1,
-                "retry publishes new audio only with a successful chart update");
-    bool noTemporary = true;
-    for (const auto& entry : fs::directory_iterator(
-             selectedAudio(hardInstalled).parent_path().parent_path())) {
-        if (entry.path().filename().wstring().find(L".stage-") != std::wstring::npos)
-            noTemporary = false;
+    const locus::core::LoadedChart copiedChart = library.Songs()[0].charts[0].data;
+    locus::core::LoadedChart newChart = copiedChart;
+    newChart.title = "Insane";
+    fs::path thirdInstalled;
+    ok &= Check(library.CreateDifficulty(
+                    audio, newChart, thirdInstalled, error,
+                    easyInstalled.parent_path()) &&
+                library.ChartCount() == 3 &&
+                fs::exists(thirdInstalled),
+                "new difficulty is written directly to existing Song Set");
+
+    fs::path duplicate;
+    ok &= Check(library.DuplicateDifficulty(easyInstalled, duplicate, error) &&
+                library.ChartCount() == 4 &&
+                duplicate != easyInstalled &&
+                Read(duplicate).find("Easy Copy") != std::string::npos,
+                "duplicate difficulty uses shared audio and a separate JSON");
+
+    // Normal Ctrl+S equivalent: overwrite chart and verify its previous bytes
+    // were backed up before atomic publication.
+    const auto before = Read(easyInstalled);
+    newChart.title = "Easy Updated";
+    ok &= Check(SaveChartWithAudioPath(easyInstalled.wstring(),
+                                       sharedAudio.wstring(), newChart, error) &&
+                Read(easyInstalled) != before &&
+                Read(easyInstalled).find("Easy Updated") != std::string::npos,
+                "overwriting a difficulty changes only its own file");
+    bool backupFound = false;
+    for (fs::directory_iterator it(easyInstalled.parent_path() /
+                                    ".locus-history", ec), end;
+         !ec && it != end; it.increment(ec)) {
+        if (Read(it->path()) == before) backupFound = true;
     }
-    ok &= Check(noTemporary, "normal and failed imports leave no staging files");
-    int songIndex = -1, chartIndex = -1;
-    ok &= Check(library.FindChart(easyInstalled, songIndex, chartIndex) &&
-                songIndex == 0 &&
-                library.Songs()[songIndex].charts[chartIndex].data.title == "Expert",
-                "in-memory chart index returns updated parsed chart data");
-    fs::remove_all(source, ec);
-    SongLibrary afterRestart(installedRoot);
-    ok &= Check(afterRestart.Refresh(notice) &&
-                afterRestart.Songs().size() == 1 &&
-                afterRestart.ChartCount() == 2 &&
-                !afterRestart.Songs()[0].charts[0].audioFile.empty() &&
-                !afterRestart.Songs()[0].charts[1].audioFile.empty() &&
-                afterRestart.Songs()[0].charts[0].audioFile !=
-                    afterRestart.Songs()[0].charts[1].audioFile,
-                "library restart retains different difficulty/audio revisions");
+    ok &= Check(!ec && backupFound, "previous chart can be recovered from backup");
 
+    // Writer lock must be exclusive across simultaneous editors/importers.
+    {
+        FolderWriteLock firstLock, secondLock;
+        ok &= Check(firstLock.Acquire(easyInstalled.parent_path(), error) &&
+                    !secondLock.Acquire(easyInstalled.parent_path(), error),
+                    "a concurrent writer cannot acquire the same Song Set lock");
+    }
+
+    ok &= Check(library.TrashDifficulty(duplicate, error) &&
+                !fs::exists(duplicate) && library.ChartCount() == 3,
+                "deleting a difficulty preserves other difficulties and audio");
+    ok &= Check(library.RestoreLastDeleted(error) &&
+                fs::exists(duplicate) && library.ChartCount() == 4,
+                "recover deleted difficulty from durable local Trash");
+
+    const fs::path managedFolder = easyInstalled.parent_path();
+    ok &= Check(library.TrashSongSet(managedFolder, error) &&
+                !fs::exists(managedFolder) && library.Songs().empty(),
+                "deleting Song Set moves entire folder to Trash");
+    ok &= Check(library.RestoreLastDeleted(error) &&
+                fs::exists(managedFolder) && library.ChartCount() == 4,
+                "restore complete Song Set with all shared content");
+
+    // Restart preserves a managed Song Set; deletion/restore did not rewrite
+    // the audio or require any old legacy revision directories.
+    SongLibrary restarted(root);
+    ok &= Check(restarted.Refresh(note) && restarted.ChartCount() == 4 &&
+                restarted.Songs().size() == 1 && restarted.Songs()[0].managed &&
+                Read(sharedAudio) == firstBytes,
+                "restart reconstructs Song Set and retains audio bytes");
     fs::remove_all(folder, ec);
     if (!ok) return 1;
-    std::cout << "SONG_LIBRARY_PASS atomic-chart-version=1 grouped-revisions=1\n";
+    std::cout << "SONG_SET_PASS shared-audio=1 copies=1 backups=1 trash=1\n";
     return 0;
 }
