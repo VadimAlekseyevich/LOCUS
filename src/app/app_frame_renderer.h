@@ -44,6 +44,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   const locus::app::SettingsUi& settingsUi,
                   const locus::app::Skin& draftSkin,
                   const locus::app::SkinUi& skinUi,
-                  const std::string& menuStatus);
+                  const std::string& menuStatus,
+                  float screenFadeOpacity = 0.0f);
 
 } // namespace locus::app

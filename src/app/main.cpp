@@ -11,6 +11,7 @@
 #include "app/play_screen_actions.h"
 #include "app/play_adjustments.h"
 #include "app/play_outro_transition.h"
+#include "app/screen_fade_transition.h"
 #include "app/app_smoke_checks.h"
 #include "app/app_frame_renderer.h"
 #include "app/menu_controller.h"
@@ -275,6 +276,7 @@ int main(int argc, char** argv) {
     skinProfiles.RefreshProfiles();
     locus::app::QuitMediaCoordinator quitMedia;
     locus::app::PlayAdjustmentRepeater adjustmentRepeater;
+    locus::app::ScreenFadeTransition screenFade;
     locus::app::ListenSession listener{
         localSong, loadedAudioPath, musicError,
         locus::app::ChooseLocalMusicFile, MonotonicSeconds
@@ -525,6 +527,14 @@ int main(int argc, char** argv) {
             persistHotkeySkin();
         menuMusic.Update(now, settings.volume);
         const double renderNow = MonotonicSeconds();
+        if (state.screen != previousScreen)
+            screenFade.Begin(previousScreen, state.screen, renderNow);
+        const auto fadeFrame = screenFade.Frame(renderNow);
+        // Input and music have already switched. Only the picture holds its
+        // outgoing screen for 65ms; Play itself is never delayed.
+        AppState visibleState = state;
+        if (!state.quitConfirmation)
+            visibleState.screen = fadeFrame.visibleScreen;
         const auto transportView = playActions.Transport(renderNow);
         const GameplayView gameplay{activeChart, judge, gameSession.Flash(),
                                     chartTitle, transportView.songSeconds,
@@ -536,13 +546,14 @@ int main(int argc, char** argv) {
                                     adjustmentNoticeUntil,
                                     adjustmentNotice.c_str(),
                                     playOutro.Frame(renderNow)};
-        RenderFrame(state, debugScreens, uiFont.value, demo,
+        RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
                     editorStatus, editorDiscard.Pending(),
                     editorSet.View(), editorSet.Pending(),
                     musicError, renderNow,
                     library, libraryUi, settings, settingsUi,
-                    draftSkin, skinUi, menuStatus);
+                    draftSkin, skinUi, menuStatus,
+                    state.quitConfirmation ? 0.0f : fadeFrame.opacity);
     }
 
     persistHotkeySkin(); // Flush pending adjustments on exit.

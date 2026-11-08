@@ -167,7 +167,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   const locus::app::SettingsUi& settingsUi,
                   const locus::app::Skin& draftSkin,
                   const locus::app::SkinUi& skinUi,
-                  const std::string& menuStatus) {
+                  const std::string& menuStatus,
+                  float screenFadeOpacity) {
     BeginDrawing();
     ClearBackground(state.screen == Screen::Play
                         ? gameplay.skin.background : kBackground);
@@ -309,6 +310,13 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                              Color{17, 22, 33, 224});
         DrawText(TextFormat("FPS %d", GetFPS()), 16, 14, 18,
                  Color{199, 244, 228, 255});
+    }
+    // Full-window alpha covers every screen including non-16:9 gutters.
+    if (screenFadeOpacity > 0.0f) {
+        const auto alpha = static_cast<unsigned char>(std::lround(
+            std::clamp(screenFadeOpacity, 0.0f, 1.0f) * 255.0f));
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+                      Color{5, 6, 11, alpha});
     }
     EndDrawing();
 }
