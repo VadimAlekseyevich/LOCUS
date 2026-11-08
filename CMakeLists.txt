@@ -46,6 +46,7 @@ add_executable(locus
     src/app/chart_file.cpp
     src/app/chart_save.cpp
     src/app/editor_document.cpp
+    src/app/editor_session.cpp
     src/app/chart_playback.cpp
     src/app/game_session.cpp
     src/app/song_library.cpp
@@ -142,6 +143,26 @@ if(LOCUS_BUILD_TESTS)
 
     # Document load/save orchestration must preserve an unsaved editor draft
     # across malformed charts, failed audio validation and failed saves.
+    # Editor timeline and TEST preparation have no window or audio-device
+    # dependency: invalid transport states must preserve game chart/session.
+    add_executable(locus_editor_session_tests
+        tests/editor_session_tests.cpp
+        src/app/editor_session.cpp
+        src/app/chart_editor_ui.cpp
+        src/app/chart_editor_actions.cpp
+        src/app/route_renderer.cpp
+        src/app/game_settings.cpp
+        src/app/chart_playback.cpp
+        src/app/game_session.cpp
+        src/app/demo_transport.cpp
+        src/app/local_music.cpp
+        src/app/local_file_io.cpp
+    )
+    target_compile_features(locus_editor_session_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_editor_session_tests PRIVATE
+        locus_core raylib nlohmann_json::nlohmann_json)
+    add_test(NAME locus_editor_session_lifecycle COMMAND locus_editor_session_tests)
+
     add_executable(locus_editor_document_tests
         tests/editor_document_tests.cpp
         src/app/editor_document.cpp

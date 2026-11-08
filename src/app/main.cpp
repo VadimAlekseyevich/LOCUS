@@ -13,6 +13,7 @@
 #include "app/menu_controller.h"
 #include "app/chart_editor_layout.h"
 #include "app/editor_document.h"
+#include "app/editor_session.h"
 #include "app/visual_style.h"
 #include "app/route_renderer.h"
 #include "app/game_session.h"
@@ -780,6 +781,10 @@ int main(int argc, char** argv) {
     int editorPreviewStartBeat = 0; // R returns to this preview origin.
     std::string chartTitle = "BUILT-IN DEMO";
     std::string musicError;
+    locus::app::EditorSession editorSession{
+        editor, editorUi, chartPlayback, localSong,
+        editorAudioPath, editorPreviewStartBeat, editorStatus
+    };
     const locus::app::SessionTransitionContext transitions{
         activeChart, demo, judge, gameSession, chartPlayback, localSong, editorUi,
         customChart, sessionCompleted, chartTitle
@@ -969,76 +974,9 @@ int main(int argc, char** argv) {
             previousScreen == Screen::Editor &&
             !state.quitConfirmation &&
             editorDiscard.Pending() == EditorPending::None) {
-            const int beforeBeat = editor.SelectedBeat();
-            const int beforeTicksPerBeat = editor.Data().route.ticksPerBeat;
-            // Use the fractional transport beat for timeline hit testing,
-            // matching the animated ruler even between whole beat markers.
-            input.editor.timelineViewBeat = chartPlayback.Playing()
-                ? chartPlayback.Beat(now)
-                : static_cast<double>(editor.SelectedBeat());
-            const auto uiAction = locus::app::ApplyEditorControls(
-                editor, editorUi, input.editor);
-            if (editor.Data().route.ticksPerBeat != beforeTicksPerBeat) {
-                // Snap change has just expanded the tick domain without
-                // moving any authored note or changing the musical BPM.
-                const int currentTicks = editor.Data().route.ticksPerBeat;
-                const double originalSongBeat =
-                    static_cast<double>(editorPreviewStartBeat) /
-                        beforeTicksPerBeat;
-                editorPreviewStartBeat = std::clamp(
-                    static_cast<int>(std::llround(originalSongBeat * currentTicks)),
-                    editor.Data().route.firstBeat,
-                    editor.Data().route.lengthBeats - 1);
-            }
+            const auto uiAction = editorSession.ApplyControls(input.editor, now);
             if (uiAction.chooseAudio) input.chooseMusicPressed = true;
             if (uiAction.testPlay) input.editorTest = true;
-
-            const double speeds[] = {1.0, 0.75, 0.5, 0.25, 0.1};
-            if (uiAction.speedIndex >= 0 && uiAction.speedIndex < 5) {
-                chartPlayback.SetSpeed(speeds[uiAction.speedIndex], now);
-                editorStatus = "PREVIEW SPEED CHANGED - AUDIO PITCH WILL ALSO CHANGE";
-            }
-            const bool selectedAnotherBeat = editor.SelectedBeat() != beforeBeat;
-            if (selectedAnotherBeat) editorPreviewStartBeat = editor.SelectedBeat();
-            if ((uiAction.changedChart || selectedAnotherBeat) &&
-                (chartPlayback.Playing() || chartPlayback.Finished())) {
-                chartPlayback.Stop();
-                editorStatus = "PREVIEW STOPPED - SPACE PLAYS FROM SELECTED BEAT";
-            }
-
-            const auto startPreview = [&](int beat) {
-                if (!localSong.Ready() || editorAudioPath.empty()) {
-                    editorStatus = "NO SONG - CLICK LOAD SONG / PRESS O";
-                    return;
-                }
-                // Preserve virtual negative-time preroll for both the
-                // original negative offset and a partially overlapping
-                // first beat before physical song time zero.
-                const double songTime = editor.AudioSecondsAtBeat(beat);
-                if (!std::isfinite(songTime) ||
-                    songTime >= localSong.DurationSeconds()) {
-                    editorStatus = "PREVIEW FAILED: SELECTED BEAT / OFFSET IS AFTER SONG END";
-                    return;
-                }
-                chartPlayback.Configure(editor.Data().route.bpm *
-                                         editor.Data().route.ticksPerBeat,
-                                        editor.Data().offsetSeconds);
-                if (!chartPlayback.StartAtAudioSeconds(songTime, now)) {
-                    editorStatus = "PREVIEW FAILED: COULD NOT START AUDIO";
-                    return;
-                }
-                editorPreviewStartBeat = beat;
-                editorStatus = "PREVIEW FROM BEAT " + std::to_string(beat) +
-                               " / SONG " + std::to_string(songTime) +
-                               "S - SPACE PAUSE / R RESTART";
-            };
-            if (uiAction.previewRestart) {
-                startPreview(editorPreviewStartBeat);
-            } else if (uiAction.previewToggle) {
-                if (!chartPlayback.Playing()) startPreview(editor.SelectedBeat());
-                else if (chartPlayback.Paused()) chartPlayback.Resume(now);
-                else chartPlayback.Pause(now);
-            }
 
             if (input.editorNew) {
                 chartPlayback.Stop();
@@ -1126,40 +1064,11 @@ int main(int argc, char** argv) {
                     editorStatus = "SAVE FAILED: " + failure;
                 }
             } else if (input.editorTest) {
-                // Practice starts from the exact paused/current audio position.
-                // If not previewing, use the selected timeline beat.
-                const double editorSongPosition = chartPlayback.Playing()
-                    ? chartPlayback.AudioSeconds(now)
-                    : editor.AudioSecondsAtBeat(editor.SelectedBeat());
-                chartPlayback.Stop();
-                locus::core::LoadedChart checked = editor.Data();
-                if (editorAudioPath.empty() || !localSong.Ready()) {
-                    editorStatus = "TEST NEEDS AUDIO - CLICK LOAD SONG";
-                } else if (!locus::core::PrepareChartForSong(
-                               checked, localSong.DurationSeconds(), musicError)) {
-                    editorStatus = "TEST FAILED: " + musicError;
-                } else {
-                    if (!std::isfinite(editorSongPosition) ||
-                        editorSongPosition >= localSong.DurationSeconds()) {
-                        editorStatus = "TEST FAILED: SELECT A POSITION BEFORE SONG END";
-                    } else {
-                        const double exactBeat = (editorSongPosition - checked.offsetSeconds)
-                            * (checked.route.bpm * checked.route.ticksPerBeat) / 60.0;
-                        const int firstScored = std::clamp(
-                            static_cast<int>(std::ceil(exactBeat - 1e-6)),
-                            checked.route.firstBeat, checked.route.lengthBeats);
-                        activeChart = std::move(checked.route);
-                        chartTitle = std::move(checked.title);
-                        chartPlayback.Configure(activeChart.bpm * activeChart.ticksPerBeat,
-                                                checked.offsetSeconds);
-                        judge.SetOffsetSeconds(checked.offsetSeconds);
-                        gameSession.SetTestOrigin({editorSongPosition, firstScored});
-                        customChart = true;
-                        state.screen = Screen::Play;
-                        editorStatus = "TEST FROM BEAT " + std::to_string(exactBeat) +
-                                       " - R RETRIES FROM HERE";
-                    }
-                }
+                const locus::app::EditorTestTarget target{
+                    activeChart, chartTitle, judge, gameSession, customChart
+                };
+                if (editorSession.BeginTest(target, now, musicError))
+                    state.screen = Screen::Play;
             }
         }
         if (input.chooseMusicPressed &&
@@ -1285,25 +1194,8 @@ int main(int argc, char** argv) {
         if (state.screen == Screen::Listen) {
             localSong.Update(now);
         }
-        if (state.screen == Screen::Editor && chartPlayback.Playing()) {
-            chartPlayback.Update(now);
-            if (chartPlayback.Finished()) {
-                editorStatus = "PREVIEW FINISHED - SELECT BEAT OR R TO RESTART";
-            } else if (!chartPlayback.Paused()) {
-                const double currentBeat = chartPlayback.Beat(now);
-                const int lastBeat = editor.Data().route.lengthBeats - 1;
-                if (currentBeat >= editor.Data().route.lengthBeats) {
-                    chartPlayback.Stop();
-                    editor.SelectBeat(lastBeat);
-                    editorStatus = "PREVIEW REACHED CHART END - SELECT ANOTHER BEAT";
-                } else {
-                    const int beat = std::clamp(
-                        static_cast<int>(std::floor(currentBeat)),
-                        editor.Data().route.firstBeat, lastBeat);
-                    editor.SelectBeat(beat); // Follow audio with bottom squares.
-                }
-            }
-        }
+        if (state.screen == Screen::Editor)
+            editorSession.UpdatePreview(now);
         if (state.screen == Screen::Play) {
             gameSession.Update(customChart, now,
                                {input.arrowPressed, input.arrowCapturedAt, input.arrowHeld});
