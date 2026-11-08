@@ -12,7 +12,6 @@
 #include "app/app_input.h"
 #include "app/menu_controller.h"
 #include "app/chart_editor_layout.h"
-#include "app/editor_document.h"
 #include "app/editor_session.h"
 #include "app/editor_file_actions.h"
 #include "app/listen_session.h"

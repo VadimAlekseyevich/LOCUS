@@ -1,6 +1,6 @@
 # LOCUS — Architecture audit
 
-Reviewed: 2026-11-06. Scope: current Windows/raylib rhythm game, not prospective new features.
+Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective new features.
 
 ## Module boundaries
 
@@ -9,8 +9,10 @@ Reviewed: 2026-11-06. Scope: current Windows/raylib rhythm game, not prospective
 | `src/core` | Timing, eight-heading route geometry, turn judgement, chart parsing and the editor model. No raylib window or Windows file dialogs. |
 | `src/app/route_renderer.*`, `gameplay_ui.*`, `chart_editor_ui.*` | Convert one continuous model-space route into gameplay/editor visuals. Both views share the same normalized geometry; editor view is grid-free. |
 | `src/app/app_input.*`, `menu_controller.*`, `screen_flow.*` | Collect input, handle menu interactions, and resolve screen navigation. |
-| `src/app/chart_playback.*`, `game_session.*`, `local_music.*`, `demo_transport.*` | Playback clocks, scored sessions, audio streams and the demo audio device. |
-| `src/app/chart_file.*`, `chart_save.cpp`, `song_library.*` | Validate paths, persist authored charts and manage installed songs. |
+| `src/app/audio_device.*`, `chart_playback.*`, `game_session.*`, `local_music.*`, `demo_transport.*` | Explicit shared audio-device lifetime, playback clocks, scored sessions and non-owning streams. |
+| `src/app/chart_file.*`, `chart_save.cpp`, `song_library.*`, `audio_revision.*` | Validate paths, persist authored charts and manage immutable audio revisions. |
+| `src/app/editor_session.*`, `editor_document.*`, `editor_file_actions.*` | Editor preview/TEST, transactional file handling, and injected native dialogs. |
+| `src/app/listen_session.*`, `skin_profile_actions.*`, `library_playback.*`, `library_browser.*` | Cohesive user-facing session workflows with testable boundaries. |
 | `src/app/main.cpp` | Application composition, UI flow and resource lifetime. This remains the primary coupling point. |
 
 ## Completed stabilization
@@ -40,9 +42,14 @@ Reviewed: 2026-11-06. Scope: current Windows/raylib rhythm game, not prospective
 
 The chart JSON is the sole publication point. Imported audio is immutable and chart references remain valid through interrupted updates; existing v1/v2 JSON and installed audio files stay supported. New imports store audio under `.locus-versions/<16-hex fingerprint>/<original audio filename>`. Remaining limitations: an interrupted import may leave unused staged/revision files; do not garbage-collect versions without cross-process safety. Test permission and power-loss paths on a real Windows machine.
 
-### P1 — Reduce remaining `main.cpp` session orchestration
+### Stage 1 architecture boundaries — complete
 
-Editor persistence, screen transitions and the quit-modal audio policy have been extracted and covered by headless tests. Core orchestration of editor preview/TEST, document file actions, standalone listening, skin profile dialogs, library activation and screen transitions is now split into testable modules. `main.cpp` concentrates on application composition, global input, rendering, screen selection and PLAY actions. Further generic cross-screen abstractions should be justified by actual regressions rather than reducing the entry file's line count.
+Editor document lifecycle, preview and TEST; standalone listening; library play/import;
+skin profiles; quit modal; and screen-boundary session lifecycle now have distinct
+modules and independent headless tests. The entry point deliberately retains
+composition, global input, frame rendering and PLAY-screen glue. This is not a
+promise that `main.cpp` will never grow: move code when a cohesive new feature
+or a demonstrated regression justifies it, rather than chasing a line-count goal.
 
 ### P2 — Validate real-device audio lifecycle
 

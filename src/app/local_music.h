@@ -10,8 +10,8 @@
 
 namespace locus::app {
 
-// Listens to a user-selected local WAV/MP3 without inventing a chart.
-// The existing DemoTransport owns the shared raylib audio device.
+// Plays a user-selected local WAV/MP3 without inventing a chart.
+// Borrows the raylib audio device from AudioDevice and never closes it.
 class LocalMusic {
 public:
     LocalMusic() = default;
