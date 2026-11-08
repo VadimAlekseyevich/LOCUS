@@ -122,6 +122,14 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (IsKeyPressed(KEY_LEFT)) libraryUi.MoveChart(-1, library);
         if (IsKeyPressed(KEY_RIGHT)) libraryUi.MoveChart(1, library);
         if (IsKeyPressed(KEY_F5)) events.refresh = true;
+        // PageUp/PageDown adjust the selected Song Set's menu listening
+        // origin, not BPM, chart offset, or the current difficulty's notes.
+        const int previewStep = (IsKeyDown(KEY_LEFT_SHIFT) ||
+                                 IsKeyDown(KEY_RIGHT_SHIFT)) ? 100 : 1000;
+        if (IsKeyPressed(KEY_PAGE_UP))
+            events.previewStartDeltaMs = -previewStep;
+        if (IsKeyPressed(KEY_PAGE_DOWN))
+            events.previewStartDeltaMs = previewStep;
         const float wheel = GetMouseWheelMove();
         if (wheel != 0.0f)
             libraryUi.MoveSong(wheel > 0.0f ? -1 : 1, library);
@@ -173,6 +181,12 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (hit(locus::app::MenuBackButton())) input.backPressed = true;
         if (hit(locus::app::LibraryImportButton())) events.import = true;
         if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
+        if (hit(locus::app::LibraryPreviewMinusButton()))
+            events.previewStartDeltaMs = (IsKeyDown(KEY_LEFT_SHIFT) ||
+                IsKeyDown(KEY_RIGHT_SHIFT)) ? -100 : -1000;
+        if (hit(locus::app::LibraryPreviewPlusButton()))
+            events.previewStartDeltaMs = (IsKeyDown(KEY_LEFT_SHIFT) ||
+                IsKeyDown(KEY_RIGHT_SHIFT)) ? 100 : 1000;
         if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
         if (hit(locus::app::LibraryEditButton())) events.editSelected = true;
         if (hit(locus::app::LibraryNewDifficultyButton()))

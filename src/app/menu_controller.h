@@ -21,6 +21,7 @@ struct MenuEvents {
     bool trashSongSet = false;
     bool restoreDeleted = false;
     bool saveSettings = false;
+    int previewStartDeltaMs = 0; // Song Set's menu-only listening origin.
     bool toggleFullscreen = false;
     bool applyDisplaySettings = false;
     locus::app::SkinCommand skinCommand = locus::app::SkinCommand::None;
