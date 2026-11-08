@@ -279,6 +279,11 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_play_outro_tests PRIVATE locus_core)
     add_test(NAME locus_scored_outro_transition COMMAND locus_play_outro_tests)
 
+    add_executable(locus_screen_fade_tests tests/screen_fade_tests.cpp)
+    target_compile_features(locus_screen_fade_tests PRIVATE cxx_std_17)
+    target_include_directories(locus_screen_fade_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    add_test(NAME locus_screen_fade_transition COMMAND locus_screen_fade_tests)
+
     # Exit modal policy is pure; test playback state changes without opening
     # a native window or relying on an actual sound device.
     # Editor discard confirmation is independent of native keyboard polling.
