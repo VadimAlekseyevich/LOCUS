@@ -17,6 +17,7 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 | `src/app/app_smoke_checks.*` | Headless integration checks behind the existing `--loop-check`, `--screen-check`, and `--session-check` entry points. |
 | `src/app/app_frame_renderer.*`, `app_quit_dialog_layout.h` | Rendering and OS font selection. The quit confirmation shares one set of hitboxes between renderer and input. |
 | `src/app/library_file_actions.*` | Song library file commands (import/export/copy/Trash/restore) and injected native file pickers, without gameplay-session ownership. |
+| `src/app/library_launch_actions.*` | SongSelect launch decisions and effects: pure path-based intent selection and a focused Edit/Play/NewDifficulty coordinator. |
 | `src/app/main.cpp` | Composition root and frame/update loop only: constructs lifetime-owned services, wires screen-specific actions and drives the frame. Still needs incremental decomposition. |
 
 ## Architecture-first refactoring contract
@@ -49,10 +50,10 @@ and reduce the number of unrelated reasons a file can change.
 
 ### Remaining coupling to remove
 
-1. `main.cpp` still owns the large **per-frame event dispatcher** and
-   presentation-state composition. Extract screen-specific navigation and
-   playback effects into tested commands without creating one universal
-   `AppContext` holding every service.
+1. `main.cpp` still coordinates per-frame editor, skin, global-window and
+   gameplay actions, but SongSelect launch decisions and file commands are
+   separately testable. Further extraction needs a demonstrated source of
+   coupling; do not introduce a universal `AppContext` to chase line counts.
 2. `chart_editor_actions.cpp` combines editor keyboard/mouse interaction,
    timeline movement, route edits and selection state. Split these by
    input operation and preserve its pure action tests.

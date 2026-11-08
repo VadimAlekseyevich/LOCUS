@@ -29,6 +29,7 @@
 #include "app/library_playback.h"
 #include "app/library_browser.h"
 #include "app/library_file_actions.h"
+#include "app/library_launch_actions.h"
 #include "app/game_settings.h"
 #include "app/skin.h"
 #include "app/skin_menu.h"
@@ -238,6 +239,10 @@ int main(int argc, char** argv) {
         activeChart, demo, judge, gameSession, chartPlayback, localSong, editorUi,
         customChart, sessionCompleted, chartTitle
     };
+    const locus::app::LibraryLaunchContext libraryLaunch{
+        library, libraryUi, editorFiles, transitions, loadedAudioPath,
+        state, musicError
+    };
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
@@ -435,57 +440,8 @@ int main(int argc, char** argv) {
         bool loadedNewChart = false;
         if (state.screen == Screen::SongSelect) {
             libraryFiles.Apply(menuEvents, importFromHome, now);
-            if (menuEvents.newDifficulty) {
-                if (libraryUi.selectedSong > 0 &&
-                    libraryUi.selectedSong <=
-                        static_cast<int>(library.Songs().size())) {
-                    const auto& set = library.Songs()[libraryUi.selectedSong - 1];
-                    if (!set.managed) {
-                        libraryUi.notice = "IMPORT LEGACY CHART AS A NEW SONG SET FIRST";
-                    } else if (editorFiles.NewDifficultyFromLibrary(
-                                   set.audioFile.wstring(), set.folder.wstring(),
-                                   musicError)) {
-                        state.screen = Screen::Editor;
-                    } else {
-                        libraryUi.notice = "NEW DIFFICULTY FAILED: " + musicError;
-                    }
-                } else {
-                    libraryUi.notice = "SELECT AN INSTALLED SONG FIRST";
-                }
-            } else if (menuEvents.editSelected) {
-                const auto* selected = libraryUi.Selected(library);
-                if (!selected) {
-                    state.screen = Screen::Editor; // Demo uses the existing draft.
-                } else {
-                    if (editorFiles.OpenFromLibrary(
-                            selected->file.wstring(), musicError)) {
-                        state.screen = Screen::Editor;
-                    } else {
-                        libraryUi.notice = "EDIT FAILED: " + musicError;
-                    }
-                }
-            } else if (menuEvents.playSelected) {
-                if (libraryUi.selectedSong == 0) {
-                    customChart = false;
-                    activeChart = demo;
-                    chartTitle = "BUILT-IN DEMO";
-                    gameSession.ClearTestOrigin();
-                    judge.SetOffsetSeconds(0.0);
-                    state.screen = Screen::Play;
-                } else if (const auto* selected = libraryUi.Selected(library)) {
-                    const locus::app::LibraryPlaybackContext playbackContext{
-                        localSong, loadedAudioPath, activeChart, chartTitle,
-                        chartPlayback, judge, gameSession, customChart
-                    };
-                    if (locus::app::ActivateLibraryDifficulty(
-                            *selected, playbackContext, now, musicError)) {
-                        loadedNewChart = true;
-                        state.screen = Screen::Play;
-                    } else {
-                        libraryUi.notice = "PLAY FAILED: " + musicError;
-                    }
-                }
-            }
+            loadedNewChart = locus::app::LaunchLibrarySelection(
+                libraryLaunch, menuEvents, now);
         }
 
         if (state.screen != previousScreen) {

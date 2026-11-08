@@ -1,5 +1,6 @@
 #include "app/library_browser.h"
 #include "app/library_file_actions.h"
+#include "app/library_launch_actions.h"
 
 #include <chrono>
 #include <filesystem>
@@ -90,6 +91,41 @@ int main() {
                 ui.selectedChart == 1 && ui.Selected(library) &&
                 ui.Selected(library)->data.title == "Hard",
                 "second import selects a different difficulty in same song");
+    // Pure selection policy: no raylib window, file picker or audio device.
+    {
+        MenuEvents action{};
+        action.playSelected = true;
+        const auto play = ChooseLibraryLaunch(action, library, ui);
+        ok &= Check(play.kind == LibraryLaunchKind::PlayChart &&
+                    play.chart == ui.Selected(library)->file,
+                    "play intent captures the selected chart path");
+        action = {};
+        action.editSelected = true;
+        const auto edit = ChooseLibraryLaunch(action, library, ui);
+        ok &= Check(edit.kind == LibraryLaunchKind::EditChart &&
+                    edit.chart == play.chart,
+                    "edit intent identifies the same difficulty");
+        action = {};
+        action.newDifficulty = true;
+        const auto create = ChooseLibraryLaunch(action, library, ui);
+        ok &= Check(create.kind == LibraryLaunchKind::NewDifficulty &&
+                    create.managed &&
+                    !create.audio.empty() && !create.folder.empty(),
+                    "new difficulty captures managed Set identity and audio");
+        ui.SelectSong(0, library);
+        action = {};
+        action.playSelected = true;
+        ok &= Check(ChooseLibraryLaunch(action, library, ui).kind ==
+                        LibraryLaunchKind::PlayDemo,
+                    "demo playback does not depend on selected chart");
+        action = {};
+        action.editSelected = true;
+        ok &= Check(ChooseLibraryLaunch(action, library, ui).kind ==
+                        LibraryLaunchKind::EditDraft,
+                    "demo editor opens the existing draft");
+        ui.SelectSong(1, library);
+        ui.SelectChart(1, library);
+    }
     const fs::path selectedFile = ui.Selected(library)->file;
 
     ok &= Check(RefreshLibraryBrowser(library, ui, menuStatus) &&

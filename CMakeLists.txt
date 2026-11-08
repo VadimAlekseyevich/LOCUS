@@ -61,6 +61,7 @@ add_executable(locus
     src/app/library_playback.cpp
     src/app/library_browser.cpp
     src/app/library_file_actions.cpp
+    src/app/library_launch_actions.cpp
     src/app/audio_revision.cpp
     src/app/game_settings.cpp
     src/app/skin.cpp
