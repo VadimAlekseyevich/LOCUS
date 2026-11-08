@@ -58,10 +58,15 @@ void DrawRibbonLayer(const std::vector<PathRibbonRow>& rows,
     // entire path invisible while the separately drawn turn dots remained.
     const Texture2D shapeTexture = GetShapesTexture();
     const Rectangle uvRect = GetShapesTextureRectangle();
-    const float tx0 = uvRect.x / shapeTexture.width;
-    const float ty0 = uvRect.y / shapeTexture.height;
-    const float tx1 = (uvRect.x + uvRect.width) / shapeTexture.width;
-    const float ty1 = (uvRect.y + uvRect.height) / shapeTexture.height;
+    // Each quad used to span the white atlas rectangle. The rectangle's
+    // border can sample adjacent font-atlas texels under bilinear filtering,
+    // producing a short transverse seam on otherwise STRAIGHT route strokes.
+    // Sample the centre of the solid-white region for every vertex: width,
+    // colour and alpha still come entirely from the ribbon geometry.
+    const float solidU = (uvRect.x + uvRect.width * 0.5f) /
+                         shapeTexture.width;
+    const float solidV = (uvRect.y + uvRect.height * 0.5f) /
+                         shapeTexture.height;
     rlSetTexture(shapeTexture.id);
     rlBegin(RL_QUADS);
     rlNormal3f(0.0f, 0.0f, 1.0f);
@@ -73,13 +78,13 @@ void DrawRibbonLayer(const std::vector<PathRibbonRow>& rows,
         if (to.startsRun || (from.opacity <= 0.0f && to.opacity <= 0.0f))
             continue;
         const PathRibbonQuad quad = MakePathRibbonQuad(from, to, scale);
-        rlTexCoord2f(tx0, ty0);
+        rlTexCoord2f(solidU, solidV);
         RibbonVertex(quad.vertices[0], tint, from.opacity);
-        rlTexCoord2f(tx0, ty1);
+        rlTexCoord2f(solidU, solidV);
         RibbonVertex(quad.vertices[1], tint, from.opacity);
-        rlTexCoord2f(tx1, ty1);
+        rlTexCoord2f(solidU, solidV);
         RibbonVertex(quad.vertices[2], tint, to.opacity);
-        rlTexCoord2f(tx1, ty0);
+        rlTexCoord2f(solidU, solidV);
         RibbonVertex(quad.vertices[3], tint, to.opacity);
     }
     rlEnd();

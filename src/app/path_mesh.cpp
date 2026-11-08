@@ -46,21 +46,6 @@ PathRibbonRow MakeRow(const PathSample& sample, RouteCanvas canvas,
     };
 }
 
-bool QuadFacesCamera(const PathRibbonRow& a, const PathRibbonRow& b,
-                     float scale) {
-    const PathRibbonQuad quad = MakePathRibbonQuad(a, b, scale);
-    const auto cross = [](Vector2 origin, Vector2 first, Vector2 second) {
-        return (first.x - origin.x) * (second.y - origin.y) -
-               (first.y - origin.y) * (second.x - origin.x);
-    };
-    // Raylib uses CCW in GL's Y-up projection. The equivalent in screen
-    // coordinates is negative signed area for BOTH halves of a quad.
-    return cross(quad.vertices[0], quad.vertices[1], quad.vertices[2])
-               <= 0.01f &&
-           cross(quad.vertices[0], quad.vertices[2], quad.vertices[3])
-               <= 0.01f;
-}
-
 } // namespace
 
 std::vector<PathRibbonRow> BuildScoredPathRibbon(
@@ -88,27 +73,17 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
     if (first > last) return rows;
 
     const auto steps = core::SampleRouteWindow(chart, first, last);
-    // Anchor the tessellation to authored ticks, NOT to the moving
-    // playhead. Previously [playhead, next tick] was split into 32 tiny
-    // pieces even when the player was almost at a corner. The last piece
-    // became shorter than the miter overhang, folding a GPU-facing triangle
-    // backward and causing a one-frame gap on the following direction.
-    const int desiredSlices = std::max(1, kScoredPathSlices / chart.ticksPerBeat);
-    const double maxHalfWidth = skin.pathWidth *
-        std::max(1.0f, skin.outlineScale) * 0.5;
-    // A 135-degree turn needs at most tan(67.5 deg) = 2.414 times the
-    // stroke half-width of clearance to keep its miter front-facing.
-    const double clearance = std::max(1.0, maxHalfWidth * 2.6);
-    const int safeSlices = std::max(
-        1, static_cast<int>(std::floor(canvas.step / clearance)));
-    const int slices = std::min(desiredSlices, safeSlices);
+    const int slices = std::max(1, kScoredPathSlices / chart.ticksPerBeat);
     std::vector<PathSample> samples;
     samples.reserve(static_cast<std::size_t>(last - first + 1) *
                     static_cast<std::size_t>(slices) + 1);
     for (int target = first; target <= last; ++target) {
+        const double begin = std::max(tick, static_cast<double>(target));
+        const double end = std::min(lastTime, static_cast<double>(target + 1));
+        if (end <= begin) continue;
         const auto& step = steps[static_cast<std::size_t>(target - first)];
         for (int part = 0; part <= slices; ++part) {
-            const double time = target + static_cast<double>(part) / slices;
+            const double time = begin + (end - begin) * part / slices;
             // Consecutive ticks must use ONE shared vertex. Ignore tiny
             // duplicate times near floating-point boundaries as well.
             if (!samples.empty() && time - samples.back().tick <= 1e-10)
@@ -117,11 +92,7 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
             const core::GridPoint point{
                 step.from.x + (step.to.x - step.from.x) * progress,
                 step.from.y + (step.to.y - step.from.y) * progress};
-            // Hidden support rows on both sides let us clip the moving
-            // head/tail out of a STABLE, fully joined ribbon. Never set
-            // the row behind the head to zero width: clipping will remove
-            // it after we have solved the corner geometry.
-            const double ahead = std::clamp(time - tick, 0.0, horizon);
+            const double ahead = time - tick;
             const float opacity = ScoredPathOpacity(
                 ahead, horizon, skin.fadePower) * skin.pathOpacity;
             const float halfWidth = ScoredPathWidth(
@@ -176,117 +147,10 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
             rows.push_back(MakeRow(samples[i], canvas, prevNormal, 1.0, false));
             rows.push_back(MakeRow(samples[i], canvas, nextNormal, 1.0, false));
         } else {
-            // At extreme snap densities / thick custom skins, even one
-            // authored tick may be shorter than the outline's miter.
-            // Limit the corner overhang before it can turn either adjacent
-            // triangle inside-out. Ordinary bends keep their full miter.
-            const double before = std::hypot(
-                samples[i].position.x - samples[i - 1].position.x,
-                samples[i].position.y - samples[i - 1].position.y) * canvas.step;
-            const double after = std::hypot(
-                samples[i + 1].position.x - samples[i].position.x,
-                samples[i + 1].position.y - samples[i].position.y) * canvas.step;
-            const double tanHalf = std::sqrt(
-                std::max(0.0, 1.0 - alignment) / (1.0 + alignment));
-            const double overhang = samples[i].halfWidth *
-                std::max(1.0f, skin.outlineScale) * tanHalf;
-            const double safety = overhang > 1e-9
-                ? std::clamp(std::min(before, after) /
-                             (overhang * 1.05), 0.0, 1.0)
-                : 1.0;
-            // Angle/length alone is insufficient for strongly tapered
-            // strokes. Check the actual two GPU triangles on BOTH sides
-            // of this corner, including the wider outline. If either
-            // flips, shrink only the join to the largest safe value.
-            const PathRibbonRow incoming = rows.back();
-            const PathRibbonRow outgoing = MakeRow(
-                samples[i + 1], canvas, nextNormal, 1.0, false);
-            const float outer = std::max(1.0f, skin.outlineScale);
-            const auto safeJoin = [&](double amount) {
-                const PathRibbonRow joined = MakeRow(
-                    samples[i], canvas, bisector, miter * amount, false);
-                return QuadFacesCamera(incoming, joined, 1.0f) &&
-                       QuadFacesCamera(joined, outgoing, 1.0f) &&
-                       QuadFacesCamera(incoming, joined, outer) &&
-                       QuadFacesCamera(joined, outgoing, outer);
-            };
-            double actualSafety = safety;
-            if (!safeJoin(actualSafety)) {
-                double safe = 0.0;
-                double unsafe = actualSafety;
-                for (int n = 0; n < 24; ++n) {
-                    const double test = (safe + unsafe) * 0.5;
-                    if (safeJoin(test)) safe = test;
-                    else unsafe = test;
-                }
-                actualSafety = safe * 0.995; // Keep a culling margin.
-            }
-            rows.push_back(MakeRow(
-                samples[i], canvas, bisector, miter * actualSafety, false));
+            rows.push_back(MakeRow(samples[i], canvas, bisector, miter, false));
         }
     }
-
-    // Crop the stable grid at the actual fractional playhead by slicing
-    // an EXISTING quad, not by re-tessellating its short remainder.
-    // Linear interpolation of both edge offsets cannot reverse its
-    // winding; previously this was the source of transient missing halves.
-    const auto lerp = [](PathRibbonRow a, const PathRibbonRow& b,
-                         double time) {
-        const double t = std::clamp(
-            (time - a.tick) / (b.tick - a.tick), 0.0, 1.0);
-        a.center.x += static_cast<float>((b.center.x - a.center.x) * t);
-        a.center.y += static_cast<float>((b.center.y - a.center.y) * t);
-        a.offset.x += static_cast<float>((b.offset.x - a.offset.x) * t);
-        a.offset.y += static_cast<float>((b.offset.y - a.offset.y) * t);
-        a.opacity += static_cast<float>((b.opacity - a.opacity) * t);
-        a.tick = time;
-        return a;
-    };
-
-    // Both window edges are cut from already-tessellated full quads.
-    // At a reverse junction choose the outgoing side at the head and the
-    // arriving side at the tail; the duplicate time is a run boundary.
-    const auto clipRow = [&](double time, bool start) {
-        auto it = std::lower_bound(rows.begin(), rows.end(), time,
-            [](const PathRibbonRow& row, double value) {
-                return row.tick < value;
-            });
-        if (it == rows.end()) return rows.back();
-        if (std::abs(it->tick - time) < 1e-10) {
-            if (start) {
-                while (it + 1 != rows.end() &&
-                       std::abs((it + 1)->tick - time) < 1e-10)
-                    ++it;
-            }
-            return *it;
-        }
-        if (it == rows.begin()) return *it;
-        return lerp(*(it - 1), *it, time);
-    };
-
-    std::vector<PathRibbonRow> visible;
-    visible.reserve(rows.size() + 2);
-    PathRibbonRow head = clipRow(tick, true);
-    head.tick = tick;
-    head.opacity = skin.pathOpacity;
-    head.startsRun = true;
-    visible.push_back(head);
-
-    for (const auto& row : rows) {
-        if (row.tick > tick + 1e-10 &&
-            row.tick < lastTime - 1e-10)
-            visible.push_back(row);
-    }
-
-    PathRibbonRow tail = clipRow(lastTime, false);
-    tail.tick = lastTime;
-    if (lastTime >= tick + horizon - 1e-10) {
-        tail.opacity = 0.0f;
-        tail.offset = {};
-    }
-    tail.startsRun = false;
-    visible.push_back(tail);
-    return visible;
+    return rows;
 }
 
 PathRibbonQuad MakePathRibbonQuad(
