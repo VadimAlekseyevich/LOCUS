@@ -1,4 +1,5 @@
 #include "app/session_transition.h"
+#include "app/play_screen_actions.h"
 #include "app/chart_editor_ui.h"
 #include "app/chart_playback.h"
 #include "app/demo_transport.h"
@@ -104,6 +105,30 @@ int main() {
     ok &= Check(customChart && title == "LIBRARY SONG" &&
                 judge.Counts().Resolved() == count,
                 "no screen boundary does not restart the session");
+    // Play controls and status no longer depend on main's frame loop.
+    app::AppState appState;
+    app::PlayScreenActions play{
+        {appState, game, judge, demo, preview, customChart, completed}
+    };
+    ok &= Check(app::PracticeRateForIndex(-1) < 0.0 &&
+                app::PracticeRateForIndex(0) == 1.0 &&
+                app::PracticeRateForIndex(4) == 0.1 &&
+                app::PracticeRateForIndex(5) < 0.0,
+                "practice presets reject out-of-range input");
+    customChart = false;
+    const auto demoView = play.Transport(20.0);
+    ok &= Check(demoView.practiceSpeed == 1.0 &&
+                demoView.status != nullptr,
+                "demo transport snapshot never depends on custom audio");
+    app::FrameInput noKeys;
+    play.HandleControls(noKeys, 20.0);
+    ok &= Check(appState.screen == Screen::Home,
+                "idle play commands do not change navigation");
+    customChart = true;
+    const auto localView = play.Transport(21.0);
+    ok &= Check(localView.practiceSpeed > 0.0 &&
+                localView.status != nullptr,
+                "custom transport snapshot available without audio device");
     game.Stop(customChart);
     if (!ok) return 1;
     std::cout << "SESSION_TRANSITION_PASS editor-test=1 results-replay=1 demo=1 library=1\n";

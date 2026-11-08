@@ -31,6 +31,7 @@ target_include_directories(locus_core PUBLIC
 add_executable(locus
     src/app/main.cpp
     src/app/app_runtime_policy.cpp
+    src/app/play_screen_actions.cpp
     src/app/app_smoke_checks.cpp
     src/app/app_frame_renderer.cpp
     src/app/app_input.cpp
@@ -240,6 +241,9 @@ if(LOCUS_BUILD_TESTS)
     # The pure navigation policy remains in screen_flow.
     add_executable(locus_session_transition_tests
         tests/session_transition_tests.cpp
+        src/app/play_screen_actions.cpp
+        src/app/app_runtime_policy.cpp
+        src/app/screen_flow.cpp
         src/app/session_transition.cpp
         src/app/game_session.cpp
         src/app/chart_playback.cpp

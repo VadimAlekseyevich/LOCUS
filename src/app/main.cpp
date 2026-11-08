@@ -11,6 +11,7 @@
 #include "app/chart_editor_ui.h"
 #include "app/app_input.h"
 #include "app/app_runtime_policy.h"
+#include "app/play_screen_actions.h"
 #include "app/app_smoke_checks.h"
 #include "app/app_frame_renderer.h"
 #include "app/app_quit_dialog_layout.h"
@@ -243,6 +244,10 @@ int main(int argc, char** argv) {
         library, libraryUi, editorFiles, transitions, loadedAudioPath,
         state, musicError
     };
+    locus::app::PlayScreenActions playActions{
+        {state, gameSession, judge, transport, chartPlayback,
+         customChart, sessionCompleted}
+    };
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
@@ -463,55 +468,24 @@ int main(int argc, char** argv) {
                     speedNoticeUntil = now + 1.5;
                 }
             }
-            if (customChart && input.practiceSpeedIndex >= 0) {
-                const double speeds[] = {1.0, 0.75, 0.5, 0.25, 0.1};
-                gameSession.SetPracticeSpeed(customChart, speeds[input.practiceSpeedIndex], now);
-            }
-            if (input.restartPressed ||
-                (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
-                sessionCompleted = false;
-                gameSession.Restart(customChart, now);
-            } else if (input.pausePressed) {
-                gameSession.TogglePause(customChart, now);
-            }
+            playActions.HandleControls(input, now);
         }
         if (state.screen == Screen::Listen)
             listener.Update(loadedNewSong, input.restartPressed,
                             input.startPressed, input.pausePressed, now);
         if (state.screen == Screen::Editor)
             editorSession.UpdatePreview(now);
-        if (state.screen == Screen::Play) {
-            gameSession.Update(customChart, now,
-                               {input.arrowPressed, input.arrowCapturedAt, input.arrowHeld});
-            const bool audioFinished = customChart
-                ? chartPlayback.Finished() : transport.Finished();
-            if (ChartReadyForResults(judge, audioFinished)) {
-                FinishSession(state, judge);
-                sessionCompleted = true;
-                // Stop the music immediately if the last judged note occurs
-                // before the end of the WAV/MP3. The transport and chart
-                // playback are not allowed to keep running on Results.
-                gameSession.Stop(customChart);
-            }
-        }
+        if (state.screen == Screen::Play)
+            playActions.Update(input, now);
         const double renderNow = MonotonicSeconds();
-        const double songTime = customChart ? chartPlayback.AudioSeconds(renderNow)
-                                            : transport.SongSeconds(renderNow);
-        const bool paused = customChart ? chartPlayback.Paused() : transport.Paused();
-        const bool finished = customChart ? chartPlayback.Finished() : transport.Finished();
-        const char* status = customChart
-            ? (finished ? "CHART FINISHED"
-               : paused ? "PAUSED  |  SPACE RESUME"
-               : songTime < 0.0 ? "SILENT PREROLL  |  ARROWS TO TURN"
-                                : "CUSTOM SONG  |  ARROWS TO TURN")
-            : transport.Status();
+        const auto transportView = playActions.Transport(renderNow);
         const GameplayView gameplay{activeChart, judge, gameSession.Flash(),
-                                     chartTitle, songTime,
-                                    customChart ? chartPlayback.Beat(renderNow)
-                                                : transport.Beat(renderNow),
-                                    paused, sessionCompleted, customChart,
-                                    customChart ? chartPlayback.Speed() : 1.0,
-                                    status, settings.hitFlash, settings, activeSkin,
+                                    chartTitle, transportView.songSeconds,
+                                    transportView.beat, transportView.paused,
+                                    sessionCompleted, customChart,
+                                    transportView.practiceSpeed,
+                                    transportView.status,
+                                    settings.hitFlash, settings, activeSkin,
                                     speedNoticeUntil};
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
