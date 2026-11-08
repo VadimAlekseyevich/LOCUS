@@ -4,6 +4,7 @@
 #include "app/chart_filename.h"
 #include "app/audio_revision.h"
 #include "app/song_set_storage.h"
+#include "app/image_asset_file.h"
 #include "app/song_archive.h"
 
 #ifdef _WIN32
@@ -204,6 +205,8 @@ bool SongLibrary::Refresh(std::string& message) {
             next.back().folder = path.parent_path();
             next.back().managed = managed;
             next.back().previewStartMs = managed ? metadata.previewStartMs : 0;
+            next.back().backgroundImage = managed && !metadata.backgroundFile.empty()
+                ? path.parent_path() / fs::u8path(metadata.backgroundFile) : fs::path{};
         } else {
             index = found->second;
         }
@@ -251,6 +254,65 @@ bool SongLibrary::SetPreviewStartMs(int songIndex, int timeMs,
     manifest.previewStartMs = timeMs;
     if (!ReplaceSongSetManifest(path, manifest, error)) return false;
     song.previewStartMs = timeMs;
+    return true;
+}
+
+bool SongLibrary::SetBackgroundImage(int songIndex, const fs::path& source,
+                                     std::string& error) {
+    if (songIndex < 0 || songIndex >= static_cast<int>(songs_.size()) ||
+        !songs_[static_cast<std::size_t>(songIndex)].managed) {
+        error = "Choose a managed Song Set before setting artwork.";
+        return false;
+    }
+    if (!source.empty() && !ValidateImageAssetFile(source, error)) return false;
+    auto& song = songs_[static_cast<std::size_t>(songIndex)];
+    FolderWriteLock lock;
+    if (!lock.Acquire(song.folder, error)) return false;
+    SongSetManifest manifest;
+    const fs::path metadataPath = song.folder / L"set.locus.json";
+    if (!LoadSongSetManifest(metadataPath, manifest, error)) return false;
+    if (manifest.id != song.id) {
+        error = "Song Set changed on disk; refresh the library.";
+        return false;
+    }
+    const std::string oldFile = manifest.backgroundFile;
+    fs::path published;
+    if (!source.empty()) {
+        const auto stamp = std::chrono::steady_clock::now().
+            time_since_epoch().count();
+        std::string extension = source.extension().u8string();
+        std::transform(extension.begin(), extension.end(), extension.begin(),
+                       [](unsigned char c) {
+                           return static_cast<char>(std::tolower(c));
+                       });
+        manifest.backgroundFile = "background-" +
+            std::to_string(stamp) + extension;
+        published = song.folder / fs::u8path(manifest.backgroundFile);
+        std::error_code copyError;
+        if (!fs::copy_file(source, published, fs::copy_options::none,
+                           copyError) || copyError ||
+            !ValidateImageAssetFile(published, error)) {
+            std::error_code cleanup;
+            fs::remove(published, cleanup);
+            if (error.empty()) error = "Cannot copy Song Set background.";
+            return false;
+        }
+    } else manifest.backgroundFile.clear();
+
+    if (!ReplaceSongSetManifest(metadataPath, manifest, error)) {
+        if (!published.empty()) {
+            std::error_code cleanup;
+            fs::remove(published, cleanup);
+        }
+        return false;
+    }
+    song.backgroundImage = published;
+    // Delete only artwork that this Song Set owned and no longer references.
+    if (!oldFile.empty() && oldFile != manifest.backgroundFile) {
+        std::error_code cleanup;
+        fs::remove(song.folder / fs::u8path(oldFile), cleanup);
+    }
+    error.clear();
     return true;
 }
 

@@ -1,4 +1,5 @@
 #include "app/song_set_storage.h"
+#include "app/image_asset_file.h"
 
 #include <nlohmann/json.hpp>
 
@@ -146,6 +147,18 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
         loaded.previewStartMs > kMaxSongPreviewStartMs) {
         error = "Song Set preview position is out of range."; return false;
     }
+    if (data.contains("backgroundFile")) {
+        if (!data["backgroundFile"].is_string()) {
+            error = "Song Set backgroundFile must be a string.";
+            return false;
+        }
+        loaded.backgroundFile = data["backgroundFile"].get<std::string>();
+        if (!loaded.backgroundFile.empty() &&
+            !SafeImageFilename(loaded.backgroundFile)) {
+            error = "Song Set backgroundFile must be a safe PNG/JPEG filename.";
+            return false;
+        }
+    }
     manifest = std::move(loaded);
     error.clear();
     return true;
@@ -156,7 +169,9 @@ bool WriteNewSongSetManifest(const fs::path& path,
     if (manifest.id.empty() || manifest.title.empty() ||
         (!SafeAudioFilename(manifest.audioFile) ||
          manifest.previewStartMs < 0 ||
-         manifest.previewStartMs > kMaxSongPreviewStartMs)) {
+         manifest.previewStartMs > kMaxSongPreviewStartMs ||
+         (!manifest.backgroundFile.empty() &&
+          !SafeImageFilename(manifest.backgroundFile)))) {
         error = "Invalid new Song Set metadata.";
         return false;
     }
@@ -169,7 +184,8 @@ bool WriteNewSongSetManifest(const fs::path& path,
     const nlohmann::json data = {
         {"formatVersion", 1}, {"setId", manifest.id}, {"title", manifest.title},
         {"artist", manifest.artist}, {"audioFile", manifest.audioFile},
-        {"previewStartMs", manifest.previewStartMs}
+        {"previewStartMs", manifest.previewStartMs},
+        {"backgroundFile", manifest.backgroundFile}
     };
     {
         std::ofstream out(stage, std::ios::binary | std::ios::trunc);
@@ -196,7 +212,9 @@ bool ReplaceSongSetManifest(const fs::path& path,
     if (manifest.id.empty() || manifest.title.empty() ||
         !SafeAudioFilename(manifest.audioFile) ||
         manifest.previewStartMs < 0 ||
-        manifest.previewStartMs > kMaxSongPreviewStartMs) {
+        manifest.previewStartMs > kMaxSongPreviewStartMs ||
+        (!manifest.backgroundFile.empty() &&
+         !SafeImageFilename(manifest.backgroundFile))) {
         error = "Invalid Song Set metadata."; return false;
     }
     std::error_code ec;
@@ -208,7 +226,8 @@ bool ReplaceSongSetManifest(const fs::path& path,
         {"formatVersion", 1}, {"setId", manifest.id},
         {"title", manifest.title}, {"artist", manifest.artist},
         {"audioFile", manifest.audioFile},
-        {"previewStartMs", manifest.previewStartMs}
+        {"previewStartMs", manifest.previewStartMs},
+        {"backgroundFile", manifest.backgroundFile}
     };
     {
         std::ofstream out(stage, std::ios::binary | std::ios::trunc);

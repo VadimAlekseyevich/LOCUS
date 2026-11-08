@@ -12,6 +12,7 @@ struct SongSetManifest {
     std::string artist;
     std::string audioFile;
     int previewStartMs = 0; // Song menu playback only; not chart timing.
+    std::string backgroundFile; // Optional flat PNG/JPEG filename.
 };
 inline constexpr int kMaxSongPreviewStartMs = 3600000;
 
