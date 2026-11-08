@@ -8,17 +8,19 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 | --- | --- |
 | `src/core` | Timing, eight-heading route geometry, turn judgement, chart parsing and the editor model. No raylib window or Windows file dialogs. |
 | `src/app/route_renderer.*`, `path_mesh.*`, `gameplay_ui.*`, `chart_editor_ui.*` | Convert one continuous model-space route into gameplay/editor visuals. Both views share the same normalized geometry; editor view is grid-free. |
-| `src/app/app_input.*`, `menu_controller.*`, `screen_flow.*` | Collect input, handle menu interactions, and resolve screen navigation. |
+| `src/app/app_input.*`, `menu_controller.*`, `screen_flow.*` | Collect and route native input. The exit modal and editor BACK hitbox are handled before screen commands, with shared viewport-aware geometry and a headless pointer test. |
 | `src/app/audio_device.*`, `chart_playback.*`, `game_session.*`, `local_music.*`, `demo_transport.*` | Explicit shared audio-device lifetime, playback clocks, scored sessions and non-owning streams. |
 | `src/app/chart_file.*`, `chart_save.cpp`, `song_library.*`, `song_set_storage.*` | Validate chart-relative paths, serialize per-library/per-Set writers, persist shared audio, back up overwrites, and manage recoverable Trash. |
 | `src/app/editor_session.*`, `editor_document.*`, `editor_file_actions.*` | Editor preview/TEST, transactional file handling, and injected native dialogs. |
 | `src/app/listen_session.*`, `skin_profile_actions.*`, `library_playback.*`, `library_browser.*` | Cohesive user-facing session workflows with testable boundaries. |
 | `src/app/app_runtime_policy.*` | Pure screen navigation and judgement-completion policy, independent of rendering and file dialogs. |
+| `src/app/play_screen_actions.*` | Play-only pause/retry/practice input, scoring completion and read-only playback snapshots; does not own audio or chart storage. |
+| `src/app/editor_screen_actions.*` | Editor-only New/Open/Attach/Save/TEST command routing and SET tab events, with deterministic precedence and no screen navigation ownership. |
 | `src/app/app_smoke_checks.*` | Headless integration checks behind the existing `--loop-check`, `--screen-check`, and `--session-check` entry points. |
 | `src/app/app_frame_renderer.*`, `app_quit_dialog_layout.h` | Rendering and OS font selection. The quit confirmation shares one set of hitboxes between renderer and input. |
 | `src/app/library_file_actions.*` | Song library file commands (import/export/copy/Trash/restore) and injected native file pickers, without gameplay-session ownership. |
 | `src/app/library_launch_actions.*` | SongSelect launch decisions and effects: pure path-based intent selection and a focused Edit/Play/NewDifficulty coordinator. |
-| `src/app/main.cpp` | Composition root and frame/update loop only: constructs lifetime-owned services, wires screen-specific actions and drives the frame. Still needs incremental decomposition. |
+| `src/app/main.cpp` | Composition root, explicit resource lifetime, cross-screen ordering and frame rendering call. Keeps the necessary high-level coordination rather than hiding it in an all-knowing Application object. |
 
 ## Architecture-first refactoring contract
 
@@ -50,10 +52,12 @@ and reduce the number of unrelated reasons a file can change.
 
 ### Remaining coupling to remove
 
-1. `main.cpp` still coordinates per-frame editor, skin, global-window and
-   gameplay actions, but SongSelect launch decisions and file commands are
-   separately testable. Further extraction needs a demonstrated source of
-   coupling; do not introduce a universal `AppContext` to chase line counts.
+1. `main.cpp` retains window/audio lifetime, settings/skin changes,
+   cross-screen navigation, render-view assembly and the frame ordering.
+   Play controls/scoring, editor file commands, library launch/file commands
+   and native quit-input mapping now have separate owners. This is an
+   intentional boundary: only extract more if a new feature proves the
+   coupling harmful, rather than moving 400 lines into a God Object.
 2. `chart_editor_actions.cpp` combines editor keyboard/mouse interaction,
    timeline movement, route edits and selection state. Split these by
    input operation and preserve its pure action tests.
@@ -103,10 +107,13 @@ Managed Song Sets have one shared audio file, a manifest and per-difficulty char
 
 Editor document lifecycle, preview and TEST; standalone listening; library play/import;
 skin profiles; quit modal; and screen-boundary session lifecycle now have distinct
-modules and independent headless tests. The entry point deliberately retains
-composition, global input, frame rendering and PLAY-screen glue. This is not a
-promise that `main.cpp` will never grow: move code when a cohesive new feature
-or a demonstrated regression justifies it, rather than chasing a line-count goal.
+modules and independent headless tests. The 2026-11-08 architecture pass also
+isolated headless smoke checks, frame rendering, SongSelect file/launch
+commands, Play-session commands and snapshots, Editor-screen file commands,
+and modal pointer input. The entry point deliberately retains lifetime
+composition, cross-screen orchestration, and the call into the renderer.
+Keeping these concerns visible is preferable to creating a new `Application`
+God Object. Future splits require a concrete reason, not a line-count goal.
 
 ### P2 — Validate real-device audio lifecycle
 

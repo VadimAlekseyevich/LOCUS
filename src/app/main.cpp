@@ -1,11 +1,8 @@
 #include "core/route.h"
-#include "core/route_view.h"
 #include "core/judgement.h"
-#include "core/chart_json.h"
 #include "app/demo_transport.h"
 #include "app/audio_device.h"
 #include "app/local_music.h"
-#include "app/chart_file.h"
 #include "app/chart_playback.h"
 #include "app/music_picker.h"
 #include "app/chart_editor_ui.h"
@@ -14,9 +11,7 @@
 #include "app/play_screen_actions.h"
 #include "app/app_smoke_checks.h"
 #include "app/app_frame_renderer.h"
-#include "app/app_quit_dialog_layout.h"
 #include "app/menu_controller.h"
-#include "app/chart_editor_layout.h"
 #include "app/editor_session.h"
 #include "app/editor_file_actions.h"
 #include "app/editor_set_controller.h"
@@ -24,12 +19,9 @@
 #include "app/listen_session.h"
 #include "app/skin_profile_actions.h"
 #include "app/visual_style.h"
-#include "app/route_renderer.h"
 #include "app/game_session.h"
 #include "app/gameplay_ui.h"
 #include "app/song_library.h"
-#include "app/library_playback.h"
-#include "app/library_browser.h"
 #include "app/library_file_actions.h"
 #include "app/library_launch_actions.h"
 #include "app/game_settings.h"
@@ -41,49 +33,30 @@
 #include "app/session_transition.h"
 #include "app/quit_media.h"
 #include "app/editor_discard_guard.h"
-#include "app/viewport.h"
 
 #include "raylib.h"
 
 #include <algorithm>
-#include <array>
 #include <chrono>
-#include <cmath>
 #include <cstring>
-#include <cstdlib>
 #include <filesystem>
 #include <iostream>
-#include <optional>
 #include <string>
-#include <utility>
-#include <vector>
 
 // Production screens share one window and one input/update/render loop.
 namespace {
 using locus::app::AppState;
 using locus::app::FrameInput;
-using locus::app::PollInput;
 using locus::app::MenuEvents;
 using locus::app::HandleMenuInput;
 using locus::app::Screen;
-using locus::app::ScreenName;
 using locus::app::EditorPending;
 using locus::app::kSmokeFrames;
 using locus::app::UpdateState;
-using locus::app::ChartReadyForResults;
-using locus::app::FinishSession;
 using locus::app::UiFont;
 using locus::app::LoadUiFont;
 using locus::app::RenderFrame;
-using locus::app::kQuitConfirmButton;
-using locus::app::kQuitCancelButton;
 using locus::app::GameplayView;
-using locus::app::GameplayCamera;
-using locus::app::GameplayViewportScale;
-using locus::app::GameplayRightSidebarWidth;
-using locus::app::kGameplayWorldViewport;
-using locus::app::DrawPlayGrid;
-using locus::app::DrawResultsScreen;
 
 constexpr int kWindowWidth = 960;
 constexpr int kWindowHeight = 540;
@@ -97,9 +70,7 @@ double MonotonicSeconds() {
 bool HasArgument(int argc, char** argv, const char* argument) {
     return argc == 2 && std::strcmp(argv[1], argument) == 0;
 }
-
-
-
+ 
 } // namespace
 
 int main(int argc, char** argv) {

@@ -10,7 +10,9 @@ See [GDD](GDD.md), [architecture audit](ARCHITECTURE.md) and
   EditorFileActions, ListenSession, SkinProfileActions, song library and
   session/navigation lifetime are separated. Headless tests cover failure
   paths and native-dialog cancellation through injected pickers. The entry
-  point owns application composition, global input, rendering and PLAY glue.
+  point now owns application composition and cross-screen frame ordering;
+  dedicated render, editor, Play, library and input modules own the respective
+  screen behaviors. Further refactors should be feature-driven, not cosmetic.
 - [x] **2a. Managed Song Set storage.** New imports have one shared audio,
   a manifest, independently saved difficulty charts and library-wide writer
   locks. Save no longer creates redundant external authoring copies.
