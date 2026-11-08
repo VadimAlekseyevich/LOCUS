@@ -15,6 +15,12 @@ int main() {
        std::abs(app::EaseCubic(0.25) - 0.15625f) < 1e-6,
        "easing is clamped and non-linear");
     const auto chart = core::MakeDemoChart();
+    core::Chart early = chart;
+    early.turns = {{4, core::Turn::Reverse}};
+    app::PlayOutroTransition earlyOutro;
+    earlyOutro.Begin(early, 3.95, 4.0);
+    ck(earlyOutro.Frame(4.0).outgoing == core::Heading::Left,
+       "early final hit departs in authored outgoing direction");
     app::PlayOutroTransition outro;
     outro.Begin(chart, 3.25, 5.0);
     const auto a = outro.Frame(5.0);

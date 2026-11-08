@@ -44,7 +44,12 @@ public:
         anchor_ = core::RoutePositionAt(chart, safe);
         anchorBeat_ = safe;
         const int tick = static_cast<int>(std::floor(safe));
-        outgoing_ = core::SampleRouteStep(chart, tick).heading;
+        // A final note can score EARLY. Take the authored outgoing
+        // direction of the last turn, not the direction sampled just
+        // before the judgement timestamp reaches that turn.
+        const int exitTick = chart.turns.empty()
+            ? tick : chart.turns.back().beat;
+        outgoing_ = core::SampleRouteStep(chart, exitTick).heading;
         start_ = now;
         active_ = true;
         resultsAt_ = -1.0;

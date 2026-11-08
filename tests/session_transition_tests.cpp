@@ -39,6 +39,13 @@ int main() {
         customChart, completed, title
     };
 
+    app::AppState resultsNavigation;
+    resultsNavigation.screen = Screen::Results;
+    app::NavigationInput returnToSelection;
+    returnToSelection.backPressed = true;
+    app::UpdateScreenFlow(resultsNavigation, returnToSelection, false);
+    ok &= Check(resultsNavigation.screen == Screen::SongSelect,
+                "Results Back returns to selected song menu listening");
     // TEST starts from Editor with the chart and test origin already selected.
     activeChart = demoChart;
     activeChart.turns = {{1, core::Turn::Right45}, {3, core::Turn::Left}};
