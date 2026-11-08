@@ -7,7 +7,7 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 | Area | Ownership and contract |
 | --- | --- |
 | `src/core` | Timing, eight-heading route geometry, turn judgement, chart parsing and the editor model. No raylib window or Windows file dialogs. |
-| `src/app/route_renderer.*`, `gameplay_ui.*`, `chart_editor_ui.*` | Convert one continuous model-space route into gameplay/editor visuals. Both views share the same normalized geometry; editor view is grid-free. |
+| `src/app/route_renderer.*`, `path_mesh.*`, `gameplay_ui.*`, `chart_editor_ui.*` | Convert one continuous model-space route into gameplay/editor visuals. Both views share the same normalized geometry; editor view is grid-free. |
 | `src/app/app_input.*`, `menu_controller.*`, `screen_flow.*` | Collect input, handle menu interactions, and resolve screen navigation. |
 | `src/app/audio_device.*`, `chart_playback.*`, `game_session.*`, `local_music.*`, `demo_transport.*` | Explicit shared audio-device lifetime, playback clocks, scored sessions and non-owning streams. |
 | `src/app/chart_file.*`, `chart_save.cpp`, `song_library.*`, `audio_revision.*` | Validate paths, persist authored charts and manage immutable audio revisions. |
@@ -16,6 +16,8 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 | `src/app/main.cpp` | Application composition, UI flow and resource lifetime. This remains the primary coupling point. |
 
 ## Completed stabilization
+
+- **2026-11-08:** The scored preview draws a tapered `path_mesh` triangle ribbon, with shared joins and interpolated vertex opacity rather than independently rasterized `DrawLineEx` fragments. Turns up to 135° use bounded miters; 180° reversals split runs at an identical junction. Mesh tests cover fractional and dense ticks, continuity, fading and reverse overlays. The editor authoring preview is unchanged.
 
 - Chart loading prepares and validates replacement state before replacing active game/editor state.
 - Screen flow, input, menu actions, viewport mapping, gameplay drawing and route geometry have separate modules.

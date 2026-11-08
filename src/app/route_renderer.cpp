@@ -1,6 +1,9 @@
 #include "app/route_renderer.h"
 
 #include "app/visual_style.h"
+#include "app/path_mesh.h"
+
+#include "rlgl.h"
 #include "app/reverse_cap.h"
 
 #include <algorithm>
@@ -38,52 +41,51 @@ int CurrentBeat(const core::Chart& chart, double beat) {
                       chart.firstBeat, chart.lengthBeats - 1);
 }
 
-// Draw a full four-beat measure of future authored path in PLAY/TEST.
-// Each source segment is clipped to [beat, beat+4] using fractional
-// song beats. The rear edge follows the player; nothing lingers behind,
-// and new parts emerge at zero opacity instead of popping into view.
+// Draw a continuous joined ribbon, not a collection of independent thick
+// line quads. Each adjoining pair of triangles uses the exact SAME row
+// vertices and interpolated alpha, eliminating raster seams on moving turns.
+void RibbonVertex(Vector2 point, Color tint, float opacity) {
+    const Color color = WithOpacity(tint, opacity);
+    rlColor4ub(color.r, color.g, color.b, color.a);
+    rlVertex2f(point.x, point.y);
+}
+
+Vector2 Offset(Vector2 center, Vector2 normal, float scale) {
+    return {center.x + normal.x * scale, center.y + normal.y * scale};
+}
+
+void DrawRibbonLayer(const std::vector<PathRibbonRow>& rows,
+                     Color tint, float scale) {
+    rlBegin(RL_TRIANGLES);
+    for (std::size_t i = 1; i < rows.size(); ++i) {
+        const auto& from = rows[i - 1];
+        const auto& to = rows[i];
+        if (to.startsRun || (from.opacity <= 0.0f && to.opacity <= 0.0f))
+            continue;
+        const Vector2 a = Offset(from.center, from.offset, scale);
+        const Vector2 b = Offset(from.center, from.offset, -scale);
+        const Vector2 c = Offset(to.center, to.offset, scale);
+        const Vector2 d = Offset(to.center, to.offset, -scale);
+
+        RibbonVertex(a, tint, from.opacity);
+        RibbonVertex(b, tint, from.opacity);
+        RibbonVertex(c, tint, to.opacity);
+
+        RibbonVertex(c, tint, to.opacity);
+        RibbonVertex(b, tint, from.opacity);
+        RibbonVertex(d, tint, to.opacity);
+    }
+    rlEnd();
+}
+
 void DrawScoredPath(const core::Chart& chart, double beat,
                     RouteCanvas canvas, const Skin& skin) {
-    const int first = CurrentBeat(chart, beat);
-    const float horizon = skin.lookaheadBeats * chart.ticksPerBeat;
-    // A fractional musical-beat window may cross many finer ticks.
-    const int last = first + std::min(
-        chart.lengthBeats - 1 - first, static_cast<int>(std::ceil(horizon)));
-    const auto steps = core::SampleRouteWindow(chart, first, last);
-    for (int target = last; target >= first; --target) {
-        const ScoredPathInterval visible = ScoredPathVisibleInterval(beat, target, horizon);
-        if (!visible.Visible()) continue;
-        const double begin = visible.begin, end = visible.end;
-        const core::RouteStep& step = steps[static_cast<std::size_t>(target - first)];
-        const double fromX = static_cast<double>(step.from.x);
-        const double fromY = static_cast<double>(step.from.y);
-        const double dx = static_cast<double>(step.to.x - step.from.x);
-        const double dy = static_cast<double>(step.to.y - step.from.y);
-
-        // Keep roughly the same gradient sampling per MUSICAL beat.
-        // Otherwise a 1/24 snap would multiply renderer work by 24.
-        const int slices = std::max(1, kScoredPathSlices / chart.ticksPerBeat);
-        for (int i = slices - 1; i >= 0; --i) {
-            const double a = begin + (end - begin) * i / slices;
-            const double b = begin + (end - begin) * (i + 1) / slices;
-            const double ahead = (a + b) * 0.5 - beat;
-            const float opacity = ScoredPathOpacity(ahead, horizon, skin.fadePower)
-                * skin.pathOpacity;
-            if (opacity <= 0.0005f) continue;
-            const float width = ScoredPathWidth(ahead, horizon,
-                                                skin.pathWidth, skin.fadePower);
-            const auto screen = [&](double time) {
-                const double t = time - target;
-                return canvas.Position({fromX + dx * t, fromY + dy * t});
-            };
-            const Vector2 p0 = screen(a);
-            const Vector2 p1 = screen(b);
-            DrawLineEx(p0, p1, width * skin.outlineScale,
-                       WithOpacity(skin.outline, opacity));
-            DrawLineEx(p0, p1, width,
-                       WithOpacity(skin.trajectory, opacity));
-        }
-    }
+    const auto rows = BuildScoredPathRibbon(chart, beat, canvas, skin);
+    if (rows.size() < 2) return;
+    // As before, outline is behind trajectory, but both layers now have
+    // watertight corners and vertex alpha rather than per-slice alpha jumps.
+    DrawRibbonLayer(rows, skin.outline, skin.outlineScale);
+    DrawRibbonLayer(rows, skin.trajectory, 1.0f);
 }
 
 } // namespace

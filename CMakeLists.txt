@@ -64,6 +64,7 @@ add_executable(locus
     src/app/chart_editor_ui.cpp
     src/app/chart_editor_actions.cpp
     src/app/route_renderer.cpp
+    src/app/path_mesh.cpp
 )
 target_link_libraries(locus PRIVATE locus_core raylib nlohmann_json::nlohmann_json)
 if(WIN32)
@@ -128,6 +129,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_editor_actions.cpp
         src/app/game_settings.cpp
         src/app/route_renderer.cpp
+        src/app/path_mesh.cpp
     )
     target_compile_features(locus_editor_ui_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_ui_tests PRIVATE
@@ -189,6 +191,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_editor_ui.cpp
         src/app/chart_editor_actions.cpp
         src/app/route_renderer.cpp
+        src/app/path_mesh.cpp
         src/app/game_settings.cpp
         src/app/chart_playback.cpp
         src/app/game_session.cpp
@@ -276,6 +279,16 @@ if(LOCUS_BUILD_TESTS)
     target_include_directories(locus_reverse_cap_tests PRIVATE
         "${PROJECT_SOURCE_DIR}/src")
     add_test(NAME locus_reverse_cap_orientation COMMAND locus_reverse_cap_tests)
+
+    # The scored route is a single connected, tapered screen-space ribbon.
+    # Regression checks cover bends, fractional playheads and reversals.
+    add_executable(locus_path_mesh_tests
+        tests/path_mesh_tests.cpp
+        src/app/path_mesh.cpp
+    )
+    target_compile_features(locus_path_mesh_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_path_mesh_tests PRIVATE locus_core raylib)
+    add_test(NAME locus_continuous_path_mesh COMMAND locus_path_mesh_tests)
 
     add_executable(locus_path_fade_tests tests/path_fade_tests.cpp)
     target_compile_features(locus_path_fade_tests PRIVATE cxx_std_17)
