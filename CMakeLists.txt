@@ -32,6 +32,7 @@ add_executable(locus
     src/app/main.cpp
     src/app/app_runtime_policy.cpp
     src/app/app_smoke_checks.cpp
+    src/app/app_frame_renderer.cpp
     src/app/app_input.cpp
     src/app/menu_controller.cpp
     src/app/gameplay_ui.cpp
