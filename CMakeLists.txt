@@ -34,6 +34,7 @@ add_executable(locus
     src/app/play_screen_actions.cpp
     src/app/app_smoke_checks.cpp
     src/app/app_frame_renderer.cpp
+    src/app/image_asset_texture.cpp
     src/app/app_input.cpp
     src/app/menu_controller.cpp
     src/app/gameplay_ui.cpp
@@ -283,6 +284,11 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_screen_fade_tests PRIVATE cxx_std_17)
     target_include_directories(locus_screen_fade_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
     add_test(NAME locus_screen_fade_transition COMMAND locus_screen_fade_tests)
+
+    add_executable(locus_image_asset_tests tests/image_asset_tests.cpp)
+    target_compile_features(locus_image_asset_tests PRIVATE cxx_std_17)
+    target_include_directories(locus_image_asset_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    add_test(NAME locus_image_asset_geometry_and_validation COMMAND locus_image_asset_tests)
 
     # Exit modal policy is pure; test playback state changes without opening
     # a native window or relying on an actual sound device.
