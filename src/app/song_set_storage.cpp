@@ -36,7 +36,15 @@ bool SafeAudioFilename(const std::string& name) {
         name.find('\\') != std::string::npos ||
         name.find(':') != std::string::npos) return false;
     for (unsigned char c : name) if (c < 32 || c == 127) return false;
-    return true;
+    // Song Set metadata describes a real audio file, never a chart or the
+    // manifest itself. Keep extension checks independent of locale.
+    const auto dot = name.find_last_of('.');
+    if (dot == std::string::npos) return false;
+    std::string extension = name.substr(dot);
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+                   [](unsigned char c) { return static_cast<char>(
+                       c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c); });
+    return extension == ".wav" || extension == ".mp3";
 }
 
 std::wstring UniqueSuffix() {

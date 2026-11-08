@@ -94,6 +94,16 @@ int main() {
                 sharedAudio == library.Songs()[0].charts[1].audioFile &&
                 Read(sharedAudio) == firstBytes,
                 "manifest and all difficulties refer to one immutable audio");
+    // A hostile or malformed package manifest cannot use a chart JSON as
+    // its alleged shared audio file.
+    const fs::path invalidMetadata = folder / "unsafe-set.json";
+    Write(invalidMetadata, R"({"formatVersion":1,"setId":"test",)"
+        R"("title":"Hostile","artist":"","audioFile":"set.locus.json"})");
+    SongSetManifest invalidSet;
+    ok &= Check(!LoadSongSetManifest(invalidMetadata, invalidSet, error),
+                "manifest cannot point its audioFile at JSON");
+    fs::remove(invalidMetadata, ec);
+
     fs::path repeated;
     ok &= Check(library.Import(easy, repeated, error) &&
                 repeated == easyInstalled && library.ChartCount() == 2,
