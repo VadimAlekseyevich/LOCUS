@@ -7,6 +7,7 @@
 #include "app/viewport.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <cmath>
 #include <string>
 
@@ -40,7 +41,7 @@ bool Hit(Vector2 mouse, Rectangle rect) {
 
 Rectangle ColorRow(int row) {
     // Ten colours must fit above the skin action row at y=473.
-    return {70.0f, 194.0f + row * 25.0f, 485.0f, 24.0f};
+    return {70.0f, 194.0f + row * 25.0f, 205.0f, 24.0f};
 }
 Rectangle NameField() { return {615.0f, 128.0f, 302.0f, 36.0f}; }
 constexpr float RowPitch(int page) noexcept {
@@ -204,6 +205,92 @@ void PreviewPath(Font font, const Skin& skin) {
     Label(font, "PLAY: [ / ] OR NUM - / +  (10 PX/S)", 610, 425, 11.0f, kMuted);
 }
 
+constexpr float kWheelInner = 64.0f;
+constexpr float kWheelOuter = 84.0f;
+constexpr float kPi = 3.14159265358979323846f;
+
+void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
+    const Vector2 center = SkinColorWheelCenter();
+    const Color current = SkinColor(skin, ui.selectedColor);
+    SkinHsv hsv = SkinColorToHsv(current);
+    if (hsv.s < 0.0001f) hsv.h = ui.pickerHue;
+    // Native raylib primitives draw this wheel. No external GUI framework,
+    // texture files, or R/G/B/A sliders are needed.
+    for (int i = 0; i < 120; ++i) {
+        const float hue = i / 120.0f;
+        const Color tint = SkinColorFromHsv({hue, 1.0f, 1.0f});
+        DrawRing(center, kWheelInner, kWheelOuter,
+                 hue * 360.0f + 90.0f,
+                 (hue + 1.0f / 120.0f) * 360.0f + 90.0f, 2, tint);
+    }
+    const Vector2 marker{
+        center.x + 74.0f * std::cos(hsv.h * 2.0f * kPi),
+        center.y + 74.0f * std::sin(hsv.h * 2.0f * kPi)
+    };
+    DrawCircleV(marker, 7.0f, kText);
+    DrawCircleV(marker, 4.0f, SkinColorFromHsv({hsv.h, 1.0f, 1.0f}));
+
+    const Rectangle square = SkinColorSquareRect();
+    constexpr int kSteps = 24;
+    const float dx = square.width / kSteps;
+    const float dy = square.height / kSteps;
+    for (int y = 0; y < kSteps; ++y) {
+        for (int x = 0; x < kSteps; ++x) {
+            const float saturation = (x + 0.5f) / kSteps;
+            const float value = 1.0f - (y + 0.5f) / kSteps;
+            DrawRectangleRec({square.x + x * dx, square.y + y * dy,
+                              dx + 0.2f, dy + 0.2f},
+                             SkinColorFromHsv({hsv.h, saturation, value}));
+        }
+    }
+    DrawRectangleLinesEx(square, 1.0f, kText);
+    const Vector2 selection{square.x + hsv.s * square.width,
+                            square.y + (1.0f - hsv.v) * square.height};
+    DrawCircleV(selection, 5.0f, kPanel);
+    DrawCircleLines(static_cast<int>(selection.x),
+                    static_cast<int>(selection.y), 5.0f, kText);
+    Label(font, "HEX / ALPHA", 347, 389, 14, kMuted);
+    DrawInput(font, SkinHexRect(),
+              ui.editingHex ? ui.hexBuffer : FormatSkinHex(current),
+              ui.editingHex, ui.editingHex && ui.hexSelectAll);
+    Label(font, "6 DIGITS=RGB  8=RGBA", 334, 449, 11, kMuted);
+}
+
+void ChangeColorPointer(Vector2 mouse, Skin& skin, SkinUi& ui) {
+    if (ui.draggingColor == 0) return;
+    Color& color = SkinColor(skin, ui.selectedColor);
+    SkinHsv hsv = SkinColorToHsv(color);
+    if (hsv.s < 0.0001f) hsv.h = ui.pickerHue;
+    if (ui.draggingColor == 1) {
+        float angle = std::atan2(mouse.y - SkinColorWheelCenter().y,
+                                 mouse.x - SkinColorWheelCenter().x);
+        if (angle < 0.0f) angle += 2.0f * kPi;
+        ui.pickerHue = angle / (2.0f * kPi);
+        hsv.h = ui.pickerHue;
+        if (hsv.s < 0.0001f) hsv.s = 0.8f;
+        if (hsv.v < 0.001f) hsv.v = 1.0f;
+    } else {
+        const Rectangle square = SkinColorSquareRect();
+        hsv.s = std::clamp((mouse.x - square.x) / square.width, 0.0f, 1.0f);
+        hsv.v = 1.0f - std::clamp((mouse.y - square.y) / square.height,
+                                 0.0f, 1.0f);
+        hsv.h = ui.pickerHue;
+    }
+    const Color chosen = SkinColorFromHsv(hsv, color.a);
+    if (chosen.r != color.r || chosen.g != color.g || chosen.b != color.b) {
+        color = chosen;
+        ui.dirty = true;
+    }
+    ui.notice = "PREVIEW UPDATED - SAVE TO APPLY / HEX SUPPORTS ALPHA";
+    ui.noticeError = false;
+}
+
+bool InWheelRing(Vector2 p) {
+    const auto center = SkinColorWheelCenter();
+    const float dist = std::hypot(p.x - center.x, p.y - center.y);
+    return dist >= kWheelInner && dist <= kWheelOuter;
+}
+
 void StartNumberEdit(const Skin& skin, SkinUi& ui, int row) {
     ui.editingNumberRow = row;
     ui.numberBuffer = FormatSkinNumber(
@@ -265,7 +352,7 @@ void DeleteLastCodepoint(std::string& text) {
 } // namespace
 
 Rectangle SkinTabButton(int index) {
-    return {52.0f + index * 158.0f, 134.0f, 147.0f, 34.0f};
+    return {52.0f + index * 131.0f, 134.0f, 123.0f, 34.0f};
 }
 Rectangle SkinActionButton(int index) {
     return {52.0f + index * 135.0f, 473.0f, 125.0f, 34.0f};
@@ -275,15 +362,23 @@ Rectangle SkinNumberInputRect(int page, int row) {
                      : Rectangle{438.0f, 199.0f + row * RowPitch(page), 116.0f, 30.0f};
 }
 Rectangle SkinSliderRect(int page, int row) {
-    return page == 2 ? Rectangle{687.0f, 259.0f + row * 42.0f, 113.0f, 6.0f}
-                     : Rectangle{224.0f, 210.0f + row * RowPitch(page), 196.0f, 6.0f};
+    return {224.0f, 210.0f + row * RowPitch(page), 196.0f, 6.0f};
+}
+Rectangle SkinHexRect() { return {342, 411, 190, 35}; }
+Rectangle SkinColorSquareRect() { return {388, 274, 82, 82}; }
+Vector2 SkinColorWheelCenter() { return {429, 315}; }
+Rectangle SkinProfileRow(int row) {
+    return {69, 220.0f + row * 37.0f, 482, 32};
+}
+Rectangle SkinProfileActionRect(int index) {
+    return {70.0f + index * 166.0f, 416, 158, 34};
 }
 
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     Label(font, "SKIN  /  GAMEPLAY APPEARANCE", 52, 88, 27, kAccent);
     Button(font, MenuBackButton(), "BACK / CANCEL");
-    const char* tabs[] = {"PATH", "PLAYER / HUD", "COLORS"};
-    for (int i = 0; i < 3; ++i)
+    const char* tabs[] = {"PATH", "PLAYER", "COLORS", "MY SKINS"};
+    for (int i = 0; i < 4; ++i)
         Button(font, SkinTabButton(i), tabs[i], ui.page == i);
 
     Panel({52, 181, 519, 276});
@@ -307,31 +402,40 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
             }
         }
         PreviewPath(font, skin);
-    } else {
+    } else if (ui.page == 2) {
         for (int index = 0; index < kSkinColorCount; ++index) {
             const Rectangle row = ColorRow(index);
             if (index == ui.selectedColor)
                 DrawRectangleRounded(row, 0.08f, 3, Color{43, 59, 72, 255});
-            Label(font, SkinColorLabel(index), row.x + 9, row.y + 5, 13,
+            Label(font, SkinColorLabel(index), row.x + 7, row.y + 5, 12,
                   index == ui.selectedColor ? kGold : kText);
-            DrawRectangle(static_cast<int>(row.x + 393),
-                          static_cast<int>(row.y + 4), 62, 17,
+            DrawRectangle(static_cast<int>(row.x + 158),
+                          static_cast<int>(row.y + 4), 38, 17,
                           SkinColor(skin, index));
         }
-        Label(font, SkinColorLabel(ui.selectedColor), 611, 198, 17, kAccent);
-        const char* labels[] = {"R", "G", "B", "A"};
-        for (int i = 0; i < 4; ++i) {
-            Label(font, labels[i], 612, 255.0f + i * 42.0f, 16, kMuted);
-            SkinNumberRange range;
-            GetSkinNumberRange(2, i, range);
-            const double value = GetSkinNumber(skin, 2, i, ui.selectedColor);
-            DrawSlider(SkinSliderRect(2, i), value, range);
-            const bool editing = ui.editingNumberRow == i;
-            DrawInput(font, SkinNumberInputRect(2, i),
-                      editing ? ui.numberBuffer : FormatSkinNumber(value),
-                      editing, editing && ui.numberSelectAll);
+        DrawColorPicker(font, skin, ui);
+        PreviewPath(font, skin); // Always visible on COLORS as well.
+    } else {
+        Label(font, "PERSONAL SKINS / PROFILES", 69, 195, 18, kGold);
+        if (ui.profiles.empty())
+            Label(font, "NO SAVED PROFILES YET", 80, 250, 17, kMuted);
+        for (int row = 0; row < 5; ++row) {
+            const int index = ui.profileOffset + row;
+            if (index >= static_cast<int>(ui.profiles.size())) break;
+            const Rectangle rect = SkinProfileRow(row);
+            DrawRectangleRounded(rect, 0.1f, 4,
+                index == ui.selectedProfile
+                    ? Color{52, 83, 87, 255}
+                    : Color{36, 43, 56, 255});
+            Label(font, FitText(font, ui.profiles[index].name,
+                               rect.width - 24, 16),
+                  rect.x + 12, rect.y + 7, 16,
+                  index == ui.selectedProfile ? kGold : kText);
         }
-        Label(font, "RGBA: 0 .. 255", 613, 427, 13, kMuted);
+        Button(font, SkinProfileActionRect(0), "ACTIVATE");
+        Button(font, SkinProfileActionRect(1), "STORE COPY");
+        Button(font, SkinProfileActionRect(2), "REFRESH");
+        PreviewPath(font, skin);
     }
     Label(font, "SKIN NAME", 616, 111, 12, kMuted);
     DrawInput(font, NameField(), skin.name, ui.editingName,
@@ -347,10 +451,13 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
 
 SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
     ui.draggingRow = -1;
-    for (int i = 0; i < 3; ++i)
+    ui.draggingColor = 0;
+    for (int i = 0; i < 4; ++i)
         if (Hit(mouse, SkinTabButton(i))) {
             ui.page = i;
             ui.editingNumberRow = -1;
+            ui.editingHex = false;
+            ui.draggingColor = 0;
             return SkinCommand::None;
         }
     if (Hit(mouse, NameField())) {
@@ -365,12 +472,44 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
         if (Hit(mouse, SkinActionButton(i)))
             return static_cast<SkinCommand>(static_cast<int>(SkinCommand::Load) + i);
 
+    if (ui.page == 3) {
+        for (int row=0; row<5; ++row)
+            if (ui.profileOffset + row < static_cast<int>(ui.profiles.size()) &&
+                Hit(mouse, SkinProfileRow(row))) {
+                ui.selectedProfile = ui.profileOffset + row;
+                return SkinCommand::None;
+            }
+        if (Hit(mouse, SkinProfileActionRect(0))) return SkinCommand::ActivateProfile;
+        if (Hit(mouse, SkinProfileActionRect(1))) return SkinCommand::StoreProfile;
+        if (Hit(mouse, SkinProfileActionRect(2))) {
+            ui.notice = "OPEN MY SKINS AGAIN TO REFRESH";
+            return SkinCommand::None;
+        }
+        return SkinCommand::None;
+    }
     if (ui.page == 2) {
         for (int i = 0; i < kSkinColorCount; ++i)
             if (Hit(mouse, ColorRow(i))) {
                 ui.selectedColor = i;
+                const SkinHsv hsv = SkinColorToHsv(SkinColor(skin, i));
+                if (hsv.s >= 0.001f) ui.pickerHue = hsv.h;
                 return SkinCommand::None;
             }
+        if (Hit(mouse, SkinHexRect())) {
+            ui.editingHex = true;
+            ui.hexSelectAll = true;
+            ui.hexBuffer = FormatSkinHex(SkinColor(skin, ui.selectedColor));
+            ui.notice = "TYPE #RRGGBB OR #RRGGBBAA / ENTER APPLY";
+            ui.noticeError = false;
+            return SkinCommand::None;
+        }
+        if (InWheelRing(mouse)) ui.draggingColor = 1;
+        else if (Hit(mouse, SkinColorSquareRect())) ui.draggingColor = 2;
+        if (ui.draggingColor) {
+            ChangeColorPointer(mouse, skin, ui);
+            return SkinCommand::None;
+        }
+        return SkinCommand::None;
     } else {
         for (int row = 0; row < RowCount(ui.page); ++row) {
             SkinNumberRange range;
@@ -383,7 +522,7 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
             }
         }
     }
-    const int count = ui.page == 2 ? 4 : RowCount(ui.page);
+    const int count = RowCount(ui.page);
     for (int row = 0; row < count; ++row) {
         SkinNumberRange range;
         if (!GetSkinNumberRange(ui.page, row, range)) continue;
@@ -405,6 +544,11 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
 void UpdateSkinSliderDrag(Vector2 mouse, bool leftHeld, Skin& skin, SkinUi& ui) {
     if (!leftHeld) {
         ui.draggingRow = -1;
+        ui.draggingColor = 0;
+        return;
+    }
+    if (ui.page == 2 && ui.draggingColor && !SkinMenuEditingText(ui)) {
+        ChangeColorPointer(mouse, skin, ui);
         return;
     }
     if (ui.draggingRow >= 0 && !SkinMenuEditingText(ui))
@@ -412,7 +556,7 @@ void UpdateSkinSliderDrag(Vector2 mouse, bool leftHeld, Skin& skin, SkinUi& ui) 
 }
 
 bool SkinMenuEditingText(const SkinUi& ui) noexcept {
-    return ui.editingName || ui.editingNumberRow >= 0;
+    return ui.editingName || ui.editingNumberRow >= 0 || ui.editingHex;
 }
 
 bool FinishSkinTextInput(Skin& skin, SkinUi& ui, bool apply) {
@@ -430,6 +574,24 @@ bool FinishSkinTextInput(Skin& skin, SkinUi& ui, bool apply) {
         }
         ui.editingName = false;
         ui.nameSelectAll = false;
+    } else if (ui.editingHex) {
+        if (apply) {
+            const Color old = SkinColor(skin, ui.selectedColor);
+            Color parsed = old;
+            if (!ParseSkinHex(ui.hexBuffer, old, parsed)) {
+                ui.notice = "INVALID HEX - USE #RRGGBB OR #RRGGBBAA";
+                ui.noticeError = true;
+                return false;
+            }
+            ui.dirty |= parsed.r != old.r || parsed.g != old.g ||
+                        parsed.b != old.b || parsed.a != old.a;
+            SkinColor(skin, ui.selectedColor) = parsed;
+            const SkinHsv hsv = SkinColorToHsv(parsed);
+            if (hsv.s > 0.001f) ui.pickerHue = hsv.h;
+        }
+        ui.editingHex = false;
+        ui.hexBuffer.clear();
+        ui.hexSelectAll = false;
     } else if (ui.editingNumberRow >= 0) {
         if (apply) {
             double number = 0.0;
@@ -473,12 +635,15 @@ void HandleSkinTextInput(Skin& skin, SkinUi& ui) {
     const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     if (ctrl && IsKeyPressed(KEY_A)) {
         if (ui.editingName) ui.nameSelectAll = true;
+        else if (ui.editingHex) ui.hexSelectAll = true;
         else ui.numberSelectAll = true;
         return;
     }
 
-    std::string& buffer = ui.editingName ? skin.name : ui.numberBuffer;
-    bool& selected = ui.editingName ? ui.nameSelectAll : ui.numberSelectAll;
+    std::string& buffer = ui.editingName ? skin.name
+        : ui.editingHex ? ui.hexBuffer : ui.numberBuffer;
+    bool& selected = ui.editingName ? ui.nameSelectAll
+        : ui.editingHex ? ui.hexSelectAll : ui.numberSelectAll;
     if (IsKeyPressed(KEY_BACKSPACE)) {
         if (selected) buffer.clear();
         else DeleteLastCodepoint(buffer);
@@ -489,9 +654,13 @@ void HandleSkinTextInput(Skin& skin, SkinUi& ui) {
         if (ctrl) continue;
         const std::string character = CodepointUtf8(point);
         if (character.empty()) continue;
-        if (!ui.editingName && character.find_first_not_of("0123456789+-.,eE")
-                                != std::string::npos) continue;
-        const std::size_t limit = ui.editingName ? 64 : 32;
+        if (ui.editingHex) {
+            if (character.find_first_not_of("#0123456789aAbBcCdDeEfF") !=
+                std::string::npos) continue;
+        } else if (!ui.editingName &&
+                   character.find_first_not_of("0123456789+-.,eE") !=
+                   std::string::npos) continue;
+        const std::size_t limit = ui.editingName ? 64 : ui.editingHex ? 9 : 32;
         const std::size_t used = selected ? 0 : buffer.size();
         if (used + character.size() > limit) continue;
         if (selected) buffer.clear();
