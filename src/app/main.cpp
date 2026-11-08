@@ -10,6 +10,7 @@
 #include "app/app_runtime_policy.h"
 #include "app/play_screen_actions.h"
 #include "app/play_adjustments.h"
+#include "app/play_outro_transition.h"
 #include "app/app_smoke_checks.h"
 #include "app/app_frame_renderer.h"
 #include "app/menu_controller.h"
@@ -235,9 +236,10 @@ int main(int argc, char** argv) {
         library, libraryUi, editorFiles, transitions, loadedAudioPath,
         state, musicError
     };
+    locus::app::PlayOutroTransition playOutro;
     locus::app::PlayScreenActions playActions{
         {state, gameSession, judge, transport, chartPlayback,
-         customChart, sessionCompleted}
+         customChart, sessionCompleted, activeChart, playOutro}
     };
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
@@ -427,6 +429,7 @@ int main(int argc, char** argv) {
             menuMusic.FadeOut(now);
         }
         if (state.screen != previousScreen) {
+            if (state.screen == Screen::Play) playOutro.Reset();
             locus::app::ApplySessionTransition(
                 transitions, previousScreen, state.screen, loadedNewChart, now);
         } else if (state.screen == Screen::Play) {
@@ -460,6 +463,10 @@ int main(int argc, char** argv) {
             editorSession.UpdatePreview(now);
         if (state.screen == Screen::Play)
             playActions.Update(input, now);
+        else if (state.screen == Screen::Results) {
+            if (customChart) chartPlayback.Update(now);
+            else transport.Update(now);
+        }
         if (hotkeySkinSavePending &&
             (now >= hotkeySkinSaveAfter || state.screen != Screen::Play))
             persistHotkeySkin();
@@ -474,7 +481,8 @@ int main(int argc, char** argv) {
                                     transportView.status,
                                     settings.hitFlash, settings, activeSkin,
                                     adjustmentNoticeUntil,
-                                    adjustmentNotice.c_str()};
+                                    adjustmentNotice.c_str(),
+                                    playOutro.Frame(renderNow)};
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
                     editorStatus, editorDiscard.Pending(),
