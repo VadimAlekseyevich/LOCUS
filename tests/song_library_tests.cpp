@@ -94,6 +94,39 @@ int main() {
                 sharedAudio == library.Songs()[0].charts[1].audioFile &&
                 Read(sharedAudio) == firstBytes,
                 "manifest and all difficulties refer to one immutable audio");
+    // Menu listening start is SONG SET metadata, not a difficulty's
+    // BPM/offset or note timestamps. It persists and survives ZIP export.
+    const auto originalChartBytes = Read(easyInstalled);
+    ok &= Check(metadata.previewStartMs == 0 &&
+                library.Songs()[0].previewStartMs == 0,
+                "old/new Song Sets default preview start to time zero");
+    ok &= Check(library.SetPreviewStartMs(0, 12500, error) &&
+                library.Songs()[0].previewStartMs == 12500 &&
+                LoadSongSetManifest(
+                    easyInstalled.parent_path() / "set.locus.json",
+                    metadata, error) &&
+                metadata.previewStartMs == 12500 &&
+                Read(easyInstalled) == originalChartBytes,
+                "preview timestamp is atomic and does not rewrite chart timing");
+    SongLibrary reopened(root);
+    ok &= Check(reopened.Refresh(note) &&
+                reopened.Songs()[0].previewStartMs == 12500,
+                "preview position survives app restart / library rescan");
+    ok &= Check(!library.SetPreviewStartMs(0, -100, error) &&
+                library.Songs()[0].previewStartMs == 12500 &&
+                !library.SetPreviewStartMs(0, kMaxSongPreviewStartMs + 1, error),
+                "out of range preview time does not mutate metadata");
+    // Invalid preview metadata is rejected without modifying output object.
+    const fs::path badPreviewFile = folder / "bad-preview.json";
+    Write(badPreviewFile,
+          R"({"formatVersion":1,"setId":"one","title":"Test",)"
+          R"("artist":"","audioFile":"song.wav","previewStartMs":-1})");
+    SongSetManifest sentinel = metadata;
+    ok &= Check(!LoadSongSetManifest(badPreviewFile, sentinel, error) &&
+                sentinel.previewStartMs == 12500,
+                "invalid preview position rejected atomically");
+    fs::remove(badPreviewFile, ec);
+
     // A hostile or malformed package manifest cannot use a chart JSON as
     // its alleged shared audio file.
     const fs::path invalidMetadata = folder / "unsafe-set.json";
@@ -155,6 +188,7 @@ int main() {
                 copiedLibrary.Songs().size() == 1 &&
                 copiedLibrary.ChartCount() == 4 &&
                 fs::exists(importedFolder / "set.locus.json") &&
+                copiedLibrary.Songs()[0].previewStartMs == 12500 &&
                 Read(importedFolder / "song.wav") == firstBytes,
                 "ZIP import restores manifest, audio and four difficulties");
     fs::path duplicatePackage;
