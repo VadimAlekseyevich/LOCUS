@@ -57,7 +57,9 @@ Vector2 Offset(Vector2 center, Vector2 normal, float scale) {
 void DrawRibbonLayer(const std::vector<PathRibbonRow>& rows,
                      Color tint, float scale) {
     rlBegin(RL_TRIANGLES);
-    for (std::size_t i = 1; i < rows.size(); ++i) {
+    // Draw far-to-near, as the old renderer did. When a route retraces
+    // itself, the part closer to the player should remain visually on top.
+    for (std::size_t i = rows.size() - 1; i > 0; --i) {
         const auto& from = rows[i - 1];
         const auto& to = rows[i];
         if (to.startsRun || (from.opacity <= 0.0f && to.opacity <= 0.0f))
