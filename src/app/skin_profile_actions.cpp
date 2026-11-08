@@ -104,6 +104,9 @@ bool SkinProfileActions::SaveActive() {
         ui_.noticeError = true;
         return false;
     }
+    for (auto& item : ui_.profiles)
+        if (!activeProfile_.empty() && item.path == activeProfile_)
+            item.name = active_.name; // Name edits update the in-game list immediately.
     ui_.notice = "SKIN SAVED AND APPLIED TO ALL CHARTS";
     ui_.noticeError = false;
     return true;
