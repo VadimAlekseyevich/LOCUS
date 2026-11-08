@@ -1,4 +1,5 @@
 #include "app/chart_file.h"
+#include "app/song_set_storage.h"
 
 #include <filesystem>
 #include <string>
@@ -36,7 +37,8 @@ bool IsDescendant(const std::filesystem::path& root,
 bool SaveChartWithAudioPath(const std::wstring& chartFile,
                             const std::wstring& audioFile,
                             const core::LoadedChart& draft,
-                            std::string& error) {
+                            std::string& error,
+                            bool folderLockAlreadyHeld) {
 #ifdef _WIN32
     namespace fs = std::filesystem;
     const fs::path destination(chartFile);
@@ -68,6 +70,9 @@ bool SaveChartWithAudioPath(const std::wstring& chartFile,
 
     std::string encoded;
     if (!core::SerializeChartJson(withPath, encoded, error)) return false;
+    FolderWriteLock folderLock;
+    if (!folderLockAlreadyHeld && !folderLock.Acquire(folder, error))
+        return false;
     const std::wstring temporary = chartFile + L".tmp-" +
         std::to_wstring(GetCurrentProcessId()) + L"-" +
         std::to_wstring(GetTickCount64());
@@ -89,6 +94,10 @@ bool SaveChartWithAudioPath(const std::wstring& chartFile,
         error = "Could not finish writing the chart. Existing file was not changed.";
         return false;
     }
+    if (!BackUpChartBeforeReplace(destination, error)) {
+        DeleteFileW(temporary.c_str());
+        return false;
+    }
     if (!MoveFileExW(temporary.c_str(), chartFile.c_str(),
                      MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
         DeleteFileW(temporary.c_str());
@@ -101,6 +110,7 @@ bool SaveChartWithAudioPath(const std::wstring& chartFile,
     (void)chartFile;
     (void)audioFile;
     (void)draft;
+    (void)folderLockAlreadyHeld;
     error = "Saving charts requires Windows.";
     return false;
 #endif

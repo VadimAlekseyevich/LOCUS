@@ -2,6 +2,7 @@
 
 #include "app/chart_file.h"
 #include "app/audio_revision.h"
+#include "app/song_set_storage.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -129,7 +130,8 @@ bool SongLibrary::Refresh(std::string& message) {
             ec.clear();
         }
         const fs::path path = current.path();
-        if (path.extension() != L".json") continue;
+        if (path.extension() != L".json" ||
+            path.filename() == L"set.locus.json") continue;
         ++scanned;
         if (current.is_symlink(ec) || !current.is_regular_file(ec)) {
             ++skipped;
@@ -150,13 +152,41 @@ bool SongLibrary::Refresh(std::string& message) {
             continue;
         }
 
-        const fs::path logicalAudio = LogicalSongAudioPath(audioFile);
+        // Managed Song Sets are grouped by their folder, not by incidental
+        // audio-revision paths. Existing legacy folders remain untouched.
+        const fs::path manifestPath = path.parent_path() / L"set.locus.json";
+        const bool managed = fs::exists(manifestPath, ec);
+        if (ec) { ++skipped; ec.clear(); continue; }
+        SongSetManifest metadata;
+        if (managed) {
+            if (!LoadSongSetManifest(manifestPath, metadata, problem)) {
+                ++skipped;
+                continue;
+            }
+            const fs::path expected = path.parent_path() /
+                fs::u8path(metadata.audioFile);
+            if (!fs::equivalent(expected, audioFile, ec) || ec) {
+                ++skipped;
+                ec.clear();
+                continue;
+            }
+        }
+        const fs::path logicalAudio = managed
+            ? path.parent_path() : LogicalSongAudioPath(audioFile);
         const auto found = byAudio.find(logicalAudio);
         std::size_t index = 0;
         if (found == byAudio.end()) {
             index = next.size();
             byAudio.emplace(logicalAudio, index);
-            next.push_back({audioFile, SongDisplayTitle(logicalAudio), {}});
+            const std::string title = managed
+                ? (metadata.artist.empty() ? metadata.title
+                    : metadata.artist + " - " + metadata.title)
+                : SongDisplayTitle(logicalAudio);
+            next.push_back({audioFile, title, {}});
+            next.back().id = managed ? metadata.id : HashText(logicalAudio);
+            next.back().artist = managed ? metadata.artist : "";
+            next.back().folder = path.parent_path();
+            next.back().managed = managed;
         } else {
             index = found->second;
         }
@@ -231,22 +261,53 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     fs::create_directories(folder, ec);
     if (ec) { error = "Cannot create song folder: " + ec.message(); return false; }
 
-    // Stage an immutable audio revision first, then atomically publish the
-    // chart reference. An interrupted import cannot rewrite another
-    // difficulty's existing audio file.
-    fs::path destinationAudio;
-    if (!InstallAudioRevision(sourceAudio, folder, destinationAudio, error))
-        return false;
+    FolderWriteLock lock;
+    if (!lock.Acquire(folder, error)) return false;
 
-    // Stable source filename; changing a chart title updates the same library
-    // difficulty rather than creating an accidental duplicate.
-    const std::string difficulty =
-        FilenamePart(actualChart.stem().u8string());
+    const fs::path manifestPath = folder / L"set.locus.json";
+    const bool existingSet = fs::exists(manifestPath, ec);
+    if (ec) { error = "Cannot inspect Song Set metadata."; return false; }
+    // An older installed library (which may contain multiple audio versions)
+    // must stay readable and must never be silently converted to one audio.
+    const bool legacy = !existingSet &&
+        fs::exists(folder / L".locus-versions", ec);
+    if (ec) { error = "Cannot inspect legacy audio versions."; return false; }
+
+    fs::path destinationAudio;
+    SongSetManifest metadata;
+    if (legacy) {
+        if (!InstallAudioRevision(sourceAudio, folder, destinationAudio, error))
+            return false;
+    } else {
+        if (existingSet) {
+            if (!LoadSongSetManifest(manifestPath, metadata, error)) return false;
+        } else {
+            metadata.id = HashText(sourceAudio) + HashText(folder);
+            metadata.title = SongDisplayTitle(sourceAudio);
+            metadata.artist.clear();
+            metadata.audioFile = sourceAudio.filename().u8string();
+        }
+        if (metadata.audioFile != sourceAudio.filename().u8string()) {
+            error = "Existing Song Set uses a different audio filename. "
+                    "Import as a new set rather than changing other difficulties.";
+            return false;
+        }
+        destinationAudio = folder / fs::u8path(metadata.audioFile);
+        if (!InstallSharedSongAudio(sourceAudio, destinationAudio, error))
+            return false;
+    }
+
+    // File identity is based on its source path, not a mutable difficulty name.
+    const std::string difficulty = FilenamePart(actualChart.stem().u8string());
     installedChart = folder /
         (difficulty + "-" + HashText(actualChart) + ".locus.json");
     if (!SaveChartWithAudioPath(installedChart.wstring(),
-                                destinationAudio.wstring(), source, error))
+                                destinationAudio.wstring(), source, error, true))
         return false;
+    // Metadata is published last. Interrupted imports still leave a valid
+    // independently readable chart and never damage older difficulties.
+    if (!legacy && !existingSet &&
+        !WriteNewSongSetManifest(manifestPath, metadata, error)) return false;
     std::string notice;
     if (!Refresh(notice)) { error = notice; return false; }
     error.clear();

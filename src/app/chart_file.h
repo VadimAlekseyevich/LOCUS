@@ -20,6 +20,7 @@ bool OpenChartWithAudioPath(const std::wstring& chartFile,
 bool SaveChartWithAudioPath(const std::wstring& chartFile,
                             const std::wstring& audioFile,
                             const core::LoadedChart& draft,
-                            std::string& error);
+                            std::string& error,
+                            bool folderLockAlreadyHeld = false);
 
 } // namespace locus::app

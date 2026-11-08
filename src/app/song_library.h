@@ -22,6 +22,10 @@ struct LibrarySong {
     std::filesystem::path audioFile; // Representative; play LibraryChart::audioFile.
     std::string title; // Original filename, without version metadata.
     std::vector<LibraryChart> charts; // Different authored difficulties.
+    std::string id;             // Stable identity from Song Set metadata.
+    std::string artist;         // Optional display metadata.
+    std::filesystem::path folder; // Parent of all managed chart files.
+    bool managed = false;       // False for legacy installed v1/v2 libraries.
 };
 
 // On-disk Songs folders are authoritative. The index is kept in RAM and
