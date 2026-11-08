@@ -170,6 +170,43 @@ int main() {
                 Read(duplicate).find("Easy Copy") != std::string::npos,
                 "duplicate difficulty uses shared audio and a separate JSON");
 
+    // Image assets are independent of chart JSONs, shared by all difficulties,
+    // and never permitted to overwrite their source audio.
+    const fs::path sourceCover = source / "cover.png";
+    const unsigned char imageHeader[] = {
+        137,80,78,71,13,10,26,10,0,0,0,13,
+        'I','H','D','R',0,0,4,0,0,0,2,0
+    };
+    Write(sourceCover, std::string(
+        reinterpret_cast<const char*>(imageHeader), sizeof imageHeader));
+    ok &= Check(library.SetBackgroundImage(0, sourceCover, error) &&
+                !library.Songs()[0].backgroundImage.empty() &&
+                fs::exists(library.Songs()[0].backgroundImage) &&
+                Read(library.Songs()[0].backgroundImage) == Read(sourceCover) &&
+                LoadSongSetManifest(easyInstalled.parent_path() /
+                                    "set.locus.json", metadata, error) &&
+                !metadata.backgroundFile.empty() &&
+                Read(easyInstalled) == originalChartBytes,
+                "background image installs without touching chart timing");
+    SongLibrary artReloaded(root);
+    ok &= Check(artReloaded.Refresh(note) &&
+                artReloaded.Songs()[0].backgroundImage ==
+                  library.Songs()[0].backgroundImage,
+                "image reference persists across library scan");
+    const auto activeArtwork = library.Songs()[0].backgroundImage;
+    ok &= Check(!library.SetBackgroundImage(0, audio, error) &&
+                library.Songs()[0].backgroundImage == activeArtwork,
+                "invalid image leaves existing artwork unchanged");
+    const fs::path forgedManifest = folder / "unsafe-art.json";
+    Write(forgedManifest,
+          R"({"formatVersion":1,"setId":"one","title":"Test",)"
+          R"("artist":"","audioFile":"song.wav","backgroundFile":"../secret.png"})");
+    SongSetManifest safe = metadata;
+    ok &= Check(!LoadSongSetManifest(forgedManifest, safe, error) &&
+                safe.backgroundFile == metadata.backgroundFile,
+                "manifest rejects path traversal without modifying output");
+    fs::remove(forgedManifest, ec);
+
     // Portable .locuspack is a real ZIP file containing manifest, shared
     // audio and two independent chart JSONs. Import into a fresh library
     // must not depend on the original source path or existing installation.
@@ -189,8 +226,16 @@ int main() {
                 copiedLibrary.ChartCount() == 4 &&
                 fs::exists(importedFolder / "set.locus.json") &&
                 copiedLibrary.Songs()[0].previewStartMs == 12500 &&
+                fs::exists(copiedLibrary.Songs()[0].backgroundImage) &&
+                Read(copiedLibrary.Songs()[0].backgroundImage) == Read(sourceCover) &&
                 Read(importedFolder / "song.wav") == firstBytes,
                 "ZIP import restores manifest, audio and four difficulties");
+    ok &= Check(copiedLibrary.SetBackgroundImage(0, {}, error) &&
+                copiedLibrary.Songs()[0].backgroundImage.empty() &&
+                !fs::exists(importedFolder / fs::u8path(metadata.backgroundFile)) &&
+                copiedLibrary.ChartCount() == 4 &&
+                Read(importedFolder / "song.wav") == firstBytes,
+                "removing background cleans its owned copy without affecting the song");
     fs::path duplicatePackage;
     ok &= Check(!copiedLibrary.ImportPackage(packageFile, duplicatePackage, error) &&
                 copiedLibrary.ChartCount() == 4,

@@ -46,6 +46,13 @@ int main() {
     app::UpdateScreenFlow(resultsNavigation, returnToSelection, false);
     ok &= Check(resultsNavigation.screen == Screen::SongSelect,
                 "Results Back returns to selected song menu listening");
+    app::AppState editFromResults;
+    editFromResults.screen = Screen::Results;
+    app::NavigationInput editShortcut;
+    editShortcut.openEditorPressed = true;
+    app::UpdateScreenFlow(editFromResults, editShortcut, false);
+    ok &= Check(editFromResults.screen == Screen::Editor,
+                "E from Results opens Editor instead of replaying");
     // TEST starts from Editor with the chart and test origin already selected.
     activeChart = demoChart;
     activeChart.turns = {{1, core::Turn::Right45}, {3, core::Turn::Left}};
