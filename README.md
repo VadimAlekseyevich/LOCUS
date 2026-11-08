@@ -32,8 +32,9 @@ Gameplay direction bindings are configurable in SETTINGS and are **shared with e
 
 Home has **PLAY, EDIT, SKIN, SETTINGS, EXIT**. PLAY opens the local song and difficulty library; import a chart with **C** (or **Shift+C** to add a chart to the selected Song Set), select songs with Up/Down and difficulties with Left/Right. Installed songs live under `%LOCALAPPDATA%\LOCUS\Songs`. The built-in demo is always available.
 
-EDIT has three tabs and a persistent scrolling timeline:
+EDIT has four tabs and a persistent scrolling timeline:
 
+- **SET:** currently selected Song Set, shared audio and difficulties; open, create, copy, import, export, delete/restore from within the editor. Confirmations protect unsaved charts and deletions.
 - **ROUTE:** moving route preview, nine-way direction pad, note placement, selection, copy/paste, shift, invert and undo/redo.
 - **AUDIO:** song title, BPM and whole-millisecond offset.
 - **FIELD:** one square size 2–16 (**default 8**) and initial heading. No editable start coordinates.
@@ -46,7 +47,7 @@ In PLAY's library use **N** to create a difficulty for the selected song, **Ctrl
 
 New chart files use **formatVersion 2**, integer `timeMs` timestamps and independent snap settings. BPM changes do not move already authored notes in song time. See [chart format](docs/CHART_FORMAT.md) and [sample](examples/first-song.locus.json) (requires your own `song.mp3`).
 
-SKIN edits path effects, marker size, **fixed cardinal movement speed** (default 135 logical pixels/s), HUD visibility and ten RGBA colors including the square border. Speed is independent of BPM, chart grid size, practice playback rate and heading: diagonal movement is normalized to the same distance per tick as straight movement. The ROUTE editor shows the continuous route without grid lines or dots, while retaining its preview square and magnification control. During PLAY, **[ / ]** or **numpad − / +** adjust the speed by 10 pixels/s and save it for future charts. Old v1 skins are loaded with their previous camera zoom converted into base speed. The [skin sample](examples/default.locus-skin.json) is independent of charts.
+SKIN now has **PATH, PLAYER, COLORS and MY SKINS** tabs. COLORS uses a hue wheel, a saturation/brightness square and an exact `#RRGGBB` / `#RRGGBBAA` field instead of four RGBA sliders; the live gameplay preview stays visible while changing colors. MY SKINS scans `%LOCALAPPDATA%\\LOCUS\\Skins\\Profiles`; choose **ACTIVATE** to apply a saved profile, **STORE COPY** to create another named profile, or **REFRESH** after changing files outside LOCUS. The active look remains in `Skins\\active.locus-skin.json`. **LOAD** imports an external JSON into the draft, **SAVE** applies changes, and **SAVE AS** exports a JSON. Switching profiles refuses to discard unsaved edits. SKIN also edits path effects, marker size, **fixed cardinal movement speed** (default 135 logical pixels/s), HUD visibility and ten RGBA colors including the square border. Speed is independent of BPM, chart grid size, practice playback rate and heading: diagonal movement is normalized to the same distance per tick as straight movement. The ROUTE editor shows the continuous route without grid lines or dots, while retaining its preview square and magnification control. During PLAY, **[ / ]** or **numpad − / +** adjust the speed by 10 pixels/s and save it for future charts. Old v1 skins are loaded with their previous camera zoom converted into base speed. The [skin sample](examples/default.locus-skin.json) is independent of charts.
 
 **Esc means Back** outside Home, including from the editor. Unsaved chart changes require confirmation. **Esc on Home**, EXIT, the window X and Alt+F4 open a quit confirmation; **Y** quits and **N/Esc** cancels.
 
