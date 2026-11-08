@@ -102,7 +102,8 @@ void DrawTextField(Font font, Rectangle rect, const char* label,
     }
 }
 
-void DrawRoutePreview(Font font, const core::ChartEditor& draft, double previewBeat) {
+void DrawRoutePreview(Font font, const core::ChartEditor& draft,
+                      double previewBeat, const Skin& skin) {
     const auto& chart = draft.Data().route;
     const double bounded = std::clamp(previewBeat,
                                      static_cast<double>(chart.firstBeat),
@@ -121,8 +122,8 @@ void DrawRoutePreview(Font font, const core::ChartEditor& draft, double previewB
     BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
 
     const Vector2 marker = DrawRouteTrajectory(
-        chart, bounded, canvas, RouteRenderMode::Editor);
-    DrawRouteJunctions(chart, bounded, canvas, RouteRenderMode::Editor);
+        chart, bounded, canvas, RouteRenderMode::Editor, skin);
+    DrawRouteJunctions(chart, bounded, canvas, RouteRenderMode::Editor, skin);
     const float markerRadius = std::min(13.0f, view.step * 0.39f);
     DrawCircleV(marker, markerRadius * 1.7f, Color{112, 219, 216, 48});
     DrawCircleV(marker, markerRadius, Color{124, 229, 225, 255});
@@ -264,7 +265,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const EditorUiState& ui, const std::string& songName,
                        bool hasAudio, bool previewPlaying, bool previewPaused,
                        double previewBeat, double playbackSpeed,
-                       const GameSettings& settings) {
+                       const GameSettings& settings, const Skin& skin) {
     const auto& chart = draft.Data().route;
     Label(font, "CHART EDITOR", 49, 77, 26, Color{194, 236, 231, 255});
     Button(font, kTabRoute, "ROUTE", Color{126, 219, 209, 255},
@@ -299,7 +300,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Label(font, TextFormat("ROUTE  /  %d x %d VIEW",
                               chart.gridWidth, chart.gridHeight),
               51, 166, 17, Color{188, 215, 227, 255});
-        DrawRoutePreview(font, draft, previewBeat);
+        DrawRoutePreview(font, draft, previewBeat, skin);
         Label(font, IsGameDirectionKey(settings, KEY_Q) ||
                     IsGameDirectionKey(settings, KEY_E)
                ? "START HEADING (CLICK)" : "START HEADING Q/E 45",

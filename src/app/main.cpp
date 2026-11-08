@@ -333,7 +333,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         locus::app::RenderChartEditor(font, editor, editorUi,
                                      localSong.DisplayName(), localSong.Ready(),
                                      editorTransport.Playing(), editorTransport.Paused(),
-                                     selectedBeat, editorTransport.Speed(), gameplay.bindings);
+                                     selectedBeat, editorTransport.Speed(),
+                                     gameplay.bindings, gameplay.skin);
         const std::string statusLine = editorStatus.substr(0, 68);
         DrawTextLabel(font, statusLine.c_str(), Vector2{50.0f, 525.0f},
                       12.0f, Color{175, 212, 213, 255});

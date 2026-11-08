@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/game_settings.h"
+#include "app/skin.h"
 #include "core/chart_editor.h"
 #include "raylib.h"
 
@@ -90,6 +91,6 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const EditorUiState& ui, const std::string& songName,
                        bool hasAudio, bool previewPlaying, bool previewPaused,
                        double previewBeat, double playbackSpeed,
-                       const GameSettings& settings);
+                       const GameSettings& settings, const Skin& skin);
 
 } // namespace locus::app
