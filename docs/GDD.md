@@ -66,6 +66,8 @@ Accuracy (%) = (100 × Perfect + 75 × Good + 50 × Bad)
 
 ## 4. Screen layout and navigation
 
+- Moving between Home, Song Library, Editor, Skin, Settings and Listen uses a brief eased **fade through black**: approximately 65 ms to dark and 95 ms back to visible. Navigation and music switching are applied immediately; the incoming PLAY screen reveals directly over 100 ms so gameplay input and the music clock are never delayed. The scored PLAY → Results outro retains its own longer black/reveal and does not receive a redundant second fade.
+
 ### 4.1 During Play
 
 - **Center:** only the square, route, marker, configurable border and optional hit effects.
