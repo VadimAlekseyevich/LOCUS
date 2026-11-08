@@ -28,6 +28,14 @@ public:
     void Apply(const MenuEvents& menuEvents, bool importFromHome, double& now);
 
 private:
+    void Import(bool intoSelectedSet, double& now);
+    void Export(double& now);
+    void Restore();
+    void TrashDifficulty();
+    void TrashSongSet();
+    void DuplicateDifficulty();
+    void PickerReturned(double& now) const;
+
     SongLibrary& library_;
     SongSelectUi& ui_;
     std::string& menuStatus_;
