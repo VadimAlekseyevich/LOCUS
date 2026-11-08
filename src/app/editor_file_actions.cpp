@@ -7,6 +7,7 @@
 #include "app/local_music.h"
 #include "app/menu_ui.h"
 #include "app/song_library.h"
+#include "app/song_set_storage.h"
 #include "core/chart_editor.h"
 #include "core/chart_json.h"
 
@@ -159,6 +160,14 @@ void EditorFileActions::Save(bool saveAs, double& now) {
         context_.library.FindChart(current, songIndex, chartIndex);
     std::filesystem::path destination;
     if (installed && !saveAs) {
+        // All editor/library mutations serialize on the root lock, including
+        // whole-set deletion from another process. The per-folder lock is
+        // acquired inside SaveChartWithAudioPath afterwards.
+        FolderWriteLock libraryLock;
+        if (!libraryLock.Acquire(context_.library.Root(), error)) {
+            context_.status = "SAVE FAILED: " + error;
+            return;
+        }
         // Normal Ctrl+S edits exactly the selected chart and keeps its undo
         // history. Existing shared audio must remain inside this Song Set.
         if (!SaveDraftToDisk(context_.editor, context_.music,

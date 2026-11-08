@@ -48,6 +48,14 @@ public:
                           std::filesystem::path& installedChart,
                           std::string& error,
                           const std::filesystem::path& targetSet = {});
+    bool DuplicateDifficulty(const std::filesystem::path& original,
+                             std::filesystem::path& copied,
+                             std::string& error);
+    bool TrashDifficulty(const std::filesystem::path& chart,
+                         std::string& error);
+    bool TrashSongSet(const std::filesystem::path& folder,
+                      std::string& error);
+    bool RestoreLastDeleted(std::string& error);
     bool FindChart(const std::filesystem::path& path,
                    int& songIndex, int& chartIndex) const;
 

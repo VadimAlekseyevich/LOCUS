@@ -214,6 +214,92 @@ bool SongLibrary::Refresh(std::string& message) {
     return true;
 }
 
+bool SongLibrary::DuplicateDifficulty(const fs::path& original,
+                                      fs::path& copied, std::string& error) {
+    int song = -1, index = -1;
+    if (!FindChart(original, song, index)) {
+        error = "Difficulty is not in the library.";
+        return false;
+    }
+    const auto& set = songs_[static_cast<std::size_t>(song)];
+    if (!set.managed) {
+        error = "Legacy folders must be reimported as a managed Song Set.";
+        return false;
+    }
+    const auto& selected = set.charts[static_cast<std::size_t>(index)];
+    core::LoadedChart copy = selected.data;
+    copy.title += " Copy";
+    return CreateDifficulty(selected.audioFile, copy, copied, error, set.folder);
+}
+
+bool SongLibrary::TrashDifficulty(const fs::path& chart,
+                                  std::string& error) {
+    int song = -1, index = -1;
+    if (!FindChart(chart, song, index)) {
+        error = "Difficulty is not in the library.";
+        return false;
+    }
+    const auto set = songs_[static_cast<std::size_t>(song)];
+    if (!set.managed) {
+        error = "Cannot delete unmanaged legacy chart through the library.";
+        return false;
+    }
+    if (set.charts.size() <= 1) {
+        error = "This is the final difficulty; delete the Song Set instead.";
+        return false;
+    }
+    const fs::path root = fs::canonical(root_);
+    FolderWriteLock libraryLock, setLock;
+    if (!libraryLock.Acquire(root, error) ||
+        !setLock.Acquire(set.folder, error)) return false;
+    if (!TrashLibraryItem(root, chart, error)) return false;
+    std::string notice;
+    if (!Refresh(notice)) { error = notice; return false; }
+    error.clear();
+    return true;
+}
+
+bool SongLibrary::TrashSongSet(const fs::path& folder,
+                               std::string& error) {
+    const auto set = std::find_if(songs_.begin(), songs_.end(),
+        [&](const LibrarySong& song) {
+            return song.folder == folder && song.managed;
+        });
+    if (set == songs_.end()) {
+        error = "Selected Song Set is not managed by LOCUS.";
+        return false;
+    }
+    std::error_code ec;
+    const auto root = fs::canonical(root_, ec);
+    const auto target = fs::canonical(folder, ec);
+    if (ec || !Inside(root, target)) {
+        error = "Song Set is outside the library.";
+        return false;
+    }
+    FolderWriteLock libraryLock;
+    if (!libraryLock.Acquire(root, error)) return false;
+    if (!TrashLibraryItem(root, target, error)) return false;
+    std::string notice;
+    if (!Refresh(notice)) { error = notice; return false; }
+    error.clear();
+    return true;
+}
+
+bool SongLibrary::RestoreLastDeleted(std::string& error) {
+    std::error_code ec;
+    fs::create_directories(root_, ec);
+    if (ec) { error = "Cannot access Songs library."; return false; }
+    const auto root = fs::canonical(root_, ec);
+    if (ec) { error = "Cannot resolve Songs folder."; return false; }
+    FolderWriteLock lock;
+    if (!lock.Acquire(root, error)) return false;
+    if (!RestoreLatestTrashItem(root, error)) return false;
+    std::string notice;
+    if (!Refresh(notice)) { error = notice; return false; }
+    error.clear();
+    return true;
+}
+
 bool SongLibrary::FindChart(const fs::path& path,
                             int& songIndex, int& chartIndex) const {
     for (std::size_t s = 0; s < songs_.size(); ++s)
@@ -243,6 +329,8 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
     if (ec) { error = "Cannot create the song library."; return false; }
     const fs::path root = fs::canonical(root_, ec);
     if (ec) { error = "Cannot access the song library."; return false; }
+    FolderWriteLock libraryLock;
+    if (!libraryLock.Acquire(root, error)) return false;
     fs::path folder;
     if (targetSet.empty()) {
         folder = root / (FilenamePart(source.stem().u8string()) + "-" +
@@ -320,6 +408,9 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     fs::create_directories(root_, ec);
     if (ec) { error = "Cannot create Songs folder: " + ec.message(); return false; }
     const auto root = fs::canonical(root_, ec);
+    if (ec) { error = "Cannot access Songs folder."; return false; }
+    FolderWriteLock libraryLock;
+    if (!libraryLock.Acquire(root, error)) return false;
     const auto actualChart = fs::canonical(sourceChart, ec);
     if (ec) { error = "Cannot resolve source chart path."; return false; }
     if (Inside(root, actualChart)) {

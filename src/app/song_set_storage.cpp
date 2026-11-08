@@ -4,12 +4,14 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <vector>
 #include <system_error>
 
 #ifdef _WIN32
@@ -253,31 +255,115 @@ bool BackUpChartBeforeReplace(const fs::path& chart, std::string& error) {
     return true;
 }
 
-bool RecycleSongFile(const fs::path& file, std::string& error) {
-#ifdef _WIN32
+bool TrashLibraryItem(const fs::path& libraryRoot,
+                      const fs::path& item, std::string& error) {
     std::error_code ec;
-    const auto full = fs::canonical(file, ec);
-    if (ec) { error = "Cannot resolve selected item."; return false; }
-    std::wstring names = full.wstring();
-    names.push_back(L'\0');
-    names.push_back(L'\0');
-    SHFILEOPSTRUCTW operation{};
-    operation.wFunc = FO_DELETE;
-    operation.pFrom = names.c_str();
-    operation.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION |
-                       FOF_SILENT | FOF_NOERRORUI;
-    const int code = SHFileOperationW(&operation);
-    if (code != 0 || operation.fAnyOperationsAborted) {
-        error = "Windows could not move the item to the Recycle Bin.";
+    if (!fs::exists(item, ec) || ec) {
+        error = "The selected library item no longer exists.";
+        return false;
+    }
+    const fs::path relative = item.lexically_relative(libraryRoot);
+    if (relative.empty() || relative.is_absolute() ||
+        relative.native().rfind(L"..", 0) == 0) {
+        error = "Cannot trash an item outside the library.";
+        return false;
+    }
+    const fs::path trash = libraryRoot.parent_path() / L"Trash";
+    fs::create_directories(trash, ec);
+    if (ec) { error = "Cannot create recovery Trash folder."; return false; }
+    // Human-readable, stable across restarts and lexically sortable newest-first.
+    static std::atomic<unsigned> sequence{0};
+    const auto stamp = std::chrono::system_clock::now().time_since_epoch();
+    const auto milliseconds =
+        std::chrono::duration_cast<std::chrono::milliseconds>(stamp).count();
+    const fs::path entry = trash /
+        (L"item-" + std::to_wstring(milliseconds) + L"-" +
+         std::to_wstring(sequence.fetch_add(1)) + UniqueSuffix());
+    fs::create_directory(entry, ec);
+    if (ec) { error = "Cannot allocate a Trash entry."; return false; }
+    {
+        const nlohmann::json record = {
+            {"formatVersion", 1},
+            {"original", relative.generic_u8string()}
+        };
+        std::ofstream journal(entry / "origin.json", std::ios::binary);
+        if (!journal) {
+            fs::remove_all(entry, ec);
+            error = "Cannot write Trash recovery metadata.";
+            return false;
+        }
+        journal << record.dump(2) << '\n';
+        journal.flush();
+        if (!journal) {
+            journal.close();
+            fs::remove_all(entry, ec);
+            error = "Cannot finish Trash recovery metadata.";
+            return false;
+        }
+    }
+    fs::rename(item, entry / L"payload", ec);
+    if (ec) {
+        const auto why = ec.message();
+        fs::remove_all(entry, ec);
+        error = "Cannot move item to recoverable Trash: " + why;
         return false;
     }
     error.clear();
     return true;
-#else
-    (void)file;
-    error = "Recycle Bin deletion requires Windows.";
+}
+
+bool RestoreLatestTrashItem(const fs::path& libraryRoot,
+                            std::string& error) {
+    std::error_code ec;
+    const fs::path trash = libraryRoot.parent_path() / L"Trash";
+    if (!fs::exists(trash, ec) || ec) {
+        error = "Trash is empty.";
+        return false;
+    }
+    std::vector<fs::path> entries;
+    for (fs::directory_iterator it(trash, ec), end; !ec && it != end;
+         it.increment(ec)) {
+        if (it->is_directory(ec) &&
+            it->path().filename().wstring().rfind(L"item-", 0) == 0 &&
+            fs::exists(it->path() / L"payload", ec))
+            entries.push_back(it->path());
+    }
+    if (ec) { error = "Cannot inspect Trash."; return false; }
+    if (entries.empty()) { error = "Trash has no recoverable items."; return false; }
+    std::sort(entries.rbegin(), entries.rend());
+    for (const fs::path& entry : entries) {
+        std::ifstream stream(entry / L"origin.json", std::ios::binary);
+        if (!stream) continue;
+        const auto data = nlohmann::json::parse(stream, nullptr, false);
+        if (data.is_discarded() || !data.is_object() ||
+            !data.contains("original") || !data["original"].is_string() ||
+            !data.contains("formatVersion") || data["formatVersion"] != 1)
+            continue;
+        const fs::path relative = fs::u8path(data["original"].get<std::string>());
+        if (relative.empty() || relative.is_absolute()) continue;
+        bool unsafe = false;
+        for (const auto& part : relative)
+            if (part == L".." || part == L"." || part.empty()) unsafe = true;
+        if (unsafe) continue;
+        const fs::path destination = libraryRoot / relative;
+        if (fs::exists(destination, ec)) {
+            error = "Original file already exists; Trash is preserved.";
+            return false;
+        }
+        if (ec) { error = "Cannot inspect restore destination."; return false; }
+        fs::create_directories(destination.parent_path(), ec);
+        if (ec) { error = "Cannot prepare restore folder."; return false; }
+        fs::rename(entry / L"payload", destination, ec);
+        if (ec) {
+            error = "Cannot restore from Trash: " + ec.message();
+            return false;
+        }
+        fs::remove_all(entry, ec);
+        error.clear();
+        return true;
+    }
+    error = "Trash metadata is invalid; no files were changed.";
     return false;
-#endif
 }
 
 } // namespace locus::app

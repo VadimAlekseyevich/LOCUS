@@ -46,6 +46,13 @@ bool SameFileBytes(const std::filesystem::path& a,
 bool BackUpChartBeforeReplace(const std::filesystem::path& chart,
                               std::string& error);
 // Native Windows Recycle Bin, preserving the user's ability to recover files.
-bool RecycleSongFile(const std::filesystem::path& file, std::string& error);
+// Atomic same-volume move to LOCUS/Trash with recoverable original path.
+// The caller holds the library root write lock and validates the source.
+bool TrashLibraryItem(const std::filesystem::path& libraryRoot,
+                      const std::filesystem::path& item,
+                      std::string& error);
+// Restore newest recoverable Trash entry without overwriting existing files.
+bool RestoreLatestTrashItem(const std::filesystem::path& libraryRoot,
+                            std::string& error);
 
 } // namespace locus::app
