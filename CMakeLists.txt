@@ -30,6 +30,8 @@ target_include_directories(locus_core PUBLIC
 
 add_executable(locus
     src/app/main.cpp
+    src/app/app_runtime_policy.cpp
+    src/app/app_smoke_checks.cpp
     src/app/app_input.cpp
     src/app/menu_controller.cpp
     src/app/gameplay_ui.cpp
@@ -55,7 +57,6 @@ add_executable(locus
     src/app/game_session.cpp
     src/app/song_library.cpp
     src/app/song_archive.cpp
-        src/app/song_archive.cpp
     src/app/library_playback.cpp
     src/app/library_browser.cpp
     src/app/audio_revision.cpp
