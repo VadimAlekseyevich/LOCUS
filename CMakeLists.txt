@@ -57,6 +57,7 @@ add_executable(locus
     src/app/audio_revision.cpp
     src/app/game_settings.cpp
     src/app/skin.cpp
+    src/app/skin_profile_actions.cpp
     src/app/skin_controls.cpp
     src/app/skin_menu.cpp
     src/app/menu_ui.cpp
@@ -332,6 +333,20 @@ if(LOCUS_BUILD_TESTS)
         locus_core raylib nlohmann_json::nlohmann_json
     )
     add_test(NAME locus_persistent_game_settings COMMAND locus_game_settings_tests)
+
+    # Skin Load/Save/Save As/Reset must not publish an invalid draft,
+    # and canceled native profile dialogs must preserve active appearance.
+    add_executable(locus_skin_profile_actions_tests
+        tests/skin_profile_actions_tests.cpp
+        src/app/skin_profile_actions.cpp
+        src/app/skin.cpp
+    )
+    target_compile_features(locus_skin_profile_actions_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_skin_profile_actions_tests PRIVATE
+        raylib nlohmann_json::nlohmann_json)
+    target_include_directories(locus_skin_profile_actions_tests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    add_test(NAME locus_skin_profile_file_actions COMMAND locus_skin_profile_actions_tests)
 
     add_executable(locus_skin_tests
         tests/skin_tests.cpp
