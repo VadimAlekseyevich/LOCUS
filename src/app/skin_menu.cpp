@@ -646,6 +646,28 @@ void HandleSkinTextInput(Skin& skin, SkinUi& ui) {
         return;
     }
     const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    if (ctrl && ui.editingHex && IsKeyPressed(KEY_V)) {
+        const char* clipboard = GetClipboardText();
+        if (clipboard) {
+            Color parsed{};
+            if (ParseSkinHex(clipboard, SkinColor(skin, ui.selectedColor), parsed)) {
+                ui.hexBuffer = clipboard;
+                ui.hexSelectAll = false;
+                ui.notice = "HEX PASTED - ENTER TO APPLY";
+                ui.noticeError = false;
+            } else {
+                ui.notice = "CLIPBOARD DOES NOT CONTAIN #RRGGBB OR #RRGGBBAA";
+                ui.noticeError = true;
+            }
+        }
+        return;
+    }
+    if (ctrl && ui.editingHex && IsKeyPressed(KEY_C)) {
+        SetClipboardText(FormatSkinHex(SkinColor(skin, ui.selectedColor)).c_str());
+        ui.notice = "CURRENT HEX COLOR COPIED";
+        ui.noticeError = false;
+        return;
+    }
     if (ctrl && IsKeyPressed(KEY_A)) {
         if (ui.editingName) ui.nameSelectAll = true;
         else if (ui.editingHex) ui.hexSelectAll = true;
