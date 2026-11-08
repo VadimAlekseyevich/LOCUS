@@ -160,14 +160,18 @@ int main() {
                 copiedLibrary.ChartCount() == 4,
                 "bad ZIP payload CRC is rejected without changing library");
     zipBytes = Read(packageFile);
-    const auto filename = zipBytes.find("song.wav");
-    if (filename != std::string::npos)
-        zipBytes.replace(filename, 8, "../g.wav");
+    const auto secondHeader = zipBytes.find(std::string("PK\x03\x04", 4), 4);
+    const auto filename = secondHeader == std::string::npos
+        ? std::string::npos : secondHeader + 30;
+    const bool validFilename = filename != std::string::npos &&
+        filename + 8 <= zipBytes.size() &&
+        zipBytes.substr(filename, 8) == "song.wav";
+    if (validFilename) zipBytes.replace(filename, 8, "../g.wav");
     Write(traversalFile, zipBytes);
-    ok &= Check(filename != std::string::npos &&
+    ok &= Check(validFilename &&
                 !copiedLibrary.ImportPackage(traversalFile, duplicatePackage, error) &&
                 copiedLibrary.ChartCount() == 4,
-                "path traversal in ZIP names is rejected");
+                "path traversal in ZIP entry names is rejected");
 
     // Normal Ctrl+S equivalent: overwrite chart and verify its previous bytes
     // were backed up before atomic publication.
