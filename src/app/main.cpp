@@ -979,8 +979,15 @@ int main(int argc, char** argv) {
         }
         UpdateState(state, input, smokeWindow);
         if (state.quitConfirmation) input = FrameInput{}; // No actions beneath dialog.
-        if (previousScreen != Screen::Skin && state.screen == Screen::Skin)
+        if (previousScreen != Screen::Skin && state.screen == Screen::Skin) {
+            // PLAY can change global skin speed without visiting SKIN.
+            // Entering the editor always previews the actual active skin,
+            // not a stale draft from a previous screen visit.
+            draftSkin = activeSkin;
+            skinUi.saved = activeSkin;
+            skinUi.dirty = false;
             skinProfiles.RefreshProfiles();
+        }
         if (previousScreen == Screen::Skin && state.screen != Screen::Skin) {
             // Back/Esc cancels all unsaved skin edits.
             draftSkin = activeSkin;
