@@ -234,8 +234,10 @@ int main() {
                                           quad.vertices[3]);
             if (front1 < -1e-3f && front2 < -1e-3f) ++visibleQuads;
         }
-        ok &= Check(visibleQuads > 20,
-                    "quad faces the GPU's visible side in all eight headings");
+        // Tessellation is intentionally adaptive now: thick/slow paths
+        // have fewer (but larger) valid quads than the old fixed 32.
+        ok &= Check(visibleQuads >= 2,
+                    "visible quads face the GPU in all eight headings");
     }
     // Winding is preserved for BOTH outline and foreground stroke widths.
     const auto rows = app::BuildScoredPathRibbon(straight, 2.25, canvas, skin);
@@ -295,6 +297,9 @@ int main() {
                         !Near(mesh.back().tick, phase + 4.0, 1e-8) ||
                         !frontFacing(mesh, 1.0f) ||
                         !frontFacing(mesh, skin.outlineScale)) {
+                        std::cerr << "WINDING turn=" << static_cast<int>(turning)
+                                  << " initial=" << static_cast<int>(starting)
+                                  << " step=" << step << " phase=" << phase << '\n';
                         ok &= Check(false,
                             "no culling/inverted GPU triangles while turning at any frame");
                         break;

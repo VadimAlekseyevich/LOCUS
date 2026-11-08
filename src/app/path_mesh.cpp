@@ -46,6 +46,21 @@ PathRibbonRow MakeRow(const PathSample& sample, RouteCanvas canvas,
     };
 }
 
+bool QuadFacesCamera(const PathRibbonRow& a, const PathRibbonRow& b,
+                     float scale) {
+    const PathRibbonQuad quad = MakePathRibbonQuad(a, b, scale);
+    const auto cross = [](Vector2 origin, Vector2 first, Vector2 second) {
+        return (first.x - origin.x) * (second.y - origin.y) -
+               (first.y - origin.y) * (second.x - origin.x);
+    };
+    // Raylib uses CCW in GL's Y-up projection. The equivalent in screen
+    // coordinates is negative signed area for BOTH halves of a quad.
+    return cross(quad.vertices[0], quad.vertices[1], quad.vertices[2])
+               <= 0.01f &&
+           cross(quad.vertices[0], quad.vertices[2], quad.vertices[3])
+               <= 0.01f;
+}
+
 } // namespace
 
 std::vector<PathRibbonRow> BuildScoredPathRibbon(
@@ -179,8 +194,35 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
                 ? std::clamp(std::min(before, after) /
                              (overhang * 1.05), 0.0, 1.0)
                 : 1.0;
+            // Angle/length alone is insufficient for strongly tapered
+            // strokes. Check the actual two GPU triangles on BOTH sides
+            // of this corner, including the wider outline. If either
+            // flips, shrink only the join to the largest safe value.
+            const PathRibbonRow incoming = rows.back();
+            const PathRibbonRow outgoing = MakeRow(
+                samples[i + 1], canvas, nextNormal, 1.0, false);
+            const float outer = std::max(1.0f, skin.outlineScale);
+            const auto safeJoin = [&](double amount) {
+                const PathRibbonRow joined = MakeRow(
+                    samples[i], canvas, bisector, miter * amount, false);
+                return QuadFacesCamera(incoming, joined, 1.0f) &&
+                       QuadFacesCamera(joined, outgoing, 1.0f) &&
+                       QuadFacesCamera(incoming, joined, outer) &&
+                       QuadFacesCamera(joined, outgoing, outer);
+            };
+            double actualSafety = safety;
+            if (!safeJoin(actualSafety)) {
+                double safe = 0.0;
+                double unsafe = actualSafety;
+                for (int n = 0; n < 24; ++n) {
+                    const double test = (safe + unsafe) * 0.5;
+                    if (safeJoin(test)) safe = test;
+                    else unsafe = test;
+                }
+                actualSafety = safe * 0.995; // Keep a culling margin.
+            }
             rows.push_back(MakeRow(
-                samples[i], canvas, bisector, miter * safety, false));
+                samples[i], canvas, bisector, miter * actualSafety, false));
         }
     }
 
