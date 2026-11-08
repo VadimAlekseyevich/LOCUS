@@ -282,6 +282,8 @@ int main(int argc, char** argv) {
     locus::app::PlayAdjustmentRepeater adjustmentRepeater;
     locus::app::ScreenFadeTransition screenFade;
     bool playCameFromEditor = false;
+    std::filesystem::path playedChartPath;
+    std::filesystem::path playedBackgroundPath;
     locus::app::ListenSession listener{
         localSong, loadedAudioPath, musicError,
         locus::app::ChooseLocalMusicFile, MonotonicSeconds
@@ -474,17 +476,35 @@ int main(int argc, char** argv) {
             }
             locus::app::ApplySessionTransition(
                 transitions, previousScreen, state.screen, loadedNewChart, now);
+            if (state.screen == Screen::Play && previousScreen != Screen::Results) {
+                // Freeze document and artwork identity at launch. Another
+                // library selection later must not change the scored song.
+                playedChartPath.clear();
+                playedBackgroundPath.clear();
+                if (customChart) {
+                    if (previousScreen == Screen::Editor)
+                        playedChartPath = std::filesystem::path(editorChartPath);
+                    else if (const auto* picked = libraryUi.Selected(library))
+                        playedChartPath = picked->file;
+                    int songIndex = -1, difficultyIndex = -1;
+                    if (!playedChartPath.empty() && library.FindChart(
+                            playedChartPath, songIndex, difficultyIndex) &&
+                        songIndex >= 0 &&
+                        songIndex < static_cast<int>(library.Songs().size()))
+                        playedBackgroundPath = library.Songs()[
+                            static_cast<std::size_t>(songIndex)].backgroundImage;
+                }
+            }
             if (state.screen == Screen::Editor) {
-                const auto* chosen = libraryUi.Selected(library);
                 const auto action = locus::app::ChooseEditorEntry(
                     previousScreen, state.screen, playCameFromEditor,
-                    customChart, chosen != nullptr);
+                    customChart, !playedChartPath.empty());
                 if (action == locus::app::EditorEntryAction::NewDraft) {
                     editorFiles.NewDraft();
                 } else if (action ==
                            locus::app::EditorEntryAction::OpenPlayedDifficulty) {
                     std::string error;
-                    if (!editorFiles.OpenFromLibrary(chosen->file.wstring(), error)) {
+                    if (!editorFiles.OpenFromLibrary(playedChartPath.wstring(), error)) {
                         editorStatus = "EDIT FAILED: " + error;
                         editorFiles.NewDraft();
                     }
@@ -574,13 +594,14 @@ int main(int argc, char** argv) {
         // Artwork lives at Song Set scope, independent of difficulty/BPM.
         // Cached GPU resources change only when the selected image changes.
         std::filesystem::path artPath;
-        if (visibleState.screen == Screen::SongSelect ||
-            ((visibleState.screen == Screen::Play ||
-              visibleState.screen == Screen::Results) && customChart)) {
+        if (visibleState.screen == Screen::SongSelect) {
             if (libraryUi.selectedSong > 0 &&
                 libraryUi.selectedSong <= static_cast<int>(library.Songs().size()))
                 artPath = library.Songs()[static_cast<std::size_t>(
                     libraryUi.selectedSong - 1)].backgroundImage;
+        } else if ((visibleState.screen == Screen::Play ||
+                    visibleState.screen == Screen::Results) && customChart) {
+            artPath = playedBackgroundPath;
         }
         std::string imageError;
         if (!songBackground.Sync(artPath, imageError) && !imageError.empty())
