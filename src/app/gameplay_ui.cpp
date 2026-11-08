@@ -15,8 +15,9 @@ void DrawTextLabel(Font font, const char* message, Vector2 position,
 } // namespace
 
 void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
-    const GameplayCamera camera(gameplay.chart, gameplay.beat, gameplay.skin,
-                                gameplay.practiceSpeed);
+    GameplayCamera camera(gameplay.chart, gameplay.beat, gameplay.skin,
+                          gameplay.practiceSpeed);
+    if (gameplay.outro.active) camera.world = gameplay.outro.frozenCamera;
     const auto canvas = camera.Canvas();
 
     // Scissor coordinates are physical pixels while all world points remain
@@ -32,12 +33,36 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     // PLAY and editor TEST: only a gradually thinning/fading red route
     // *ahead* of the marker, red turn targets and the centred avatar.
     // No past-route trail, grid or debug overlay.
-    const Vector2 marker = locus::app::DrawRouteTrajectory(
-        gameplay.chart, gameplay.beat, canvas,
+    const double displayBeat = gameplay.outro.active
+        ? gameplay.outro.frozenBeat : gameplay.beat;
+    Vector2 marker = locus::app::DrawRouteTrajectory(
+        gameplay.chart, displayBeat, canvas,
         locus::app::RouteRenderMode::Gameplay, gameplay.skin);
     locus::app::DrawRouteJunctions(
-        gameplay.chart, gameplay.beat, canvas,
+        gameplay.chart, displayBeat, canvas,
         locus::app::RouteRenderMode::Gameplay, gameplay.skin);
+    if (gameplay.outro.active) {
+        Vector2 direction{};
+        constexpr float d = 0.70710678f;
+        using Heading = locus::core::Heading;
+        switch (gameplay.outro.outgoing) {
+            case Heading::Right: direction = {1.0f, 0.0f}; break;
+            case Heading::Left: direction = {-1.0f, 0.0f}; break;
+            case Heading::Up: direction = {0.0f, -1.0f}; break;
+            case Heading::Down: direction = {0.0f, 1.0f}; break;
+            case Heading::UpRight: direction = {d, -d}; break;
+            case Heading::DownRight: direction = {d, d}; break;
+            case Heading::DownLeft: direction = {-d, d}; break;
+            case Heading::UpLeft: direction = {-d, -d}; break;
+        }
+        DrawLineEx(marker,
+                   {marker.x + direction.x * 900.0f,
+                    marker.y + direction.y * 900.0f},
+                   std::max(1.0f, gameplay.skin.pathWidth * 0.7f),
+                   locus::app::WithOpacity(gameplay.skin.trajectory, 0.65f));
+        marker.x += direction.x * gameplay.outro.distancePx;
+        marker.y += direction.y * gameplay.outro.distancePx;
+    }
     const float markerRadius = gameplay.skin.playerRadius;
     if (gameplay.skin.playerGlow)
         DrawCircleV(marker, markerRadius * 1.65f,

@@ -14,6 +14,7 @@ namespace locus::app {
 struct PlayOutroFrame {
     bool active = false;
     core::GridPoint frozenCamera{};
+    double frozenBeat = 0.0;
     core::Heading outgoing = core::Heading::Right;
     float distancePx = 0.0f;
     float blackOpacity = 0.0f;
@@ -41,6 +42,7 @@ public:
             static_cast<double>(chart.firstBeat),
             static_cast<double>(chart.lengthBeats) - 0.000001);
         anchor_ = core::RoutePositionAt(chart, safe);
+        anchorBeat_ = safe;
         const int tick = static_cast<int>(std::floor(safe));
         outgoing_ = core::SampleRouteStep(chart, tick).heading;
         start_ = now;
@@ -62,6 +64,7 @@ public:
         if (active_) {
             result.active = true;
             result.frozenCamera = anchor_;
+            result.frozenBeat = anchorBeat_;
             result.outgoing = outgoing_;
             const double t = std::clamp(
                 (now - start_) / kPlayOutroSeconds, 0.0, 1.0);
@@ -83,6 +86,7 @@ private:
     double start_ = 0.0;
     double resultsAt_ = -1.0;
     core::GridPoint anchor_{};
+    double anchorBeat_ = 0.0;
     core::Heading outgoing_ = core::Heading::Right;
 };
 

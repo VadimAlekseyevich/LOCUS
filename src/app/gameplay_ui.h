@@ -3,6 +3,7 @@
 #include "app/game_settings.h"
 #include "app/hit_flash.h"
 #include "app/route_renderer.h"
+#include "app/play_outro_transition.h"
 #include "app/skin.h"
 #include "app/viewport.h"
 #include "core/judgement.h"
@@ -33,6 +34,7 @@ struct GameplayView {
     const locus::app::Skin& skin;
     double adjustmentNoticeUntil = -1.0;
     const char* adjustmentNotice = "";
+    PlayOutroFrame outro{};
 };
 
 // The visible playfield is exactly one screen-height square, centred in

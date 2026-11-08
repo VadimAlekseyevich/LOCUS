@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <cmath>
 #include <iostream>
 #include <vector>
 
@@ -220,8 +221,16 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                           Vector2{277.0f, 335.0f}, 21.0f,
                           Color{204, 213, 232, 255});
         }
+        if (gameplay.outro.blackOpacity > 0.0f)
+            DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
+                          Color{5, 6, 11, static_cast<unsigned char>(
+                              std::lround(gameplay.outro.blackOpacity * 255.0f))});
     } else if (state.screen == Screen::Results) {
         DrawResultsScreen(font, gameplay);
+        if (gameplay.outro.resultBlackOpacity > 0.0f)
+            DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
+                          Color{5, 6, 11, static_cast<unsigned char>(
+                              std::lround(gameplay.outro.resultBlackOpacity * 255.0f))});
     } else if (state.screen == Screen::Editor) {
         const double selectedBeat = editorTransport.Playing()
             ? editorTransport.Beat(now) : static_cast<double>(editor.SelectedBeat());
