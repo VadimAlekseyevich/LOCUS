@@ -55,8 +55,12 @@ bool SkinProfileActions::RefreshProfiles() {
         std::string error;
         const std::string filename = it->path().stem().u8string();
         // Still list corrupt profiles, so selecting one shows a precise error.
-        const std::string label = LoadSkin(it->path(), candidate, error, false)
+        const bool valid = LoadSkin(it->path(), candidate, error, false);
+        const std::string label = valid
             ? candidate.name : filename + " (INVALID)";
+        if (activeProfile_.empty() && valid &&
+            SerializeSkin(candidate) == SerializeSkin(active_))
+            activeProfile_ = it->path();
         entries.push_back({it->path(), label});
     }
     if (ec) {
@@ -124,6 +128,7 @@ void SkinProfileActions::Apply(SkinCommand command) {
                 return;
             }
             draft_ = selected;
+            activeProfile_.clear(); // External import must not overwrite old profile on SAVE.
             ui_.dirty = true;
             ui_.notice = "SKIN LOADED - STORE COPY TO PERSONAL LIBRARY";
             ui_.noticeError = false;
@@ -153,6 +158,7 @@ void SkinProfileActions::Apply(SkinCommand command) {
         }
         case SkinCommand::Reset:
             draft_ = Skin{};
+            activeProfile_.clear(); // Reset never destroys a stored personal copy.
             ui_.dirty = true;
             ui_.notice = "DEFAULT SKIN - SAVE TO ACTIVATE";
             ui_.noticeError = false;
