@@ -18,6 +18,7 @@
 #include "app/game_session.h"
 #include "app/gameplay_ui.h"
 #include "app/song_library.h"
+#include "app/library_playback.h"
 #include "app/game_settings.h"
 #include "app/skin.h"
 #include "app/skin_menu.h"
@@ -1245,44 +1246,16 @@ int main(int argc, char** argv) {
                     judge.SetOffsetSeconds(0.0);
                     state.screen = Screen::Play;
                 } else if (const auto* selected = libraryUi.Selected(library)) {
-                    // A difficulty pins its own immutable song version.
-                    const std::wstring audioPath = selected->audioFile.wstring();
-                    locus::core::LoadedChart candidate = selected->data;
-                    const bool newAudio =
-                        !localSong.Ready() || loadedAudioPath != audioPath;
-                    locus::app::LocalMusic replacement;
-                    bool audioReady = true;
-                    double duration = localSong.DurationSeconds();
-                    if (newAudio) {
-                        replacement.SetVolume(localSong.Volume());
-                        if (!replacement.LoadFromFile(audioPath)) {
-                            audioReady = false;
-                            libraryUi.notice = "PLAY FAILED: " + replacement.Error();
-                        } else {
-                            duration = replacement.DurationSeconds();
-                        }
-                    }
-                    if (audioReady) {
-                        if (!locus::core::PrepareChartForSong(
-                                candidate, duration, musicError)) {
-                            libraryUi.notice = "PLAY FAILED: " + musicError;
-                        } else {
-                            if (newAudio) {
-                                localSong.SwapWith(replacement);
-                                loadedAudioPath = audioPath;
-                            }
-                            activeChart = std::move(candidate.route);
-                            chartTitle = std::move(candidate.title);
-                            chartPlayback.Configure(activeChart.bpm * activeChart.ticksPerBeat,
-                                                    candidate.offsetSeconds);
-                            chartPlayback.SetSpeed(1.0, now);
-                            gameSession.ClearTestOrigin();
-                            judge.SetOffsetSeconds(candidate.offsetSeconds);
-                            customChart = true;
-                            loadedNewChart = true;
-                            state.screen = Screen::Play;
-                            musicError.clear();
-                        }
+                    const locus::app::LibraryPlaybackContext playbackContext{
+                        localSong, loadedAudioPath, activeChart, chartTitle,
+                        chartPlayback, judge, gameSession, customChart
+                    };
+                    if (locus::app::ActivateLibraryDifficulty(
+                            *selected, playbackContext, now, musicError)) {
+                        loadedNewChart = true;
+                        state.screen = Screen::Play;
+                    } else {
+                        libraryUi.notice = "PLAY FAILED: " + musicError;
                     }
                 }
             }

@@ -49,6 +49,7 @@ add_executable(locus
     src/app/chart_playback.cpp
     src/app/game_session.cpp
     src/app/song_library.cpp
+    src/app/library_playback.cpp
     src/app/audio_revision.cpp
     src/app/game_settings.cpp
     src/app/skin.cpp
@@ -217,6 +218,21 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_hit_flash_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_hit_flash_tests PRIVATE locus_core)
     add_test(NAME locus_player_hit_flash COMMAND locus_hit_flash_tests)
+
+    # Library activation must preserve live chart/audio state on decoder
+    # failure and validate route timing before publishing selected difficulty.
+    add_executable(locus_library_playback_tests
+        tests/library_playback_tests.cpp
+        src/app/library_playback.cpp
+        src/app/chart_playback.cpp
+        src/app/game_session.cpp
+        src/app/demo_transport.cpp
+        src/app/local_music.cpp
+        src/app/local_file_io.cpp
+    )
+    target_compile_features(locus_library_playback_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_library_playback_tests PRIVATE locus_core raylib)
+    add_test(NAME locus_library_playback_transaction COMMAND locus_library_playback_tests)
 
     add_executable(locus_song_library_tests
         tests/song_library_tests.cpp
