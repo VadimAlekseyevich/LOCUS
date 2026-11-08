@@ -303,7 +303,8 @@ bool ExtractSongSetArchive(const fs::path& archiveFile,
         const auto dirOffsetPos = input.tellg();
         if (dirOffsetPos < 4)
             throw std::runtime_error("Invalid ZIP central directory offset.");
-        const auto dirOffset = static_cast<std::uint32_t>(dirOffsetPos - 4);
+        const auto dirOffset = static_cast<std::uint32_t>(
+            static_cast<std::streamoff>(dirOffsetPos) - 4);
         for (std::size_t i = 0; i < entries.size(); ++i) {
             if (i != 0 && Get32(input) != kCentral)
                 throw std::runtime_error("Unexpected central directory entry.");
