@@ -45,6 +45,7 @@ add_executable(locus
     src/app/music_picker.cpp
     src/app/chart_file.cpp
     src/app/chart_save.cpp
+    src/app/song_set_storage.cpp
     src/app/editor_document.cpp
     src/app/editor_session.cpp
     src/app/editor_file_actions.cpp
