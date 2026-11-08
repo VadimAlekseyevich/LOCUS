@@ -290,6 +290,11 @@ if(LOCUS_BUILD_TESTS)
     target_include_directories(locus_image_asset_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
     add_test(NAME locus_image_asset_geometry_and_validation COMMAND locus_image_asset_tests)
 
+    add_executable(locus_editor_entry_tests tests/editor_entry_policy_tests.cpp)
+    target_compile_features(locus_editor_entry_tests PRIVATE cxx_std_17)
+    target_include_directories(locus_editor_entry_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    add_test(NAME locus_editor_entry_policy COMMAND locus_editor_entry_tests)
+
     # Exit modal policy is pure; test playback state changes without opening
     # a native window or relying on an actual sound device.
     # Editor discard confirmation is independent of native keyboard polling.

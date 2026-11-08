@@ -200,7 +200,7 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay) {
     DrawTextLabel(font, "ENTER / R  -  PLAY AGAIN",
                   Vector2{110.0f, 409.0f}, 24.0f,
                   Color{236, 219, 160, 255});
-    DrawTextLabel(font, "H  -  HOME",
+    DrawTextLabel(font, "H  -  SONG LIBRARY    E  -  EDIT",
                   Vector2{110.0f, 447.0f}, 22.0f,
                   Color{187, 205, 220, 255});
 }

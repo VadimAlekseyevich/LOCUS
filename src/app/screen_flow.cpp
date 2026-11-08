@@ -50,6 +50,8 @@ void UpdateScreenFlow(AppState& state, const NavigationInput& input,
         else if (input.openSettingsPressed) state.screen = Screen::Settings;
         else if (input.startPressed || input.openPlayPressed ||
                  input.chooseChartPressed) state.screen = Screen::SongSelect;
+    } else if (state.screen == Screen::Results && input.openEditorPressed) {
+        state.screen = Screen::Editor;
     } else if (state.screen == Screen::Results &&
                (input.startPressed || input.restartPressed)) {
         state.screen = Screen::Play;
