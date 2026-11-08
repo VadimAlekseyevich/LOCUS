@@ -57,6 +57,19 @@ std::string HashText(const fs::path& path) {
     return stream.str();
 }
 
+std::string HashSetId(const std::string& id) {
+    // Manifest IDs are untrusted data. Hash raw UTF-8 bytes rather than
+    // interpreting an arbitrary ID as a filesystem path on Windows.
+    std::uint64_t hash = 14695981039346656037ull;
+    for (unsigned char c : id) {
+        hash ^= c;
+        hash *= 1099511628211ull;
+    }
+    std::ostringstream stream;
+    stream << std::hex << std::setfill('0') << std::setw(16) << hash;
+    return stream.str();
+}
+
 std::string FilenamePart(std::string raw) {
     std::string output;
     for (unsigned char c : raw) {
@@ -322,7 +335,7 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
     }
     const fs::path target = root /
         (FilenamePart(metadata.title) + "-pack-" +
-         HashText(fs::u8path(metadata.id)));
+         HashSetId(metadata.id));
     if (fs::exists(target, ec) || ec) {
         error = "Song Set destination already exists; nothing was overwritten.";
         return fail();

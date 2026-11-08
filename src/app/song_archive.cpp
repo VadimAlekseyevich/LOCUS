@@ -289,6 +289,11 @@ bool ExtractSongSetArchive(const fs::path& archiveFile,
             if (off > 0xffffffffu)
                 throw std::runtime_error("Invalid ZIP offset.");
             const fs::path extracted = stagingFolder / fs::u8path(name);
+            std::error_code existsError;
+            const bool occupied = fs::exists(extracted, existsError);
+            if (existsError || occupied)
+                throw std::runtime_error(
+                    "ZIP contains duplicate filesystem names or invalid paths.");
             std::ofstream output(extracted, std::ios::binary | std::ios::trunc);
             if (!output) throw std::runtime_error("Cannot extract ZIP file.");
             Transfer(input, output, unpacked, crc);
