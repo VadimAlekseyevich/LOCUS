@@ -274,6 +274,11 @@ if(LOCUS_BUILD_TESTS)
     target_include_directories(locus_audio_fade_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
     add_test(NAME locus_music_transition_easing COMMAND locus_audio_fade_tests)
 
+    add_executable(locus_play_outro_tests tests/play_outro_tests.cpp)
+    target_compile_features(locus_play_outro_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_play_outro_tests PRIVATE locus_core)
+    add_test(NAME locus_scored_outro_transition COMMAND locus_play_outro_tests)
+
     # Exit modal policy is pure; test playback state changes without opening
     # a native window or relying on an actual sound device.
     # Editor discard confirmation is independent of native keyboard polling.
