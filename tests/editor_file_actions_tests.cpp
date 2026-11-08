@@ -1,4 +1,5 @@
 #include "app/editor_file_actions.h"
+#include "app/editor_set_controller.h"
 #include "app/chart_editor_ui.h"
 #include "app/chart_playback.h"
 #include "app/editor_document.h"
@@ -111,6 +112,24 @@ int main() {
                 editor.Data().title == "SECOND DRAFT" && editor.Dirty() &&
                 chartPath.empty() && status == "NEW CHART - CLICK LOAD SONG",
                 "failed library edit retains the current unsaved draft");
+    app::EditorSetController setControl{
+        {library, failed, editor, ui, chartPath, status, libraryUi, menuStatus},
+        {CanceledChart, CanceledSave}
+    };
+    ok &= Check(!setControl.View().managed &&
+                failed.ActiveSetFolder().empty(),
+                "uninstalled draft has no Song Set");
+    setControl.Request(app::EditorSetAction::DeleteSongSet);
+    ok &= Check(!setControl.HasPending() &&
+                status.find("SET FAILED: ") == 0,
+                "uninstalled chart cannot accidentally delete library files");
+    ok &= Check(app::EditorSetNeedsConfirmation({
+                    app::EditorSetAction::Open, {}, {}, true}) &&
+                app::EditorSetNeedsConfirmation({
+                    app::EditorSetAction::DeleteSongSet, {}, {}, false}) &&
+                !app::EditorSetNeedsConfirmation({
+                    app::EditorSetAction::Export, {}, {}, false}),
+                "destructive and dirty-draft actions require confirmation");
     if (!ok) return 1;
     std::cout << "EDITOR_FILE_ACTIONS_PASS cancel=1 open=1 attach=1 save=1 new=1\n";
     return 0;

@@ -61,10 +61,12 @@ EditorSetView EditorSetController::View() const {
         : std::clamp(ctx_.ui.setSelected, 0, count - 1);
     view.firstVisible = std::clamp(ctx_.ui.setFirstVisible, 0,
                                    std::max(0, count - 5));
-    if (view.selected < view.firstVisible)
-        view.firstVisible = view.selected;
-    if (view.selected >= view.firstVisible + 5)
-        view.firstVisible = view.selected - 4;
+    if (ctx_.ui.setSelected < 0) {
+        if (view.selected < view.firstVisible)
+            view.firstVisible = view.selected;
+        if (view.selected >= view.firstVisible + 5)
+            view.firstVisible = view.selected - 4;
+    }
     return view;
 }
 
@@ -79,16 +81,19 @@ void EditorSetController::HandleClick(Vector2 mouse, bool clicked, float wheel) 
     EditorSetView view = View();
     const int count = static_cast<int>(view.difficulties.size());
     if (wheel != 0.0f && count > 0) {
+        ctx_.ui.setSelected = view.selected; // Browsing need not follow active.
         const int delta = wheel > 0.0f ? -1 : 1;
         ctx_.ui.setFirstVisible = std::clamp(
             view.firstVisible + delta, 0, std::max(0, count - 5));
     }
     if (!clicked) return;
     if (CheckCollisionPointRec(mouse, detail::kSetPrevious)) {
+        ctx_.ui.setSelected = view.selected;
         ctx_.ui.setFirstVisible = std::max(0, view.firstVisible - 5);
         return;
     }
     if (CheckCollisionPointRec(mouse, detail::kSetNext)) {
+        ctx_.ui.setSelected = view.selected;
         ctx_.ui.setFirstVisible = std::min(
             std::max(0, count - 5), view.firstVisible + 5);
         return;

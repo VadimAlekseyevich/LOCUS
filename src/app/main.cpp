@@ -14,6 +14,7 @@
 #include "app/chart_editor_layout.h"
 #include "app/editor_session.h"
 #include "app/editor_file_actions.h"
+#include "app/editor_set_controller.h"
 #include "app/listen_session.h"
 #include "app/skin_profile_actions.h"
 #include "app/visual_style.h"
@@ -264,6 +265,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::app::EditorUiState& editorUi,
                  const locus::app::ChartPlayback& editorTransport,
                  const std::string& editorStatus, EditorPending editorPending,
+                 const locus::app::EditorSetView& editorSetView,
+                 const locus::app::EditorSetRequest* editorSetPending,
                  const std::string& musicError, double now,
                   const locus::app::SongLibrary& library,
                   const locus::app::SongSelectUi& libraryUi,
@@ -334,10 +337,38 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                                      localSong.DisplayName(), localSong.Ready(),
                                      editorTransport.Playing(), editorTransport.Paused(),
                                      selectedBeat, editorTransport.Speed(),
-                                     gameplay.bindings, gameplay.skin);
+                                     gameplay.bindings, gameplay.skin,
+                                     editorSetView);
         const std::string statusLine = editorStatus.substr(0, 68);
         DrawTextLabel(font, statusLine.c_str(), Vector2{50.0f, 525.0f},
                       12.0f, Color{175, 212, 213, 255});
+        if (editorSetPending && editorPending == EditorPending::None) {
+            DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
+                          Color{10, 13, 21, 225});
+            const bool wholeSet =
+                editorSetPending->action == locus::app::EditorSetAction::DeleteSongSet;
+            const bool deleteDifficulty =
+                editorSetPending->action == locus::app::EditorSetAction::DeleteDifficulty;
+            const char* heading = wholeSet ? "DELETE ENTIRE SONG SET?"
+                                : deleteDifficulty ? "DELETE THIS DIFFICULTY?"
+                                : "UNSAVED CHART CHANGES";
+            DrawTextLabel(font, heading, {170.0f, 175.0f}, 29.0f,
+                          Color{244, 206, 143, 255});
+            DrawTextLabel(font, wholeSet
+                          ? "SONG, AUDIO AND ALL CHARTS GO TO TRASH"
+                          : deleteDifficulty
+                          ? "SELECTED CHART GOES TO RECOVERABLE TRASH"
+                          : "THE CURRENT UNSAVED DRAFT WILL BE DISCARDED",
+                          {160.0f, 240.0f}, 18.0f,
+                          Color{217, 229, 235, 255});
+            if (editorSetPending->discardsDraft)
+                DrawTextLabel(font, "WARNING: UNSAVED EDITS WILL BE LOST",
+                              {195.0f, 281.0f}, 18.0f,
+                              Color{239, 161, 146, 255});
+            DrawTextLabel(font, "Y  CONFIRM        N / ESC  CANCEL",
+                          {222.0f, 341.0f}, 21.0f,
+                          Color{221, 236, 234, 255});
+        }
         if (editorPending != EditorPending::None) {
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{10, 13, 21, 218});
             DrawTextLabel(font, "UNSAVED CHART CHANGES", {193.0f, 187.0f},
@@ -815,6 +846,12 @@ int main(int argc, char** argv) {
         {locus::app::ChooseChartFile, locus::app::ChooseLocalMusicFile,
          locus::app::ChooseChartSaveFile, MonotonicSeconds}
     };
+    locus::app::EditorSetController editorSet{
+        {library, editorFiles, editor, editorUi, editorChartPath,
+         editorStatus, libraryUi, menuStatus},
+        {locus::app::ChooseLibraryImportFile,
+         locus::app::ChooseSongSetExportFile}
+    };
     const locus::app::SessionTransitionContext transitions{
         activeChart, demo, judge, gameSession, chartPlayback, localSong, editorUi,
         customChart, sessionCompleted, chartTitle
@@ -912,6 +949,19 @@ int main(int argc, char** argv) {
             input.editorTest = false;
         }
         const Screen previousScreen = state.screen;
+        if (previousScreen == Screen::Editor && editorSet.HasPending() &&
+            !wasQuitConfirmation) {
+            if (input.closeRequested) {
+                // The native quit dialog takes priority over editor modals.
+                editorSet.CancelPending();
+            } else {
+                const bool approve = IsKeyPressed(KEY_Y);
+                const bool cancel = IsKeyPressed(KEY_N) ||
+                                    IsKeyPressed(KEY_ESCAPE);
+                input = FrameInput{}; // No actions beneath a modal confirmation.
+                editorSet.Confirm(approve, cancel);
+            }
+        }
         if (previousScreen == Screen::Editor && !wasQuitConfirmation) {
             const auto outcome = editorDiscard.Handle(
                 input, editor.Dirty(), IsKeyPressed(KEY_Y),
@@ -953,6 +1003,15 @@ int main(int argc, char** argv) {
             !state.quitConfirmation &&
             editorDiscard.Pending() == EditorPending::None) {
             const auto uiAction = editorSession.ApplyControls(input.editor, now);
+            // The Song Set tab owns its own hitboxes. A click there must
+            // never accidentally edit a route or bypass the discard prompt.
+            if (editorUi.tab == locus::app::EditorTab::Set) {
+                editorSet.HandleClick(input.editor.mouse,
+                                      input.editor.mouseClick,
+                                      input.editor.mouseWheel);
+                // Import/export can invoke a native Windows file picker.
+                now = MonotonicSeconds();
+            }
             if (uiAction.chooseAudio) input.chooseMusicPressed = true;
             if (uiAction.testPlay) input.editorTest = true;
 
@@ -1224,7 +1283,9 @@ int main(int argc, char** argv) {
                                     speedNoticeUntil};
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
-                    editorStatus, editorDiscard.Pending(), musicError, renderNow,
+                    editorStatus, editorDiscard.Pending(),
+                    editorSet.View(), editorSet.Pending(),
+                    musicError, renderNow,
                     library, libraryUi, settings, settingsUi,
                     draftSkin, skinUi, menuStatus);
     }
