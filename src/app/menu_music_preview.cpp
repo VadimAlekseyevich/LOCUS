@@ -107,6 +107,7 @@ void MenuMusicPreview::FadeOut(double now) {
 }
 
 void MenuMusicPreview::Update(double now, float masterVolume) {
+    if (paused_) return;
     if (active_ == Source::Song) song_.Update(now);
     if (active_ == Source::Demo) demo_.Update(now);
     if (switching_ && envelope_.Finished(now)) ActivatePending(now);
@@ -133,6 +134,22 @@ void MenuMusicPreview::Update(double now, float masterVolume) {
     }
 }
 
+void MenuMusicPreview::Pause(double now) {
+    if (paused_) return;
+    paused_ = true;
+    pausedAt_ = now;
+    if (active_ == Source::Song && song_.Playing()) song_.Pause(now);
+    if (active_ == Source::Demo && demo_.Playing()) demo_.Pause(now);
+}
+
+void MenuMusicPreview::Resume(double now) {
+    if (!paused_) return;
+    paused_ = false;
+    envelope_.Shift(now - pausedAt_);
+    if (active_ == Source::Song && song_.Paused()) song_.Resume(now);
+    if (active_ == Source::Demo && demo_.Paused()) demo_.Resume(now);
+}
+
 void MenuMusicPreview::Shutdown() {
     StopActive();
     song_.Shutdown();
@@ -141,6 +158,7 @@ void MenuMusicPreview::Shutdown() {
     loadedPath_.clear();
     pendingPath_.clear();
     switching_ = false;
+    paused_ = false;
 }
 
 } // namespace locus::app

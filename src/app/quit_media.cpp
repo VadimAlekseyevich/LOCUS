@@ -17,6 +17,9 @@ QuitMediaAction QuitMediaCoordinator::OnModalTransition(
             case Screen::Play:
                 pausedByModal_ = QuitMediaAction::PauseGameplay;
                 return pausedByModal_;
+            case Screen::Results:
+                pausedByModal_ = QuitMediaAction::PauseResults;
+                return pausedByModal_;
             case Screen::Listen:
                 pausedByModal_ = QuitMediaAction::PauseListening;
                 return pausedByModal_;
@@ -36,6 +39,8 @@ QuitMediaAction QuitMediaCoordinator::OnModalTransition(
         switch (paused) {
             case QuitMediaAction::PauseGameplay:
                 return QuitMediaAction::ResumeGameplay;
+            case QuitMediaAction::PauseResults:
+                return QuitMediaAction::ResumeResults;
             case QuitMediaAction::PauseListening:
                 return QuitMediaAction::ResumeListening;
             case QuitMediaAction::PauseEditorPreview:
@@ -61,6 +66,10 @@ void UpdateQuitMedia(QuitMediaCoordinator& coordinator, bool previousModal,
                 snapshot.playing = customChart ? playback.Playing() : demo.Playing();
                 snapshot.paused = customChart ? playback.Paused() : demo.Paused();
                 break;
+            case Screen::Results:
+                snapshot.playing = customChart ? playback.Playing() : demo.Playing();
+                snapshot.paused = customChart ? playback.Paused() : demo.Paused();
+                break;
             case Screen::Listen:
                 snapshot.playing = song.Playing();
                 snapshot.paused = song.Paused();
@@ -78,6 +87,10 @@ void UpdateQuitMedia(QuitMediaCoordinator& coordinator, bool previousModal,
         previousModal, currentModal, snapshot)) {
         case QuitMediaAction::PauseGameplay:
         case QuitMediaAction::ResumeGameplay:
+            session.TogglePause(customChart, now);
+            break;
+        case QuitMediaAction::PauseResults:
+        case QuitMediaAction::ResumeResults:
             session.TogglePause(customChart, now);
             break;
         case QuitMediaAction::PauseListening: song.Pause(now); break;

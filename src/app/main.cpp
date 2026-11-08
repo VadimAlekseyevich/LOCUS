@@ -379,6 +379,14 @@ int main(int argc, char** argv) {
         locus::app::UpdateQuitMedia(
             quitMedia, wasQuitConfirmation, state.quitConfirmation, state.screen,
             customChart, now, gameSession, transport, chartPlayback, localSong);
+        // Menu preview has its own audio stream and envelope. Freeze both
+        // during the modal confirmation instead of stopping the track.
+        if (!wasQuitConfirmation && state.quitConfirmation &&
+            state.screen == Screen::SongSelect)
+            menuMusic.Pause(now);
+        else if (wasQuitConfirmation && !state.quitConfirmation &&
+                 state.screen == Screen::SongSelect)
+            menuMusic.Resume(now);
         bool loadedNewSong = false;
         // Home uses E to enter Editor and E also rotates its heading.
         // Ignore that initial key-down; start editing on the next frame.

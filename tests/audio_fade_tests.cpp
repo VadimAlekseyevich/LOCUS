@@ -24,10 +24,13 @@ int main() {
           gain.Gain(10.1) == 0.0f &&
           gain.Gain(10.28) > 0.99f,
           "incoming music stays silent during outgoing fade");
-    gain.FadeOut(10.40);
-    check(gain.Gain(10.41) < 1.0f &&
-          gain.Gain(10.41) > 0.0f &&
-          gain.Gain(10.53) == 0.0f && gain.Finished(10.53),
+    gain.Shift(0.50);
+    check(gain.Gain(10.40) == 0.0f && gain.Gain(10.78) > 0.99f,
+          "pause preserves the audio fade timeline");
+    gain.FadeOut(10.90);
+    check(gain.Gain(10.91) < 1.0f &&
+          gain.Gain(10.91) > 0.0f &&
+          gain.Gain(11.03) == 0.0f && gain.Finished(11.03),
           "outgoing music fades continuously to silence");
     if (ok) std::cout << "AUDIO_FADE_PASS smooth=1 sequential=1\n";
     return ok ? 0 : 1;

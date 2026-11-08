@@ -33,6 +33,10 @@ public:
         to_ = 0.0f;
         enabled_ = true;
     }
+    void Shift(double pausedSeconds) noexcept {
+        if (enabled_ && std::isfinite(pausedSeconds) && pausedSeconds > 0.0)
+            start_ += pausedSeconds;
+    }
     void Full() noexcept { enabled_ = false; from_ = to_ = 1.0f; }
     void Silent() noexcept { enabled_ = false; from_ = to_ = 0.0f; }
 

@@ -78,8 +78,13 @@ int main() {
                     QuitMediaAction::None,
                 "editor with no preview cannot start audio on cancel");
 
+    ok &= Check(apply(false, true, Screen::Results, true, false) ==
+                    QuitMediaAction::PauseResults &&
+                apply(true, false, Screen::Results, true, true) ==
+                    QuitMediaAction::ResumeResults,
+                "Results pauses its still-playing music under the quit modal");
     for (Screen screen : {Screen::Home, Screen::SongSelect, Screen::Skin,
-                          Screen::Settings, Screen::Results}) {
+                          Screen::Settings}) {
         ok &= Check(apply(false, true, screen, true, false) ==
                         QuitMediaAction::None &&
                     apply(true, false, screen, true, false) ==
