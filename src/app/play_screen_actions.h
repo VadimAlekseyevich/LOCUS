@@ -2,6 +2,7 @@
 
 #include "app/app_input.h"
 #include "app/screen_flow.h"
+#include "app/play_outro_transition.h"
 
 namespace locus::core { class TurnJudge; }
 namespace locus::app {
@@ -33,6 +34,8 @@ struct PlayActionsContext {
     ChartPlayback& local;
     bool& customChart;
     bool& sessionCompleted;
+    const core::Chart& chart;
+    PlayOutroTransition& outro;
 };
 
 class PlayScreenActions {

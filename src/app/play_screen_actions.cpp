@@ -23,24 +23,32 @@ void PlayScreenActions::HandleControls(const FrameInput& input, double now) {
     if (input.restartPressed ||
         (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
         context_.sessionCompleted = false;
+        context_.outro.Reset();
         context_.game.Restart(custom, now);
-    } else if (input.pausePressed) {
+    } else if (input.pausePressed && !context_.outro.Active()) {
         context_.game.TogglePause(custom, now);
     }
 }
 
 void PlayScreenActions::Update(const FrameInput& input, double now) {
     const bool custom = context_.customChart;
+    if (context_.outro.Active()) {
+        // Stop accepting notes but keep music streaming during the departure.
+        if (custom) context_.local.Update(now);
+        else context_.demo.Update(now);
+        if (context_.outro.Done(now)) {
+            FinishSession(context_.app, context_.judge);
+            context_.sessionCompleted = true;
+            context_.outro.BeginResults(now);
+        }
+        return;
+    }
     context_.game.Update(custom, now,
                          {input.arrowPressed, input.arrowCapturedAt, input.arrowHeld});
     const bool audioFinished = custom
         ? context_.local.Finished() : context_.demo.Finished();
-    if (ChartReadyForResults(context_.judge, audioFinished)) {
-        FinishSession(context_.app, context_.judge);
-        context_.sessionCompleted = true;
-        // A final eligible note can finish before the audio track does.
-        context_.game.Stop(custom);
-    }
+    if (ChartReadyForResults(context_.judge, audioFinished))
+        context_.outro.Begin(context_.chart, Transport(now).beat, now);
 }
 
 PlayTransportView PlayScreenActions::Transport(double now) const {

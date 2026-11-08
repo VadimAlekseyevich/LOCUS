@@ -1,5 +1,6 @@
 #include "app/session_transition.h"
 #include "app/play_screen_actions.h"
+#include "app/play_outro_transition.h"
 #include "app/chart_editor_ui.h"
 #include "app/chart_playback.h"
 #include "app/demo_transport.h"
@@ -107,8 +108,10 @@ int main() {
                 "no screen boundary does not restart the session");
     // Play controls and status no longer depend on main's frame loop.
     app::AppState appState;
+    app::PlayOutroTransition outro;
     app::PlayScreenActions play{
-        {appState, game, judge, demo, preview, customChart, completed}
+        {appState, game, judge, demo, preview, customChart, completed,
+         activeChart, outro}
     };
     ok &= Check(app::PracticeRateForIndex(-1) < 0.0 &&
                 app::PracticeRateForIndex(0) == 1.0 &&

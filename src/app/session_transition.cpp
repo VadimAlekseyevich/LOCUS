@@ -21,7 +21,9 @@ void ApplySessionTransition(const SessionTransitionContext& context,
         context.editorUi.pendingDirectionSeconds = 0.0f;
         context.editorUi.directionKeysHandled = true;
     }
-    if (previous == Screen::Play)
+    // The Results screen owns the unmapped song outro. Only explicit
+    // navigation AWAY from Play stops the underlying audio immediately.
+    if (previous == Screen::Play && next != Screen::Results)
         context.gameSession.Stop(context.customChart);
     if (previous == Screen::Listen)
         context.song.Stop();
