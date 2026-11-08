@@ -36,9 +36,11 @@ int main() {
     for (int i = 0; i < 2; ++i)
         ok &= Check(tick(1, -1, 0.1f) == std::make_pair(0, 0),
                     "no repeat before 230ms");
-    const auto first = tick(1, -1, 0.1f);
+    ok &= Check(tick(1, -1, 0.1f) == std::make_pair(0, 0),
+                "repeat waits for the first full interval after 230 ms");
+    const auto first = tick(1, -1, 0.01f);
     ok &= Check(first.first > 0 && first.second < 0,
-                "both held axes repeat");
+                "both held axes repeat after 230 ms delay plus interval");
     int repeats = 0;
     for (int i = 0; i < 12; ++i) {
         const auto output = tick(1, -1, 0.1f);
