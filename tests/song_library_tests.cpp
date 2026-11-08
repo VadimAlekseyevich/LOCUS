@@ -127,6 +127,48 @@ int main() {
                 Read(duplicate).find("Easy Copy") != std::string::npos,
                 "duplicate difficulty uses shared audio and a separate JSON");
 
+    // Portable .locuspack is a real ZIP file containing manifest, shared
+    // audio and two independent chart JSONs. Import into a fresh library
+    // must not depend on the original source path or existing installation.
+    const fs::path packageFile = folder / "song.locuspack";
+    const fs::path copiedRoot = folder / "second-user" / "Songs";
+    const fs::path corruptFile = folder / "corrupt.locuspack";
+    const fs::path traversalFile = folder / "traversal.locuspack";
+    fs::path importedFolder;
+    SongLibrary copiedLibrary(copiedRoot);
+    ok &= Check(library.ExportPackage(easyInstalled.parent_path(),
+                                     packageFile, error) &&
+                Read(packageFile).substr(0, 4) == std::string("PK\x03\x04", 4),
+                "Song Set exported as portable ZIP");
+    ok &= Check(copiedLibrary.Refresh(note) &&
+                copiedLibrary.ImportPackage(packageFile, importedFolder, error) &&
+                copiedLibrary.Songs().size() == 1 &&
+                copiedLibrary.ChartCount() == 4 &&
+                fs::exists(importedFolder / "set.locus.json") &&
+                Read(importedFolder / "song.wav") == firstBytes,
+                "ZIP import restores manifest, audio and four difficulties");
+    fs::path duplicatePackage;
+    ok &= Check(!copiedLibrary.ImportPackage(packageFile, duplicatePackage, error) &&
+                copiedLibrary.ChartCount() == 4,
+                "same package cannot overwrite already installed Song Set");
+    std::string zipBytes = Read(packageFile);
+    const auto payload = zipBytes.find(firstBytes);
+    if (payload != std::string::npos) zipBytes[payload] ^= 1;
+    Write(corruptFile, zipBytes);
+    ok &= Check(payload != std::string::npos &&
+                !copiedLibrary.ImportPackage(corruptFile, duplicatePackage, error) &&
+                copiedLibrary.ChartCount() == 4,
+                "bad ZIP payload CRC is rejected without changing library");
+    zipBytes = Read(packageFile);
+    const auto filename = zipBytes.find("song.wav");
+    if (filename != std::string::npos)
+        zipBytes.replace(filename, 8, "../g.wav");
+    Write(traversalFile, zipBytes);
+    ok &= Check(filename != std::string::npos &&
+                !copiedLibrary.ImportPackage(traversalFile, duplicatePackage, error) &&
+                copiedLibrary.ChartCount() == 4,
+                "path traversal in ZIP names is rejected");
+
     // Normal Ctrl+S equivalent: overwrite chart and verify its previous bytes
     // were backed up before atomic publication.
     const auto before = Read(easyInstalled);
