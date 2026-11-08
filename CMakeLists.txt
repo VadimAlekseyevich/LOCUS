@@ -142,7 +142,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_file.cpp
         src/app/chart_save.cpp
         src/app/local_file_io.cpp
-    )
+        src/app/song_set_storage.cpp
+)
     target_compile_features(locus_chart_file_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_chart_file_tests PRIVATE locus_core)
     add_test(NAME locus_chart_local_file COMMAND locus_chart_file_tests)
@@ -177,7 +178,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_playback.cpp
         src/app/song_library.cpp
         src/app/audio_revision.cpp
-    )
+        src/app/song_set_storage.cpp
+)
     target_compile_features(locus_editor_file_actions_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_file_actions_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
@@ -213,7 +215,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_file.cpp
         src/app/chart_save.cpp
         src/app/music_picker.cpp
-    )
+        src/app/song_set_storage.cpp
+)
     target_compile_features(locus_editor_document_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_document_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
@@ -329,7 +332,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_file.cpp
         src/app/chart_save.cpp
         src/app/local_file_io.cpp
-    )
+        src/app/song_set_storage.cpp
+)
     target_compile_features(locus_library_browser_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_library_browser_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
@@ -342,7 +346,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_file.cpp
         src/app/chart_save.cpp
         src/app/local_file_io.cpp
-    )
+        src/app/song_set_storage.cpp
+)
     target_compile_features(locus_song_library_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_song_library_tests PRIVATE locus_core)
     add_test(NAME locus_persistent_song_library COMMAND locus_song_library_tests)
