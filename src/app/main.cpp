@@ -20,6 +20,7 @@
 #include "app/editor_file_actions.h"
 #include "app/editor_set_controller.h"
 #include "app/editor_screen_actions.h"
+#include "app/editor_entry_policy.h"
 #include "app/listen_session.h"
 #include "app/menu_music_preview.h"
 #include "app/audio_volume_fade.h"
@@ -280,6 +281,7 @@ int main(int argc, char** argv) {
     locus::app::QuitMediaCoordinator quitMedia;
     locus::app::PlayAdjustmentRepeater adjustmentRepeater;
     locus::app::ScreenFadeTransition screenFade;
+    bool playCameFromEditor = false;
     locus::app::ListenSession listener{
         localSong, loadedAudioPath, musicError,
         locus::app::ChooseLocalMusicFile, MonotonicSeconds
@@ -451,6 +453,8 @@ int main(int argc, char** argv) {
             menuMusic.FadeOut(now);
         }
         if (state.screen != previousScreen) {
+            if (state.screen == Screen::Play && previousScreen != Screen::Results)
+                playCameFromEditor = previousScreen == Screen::Editor;
             if (state.screen == Screen::Play) {
                 playOutro.Reset();
                 drainingGameplayAudio = false;
@@ -470,6 +474,24 @@ int main(int argc, char** argv) {
             }
             locus::app::ApplySessionTransition(
                 transitions, previousScreen, state.screen, loadedNewChart, now);
+            if (state.screen == Screen::Editor) {
+                const auto* chosen = libraryUi.Selected(library);
+                const auto action = locus::app::ChooseEditorEntry(
+                    previousScreen, state.screen, playCameFromEditor,
+                    customChart, chosen != nullptr);
+                if (action == locus::app::EditorEntryAction::NewDraft) {
+                    editorFiles.NewDraft();
+                } else if (action ==
+                           locus::app::EditorEntryAction::OpenPlayedDifficulty) {
+                    std::string error;
+                    if (!editorFiles.OpenFromLibrary(chosen->file.wstring(), error)) {
+                        editorStatus = "EDIT FAILED: " + error;
+                        editorFiles.NewDraft();
+                    }
+                }
+                // A key used to navigate into Editor must not place a note.
+                editorUi.directionKeysHandled = true;
+            }
         } else if (state.screen == Screen::Play) {
             const float nextSpeed = locus::app::AdjustBaseSpeed(
                 activeSkin.baseSpeedPxPerSecond, input.baseSpeedDelta);
