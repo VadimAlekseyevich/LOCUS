@@ -50,6 +50,7 @@ inline double ViewBeat(const core::ChartEditor& draft, double activeBeat) {
         : static_cast<double>(draft.SelectedBeat());
 }
 
+constexpr Rectangle kTabSet{251, 73, 128, 35};
 constexpr Rectangle kTabRoute{388, 73, 155, 35};
 constexpr Rectangle kTabAudio{552, 73, 155, 35};
 constexpr Rectangle kTabField{716, 73, 155, 35};
@@ -88,6 +89,31 @@ constexpr Rectangle kRedoEdit{142, 354, 83, 31};
 constexpr Rectangle kTitle{92, 205, 768, 43};
 constexpr Rectangle kBpm{92, 290, 350, 43};
 constexpr Rectangle kOffset{510, 290, 350, 43};
+// Song Set management occupies its own tab without moving the timeline.
+constexpr Rectangle kSetOpen{52, 304, 123, 33};
+constexpr Rectangle kSetNew{184, 304, 123, 33};
+constexpr Rectangle kSetDuplicate{316, 304, 132, 33};
+constexpr Rectangle kSetImport{52, 345, 123, 33};
+constexpr Rectangle kSetExport{184, 345, 123, 33};
+constexpr Rectangle kSetDeleteDifficulty{316, 345, 132, 33};
+constexpr Rectangle kSetDeleteSong{52, 386, 190, 33};
+constexpr Rectangle kSetRestore{251, 386, 197, 33};
+constexpr Rectangle kSetPrevious{507, 394, 118, 29};
+constexpr Rectangle kSetNext{785, 394, 118, 29};
+constexpr Rectangle SetDifficultyRow(int row) noexcept {
+    return {503.0f, 202.0f + row * 36.0f, 400.0f, 32.0f};
+}
+inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
+    if (CheckCollisionPointRec(p, kSetOpen)) return EditorSetAction::Open;
+    if (CheckCollisionPointRec(p, kSetNew)) return EditorSetAction::NewDifficulty;
+    if (CheckCollisionPointRec(p, kSetDuplicate)) return EditorSetAction::Duplicate;
+    if (CheckCollisionPointRec(p, kSetImport)) return EditorSetAction::Import;
+    if (CheckCollisionPointRec(p, kSetExport)) return EditorSetAction::Export;
+    if (CheckCollisionPointRec(p, kSetDeleteDifficulty)) return EditorSetAction::DeleteDifficulty;
+    if (CheckCollisionPointRec(p, kSetDeleteSong)) return EditorSetAction::DeleteSongSet;
+    if (CheckCollisionPointRec(p, kSetRestore)) return EditorSetAction::Restore;
+    return EditorSetAction::None;
+}
 constexpr Rectangle kGridSize{104, 225, 330, 47};
 constexpr Rectangle kFieldHeading{519, 321, 330, 47};
 
@@ -122,6 +148,7 @@ struct EditorView {
     }
 };
 inline EditorTab ClickedTab(Vector2 mouse, EditorTab previous) {
+    if (Hit(kTabSet, mouse)) return EditorTab::Set;
     if (Hit(kTabRoute, mouse)) return EditorTab::Route;
     if (Hit(kTabAudio, mouse)) return EditorTab::Audio;
     if (Hit(kTabField, mouse)) return EditorTab::Field;

@@ -265,9 +265,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const EditorUiState& ui, const std::string& songName,
                        bool hasAudio, bool previewPlaying, bool previewPaused,
                        double previewBeat, double playbackSpeed,
-                       const GameSettings& settings, const Skin& skin) {
+                       const GameSettings& settings, const Skin& skin,
+                       const EditorSetView& set) {
     const auto& chart = draft.Data().route;
-    Label(font, "CHART EDITOR", 49, 77, 26, Color{194, 236, 231, 255});
+    Label(font, "CHART EDITOR", 49, 77, 24, Color{194, 236, 231, 255});
+    Button(font, kTabSet, "SET", Color{244, 197, 124, 255},
+           ui.tab == EditorTab::Set);
     Button(font, kTabRoute, "ROUTE", Color{126, 219, 209, 255},
            ui.tab == EditorTab::Route);
     Button(font, kTabAudio, "AUDIO", Color{131, 190, 237, 255},
@@ -376,6 +379,60 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                       offset, EditorField::OffsetMs, ui);
         Label(font, "PRACTICE SPEED: SET ON ROUTE (KEYS 1-5 WORK HERE TOO)",
               92, 374, 16, Color{172, 199, 218, 255});
+    } else if (ui.tab == EditorTab::Set) {
+        const Color heading{186, 219, 231, 255};
+        const Color ordinary{211, 226, 236, 255};
+        const Color amber{239, 202, 137, 255};
+        Label(font, "SONG SET / LIBRARY", 52, 170, 20, heading);
+        if (set.managed) {
+            Label(font, Truncate(set.title, 35).c_str(), 52, 201, 20, ordinary);
+            Label(font, Truncate(set.artist.empty() ? "ARTIST: NOT SET"
+                : "ARTIST: " + set.artist, 44).c_str(), 52, 233, 14, heading);
+            Label(font, Truncate("AUDIO: " + set.audioName, 44).c_str(),
+                  52, 255, 14, heading);
+            Label(font, TextFormat("%d DIFFICULTIES%s",
+                  static_cast<int>(set.difficulties.size()),
+                  set.newDifficultyDraft ? " / UNSAVED NEW DRAFT" : ""),
+                  52, 278, 13, amber);
+        } else {
+            Label(font, "NOT INSTALLED YET", 52, 208, 20, amber);
+            Label(font, "ATTACH AUDIO, THEN CTRL+S", 52, 242, 15, heading);
+            Label(font, "TO CREATE A SONG SET", 52, 265, 15, heading);
+        }
+        Button(font, kSetOpen, "OPEN", Color{126, 219, 209, 255});
+        Button(font, kSetNew, "NEW", Color{239, 203, 129, 255});
+        Button(font, kSetDuplicate, "COPY", Color{162, 178, 239, 255});
+        Button(font, kSetImport, "IMPORT", Color{122, 209, 226, 255});
+        Button(font, kSetExport, "EXPORT", Color{122, 209, 226, 255});
+        Button(font, kSetDeleteDifficulty, "DELETE", Color{235, 150, 146, 255});
+        Button(font, kSetDeleteSong, "DELETE SET", Color{235, 150, 146, 255});
+        Button(font, kSetRestore, "RESTORE LAST", Color{227, 198, 137, 255});
+        Label(font, "DIFFICULTIES", 503, 170, 19, heading);
+        for (int row = 0; row < 5; ++row) {
+            const int index = set.firstVisible + row;
+            if (index >= static_cast<int>(set.difficulties.size())) break;
+            const Rectangle rect = SetDifficultyRow(row);
+            const bool selected = index == set.selected;
+            const bool active = index == set.current;
+            DrawRectangleRounded(rect, 0.12f, 5,
+                                 selected ? Color{55, 78, 81, 255}
+                                          : Color{35, 43, 56, 255});
+            DrawRectangleRoundedLinesEx(rect, 0.12f, 5, 1.3f,
+                                        active ? Color{239, 203, 129, 255}
+                                               : Color{101, 134, 159, 255});
+            Label(font, Truncate(set.difficulties[index], 27).c_str(),
+                  rect.x + 12, rect.y + 6, 16, ordinary);
+            if (active)
+                Label(font, "EDITING", rect.x + 311, rect.y + 9, 12, amber);
+        }
+        Button(font, kSetPrevious, "PREV ^", Color{120, 176, 207, 255});
+        Button(font, kSetNext, "NEXT v", Color{120, 176, 207, 255});
+        Label(font, TextFormat("%d-%d / %d",
+              set.difficulties.empty() ? 0 : set.firstVisible + 1,
+              std::min(set.firstVisible + 5,
+                       static_cast<int>(set.difficulties.size())),
+              static_cast<int>(set.difficulties.size())),
+              641, 400, 14, heading);
     } else {
         Label(font, "FIELD  /  EDITOR GRID VIEW", 104, 169, 20,
               Color{239, 210, 159, 255});

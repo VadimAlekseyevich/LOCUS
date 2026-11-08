@@ -120,6 +120,23 @@ int main() {
     ok &= Check(audioEmpty.speedIndex == -1,
                 "practice speed buttons are no longer in the Audio tab");
 
+    ApplyEditorControls(chart, ui, Click(300, 89));
+    ok &= Check(ui.tab == EditorTab::Set, "Song Set management tab opens");
+    const auto titleBeforeSet = chart.Data().title;
+    EditorControls noModification;
+    noModification.removeTurn = true;
+    noModification.undo = true;
+    noModification.snapMore = true;
+    ApplyEditorControls(chart, ui, noModification);
+    ok &= Check(chart.Data().title == titleBeforeSet && ui.tab == EditorTab::Set,
+                "SET tab does not mutate chart from editing shortcuts");
+    ok &= Check(detail::ClickedSetAction({240, 319}) ==
+                    EditorSetAction::NewDifficulty &&
+                detail::ClickedSetAction({370, 361}) ==
+                    EditorSetAction::DeleteDifficulty &&
+                detail::ClickedSetAction({370, 408}) ==
+                    EditorSetAction::Restore,
+                "Song Set action buttons have distinct hitboxes");
     // FIELD has one integer square size, no editable start coordinates.
     ApplyEditorControls(chart, ui, Click(783, 89));
     ok &= Check(ui.tab == EditorTab::Field, "Field tab opens");

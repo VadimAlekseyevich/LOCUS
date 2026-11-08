@@ -399,6 +399,25 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return action;
     }
 
+    // SET is a library-management tab: note keys, undo and the timeline
+    // must not modify the current chart while managing its difficulties.
+    if (ui.tab == EditorTab::Set) {
+        ui.pendingDirection = 0;
+        ui.directionKeysHandled = false;
+        ui.draggingTimeline = false;
+        if (input.mouseClick) {
+            const EditorTab next = ClickedTab(input.mouse, ui.tab);
+            if (next != ui.tab) ui.tab = next;
+            else if (Hit(kSong, input.mouse)) action.chooseAudio = true;
+            else if (Hit(kPlay, input.mouse)) action.previewToggle = true;
+            else if (Hit(kStop, input.mouse)) action.previewRestart = true;
+            else if (Hit(kTest, input.mouse)) action.testPlay = true;
+        }
+        action.previewToggle |= input.previewToggle;
+        action.previewRestart |= input.previewRestart;
+        return action;
+    }
+
     // Undo/redo also cover non-pattern edits (BPM, grid size, individual turns).
     if (input.undo || input.redo) {
         const int originalTicks = draft.Data().route.ticksPerBeat;

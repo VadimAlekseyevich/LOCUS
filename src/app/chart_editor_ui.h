@@ -6,6 +6,7 @@
 #include "raylib.h"
 
 #include <limits>
+#include <vector>
 #include <string>
 
 namespace locus::app {
@@ -45,7 +46,18 @@ struct EditorControls {
     std::string typedUtf8;
 };
 
-enum class EditorTab { Route, Audio, Field };
+enum class EditorTab { Route, Audio, Field, Set };
+enum class EditorSetAction {
+    None, Open, NewDifficulty, Duplicate, Import, Export,
+    DeleteDifficulty, DeleteSongSet, Restore
+};
+struct EditorSetView {
+    bool managed = false;
+    bool newDifficultyDraft = false;
+    std::string title, artist, audioName, id;
+    std::vector<std::string> difficulties;
+    int current = -1, selected = -1, firstVisible = 0;
+};
 enum class EditorField { None, Title, Bpm, OffsetMs, GridSize };
 
 struct EditorUiState {
@@ -69,6 +81,8 @@ struct EditorUiState {
     bool HasRange() const noexcept {
         return rangeFirst >= 0 && rangeLast >= rangeFirst;
     }
+    int setSelected = -1; // -1 follows the currently open difficulty.
+    int setFirstVisible = 0;
     int timelineZoomIndex = 3; // Default 36 px/beat; zoom changes view only.
     bool EditingText() const noexcept { return active != EditorField::None; }
 };
@@ -91,6 +105,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const EditorUiState& ui, const std::string& songName,
                        bool hasAudio, bool previewPlaying, bool previewPaused,
                        double previewBeat, double playbackSpeed,
-                       const GameSettings& settings, const Skin& skin);
+                       const GameSettings& settings, const Skin& skin,
+                       const EditorSetView& set = {});
 
 } // namespace locus::app
