@@ -55,13 +55,14 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
     if (chart.lengthBeats <= chart.firstBeat ||
         !std::isfinite(fractionalTick) ||
         !std::isfinite(canvas.step) || canvas.step <= 0.0f ||
-        !std::isfinite(skin.lookaheadBeats) || skin.lookaheadBeats <= 0.0f)
+        !std::isfinite(skin.lookaheadMs) || skin.lookaheadMs <= 0.0f)
         return rows;
 
     const double tick = std::clamp(
         fractionalTick, static_cast<double>(chart.firstBeat),
         static_cast<double>(chart.lengthBeats));
-    const double horizon = skin.lookaheadBeats * chart.ticksPerBeat;
+    const double horizon = ScoredPreviewTicks(
+        skin.lookaheadMs, chart.bpm, chart.ticksPerBeat);
     const double lastTime = std::min(
         static_cast<double>(chart.lengthBeats), tick + horizon);
     if (!std::isfinite(horizon) || horizon <= 0.0 || lastTime <= tick)

@@ -170,6 +170,9 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
         // Same full-measure preview envelope as the path. Red turn targets
         // appear early enough to read and vanish once the player reaches
         // them; no completed targets linger behind the avatar.
+        const double horizon = ScoredPreviewTicks(
+            skin.lookaheadMs, chart.bpm, chart.ticksPerBeat);
+        if (horizon <= 0.0) return;
         const int next = static_cast<int>(std::ceil(beat));
         const auto first = std::lower_bound(
             chart.turns.begin(), chart.turns.end(), next,
@@ -177,7 +180,7 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
                 return e.beat < index;
             });
         const auto last = std::lower_bound(
-            first, chart.turns.end(), beat + skin.lookaheadBeats * chart.ticksPerBeat,
+            first, chart.turns.end(), beat + horizon,
             [](const core::TurnEvent& event, double limit) {
                 return event.beat < limit;
             });
@@ -187,15 +190,16 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
         const int end = (last - 1)->beat;
         const auto steps = core::SampleRouteWindow(chart, base, end);
         for (auto turn = first; turn != last; ++turn) {
-            const float opacity = ScoredPathOpacity(turn->beat - beat,
-                                                    skin.lookaheadBeats * chart.ticksPerBeat,
-                                                    skin.fadePower)
-                * skin.pathOpacity;
+            const float proximity = ScoredPathOpacity(
+                turn->beat - beat, horizon, skin.fadePower);
+            const float opacity = proximity * skin.pathOpacity;
             if (opacity <= 0.0005f) continue;
             const core::GridPoint position =
                 steps[static_cast<std::size_t>(turn->beat - base)].from;
             const Vector2 point = canvas.Position(position);
-            const float radius = std::min(skin.junctionRadius, canvas.step * chart.ticksPerBeat * 0.45f);
+            const float radius = std::min(
+                skin.junctionRadius, canvas.step * chart.ticksPerBeat * 0.45f)
+                * ScoredTurnSize(proximity);
             if (skin.junctionGlow)
                 DrawCircleV(point, radius * 1.45f,
                             WithOpacity(skin.junction, opacity * 0.26f));

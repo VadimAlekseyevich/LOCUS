@@ -14,7 +14,7 @@ inline constexpr float kDefaultReverseCapScale = 3.2f; // 2x the old 1.6 factor.
 
 struct Skin {
     std::string name = "Default";
-    float lookaheadBeats = 4.0f;  // distance ahead of the player, in song beats
+    float lookaheadMs = 800.0f; // original song-time preview, independent of practice rate
     float pathWidth = 6.0f;      // pixels near the player
     float outlineScale = 1.8f;
     float fadePower = 1.0f;      // 1 = classic LOCUS falloff

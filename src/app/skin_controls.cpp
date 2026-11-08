@@ -15,7 +15,7 @@ namespace locus::app {
 bool GetSkinNumberRange(int page, int row, SkinNumberRange& range) noexcept {
     if (page == 0) {
         switch (row) {
-            case 0: range = {0.5, 12.0, 0.25, 64.0}; return true;
+            case 0: range = {200.0, 2000.0, 50.0, 10000.0}; return true;
             case 1: range = {1.0, 12.0, 0.25, 40.0}; return true;
             case 2: range = {1.0, 3.0, 1.0, 8.0}; return true;
             case 3: range = {0.5, 2.5, 0.1, 8.0}; return true;
@@ -45,7 +45,7 @@ double GetSkinNumber(const Skin& skin, int page, int row,
                      int selectedColor) noexcept {
     if (page == 0) {
         switch (row) {
-            case 0: return skin.lookaheadBeats;
+            case 0: return skin.lookaheadMs;
             case 1: return skin.pathWidth;
             case 2: return skin.outlineScale;
             case 3: return skin.fadePower;
@@ -107,7 +107,7 @@ bool SetSkinNumber(Skin& skin, int page, int row, int selectedColor,
         const float number = static_cast<float>(value);
         if (page == 0) {
             switch (row) {
-                case 0: skin.lookaheadBeats = number; break;
+                case 0: skin.lookaheadMs = number; break;
                 case 1: skin.pathWidth = number; break;
                 case 2: skin.outlineScale = number; break;
                 case 3: skin.fadePower = number; break;

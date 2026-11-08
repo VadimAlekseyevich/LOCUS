@@ -48,12 +48,26 @@ inline float TrajectoryOpacity(double beatsAhead) noexcept {
         RouteVisualStyle::fadeBeats);
 }
 
-// PLAY/TEST previews an entire four-beat measure, not a single beat.
-// Anything behind the moving marker disappears immediately. Ahead, the
-// trajectory stays readable for upcoming turns while thinning and fading
-// continuously to zero at the end of the fourth beat.
+// PLAY/TEST supplies a song-time preview horizon converted to chart ticks.
+// The four-beat default here is only for pure helpers/tests; gameplay sends
+// its duration explicitly. Nothing behind the marker is drawn.
 inline constexpr double kScoredPathLengthBeats = 4.0;
 inline constexpr int kScoredPathSlices = 32;
+
+// Duration in ORIGINAL song time, independent of practice playback rate.
+inline double ScoredPreviewTicks(double previewMs, double bpm,
+                                 int ticksPerBeat) noexcept {
+    if (!std::isfinite(previewMs) || !std::isfinite(bpm) ||
+        previewMs <= 0.0 || bpm <= 0.0 || ticksPerBeat <= 0)
+        return 0.0;
+    const double ticks = previewMs * bpm * ticksPerBeat / 60000.0;
+    return std::isfinite(ticks) ? ticks : 0.0;
+}
+
+// Future turn targets and reverse caps brighten and grow together.
+inline float ScoredTurnSize(float proximity) noexcept {
+    return 0.4f + 0.6f * std::clamp(proximity, 0.0f, 1.0f);
+}
 
 inline float ScoredPathOpacity(double ahead,
                                double length = kScoredPathLengthBeats,

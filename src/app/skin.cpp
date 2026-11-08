@@ -86,7 +86,7 @@ bool Skin::Valid(std::string& error) const {
         return false;
     }
     const struct { float value, min, max; const char* label; } fields[] = {
-        {lookaheadBeats, 0.25f, 64.0f, "Trajectory length"},
+        {lookaheadMs, 50.0f, 10000.0f, "Preview time (ms)"},
         {pathWidth, 0.25f, 40.0f, "Trajectory width"},
         {outlineScale, 1.0f, 8.0f, "Outline scale"},
         {fadePower, 0.1f, 8.0f, "Fade curve"},
@@ -115,7 +115,7 @@ std::string SerializeSkin(const Skin& skin) {
         {"version", 2},
         {"name", skin.name},
         {"path", {
-            {"lookaheadBeats", skin.lookaheadBeats},
+            {"lookaheadMs", skin.lookaheadMs},
             {"width", skin.pathWidth},
             {"outlineScale", skin.outlineScale},
             {"fadePower", skin.fadePower},
@@ -153,7 +153,20 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         // Strictly require all version-1 fields; never partially apply bad data.
         parsed.name = object.at("name").get<std::string>();
         const auto& path = object.at("path");
-        parsed.lookaheadBeats = path.at("lookaheadBeats").get<float>();
+        if (path.contains("lookaheadMs")) {
+            parsed.lookaheadMs = path.at("lookaheadMs").get<float>();
+        } else if (path.contains("lookaheadBeats")) {
+            // A saved global skin has no specific song BPM. Keep its other
+            // settings and use the new 800 ms default instead of guessing.
+            const float oldBeats = path.at("lookaheadBeats").get<float>();
+            if (!InRange(oldBeats, 0.25f, 64.0f)) {
+                error = "Legacy preview beats is out of range.";
+                return false;
+            }
+        } else {
+            error = "Missing preview time.";
+            return false;
+        }
         parsed.pathWidth = path.at("width").get<float>();
         parsed.outlineScale = path.at("outlineScale").get<float>();
         parsed.fadePower = path.at("fadePower").get<float>();

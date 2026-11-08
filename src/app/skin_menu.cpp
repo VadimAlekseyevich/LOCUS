@@ -53,7 +53,7 @@ Rectangle SwitchRect(int page, int row) {
 
 const char* RowName(int page, int row) {
     static constexpr const char* path[] = {
-        "LOOKAHEAD (BEATS)", "PATH WIDTH", "OUTLINE SCALE",
+        "PREVIEW TIME (MS)", "PATH WIDTH", "OUTLINE SCALE",
         "FADE CURVE", "PATH OPACITY", "TURN SIZE", "TURN GLOW",
         "REVERSE CAP SIZE"
     };
@@ -161,18 +161,20 @@ void PreviewPath(Font font, const Skin& skin) {
     const float pixelsPerBeat =
         StepForFixedSpeed(skin.baseSpeedPxPerSecond, 120.0, 1) *
         frame.width / kVirtualHeight;
+    const float horizon = static_cast<float>(
+        ScoredPreviewTicks(skin.lookaheadMs, 120.0, 1));
     const auto point = [&](float beats) {
-        const float progress = beats / skin.lookaheadBeats;
+        const float progress = beats / horizon;
         return Vector2{687.0f + beats * pixelsPerBeat,
                        335.0f - 46.0f * std::sin(progress * 5.2f)};
     };
     for (int i = 95; i >= 0; --i) {
-        const float a = skin.lookaheadBeats * i / 96.0f;
-        const float b = skin.lookaheadBeats * (i + 1) / 96.0f;
+        const float a = horizon * i / 96.0f;
+        const float b = horizon * (i + 1) / 96.0f;
         const float ahead = (a + b) * 0.5f;
-        const float opacity = ScoredPathOpacity(ahead, skin.lookaheadBeats,
+        const float opacity = ScoredPathOpacity(ahead, horizon,
                                                skin.fadePower) * skin.pathOpacity;
-        const float width = ScoredPathWidth(ahead, skin.lookaheadBeats,
+        const float width = ScoredPathWidth(ahead, horizon,
                                             skin.pathWidth, skin.fadePower);
         DrawLineEx(point(a), point(b), width * skin.outlineScale,
                    WithOpacity(skin.outline, opacity));
@@ -191,14 +193,21 @@ void PreviewPath(Font font, const Skin& skin) {
     // Show the actual adjustable semicircular end cap on an overlapping
     // right -> left route segment. The same helper draws PLAY and EDITOR.
     const Vector2 turnPoint{784.0f, 385.0f};
-    const float junctionRadius = std::min(11.0f, skin.junctionRadius * 0.7f);
+    const float proximity = ScoredPathOpacity(
+        horizon * 0.35f, horizon, skin.fadePower);
+    const float opacity = proximity * skin.pathOpacity;
+    const float junctionRadius = std::min(11.0f, skin.junctionRadius * 0.7f)
+        * ScoredTurnSize(proximity);
     DrawLineEx({723.0f, turnPoint.y}, turnPoint,
-               std::max(1.0f, skin.pathWidth * 0.75f), skin.trajectory);
+               std::max(1.0f, skin.pathWidth * 0.75f),
+               WithOpacity(skin.trajectory, opacity));
     DrawReverseCap(turnPoint, junctionRadius, core::Heading::Left,
-                   skin.junction, 1.0f, skin.junctionGlow,
+                   skin.junction, opacity, skin.junctionGlow,
                    skin.reverseCapScale);
-    DrawCircleV(turnPoint, junctionRadius, skin.junction);
-    DrawCircleV(turnPoint, junctionRadius * 0.35f, skin.playerCore);
+    DrawCircleV(turnPoint, junctionRadius,
+                WithOpacity(skin.junction, opacity));
+    DrawCircleV(turnPoint, junctionRadius * 0.35f,
+                WithOpacity(skin.playerCore, opacity));
     EndScissorMode();
 
     DrawRectangleLinesEx({frame.x + 0.75f, frame.y + 0.75f,
