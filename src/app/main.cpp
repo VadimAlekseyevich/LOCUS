@@ -714,7 +714,10 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    // Rendering must swap on the monitor's vertical blank. Without VSync
+    // a vertical path can jump sideways partway down the screen while the
+    // monitor scans two different camera positions (screen tearing).
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(kWindowWidth, kWindowHeight, "LOCUS");
     if (!IsWindowReady()) {
         std::cerr << "WINDOW_INIT_FAILED\n";
@@ -728,7 +731,10 @@ int main(int argc, char** argv) {
         return 1;
     }
     UiFont uiFont = LoadUiFont();
-    SetTargetFPS(60); // Rendering cadence never determines musical time.
+    // Let VSync pace the display at its actual refresh rate (60/120/144 Hz
+    // etc). 240 FPS is only a safety ceiling if a driver ignores VSync;
+    // music, movement and judgement still use the monotonic audio clock.
+    SetTargetFPS(240);
     std::cout << "LOCUS_WINDOW_OPEN\n";
 
     const auto userData = locus::app::UserDataDirectory();

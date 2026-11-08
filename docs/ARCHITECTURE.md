@@ -17,6 +17,9 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 
 ## Completed stabilization
 
+- **2026-11-08:** Enabled VSync by default and removed the fixed 60-FPS presentation cap. Phone frames showed a horizontal screen-tearing boundary crossing moving path segments, especially vertical segments during horizontal camera movement. Rendering now requests display-synchronized swaps and uses 240 FPS only as a fallback ceiling. Timing and chart geometry remain clock-based; verify live on the target monitor because a GPU driver may override the swap interval.
+
+
 - **2026-11-08:** The scored preview draws a tapered `path_mesh` triangle ribbon, with shared joins and interpolated vertex opacity rather than independently rasterized `DrawLineEx` fragments. Turns up to 135° use bounded miters; 180° reversals split runs at an identical junction. Mesh tests cover fractional and dense ticks, continuity, fading and reverse overlays. The editor authoring preview is unchanged.
 
 - Chart loading prepares and validates replacement state before replacing active game/editor state.
