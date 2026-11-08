@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <utility>
+#include <string>
 
 namespace locus::app {
 
@@ -25,6 +26,7 @@ public:
           activeFile_(std::move(activeFile)), pickers_(pickers) {}
 
     void Apply(SkinCommand command);
+    bool RefreshProfiles();
 
 private:
     bool SaveActive();
@@ -32,6 +34,7 @@ private:
     Skin& draft_;
     SkinUi& ui_;
     std::filesystem::path activeFile_;
+    std::filesystem::path activeProfile_; // Separate selected file in Profiles.
     SkinProfilePickers pickers_;
 };
 

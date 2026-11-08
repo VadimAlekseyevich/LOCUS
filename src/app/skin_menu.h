@@ -10,7 +10,7 @@
 namespace locus::app {
 
 enum class SkinCommand {
-    None, Load, Save, SaveAs, Reset, ActivateProfile, StoreProfile
+    None, Load, Save, SaveAs, Reset, ActivateProfile, StoreProfile, RefreshProfiles
 };
 struct SkinProfileItem {
     std::filesystem::path path;

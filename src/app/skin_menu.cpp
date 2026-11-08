@@ -481,10 +481,8 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
             }
         if (Hit(mouse, SkinProfileActionRect(0))) return SkinCommand::ActivateProfile;
         if (Hit(mouse, SkinProfileActionRect(1))) return SkinCommand::StoreProfile;
-        if (Hit(mouse, SkinProfileActionRect(2))) {
-            ui.notice = "OPEN MY SKINS AGAIN TO REFRESH";
-            return SkinCommand::None;
-        }
+        if (Hit(mouse, SkinProfileActionRect(2)))
+            return SkinCommand::RefreshProfiles;
         return SkinCommand::None;
     }
     if (ui.page == 2) {

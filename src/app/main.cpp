@@ -879,6 +879,7 @@ int main(int argc, char** argv) {
         activeSkin, draftSkin, skinUi, activeSkinFile,
         {locus::app::ChooseSkinFile, locus::app::ChooseSkinSaveFile}
     };
+    skinProfiles.RefreshProfiles();
     locus::app::QuitMediaCoordinator quitMedia;
     locus::app::ListenSession listener{
         localSong, loadedAudioPath, musicError,
@@ -978,6 +979,8 @@ int main(int argc, char** argv) {
         }
         UpdateState(state, input, smokeWindow);
         if (state.quitConfirmation) input = FrameInput{}; // No actions beneath dialog.
+        if (previousScreen != Screen::Skin && state.screen == Screen::Skin)
+            skinProfiles.RefreshProfiles();
         if (previousScreen == Screen::Skin && state.screen != Screen::Skin) {
             // Back/Esc cancels all unsaved skin edits.
             draftSkin = activeSkin;
@@ -985,7 +988,10 @@ int main(int argc, char** argv) {
             skinUi.editingName = false;
             skinUi.editingNumberRow = -1;
             skinUi.numberBuffer.clear();
+            skinUi.hexBuffer.clear();
+            skinUi.editingHex = false;
             skinUi.draggingRow = -1;
+            skinUi.draggingColor = 0;
         }
         if (!state.running) {
             break;
