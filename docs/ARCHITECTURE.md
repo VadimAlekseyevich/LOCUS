@@ -13,7 +13,58 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 | `src/app/chart_file.*`, `chart_save.cpp`, `song_library.*`, `song_set_storage.*` | Validate chart-relative paths, serialize per-library/per-Set writers, persist shared audio, back up overwrites, and manage recoverable Trash. |
 | `src/app/editor_session.*`, `editor_document.*`, `editor_file_actions.*` | Editor preview/TEST, transactional file handling, and injected native dialogs. |
 | `src/app/listen_session.*`, `skin_profile_actions.*`, `library_playback.*`, `library_browser.*` | Cohesive user-facing session workflows with testable boundaries. |
-| `src/app/main.cpp` | Application composition, UI flow and resource lifetime. This remains the primary coupling point. |
+| `src/app/app_runtime_policy.*` | Pure screen navigation and judgement-completion policy, independent of rendering and file dialogs. |
+| `src/app/app_smoke_checks.*` | Headless integration checks behind the existing `--loop-check`, `--screen-check`, and `--session-check` entry points. |
+| `src/app/app_frame_renderer.*`, `app_quit_dialog_layout.h` | Rendering and OS font selection. The quit confirmation shares one set of hitboxes between renderer and input. |
+| `src/app/library_file_actions.*` | Song library file commands (import/export/copy/Trash/restore) and injected native file pickers, without gameplay-session ownership. |
+| `src/app/main.cpp` | Composition root and frame/update loop only: constructs lifetime-owned services, wires screen-specific actions and drives the frame. Still needs incremental decomposition. |
+
+## Architecture-first refactoring contract
+
+The objective is not an arbitrary `main.cpp` line count. A newly extracted
+1,000-line `Application` object with references to every subsystem would
+still be a God Object. Every extraction must establish **one coherent owner**
+and reduce the number of unrelated reasons a file can change.
+
+- **Domain model:** `src/core` owns judgement, time, route geometry, chart
+  parsing, and authoring semantics. It must not depend on raylib UI, Windows
+  file dialogs, `SongLibrary`, or the rendering subsystem.
+- **Presentation:** renderers receive read-only views. They never import
+  chart files, mutate editor documents, or dispatch gameplay events. Shared
+  click geometry belongs in a small layout contract, not a private renderer
+  constant accessed by global input code.
+- **Screen workflows:** library, skin, editor, and gameplay actions use their
+  own narrowly scoped state and dependencies. Native pickers and time sources
+  are injected for reproducible tests. A screen controller should not hold
+  all application services by default.
+- **Lifetime:** the composition root creates and destroys resources in a
+  fixed order; the audio device outlives streams; a library refresh invalidates
+  pointers to prior cached chart/song records.
+- **Persistence:** on-disk writes remain transactional and serialized;
+  refactoring must not introduce duplicate save paths, change chart semantics,
+  or remove recovery safeguards unintentionally.
+- **Regression gate:** small direct-`main` commits, Windows Release, CTest,
+  CLI diagnostics, and the BAT launcher. Verify visual/audio behavior on a
+  desktop separately; a headless pass cannot prove it.
+
+### Remaining coupling to remove
+
+1. `main.cpp` still owns the large **per-frame event dispatcher** and
+   presentation-state composition. Extract screen-specific navigation and
+   playback effects into tested commands without creating one universal
+   `AppContext` holding every service.
+2. `chart_editor_actions.cpp` combines editor keyboard/mouse interaction,
+   timeline movement, route edits and selection state. Split these by
+   input operation and preserve its pure action tests.
+3. `skin_menu.cpp` combines palette math, personal profile UI, live preview,
+   drawing and text-input interaction; distinguish color-editor interaction
+   from rendering and profile persistence.
+4. `song_library.cpp` combines scanning, set identity, import/installation,
+   mutation and removal; move storage operations behind focused interfaces
+   and preserve lock ordering and data-durability tests.
+5. `app_frame_renderer.cpp` still has a broad frame signature. Make
+   per-screen view types as screens gain features; resist a mutable
+   giant frame-state DTO.
 
 ## Completed stabilization
 
