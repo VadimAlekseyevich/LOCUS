@@ -1,6 +1,7 @@
 #include "app/route_renderer.h"
 
 #include "app/visual_style.h"
+#include "app/reverse_cap.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,6 +16,21 @@ void DrawSegments(const core::StepView& view, RouteCanvas canvas,
         DrawLineEx(canvas.Position(segment.from), canvas.Position(segment.to),
                    width, color);
     }
+}
+
+// Attach a filled semicircular cap to the ordinary junction dot. The cap
+// curves toward the ARRIVING side; its diameter is perpendicular to the
+// authored line. Neither the route nor its player marker is displaced.
+void DrawReversalCap(Vector2 point, float radius, core::Heading outgoing,
+                     Color color, float opacity, bool glow) {
+    if (radius <= 0.0f || opacity <= 0.0f) return;
+    const ReverseCapArc arc = ReverseCapForOutgoing(outgoing);
+    const float capRadius = radius * kReverseCapRadiusScale;
+    if (glow)
+        DrawCircleSector(point, capRadius * 1.15f, arc.startDegrees,
+                         arc.endDegrees, 24, WithOpacity(color, opacity * 0.22f));
+    DrawCircleSector(point, capRadius, arc.startDegrees,
+                     arc.endDegrees, 24, WithOpacity(color, opacity));
 }
 
 int CurrentBeat(const core::Chart& chart, double beat) {
@@ -162,11 +178,52 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
             if (skin.junctionGlow)
                 DrawCircleV(point, radius * 1.45f,
                             WithOpacity(skin.junction, opacity * 0.26f));
+            if (NeedsReverseCap(turn->direction)) {
+                const core::Heading outgoing =
+                    steps[static_cast<std::size_t>(turn->beat - base)].heading;
+                DrawReversalCap(point, radius, outgoing,
+                                skin.junction, opacity, skin.junctionGlow);
+            }
             DrawCircleV(point, radius, WithOpacity(skin.junction, opacity));
             DrawCircleV(point, radius * 0.35f,
                         WithOpacity(skin.playerCore, opacity));
         }
         return;
+    }
+    // The editor deduplicates coincident junction DOTS. Render the
+    // reverse caps from authored events separately so an older turn at the
+    // same world coordinate cannot hide a later 180-degree reversal.
+    const int lastVisible = current + std::min(
+        chart.lengthBeats - 1 - current,
+        RouteVisualStyle::lookaheadBeats * chart.ticksPerBeat);
+    const auto begin = std::lower_bound(
+        chart.turns.begin(), chart.turns.end(), current,
+        [](const core::TurnEvent& event, int tick) { return event.beat < tick; });
+    const auto end = std::upper_bound(
+        begin, chart.turns.end(), lastVisible,
+        [](int tick, const core::TurnEvent& event) { return tick < event.beat; });
+    if (std::any_of(begin, end, [](const core::TurnEvent& event) {
+            return NeedsReverseCap(event.direction);
+        })) {
+        // Batch-sample once even when the editor shows many dense reversals.
+        const int firstTurnBeat = begin->beat;
+        const auto steps = core::SampleRouteWindow(chart, firstTurnBeat,
+                                                   (end - 1)->beat);
+        for (auto turn = begin; turn != end; ++turn) {
+            if (!NeedsReverseCap(turn->direction)) continue;
+            const float opacity = turn->beat <= current
+                ? 1.0f : TrajectoryOpacity(
+                    (turn->beat - chart.ticksPerBeat - beat) /
+                    chart.ticksPerBeat);
+            if (opacity <= 0.0f) continue;
+            const auto& step = steps[static_cast<std::size_t>(
+                turn->beat - firstTurnBeat)];
+            const Vector2 point = canvas.Position(step.from);
+            const float radius = std::min(
+                11.0f, canvas.step * chart.ticksPerBeat * 0.39f);
+            DrawReversalCap(point, radius, step.heading,
+                            style.reachedTurnPoint, opacity, false);
+        }
     }
     for (const auto& turn : core::PreviewTurnPoints(
              chart, beat, RouteVisualStyle::lookaheadBeats * chart.ticksPerBeat)) {

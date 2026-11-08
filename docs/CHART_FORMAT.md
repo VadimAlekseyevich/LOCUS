@@ -42,7 +42,7 @@ The [working sample](../examples/first-song.locus.json) contains nine turns; sup
 | `previewLeadBeats` | Finite positive forward preview length; default editor/skin presentation is four beats |
 | `turns[]` | Ordered array of at most 65,536 events with `timeMs` and `turn` |
 
-The seven turn names are `left`, `right` (90°), `left45`, `right45`, `left135`, `right135` and `reverse` (180°). A straight step needs no turn event. A reversal travels directly back along the existing trajectory, without extra icons, offsets or a separate lane. Movement is continuous in an infinite world; the NxN size controls **visible density**, not world boundaries.
+The seven turn names are `left`, `right` (90°), `left45`, `right45`, `left135`, `right135` and `reverse` (180°). A straight step needs no turn event. A reversal travels directly back along the existing trajectory, without offsets or a separate lane. Only the on-screen turn dot gains a semicircular end cap, perpendicular to the path, on the arriving side; no extra field is saved. Movement is continuous in an infinite world; the NxN size controls **visible density**, not world boundaries.
 
 Each `timeMs` is a signed whole number between **-3,600,000 and 86,400,000**. Times must be strictly increasing, and two events must not project to the same musical tick. When music is loaded, notes outside playable audio time (except permitted negative-offset preroll) are rejected. Song duration determines the timeline length; there is **no editable length field**.
 
