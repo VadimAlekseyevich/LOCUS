@@ -28,10 +28,6 @@ constexpr ReverseCapArc ReverseCapForOutgoing(core::Heading outgoing) noexcept {
     return {};
 }
 
-// Larger than the ordinary junction circle so the cap projects visibly
-// beyond its edge, while the regular circle still owns the center.
-inline constexpr float kReverseCapRadiusScale = 1.6f;
-
 constexpr bool NeedsReverseCap(core::Turn turn) noexcept {
     return turn == core::Turn::Reverse;
 }

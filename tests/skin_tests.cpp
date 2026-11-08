@@ -23,6 +23,7 @@ int main() {
     original.trajectory = Color{12, 99, 180, 222};
     original.fieldBorder = Color{39, 207, 255, 196};
     original.junctionGlow = false;
+    original.reverseCapScale = 4.75f;
     original.showHud = false;
     const std::string json = SerializeSkin(original);
     Skin restored;
@@ -37,12 +38,20 @@ int main() {
           restored.fieldBorder.g == 207 &&
           restored.fieldBorder.b == 255 &&
           restored.fieldBorder.a == 196 &&
+          restored.reverseCapScale == 4.75f &&
           !restored.junctionGlow && !restored.showHud,
           "all values round trip");
     check(kSkinColorCount == 10 &&
           std::string(SkinColorLabel(9)) == "FIELD BORDER" &&
           SkinColor(original, 9).g == 207,
           "square border is available as tenth editable RGBA colour");
+    auto withoutCap = nlohmann::json::parse(json);
+    withoutCap["path"].erase("reverseCapScale");
+    Skin olderProfile;
+    check(ParseSkin(withoutCap.dump(), olderProfile, error) &&
+          olderProfile.reverseCapScale == kDefaultReverseCapScale &&
+          kDefaultReverseCapScale == 3.2f,
+          "preexisting skin JSON adopts the doubled default cap size");
     auto oldFile = nlohmann::json::parse(json);
     oldFile["version"] = 1;
     oldFile["player"].erase("speedPxPerSecond");
@@ -71,6 +80,17 @@ int main() {
     sentinel.name = "Unchanged";
     check(!ParseSkin("{\"version\":1}", sentinel, error) &&
           sentinel.name == "Unchanged", "incomplete JSON is atomic");
+    auto brokenCap = nlohmann::json::parse(json);
+    brokenCap["path"]["reverseCapScale"] = 13.0;
+    Skin intact;
+    intact.name = "Retain";
+    check(!ParseSkin(brokenCap.dump(), intact, error) &&
+          intact.name == "Retain",
+          "unsafe cap size is rejected atomically when parsing JSON");
+    brokenCap["path"]["reverseCapScale"] = -0.5;
+    check(!ParseSkin(brokenCap.dump(), intact, error) &&
+          intact.name == "Retain",
+          "negative cap size is invalid");
     auto invalid = original;
     invalid.lookaheadBeats = 0.0f;
     check(!invalid.Valid(error), "reject invalid lookahead");
@@ -82,6 +102,10 @@ int main() {
     check(GetSkinNumberRange(0, 0, limits) &&
           limits.sliderMax == 12.0 && limits.inputMax == 64.0,
           "lookahead slider range and extended typed limit differ");
+    check(GetSkinNumberRange(0, 7, limits) &&
+          limits.sliderMin == 0.0 && limits.sliderMax == 6.0 &&
+          limits.inputMin == 0.0 && limits.inputMax == 12.0,
+          "reverse cap size has an editable slider and an extended typed range");
     check(GetSkinNumberRange(1, 1, limits) &&
           limits.sliderMax == 320.0 && limits.inputMax == 700.0,
           "fixed speed has extended typed limit");
@@ -124,6 +148,23 @@ int main() {
           edited.lookaheadBeats == 48.25f,
           "typed path horizon may exceed the slider's maximum");
     check(edited.Valid(error), "extended input still passes skin serialization validation");
+    check(GetSkinNumber(edited, 0, 7, 1) == kDefaultReverseCapScale &&
+          SetSkinNumber(edited, 0, 7, 1, 5.5, false, error) &&
+          edited.reverseCapScale == 5.5f &&
+          SetSkinNumber(edited, 0, 7, 1, 0.0, false, error) &&
+          edited.reverseCapScale == 0.0f && edited.Valid(error),
+          "skin controls change cap size and zero hides the cap");
+    check(!SetSkinNumber(edited, 0, 7, 1, 12.5, false, error) &&
+          edited.reverseCapScale == 0.0f,
+          "out-of-range cap size cannot change the draft");
+    check(SetSkinNumber(edited, 0, 7, 1, 99.0, true, error) &&
+          edited.reverseCapScale == 6.0f,
+          "cap slider clamps to its quick-edit range");
+    const auto editedCapJson = SerializeSkin(edited);
+    Skin savedCap;
+    check(ParseSkin(editedCapJson, savedCap, error) &&
+          savedCap.reverseCapScale == 6.0f,
+          "selected reverse cap size survives skin serialization");
     const float before = edited.lookaheadBeats;
     check(!SetSkinNumber(edited, 0, 0, 1, 65.0, false, error) &&
           edited.lookaheadBeats == before,

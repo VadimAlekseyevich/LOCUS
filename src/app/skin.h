@@ -10,6 +10,8 @@
 namespace locus::app {
 
 // A skin describes presentation only. Never serialize it into a song/chart.
+inline constexpr float kDefaultReverseCapScale = 3.2f; // 2x the old 1.6 factor.
+
 struct Skin {
     std::string name = "Default";
     float lookaheadBeats = 4.0f;  // distance ahead of the player, in song beats
@@ -19,6 +21,9 @@ struct Skin {
     float pathOpacity = 1.0f;
     float junctionRadius = 9.5f;
     bool junctionGlow = true;
+    // 180-degree junction semicircle, measured relative to the junction radius.
+    // Zero suppresses it; colour and glow are shared with the junction.
+    float reverseCapScale = kDefaultReverseCapScale;
 
     float playerRadius = 12.5f;
     float baseSpeedPxPerSecond = kDefaultBaseSpeed; // all headings

@@ -92,6 +92,7 @@ bool Skin::Valid(std::string& error) const {
         {fadePower, 0.1f, 8.0f, "Fade curve"},
         {pathOpacity, 0.0f, 1.0f, "Trajectory opacity"},
         {junctionRadius, 1.0f, 64.0f, "Junction radius"},
+        {reverseCapScale, 0.0f, 12.0f, "Reverse cap size"},
         {playerRadius, 1.0f, 80.0f, "Player radius"},
         {baseSpeedPxPerSecond, kMinBaseSpeed, kMaxBaseSpeed, "Base movement speed"},
         {hitFlashScale, 0.1f, 8.0f, "Hit flash scale"}
@@ -120,7 +121,8 @@ std::string SerializeSkin(const Skin& skin) {
             {"fadePower", skin.fadePower},
             {"opacity", skin.pathOpacity},
             {"junctionRadius", skin.junctionRadius},
-            {"junctionGlow", skin.junctionGlow}
+            {"junctionGlow", skin.junctionGlow},
+            {"reverseCapScale", skin.reverseCapScale}
         }},
         {"player", {
             {"radius", skin.playerRadius},
@@ -158,6 +160,9 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         parsed.pathOpacity = path.at("opacity").get<float>();
         parsed.junctionRadius = path.at("junctionRadius").get<float>();
         parsed.junctionGlow = path.at("junctionGlow").get<bool>();
+        // A profile written before this setting existed uses the new default.
+        if (path.contains("reverseCapScale"))
+            parsed.reverseCapScale = path.at("reverseCapScale").get<float>();
         const auto& player = object.at("player");
         parsed.playerRadius = player.at("radius").get<float>();
         if (version == 1) {

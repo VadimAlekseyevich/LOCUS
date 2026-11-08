@@ -21,11 +21,11 @@ void DrawSegments(const core::StepView& view, RouteCanvas canvas,
 // Attach a filled semicircular cap to the ordinary junction dot. The cap
 // curves toward the ARRIVING side; its diameter is perpendicular to the
 // authored line. Neither the route nor its player marker is displaced.
-void DrawReversalCap(Vector2 point, float radius, core::Heading outgoing,
-                     Color color, float opacity, bool glow) {
-    if (radius <= 0.0f || opacity <= 0.0f) return;
+void DrawReverseCapInternal(Vector2 point, float radius, core::Heading outgoing,
+                            Color color, float opacity, bool glow, float capScale) {
+    if (radius <= 0.0f || opacity <= 0.0f || capScale <= 0.0f) return;
     const ReverseCapArc arc = ReverseCapForOutgoing(outgoing);
-    const float capRadius = radius * kReverseCapRadiusScale;
+    const float capRadius = radius * capScale;
     if (glow)
         DrawCircleSector(point, capRadius * 1.15f, arc.startDegrees,
                          arc.endDegrees, 24, WithOpacity(color, opacity * 0.22f));
@@ -87,6 +87,12 @@ void DrawScoredPath(const core::Chart& chart, double beat,
 }
 
 } // namespace
+
+void DrawReverseCap(Vector2 point, float junctionRadius, core::Heading outgoing,
+                    Color color, float opacity, bool glow, float capScale) {
+    DrawReverseCapInternal(point, junctionRadius, outgoing,
+                           color, opacity, glow, capScale);
+}
 
 Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
                             RouteCanvas canvas, RouteRenderMode mode, const Skin& skin) {
@@ -181,8 +187,9 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
             if (NeedsReverseCap(turn->direction)) {
                 const core::Heading outgoing =
                     steps[static_cast<std::size_t>(turn->beat - base)].heading;
-                DrawReversalCap(point, radius, outgoing,
-                                skin.junction, opacity, skin.junctionGlow);
+                DrawReverseCap(point, radius, outgoing,
+                               skin.junction, opacity, skin.junctionGlow,
+                               skin.reverseCapScale);
             }
             DrawCircleV(point, radius, WithOpacity(skin.junction, opacity));
             DrawCircleV(point, radius * 0.35f,
@@ -221,8 +228,9 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
             const Vector2 point = canvas.Position(step.from);
             const float radius = std::min(
                 11.0f, canvas.step * chart.ticksPerBeat * 0.39f);
-            DrawReversalCap(point, radius, step.heading,
-                            style.reachedTurnPoint, opacity, false);
+            DrawReverseCap(point, radius, step.heading,
+                           style.reachedTurnPoint, opacity, false,
+                           skin.reverseCapScale);
         }
     }
     for (const auto& turn : core::PreviewTurnPoints(

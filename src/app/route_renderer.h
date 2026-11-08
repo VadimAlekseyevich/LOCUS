@@ -28,6 +28,12 @@ struct RouteCanvas {
 
 enum class RouteRenderMode { Editor, Gameplay };
 
+// Shared renderer for PLAY, EDITOR and the live SKIN preview. The
+// semicircle bulges toward incoming motion and does not alter the route.
+void DrawReverseCap(Vector2 point, float junctionRadius, core::Heading outgoing,
+                    Color color, float opacity, bool glow, float capScale);
+
+
 // The same geometry, one-bar fade and style rules are used in both screens.
 // Draw the route before junctions so turn targets remain visible.
 // Returns the interpolated live marker position in screen coordinates.

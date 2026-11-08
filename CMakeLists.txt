@@ -272,7 +272,7 @@ if(LOCUS_BUILD_TESTS)
     # The cap has no impact on chart geometry, timing or saved data.
     add_executable(locus_reverse_cap_tests tests/reverse_cap_tests.cpp)
     target_compile_features(locus_reverse_cap_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_reverse_cap_tests PRIVATE locus_core)
+    target_link_libraries(locus_reverse_cap_tests PRIVATE locus_core raylib)
     target_include_directories(locus_reverse_cap_tests PRIVATE
         "${PROJECT_SOURCE_DIR}/src")
     add_test(NAME locus_reverse_cap_orientation COMMAND locus_reverse_cap_tests)

@@ -20,6 +20,7 @@ bool GetSkinNumberRange(int page, int row, SkinNumberRange& range) noexcept {
             case 3: range = {0.5, 2.5, 0.1, 8.0}; return true;
             case 4: range = {0.0, 1.0, 0.0, 1.0}; return true;
             case 5: range = {3.0, 18.0, 1.0, 64.0}; return true;
+            case 7: range = {0.0, 6.0, 0.0, 12.0}; return true;
             default: return false;
         }
     }
@@ -49,6 +50,7 @@ double GetSkinNumber(const Skin& skin, int page, int row,
             case 3: return skin.fadePower;
             case 4: return skin.pathOpacity;
             case 5: return skin.junctionRadius;
+            case 7: return skin.reverseCapScale;
         }
     } else if (page == 1) {
         switch (row) {
@@ -110,6 +112,7 @@ bool SetSkinNumber(Skin& skin, int page, int row, int selectedColor,
                 case 3: skin.fadePower = number; break;
                 case 4: skin.pathOpacity = number; break;
                 case 5: skin.junctionRadius = number; break;
+                case 7: skin.reverseCapScale = number; break;
                 default: return false;
             }
         } else if (page == 1) {

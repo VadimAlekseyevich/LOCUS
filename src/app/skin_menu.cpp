@@ -2,6 +2,7 @@
 
 #include "app/menu_ui.h"
 #include "app/skin_controls.h"
+#include "app/route_renderer.h"
 #include "app/visual_style.h"
 #include "app/viewport.h"
 
@@ -42,14 +43,18 @@ Rectangle ColorRow(int row) {
     return {70.0f, 194.0f + row * 25.0f, 485.0f, 24.0f};
 }
 Rectangle NameField() { return {615.0f, 128.0f, 302.0f, 36.0f}; }
-Rectangle SwitchRect(int row) {
-    return {468.0f, 200.0f + row * 36.0f, 84.0f, 28.0f};
+constexpr float RowPitch(int page) noexcept {
+    return page == 0 ? 31.0f : 36.0f;
+}
+Rectangle SwitchRect(int page, int row) {
+    return {468.0f, 200.0f + row * RowPitch(page), 84.0f, 28.0f};
 }
 
 const char* RowName(int page, int row) {
     static constexpr const char* path[] = {
         "LOOKAHEAD (BEATS)", "PATH WIDTH", "OUTLINE SCALE",
-        "FADE CURVE", "PATH OPACITY", "TURN SIZE", "TURN GLOW"
+        "FADE CURVE", "PATH OPACITY", "TURN SIZE", "TURN GLOW",
+        "REVERSE CAP SIZE"
     };
     static constexpr const char* player[] = {
         "PLAYER SIZE", "SPEED (PX/S)", "PLAYER GLOW",
@@ -58,7 +63,7 @@ const char* RowName(int page, int row) {
     return page == 0 ? path[row] : player[row];
 }
 
-int RowCount(int page) { return page == 0 ? 7 : 5; }
+int RowCount(int page) { return page == 0 ? 8 : 5; }
 
 bool ToggleValue(const Skin& skin, int page, int row) {
     return page == 0 ? skin.junctionGlow
@@ -179,6 +184,18 @@ void PreviewPath(Font font, const Skin& skin) {
         DrawCircleV(marker, radius * 1.65f, WithOpacity(skin.player, 0.2f));
     DrawCircleV(marker, radius, skin.player);
     DrawCircleV(marker, radius * 0.33f, skin.playerCore);
+
+    // Show the actual adjustable semicircular end cap on an overlapping
+    // right -> left route segment. The same helper draws PLAY and EDITOR.
+    const Vector2 turnPoint{784.0f, 385.0f};
+    const float junctionRadius = std::min(11.0f, skin.junctionRadius * 0.7f);
+    DrawLineEx({723.0f, turnPoint.y}, turnPoint,
+               std::max(1.0f, skin.pathWidth * 0.75f), skin.trajectory);
+    DrawReverseCap(turnPoint, junctionRadius, core::Heading::Left,
+                   skin.junction, 1.0f, skin.junctionGlow,
+                   skin.reverseCapScale);
+    DrawCircleV(turnPoint, junctionRadius, skin.junction);
+    DrawCircleV(turnPoint, junctionRadius * 0.35f, skin.playerCore);
     EndScissorMode();
 
     DrawRectangleLinesEx({frame.x + 0.75f, frame.y + 0.75f,
@@ -255,11 +272,11 @@ Rectangle SkinActionButton(int index) {
 }
 Rectangle SkinNumberInputRect(int page, int row) {
     return page == 2 ? Rectangle{814.0f, 248.0f + row * 42.0f, 91.0f, 30.0f}
-                     : Rectangle{438.0f, 199.0f + row * 36.0f, 116.0f, 30.0f};
+                     : Rectangle{438.0f, 199.0f + row * RowPitch(page), 116.0f, 30.0f};
 }
 Rectangle SkinSliderRect(int page, int row) {
     return page == 2 ? Rectangle{687.0f, 259.0f + row * 42.0f, 113.0f, 6.0f}
-                     : Rectangle{224.0f, 210.0f + row * 36.0f, 196.0f, 6.0f};
+                     : Rectangle{224.0f, 210.0f + row * RowPitch(page), 196.0f, 6.0f};
 }
 
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
@@ -273,7 +290,8 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     Panel({590, 181, 329, 276});
     if (ui.page != 2) {
         for (int row = 0; row < RowCount(ui.page); ++row) {
-            Label(font, RowName(ui.page, row), 70.0f, 206.0f + row * 36.0f,
+            Label(font, RowName(ui.page, row), 70.0f,
+                   206.0f + row * RowPitch(ui.page),
                   14.0f, kMuted);
             SkinNumberRange range;
             if (GetSkinNumberRange(ui.page, row, range)) {
@@ -284,7 +302,8 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
                           editing ? ui.numberBuffer : FormatSkinNumber(value),
                           editing, editing && ui.numberSelectAll);
             } else {
-                DrawSwitch(font, SwitchRect(row), ToggleValue(skin, ui.page, row));
+                DrawSwitch(font, SwitchRect(ui.page, row),
+                           ToggleValue(skin, ui.page, row));
             }
         }
         PreviewPath(font, skin);
@@ -356,7 +375,8 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
         for (int row = 0; row < RowCount(ui.page); ++row) {
             SkinNumberRange range;
             if (GetSkinNumberRange(ui.page, row, range)) continue;
-            if (Hit(mouse, {69.0f, 199.0f + row * 36.0f, 489.0f, 30.0f})) {
+            if (Hit(mouse, {69.0f, 199.0f + row * RowPitch(ui.page),
+                            489.0f, 30.0f})) {
                 FlipToggle(skin, ui.page, row);
                 ui.dirty = true;
                 return SkinCommand::None;

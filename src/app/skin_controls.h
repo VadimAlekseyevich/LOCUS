@@ -16,7 +16,7 @@ struct SkinNumberRange {
     double inputMax = 1.0;
 };
 
-// Page 0: path rows 0..5; page 1: player rows 0,1,3;
+// Page 0: path rows 0..5 and 7; page 1: player rows 0,1,3;
 // page 2: four RGBA channels (rows 0..3) of selectedColor.
 bool GetSkinNumberRange(int page, int row, SkinNumberRange& range) noexcept;
 double GetSkinNumber(const Skin& skin, int page, int row,

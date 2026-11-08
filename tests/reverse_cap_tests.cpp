@@ -1,4 +1,5 @@
 #include "app/reverse_cap.h"
+#include "app/skin.h"
 
 #include <array>
 #include <cmath>
@@ -74,7 +75,8 @@ int main() {
                 !app::NeedsReverseCap(core::Turn::Right45) &&
                 !app::NeedsReverseCap(core::Turn::Left135) &&
                 !app::NeedsReverseCap(core::Turn::Right135) &&
-                app::kReverseCapRadiusScale > 1.0f,
+                app::Skin{}.reverseCapScale == app::kDefaultReverseCapScale &&
+                app::kDefaultReverseCapScale == 3.2f,
                 "no cap for ordinary turns and reverse cap protrudes beyond the dot");
 
     if (!ok) return 1;
