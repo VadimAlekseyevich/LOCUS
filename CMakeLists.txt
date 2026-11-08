@@ -50,6 +50,7 @@ add_executable(locus
     src/app/game_session.cpp
     src/app/song_library.cpp
     src/app/library_playback.cpp
+    src/app/library_browser.cpp
     src/app/audio_revision.cpp
     src/app/game_settings.cpp
     src/app/skin.cpp
@@ -233,6 +234,24 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_library_playback_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_library_playback_tests PRIVATE locus_core raylib)
     add_test(NAME locus_library_playback_transaction COMMAND locus_library_playback_tests)
+
+    # Library refresh must preserve the selected chart across reordering;
+    # failed imports keep the prior view, not a half-updated menu selection.
+    add_executable(locus_library_browser_tests
+        tests/library_browser_tests.cpp
+        src/app/library_browser.cpp
+        src/app/menu_ui.cpp
+        src/app/game_settings.cpp
+        src/app/song_library.cpp
+        src/app/audio_revision.cpp
+        src/app/chart_file.cpp
+        src/app/chart_save.cpp
+        src/app/local_file_io.cpp
+    )
+    target_compile_features(locus_library_browser_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_library_browser_tests PRIVATE
+        locus_core raylib nlohmann_json::nlohmann_json)
+    add_test(NAME locus_library_browser_selection COMMAND locus_library_browser_tests)
 
     add_executable(locus_song_library_tests
         tests/song_library_tests.cpp

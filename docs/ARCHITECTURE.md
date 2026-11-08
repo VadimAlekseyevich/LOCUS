@@ -20,6 +20,7 @@ Reviewed: 2026-11-06. Scope: current Windows/raylib rhythm game, not prospective
 - Chart v2 timestamps are authoritative in song milliseconds; editor snapping and visualization do not rewrite timing.
 - Movement speed is independent of BPM, snap subdivisions and heading; diagonals are Euclidean unit steps.
 - **2026-11-06:** Visible-route range sampling replaces repeated full-history scans for each preview segment. Random-access geometry remains available. The dense 240-tick window regression compares batched and standalone samples.
+- **2026-11-08:** Library import and browser refresh are coordinated by `library_browser.*`: refresh keeps a selected difficulty by its installed path (even if library sorting changes), and failed imports retain the previous selection/status. Native file dialogs remain in the UI composition.
 - **2026-11-08:** Library difficulty activation lives in `library_playback.*`. It decodes replacement audio and validates a copy of the chart BEFORE committing to the active chart/audio objects, keeping game-session references stable. Headless tests cover invalid duration, out-of-range turns, per-difficulty audio reuse and failed audio loading.
 - **2026-11-08:** `EditorDiscardGuard` now owns unsaved-draft confirmation state (Home/New/Open), filtering unrelated input while confirmation is pending. The global OS quit modal retains priority; headless tests cover approval, cancellation and close interception.
 - **2026-11-08:** Quit-confirmation audio pausing is coordinated by `quit_media.*`. The policy records which active stream the modal paused and restores only that stream after cancellation. Headless tests cover Play, Listen, Editor, pre-paused/stopped audio, and repeated modal frames.
@@ -37,7 +38,7 @@ The chart JSON is the sole publication point. Imported audio is immutable and ch
 
 ### P1 — Reduce remaining `main.cpp` session orchestration
 
-Editor persistence, screen transitions and the quit-modal audio policy have been extracted and covered by headless tests. `main.cpp` still handles file dialogs, editor commands, global quit modal button input, library import/refresh and in-play actions. Selected-difficulty PLAY activation is isolated in `library_playback.*`, with atomic chart/audio validation and stable references. Next target is a cohesive library import/selection workflow or editor commands rather than speculative abstractions.
+Editor persistence, screen transitions and the quit-modal audio policy have been extracted and covered by headless tests. `main.cpp` still handles native file dialogs, editor commands, the global quit modal and in-play actions. Selected-difficulty activation and library import/refresh policy now have dedicated modules, with stable chart/audio references and persistent selected-chart identity. Next target is editor command orchestration and file-dialog lifetime, without speculative frameworks.
 
 ### P2 — Validate real-device audio lifecycle
 

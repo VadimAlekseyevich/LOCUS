@@ -19,6 +19,7 @@
 #include "app/gameplay_ui.h"
 #include "app/song_library.h"
 #include "app/library_playback.h"
+#include "app/library_browser.h"
 #include "app/game_settings.h"
 #include "app/skin.h"
 #include "app/skin_menu.h"
@@ -1187,35 +1188,15 @@ int main(int argc, char** argv) {
 
         bool loadedNewChart = false;
         if (state.screen == Screen::SongSelect) {
-            if (menuEvents.refresh) {
-                if (!library.Refresh(libraryUi.notice)) {
-                    menuStatus = libraryUi.notice;
-                } else {
-                    menuStatus = libraryUi.notice;
-                    libraryUi.SelectSong(libraryUi.selectedSong, library);
-                    libraryUi.SelectChart(libraryUi.selectedChart, library);
-                }
-            }
+            if (menuEvents.refresh)
+                locus::app::RefreshLibraryBrowser(library, libraryUi, menuStatus);
             if (menuEvents.import || importFromHome) {
                 const auto selected = locus::app::ChooseChartFile();
                 now = MonotonicSeconds();
                 if (!selected.path.empty()) {
-                    std::filesystem::path installed;
-                    std::string error;
-                    if (library.Import(std::filesystem::path(selected.path),
-                                       installed, error)) {
-                        int song = -1, chart = -1;
-                        if (library.FindChart(installed, song, chart)) {
-                            libraryUi.SelectSong(song + 1, library);
-                            libraryUi.SelectChart(chart, library);
-                        }
-                        libraryUi.notice = "IMPORTED - SONG AND CHART SAVED PERMANENTLY";
-                        menuStatus = "LIBRARY: " +
-                            std::to_string(library.Songs().size()) + " SONGS / " +
-                            std::to_string(library.ChartCount()) + " CHARTS";
-                    } else {
-                        libraryUi.notice = "IMPORT FAILED: " + error;
-                    }
+                    locus::app::ImportLibraryChart(
+                        library, libraryUi, std::filesystem::path(selected.path),
+                        menuStatus);
                 } else if (!selected.canceled) {
                     libraryUi.notice = "IMPORT FAILED: " + selected.error;
                 }
