@@ -13,6 +13,8 @@ struct MusicPickResult {
 // Native Windows file dialog. Canceling leaves the current song untouched.
 MusicPickResult ChooseLocalMusicFile();
 MusicPickResult ChooseChartFile();
+MusicPickResult ChooseLibraryImportFile();
+MusicPickResult ChooseSongSetExportFile(const std::wstring& suggestedPath);
 MusicPickResult ChooseChartSaveFile(const std::wstring& suggestedPath);
 MusicPickResult ChooseSkinFile();
 MusicPickResult ChooseSkinSaveFile(const std::wstring& suggestedPath);

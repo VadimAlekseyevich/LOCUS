@@ -172,7 +172,7 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     Button(font, LibraryPlayButton(), "PLAY", kMint);
     Button(font, LibraryEditButton(), "EDIT", kViolet);
     Button(font, LibraryNewDifficultyButton(), "NEW  N", kGold);
-    Label(font, "N NEW  CTRL+D COPY  DEL DIFFICULTY", 54, 421, 13, kMuted);
+    Label(font, "N NEW  CTRL+D COPY  X EXPORT  DEL DIFF", 54, 421, 13, kMuted);
     Label(font, "SHIFT+DEL SONG  U RESTORE  ESC BACK", 54, 442, 13, kMuted);
     Label(font, Clip(ui.notice, 100), 54, 517, 13,
           ui.notice.find("FAILED") == std::string::npos ? kGold

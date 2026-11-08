@@ -983,10 +983,27 @@ int main(int argc, char** argv) {
             if (menuEvents.refresh)
                 locus::app::RefreshLibraryBrowser(library, libraryUi, menuStatus);
             if (menuEvents.import || importFromHome) {
-                const auto selected = locus::app::ChooseChartFile();
+                const auto selected = locus::app::ChooseLibraryImportFile();
                 now = MonotonicSeconds();
                 if (!selected.path.empty()) {
-                    if (menuEvents.importIntoSelected &&
+                    if (std::filesystem::path(selected.path).extension() ==
+                            L".locuspack") {
+                        std::filesystem::path installedSet;
+                        if (!library.ImportPackage(
+                                std::filesystem::path(selected.path),
+                                installedSet, musicError)) {
+                            libraryUi.notice = "PACKAGE IMPORT FAILED: " + musicError;
+                        } else {
+                            for (std::size_t i = 0; i < library.Songs().size(); ++i) {
+                                if (library.Songs()[i].folder == installedSet) {
+                                    libraryUi.SelectSong(
+                                        static_cast<int>(i) + 1, library);
+                                    break;
+                                }
+                            }
+                            libraryUi.notice = "SONG SET PACKAGE IMPORTED";
+                        }
+                    } else if (menuEvents.importIntoSelected &&
                         libraryUi.selectedSong > 0 &&
                         libraryUi.selectedSong <=
                             static_cast<int>(library.Songs().size()) &&
@@ -1006,6 +1023,30 @@ int main(int argc, char** argv) {
                     }
                 } else if (!selected.canceled) {
                     libraryUi.notice = "IMPORT FAILED: " + selected.error;
+                }
+            }
+            if (menuEvents.exportSelected) {
+                if (libraryUi.selectedSong > 0 &&
+                    libraryUi.selectedSong <=
+                        static_cast<int>(library.Songs().size())) {
+                    const auto& set = library.Songs()[libraryUi.selectedSong - 1];
+                    const auto suggestion =
+                        (std::filesystem::current_path() /
+                         (set.folder.filename().wstring() + L".locuspack")).wstring();
+                    const auto chosen =
+                        locus::app::ChooseSongSetExportFile(suggestion);
+                    now = MonotonicSeconds();
+                    if (!chosen.path.empty()) {
+                        if (library.ExportPackage(set.folder,
+                                std::filesystem::path(chosen.path), musicError))
+                            libraryUi.notice = "SONG SET EXPORTED";
+                        else
+                            libraryUi.notice = "EXPORT FAILED: " + musicError;
+                    } else if (!chosen.canceled) {
+                        libraryUi.notice = "EXPORT FAILED: " + chosen.error;
+                    }
+                } else {
+                    libraryUi.notice = "SELECT A SONG SET TO EXPORT";
                 }
             }
             if (menuEvents.restoreDeleted) {

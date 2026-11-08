@@ -125,6 +125,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (IsKeyPressed(KEY_E)) events.editSelected = true;
         if (IsKeyPressed(KEY_N)) events.newDifficulty = true;
         if (IsKeyPressed(KEY_U)) events.restoreDeleted = true;
+        if (IsKeyPressed(KEY_X)) events.exportSelected = true;
         const bool control = IsKeyDown(KEY_LEFT_CONTROL) ||
                              IsKeyDown(KEY_RIGHT_CONTROL);
         if (control && IsKeyPressed(KEY_D))
