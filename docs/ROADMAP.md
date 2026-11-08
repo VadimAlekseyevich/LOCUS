@@ -17,6 +17,9 @@ See [GDD](GDD.md), [architecture audit](ARCHITECTURE.md) and
 - [x] **2b. Recoverable local deletion.** A confirmed delete moves a difficulty
   or Song Set to LOCUS Trash; U can restore it, including after restart.
   Chart overwrites keep backups in `.locus-history/`.
+- [x] **2b. Portable Song Set packages.** Export and import a complete
+  managed Song Set as .locuspack (ZIP store-only), with CRC, size bounds and
+  path traversal checks.
 - [ ] **2c. Power-loss and filesystem validation.** Test denied writes, full
   disks, interrupted imports and recovery on physical Windows; add conservative
   cleanup only when safe.

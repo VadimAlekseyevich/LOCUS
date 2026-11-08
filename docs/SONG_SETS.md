@@ -34,13 +34,18 @@ visible title.
 3. **Edit difficulty:** select it -> E -> Ctrl+S changes that chart only.
    Ctrl+Shift+S creates a separate difficulty without overwriting the original.
 4. **Copy difficulty:** select it and press Ctrl+D.
-5. **Import charts:** C creates/finds a managed Song Set; Shift+C explicitly
+5. **Share a complete set:** select the song and press X to export a
+   `.locuspack` archive. This is a standard store-only ZIP, with metadata,
+   shared audio and all chart JSONs. C imports `.locuspack` packages as whole
+   Song Sets. LOCUS refuses to overwrite an already-installed set with the
+   same setId.
+6. **Import charts:** C creates/finds a managed Song Set; Shift+C explicitly
    adds a chart to the selected Set, but only if its audio bytes match.
    Reimporting the same source chart updates that difficulty, not a duplicate.
-6. **Delete:** Delete confirms deletion of a difficulty; Shift+Delete confirms
+7. **Delete:** Delete confirms deletion of a difficulty; Shift+Delete confirms
    deletion of an entire Song Set. Y confirms, N/Esc cancels. You cannot
    delete the final difficulty alone: delete the whole Set instead.
-7. **Restore:** U restores the most recent recoverable item from the LOCUS
+8. **Restore:** U restores the most recent recoverable item from the LOCUS
    Trash, including after an application restart.
 
 An external chart opened through Ctrl+O is installed into the library when
@@ -58,6 +63,10 @@ saved. LOCUS does not silently overwrite the external source.
 - **Deletion:** song folders or chart files are atomically renamed into
   LOCUS/Trash with an origin journal. Restoring refuses to overwrite an
   occupied original path.
+- **Package integrity:** LOCUS checks ZIP entry names, file counts, total
+  size, CRC-32 and central directory consistency; unsafe paths and malformed
+  packages are rejected. Only uncompressed ZIP entries are accepted for now.
+  A failed extraction stays outside the library and is removed.
 - **Concurrency:** imports and managed editor saves hold a library-wide OS
   write lock and then a per-Set lock. Crashes release those locks automatically;
   the harmless .locus-lock files may remain.
@@ -78,7 +87,7 @@ breaking change must be disclosed to the developer.
 
 ## Remaining limitations
 
-There is no built-in history browser, ZIP/.osz-like archive importer/exporter
-or automatic staging-file garbage collection yet. Physical Windows testing
+There is no built-in history browser, archive compression, support for generic
+Deflate-compressed ZIP imports, or automatic staging-file garbage collection yet. Physical Windows testing
 for device timing, denial of filesystem writes and sudden power loss is still
 required.

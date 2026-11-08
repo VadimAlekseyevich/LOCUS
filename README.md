@@ -40,6 +40,8 @@ EDIT has three tabs and a persistent scrolling timeline:
 
 Use the configured DFJK directions to place notes. In the timeline, **←/→** navigate and **↑/↓** adjust snap subdivision; PageUp/PageDown, wheel and modifier combinations also work. Load audio with **O**, preview with **Space**, test-play with **T**; practice speeds are 100/75/50/25/10%. **Ctrl+S** saves directly into the permanent Song Set library, **Ctrl+Shift+S** creates a new difficulty in that set, **Ctrl+O** opens a chart, and **Ctrl+N** starts a new draft. External chart files are not silently overwritten: saving their edited versions installs them into the library.
 
+To share a complete song with all difficulties, press **X** on a selected Song Set to export a `.locuspack` archive. **C** imports either individual `.locus.json` charts or complete `.locuspack` packages. The archive is a standard ZIP container with stored files, song metadata, shared audio and all difficulties. Imports check paths, checksums and file size limits before installing anything.
+
 In PLAY's library use **N** to create a difficulty for the selected song, **Ctrl+D** to copy it, **Delete** to move a difficulty to LOCUS Trash, **Shift+Delete** to trash a whole Song Set (both require **Y** confirmation), and **U** to restore the newest trashed item. All difficulties in a managed Song Set share exactly one audio file. See [Song Set storage](docs/SONG_SETS.md).
 
 New chart files use **formatVersion 2**, integer `timeMs` timestamps and independent snap settings. BPM changes do not move already authored notes in song time. See [chart format](docs/CHART_FORMAT.md) and [sample](examples/first-song.locus.json) (requires your own `song.mp3`).
