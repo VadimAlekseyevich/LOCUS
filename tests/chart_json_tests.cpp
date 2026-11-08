@@ -255,6 +255,35 @@ int main() {
     ok &= Expect(Reject(diagonalJson, "\"up-right\"", "\"north-east\"",
                         "start.heading"), "unknown diagonal heading spelling is rejected");
 
+    LoadedChart reversedChart = diagonalChart;
+    reversedChart.title = "Overlapping route";
+    reversedChart.route.initialHeading = Heading::Right;
+    reversedChart.route.turns = {{2, Turn::Reverse}, {4, Turn::Reverse}};
+    std::string reversedJson;
+    LoadedChart parsedReverse;
+    ok &= Expect(SerializeChartJson(reversedChart, reversedJson, error) &&
+                 reversedJson.find("reverse") != std::string::npos &&
+                 ParseChartJson(reversedJson, parsedReverse, error) &&
+                 parsedReverse.route.turns.size() == 2 &&
+                 parsedReverse.route.turns[0].direction == Turn::Reverse &&
+                 parsedReverse.route.turns[1].direction == Turn::Reverse &&
+                 parsedReverse.route.turns[0].timeMs == 1000 &&
+                 parsedReverse.route.turns[1].timeMs == 2000,
+                 "JSON v2 roundtrip preserves reversed turns and exact timestamps");
+    ok &= Expect(Reject(reversedJson, "reverse", "turnaround", ".turn"),
+                 "unknown 180-degree spelling is rejected");
+    std::string oldFormatReverse = valid;
+    const std::string oldTurn = "\"turn\": \"left\"";
+    const auto oldTurnPos = oldFormatReverse.find(oldTurn);
+    if (oldTurnPos != std::string::npos)
+        oldFormatReverse.replace(oldTurnPos, oldTurn.size(),
+                                 "\"turn\": \"reverse\"");
+    LoadedChart parsedOldReverse;
+    ok &= Expect(oldTurnPos != std::string::npos &&
+                 ParseChartJson(oldFormatReverse, parsedOldReverse, error) &&
+                 parsedOldReverse.route.turns[0].direction == Turn::Reverse,
+                 "relative reversal parses consistently for authored v1 and v2 charts");
+
     // Version 2 keeps absolute integer millisecond timestamps.
     const std::string msV2 = R"({
         "formatVersion":2,"title":"Timing","audioPath":"song.mp3",

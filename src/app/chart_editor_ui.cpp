@@ -230,6 +230,7 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
         const bool left = event.direction == core::Turn::Left ||
                           event.direction == core::Turn::Left45 ||
                           event.direction == core::Turn::Left135;
+        const bool reverse = event.direction == core::Turn::Reverse;
         const float spacing = pixels * snapStep;
         const bool narrow = spacing < 26.0f;
         const float width = narrow ? std::max(5.0f, std::min(spacing - 1.0f, 12.0f))
@@ -242,7 +243,9 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                                 event.direction == core::Turn::Right45 ? "45"
                               : event.direction == core::Turn::Left135 ||
                                 event.direction == core::Turn::Right135 ? "135" : "90";
-            Label(font, TextFormat("%s%s", left ? "L" : "R", angle),
+            // Ordinary timeline note shows the correct angle; no extra
+            // graphic marker or geometry offset for reversed segments.
+            Label(font, reverse ? "180" : TextFormat("%s%s", left ? "L" : "R", angle),
                   x - width * 0.5f + 2.0f, 482.0f,
                   10.0f, Color{22, 26, 36, 255});
         }

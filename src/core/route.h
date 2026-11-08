@@ -13,13 +13,13 @@ enum class Heading {
     UpRight, DownRight, DownLeft, UpLeft
 };
 // Legacy Left/Right remain 90-degree turns.
-enum class Turn { Left, Right, Left45, Right45, Left135, Right135 };
+enum class Turn { Left, Right, Left45, Right45, Left135, Right135, Reverse };
 
 bool ValidHeading(Heading heading) noexcept;
 bool IsDiagonal(Heading heading) noexcept;
 // Each tick advances one unit of Euclidean distance in all eight directions.
 // Render-world coordinates are scaled by ticksPerBeat.
-// Opposite direction and straight are not notes.
+// Straight is not a note; an opposite outgoing direction is a 180-degree note.
 Heading HeadingAfterTurn(Heading incoming, Turn turn) noexcept;
 Turn InverseTurn(Turn turn) noexcept;
 unsigned HeadingArrowMask(Heading heading) noexcept;

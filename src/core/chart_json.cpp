@@ -284,11 +284,11 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 return false;
             }
             constexpr const char* turnNames[] = {
-                "left", "right", "left45", "right45", "left135", "right135"
+                "left", "right", "left45", "right45", "left135", "right135", "reverse"
             };
             const std::string direction = turns[i]["turn"].get<std::string>();
             bool recognizedTurn = false;
-            for (int j = 0; j < 6; ++j) {
+            for (int j = 0; j < 7; ++j) {
                 if (direction == turnNames[j]) {
                     parsed.route.turns.push_back({beat, static_cast<Turn>(j), timeMs});
                     recognizedTurn = true;
@@ -354,11 +354,11 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
         document["turns"] = Ordered::array();
 
         constexpr const char* turnNames[] = {
-            "left", "right", "left45", "right45", "left135", "right135"
+            "left", "right", "left45", "right45", "left135", "right135", "reverse"
         };
         for (const auto& event : chart.route.turns) {
             const int turnIndex = static_cast<int>(event.direction);
-            if (turnIndex < 0 || turnIndex >= 6) {
+            if (turnIndex < 0 || turnIndex >= 7) {
                 error = "turns: unsupported turn angle";
                 return false;
             }

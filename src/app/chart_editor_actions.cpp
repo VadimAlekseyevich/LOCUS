@@ -162,7 +162,7 @@ void ApplyDirectionChord(core::ChartEditor& draft, EditorUiState& ui,
         const bool changed = draft.SetOutgoingHeading(*heading);
         action.changedChart |= changed;
         if (!changed) {
-            ui.feedback = "NO CHANGE - STRAIGHT OR OPPOSITE DIRECTION";
+            ui.feedback = "NO CHANGE - ALREADY HEADING THAT WAY";
             ui.feedbackError = true;
         } else {
             ui.feedback.clear();
@@ -511,7 +511,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                         const bool changed = draft.SetOutgoingHeading(*heading);
                         action.changedChart |= changed;
                         if (!changed) notice(
-                            "NO CHANGE - STRAIGHT OR OPPOSITE DIRECTION", true);
+                            "NO CHANGE - ALREADY HEADING THAT WAY", true);
                     } else {
                         deleteTurns = true;
                     }

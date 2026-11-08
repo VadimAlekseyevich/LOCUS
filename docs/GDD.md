@@ -17,7 +17,7 @@
 
 - The route lives on an **unbounded two-dimensional plane**. There is **no Wrap, teleport, bounce, physical grid edge or collision** at the viewing boundary.
 - At each musical tick the chart's heading determines the next displacement. Eight compass directions are available: up, up-right, right, down-right, down, down-left, left, up-left. Every tick moves **one unit of distance**: cardinals change one axis by 1; diagonals change both axes by **1/√2**. All eight headings therefore have the same speed.
-- The route's **relative turn events** change heading by 45°, 90° or 135° left/right. Straight travel needs no event; direct 180° reversal is not an authorable turn.
+- The route's **relative turn events** change heading by 45°, 90° or 135° left/right, or by 180° for a direct reversal. Straight travel needs no event. Reversals can retrace exactly the same geometry: there are no special markers, artificial offsets or extra lanes.
 - The marker stays fixed at the screen center. The route translates with the instantaneous fractional song beat; the camera does not rotate or lag behind.
 - Missing a note or pressing the wrong direction never changes any later route position.
 
@@ -91,7 +91,7 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 - The scrolling timeline is visible on all editor tabs. Left/Right arrows navigate ticks; Up/Down change snap subdivision; PageUp/PageDown and the mouse wheel offer navigation. Modifier shortcuts support bar jumps, moving notes and groups.
 - Snap subdivision choices: **1, 2, 3, 4, 6, 8, 12, 16, 24** per musical beat. Snap, zoom and BPM are **different controls**.
 - Chart **v2** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
-- The writer stores the underlying route turn as one of six **relative angles** and the initial heading; gameplay input still uses absolute directions.
+- The writer stores one of seven **relative turns**, including a 180° reversal, and the initial heading; gameplay input still uses absolute directions.
 - Editor can add/edit/cut/copy/paste/invert/shift/undo turns, save/open JSON, and TEST from the selected audio position. Previously saved v1 charts remain readable and migrate to v2 on save.
 - Editor preview and scored custom-song play can use **100%, 75%, 50%, 25%, 10%** audio speeds. The present slowdown changes pitch; it is **not** pitch-preserving time stretch. In scored practice, screen-space movement speed remains fixed even as playback slows.
 

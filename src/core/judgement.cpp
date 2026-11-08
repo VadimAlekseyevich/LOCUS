@@ -23,6 +23,7 @@ const char* TurnName(Turn turn) noexcept {
         case Turn::Right45: return "RIGHT 45";
         case Turn::Left135: return "LEFT 135";
         case Turn::Right135: return "RIGHT 135";
+        case Turn::Reverse: return "REVERSE 180";
     }
     return "UNKNOWN";
 }

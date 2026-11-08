@@ -269,6 +269,24 @@ int main() {
                 diagonalJudge.Counts().Resolved() == 0,
                 "early chord does not consume a later diagonal note");
 
+    Chart reversalChart;
+    reversalChart.initialHeading = Heading::Right;
+    reversalChart.turns = {{2, Turn::Reverse}, {4, Turn::Reverse}};
+    TurnJudge reversalJudge(reversalChart);
+    const auto leftHit = reversalJudge.PressHeading(Heading::Left, 1.0);
+    const auto rightHit = reversalJudge.PressHeading(Heading::Right, 2.0);
+    ok &= Check(leftHit && leftHit->grade == Grade::Perfect &&
+                rightHit && rightHit->grade == Grade::Perfect &&
+                reversalJudge.Counts().perfect == 2 &&
+                reversalJudge.AllScorableJudged(),
+                "opposite absolute direction scores successive half-turns");
+    reversalJudge.Reset();
+    const auto missedReverse = reversalJudge.PressHeading(Heading::Right, 1.0);
+    ok &= Check(missedReverse && missedReverse->grade == Grade::Miss &&
+                missedReverse->wrongDirection &&
+                reversalJudge.Counts().miss == 1,
+                "continuing straight is wrong when chart requires a reverse");
+
     if (!ok) return 1;
     std::cout << "JUDGEMENT_PASS turns=9 perfect-good-bad-miss no-fail=true\n";
     return 0;

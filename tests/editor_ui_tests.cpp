@@ -627,6 +627,28 @@ int main() {
     ok &= Check(compassUi.Data().route.initialHeading == Heading::DownRight,
                 "Q/E start heading supports diagonal increments");
 
+    // A compass direction opposite to the incoming route is an ordinary
+    // note, whether clicked or pressed using the game direction binding.
+    ChartEditor reverseUi;
+    EditorUiState reverseState;
+    const auto clickBack = ApplyEditorControls(
+        reverseUi, reverseState, Click(766, 330)); // L from default Right.
+    ok &= Check(clickBack.changedChart && reverseUi.SelectedTurn() &&
+                reverseUi.SelectedTurn()->direction == Turn::Reverse &&
+                SampleRouteStep(reverseUi.Data().route, 0).heading == Heading::Left,
+                "direction pad authors a normal 180-degree note");
+    reverseUi.SelectBeat(1);
+    EditorControls tapRight;
+    tapRight.directionKeysHeld = 8u; // K: opposite to current Left.
+    tapRight.elapsedSeconds = 0.05f;
+    ApplyEditorControls(reverseUi, reverseState, tapRight);
+    ApplyEditorControls(reverseUi, reverseState, tapRight);
+    const auto keyReverse = ApplyEditorControls(reverseUi, reverseState, tapRight);
+    ok &= Check(keyReverse.changedChart && reverseUi.SelectedTurn() &&
+                reverseUi.SelectedTurn()->direction == Turn::Reverse &&
+                SampleRouteStep(reverseUi.Data().route, 1).heading == Heading::Right,
+                "game direction key can author the return trip without a new control");
+
     // Placement subdivision controls are independent from zoom and BPM.
     ChartEditor snapChart;
     EditorUiState snapUi;

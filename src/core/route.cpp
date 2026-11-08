@@ -37,6 +37,7 @@ int RotationEighths(Turn turn) noexcept {
         case Turn::Right45: return 1;
         case Turn::Left135: return -3;
         case Turn::Right135: return 3;
+        case Turn::Reverse: return 4;
     }
     return 0;
 }
@@ -124,6 +125,7 @@ Turn InverseTurn(Turn turn) noexcept {
         case Turn::Right45: return Turn::Left45;
         case Turn::Left135: return Turn::Right135;
         case Turn::Right135: return Turn::Left135;
+        case Turn::Reverse: return Turn::Reverse; // Half-turn is self-inverse.
     }
     return turn;
 }
@@ -163,10 +165,11 @@ std::optional<Turn> ArrowToTurn(Heading incoming, Heading pressed) noexcept {
         case 1: return Turn::Right45;
         case 2: return Turn::Right;
         case 3: return Turn::Right135;
+        case 4: return Turn::Reverse;
         case 5: return Turn::Left135;
         case 6: return Turn::Left;
         case 7: return Turn::Left45;
-        default: return std::nullopt; // Straight / reverse are not turn notes.
+        default: return std::nullopt; // Straight does not create a note.
     }
 }
 

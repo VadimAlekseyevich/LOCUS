@@ -140,8 +140,8 @@ int main() {
         ok &= Expect(ArrowToTurn(incoming, right) == Turn::Right &&
                      ArrowToTurn(incoming, left) == Turn::Left &&
                      !ArrowToTurn(incoming, incoming).has_value() &&
-                     !ArrowToTurn(incoming, opposite).has_value(),
-                     "only arrows perpendicular to the incoming route are valid");
+                     ArrowToTurn(incoming, opposite) == Turn::Reverse,
+                     "straight is not a note, opposite cardinal input reverses");
     }
 
     // Preview highlights *future* turn junctions before arrival, and turns
@@ -297,8 +297,52 @@ int main() {
                  HeadingAfterTurn(Heading::UpRight, Turn::Right45) == Heading::Right &&
                  ArrowToTurn(Heading::Right, Heading::UpRight) == Turn::Left45 &&
                  ArrowToTurn(Heading::UpRight, Heading::Down) == Turn::Right135 &&
-                 !ArrowToTurn(Heading::UpRight, Heading::DownLeft),
-                 "cardinal compatibility, 45/135 direction mapping, 180 reversal rejected");
+                 ArrowToTurn(Heading::UpRight, Heading::DownLeft) == Turn::Reverse &&
+                 InverseTurn(Turn::Reverse) == Turn::Reverse,
+                 "cardinal, diagonal, 45/135 and 180 reversal mapping");
+    // Overlapping geometry is intentional: no offset, teleport or side lane.
+    Chart backtrack;
+    backtrack.start = {3, 3};
+    backtrack.initialHeading = Heading::Right;
+    backtrack.lengthBeats = 6;
+    backtrack.turns = {{2, Turn::Reverse}, {4, Turn::Reverse}};
+    const auto forward = SampleRouteStep(backtrack, 1);
+    const auto backward = SampleRouteStep(backtrack, 2);
+    const auto backwardAgain = SampleRouteStep(backtrack, 3);
+    const auto forwardAgain = SampleRouteStep(backtrack, 4);
+    ok &= Expect(forward.heading == Heading::Right &&
+                 backward.heading == Heading::Left &&
+                 forwardAgain.heading == Heading::Right &&
+                 CellIs(forward.from, backward.to.x, backward.to.y) &&
+                 CellIs(forward.to, backward.from.x, backward.from.y) &&
+                 CellIs(backwardAgain.to, 3, 3) &&
+                 CellIs(forwardAgain.from, 3, 3),
+                 "successive 180 turns retrace precisely the previous path");
+    const auto backtrackWindow = SampleRouteWindow(backtrack, 0, 5);
+    for (int beat = 0; beat < backtrack.lengthBeats; ++beat)
+        ok &= Expect(SameStep(backtrackWindow[static_cast<std::size_t>(beat)],
+                              ReferenceStep(backtrack, beat)),
+                     "batch sampler matches reference on an overlapping route");
+    for (auto incoming : {Heading::Up, Heading::UpRight, Heading::Right,
+                          Heading::DownRight, Heading::Down, Heading::DownLeft,
+                          Heading::Left, Heading::UpLeft}) {
+        const Heading outgoing = HeadingAfterTurn(incoming, Turn::Reverse);
+        ok &= Expect(ArrowToTurn(incoming, outgoing) == Turn::Reverse &&
+                     HeadingAfterTurn(outgoing, Turn::Reverse) == incoming,
+                     "180 degree turn reverses all eight headings exactly");
+    }
+    Chart diagonalReverse;
+    diagonalReverse.start = {3, 3};
+    diagonalReverse.initialHeading = Heading::UpRight;
+    diagonalReverse.lengthBeats = 4;
+    diagonalReverse.turns = {{1, Turn::Reverse}};
+    const auto outbound = SampleRouteStep(diagonalReverse, 0);
+    const auto inbound = SampleRouteStep(diagonalReverse, 1);
+    ok &= Expect(inbound.heading == Heading::DownLeft &&
+                 CellIs(outbound.from, inbound.to.x, inbound.to.y) &&
+                 CellIs(outbound.to, inbound.from.x, inbound.from.y),
+                 "diagonal reversal retraces normalized geometry");
+
     Chart longDiagonal;
     longDiagonal.gridWidth = 8;
     longDiagonal.gridHeight = 6;

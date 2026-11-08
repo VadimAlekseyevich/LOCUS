@@ -290,9 +290,9 @@ int main() {
                 compass.SelectedTurn()->direction == Turn::Left45 &&
                 SampleRouteStep(compass.Data().route, 0).heading == Heading::UpRight,
                 "ROUTE compass authors diagonal direction as relative 45 turn");
-    ok &= Check(!compass.SetOutgoingHeading(Heading::Left) &&
+    ok &= Check(!compass.SetOutgoingHeading(Heading::UpRight) &&
                 compass.SelectedTurn()->direction == Turn::Left45,
-                "opposite outgoing direction cannot be authored in one beat");
+                "selecting the same outgoing direction does not duplicate a note");
     compass.SelectBeat(1);
     ok &= Check(compass.SetOutgoingHeading(Heading::Down) &&
                 compass.SelectedTurn()->direction == Turn::Right135 &&
@@ -310,6 +310,31 @@ int main() {
                 compass.SetOutgoingHeading(Heading::Down) &&
                 SampleRouteStep(compass.Data().route, 1).heading == Heading::Down,
                 "editor can set a diagonal initial heading in 45 degree increments");
+
+    ChartEditor reverseEditor;
+    reverseEditor.NewDraft();
+    ok &= Check(reverseEditor.SelectBeat(2) &&
+                reverseEditor.SetOutgoingHeading(Heading::Left) &&
+                reverseEditor.SelectedTurn() &&
+                reverseEditor.SelectedTurn()->direction == Turn::Reverse &&
+                SampleRouteStep(reverseEditor.Data().route, 2).heading == Heading::Left &&
+                std::abs(SampleRouteStep(reverseEditor.Data().route, 2).to.x -
+                         SampleRouteStep(reverseEditor.Data().route, 1).from.x) < 1e-10,
+                "compass places a 180-degree note and travels backward");
+    const auto copiedReverse = reverseEditor.CopyTurns(2, 2);
+    ok &= Check(copiedReverse.notes.size() == 1 &&
+                copiedReverse.notes[0].direction == Turn::Reverse &&
+                reverseEditor.InvertTurns(2, 2) &&
+                reverseEditor.SelectedTurn()->direction == Turn::Reverse &&
+                reverseEditor.Undo() && reverseEditor.Redo() &&
+                reverseEditor.SelectedTurn()->direction == Turn::Reverse,
+                "reverse survives copy, inversion, undo and redo");
+    ok &= Check(reverseEditor.SelectBeat(4) &&
+                reverseEditor.PasteTurns(4, copiedReverse) &&
+                reverseEditor.SelectedTurn() &&
+                reverseEditor.SelectedTurn()->direction == Turn::Reverse &&
+                SampleRouteStep(reverseEditor.Data().route, 4).heading == Heading::Right,
+                "copied reverse pasted after original reverses heading again");
 
     // A 250 BPM chart can gain triplets AFTER authoring without moving
     // existing notes in song time or modifying the musical BPM.
