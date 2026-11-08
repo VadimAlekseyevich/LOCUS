@@ -17,7 +17,8 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 
 ## Completed stabilization
 
-- **2026-11-08:** The scored preview draws a tapered `path_mesh` triangle ribbon, with shared joins and interpolated vertex opacity rather than independently rasterized `DrawLineEx` fragments. Turns up to 135° use bounded miters; 180° reversals split runs at an identical junction. Mesh tests cover fractional and dense ticks, continuity, fading and reverse overlays. The editor authoring preview is unchanged.
+- **2026-11-08:** The scored preview draws a tapered `path_mesh` triangle ribbon, with shared joins and interpolated vertex opacity rather than independently rasterized `DrawLineEx` fragments. Turns up to 135° use bounded miters; 180° reversals split runs at an identical junction. Mesh tests cover fractional and dense ticks, continuity, fading and reverse overlays.
+- **2026-11-08:** Visual regression after the ribbon rewrite: tessellating the remaining fractional time to the next turn into 32 tiny segments inverted one side of the corner quad, causing the next line to disappear briefly under GPU back-face culling. Rendering now tessellates on a stable song-tick grid, clips the visible playhead/horizon from those existing quads and limits tight miters against the outline thickness. Regression tests inspect both triangle windings across all eight directions, turn angles, fractional frames and custom skin widths. The editor authoring preview is unchanged.
 
 - Chart loading prepares and validates replacement state before replacing active game/editor state.
 - Screen flow, input, menu actions, viewport mapping, gameplay drawing and route geometry have separate modules.

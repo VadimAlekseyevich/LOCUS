@@ -31,8 +31,9 @@ bool CheckRibbon(const std::vector<locus::app::PathRibbonRow>& rows,
         !Near(rows.back().tick, end) || !rows.front().startsRun)
         return Check(false, message);
     const double horizon = skin.lookaheadBeats * ticksPerBeat;
-    const double maxStep = 1.0 /
-        std::max(1, locus::app::kScoredPathSlices / ticksPerBeat);
+    // Tessellation is now adaptive to stroke width/speed. A single
+    // authored tick is the largest permissible span, regardless of snap.
+    const double maxStep = 1.0;
     for (std::size_t i = 0; i < rows.size(); ++i) {
         const auto& row = rows[i];
         const double distance = std::hypot(row.offset.x, row.offset.y);
@@ -246,6 +247,81 @@ int main() {
                     winding(quad.vertices[0], quad.vertices[2],
                              quad.vertices[3]) < -1e-3f,
                     "path outline and foreground both use front-facing winding");
+    }
+
+    // The original disappearing-stroke regression was missed because the
+    // earlier tests checked only the route CENTERLINE. Near a turn the
+    // fractional current beat was subdivided into 32 micro-quads, folding
+    // one triangle backward. GPU back-face culling removed it for 1-2 frames.
+    // Check the actual TWO triangle windings of EVERY visible GPU quad,
+    // including the outline, while approaching all eight turn directions.
+    const auto frontFacing = [&](const std::vector<app::PathRibbonRow>& mesh,
+                                  float layerScale) {
+        for (std::size_t i = 1; i < mesh.size(); ++i) {
+            if (mesh[i].startsRun) continue;
+            const auto quad = app::MakePathRibbonQuad(
+                mesh[i - 1], mesh[i], layerScale);
+            const float firstArea = winding(
+                quad.vertices[0], quad.vertices[1], quad.vertices[2]);
+            const float secondArea = winding(
+                quad.vertices[0], quad.vertices[2], quad.vertices[3]);
+            if (firstArea > 0.05f || secondArea > 0.05f ||
+                !std::isfinite(firstArea) || !std::isfinite(secondArea))
+                return false;
+        }
+        return true;
+    };
+
+    // Specifically reproduce LEFT -> UP and UP -> LEFT, together with
+    // every other cardinal/diagonal input and 45/90/135-degree bends.
+    for (core::Heading starting : directions) {
+        for (core::Turn turning : {
+                core::Turn::Left45, core::Turn::Right45,
+                core::Turn::Left, core::Turn::Right,
+                core::Turn::Left135, core::Turn::Right135,
+                core::Turn::Reverse}) {
+            core::Chart route = chart;
+            route.initialHeading = starting;
+            route.turns = {{2, turning}};
+            for (float step : {40.0f, 150.0f, 350.0f}) {
+                auto localCanvas = canvas;
+                localCanvas.step = step;
+                for (int frame = 0; frame <= 100; ++frame) {
+                    const double phase = 1.9 + frame * 0.002;
+                    const auto mesh = app::BuildScoredPathRibbon(
+                        route, phase, localCanvas, skin);
+                    if (mesh.size() < 2 ||
+                        !Near(mesh.front().tick, phase, 1e-8) ||
+                        !Near(mesh.back().tick, phase + 4.0, 1e-8) ||
+                        !frontFacing(mesh, 1.0f) ||
+                        !frontFacing(mesh, skin.outlineScale)) {
+                        ok &= Check(false,
+                            "no culling/inverted GPU triangles while turning at any frame");
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    app::Skin thickSkin = skin;
+    thickSkin.pathWidth = 12.0f;
+    thickSkin.outlineScale = 3.0f;
+    thickSkin.lookaheadBeats = 0.15f;
+    core::Chart tight = chart;
+    tight.turns = {{2, core::Turn::Right135}, {3, core::Turn::Left135}};
+    auto tinyCanvas = canvas;
+    tinyCanvas.step = 12.0f;
+    for (double phase : {1.95, 1.999, 2.0, 2.001, 2.95}) {
+        const auto mesh = app::BuildScoredPathRibbon(
+            tight, phase, tinyCanvas, thickSkin);
+        ok &= Check(mesh.size() >= 2 &&
+                    Near(mesh.front().tick, phase, 1e-8) &&
+                    Near(mesh.back().tick,
+                         phase + thickSkin.lookaheadBeats, 1e-6) &&
+                    frontFacing(mesh, 1.0f) &&
+                    frontFacing(mesh, thickSkin.outlineScale),
+                    "short preview and thick skin remain front-facing near sharp turns");
     }
 
     if (!ok) return 1;
