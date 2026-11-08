@@ -11,6 +11,7 @@
 #include "core/chart_editor.h"
 #include "core/chart_json.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <utility>
@@ -207,8 +208,11 @@ void EditorFileActions::Save(bool saveAs, double& now) {
     }
     int s = -1, c = -1;
     if (context_.library.FindChart(destination, s, c)) {
-        context_.libraryUi.SelectSong(s + 1, context_.library);
-        context_.libraryUi.SelectChart(c, context_.library);
+        // Keep this headless file-action module independent of menu renderer.
+        context_.libraryUi.selectedSong = s + 1;
+        context_.libraryUi.selectedChart = c;
+        context_.libraryUi.firstVisibleSong = std::max(0, s + 1 - 5);
+        context_.libraryUi.firstVisibleChart = std::max(0, c - 4);
     }
     context_.libraryUi.notice = "SONG SET SAVED";
     context_.menuStatus = "LIBRARY: " +

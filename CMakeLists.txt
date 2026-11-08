@@ -145,7 +145,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/song_set_storage.cpp
 )
     target_compile_features(locus_chart_file_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_chart_file_tests PRIVATE locus_core)
+    target_link_libraries(locus_chart_file_tests PRIVATE locus_core nlohmann_json::nlohmann_json)
     add_test(NAME locus_chart_local_file COMMAND locus_chart_file_tests)
 
     # Document load/save orchestration must preserve an unsaved editor draft
@@ -349,7 +349,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/song_set_storage.cpp
 )
     target_compile_features(locus_song_library_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_song_library_tests PRIVATE locus_core)
+    target_link_libraries(locus_song_library_tests PRIVATE locus_core nlohmann_json::nlohmann_json)
     add_test(NAME locus_persistent_song_library COMMAND locus_song_library_tests)
 
     add_executable(locus_game_settings_tests
