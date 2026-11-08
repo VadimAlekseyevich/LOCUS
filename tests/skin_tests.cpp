@@ -184,6 +184,26 @@ int main() {
     check(SetSkinNumber(edited, 2, 2, 1, 243.0, false, error) &&
           edited.trajectory.b == 243,
           "color channels support exact typed integers");
+    Color hexResult{7, 8, 9, 77};
+    check(ParseSkinHex("#12AAbb", hexResult, hexResult) &&
+          hexResult.r == 0x12 && hexResult.g == 0xAA &&
+          hexResult.b == 0xBB && hexResult.a == 77,
+          "six digit hex updates RGB and keeps alpha");
+    check(ParseSkinHex("#FF800040", hexResult, hexResult) &&
+          FormatSkinHex(hexResult) == "#FF800040",
+          "eight digit hex updates alpha and round trips");
+    const auto beforeHex = hexResult;
+    check(!ParseSkinHex("#GGGGGG", hexResult, hexResult) &&
+          hexResult.r == beforeHex.r && hexResult.a == beforeHex.a,
+          "invalid hex does not mutate color");
+    const auto wheelColor = SkinColorFromHsv({0.5f, 0.75f, 0.8f}, 120);
+    const auto wheelHsv = SkinColorToHsv(wheelColor);
+    const auto converted = SkinColorFromHsv(wheelHsv, 120);
+    check(std::abs(static_cast<int>(converted.r) - wheelColor.r) <= 1 &&
+          std::abs(static_cast<int>(converted.g) - wheelColor.g) <= 1 &&
+          std::abs(static_cast<int>(converted.b) - wheelColor.b) <= 1 &&
+          converted.a == 120,
+          "HSV wheel round trips colored pixels without losing alpha");
     const int savedBlue = edited.trajectory.b;
     check(!SetSkinNumber(edited, 2, 2, 1, 243.5, false, error) &&
           edited.trajectory.b == savedBlue,

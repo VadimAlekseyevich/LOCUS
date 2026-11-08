@@ -1,6 +1,7 @@
 #include "app/skin_controls.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <cerrno>
 #include <cmath>
 #include <cstdlib>
@@ -147,6 +148,73 @@ std::string FormatSkinNumber(double value) {
     stream.imbue(std::locale::classic());
     stream << std::setprecision(8) << value;
     return stream.str();
+}
+
+SkinHsv SkinColorToHsv(Color color) noexcept {
+    const float r = color.r / 255.0f;
+    const float g = color.g / 255.0f;
+    const float b = color.b / 255.0f;
+    const float high = std::max({r,g,b}), low = std::min({r,g,b});
+    const float diff = high - low;
+    SkinHsv hsv;
+    hsv.v = high;
+    hsv.s = high > 0.0f ? diff / high : 0.0f;
+    if (diff <= 0.0f) return hsv;
+    if (high == r) hsv.h = (g - b) / diff;
+    else if (high == g) hsv.h = 2.0f + (b - r) / diff;
+    else hsv.h = 4.0f + (r - g) / diff;
+    hsv.h /= 6.0f;
+    if (hsv.h < 0.0f) hsv.h += 1.0f;
+    return hsv;
+}
+
+Color SkinColorFromHsv(SkinHsv hsv, unsigned char alpha) noexcept {
+    const float h = std::isfinite(hsv.h) ? hsv.h - std::floor(hsv.h) : 0.0f;
+    const float s = std::clamp(std::isfinite(hsv.s) ? hsv.s : 0.0f, 0.0f, 1.0f);
+    const float v = std::clamp(std::isfinite(hsv.v) ? hsv.v : 0.0f, 0.0f, 1.0f);
+    const float c = v * s;
+    const float hue = h * 6.0f;
+    const float x = c * (1.0f - std::abs(std::fmod(hue, 2.0f) - 1.0f));
+    const float m = v - c;
+    float r=0.0f,g=0.0f,b=0.0f;
+    if (hue < 1.0f) { r=c; g=x; }
+    else if (hue < 2.0f) { r=x; g=c; }
+    else if (hue < 3.0f) { g=c; b=x; }
+    else if (hue < 4.0f) { g=x; b=c; }
+    else if (hue < 5.0f) { r=x; b=c; }
+    else { r=c; b=x; }
+    const auto channel = [m](float f) {
+        return static_cast<unsigned char>(
+            std::lround(std::clamp(f+m,0.0f,1.0f)*255.0f));
+    };
+    return {channel(r),channel(g),channel(b),alpha};
+}
+
+std::string FormatSkinHex(Color color) {
+    char formatted[10]{};
+    std::snprintf(formatted, sizeof(formatted), "#%02X%02X%02X%02X",
+                  color.r, color.g, color.b, color.a);
+    return formatted;
+}
+
+bool ParseSkinHex(std::string_view text, Color old, Color& result) noexcept {
+    if (!text.empty() && text.front() == '#') text.remove_prefix(1);
+    if (text.size() != 6 && text.size() != 8) return false;
+    const auto hex = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c-'0';
+        if (c >= 'a' && c <= 'f') return c-'a'+10;
+        if (c >= 'A' && c <= 'F') return c-'A'+10;
+        return -1;
+    };
+    unsigned char parsed[4]{};
+    for (std::size_t i=0; i<text.size()/2; ++i) {
+        const int a=hex(text[i*2]), b=hex(text[i*2+1]);
+        if (a<0 || b<0) return false;
+        parsed[i]=static_cast<unsigned char>((a<<4)|b);
+    }
+    result={parsed[0],parsed[1],parsed[2],
+            text.size()==8 ? parsed[3] : old.a};
+    return true;
 }
 
 } // namespace locus::app

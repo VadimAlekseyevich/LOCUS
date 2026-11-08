@@ -26,4 +26,13 @@ bool SetSkinNumber(Skin& skin, int page, int row, int selectedColor,
 bool ParseSkinNumber(std::string_view text, double& result) noexcept;
 std::string FormatSkinNumber(double value);
 
+// HSV wheel + saturation/value square are used by COLORS instead of sliders.
+// Hex is accepted as #RRGGBB or #RRGGBBAA; six digits preserve old alpha.
+struct SkinHsv { float h = 0.0f, s = 0.0f, v = 0.0f; };
+SkinHsv SkinColorToHsv(Color color) noexcept;
+Color SkinColorFromHsv(SkinHsv hsv, unsigned char alpha = 255) noexcept;
+std::string FormatSkinHex(Color color);
+bool ParseSkinHex(std::string_view value, Color previous,
+                  Color& result) noexcept;
+
 } // namespace locus::app
