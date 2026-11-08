@@ -268,7 +268,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const GameSettings& settings, const Skin& skin,
                        const EditorSetView& set) {
     const auto& chart = draft.Data().route;
-    Label(font, "CHART EDITOR", 49, 77, 24, Color{194, 236, 231, 255});
+    Label(font, "CHART EDITOR", 49, 80, 22, Color{194, 236, 231, 255});
     Button(font, kTabSet, "SET", Color{244, 197, 124, 255},
            ui.tab == EditorTab::Set);
     Button(font, kTabRoute, "ROUTE", Color{126, 219, 209, 255},

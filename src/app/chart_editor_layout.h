@@ -50,11 +50,11 @@ inline double ViewBeat(const core::ChartEditor& draft, double activeBeat) {
         : static_cast<double>(draft.SelectedBeat());
 }
 
-constexpr Rectangle kTabSet{251, 73, 128, 35};
-constexpr Rectangle kTabRoute{388, 73, 155, 35};
-constexpr Rectangle kTabAudio{552, 73, 155, 35};
-constexpr Rectangle kTabField{716, 73, 155, 35};
-constexpr Rectangle kEditorBack{880, 73, 72, 35}; // Obvious exit from editor to Home.
+constexpr Rectangle kTabSet{277, 73, 110, 35};
+constexpr Rectangle kTabRoute{397, 73, 132, 35};
+constexpr Rectangle kTabAudio{539, 73, 132, 35};
+constexpr Rectangle kTabField{681, 73, 132, 35};
+constexpr Rectangle kEditorBack{823, 73, 126, 35}; // Obvious exit from editor to Home.
 
 constexpr Rectangle kSong{49, 115, 162, 37};
 constexpr Rectangle kPlay{220, 115, 157, 37};
