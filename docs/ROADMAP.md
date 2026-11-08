@@ -11,10 +11,15 @@ See [GDD](GDD.md), [architecture audit](ARCHITECTURE.md) and
   session/navigation lifetime are separated. Headless tests cover failure
   paths and native-dialog cancellation through injected pickers. The entry
   point owns application composition, global input, rendering and PLAY glue.
-- [ ] **2. User-data durability.** Guard concurrent imports; define safe
-  cleanup of unused immutable audio revisions; test denied writes, interrupted
-  saves, missing files and recovery. Never delete an audio revision referenced
-  by any difficulty. Preserve v1/v2 chart and existing skin/settings files.
+- [x] **2a. Managed Song Set storage.** New imports have one shared audio,
+  a manifest, independently saved difficulty charts and library-wide writer
+  locks. Save no longer creates redundant external authoring copies.
+- [x] **2b. Recoverable local deletion.** A confirmed delete moves a difficulty
+  or Song Set to LOCUS Trash; U can restore it, including after restart.
+  Chart overwrites keep backups in `.locus-history/`.
+- [ ] **2c. Power-loss and filesystem validation.** Test denied writes, full
+  disks, interrupted imports and recovery on physical Windows; add conservative
+  cleanup only when safe.
 - [ ] **3. Full scenario regression tests.** Chart create/edit/undo/save/
   reopen/TEST/PLAY/Results, BPM/snap timing invariance, repeated navigation,
   canceled dialogs, and safe shutdown.
@@ -29,6 +34,8 @@ See [GDD](GDD.md), [architecture audit](ARCHITECTURE.md) and
 - [ ] **7. Reproducible release baseline.** Portable package or installer
   that runs without Visual Studio/CMake, clean-machine validation, version,
   license, documentation and tagged stable build.
+
+There is **no pre-release compatibility guarantee** for chart versions or library layout. Changes affecting older files must be communicated to the developer.
 
 Stages 1–6 are the engineering gate for adding major new mechanics. Stage 7
 is required before public distribution, but need not block internal prototyping.

@@ -93,12 +93,12 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 - Snap subdivision choices: **1, 2, 3, 4, 6, 8, 12, 16, 24** per musical beat. Snap, zoom and BPM are **different controls**.
 - Chart **v2** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
 - The writer stores one of seven **relative turns**, including a 180° reversal, and the initial heading; gameplay input still uses absolute directions.
-- Editor can add/edit/cut/copy/paste/invert/shift/undo turns, save/open JSON, and TEST from the selected audio position. Previously saved v1 charts remain readable and migrate to v2 on save.
+- Editor can add/edit/cut/copy/paste/invert/shift/undo turns, open JSON and TEST from the selected audio position. Ctrl+S saves directly into the installed Song Set; Ctrl+Shift+S creates a separate difficulty. Backwards compatibility before the first release is not guaranteed.
 - Editor preview and scored custom-song play can use **100%, 75%, 50%, 25%, 10%** audio speeds. The present slowdown changes pitch; it is **not** pitch-preserving time stretch. In scored practice, screen-space movement speed remains fixed even as playback slows.
 
 ## 6. Skins and accessibility
 
-- Persistent imports stage immutable audio under `.locus-versions/<fingerprint>/<original filename>`, then atomically save the chart JSON that references it. Failed/interrupted imports leave existing difficulty/audio pairs untouched. Multiple difficulties can reference different audio revisions of one logical song; legacy audio paths and chart v1/v2 remain supported.
+- Each managed Song Set stores one shared audio file, a `set.locus.json` manifest, and independent difficulty charts. Importing a chart never silently replaces the shared audio. Folder locks serialize writers, chart overwrites leave backups in `.locus-history/`, and deleted songs/difficulties go to recoverable `%LOCALAPPDATA%/LOCUS/Trash`. New difficulties can be added with N or Shift+C. See [Song Sets](SONG_SETS.md).
 - One independent **global skin** affects presentation across Play and editor TEST; no skin is embedded in a chart.
 - PATH, PLAYER/HUD and COLORS pages expose path width/opacity/fade, marker size, fixed base speed (20–700 logical px/s), hit-effect scale, gameplay HUD visibility, and ten editable RGBA colors including **FIELD BORDER**.
 - Skin JSON v2 saves `player.speedPxPerSecond`. Legacy v1 `cameraStep` is converted on load to the same approximate speed at 120 BPM on the default 8×8 chart.

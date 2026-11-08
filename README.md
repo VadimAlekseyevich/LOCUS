@@ -30,7 +30,7 @@ Gameplay direction bindings are configurable in SETTINGS and are **shared with e
 
 ## Screens and editor
 
-Home has **PLAY, EDIT, SKIN, SETTINGS, EXIT**. PLAY opens the local song and difficulty library; import a chart with **C**, select songs with Up/Down and difficulties with Left/Right. Installed songs live under `%LOCALAPPDATA%\LOCUS\Songs`. The built-in demo is always available.
+Home has **PLAY, EDIT, SKIN, SETTINGS, EXIT**. PLAY opens the local song and difficulty library; import a chart with **C** (or **Shift+C** to add a chart to the selected Song Set), select songs with Up/Down and difficulties with Left/Right. Installed songs live under `%LOCALAPPDATA%\LOCUS\Songs`. The built-in demo is always available.
 
 EDIT has three tabs and a persistent scrolling timeline:
 
@@ -38,7 +38,9 @@ EDIT has three tabs and a persistent scrolling timeline:
 - **AUDIO:** song title, BPM and whole-millisecond offset.
 - **FIELD:** one square size 2–16 (**default 8**) and initial heading. No editable start coordinates.
 
-Use the configured DFJK directions to place notes. In the timeline, **←/→** navigate and **↑/↓** adjust snap subdivision; PageUp/PageDown, wheel and modifier combinations also work. Load audio with **O**, preview with **Space**, test-play with **T**; practice speeds are 100/75/50/25/10%. **Ctrl+S** saves, **Ctrl+Shift+S** saves as, **Ctrl+O** opens, **Ctrl+N** starts a new draft.
+Use the configured DFJK directions to place notes. In the timeline, **←/→** navigate and **↑/↓** adjust snap subdivision; PageUp/PageDown, wheel and modifier combinations also work. Load audio with **O**, preview with **Space**, test-play with **T**; practice speeds are 100/75/50/25/10%. **Ctrl+S** saves directly into the permanent Song Set library, **Ctrl+Shift+S** creates a new difficulty in that set, **Ctrl+O** opens a chart, and **Ctrl+N** starts a new draft. External chart files are not silently overwritten: saving their edited versions installs them into the library.
+
+In PLAY's library use **N** to create a difficulty for the selected song, **Ctrl+D** to copy it, **Delete** to move a difficulty to LOCUS Trash, **Shift+Delete** to trash a whole Song Set (both require **Y** confirmation), and **U** to restore the newest trashed item. All difficulties in a managed Song Set share exactly one audio file. See [Song Set storage](docs/SONG_SETS.md).
 
 New chart files use **formatVersion 2**, integer `timeMs` timestamps and independent snap settings. BPM changes do not move already authored notes in song time. See [chart format](docs/CHART_FORMAT.md) and [sample](examples/first-song.locus.json) (requires your own `song.mp3`).
 
@@ -52,5 +54,6 @@ SKIN edits path effects, marker size, **fixed cardinal movement speed** (default
 - [Roadmap](docs/ROADMAP.md)
 - [Architecture audit](docs/ARCHITECTURE.md)
 - [Chart format](docs/CHART_FORMAT.md)
+- [Song Set storage and recovery](docs/SONG_SETS.md)
 
 The Windows CI checks compilation, chart/editor behavior and scoring without a GUI. Physical audio latency and desktop appearance still require real-device testing.

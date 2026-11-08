@@ -48,10 +48,14 @@ Each `timeMs` is a signed whole number between **-3,600,000 and 86,400,000**. Ti
 
 BPM, offset and snapping affect the musical ruler or visual projection, not saved note timestamps. For example, at 250 BPM a beat lasts 240 ms; `snapDivision: 3` provides 80-ms placements on the ruler. Changing it later must not rewrite earlier note times.
 
+## Song Set ownership
+
+Installed difficulties in one Song Set share a single audio file beside `set.locus.json`. The metadata file has its own `formatVersion: 1`, `setId`, `title`, `artist` and `audioFile`. It is **not** a playable chart. Managed difficulties are grouped using this manifest and folder, not guessed filenames. See [Song Set storage](SONG_SETS.md).
+
 ## File handling
 
-The audio reference must stay inside the chart folder or a subfolder after canonical path resolution. Absolute paths, drive/URL prefixes, backslashes, empty segments, `.`, `..` and unsafe path characters are rejected. Saving charts to a folder that does not contain their referenced audio is rejected. File writes use a temporary file and an on-volume replacement.
+The audio reference must stay inside the chart folder or a subfolder after canonical path resolution. Absolute paths, drive/URL prefixes, backslashes, empty segments, `.`, `..` and unsafe path characters are rejected. Saving charts to a folder that does not contain their referenced audio is rejected. File writes use a temporary file and an on-volume replacement. Overwrites create a previous-version backup in `.locus-history/`. A managed Set's audio is never silently replaced on import.
 
-Unknown fields, duplicate keys, unsupported versions, invalid timestamps and malformed colors/data are not silently ignored. LOCUS also **reads version 1 charts** and converts them to v2 on save, so existing user creations remain loadable; new authored examples should always use v2.
+Unknown fields, duplicate keys, unsupported versions, invalid timestamps and malformed colors/data are not silently ignored. New authored files use v2. **The project has no pre-release backwards-compatibility guarantee.** Some older on-disk formats may still parse, but should be reimported into managed Song Sets before editing.
 
 For gameplay rules and scoring see [GDD](GDD.md).

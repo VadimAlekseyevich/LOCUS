@@ -10,7 +10,7 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 | `src/app/route_renderer.*`, `path_mesh.*`, `gameplay_ui.*`, `chart_editor_ui.*` | Convert one continuous model-space route into gameplay/editor visuals. Both views share the same normalized geometry; editor view is grid-free. |
 | `src/app/app_input.*`, `menu_controller.*`, `screen_flow.*` | Collect input, handle menu interactions, and resolve screen navigation. |
 | `src/app/audio_device.*`, `chart_playback.*`, `game_session.*`, `local_music.*`, `demo_transport.*` | Explicit shared audio-device lifetime, playback clocks, scored sessions and non-owning streams. |
-| `src/app/chart_file.*`, `chart_save.cpp`, `song_library.*`, `audio_revision.*` | Validate paths, persist authored charts and manage immutable audio revisions. |
+| `src/app/chart_file.*`, `chart_save.cpp`, `song_library.*`, `song_set_storage.*` | Validate chart-relative paths, serialize per-library/per-Set writers, persist shared audio, back up overwrites, and manage recoverable Trash. |
 | `src/app/editor_session.*`, `editor_document.*`, `editor_file_actions.*` | Editor preview/TEST, transactional file handling, and injected native dialogs. |
 | `src/app/listen_session.*`, `skin_profile_actions.*`, `library_playback.*`, `library_browser.*` | Cohesive user-facing session workflows with testable boundaries. |
 | `src/app/main.cpp` | Application composition, UI flow and resource lifetime. This remains the primary coupling point. |
@@ -29,7 +29,7 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 - **2026-11-06:** Visible-route range sampling replaces repeated full-history scans for each preview segment. Random-access geometry remains available. The dense 240-tick window regression compares batched and standalone samples.
 - **2026-11-08:** `SkinProfileActions` isolates Load/Save/Save As/Reset and owns skin draft-vs-active publication. Native file pickers are injected. A missing user-selected skin is a hard error (preserves the working draft), while a missing startup profile intentionally uses defaults; tests cover both cases, canceled dialogs, exporting and invalid drafts.
 - **2026-11-08:** `ListenSession` owns the standalone WAV/MP3 picker and listening controls. Canceled/failed selections leave the old audio intact; clock timestamps are refreshed after native dialogs. Headless tests cover the no-device and canceled-dialog paths.
-- **2026-11-08:** `EditorFileActions` coordinates New/Open/Attach/Save and library editing with injected native file pickers. Opening or decoding failures preserve the active draft; successful Save still imports an installed library copy. Tests cover cancel, missing chart/audio, rejected save and New Draft cleanup.
+- **2026-11-08:** `EditorFileActions` coordinates New/Open/Attach/Save and library editing with injected native file pickers. Opening or decoding failures preserve the active draft; successful Save edits the installed chart directly, while Save As creates an independent difficulty. Saving an external chart installs a managed copy, not an extra working file. Tests cover cancel, missing chart/audio, rejected save and New Draft cleanup.
 - **2026-11-08:** `EditorSession` owns ROUTE input/preview interaction and the atomic preparation of Editor → TEST. Preview follows the existing audio-time clock; headless tests cover invalid song duration, playhead boundaries and unavailable audio without changing the current scored chart.
 - **2026-11-08:** Library import and browser refresh are coordinated by `library_browser.*`: refresh keeps a selected difficulty by its installed path (even if library sorting changes), and failed imports retain the previous selection/status. Native file dialogs remain in the UI composition.
 - **2026-11-08:** Library difficulty activation lives in `library_playback.*`. It decodes replacement audio and validates a copy of the chart BEFORE committing to the active chart/audio objects, keeping game-session references stable. Headless tests cover invalid duration, out-of-range turns, per-difficulty audio reuse and failed audio loading.
@@ -43,9 +43,9 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 
 ## Outstanding work, in priority order
 
-### P1 — Safer import and storage lifecycle
+### P1 — Song Set durability and recovery
 
-The chart JSON is the sole publication point. Imported audio is immutable and chart references remain valid through interrupted updates; existing v1/v2 JSON and installed audio files stay supported. New imports store audio under `.locus-versions/<16-hex fingerprint>/<original audio filename>`. Remaining limitations: an interrupted import may leave unused staged/revision files; do not garbage-collect versions without cross-process safety. Test permission and power-loss paths on a real Windows machine.
+Managed Song Sets have one shared audio file, a manifest and per-difficulty charts. Import and editor Save hold an OS-backed library lock before per-folder write locks. Shared audio is compared byte-for-byte: a conflicting import is refused rather than silently changing older difficulties. Overwrites use a staged, flushed JSON, previous-version backup and on-volume replacement. Deletion moves files or a whole Set to LOCUS Trash with an origin journal; U restores the newest entry. Interrupted processes may leave orphan staging files; cleanup is intentionally conservative. Pending: power-loss, permissions and disk-full fault injection on real Windows; archive import/export and history browsing. There is no pre-release compatibility guarantee.
 
 ### Stage 1 architecture boundaries — complete
 
@@ -70,4 +70,4 @@ Check Unicode paths, permission errors, full disks, canceled native dialogs, and
 
 ## Non-goals
 
-No new chart semantics, speculative plugin architecture, per-beat heap cache, dependence on a network service, or changes to gameplay judgement to pursue architectural tidiness. Favor small, independently testable commits and preserve existing local songs, chart v1/v2 support, skins and keybinds.
+No new chart semantics, speculative plugin architecture, per-beat heap cache, dependence on a network service, or changes to gameplay judgement to pursue architectural tidiness. Favor small, independently testable commits and do not silently discard user data. Before the first release, old chart/storage compatibility may be broken explicitly when necessary.
