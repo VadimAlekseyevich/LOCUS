@@ -10,12 +10,12 @@ int main() {
         if (!pass) std::cerr << "AUDIO_FADE_FAIL " << label << '\n';
         ok &= pass;
     };
-    check(SmoothAudioEase(-1.0) == 0.0 &&
-          SmoothAudioEase(0.0) == 0.0 &&
-          SmoothAudioEase(1.0) == 1.0 &&
-          SmoothAudioEase(3.0) == 1.0,
+    check(EaseSmoothstep(-1.0) == 0.0 &&
+          EaseSmoothstep(0.0) == 0.0 &&
+          EaseSmoothstep(1.0) == 1.0 &&
+          EaseSmoothstep(3.0) == 1.0,
           "curve clamps outside interval");
-    check(std::abs(SmoothAudioEase(0.25) - 0.15625) < 0.00001,
+    check(std::abs(EaseSmoothstep(0.25) - 0.15625) < 0.00001,
           "fade uses non-linear smoothstep");
     AudioVolumeFade gain;
     gain.Silent();

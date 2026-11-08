@@ -2,6 +2,7 @@
 
 #include "core/route.h"
 #include "core/route_view.h"
+#include "app/transition_easing.h"
 
 #include <algorithm>
 #include <cmath>
@@ -20,11 +21,6 @@ struct PlayOutroFrame {
     float blackOpacity = 0.0f;
     float resultBlackOpacity = 0.0f;
 };
-
-inline float EaseCubic(double progress) noexcept {
-    progress = std::clamp(progress, 0.0, 1.0);
-    return static_cast<float>(progress * progress * (3.0 - 2.0 * progress));
-}
 
 inline constexpr double kPlayOutroSeconds = 0.96;
 inline constexpr double kResultsRevealSeconds = 0.34;
@@ -91,12 +87,12 @@ public:
             // Slow departure first, then rapid exit. Full opacity arrives
             // only as the marker leaves the square.
             result.distancePx = 660.0f *
-                EaseCubic(std::clamp((t - 0.04) / 0.82, 0.0, 1.0));
+                static_cast<float>(EaseSmoothstep((t - 0.04) / 0.82));
             result.blackOpacity =
-                EaseCubic(std::clamp((t - 0.20) / 0.80, 0.0, 1.0));
+                static_cast<float>(EaseSmoothstep((t - 0.20) / 0.80));
         } else if (resultsAt_ >= 0.0) {
             const double t = (now - resultsAt_) / kResultsRevealSeconds;
-            result.resultBlackOpacity = 1.0f - EaseCubic(t);
+            result.resultBlackOpacity = static_cast<float>(1.0 - EaseSmoothstep(t));
         }
         return result;
     }

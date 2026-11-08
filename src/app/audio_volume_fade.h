@@ -1,18 +1,12 @@
 #pragma once
 
-#include <algorithm>
+#include "app/transition_easing.h"
+
 #include <cmath>
 
 namespace locus::app {
 
-// C1-continuous ease-in/out: avoid clicks and linear volume ramps.
-// Each source fades to zero before its replacement audibly fades in.
-inline double SmoothAudioEase(double t) noexcept {
-    if (!std::isfinite(t)) return 0.0;
-    t = std::clamp(t, 0.0, 1.0);
-    return t * t * (3.0 - 2.0 * t);
-}
-
+// The audio envelope shares the common easing curve with scene transitions.
 inline constexpr double kAudioFadeOutSeconds = 0.12;
 inline constexpr double kAudioFadeInSeconds = 0.16;
 
@@ -44,7 +38,7 @@ public:
         if (!enabled_) return to_;
         if (now <= start_) return from_;
         const float s = static_cast<float>(
-            SmoothAudioEase((now - start_) / duration_));
+            EaseSmoothstep((now - start_) / duration_));
         return from_ + (to_ - from_) * s;
     }
     bool Finished(double now) const noexcept {

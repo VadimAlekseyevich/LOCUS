@@ -10,9 +10,9 @@ int main() {
         if (!v) std::cerr << "PLAY_OUTRO_FAIL " << msg << '\n';
         ok &= v;
     };
-    ck(app::EaseCubic(-10.0) == 0.0f &&
-       app::EaseCubic(1.0) == 1.0f &&
-       std::abs(app::EaseCubic(0.25) - 0.15625f) < 1e-6,
+    ck(app::EaseSmoothstep(-10.0) == 0.0f &&
+       app::EaseSmoothstep(1.0) == 1.0f &&
+       std::abs(app::EaseSmoothstep(0.25) - 0.15625f) < 1e-6,
        "easing is clamped and non-linear");
     const auto chart = core::MakeDemoChart();
     core::Chart early = chart;
