@@ -20,6 +20,7 @@ Reviewed: 2026-11-06. Scope: current Windows/raylib rhythm game, not prospective
 - Chart v2 timestamps are authoritative in song milliseconds; editor snapping and visualization do not rewrite timing.
 - Movement speed is independent of BPM, snap subdivisions and heading; diagonals are Euclidean unit steps.
 - **2026-11-06:** Visible-route range sampling replaces repeated full-history scans for each preview segment. Random-access geometry remains available. The dense 240-tick window regression compares batched and standalone samples.
+- **2026-11-08:** Quit-confirmation audio pausing is coordinated by `quit_media.*`. The policy records which active stream the modal paused and restores only that stream after cancellation. Headless tests cover Play, Listen, Editor, pre-paused/stopped audio, and repeated modal frames.
 - **2026-11-07:** Screen-boundary lifecycle side effects live in `session_transition.*`, independent of screen navigation decisions. Tests exercise Editor → TEST → Results → retry → Editor, demo fallback, and new library chart loads without a desktop.
 - **2026-11-07:** `AudioDevice` is the sole raylib audio owner, constructed before borrowed `DemoTransport`/`LocalMusic` streams and closed after they unload. A demo decode failure cannot shut down the local song's output; headless lifecycle checks cover absence of an audio device.
 - **2026-11-06:** Editor document loading/saving is isolated in `src/app/editor_document.*`. Failed loads validate their replacement chart, audio decoder and timeline before swapping; failed saves do not discard the active editor draft. Headless tests verify rejection paths.
@@ -34,7 +35,7 @@ The chart JSON is the sole publication point. Imported audio is immutable and ch
 
 ### P1 — Reduce remaining `main.cpp` session orchestration
 
-Editor document persistence and screen-boundary lifecycle side effects have been extracted, with tests for failed document loads and editor/test/results transitions. `main.cpp` still handles file dialogs, editor commands, application quit-confirmation media pausing, song selection and in-play actions. Next target: extract one coherent modal/selection lifecycle at a time, preserving stable references and existing atomic chart loading.
+Editor persistence, screen transitions and the quit-modal audio policy have been extracted and covered by headless tests. `main.cpp` still handles file dialogs, editor commands, modal button input, song selection and in-play actions. Next target: move one cohesive file-dialog/selection workflow at a time, preserving existing atomic chart loading and stable references.
 
 ### P2 — Validate real-device audio lifecycle
 

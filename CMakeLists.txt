@@ -35,6 +35,7 @@ add_executable(locus
     src/app/gameplay_ui.cpp
     src/app/screen_flow.cpp
     src/app/session_transition.cpp
+    src/app/quit_media.cpp
     src/app/native_close.cpp
     src/app/demo_transport.cpp
     src/app/audio_device.cpp
@@ -171,6 +172,21 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_session_transition_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_session_transition_tests PRIVATE locus_core raylib)
     add_test(NAME locus_session_transition_lifecycle COMMAND locus_session_transition_tests)
+
+    # Exit modal policy is pure; test playback state changes without opening
+    # a native window or relying on an actual sound device.
+    add_executable(locus_quit_media_tests
+        tests/quit_media_tests.cpp
+        src/app/quit_media.cpp
+        src/app/game_session.cpp
+        src/app/chart_playback.cpp
+        src/app/demo_transport.cpp
+        src/app/local_music.cpp
+        src/app/local_file_io.cpp
+    )
+    target_compile_features(locus_quit_media_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_quit_media_tests PRIVATE locus_core raylib)
+    add_test(NAME locus_quit_modal_audio_lifecycle COMMAND locus_quit_media_tests)
 
     add_executable(locus_audio_lifecycle_tests
         tests/audio_lifecycle_tests.cpp

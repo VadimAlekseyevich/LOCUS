@@ -25,6 +25,7 @@
 #include "app/native_close.h"
 #include "app/screen_flow.h"
 #include "app/session_transition.h"
+#include "app/quit_media.h"
 #include "app/viewport.h"
 
 #include "raylib.h"
@@ -800,8 +801,7 @@ int main(int argc, char** argv) {
         }
     };
 
-    enum class ExitPausedMedia { None, Gameplay, Listen, EditorPreview };
-    ExitPausedMedia pausedForExit = ExitPausedMedia::None;
+    locus::app::QuitMediaCoordinator quitMedia;
 
     while (state.running) {
         const bool wasQuitConfirmation = state.quitConfirmation;
@@ -988,32 +988,10 @@ int main(int argc, char** argv) {
             break;
         }
         double now = MonotonicSeconds();
-        // Freeze active music while the exit dialog is open. If canceled,
-        // resume only what was playing before the dialog appeared.
-        if (!wasQuitConfirmation && state.quitConfirmation) {
-            pausedForExit = ExitPausedMedia::None;
-            if (state.screen == Screen::Play &&
-                !(customChart ? chartPlayback.Paused() : transport.Paused())) {
-                gameSession.TogglePause(customChart, now);
-                pausedForExit = ExitPausedMedia::Gameplay;
-            } else if (state.screen == Screen::Listen &&
-                       localSong.Playing() && !localSong.Paused()) {
-                localSong.Pause(now);
-                pausedForExit = ExitPausedMedia::Listen;
-            } else if (state.screen == Screen::Editor &&
-                       chartPlayback.Playing() && !chartPlayback.Paused()) {
-                chartPlayback.Pause(now);
-                pausedForExit = ExitPausedMedia::EditorPreview;
-            }
-        } else if (wasQuitConfirmation && !state.quitConfirmation) {
-            if (pausedForExit == ExitPausedMedia::Gameplay)
-                gameSession.TogglePause(customChart, now);
-            else if (pausedForExit == ExitPausedMedia::Listen)
-                localSong.Resume(now);
-            else if (pausedForExit == ExitPausedMedia::EditorPreview)
-                chartPlayback.Resume(now);
-            pausedForExit = ExitPausedMedia::None;
-        }
+        // Only the transport paused by the quit modal may be resumed.
+        locus::app::UpdateQuitMedia(
+            quitMedia, wasQuitConfirmation, state.quitConfirmation, state.screen,
+            customChart, now, gameSession, transport, chartPlayback, localSong);
         bool loadedNewSong = false;
         // Home uses E to enter Editor and E also rotates its heading.
         // Ignore that initial key-down; start editing on the next frame.
