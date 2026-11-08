@@ -1,4 +1,5 @@
 #include "app/app_frame_renderer.h"
+#include "app/app_quit_dialog_layout.h"
 #include "app/viewport.h"
 
 #include <algorithm>
@@ -59,8 +60,7 @@ static void DrawTextLabel(Font font, const char* message, Vector2 position,
 
 // Shared virtual hitboxes for the global quit modal. Keeping them outside
 // the screen controller means pressing X from any screen is handled alike.
-constexpr Rectangle kQuitConfirmButton{263.0f, 329.0f, 196.0f, 54.0f};
-constexpr Rectangle kQuitCancelButton{502.0f, 329.0f, 196.0f, 54.0f};
+// Geometry shared with the input side via app_quit_dialog_layout.h.
 
 static void DrawQuitConfirmation(Font font, const AppState& state,
                           const locus::core::ChartEditor& editor,

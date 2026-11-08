@@ -13,6 +13,7 @@
 #include "app/app_runtime_policy.h"
 #include "app/app_smoke_checks.h"
 #include "app/app_frame_renderer.h"
+#include "app/app_quit_dialog_layout.h"
 #include "app/menu_controller.h"
 #include "app/chart_editor_layout.h"
 #include "app/editor_session.h"
@@ -71,6 +72,8 @@ using locus::app::FinishSession;
 using locus::app::UiFont;
 using locus::app::LoadUiFont;
 using locus::app::RenderFrame;
+using locus::app::kQuitConfirmButton;
+using locus::app::kQuitCancelButton;
 using locus::app::GameplayView;
 using locus::app::GameplayCamera;
 using locus::app::GameplayViewportScale;
