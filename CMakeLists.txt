@@ -262,6 +262,12 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_session_transition_tests PRIVATE locus_core raylib)
     add_test(NAME locus_session_transition_lifecycle COMMAND locus_session_transition_tests)
 
+    # Gameplay adjustments repeat on held keys; no window or audio is needed.
+    add_executable(locus_play_adjustment_tests tests/play_adjustment_tests.cpp)
+    target_compile_features(locus_play_adjustment_tests PRIVATE cxx_std_17)
+    target_include_directories(locus_play_adjustment_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    add_test(NAME locus_gameplay_adjustment_repeat COMMAND locus_play_adjustment_tests)
+
     # Exit modal policy is pure; test playback state changes without opening
     # a native window or relying on an actual sound device.
     # Editor discard confirmation is independent of native keyboard polling.

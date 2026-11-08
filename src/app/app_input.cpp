@@ -66,14 +66,23 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
                 if (key == bound) return false;
             return true;
         };
-        const bool decrease =
-            (available(KEY_LEFT_BRACKET) && IsKeyPressed(KEY_LEFT_BRACKET)) ||
-            (available(KEY_KP_SUBTRACT) && IsKeyPressed(KEY_KP_SUBTRACT));
-        const bool increase =
-            (available(KEY_RIGHT_BRACKET) && IsKeyPressed(KEY_RIGHT_BRACKET)) ||
-            (available(KEY_KP_ADD) && IsKeyPressed(KEY_KP_ADD));
-        input.baseSpeedDelta = static_cast<int>(increase) -
-                               static_cast<int>(decrease);
+        const auto pressed = [&](int key) {
+            return available(key) && IsKeyPressed(key);
+        };
+        const auto held = [&](int key) {
+            return available(key) && IsKeyDown(key);
+        };
+        input.baseSpeedDelta =
+            static_cast<int>(pressed(KEY_RIGHT_BRACKET) || pressed(KEY_KP_ADD)) -
+            static_cast<int>(pressed(KEY_LEFT_BRACKET) || pressed(KEY_KP_SUBTRACT));
+        input.baseSpeedHeld =
+            static_cast<int>(held(KEY_RIGHT_BRACKET) || held(KEY_KP_ADD)) -
+            static_cast<int>(held(KEY_LEFT_BRACKET) || held(KEY_KP_SUBTRACT));
+        // Comma/period adjust preview time. Rebound gameplay keys win.
+        input.previewTimeDelta = static_cast<int>(pressed(KEY_PERIOD)) -
+                                 static_cast<int>(pressed(KEY_COMMA));
+        input.previewTimeHeld = static_cast<int>(held(KEY_PERIOD)) -
+                                static_cast<int>(held(KEY_COMMA));
     }
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.

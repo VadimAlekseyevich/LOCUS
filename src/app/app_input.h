@@ -33,6 +33,9 @@ struct FrameInput {
     bool editorTest = false;
     int practiceSpeedIndex = -1;
     int baseSpeedDelta = 0; // [ / ] and numpad - / + while playing
+    int previewTimeDelta = 0; // , / . while playing, 50 ms per step
+    int baseSpeedHeld = 0; // held direction for deterministic auto-repeat
+    int previewTimeHeld = 0;
     std::array<bool, 4> arrowPressed{};
     std::array<double, 4> arrowCapturedAt{};
     std::array<bool, 4> arrowHeld{};
