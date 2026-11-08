@@ -26,6 +26,7 @@ struct LibrarySong {
     std::string artist;         // Optional display metadata.
     std::filesystem::path folder; // Parent of all managed chart files.
     bool managed = false;       // False for legacy installed v1/v2 libraries.
+    int previewStartMs = 0; // Song Set menu preview, independent of BPM/offset.
 };
 
 // On-disk Songs folders are authoritative. The index is kept in RAM and
@@ -70,6 +71,7 @@ public:
     bool TrashSongSet(const std::filesystem::path& folder,
                       std::string& error);
     bool RestoreLastDeleted(std::string& error);
+    bool SetPreviewStartMs(int songIndex, int timeMs, std::string& error);
     bool FindChart(const std::filesystem::path& path,
                    int& songIndex, int& chartIndex) const;
 

@@ -133,6 +133,19 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
         error = "Song Set metadata has missing or invalid fields.";
         return false;
     }
+    if (data.contains("previewStartMs")) {
+        if (!data["previewStartMs"].is_number_integer()) {
+            error = "Song Set preview position must be an integer."; return false;
+        }
+        try { loaded.previewStartMs = data["previewStartMs"].get<int>(); }
+        catch (const std::exception&) {
+            error = "Song Set preview position is out of range."; return false;
+        }
+    }
+    if (loaded.previewStartMs < 0 ||
+        loaded.previewStartMs > kMaxSongPreviewStartMs) {
+        error = "Song Set preview position is out of range."; return false;
+    }
     manifest = std::move(loaded);
     error.clear();
     return true;
@@ -141,7 +154,9 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
 bool WriteNewSongSetManifest(const fs::path& path,
                              const SongSetManifest& manifest, std::string& error) {
     if (manifest.id.empty() || manifest.title.empty() ||
-        !SafeAudioFilename(manifest.audioFile)) {
+        (!SafeAudioFilename(manifest.audioFile) ||
+         manifest.previewStartMs < 0 ||
+         manifest.previewStartMs > kMaxSongPreviewStartMs)) {
         error = "Invalid new Song Set metadata.";
         return false;
     }
@@ -153,7 +168,8 @@ bool WriteNewSongSetManifest(const fs::path& path,
     const fs::path stage = path.wstring() + UniqueSuffix();
     const nlohmann::json data = {
         {"formatVersion", 1}, {"setId", manifest.id}, {"title", manifest.title},
-        {"artist", manifest.artist}, {"audioFile", manifest.audioFile}
+        {"artist", manifest.artist}, {"audioFile", manifest.audioFile},
+        {"previewStartMs", manifest.previewStartMs}
     };
     {
         std::ofstream out(stage, std::ios::binary | std::ios::trunc);
@@ -170,6 +186,54 @@ bool WriteNewSongSetManifest(const fs::path& path,
         fs::remove(stage, ec);
         return false;
     }
+    error.clear();
+    return true;
+}
+
+// Call while holding the Song Set folder writer lock.
+bool ReplaceSongSetManifest(const fs::path& path,
+                            const SongSetManifest& manifest, std::string& error) {
+    if (manifest.id.empty() || manifest.title.empty() ||
+        !SafeAudioFilename(manifest.audioFile) ||
+        manifest.previewStartMs < 0 ||
+        manifest.previewStartMs > kMaxSongPreviewStartMs) {
+        error = "Invalid Song Set metadata."; return false;
+    }
+    std::error_code ec;
+    if (!fs::is_regular_file(path, ec) || ec) {
+        error = "Song Set manifest is missing."; return false;
+    }
+    const fs::path stage = path.wstring() + UniqueSuffix();
+    const nlohmann::json data = {
+        {"formatVersion", 1}, {"setId", manifest.id},
+        {"title", manifest.title}, {"artist", manifest.artist},
+        {"audioFile", manifest.audioFile},
+        {"previewStartMs", manifest.previewStartMs}
+    };
+    {
+        std::ofstream out(stage, std::ios::binary | std::ios::trunc);
+        if (!out) { error = "Cannot stage Song Set metadata."; return false; }
+        out << data.dump(2) << '\n';
+        out.flush();
+        if (!out) {
+            fs::remove(stage, ec);
+            error = "Cannot write Song Set metadata."; return false;
+        }
+    }
+#ifdef _WIN32
+    if (!MoveFileExW(stage.c_str(), path.c_str(),
+                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        fs::remove(stage, ec);
+        error = "Cannot replace Song Set metadata."; return false;
+    }
+#else
+    fs::rename(stage, path, ec);
+    if (ec) {
+        fs::remove(stage, ec);
+        error = "Cannot replace Song Set metadata: " + ec.message();
+        return false;
+    }
+#endif
     error.clear();
     return true;
 }

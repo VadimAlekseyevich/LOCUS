@@ -203,6 +203,7 @@ bool SongLibrary::Refresh(std::string& message) {
             next.back().artist = managed ? metadata.artist : "";
             next.back().folder = path.parent_path();
             next.back().managed = managed;
+            next.back().previewStartMs = managed ? metadata.previewStartMs : 0;
         } else {
             index = found->second;
         }
@@ -226,6 +227,30 @@ bool SongLibrary::Refresh(std::string& message) {
     message = "LIBRARY: " + std::to_string(songs_.size()) + " SONGS / " +
               std::to_string(ChartCount()) + " CHARTS";
     if (skipped) message += " (" + std::to_string(skipped) + " SKIPPED)";
+    return true;
+}
+
+bool SongLibrary::SetPreviewStartMs(int songIndex, int timeMs,
+                                    std::string& error) {
+    if (songIndex < 0 || songIndex >= static_cast<int>(songs_.size()) ||
+        !songs_[static_cast<std::size_t>(songIndex)].managed ||
+        timeMs < 0 || timeMs > kMaxSongPreviewStartMs) {
+        error = "Select a managed Song Set and a valid preview position.";
+        return false;
+    }
+    auto& song = songs_[static_cast<std::size_t>(songIndex)];
+    if (timeMs == song.previewStartMs) { error.clear(); return true; }
+    FolderWriteLock lock;
+    if (!lock.Acquire(song.folder, error)) return false;
+    SongSetManifest manifest;
+    const fs::path path = song.folder / L"set.locus.json";
+    if (!LoadSongSetManifest(path, manifest, error)) return false;
+    if (manifest.id != song.id) {
+        error = "Song Set changed on disk; refresh the library."; return false;
+    }
+    manifest.previewStartMs = timeMs;
+    if (!ReplaceSongSetManifest(path, manifest, error)) return false;
+    song.previewStartMs = timeMs;
     return true;
 }
 

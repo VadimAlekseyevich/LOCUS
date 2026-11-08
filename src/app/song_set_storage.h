@@ -11,7 +11,9 @@ struct SongSetManifest {
     std::string title;
     std::string artist;
     std::string audioFile;
+    int previewStartMs = 0; // Song menu playback only; not chart timing.
 };
+inline constexpr int kMaxSongPreviewStartMs = 3600000;
 
 // An OS-owned, nonblocking per-directory file lock. A crash releases it
 // automatically; the harmless .locus-lock placeholder may remain on disk.
@@ -32,6 +34,8 @@ private:
 
 bool LoadSongSetManifest(const std::filesystem::path& path,
                          SongSetManifest& manifest, std::string& error);
+bool ReplaceSongSetManifest(const std::filesystem::path& path,
+                            const SongSetManifest& manifest, std::string& error);
 bool WriteNewSongSetManifest(const std::filesystem::path& path,
                              const SongSetManifest& manifest, std::string& error);
 // Reusing the same bytes succeeds; changing shared audio requires an explicit
