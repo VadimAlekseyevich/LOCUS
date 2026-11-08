@@ -31,7 +31,8 @@ struct GameplayView {
     bool showHitFlash = true;
     const locus::app::GameSettings& bindings;
     const locus::app::Skin& skin;
-    double speedNoticeUntil = -1.0;
+    double adjustmentNoticeUntil = -1.0;
+    const char* adjustmentNotice = "";
 };
 
 // The visible playfield is exactly one screen-height square, centred in

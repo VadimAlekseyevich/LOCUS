@@ -71,7 +71,7 @@ Accuracy (%) = (100 × Perfect + 75 × Good + 50 × Bad)
 - **Center:** only the square, route, marker, configurable border and optional hit effects.
 - **Right of square:** live **Accuracy**, **Perfect**, **Good**, **Bad**, **Miss**. On narrower windows values fit the actually visible right region.
 - **Left of square:** intentionally **empty**. No cut-off LOCUS logo, latest-hit readout, song title, field-size log, labels or debug text.
-- PLAY hotkeys **[ / ]** or numpad **- / +** adjust base speed by **10 logical px/s**, save it to the global skin, and do not override rebound gameplay keys. Speed is shown beneath the right-side grades, or briefly within the square when no sidebar is visible.
+- PLAY hotkeys **[ / ]** or numpad **- / +** adjust base speed by **10 logical px/s**; **, / .** decrease/increase PREVIEW TIME by **50 ms**. Both repeat while held (230 ms initial delay, faster after 1.2 s), never override rebound gameplay keys, and persist to the global skin after a short idle period (or on exit). Both values are shown beneath the right-side grades, or briefly within the square when no sidebar fits.
 - A pause overlay offers pause/retry/home information without editing the chart. The built-in demo and local charts use the same gameplay and results presentation.
 
 ### 4.2 Results

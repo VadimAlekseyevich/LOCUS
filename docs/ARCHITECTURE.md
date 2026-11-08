@@ -14,7 +14,7 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 | `src/app/editor_session.*`, `editor_document.*`, `editor_file_actions.*` | Editor preview/TEST, transactional file handling, and injected native dialogs. |
 | `src/app/listen_session.*`, `skin_profile_actions.*`, `library_playback.*`, `library_browser.*` | Cohesive user-facing session workflows with testable boundaries. |
 | `src/app/app_runtime_policy.*` | Pure screen navigation and judgement-completion policy, independent of rendering and file dialogs. |
-| `src/app/play_screen_actions.*` | Play-only pause/retry/practice input, scoring completion and read-only playback snapshots; does not own audio or chart storage. |
+| `src/app/play_screen_actions.*`, `play_adjustments.h` | Play-only pause/retry/practice input, scoring completion, playback snapshots, and pure speed/preview hotkey repeat/step rules. Held adjustments use the editor's deterministic delay and acceleration; frequent global-skin writes are coalesced. |
 | `src/app/editor_screen_actions.*` | Editor-only New/Open/Attach/Save/TEST command routing and SET tab events, with deterministic precedence and no screen navigation ownership. |
 | `src/app/app_smoke_checks.*` | Headless integration checks behind the existing `--loop-check`, `--screen-check`, and `--session-check` entry points. |
 | `src/app/app_frame_renderer.*`, `app_quit_dialog_layout.h` | Rendering and OS font selection. The quit confirmation shares one set of hitboxes between renderer and input. |

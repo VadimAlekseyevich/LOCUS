@@ -9,6 +9,7 @@
 #include "app/app_input.h"
 #include "app/app_runtime_policy.h"
 #include "app/play_screen_actions.h"
+#include "app/play_adjustments.h"
 #include "app/app_smoke_checks.h"
 #include "app/app_frame_renderer.h"
 #include "app/menu_controller.h"
@@ -156,9 +157,21 @@ int main(int argc, char** argv) {
     }
     draftSkin = activeSkin;
     skinUi.saved = activeSkin;
-    double speedNoticeUntil = -1.0;
+    double adjustmentNoticeUntil = -1.0;
+    std::string adjustmentNotice;
     locus::app::SongLibrary library(userData / L"Songs");
     std::string menuStatus;
+    bool hotkeySkinSavePending = false;
+    double hotkeySkinSaveAfter = 0.0;
+    const auto persistHotkeySkin = [&]() {
+        if (!hotkeySkinSavePending) return;
+        std::string error;
+        if (!locus::app::SaveSkin(activeSkinFile, activeSkin, error)) {
+            std::cerr << "SKIN_HOTKEY_SAVE_FAILED " << error << '\n';
+            menuStatus = "SKIN SETTINGS NOT SAVED: " + error;
+        }
+        hotkeySkinSavePending = false;
+    };
     if (!library.Refresh(menuStatus))
         std::cerr << "LIBRARY_SCAN_FAIL " << menuStatus << '\n';
     locus::app::SongSelectUi libraryUi;
@@ -250,6 +263,7 @@ int main(int argc, char** argv) {
     };
     skinProfiles.RefreshProfiles();
     locus::app::QuitMediaCoordinator quitMedia;
+    locus::app::PlayAdjustmentRepeater adjustmentRepeater;
     locus::app::ListenSession listener{
         localSong, loadedAudioPath, musicError,
         locus::app::ChooseLocalMusicFile, MonotonicSeconds
@@ -259,6 +273,10 @@ int main(int argc, char** argv) {
         const bool wasQuitConfirmation = state.quitConfirmation;
         FrameInput input = locus::app::PollFrameInput(
             debugScreens, state, settings, MonotonicSeconds());
+        const auto [repeatSpeed, repeatPreview] = adjustmentRepeater.Advance(
+            input.baseSpeedHeld, input.previewTimeHeld, GetFrameTime());
+        input.baseSpeedDelta += repeatSpeed;
+        input.previewTimeDelta += repeatPreview;
         const bool importFromHome =
             !wasQuitConfirmation && !input.closeRequested &&
             state.screen == Screen::Home && input.chooseChartPressed;
@@ -377,20 +395,26 @@ int main(int argc, char** argv) {
             locus::app::ApplySessionTransition(
                 transitions, previousScreen, state.screen, loadedNewChart, now);
         } else if (state.screen == Screen::Play) {
-            if (input.baseSpeedDelta != 0) {
-                const float next = locus::app::AdjustBaseSpeed(
-                    activeSkin.baseSpeedPxPerSecond, input.baseSpeedDelta);
-                if (next != activeSkin.baseSpeedPxPerSecond) {
-                    activeSkin.baseSpeedPxPerSecond = next;
-                    std::string error;
-                    if (!locus::app::SaveSkin(activeSkinFile, activeSkin, error)) {
-                        std::cerr << "SKIN_SPEED_SAVE_FAILED " << error << '\n';
-                        menuStatus = "SPEED NOT SAVED: " + error;
-                    }
-                    draftSkin = activeSkin;
-                    skinUi.saved = activeSkin;
-                    speedNoticeUntil = now + 1.5;
-                }
+            const float nextSpeed = locus::app::AdjustBaseSpeed(
+                activeSkin.baseSpeedPxPerSecond, input.baseSpeedDelta);
+            const float nextPreview = locus::app::AdjustPreviewTimeMs(
+                activeSkin.lookaheadMs, input.previewTimeDelta);
+            const bool speedChanged = nextSpeed != activeSkin.baseSpeedPxPerSecond;
+            const bool previewChanged = nextPreview != activeSkin.lookaheadMs;
+            if (speedChanged || previewChanged) {
+                activeSkin.baseSpeedPxPerSecond = nextSpeed;
+                activeSkin.lookaheadMs = nextPreview;
+                draftSkin = activeSkin;
+                skinUi.saved = activeSkin;
+                adjustmentNotice = previewChanged
+                    ? "PREVIEW " + std::to_string(
+                          static_cast<int>(nextPreview)) + " MS"
+                    : "SPEED " + std::to_string(
+                          static_cast<int>(nextSpeed)) + " PX/S";
+                adjustmentNoticeUntil = now + 1.5;
+                // Repeat reaches 25 adjustments/s: persist only after idle.
+                hotkeySkinSavePending = true;
+                hotkeySkinSaveAfter = now + 0.25;
             }
             playActions.HandleControls(input, now);
         }
@@ -401,6 +425,9 @@ int main(int argc, char** argv) {
             editorSession.UpdatePreview(now);
         if (state.screen == Screen::Play)
             playActions.Update(input, now);
+        if (hotkeySkinSavePending &&
+            (now >= hotkeySkinSaveAfter || state.screen != Screen::Play))
+            persistHotkeySkin();
         const double renderNow = MonotonicSeconds();
         const auto transportView = playActions.Transport(renderNow);
         const GameplayView gameplay{activeChart, judge, gameSession.Flash(),
@@ -410,7 +437,8 @@ int main(int argc, char** argv) {
                                     transportView.practiceSpeed,
                                     transportView.status,
                                     settings.hitFlash, settings, activeSkin,
-                                    speedNoticeUntil};
+                                    adjustmentNoticeUntil,
+                                    adjustmentNotice.c_str()};
         RenderFrame(state, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
                     editorStatus, editorDiscard.Pending(),
@@ -420,6 +448,7 @@ int main(int argc, char** argv) {
                     draftSkin, skinUi, menuStatus);
     }
 
+    persistHotkeySkin(); // Flush pending adjustments on exit.
     // Both borrowed streams must unload BEFORE closing the shared device.
     chartPlayback.Stop();
     localSong.Shutdown();

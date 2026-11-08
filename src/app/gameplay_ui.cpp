@@ -62,14 +62,13 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     // 960px canvas is cropped at both edges: the old LOCUS / LAST HIT /
     // SONG / SQUARE labels were literally cut in half on the player's
     // screen. Those labels are no longer part of scored gameplay.
-    // Display speed below the stats, or briefly in the square when no HUD
-    // can be displayed (including portrait windows).
+    // Display speed and preview below the stats, or a brief notice inside
+    // the square when no HUD is available (including portrait windows).
     const float sideWidth = GameplayRightSidebarWidth(
         GetScreenWidth(), GetScreenHeight());
     if (!gameplay.skin.showHud || sideWidth <= 0.0f) {
-        if (now < gameplay.speedNoticeUntil) {
-            const char* value = TextFormat("SPEED %.0f PX/S",
-                                          gameplay.skin.baseSpeedPxPerSecond);
+        if (now < gameplay.adjustmentNoticeUntil) {
+            const char* value = gameplay.adjustmentNotice;
             const float size = 17.0f;
             const Vector2 measured = MeasureTextEx(font, value, size, 1.0f);
             const Rectangle panel{
@@ -130,6 +129,8 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
         hudText(TextFormat("%d", stats[i].count), y + 26.0f,
                 28.0f, gameplay.skin.hudText);
     }
+    hudText(TextFormat("PREVIEW %.0f MS", gameplay.skin.lookaheadMs),
+            480.0f, 14.0f, gameplay.skin.hudText);
     hudText(TextFormat("SPEED %.0f PX/S", gameplay.skin.baseSpeedPxPerSecond),
             502.0f, 15.0f, gameplay.skin.hudText);
 }
