@@ -178,9 +178,12 @@ int main() {
     check(!SetSkinNumber(edited, 0, 0, 1, 10001.0, false, error) &&
           edited.lookaheadMs == before,
           "unsafe typed value rejected without mutation");
-    check(SetSkinNumber(edited, 0, 0, 1, 99.0, true, error) &&
+    check(SetSkinNumber(edited, 0, 0, 1, 100.0, true, error) &&
+          edited.lookaheadMs == 200.0f,
+          "preview slider clamps low values to 200 ms");
+    check(SetSkinNumber(edited, 0, 0, 1, 10001.0, true, error) &&
           edited.lookaheadMs == 2000.0f,
-          "slider clamps to its friendly range");
+          "preview slider clamps high values to 2000 ms");
     check(SetSkinNumber(edited, 0, 4, 1, 0.0, false, error) &&
           edited.pathOpacity == 0.0f && edited.Valid(error),
           "zero opacity is valid through text field and JSON model");
