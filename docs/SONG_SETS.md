@@ -10,7 +10,7 @@ and any number of independently editable difficulty JSON files.
       Songs/
         song-<technical-id>/
           .locus-lock                   OS writer-lock placeholder
-          set.locus.json                setId/title/artist/audioFile
+          set.locus.json                setId/title/artist/audioFile/previewStartMs
           song.mp3                      SHARED, never silently replaced
           Easy.locus.json               individual note timestamps/BPM/offset
           Hard.locus.json
@@ -20,6 +20,14 @@ and any number of independently editable difficulty JSON files.
         item-<timestamp>-.../
           origin.json                   original relative path
           payload                       deleted chart or whole Song Set
+
+Each managed Song Set also stores a **previewStartMs** (default 0), shared
+across its difficulties but independent of the chart's offset and BPM. In
+PLAY -> Song Library, PREVIEW FROM -/+ adjusts it by one second; Shift+click
+or Shift+PageUp/PageDown adjusts by 100 ms, while plain PageUp/PageDown uses
+one second. This changes only which part of the song is heard when browsing.
+A separate menu audio decoder fades the old song out before the newly
+selected song fades in. Legacy entries preview from zero.
 
 The files on disk are authoritative. The library index is rebuilt at startup
 or on explicit rescan. A Song Set's technical ID stays independent of its

@@ -59,7 +59,7 @@ Accuracy (%) = (100 × Perfect + 75 × Good + 50 × Bad)
 
 - Miss is worth zero and **counts in the denominator**. One of each grade = **56.25%**.
 - Before the first graded note, the UI shows **100.00%**; the ongoing and final value use the same formula with two decimals.
-- A scored chart completes **when its last scorable note receives its grade**, even if the song has unused audio afterwards. Music stops and Results opens at that moment.
+- A scored chart triggers a short visual outro **when its last scorable note receives its grade**, even if the song has unused audio afterwards. The camera freezes, the avatar eases offscreen along the last direction, the view fades to black and Results fades in. Audio continues through Results to its natural end (no looping).
 - A last unpressed note becomes Miss **only after its late ±180-ms window**. A short silent scoring tail is allowed if audio ends before this window expires.
 - An empty chart, or an editor TEST starting after all events, falls back to ending at audio end.
 - Editor TEST excludes earlier skipped notes from grades and accuracy.
@@ -82,7 +82,7 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 
 - Home provides **PLAY, EDIT, SKIN, SETTINGS, EXIT**.
 - PLAY opens the local song library with separate songs and difficulties, including the generated demo.
-- **Esc goes Back** from Editor, PLAY, Results and other screens. Editor also has a visible BACK button; unsaved chart changes require Y to discard or N/Esc to cancel.
+- **Esc goes Back** from Editor, PLAY, Results and other screens. PLAY/Results return to Song Select with the selected song preview. Editor also has a visible BACK button; unsaved chart changes require Y to discard or N/Esc to cancel.
 - **Esc on Home**, EXIT, window X and Alt+F4 open one confirmation. **Y quits; N/Esc stays**. An unsaved chart or skin triggers a warning. Active playback pauses while the confirmation is shown.
 
 ## 5. Music, charting and practice

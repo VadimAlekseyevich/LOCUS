@@ -40,7 +40,10 @@ void UpdateScreenFlow(AppState& state, const NavigationInput& input,
         state.screen = *input.requestedScreen;
     } else if ((input.homePressed || input.backPressed) &&
                state.screen != Screen::Home) {
-        state.screen = Screen::Home;
+        // Return to the selected Song Set's menu listening position.
+        state.screen = (state.screen == Screen::Play ||
+                        state.screen == Screen::Results)
+            ? Screen::SongSelect : Screen::Home;
     } else if (state.screen == Screen::Home) {
         if (input.openEditorPressed) state.screen = Screen::Editor;
         else if (input.openSkinPressed) state.screen = Screen::Skin;

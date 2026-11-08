@@ -48,8 +48,10 @@ bool MenuMusicPreview::Select(const LibrarySong* selected,
     switching_ = true;
     error.clear();
     error_.clear();
-    if (active_ == Source::None) ActivatePending(now);
-    else envelope_.FadeOut(now);
+    if (active_ == Source::None) {
+        ActivatePending(now);
+        envelope_.FadeIn(now, kAudioFadeOutSeconds);
+    } else envelope_.FadeOut(now);
     return true;
 }
 

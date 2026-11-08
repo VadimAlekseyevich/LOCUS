@@ -23,7 +23,10 @@ void ApplySessionTransition(const SessionTransitionContext& context,
     }
     // The Results screen owns the unmapped song outro. Only explicit
     // navigation AWAY from Play stops the underlying audio immediately.
-    if (previous == Screen::Play && next != Screen::Results)
+    // For menu navigation the stream keeps playing through the short
+    // output fade-out. Editor and Listen reuse the decoder and stop now.
+    if (previous == Screen::Play &&
+        (next == Screen::Editor || next == Screen::Listen))
         context.gameSession.Stop(context.customChart);
     if (previous == Screen::Listen)
         context.song.Stop();
