@@ -1,5 +1,6 @@
 #include "app/song_archive.h"
 #include "app/song_set_storage.h"
+#include "app/image_asset_file.h"
 
 #include <algorithm>
 #include <array>
@@ -134,12 +135,18 @@ bool ExportSongSetArchive(const fs::path& setFolder,
     SongSetManifest metadata;
     if (!LoadSongSetManifest(folder / L"set.locus.json", metadata, error))
         return false;
-    if (chartFiles.empty() || chartFiles.size() + 2 > kMaxEntries) {
+    const std::size_t artEntries = metadata.backgroundFile.empty() ? 0u : 1u;
+    if (chartFiles.empty() || chartFiles.size() + 2 + artEntries > kMaxEntries) {
         error = "Song Set has no difficulties or too many files.";
         return false;
     }
     std::vector<fs::path> files{folder / L"set.locus.json",
                                 folder / fs::u8path(metadata.audioFile)};
+    if (!metadata.backgroundFile.empty()) {
+        const fs::path art = folder / fs::u8path(metadata.backgroundFile);
+        if (!ValidateImageAssetFile(art, error)) return false;
+        files.push_back(art);
+    }
     files.insert(files.end(), chartFiles.begin(), chartFiles.end());
     std::vector<ZipEntry> entries;
     std::set<std::string> names;

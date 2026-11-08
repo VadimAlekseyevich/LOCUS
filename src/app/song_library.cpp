@@ -381,6 +381,10 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
     if (!LoadSongSetManifest(stage / L"set.locus.json", metadata, error))
         return fail();
     const fs::path audio = stage / fs::u8path(metadata.audioFile);
+    if (!metadata.backgroundFile.empty()) {
+        const fs::path art = stage / fs::u8path(metadata.backgroundFile);
+        if (!ValidateImageAssetFile(art, error)) return fail();
+    }
     if (!fs::is_regular_file(audio, ec) || ec) {
         error = "Package is missing the shared audio file.";
         return fail();
@@ -395,6 +399,8 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
         }
         if (path.filename() == L"set.locus.json" ||
             fs::equivalent(path, audio, ec)) continue;
+        if (!metadata.backgroundFile.empty() &&
+            path.filename() == fs::u8path(metadata.backgroundFile)) continue;
         if (path.extension() != L".json") {
             error = "Package contains unsupported files.";
             return fail();
