@@ -25,6 +25,7 @@
 #include "app/game_session.h"
 #include "app/gameplay_ui.h"
 #include "app/song_library.h"
+#include "app/song_set_storage.h"
 #include "app/library_file_actions.h"
 #include "app/library_launch_actions.h"
 #include "app/game_settings.h"
