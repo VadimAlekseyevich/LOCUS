@@ -4,14 +4,16 @@
 
 Permanent songs live in **%LOCALAPPDATA%\LOCUS\Songs**. Each managed Song Set
 has one directory containing a shared WAV/MP3, a **set.locus.json** manifest
-and any number of independently editable difficulty JSON files.
+and any number of independently editable difficulty JSON files. Each set may
+also store one optional **shared background image** (PNG/JPEG).
 
     %LOCALAPPDATA%/LOCUS/
       Songs/
         song-<technical-id>/
           .locus-lock                   OS writer-lock placeholder
-          set.locus.json                setId/title/artist/audioFile/previewStartMs
+          set.locus.json                setId/title/artist/audioFile/previewStartMs/backgroundFile
           song.mp3                      SHARED, never silently replaced
+          background-<id>.png           optional, shared by all difficulties
           Easy.locus.json               individual note timestamps/BPM/offset
           Hard.locus.json
           .locus-history/
@@ -29,6 +31,21 @@ one second. This changes only which part of the song is heard when browsing.
 A separate menu audio decoder fades the old song out before the newly
 selected song fades in. Legacy entries preview from zero.
 
+In Song Library, select a **managed Song Set** and choose **BG IMAGE / B** to
+attach a PNG or JPEG. Use **REMOVE / Shift+B** to clear it. The file is copied
+into the Song Set, the original is untouched, and all difficulties share the
+same background. It appears in Song Select, PLAY and Results, with its aspect
+ratio preserved: the image fills the physical window and any excess is
+center-cropped at the edges, never stretched. A dark overlay keeps routes and
+labels legible; artwork never changes BPM, note timestamps or scores.
+
+The optional `backgroundFile` manifest key stores a safe flat filename.
+Missing keys remain valid for old Song Sets. Portable `.locuspack` archives
+include referenced backgrounds and validate their type, extension, size
+(maximum 24 MiB) and path before publishing. Bad/missing artwork must not
+make an otherwise valid chart disappear. Unmanaged legacy folders remain
+read-only until a new managed Song Set is installed.
+
 The files on disk are authoritative. The library index is rebuilt at startup
 or on explicit rescan. A Song Set's technical ID stays independent of its
 visible title.
@@ -44,7 +61,7 @@ visible title.
 4. **Copy difficulty:** select it and press Ctrl+D.
 5. **Share a complete set:** select the song and press X to export a
    `.locuspack` archive. This is a standard store-only ZIP, with metadata,
-   shared audio and all chart JSONs. C imports `.locuspack` packages as whole
+   shared audio, optional background art and all chart JSONs. C imports `.locuspack` packages as whole
    Song Sets. LOCUS refuses to overwrite an already-installed set with the
    same setId.
 6. **Import charts:** C creates/finds a managed Song Set; Shift+C explicitly

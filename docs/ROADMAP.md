@@ -22,13 +22,16 @@ See [GDD](GDD.md), [architecture audit](ARCHITECTURE.md) and
 - [x] **2b. Portable Song Set packages.** Export and import a complete
   managed Song Set as .locuspack (ZIP store-only), with CRC, size bounds and
   path traversal checks.
+- [x] **2b. Song Set artwork.** Optional shared PNG/JPEG backgrounds per
+  managed song, aspect-preserving cover crop, safe ZIP transport and a reusable
+  image-resource layer for later skins and UI sprites.
 - [ ] **2c. Power-loss and filesystem validation.** Test denied writes, full
   disks, interrupted imports and recovery on physical Windows; add conservative
   cleanup only when safe.
 - [ ] **3. Full scenario regression tests.** Chart create/edit/undo/save/
   reopen/TEST/PLAY/Results, BPM/snap timing invariance, repeated navigation,
   canceled dialogs, and safe shutdown.
-- [ ] **4. Real-device audio and input QA.** Measure synchronization,
+- [ ] **4. Real-device audio, input and visual QA.** Measure synchronization,
   end-of-song late-hit windows, pause/resume/seek, practice rates and
   initialization/device loss on actual Windows hardware.
 - [ ] **5. Profiling.** Benchmark dense 65k-turn charts, editor timeline

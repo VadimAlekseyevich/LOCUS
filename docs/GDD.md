@@ -70,7 +70,7 @@ Accuracy (%) = (100 × Perfect + 75 × Good + 50 × Bad)
 
 ### 4.1 During Play
 
-- **Center:** only the square, route, marker, configurable border and optional hit effects.
+- **Center:** the square, route, marker, configurable border and optional hit effects. A song-wide PNG/JPEG background may fill the physical window behind the game, preserving its aspect ratio and center-cropping excess rather than distorting pixels. Backgrounds also appear dimmed behind Song Select and Results.
 - **Right of square:** live **Accuracy**, **Perfect**, **Good**, **Bad**, **Miss**. On narrower windows values fit the actually visible right region.
 - **Left of square:** intentionally **empty**. No cut-off LOCUS logo, latest-hit readout, song title, field-size log, labels or debug text.
 - PLAY hotkeys **[ / ]** or numpad **- / +** adjust base speed by **10 logical px/s**; **, / .** decrease/increase PREVIEW TIME by **50 ms**. Both repeat while held (230 ms initial delay, faster after 1.2 s), never override rebound gameplay keys, and persist to the global skin after a short idle period (or on exit). Both values are shown beneath the right-side grades, or briefly within the square when no sidebar fits.
@@ -78,12 +78,12 @@ Accuracy (%) = (100 × Perfect + 75 × Good + 50 × Bad)
 
 ### 4.2 Results
 
-Show the same four judgement counts plus **final Accuracy** and resolved-note count. Retry and Home remain available. Results is not delayed to the end of a long audio outro.
+Show the same four judgement counts plus **final Accuracy** and resolved-note count. Retry, Home and **E to edit the played chart** remain available. Results is not delayed to the end of a long audio outro.
 
 ### 4.3 Menus and safe exit
 
-- Home provides **PLAY, EDIT, SKIN, SETTINGS, EXIT**.
-- PLAY opens the local song library with separate songs and difficulties, including the generated demo.
+- Home provides **PLAY, EDIT, SKIN, SETTINGS, EXIT**. **Home → EDIT** always creates a clean draft, not the last-played song. Song Library EDIT opens its selected chart; **Results → E** opens the actual played chart; returning from Editor TEST keeps the unsaved editor document.
+- PLAY opens the local song library with separate songs and difficulties, including the generated demo. **B / BG IMAGE** attaches a PNG/JPEG background to a managed Song Set; **Shift+B / REMOVE** clears it. A background is shared by all difficulties of its song.
 - **Esc goes Back** from Editor, PLAY, Results and other screens. PLAY/Results return to Song Select with the selected song preview. Editor also has a visible BACK button; unsaved chart changes require Y to discard or N/Esc to cancel.
 - **Esc on Home**, EXIT, window X and Alt+F4 open one confirmation. **Y quits; N/Esc stays**. An unsaved chart or skin triggers a warning. Active playback pauses while the confirmation is shown.
 
