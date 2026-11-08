@@ -23,7 +23,10 @@ struct SongSelectUi {
     const LibraryChart* Selected(const SongLibrary& songs) const;
 };
 
+enum class SettingsPage { Game, Display };
+
 struct SettingsUi {
+    SettingsPage page = SettingsPage::Game;
     int capturing = -1; // GameAction to remap; -1 = normal menu.
     std::string notice;
     bool noticeError = false;
@@ -39,6 +42,12 @@ Rectangle LibraryRefreshButton();
 Rectangle LibraryPlayButton();
 Rectangle LibraryEditButton();
 Rectangle SettingsBindingButton(int action);
+Rectangle SettingsGameTab();
+Rectangle SettingsDisplayTab();
+Rectangle SettingsVsyncButton();
+Rectangle SettingsFpsMinus();
+Rectangle SettingsFpsPlus();
+Rectangle SettingsShowFpsButton();
 Rectangle SettingsVolumeMinus();
 Rectangle SettingsVolumePlus();
 Rectangle SettingsFlashButton();

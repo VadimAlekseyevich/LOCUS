@@ -59,12 +59,18 @@ Rectangle LibraryEditButton() { return {706, 458, 199, 43}; }
 Rectangle SettingsBindingButton(int index) {
     return {736.0f, 192.0f + 39.0f * index, 167.0f, 33.0f};
 }
-Rectangle SettingsVolumeMinus() { return {300, 193, 43, 35}; }
-Rectangle SettingsVolumePlus() { return {354, 193, 43, 35}; }
-Rectangle SettingsFlashButton() { return {297, 255, 100, 37}; }
-Rectangle SettingsChordMinus() { return {300, 345, 43, 35}; }
-Rectangle SettingsChordPlus() { return {354, 345, 43, 35}; }
-Rectangle SettingsFullscreenButton() { return {297, 409, 100, 37}; }
+Rectangle SettingsGameTab() { return {71, 158, 170, 31}; }
+Rectangle SettingsDisplayTab() { return {251, 158, 190, 31}; }
+Rectangle SettingsVolumeMinus() { return {300, 230, 43, 35}; }
+Rectangle SettingsVolumePlus() { return {354, 230, 43, 35}; }
+Rectangle SettingsFlashButton() { return {297, 303, 100, 35}; }
+Rectangle SettingsChordMinus() { return {300, 386, 43, 35}; }
+Rectangle SettingsChordPlus() { return {354, 386, 43, 35}; }
+Rectangle SettingsVsyncButton() { return {297, 211, 100, 36}; }
+Rectangle SettingsFpsMinus() { return {301, 286, 43, 35}; }
+Rectangle SettingsFpsPlus() { return {354, 286, 43, 35}; }
+Rectangle SettingsShowFpsButton() { return {297, 355, 100, 36}; }
+Rectangle SettingsFullscreenButton() { return {297, 421, 100, 36}; }
 Rectangle MenuBackButton() { return {794, 78, 110, 37}; }
 
 void SongSelectUi::SelectSong(int index, const SongLibrary& songs) {
@@ -187,27 +193,52 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
     DrawRectangleRounded(rightPanel, 0.055f, 6, panel);
     DrawRectangleRoundedLinesEx(rightPanel, 0.055f, 6, 1.0f, edge);
 
-    Label(font, "AUDIO  /  MASTER VOLUME", 73, 166, 17, kMuted);
-    Label(font, TextFormat("%d%%", static_cast<int>(std::lround(settings.volume * 100))),
-          84, 198, 25, kText);
-    Button(font, SettingsVolumeMinus(), "-", kMint);
-    Button(font, SettingsVolumePlus(), "+", kMint);
-    DrawLine(72, 240, 441, 240, edge);
+    Button(font, SettingsGameTab(), "GAME", kMint,
+           ui.page == SettingsPage::Game);
+    Button(font, SettingsDisplayTab(), "DISPLAY", kViolet,
+           ui.page == SettingsPage::Display);
 
-    Label(font, "VISUAL  /  HIT FLASH", 73, 260, 17, kMuted);
-    Button(font, SettingsFlashButton(), settings.hitFlash ? "ON" : "OFF", kGold,
-           settings.hitFlash);
-    DrawLine(72, 305, 441, 305, edge);
+    if (ui.page == SettingsPage::Game) {
+        Label(font, "AUDIO  /  MASTER VOLUME", 73, 202, 16, kMuted);
+        Label(font, TextFormat("%d%%",
+              static_cast<int>(std::lround(settings.volume * 100))),
+              85, 236, 23, kText);
+        Button(font, SettingsVolumeMinus(), "-", kMint);
+        Button(font, SettingsVolumePlus(), "+", kMint);
+        DrawLine(72, 276, 441, 276, edge);
 
-    Label(font, "DIAGONAL CHORD WINDOW", 73, 324, 17, kMuted);
-    Label(font, TextFormat("%d MS", settings.chordWindowMs), 84, 355, 21, kText);
-    Button(font, SettingsChordMinus(), "-", kViolet);
-    Button(font, SettingsChordPlus(), "+", kViolet);
-    DrawLine(72, 396, 441, 396, edge);
+        Label(font, "VISUAL  /  HIT FLASH", 73, 296, 16, kMuted);
+        Button(font, SettingsFlashButton(), settings.hitFlash ? "ON" : "OFF",
+               kGold, settings.hitFlash);
+        DrawLine(72, 347, 441, 347, edge);
 
-    Label(font, "WINDOW  /  FULLSCREEN", 73, 417, 17, kMuted);
-    Button(font, SettingsFullscreenButton(),
-           settings.fullscreen ? "ON" : "OFF", kMuted, settings.fullscreen);
+        Label(font, "DIAGONAL CHORD WINDOW", 73, 367, 16, kMuted);
+        Label(font, TextFormat("%d MS", settings.chordWindowMs),
+              84, 393, 21, kText);
+        Button(font, SettingsChordMinus(), "-", kViolet);
+        Button(font, SettingsChordPlus(), "+", kViolet);
+        Label(font, "AFFECTS TWO-KEY DIRECTION INPUT", 73, 451, 12, kMuted);
+    } else {
+        Label(font, "VERTICAL SYNC", 73, 214, 16, kMuted);
+        Button(font, SettingsVsyncButton(), settings.vsync ? "ON" : "OFF",
+               kMint, settings.vsync);
+        DrawLine(72, 264, 441, 264, edge);
+
+        Label(font, "FRAME RATE LIMIT", 73, 282, 16, kMuted);
+        Label(font, settings.FpsLimitLabel(), 85, 302, 19, kText);
+        Button(font, SettingsFpsMinus(), "-", kViolet);
+        Button(font, SettingsFpsPlus(), "+", kViolet);
+        DrawLine(72, 339, 441, 339, edge);
+
+        Label(font, "SHOW FPS COUNTER", 73, 363, 16, kMuted);
+        Button(font, SettingsShowFpsButton(),
+               settings.showFps ? "ON" : "OFF", kGold, settings.showFps);
+        DrawLine(72, 405, 441, 405, edge);
+
+        Label(font, "FULLSCREEN (F11)", 73, 428, 16, kMuted);
+        Button(font, SettingsFullscreenButton(),
+               settings.fullscreen ? "ON" : "OFF", kMuted, settings.fullscreen);
+    }
 
     Label(font, "GAME + EDITOR KEY BINDINGS", 508, 161, 18, kMint);
     Label(font, "DIRECTIONS ALSO PLACE NOTES IN ROUTE", 508, 181, 12, kMuted);
@@ -223,7 +254,7 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
     // Footer notices are outside the two settings panels, not over controls.
     Label(font, Clip(ui.notice, 49), 64, 495, 13,
           ui.noticeError ? Color{243, 142, 145, 255} : kGold);
-    Label(font, "CLICK A BINDING, PRESS A KEY  /  ESC CANCEL",
+    Label(font, "DISPLAY CHANGES APPLY IMMEDIATELY  /  ESC BACK",
           492, 495, 12, kMuted);
 }
 

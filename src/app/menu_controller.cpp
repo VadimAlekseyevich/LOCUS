@@ -147,26 +147,56 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             settingsUi.noticeError = false;
             return events;
         }
-        const auto changeVolume = [&](int delta) {
-            const int current = static_cast<int>(std::lround(settings.volume * 10.0f));
-            settings.volume = std::clamp(current + delta, 0, 10) / 10.0f;
-            events.saveSettings = true;
-        };
-        if (hit(locus::app::SettingsVolumeMinus())) changeVolume(-1);
-        else if (hit(locus::app::SettingsVolumePlus())) changeVolume(1);
-        else if (hit(locus::app::SettingsFlashButton())) {
-            settings.hitFlash = !settings.hitFlash;
-            events.saveSettings = true;
-        } else if (hit(locus::app::SettingsChordMinus())) {
-            settings.chordWindowMs = std::max(40, settings.chordWindowMs - 10);
-            events.saveSettings = true;
-        } else if (hit(locus::app::SettingsChordPlus())) {
-            settings.chordWindowMs = std::min(160, settings.chordWindowMs + 10);
-            events.saveSettings = true;
-        } else if (hit(locus::app::SettingsFullscreenButton())) {
-            settings.fullscreen = !settings.fullscreen;
-            events.toggleFullscreen = true;
-            events.saveSettings = true;
+        // Pages use the same hitboxes as the draw code and share persistent
+        // bindings on the right. A page switch does not edit settings.
+        if (hit(SettingsGameTab())) {
+            settingsUi.page = SettingsPage::Game;
+            return events;
+        }
+        if (hit(SettingsDisplayTab())) {
+            settingsUi.page = SettingsPage::Display;
+            return events;
+        }
+
+        if (settingsUi.page == SettingsPage::Game) {
+            const auto changeVolume = [&](int delta) {
+                const int current = static_cast<int>(
+                    std::lround(settings.volume * 10.0f));
+                settings.volume = std::clamp(current + delta, 0, 10) / 10.0f;
+                events.saveSettings = true;
+            };
+            if (hit(SettingsVolumeMinus())) changeVolume(-1);
+            else if (hit(SettingsVolumePlus())) changeVolume(1);
+            else if (hit(SettingsFlashButton())) {
+                settings.hitFlash = !settings.hitFlash;
+                events.saveSettings = true;
+            } else if (hit(SettingsChordMinus())) {
+                settings.chordWindowMs = std::max(40, settings.chordWindowMs - 10);
+                events.saveSettings = true;
+            } else if (hit(SettingsChordPlus())) {
+                settings.chordWindowMs = std::min(160, settings.chordWindowMs + 10);
+                events.saveSettings = true;
+            }
+        } else {
+            if (hit(SettingsVsyncButton())) {
+                settings.vsync = !settings.vsync;
+                events.applyDisplaySettings = true;
+                events.saveSettings = true;
+            } else if (hit(SettingsFpsMinus()) || hit(SettingsFpsPlus())) {
+                const int previous = settings.fpsLimit;
+                settings.StepFpsLimit(hit(SettingsFpsPlus()) ? 1 : -1);
+                if (settings.fpsLimit != previous) {
+                    events.applyDisplaySettings = true;
+                    events.saveSettings = true;
+                }
+            } else if (hit(SettingsShowFpsButton())) {
+                settings.showFps = !settings.showFps;
+                events.saveSettings = true;
+            } else if (hit(SettingsFullscreenButton())) {
+                settings.fullscreen = !settings.fullscreen;
+                events.toggleFullscreen = true;
+                events.saveSettings = true;
+            }
         }
     }
     return events;

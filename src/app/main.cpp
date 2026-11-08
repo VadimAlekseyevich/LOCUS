@@ -371,6 +371,13 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     }
     DrawQuitConfirmation(font, state, editor, editorUi, skinUi);
     EndMode2D();
+    if (settings.showFps) {
+        // Screen-pixel overlay, separate from the gameplay camera.
+        DrawRectangleRounded({8.0f, 8.0f, 100.0f, 30.0f}, 0.18f, 4,
+                             Color{17, 22, 33, 224});
+        DrawText(TextFormat("FPS %d", GetFPS()), 16, 14, 18,
+                 Color{199, 244, 228, 255});
+    }
     EndDrawing();
 }
 
@@ -435,9 +442,13 @@ bool CheckPresentationLayout() {
                r.y + r.height <= frame.y + frame.height;
     };
     const Rectangle leftControls[] = {
+        locus::app::SettingsGameTab(), locus::app::SettingsDisplayTab(),
         locus::app::SettingsVolumeMinus(), locus::app::SettingsVolumePlus(),
         locus::app::SettingsFlashButton(),
         locus::app::SettingsChordMinus(), locus::app::SettingsChordPlus(),
+        locus::app::SettingsVsyncButton(),
+        locus::app::SettingsFpsMinus(), locus::app::SettingsFpsPlus(),
+        locus::app::SettingsShowFpsButton(),
         locus::app::SettingsFullscreenButton()
     };
     for (const auto control : leftControls)
@@ -731,10 +742,6 @@ int main(int argc, char** argv) {
         return 1;
     }
     UiFont uiFont = LoadUiFont();
-    // Let VSync pace the display at its actual refresh rate (60/120/144 Hz
-    // etc). 240 FPS is only a safety ceiling if a driver ignores VSync;
-    // music, movement and judgement still use the monotonic audio clock.
-    SetTargetFPS(240);
     std::cout << "LOCUS_WINDOW_OPEN\n";
 
     const auto userData = locus::app::UserDataDirectory();
@@ -746,6 +753,15 @@ int main(int argc, char** argv) {
         settingsUi.notice = "DEFAULTS USED: " + settingsError;
         settingsUi.noticeError = true;
     }
+    const auto applyDisplaySettings = [&settings]() {
+        // Change the Windows swap interval live; the GPU driver may still
+        // override the request. Never tie musical time to rendering.
+        if (settings.vsync) SetWindowState(FLAG_VSYNC_HINT);
+        else ClearWindowState(FLAG_VSYNC_HINT);
+        // A 0 cap means unlimited; VSync, if enabled, still paces frames.
+        SetTargetFPS(settings.fpsLimit);
+    };
+    applyDisplaySettings();
     // A single selected skin applies to every chart, independently of Songs.
     const auto activeSkinFile = userData / L"Skins" / L"active.locus-skin.json";
     locus::app::Skin activeSkin;
@@ -871,6 +887,7 @@ int main(int argc, char** argv) {
             HandleMenuInput(state, input, library, libraryUi, settings,
                             settingsUi, draftSkin, skinUi);
         if (menuEvents.toggleFullscreen) ToggleBorderlessWindowed();
+        if (menuEvents.applyDisplaySettings) applyDisplaySettings();
         if (state.screen == Screen::Skin)
             skinProfiles.Apply(menuEvents.skinCommand);
         if (menuEvents.saveSettings) {

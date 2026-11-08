@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <string>
 
 using namespace locus::app;
@@ -23,7 +24,8 @@ int main() {
                 options.Key(GameAction::Up) == KEY_J &&
                 options.Key(GameAction::Right) == KEY_K &&
                 options.Key(GameAction::Down) == KEY_F &&
-                options.Key(GameAction::Left) == KEY_D,
+                options.Key(GameAction::Left) == KEY_D &&
+                options.vsync && options.fpsLimit == 240 && !options.showFps,
                 "defaults share DFJK direction bindings between game and chart editor");
     // Gameplay input ordering (Up,Right,Down,Left) must resolve to the
     // same absolute directions used to author notes in ROUTE.
@@ -62,6 +64,9 @@ int main() {
     options.hitFlash = false;
     options.fullscreen = true;
     options.chordWindowMs = 120;
+    options.vsync = false;
+    options.fpsLimit = 144;
+    options.showFps = true;
     const std::string serialized = SerializeGameSettings(options);
     GameSettings parsed;
     ok &= Check(ParseGameSettings(serialized, parsed, error) &&
@@ -69,11 +74,56 @@ int main() {
                 parsed.Key(GameAction::Right) == KEY_D &&
                 parsed.volume > 0.39f && parsed.volume < 0.41f &&
                 !parsed.hitFlash && parsed.fullscreen &&
-                parsed.chordWindowMs == 120,
+                parsed.chordWindowMs == 120 &&
+                !parsed.vsync && parsed.fpsLimit == 144 && parsed.showFps,
                 "all audio, visuals, chords and custom keys survive JSON roundtrip");
     ok &= Check(EditorDirectionShortcut(parsed, 12u) == "W+D" &&
                 EditorDirectionMask({true, true, false, false}) == 12u,
                 "persisted bindings drive the same editor chords after restarting");
+    GameSettings display = parsed;
+    display.StepFpsLimit(1);
+    ok &= Check(display.fpsLimit == 165 &&
+                display.Valid(error) &&
+                display.FpsLimitLabel() == "165 FPS",
+                "FPS preset moves forward and keeps a valid cap");
+    display.StepFpsLimit(100);
+    ok &= Check(display.fpsLimit == 0 &&
+                display.FpsLimitLabel() == "UNLIMITED" &&
+                display.Valid(error),
+                "unlimited FPS can be selected as the last preset");
+    display.StepFpsLimit(-100);
+    ok &= Check(display.fpsLimit == 30,
+                "FPS presets safely clamp at 30");
+    display.fpsLimit = 1000;
+    ok &= Check(!display.Valid(error),
+                "unsupported FPS limit is rejected");
+    std::string legacyDisplay = serialized;
+    const auto removeField = [&](std::string field) {
+        const auto start = legacyDisplay.find("  \"" + field + "\":");
+        if (start != std::string::npos) {
+            const auto end = legacyDisplay.find('\n', start);
+            legacyDisplay.erase(start, end - start + 1);
+        }
+    };
+    removeField("vsync");
+    removeField("fpsLimit");
+    removeField("showFps");
+    GameSettings restoredLegacy;
+    ok &= Check(ParseGameSettings(legacyDisplay, restoredLegacy, error) &&
+                restoredLegacy.vsync && restoredLegacy.fpsLimit == 240 &&
+                !restoredLegacy.showFps,
+                "settings created before DISPLAY options adopt safe defaults");
+    auto invalidDisplay = nlohmann::json::parse(serialized);
+    invalidDisplay["vsync"] = "yes";
+    GameSettings unmodified = parsed;
+    ok &= Check(!ParseGameSettings(invalidDisplay.dump(), unmodified, error) &&
+                !unmodified.vsync && unmodified.fpsLimit == 144,
+                "malformed display option cannot partially overwrite settings");
+    invalidDisplay["vsync"] = true;
+    invalidDisplay["fpsLimit"] = 150;
+    ok &= Check(!ParseGameSettings(invalidDisplay.dump(), unmodified, error) &&
+                !unmodified.vsync && unmodified.fpsLimit == 144,
+                "unsupported frame caps are rejected atomically");
     // Previously saved untouched arrow defaults move to the new DFJK preset,
     // but explicit arrow bindings stored by v2 remain customizable.
     GameSettings previousDefault;
@@ -120,7 +170,8 @@ int main() {
                 LoadGameSettings(file, onDisk, error) &&
                 onDisk.Key(GameAction::Up) == KEY_W &&
                 onDisk.chordWindowMs == 120 &&
-                !onDisk.hitFlash,
+                !onDisk.hitFlash &&
+                !onDisk.vsync && onDisk.fpsLimit == 144 && onDisk.showFps,
                 "settings persist across application restart");
     options.volume = 0.9f;
     ok &= Check(SaveGameSettings(file, options, error) &&

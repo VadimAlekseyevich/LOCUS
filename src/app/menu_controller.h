@@ -15,6 +15,7 @@ struct MenuEvents {
     bool editSelected = false;
     bool saveSettings = false;
     bool toggleFullscreen = false;
+    bool applyDisplaySettings = false;
     locus::app::SkinCommand skinCommand = locus::app::SkinCommand::None;
 };
 

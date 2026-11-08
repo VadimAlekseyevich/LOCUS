@@ -44,6 +44,7 @@
 - Four keys cover the cardinal directions; holding or pressing two adjacent directions in the configured chord window selects a diagonal.
 - **Default bindings:** **D=Left, F=Down, J=Up, K=Right**. Space=Pause, R=Retry, H=Home. The same four directional binds place notes in the editor. All seven bindings are configurable in SETTINGS.
 - The default diagonal chord window is **85 ms**, adjustable from **40 to 160 ms** in settings.
+- **SETTINGS → DISPLAY** controls VSync (on by default to prevent screen tearing), FPS cap (30, 60, 90, 120, 144, 165, 240 or unlimited; default 240), FPS counter overlay (off by default), and borderless fullscreen. The FPS cap is a ceiling; with VSync enabled, the monitor's refresh rate normally limits actual FPS. Rendering options are persisted and applied without restarting; rhythm judgement still uses the audio clock.
 - A correctly aimed press is Perfect within **±50 ms**, Good within **±110 ms**, Bad within **±180 ms**; a wrong direction in the hit window or an expired note is Miss. Ignored stray presses do not create extra grades.
 - A note is judged **exactly once**. No Fail remains active for all grades.
 

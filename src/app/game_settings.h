@@ -29,6 +29,17 @@ struct GameSettings {
     int chordWindowMs = 85;
     bool hitFlash = true;
     bool fullscreen = false;
+    bool vsync = true;        // Prevent screen tearing; can be overridden by driver.
+    int fpsLimit = 240;       // Safety ceiling when VSync is unsupported.
+    bool showFps = false;     // Small diagnostic overlay on all screens.
+
+    // 0 = unlimited; rate caps do not speed up gameplay/audio clocks.
+    static constexpr std::array<int, 8> kFpsPresets{{
+        30, 60, 90, 120, 144, 165, 240, 0
+    }};
+    void StepFpsLimit(int direction) noexcept;
+    static bool ValidFpsLimit(int value) noexcept;
+    std::string FpsLimitLabel() const;
 
     int Key(GameAction action) const noexcept {
         return keys[static_cast<int>(action)];

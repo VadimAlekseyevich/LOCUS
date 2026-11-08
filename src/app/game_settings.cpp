@@ -102,6 +102,24 @@ bool IsGameDirectionKey(const GameSettings& settings, int key) noexcept {
            key == settings.Key(GameAction::Right);
 }
 
+bool GameSettings::ValidFpsLimit(int value) noexcept {
+    return std::find(kFpsPresets.begin(), kFpsPresets.end(), value) !=
+           kFpsPresets.end();
+}
+
+void GameSettings::StepFpsLimit(int direction) noexcept {
+    const auto it = std::find(kFpsPresets.begin(), kFpsPresets.end(), fpsLimit);
+    if (it == kFpsPresets.end()) return;
+    const int current = static_cast<int>(it - kFpsPresets.begin());
+    const int next = std::clamp(current + direction, 0,
+                              static_cast<int>(kFpsPresets.size()) - 1);
+    fpsLimit = kFpsPresets[static_cast<std::size_t>(next)];
+}
+
+std::string GameSettings::FpsLimitLabel() const {
+    return fpsLimit == 0 ? "UNLIMITED" : std::to_string(fpsLimit) + " FPS";
+}
+
 std::string EditorDirectionShortcut(const GameSettings& settings, unsigned mask) {
     // Same chord order as the visual compass pad; no hard-coded D/F/J/K.
     switch (mask) {
@@ -124,6 +142,10 @@ std::string EditorDirectionShortcut(const GameSettings& settings, unsigned mask)
 bool GameSettings::Valid(std::string& error) const {
     if (!std::isfinite(volume) || volume < 0.0f || volume > 1.0f) {
         error = "Music volume must be between 0 and 100 percent.";
+        return false;
+    }
+    if (!ValidFpsLimit(fpsLimit)) {
+        error = "FPS limit must be one of the available display presets.";
         return false;
     }
     if (chordWindowMs < 40 || chordWindowMs > 160) {
@@ -172,6 +194,9 @@ std::string SerializeGameSettings(const GameSettings& settings) {
         {"hitFlash", settings.hitFlash},
         {"chordWindowMs", settings.chordWindowMs},
         {"fullscreen", settings.fullscreen},
+        {"vsync", settings.vsync},
+        {"fpsLimit", settings.fpsLimit},
+        {"showFps", settings.showFps},
         {"bindings", std::move(bindings)}
     };
     return object.dump(2) + "\n";
@@ -202,6 +227,24 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
         parsed.chordWindowMs = object["chordWindowMs"].get<int>();
         parsed.hitFlash = object["hitFlash"].get<bool>();
         parsed.fullscreen = object["fullscreen"].get<bool>();
+        // Configs written before the DISPLAY page existed use the stable
+        // tearing-free defaults, without modifying their key bindings.
+        for (const char* key : {"vsync", "fpsLimit", "showFps"}) {
+            if (!object.contains(key)) continue;
+            const auto& value = object[key];
+            const bool validType = std::string_view(key) == "fpsLimit"
+                ? value.is_number_integer() : value.is_boolean();
+            if (!validType) {
+                error = std::string("Invalid display setting: ") + key;
+                return false;
+            }
+        }
+        if (object.contains("vsync"))
+            parsed.vsync = object["vsync"].get<bool>();
+        if (object.contains("fpsLimit"))
+            parsed.fpsLimit = object["fpsLimit"].get<int>();
+        if (object.contains("showFps"))
+            parsed.showFps = object["showFps"].get<bool>();
         for (int i = 0; i < kGameActionCount; ++i) {
             const auto& bindings = object["bindings"];
             if (!bindings.contains(kJsonKeys[i]) ||
