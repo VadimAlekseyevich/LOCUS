@@ -286,35 +286,8 @@ int main(int argc, char** argv) {
 
     while (state.running) {
         const bool wasQuitConfirmation = state.quitConfirmation;
-        // While the modal is open, Y/N/Esc or its buttons are the ONLY
-        // accepted actions; key presses cannot reach the editor or gameplay.
-        FrameInput input = wasQuitConfirmation
-            ? FrameInput{} : PollInput(debugScreens, state.screen, settings, MonotonicSeconds());
-        if (wasQuitConfirmation) {
-            locus::app::ConsumeNativeCloseRequest(); // Discard repeated X while modal.
-            input.quitConfirmed = IsKeyPressed(KEY_Y);
-            input.quitCanceled = IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE);
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                const auto transform = state.screen == Screen::Play
-                    ? locus::app::ViewportTransform::Gameplay(
-                          GetScreenWidth(), GetScreenHeight())
-                    : locus::app::ViewportTransform::Menu(
-                          GetScreenWidth(), GetScreenHeight());
-                if (transform.scale > 0.0f) {
-                    const Vector2 virtualMouse = transform.ToVirtual(GetMousePosition());
-                    if (CheckCollisionPointRec(virtualMouse, kQuitConfirmButton))
-                        input.quitConfirmed = true;
-                    else if (CheckCollisionPointRec(virtualMouse, kQuitCancelButton))
-                        input.quitCanceled = true;
-                }
-            }
-        }
-        if (!wasQuitConfirmation && state.screen == Screen::Editor &&
-            input.editor.mouseClick &&
-            CheckCollisionPointRec(input.editor.mouse,
-                                   locus::app::detail::kEditorBack)) {
-            input.backPressed = true;
-        }
+        FrameInput input = locus::app::PollFrameInput(
+            debugScreens, state, settings, MonotonicSeconds());
         const bool importFromHome =
             !wasQuitConfirmation && !input.closeRequested &&
             state.screen == Screen::Home && input.chooseChartPressed;

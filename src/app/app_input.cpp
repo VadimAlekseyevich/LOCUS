@@ -1,6 +1,8 @@
 #include "app/app_input.h"
 
 #include "app/native_close.h"
+#include "app/app_quit_dialog_layout.h"
+#include "app/chart_editor_layout.h"
 #include "raylib.h"
 
 namespace locus::app {
@@ -87,6 +89,37 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     // Never drain it on SKIN: its numeric/name text inputs own that queue.
     if (currentScreen == Screen::Editor)
         input.editor = locus::app::PollEditorControls(settings, input.arrowHeld);
+    return input;
+}
+
+FrameInput PollFrameInput(bool debugScreens, const AppState& state,
+                          const GameSettings& settings,
+                          double eventTimeSeconds) {
+    if (state.quitConfirmation) {
+        // Repeated native X presses cannot bypass an already-open modal.
+        ConsumeNativeCloseRequest();
+        FrameInput input;
+        input.quitConfirmed = IsKeyPressed(KEY_Y);
+        input.quitCanceled = IsKeyPressed(KEY_N) ||
+                             IsKeyPressed(KEY_ESCAPE);
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            const QuitDialogChoice choice = QuitDialogPointerChoice(
+                state.screen, GetMousePosition(),
+                GetScreenWidth(), GetScreenHeight());
+            if (choice == QuitDialogChoice::Confirm)
+                input.quitConfirmed = true;
+            else if (choice == QuitDialogChoice::Cancel)
+                input.quitCanceled = true;
+        }
+        return input;
+    }
+    FrameInput input = PollInput(debugScreens, state.screen,
+                                 settings, eventTimeSeconds);
+    if (state.screen == Screen::Editor && input.editor.mouseClick &&
+        CheckCollisionPointRec(input.editor.mouse,
+                               detail::kEditorBack)) {
+        input.backPressed = true;
+    }
     return input;
 }
 

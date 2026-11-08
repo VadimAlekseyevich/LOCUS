@@ -42,4 +42,10 @@ struct FrameInput {
 FrameInput PollInput(bool debugScreens, Screen currentScreen,
                      const GameSettings& settings, double eventTimeSeconds);
 
+// Native quit-modal key/mouse priority and the Editor BACK hitbox belong
+// to input collection, not to the application lifecycle/composition root.
+FrameInput PollFrameInput(bool debugScreens, const AppState& state,
+                          const GameSettings& settings,
+                          double eventTimeSeconds);
+
 } // namespace locus::app
