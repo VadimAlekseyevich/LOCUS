@@ -2,6 +2,7 @@
 
 #include "app/chart_editor_ui.h"
 #include "app/chart_playback.h"
+#include "app/chart_file.h"
 #include "app/editor_document.h"
 #include "app/local_music.h"
 #include "app/menu_ui.h"
@@ -16,6 +17,7 @@
 namespace locus::app {
 
 void EditorFileActions::NewDraft() {
+    newDifficultySet_.clear();
     context_.preview.Stop();
     context_.music.Shutdown();
     context_.loadedAudioPath.clear();
@@ -29,6 +31,7 @@ void EditorFileActions::NewDraft() {
 
 bool EditorFileActions::OpenFromLibrary(const std::wstring& chartFile,
                                         std::string& error) {
+    newDifficultySet_.clear();
     context_.preview.Stop();
     if (!LoadDraftFromDisk(
             chartFile, context_.editor, context_.music,
@@ -56,6 +59,7 @@ void EditorFileActions::Open(double& now, std::string& error) {
         context_.status = "OPEN FAILED: " + error;
         return;
     }
+    newDifficultySet_.clear();
     context_.ui = EditorUiState{};
     context_.previewStartBeat = 0;
     context_.loadedAudioPath = context_.audioPath;
@@ -101,34 +105,108 @@ void EditorFileActions::AttachAudio(double& now) {
     context_.status = "SONG LOADED - TIMELINE FITS THE WHOLE TRACK";
 }
 
+bool EditorFileActions::NewDifficultyFromLibrary(
+    const std::wstring& audioFile, const std::wstring& setFolder,
+    std::string& error) {
+    // Fully decode before discarding the editor's previous document.
+    LocalMusic replacement;
+    replacement.SetVolume(context_.music.Volume());
+    replacement.SetSpeed(context_.music.Speed(), 0.0);
+    if (!replacement.LoadFromFile(audioFile)) {
+        error = replacement.Error();
+        return false;
+    }
+    core::ChartEditor draft;
+    if (!draft.SetSongDuration(replacement.DurationSeconds()) ||
+        !draft.SetAudioPath(std::filesystem::path(audioFile).filename().u8string())) {
+        error = "Cannot prepare a draft for the selected audio.";
+        return false;
+    }
+    draft.SetTitle("New Difficulty");
+    context_.preview.Stop();
+    context_.music.SwapWith(replacement);
+    context_.editor = std::move(draft);
+    context_.ui = EditorUiState{};
+    context_.chartPath.clear();
+    context_.audioPath = audioFile;
+    context_.loadedAudioPath = audioFile;
+    context_.previewStartBeat = 0;
+    newDifficultySet_ = setFolder;
+    context_.status = "NEW DIFFICULTY - CTRL+S TO ADD TO SONG SET";
+    error.clear();
+    return true;
+}
+
 void EditorFileActions::Save(bool saveAs, double& now) {
     if (context_.preview.Playing())
         context_.preview.Pause(now);
-    std::string error;
-    if (!SaveDraftToDisk(
-            context_.editor, context_.music, context_.chartPath,
-            context_.audioPath, saveAs, error, pickers_.chooseSave)) {
-        if (!error.empty()) context_.status = "SAVE FAILED: " + error;
-        now = pickers_.now();
+    if (!context_.music.Ready() || context_.audioPath.empty()) {
+        context_.status = "SAVE FAILED: ATTACH AUDIO FIRST";
         return;
     }
-    now = pickers_.now();
-    context_.status = "SAVED - SPACE PREVIEW / T TEST / CTRL+O OPEN";
-
-    // A saved authoring file remains where the user chose, while a validated
-    // permanent copy is installed independently in the song library.
-    std::filesystem::path installed;
-    std::string installError;
-    if (context_.library.Import(
-            std::filesystem::path(context_.chartPath), installed, installError)) {
-        context_.libraryUi.notice = "SAVED CHART INSTALLED IN SONG LIBRARY";
-        context_.menuStatus =
-            "LIBRARY: " + std::to_string(context_.library.Songs().size()) +
-            " SONGS / " + std::to_string(context_.library.ChartCount()) + " CHARTS";
-    } else {
-        context_.libraryUi.notice = "LIBRARY IMPORT FAILED: " + installError;
-        context_.status = "SAVED (LIBRARY IMPORT FAILED - SEE PLAY)";
+    std::string error;
+    core::LoadedChart checked = context_.editor.Data();
+    if (!core::PrepareChartForSong(checked, context_.music.DurationSeconds(), error)) {
+        context_.status = "SAVE FAILED: " + error;
+        return;
     }
+    const std::filesystem::path current(context_.chartPath);
+    const std::filesystem::path root = context_.library.Root();
+    int songIndex = -1, chartIndex = -1;
+    // Library paths are authoritative. Do not create a duplicate external
+    // authoring file on every save, or an implicit second library import.
+    const bool installed = !current.empty() &&
+        context_.library.FindChart(current, songIndex, chartIndex);
+    std::filesystem::path destination;
+    if (installed && !saveAs) {
+        // Normal Ctrl+S edits exactly the selected chart and keeps its undo
+        // history. Existing shared audio must remain inside this Song Set.
+        if (!SaveDraftToDisk(context_.editor, context_.music,
+                             context_.chartPath, context_.audioPath,
+                             false, error, pickers_.chooseSave)) {
+            context_.status = "SAVE FAILED: " + error;
+            return;
+        }
+        destination = current;
+        std::string notice;
+        if (!context_.library.Refresh(notice))
+            context_.status = "SAVED (LIBRARY REFRESH FAILED: " + notice + ")";
+    } else {
+        const std::filesystem::path target = !newDifficultySet_.empty()
+            ? std::filesystem::path(newDifficultySet_)
+            : installed ? current.parent_path() : std::filesystem::path{};
+        if (!context_.library.CreateDifficulty(
+                std::filesystem::path(context_.audioPath), checked,
+                destination, error, target)) {
+            context_.status = "SAVE FAILED: " + error;
+            return;
+        }
+        core::LoadedChart reopened;
+        std::wstring installedAudio;
+        if (!OpenChartWithAudioPath(destination.wstring(),
+                                     reopened, installedAudio, error) ||
+            !core::PrepareChartForSong(reopened,
+                                       context_.music.DurationSeconds(), error)) {
+            context_.status = "LIBRARY SAVE OK, REOPEN FAILED: " + error;
+            return;
+        }
+        context_.editor.ApplySavedChart(std::move(reopened));
+        context_.chartPath = destination.wstring();
+        context_.audioPath = installedAudio;
+        context_.loadedAudioPath = installedAudio;
+        newDifficultySet_.clear();
+    }
+    int s = -1, c = -1;
+    if (context_.library.FindChart(destination, s, c)) {
+        context_.libraryUi.SelectSong(s + 1, context_.library);
+        context_.libraryUi.SelectChart(c, context_.library);
+    }
+    context_.libraryUi.notice = "SONG SET SAVED";
+    context_.menuStatus = "LIBRARY: " +
+        std::to_string(context_.library.Songs().size()) + " SONGS / " +
+        std::to_string(context_.library.ChartCount()) + " CHARTS";
+    context_.status = "SAVED IN SONG LIBRARY - CTRL+S UPDATE / CTRL+SHIFT+S COPY";
+    now = pickers_.now();
 }
 
 } // namespace locus::app

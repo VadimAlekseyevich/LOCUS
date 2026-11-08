@@ -41,6 +41,13 @@ public:
     // audio; multiple revisions still appear under one logical song.
     bool Import(const std::filesystem::path& sourceChart,
                 std::filesystem::path& installedChart, std::string& error);
+    // Save a new difficulty directly to a Song Set. An optional target folder
+    // adds the difficulty to an existing set after verifying shared audio.
+    bool CreateDifficulty(const std::filesystem::path& sourceAudio,
+                          const core::LoadedChart& chart,
+                          std::filesystem::path& installedChart,
+                          std::string& error,
+                          const std::filesystem::path& targetSet = {});
     bool FindChart(const std::filesystem::path& path,
                    int& songIndex, int& chartIndex) const;
 

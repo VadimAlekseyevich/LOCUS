@@ -51,10 +51,15 @@ public:
     // The library already selected a specific installed difficulty. No
     // native dialog; caller decides whether to navigate to Editor.
     bool OpenFromLibrary(const std::wstring& chartFile, std::string& error);
+    // Start a blank difficulty using an installed Song Set's shared audio.
+    bool NewDifficultyFromLibrary(const std::wstring& audioFile,
+                                  const std::wstring& setFolder,
+                                  std::string& error);
 
 private:
     EditorFileContext context_;
     EditorFilePickers pickers_;
+    std::wstring newDifficultySet_; // Empty means create/find a set from attached audio.
 };
 
 } // namespace locus::app

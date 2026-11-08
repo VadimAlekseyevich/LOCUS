@@ -1,6 +1,7 @@
 #include "app/song_library.h"
 
 #include "app/chart_file.h"
+#include "app/chart_filename.h"
 #include "app/audio_revision.h"
 #include "app/song_set_storage.h"
 
@@ -224,6 +225,89 @@ bool SongLibrary::FindChart(const fs::path& path,
             }
         }
     return false;
+}
+
+
+bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
+                                   const core::LoadedChart& chart,
+                                   fs::path& installedChart,
+                                   std::string& error,
+                                   const fs::path& targetSet) {
+    std::error_code ec;
+    const fs::path source = fs::canonical(sourceAudio, ec);
+    if (ec || !fs::is_regular_file(source, ec)) {
+        error = "Cannot read the selected song audio.";
+        return false;
+    }
+    fs::create_directories(root_, ec);
+    if (ec) { error = "Cannot create the song library."; return false; }
+    const fs::path root = fs::canonical(root_, ec);
+    if (ec) { error = "Cannot access the song library."; return false; }
+    fs::path folder;
+    if (targetSet.empty()) {
+        folder = root / (FilenamePart(source.stem().u8string()) + "-" +
+                         HashText(source));
+        fs::create_directories(folder, ec);
+        if (ec) { error = "Cannot create the Song Set folder."; return false; }
+    } else {
+        folder = fs::canonical(targetSet, ec);
+        if (ec || !Inside(root, folder)) {
+            error = "Selected Song Set is outside the installed library.";
+            return false;
+        }
+    }
+    fs::path result;
+    {
+        FolderWriteLock lock;
+        if (!lock.Acquire(folder, error)) return false;
+        const fs::path manifestFile = folder / L"set.locus.json";
+        const bool exists = fs::exists(manifestFile, ec);
+        if (ec) { error = "Cannot inspect Song Set metadata."; return false; }
+        SongSetManifest metadata;
+        if (exists) {
+            if (!LoadSongSetManifest(manifestFile, metadata, error)) return false;
+        } else {
+            if (!targetSet.empty()) {
+                error = "The selected folder has no managed Song Set.";
+                return false;
+            }
+            // Make previously installed v1/v2 folders read-only: there can
+            // be several different audio revisions in the old layout.
+            if (fs::exists(folder / L".locus-versions", ec)) {
+                error = "This legacy library folder cannot accept new difficulties.";
+                return false;
+            }
+            metadata.id = HashText(source) + HashText(folder);
+            metadata.title = SongDisplayTitle(source);
+            metadata.artist.clear();
+            metadata.audioFile = source.filename().u8string();
+        }
+        const fs::path audio = folder / fs::u8path(metadata.audioFile);
+        if (!InstallSharedSongAudio(source, audio, error)) return false;
+
+        const fs::path suggestion = SuggestedChartFileName(chart.title);
+        // Never overwrite another difficulty, even when titles are the same.
+        result = folder / suggestion;
+        const std::wstring stem = suggestion.stem().wstring();
+        for (int suffix = 2; fs::exists(result, ec) && suffix <= 10000; ++suffix) {
+            result = folder / (stem + L"-" + std::to_wstring(suffix) +
+                               L".locus.json");
+        }
+        if (ec || fs::exists(result, ec)) {
+            error = "Cannot allocate a unique difficulty filename.";
+            return false;
+        }
+        if (!SaveChartWithAudioPath(result.wstring(), audio.wstring(),
+                                    chart, error, true)) return false;
+        if (!exists && !WriteNewSongSetManifest(manifestFile, metadata, error))
+            return false;
+    }
+    // Publish the in-memory library only after the complete operation.
+    std::string notice;
+    if (!Refresh(notice)) { error = notice; return false; }
+    installedChart = result;
+    error.clear();
+    return true;
 }
 
 bool SongLibrary::Import(const fs::path& sourceChart,
