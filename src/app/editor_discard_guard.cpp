@@ -9,12 +9,11 @@ bool WantsToLeave(const FrameInput& input) noexcept {
            (input.requestedScreen && *input.requestedScreen != Screen::Editor);
 }
 
-void SuppressLeave(FrameInput& input) noexcept {
-    input.homePressed = false;
-    input.backPressed = false;
-    input.editorNew = false;
-    input.editorOpen = false;
-    input.requestedScreen.reset();
+void SuppressModalInput(FrameInput& input) noexcept {
+    // Discard-confirmation has the same exclusive-input rule as OS exit:
+    // never let a coincident test-play, music picker or editor note through.
+    // The approved command is reconstructed after suppression.
+    input = FrameInput{};
 }
 
 } // namespace
@@ -31,7 +30,7 @@ EditorDiscardOutcome EditorDiscardGuard::Handle(
     if (pending_ != EditorPending::None) {
         const EditorPending requested = pending_;
         // While the modal is open, no unrelated navigation can escape.
-        SuppressLeave(input);
+        SuppressModalInput(input);
         if (approve) {
             pending_ = EditorPending::None;
             switch (requested) {
@@ -56,7 +55,7 @@ EditorDiscardOutcome EditorDiscardGuard::Handle(
     pending_ = input.editorNew ? EditorPending::NewDraft
              : input.editorOpen ? EditorPending::OpenChart
                                 : EditorPending::Home;
-    SuppressLeave(input);
+    SuppressModalInput(input);
     return EditorDiscardOutcome::PromptOpened;
 }
 

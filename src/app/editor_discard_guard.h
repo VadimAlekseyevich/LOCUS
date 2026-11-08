@@ -15,8 +15,8 @@ public:
     EditorPending Pending() const noexcept { return pending_; }
 
     // Called only on the Editor screen, before UpdateScreenFlow. UI supplies
-    // Y/N/Esc events; this class filters navigation so only an approved action
-    // can leave the current unsaved document.
+    // Y/N/Esc events; this class filters all frame actions so only an
+    // explicitly approved action can run while the modal is active.
     EditorDiscardOutcome Handle(FrameInput& input, bool dirty,
                                 bool approve, bool cancel) noexcept;
 

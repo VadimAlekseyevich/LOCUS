@@ -17,18 +17,23 @@ int main() {
 
     FrameInput home;
     home.homePressed = true;
+    home.chooseMusicPressed = true;
     ok &= Check(guard.Handle(home, true, false, false) ==
                     EditorDiscardOutcome::PromptOpened &&
                 guard.Pending() == EditorPending::Home &&
-                !home.homePressed,
+                !home.homePressed && !home.chooseMusicPressed,
                 "unsaved Home navigation opens confirmation and blocks exit");
 
     FrameInput waiting;
-    waiting.editorOpen = true; // Other navigation must not reach the editor.
+    waiting.editorOpen = true; // Other input must not reach the editor.
+    waiting.editorTest = true;
+    waiting.pausePressed = true;
+    waiting.editor.addLeft = true;
     ok &= Check(guard.Handle(waiting, true, false, false) ==
                     EditorDiscardOutcome::None &&
                 guard.Pending() == EditorPending::Home &&
-                !waiting.editorOpen,
+                !waiting.editorOpen && !waiting.editorTest &&
+                !waiting.pausePressed && !waiting.editor.addLeft,
                 "pending confirmation blocks unrelated file open");
 
     FrameInput cancel;
@@ -63,9 +68,14 @@ int main() {
                 !requestNew.editorNew && !requestNew.editorOpen,
                 "New Draft takes priority over Open Chart in the same frame");
     FrameInput confirmedNew;
+    confirmedNew.editorTest = true;
+    confirmedNew.chooseMusicPressed = true;
+    confirmedNew.editor.addRight = true;
     ok &= Check(guard.Handle(confirmedNew, true, true, false) ==
                     EditorDiscardOutcome::Approved &&
-                confirmedNew.editorNew && !confirmedNew.editorOpen,
+                confirmedNew.editorNew && !confirmedNew.editorOpen &&
+                !confirmedNew.editorTest && !confirmedNew.chooseMusicPressed &&
+                !confirmedNew.editor.addRight,
                 "Y runs exactly the confirmed New Draft action");
 
     FrameInput requestOpen;
