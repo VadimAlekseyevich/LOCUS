@@ -18,6 +18,7 @@
 #include "app/editor_set_controller.h"
 #include "app/editor_screen_actions.h"
 #include "app/listen_session.h"
+#include "app/menu_music_preview.h"
 #include "app/skin_profile_actions.h"
 #include "app/visual_style.h"
 #include "app/game_session.h"
@@ -241,6 +242,8 @@ int main(int argc, char** argv) {
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
+    locus::app::MenuMusicPreview menuMusic;
+    menuMusic.Initialize(demo);
     transport.SetVolume(settings.volume);
     localSong.SetVolume(settings.volume);
     gameSession.SetChordWindowMs(settings.chordWindowMs);
@@ -386,11 +389,43 @@ int main(int argc, char** argv) {
 
         bool loadedNewChart = false;
         if (state.screen == Screen::SongSelect) {
+            if (menuEvents.previewStartDeltaMs != 0 &&
+                libraryUi.selectedSong > 0 &&
+                libraryUi.selectedSong <= static_cast<int>(library.Songs().size())) {
+                const auto& selected = library.Songs()[static_cast<std::size_t>(
+                    libraryUi.selectedSong - 1)];
+                const int next = std::clamp(
+                    selected.previewStartMs + menuEvents.previewStartDeltaMs,
+                    0, locus::app::kMaxSongPreviewStartMs);
+                std::string error;
+                if (!library.SetPreviewStartMs(libraryUi.selectedSong - 1,
+                                               next, error))
+                    libraryUi.notice = "PREVIEW START FAILED: " + error;
+                else
+                    libraryUi.notice = "MENU PREVIEW FROM " +
+                        std::to_string(next) + " MS (SONG SET ONLY)";
+            }
             libraryFiles.Apply(menuEvents, importFromHome, now);
             loadedNewChart = locus::app::LaunchLibrarySelection(
                 libraryLaunch, menuEvents, now);
         }
 
+        // Menu listening never borrows the chart's scored stream. A change
+        // of selected audio or preview time fades out the old track and
+        // starts the replacement at silence, then eases it back up.
+        if (state.screen == Screen::SongSelect && !state.quitConfirmation) {
+            const locus::app::LibrarySong* selected = nullptr;
+            if (libraryUi.selectedSong > 0 &&
+                libraryUi.selectedSong <= static_cast<int>(library.Songs().size()))
+                selected = &library.Songs()[static_cast<std::size_t>(
+                    libraryUi.selectedSong - 1)];
+            std::string error;
+            if (!menuMusic.Select(selected, libraryUi.Selected(library), now, error))
+                libraryUi.notice = "MENU MUSIC FAILED: " + error;
+        } else if (previousScreen == Screen::SongSelect &&
+                   state.screen != Screen::SongSelect) {
+            menuMusic.FadeOut(now);
+        }
         if (state.screen != previousScreen) {
             locus::app::ApplySessionTransition(
                 transitions, previousScreen, state.screen, loadedNewChart, now);
@@ -428,6 +463,7 @@ int main(int argc, char** argv) {
         if (hotkeySkinSavePending &&
             (now >= hotkeySkinSaveAfter || state.screen != Screen::Play))
             persistHotkeySkin();
+        menuMusic.Update(now, settings.volume);
         const double renderNow = MonotonicSeconds();
         const auto transportView = playActions.Transport(renderNow);
         const GameplayView gameplay{activeChart, judge, gameSession.Flash(),
@@ -451,6 +487,7 @@ int main(int argc, char** argv) {
     persistHotkeySkin(); // Flush pending adjustments on exit.
     // Both borrowed streams must unload BEFORE closing the shared device.
     chartPlayback.Stop();
+    menuMusic.Shutdown();
     localSong.Shutdown();
     transport.Shutdown();
     audioDevice.Shutdown();
