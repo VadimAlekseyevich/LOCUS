@@ -17,6 +17,7 @@ MusicPickResult ChooseLibraryImportFile();
 MusicPickResult ChooseSongSetExportFile(const std::wstring& suggestedPath);
 MusicPickResult ChooseChartSaveFile(const std::wstring& suggestedPath);
 MusicPickResult ChooseSkinFile();
+MusicPickResult ChooseSongBackgroundFile();
 MusicPickResult ChooseSkinSaveFile(const std::wstring& suggestedPath);
 
 } // namespace locus::app

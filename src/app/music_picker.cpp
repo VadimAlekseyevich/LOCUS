@@ -40,6 +40,14 @@ MusicPickResult PickFile(const wchar_t* title, const wchar_t* filter) {
 
 } // namespace
 
+MusicPickResult ChooseSongBackgroundFile() {
+    return PickFile(L"LOCUS - Choose Song Set Background Image",
+                    L"PNG / JPEG Images (*.png;*.jpg;*.jpeg)\0"
+                    L"*.png;*.jpg;*.jpeg\0"
+                    L"PNG (*.png)\0*.png\0"
+                    L"JPEG (*.jpg;*.jpeg)\0*.jpg;*.jpeg\0\0");
+}
+
 MusicPickResult ChooseLocalMusicFile() {
     return PickFile(L"LOCUS - Select a WAV or MP3",
                     L"Audio (*.wav;*.mp3)\0*.wav;*.mp3\0"

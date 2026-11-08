@@ -47,6 +47,8 @@ Rectangle LibraryEditButton();
 Rectangle LibraryNewDifficultyButton();
 Rectangle LibraryPreviewMinusButton();
 Rectangle LibraryPreviewPlusButton();
+Rectangle LibraryBackgroundButton();
+Rectangle LibraryRemoveBackgroundButton();
 Rectangle SettingsBindingButton(int action);
 Rectangle SettingsGameTab();
 Rectangle SettingsDisplayTab();

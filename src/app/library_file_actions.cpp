@@ -21,6 +21,8 @@ void LibraryFileActions::Apply(const MenuEvents& event,
         Restore();
     if (event.trashDifficulty)
         TrashDifficulty();
+    if (event.attachBackground) SetBackground(now);
+    if (event.removeBackground) RemoveBackground();
     if (event.trashSongSet)
         TrashSongSet();
     if (event.duplicateDifficulty)
@@ -77,6 +79,39 @@ void LibraryFileActions::Import(bool intoSelectedSet, double& now) {
         return;
     }
     ImportLibraryChart(library_, ui_, chosen, menuStatus_);
+}
+
+void LibraryFileActions::SetBackground(double& now) {
+    if (!pickers_.chooseBackground ||
+        ui_.selectedSong <= 0 ||
+        ui_.selectedSong > static_cast<int>(library_.Songs().size()) ||
+        !library_.Songs()[static_cast<std::size_t>(ui_.selectedSong - 1)].managed) {
+        ui_.notice = "BACKGROUND FAILED: SELECT A MANAGED SONG SET";
+        return;
+    }
+    const MusicPickResult selected = pickers_.chooseBackground();
+    PickerReturned(now);
+    if (selected.path.empty()) {
+        if (!selected.canceled)
+            ui_.notice = "BACKGROUND FAILED: " + selected.error;
+        return;
+    }
+    ui_.notice = library_.SetBackgroundImage(ui_.selectedSong - 1,
+                                             fs::path(selected.path), error_)
+        ? "SONG BACKGROUND SAVED (SHARED BY ALL DIFFICULTIES)"
+        : "BACKGROUND FAILED: " + error_;
+}
+
+void LibraryFileActions::RemoveBackground() {
+    if (ui_.selectedSong <= 0 ||
+        ui_.selectedSong > static_cast<int>(library_.Songs().size())) {
+        ui_.notice = "BACKGROUND FAILED: SELECT A MANAGED SONG SET";
+        return;
+    }
+    ui_.notice = library_.SetBackgroundImage(ui_.selectedSong - 1,
+                                             fs::path{}, error_)
+        ? "SONG BACKGROUND REMOVED"
+        : "BACKGROUND FAILED: " + error_;
 }
 
 void LibraryFileActions::Export(double& now) {

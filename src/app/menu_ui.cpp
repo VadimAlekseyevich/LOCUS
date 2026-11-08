@@ -59,6 +59,8 @@ Rectangle LibraryEditButton() { return {637, 458, 122, 43}; }
 Rectangle LibraryNewDifficultyButton() { return {770, 458, 135, 43}; }
 Rectangle LibraryPreviewMinusButton() { return {54, 463, 40, 36}; }
 Rectangle LibraryPreviewPlusButton() { return {385, 463, 40, 36}; }
+Rectangle LibraryBackgroundButton() { return {501, 506, 142, 28}; }
+Rectangle LibraryRemoveBackgroundButton() { return {655, 506, 149, 28}; }
 Rectangle SettingsBindingButton(int index) {
     return {736.0f, 192.0f + 39.0f * index, 167.0f, 33.0f};
 }
@@ -184,7 +186,11 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     } else {
         Label(font, "PREVIEW FROM 0 S", 54, 477, 14, kMuted);
     }
-    Label(font, Clip(ui.notice, 100), 54, 517, 13,
+    if (song && song->managed) {
+        Button(font, LibraryBackgroundButton(), "BG IMAGE  B", kMint);
+        Button(font, LibraryRemoveBackgroundButton(), "REMOVE  SHIFT+B", kGold);
+    }
+    Label(font, Clip(ui.notice, 66), 54, 517, 13,
           ui.notice.find("FAILED") == std::string::npos ? kGold
               : Color{240, 138, 142, 255});
     if (ui.pendingDelete != LibraryDeletePending::None) {

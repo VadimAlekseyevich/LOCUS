@@ -143,6 +143,11 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (IsKeyPressed(KEY_N)) events.newDifficulty = true;
         if (IsKeyPressed(KEY_U)) events.restoreDeleted = true;
         if (IsKeyPressed(KEY_X)) events.exportSelected = true;
+        if (IsKeyPressed(KEY_B)) {
+            events.removeBackground = IsKeyDown(KEY_LEFT_SHIFT) ||
+                                      IsKeyDown(KEY_RIGHT_SHIFT);
+            events.attachBackground = !events.removeBackground;
+        }
         const bool control = IsKeyDown(KEY_LEFT_CONTROL) ||
                              IsKeyDown(KEY_RIGHT_CONTROL);
         if (control && IsKeyPressed(KEY_D))
@@ -181,6 +186,10 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (hit(locus::app::MenuBackButton())) input.backPressed = true;
         if (hit(locus::app::LibraryImportButton())) events.import = true;
         if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
+        if (hit(locus::app::LibraryBackgroundButton()))
+            events.attachBackground = true;
+        if (hit(locus::app::LibraryRemoveBackgroundButton()))
+            events.removeBackground = true;
         if (hit(locus::app::LibraryPreviewMinusButton()))
             events.previewStartDeltaMs = (IsKeyDown(KEY_LEFT_SHIFT) ||
                 IsKeyDown(KEY_RIGHT_SHIFT)) ? -100 : -1000;

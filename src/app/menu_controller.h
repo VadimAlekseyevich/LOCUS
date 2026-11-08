@@ -12,6 +12,8 @@ struct MenuEvents {
     bool import = false;
     bool importIntoSelected = false;
     bool exportSelected = false;
+    bool attachBackground = false;
+    bool removeBackground = false;
     bool refresh = false;
     bool playSelected = false;
     bool editSelected = false;

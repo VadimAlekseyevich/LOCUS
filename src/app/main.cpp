@@ -229,7 +229,8 @@ int main(int argc, char** argv) {
     locus::app::LibraryFileActions libraryFiles{
         library, libraryUi, menuStatus, musicError,
         {locus::app::ChooseLibraryImportFile,
-         locus::app::ChooseSongSetExportFile, MonotonicSeconds}
+         locus::app::ChooseSongSetExportFile, MonotonicSeconds,
+         locus::app::ChooseSongBackgroundFile}
     };
     const locus::app::SessionTransitionContext transitions{
         activeChart, demo, judge, gameSession, chartPlayback, localSong, editorUi,

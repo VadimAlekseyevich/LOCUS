@@ -15,6 +15,7 @@ struct LibraryFilePickers {
     MusicPickResult (*chooseImport)() = nullptr;
     MusicPickResult (*chooseExport)(const std::wstring&) = nullptr;
     double (*now)() = nullptr;
+    MusicPickResult (*chooseBackground)() = nullptr;
 };
 
 class LibraryFileActions {
@@ -34,6 +35,8 @@ private:
     void TrashDifficulty();
     void TrashSongSet();
     void DuplicateDifficulty();
+    void SetBackground(double& now);
+    void RemoveBackground();
     void PickerReturned(double& now) const;
 
     SongLibrary& library_;
