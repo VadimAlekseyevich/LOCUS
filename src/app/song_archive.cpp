@@ -343,8 +343,9 @@ bool ExtractSongSetArchive(const fs::path& archiveFile,
         if (disk != 0 || startDisk != 0 || comment != 0 ||
             onDisk != entries.size() || total != entries.size() ||
             centralOffset != dirOffset ||
-            centralSize != static_cast<std::uint32_t>(centralEnd -
-                                                      static_cast<std::streamoff>(dirOffset)) ||
+            centralSize != static_cast<std::uint32_t>(
+                static_cast<std::streamoff>(centralEnd) -
+                static_cast<std::streamoff>(dirOffset)) ||
             input.tellg() != static_cast<std::streamoff>(totalBytes))
             throw std::runtime_error("ZIP end record is inconsistent.");
         error.clear();

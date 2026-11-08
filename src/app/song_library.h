@@ -45,6 +45,14 @@ public:
     // adds the difficulty to an existing set after verifying shared audio.
     // Explicitly add a foreign chart to an existing Song Set. The audio
     // must be byte-identical to the Set's shared audio; never replace it.
+    // Import/export portable .locuspack (ZIP store-only) bundles, without
+    // overwriting any existing installed Song Set or difficulty.
+    bool ImportPackage(const std::filesystem::path& archive,
+                       std::filesystem::path& installedSet,
+                       std::string& error);
+    bool ExportPackage(const std::filesystem::path& setFolder,
+                       const std::filesystem::path& archive,
+                       std::string& error);
     bool ImportIntoSet(const std::filesystem::path& sourceChart,
                        const std::filesystem::path& targetSet,
                        std::filesystem::path& installedChart,

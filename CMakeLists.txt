@@ -53,6 +53,8 @@ add_executable(locus
     src/app/chart_playback.cpp
     src/app/game_session.cpp
     src/app/song_library.cpp
+    src/app/song_archive.cpp
+        src/app/song_archive.cpp
     src/app/library_playback.cpp
     src/app/library_browser.cpp
     src/app/audio_revision.cpp
@@ -177,6 +179,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_save.cpp
         src/app/chart_playback.cpp
         src/app/song_library.cpp
+        src/app/song_archive.cpp
         src/app/audio_revision.cpp
         src/app/song_set_storage.cpp
 )
@@ -328,6 +331,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/menu_ui.cpp
         src/app/game_settings.cpp
         src/app/song_library.cpp
+        src/app/song_archive.cpp
         src/app/audio_revision.cpp
         src/app/chart_file.cpp
         src/app/chart_save.cpp
@@ -342,6 +346,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_song_library_tests
         tests/song_library_tests.cpp
         src/app/song_library.cpp
+        src/app/song_archive.cpp
         src/app/audio_revision.cpp
         src/app/chart_file.cpp
         src/app/chart_save.cpp
