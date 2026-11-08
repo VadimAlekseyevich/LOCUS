@@ -14,6 +14,7 @@
 #include "app/chart_editor_layout.h"
 #include "app/editor_document.h"
 #include "app/editor_session.h"
+#include "app/editor_file_actions.h"
 #include "app/visual_style.h"
 #include "app/route_renderer.h"
 #include "app/game_session.h"
@@ -65,8 +66,6 @@ using locus::app::GameplayRightSidebarWidth;
 using locus::app::kGameplayWorldViewport;
 using locus::app::DrawPlayGrid;
 using locus::app::DrawResultsScreen;
-using locus::app::LoadDraftFromDisk;
-using locus::app::SaveDraftToDisk;
 
 constexpr int kWindowWidth = 960;
 constexpr int kWindowHeight = 540;
@@ -785,6 +784,13 @@ int main(int argc, char** argv) {
         editor, editorUi, chartPlayback, localSong,
         editorAudioPath, editorPreviewStartBeat, editorStatus
     };
+    locus::app::EditorFileActions editorFiles{
+        {editor, editorUi, localSong, chartPlayback, editorChartPath,
+         editorAudioPath, loadedAudioPath, editorPreviewStartBeat, editorStatus,
+         library, libraryUi, menuStatus},
+        {locus::app::ChooseChartFile, locus::app::ChooseLocalMusicFile,
+         locus::app::ChooseChartSaveFile, MonotonicSeconds}
+    };
     const locus::app::SessionTransitionContext transitions{
         activeChart, demo, judge, gameSession, chartPlayback, localSong, editorUi,
         customChart, sessionCompleted, chartTitle
@@ -979,90 +985,13 @@ int main(int argc, char** argv) {
             if (uiAction.testPlay) input.editorTest = true;
 
             if (input.editorNew) {
-                chartPlayback.Stop();
-                localSong.Shutdown();
-                loadedAudioPath.clear();
-                editor.NewDraft();
-                editorUi = locus::app::EditorUiState{};
-                editorChartPath.clear();
-                editorAudioPath.clear();
-                editorPreviewStartBeat = 0;
-                editorStatus = "NEW CHART - CLICK LOAD SONG";
+                editorFiles.NewDraft();
             } else if (input.editorOpen) {
-                chartPlayback.Stop();
-                const auto picked = locus::app::ChooseChartFile();
-                now = MonotonicSeconds();
-                if (!picked.path.empty()) {
-                    if (LoadDraftFromDisk(picked.path, editor, localSong,
-                                          editorChartPath, editorAudioPath, musicError)) {
-                        editorUi = locus::app::EditorUiState{};
-                        editorPreviewStartBeat = 0;
-                        loadedAudioPath = editorAudioPath;
-                        editorStatus = "CHART LOADED - SPACE PREVIEW / T TEST";
-                    } else {
-                        editorStatus = "OPEN FAILED: " + musicError;
-                    }
-                } else if (!picked.canceled) {
-                    editorStatus = "OPEN FAILED: " + picked.error;
-                }
+                editorFiles.Open(now, musicError);
             } else if (input.chooseMusicPressed) {
-                chartPlayback.Stop();
-                const auto picked = locus::app::ChooseLocalMusicFile();
-                now = MonotonicSeconds();
-                if (!picked.path.empty()) {
-                    locus::app::LocalMusic replacement;
-                    replacement.SetVolume(localSong.Volume());
-                    replacement.SetSpeed(localSong.Speed(), now);
-                    if (!replacement.LoadFromFile(picked.path)) {
-                        editorStatus = "SONG FAILED: " + replacement.Error();
-                    } else {
-                        locus::core::ChartEditor preparedEditor = editor;
-                        const std::string name =
-                            std::filesystem::path(picked.path).filename().u8string();
-                        locus::core::LoadedChart checked = editor.Data();
-                        std::string validationError;
-                        if (!preparedEditor.SetSongDuration(replacement.DurationSeconds()) ||
-                            !locus::core::PrepareChartForSong(
-                                checked, replacement.DurationSeconds(), validationError) ||
-                            !preparedEditor.SetAudioPath(name)) {
-                            editorStatus = "SONG NOT CHANGED: " +
-                                (validationError.empty()
-                                    ? std::string("CHART DOES NOT FIT SELECTED AUDIO")
-                                    : validationError);
-                        } else {
-                            localSong.SwapWith(replacement);
-                            editor = std::move(preparedEditor);
-                            editorAudioPath = picked.path;
-                            loadedAudioPath = picked.path;
-                            editorStatus = "SONG LOADED - TIMELINE FITS THE WHOLE TRACK";
-                        }
-                    }
-                } else if (!picked.canceled) {
-                    editorStatus = "SONG PICKER FAILED: " + picked.error;
-                }
+                editorFiles.AttachAudio(now);
             } else if (input.editorSave || input.editorSaveAs) {
-                if (chartPlayback.Playing()) chartPlayback.Pause(now);
-                std::string failure;
-                if (SaveDraftToDisk(editor, localSong, editorChartPath,
-                                    editorAudioPath, input.editorSaveAs, failure)) {
-                    editorStatus = "SAVED - SPACE PREVIEW / T TEST / CTRL+O OPEN";
-                    // A save remains in the user's chosen folder, but also
-                    // installs/updates the permanent Songs library copy.
-                    std::filesystem::path installed;
-                    std::string installError;
-                    if (library.Import(std::filesystem::path(editorChartPath),
-                                       installed, installError)) {
-                        libraryUi.notice = "SAVED CHART INSTALLED IN SONG LIBRARY";
-                        menuStatus = "LIBRARY: " + std::to_string(library.Songs().size()) +
-                                     " SONGS / " + std::to_string(library.ChartCount()) +
-                                     " CHARTS";
-                    } else {
-                        libraryUi.notice = "LIBRARY IMPORT FAILED: " + installError;
-                        editorStatus = "SAVED (LIBRARY IMPORT FAILED - SEE PLAY)";
-                    }
-                } else if (!failure.empty()) {
-                    editorStatus = "SAVE FAILED: " + failure;
-                }
+                editorFiles.Save(input.editorSaveAs, now);
             } else if (input.editorTest) {
                 const locus::app::EditorTestTarget target{
                     activeChart, chartTitle, judge, gameSession, customChart
@@ -1115,13 +1044,8 @@ int main(int argc, char** argv) {
                 if (!selected) {
                     state.screen = Screen::Editor; // Demo uses the existing draft.
                 } else {
-                    chartPlayback.Stop();
-                    if (LoadDraftFromDisk(selected->file.wstring(), editor, localSong,
-                                          editorChartPath, editorAudioPath, musicError)) {
-                        loadedAudioPath = editorAudioPath;
-                        editorUi = locus::app::EditorUiState{};
-                        editorPreviewStartBeat = editor.SelectedBeat();
-                        editorStatus = "LIBRARY CHART READY - EDIT AND CTRL+S";
+                    if (editorFiles.OpenFromLibrary(
+                            selected->file.wstring(), musicError)) {
                         state.screen = Screen::Editor;
                     } else {
                         libraryUi.notice = "EDIT FAILED: " + musicError;

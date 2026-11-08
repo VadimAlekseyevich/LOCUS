@@ -47,6 +47,7 @@ add_executable(locus
     src/app/chart_save.cpp
     src/app/editor_document.cpp
     src/app/editor_session.cpp
+    src/app/editor_file_actions.cpp
     src/app/chart_playback.cpp
     src/app/game_session.cpp
     src/app/song_library.cpp
@@ -145,6 +146,29 @@ if(LOCUS_BUILD_TESTS)
     # across malformed charts, failed audio validation and failed saves.
     # Editor timeline and TEST preparation have no window or audio-device
     # dependency: invalid transport states must preserve game chart/session.
+    # Native dialogs are injected; missing audio and failed/canceled selection
+    # cannot erase an existing draft, chart path or browser state.
+    add_executable(locus_editor_file_actions_tests
+        tests/editor_file_actions_tests.cpp
+        src/app/editor_file_actions.cpp
+        src/app/editor_document.cpp
+        src/app/music_picker.cpp
+        src/app/local_music.cpp
+        src/app/local_file_io.cpp
+        src/app/chart_file.cpp
+        src/app/chart_save.cpp
+        src/app/chart_playback.cpp
+        src/app/song_library.cpp
+        src/app/audio_revision.cpp
+    )
+    target_compile_features(locus_editor_file_actions_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_editor_file_actions_tests PRIVATE
+        locus_core raylib nlohmann_json::nlohmann_json)
+    if(WIN32)
+        target_link_libraries(locus_editor_file_actions_tests PRIVATE comdlg32 user32)
+    endif()
+    add_test(NAME locus_editor_file_actions_lifecycle COMMAND locus_editor_file_actions_tests)
+
     add_executable(locus_editor_session_tests
         tests/editor_session_tests.cpp
         src/app/editor_session.cpp

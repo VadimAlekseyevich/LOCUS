@@ -51,7 +51,8 @@ bool LoadDraftFromDisk(const std::wstring& file, locus::core::ChartEditor& edito
 bool SaveDraftToDisk(locus::core::ChartEditor& editor,
                      const locus::app::LocalMusic& song,
                      std::wstring& chartPath, const std::wstring& audioPath,
-                     bool saveAs, std::string& error) {
+                     bool saveAs, std::string& error,
+                     ChartSavePicker chooseFile) {
     if (audioPath.empty() || !song.Ready()) {
         error = "PRESS O TO ATTACH YOUR WAV / MP3 FIRST";
         return false;
@@ -70,7 +71,11 @@ bool SaveDraftToDisk(locus::core::ChartEditor& editor,
             : std::filesystem::path(destination).parent_path();
         const std::wstring suggestion =
             (folder / locus::app::SuggestedChartFileName(checked.title)).wstring();
-        const auto selected = locus::app::ChooseChartSaveFile(suggestion);
+        if (!chooseFile) {
+            error = "No save dialog is available.";
+            return false;
+        }
+        const auto selected = chooseFile(suggestion);
         if (selected.path.empty()) {
             error = selected.canceled ? "" : selected.error;
             return false;
