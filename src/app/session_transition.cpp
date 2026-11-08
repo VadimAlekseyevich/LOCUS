@@ -25,7 +25,7 @@ void ApplySessionTransition(const SessionTransitionContext& context,
     // navigation AWAY from Play stops the underlying audio immediately.
     // For menu navigation the stream keeps playing through the short
     // output fade-out. Editor and Listen reuse the decoder and stop now.
-    if (previous == Screen::Play &&
+    if ((previous == Screen::Play || previous == Screen::Results) &&
         (next == Screen::Editor || next == Screen::Listen))
         context.gameSession.Stop(context.customChart);
     if (previous == Screen::Listen)

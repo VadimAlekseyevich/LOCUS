@@ -39,6 +39,15 @@ int main() {
        outro.Frame(6.50).resultBlackOpacity == 0.0f,
        "results fade in non-linearly from black");
     outro.Reset();
+    outro.Begin(chart, 3.25, 10.0);
+    outro.Pause(10.25);
+    ck(!outro.Done(20.0) && outro.Frame(20.0).distancePx ==
+       outro.Frame(10.25).distancePx,
+       "quit modal freezes outro progression");
+    outro.Resume(20.0);
+    ck(!outro.Done(20.3) && outro.Done(20.8),
+       "outro resumes where the modal paused it");
+    outro.Reset();
     ck(!outro.Active() && outro.Frame(10.0).resultBlackOpacity == 0.0f,
        "retry and screen exits reset transition");
     if (ok) std::cout << "PLAY_OUTRO_PASS departure=1 reveal=1\n";

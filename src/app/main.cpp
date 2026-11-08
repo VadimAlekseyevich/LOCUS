@@ -379,14 +379,17 @@ int main(int argc, char** argv) {
         locus::app::UpdateQuitMedia(
             quitMedia, wasQuitConfirmation, state.quitConfirmation, state.screen,
             customChart, now, gameSession, transport, chartPlayback, localSong);
-        // Menu preview has its own audio stream and envelope. Freeze both
-        // during the modal confirmation instead of stopping the track.
-        if (!wasQuitConfirmation && state.quitConfirmation &&
-            state.screen == Screen::SongSelect)
-            menuMusic.Pause(now);
-        else if (wasQuitConfirmation && !state.quitConfirmation &&
-                 state.screen == Screen::SongSelect)
-            menuMusic.Resume(now);
+        // Freeze visual outro and independent library preview whenever the
+        // native confirmation blocks input; preserve easing progress.
+        if (!wasQuitConfirmation && state.quitConfirmation) {
+            if (state.screen == Screen::SongSelect) menuMusic.Pause(now);
+            if (state.screen == Screen::Play || state.screen == Screen::Results)
+                playOutro.Pause(now);
+        } else if (wasQuitConfirmation && !state.quitConfirmation) {
+            if (state.screen == Screen::SongSelect) menuMusic.Resume(now);
+            if (state.screen == Screen::Play || state.screen == Screen::Results)
+                playOutro.Resume(now);
+        }
         bool loadedNewSong = false;
         // Home uses E to enter Editor and E also rotates its heading.
         // Ignore that initial key-down; start editing on the next frame.
@@ -449,13 +452,16 @@ int main(int argc, char** argv) {
                 // The outgoing menu song fades first; the new gameplay
                 // stream starts silent and eases up just afterwards.
                 gameplayVolume.FadeIn(now, locus::app::kAudioFadeOutSeconds);
-            } else if (previousScreen == Screen::Play ||
-                       previousScreen == Screen::Results) {
-                if (state.screen != Screen::Results) {
-                    drainingGameplayAudio = true;
-                    drainingCustomAudio = customChart;
-                    gameplayVolume.FadeOut(now);
-                }
+            } else if ((previousScreen == Screen::Play ||
+                        previousScreen == Screen::Results) &&
+                       state.screen != Screen::Results) {
+                // The editor and Listen share the scored decoder; stop
+                // immediately there rather than a delayed drain that could
+                // stop a newly loaded authoring stream.
+                drainingGameplayAudio = state.screen != Screen::Editor &&
+                                        state.screen != Screen::Listen;
+                drainingCustomAudio = customChart;
+                gameplayVolume.FadeOut(now);
             }
             locus::app::ApplySessionTransition(
                 transitions, previousScreen, state.screen, loadedNewChart, now);

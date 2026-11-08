@@ -34,6 +34,20 @@ public:
     void Reset() noexcept {
         active_ = false;
         resultsAt_ = -1.0;
+        paused_ = false;
+    }
+    void Pause(double now) noexcept {
+        if (!paused_) { paused_ = true; pausedAt_ = now; }
+    }
+    void Resume(double now) noexcept {
+        if (!paused_) return;
+        const double held = std::max(0.0, now - pausedAt_);
+        if (active_) start_ += held;
+        if (resultsAt_ >= 0.0) resultsAt_ += held;
+        paused_ = false;
+    }
+    double Time(double now) const noexcept {
+        return paused_ ? pausedAt_ : now;
     }
 
     void Begin(const core::Chart& chart, double beat, double now) {
@@ -57,7 +71,7 @@ public:
 
     bool Active() const noexcept { return active_; }
     bool Done(double now) const noexcept {
-        return active_ && now - start_ >= kPlayOutroSeconds;
+        return active_ && Time(now) - start_ >= kPlayOutroSeconds;
     }
     void BeginResults(double now) noexcept {
         active_ = false;
@@ -66,6 +80,7 @@ public:
 
     PlayOutroFrame Frame(double now) const noexcept {
         PlayOutroFrame result;
+        now = Time(now);
         if (active_) {
             result.active = true;
             result.frozenCamera = anchor_;
@@ -88,6 +103,8 @@ public:
 
 private:
     bool active_ = false;
+    bool paused_ = false;
+    double pausedAt_ = 0.0;
     double start_ = 0.0;
     double resultsAt_ = -1.0;
     core::GridPoint anchor_{};
