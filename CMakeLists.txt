@@ -333,6 +333,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_library_browser_tests
         tests/library_browser_tests.cpp
         src/app/library_browser.cpp
+        src/app/library_file_actions.cpp
         src/app/menu_ui.cpp
         src/app/game_settings.cpp
         src/app/song_library.cpp

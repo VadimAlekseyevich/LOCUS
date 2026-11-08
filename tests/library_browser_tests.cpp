@@ -1,4 +1,5 @@
 #include "app/library_browser.h"
+#include "app/library_file_actions.h"
 
 #include <chrono>
 #include <filesystem>
@@ -31,6 +32,24 @@ bool WriteAudio(const fs::path& file) {
     std::ofstream stream(file, std::ios::binary);
     stream << "RIFF-fixture-audio-bytes";
     return static_cast<bool>(stream);
+}
+
+fs::path pickedChart, exportedPackage;
+bool cancelImport = false;
+int importPickerCalls = 0, exportPickerCalls = 0, clockCalls = 0;
+MusicPickResult PickImport() {
+    ++importPickerCalls;
+    return cancelImport ? MusicPickResult{{}, {}, true}
+                        : MusicPickResult{pickedChart.wstring(), {}, false};
+}
+MusicPickResult PickExport(const std::wstring& suggestion) {
+    ++exportPickerCalls;
+    return suggestion.empty() ? MusicPickResult{{}, "EMPTY SUGGESTION", false}
+        : MusicPickResult{exportedPackage.wstring(), {}, false};
+}
+double FakeClock() {
+    ++clockCalls;
+    return 44.5;
 }
 } // namespace
 
@@ -90,6 +109,57 @@ int main() {
                 ui.Selected(library) && ui.Selected(library)->file == selectedFile &&
                 ui.selectedChart == 1,
                 "refresh preserves identity when a new song reorders the list");
+
+
+    // File workflows can now be exercised without the game's main loop,
+    // a real file-picker window or a real clock/audio device.
+    pickedChart = easy;
+    exportedPackage = root / "exported-song.locuspack";
+    std::string fileError;
+    LibraryFileActions commands{
+        library, ui, menuStatus, fileError,
+        {PickImport, PickExport, FakeClock}
+    };
+    MenuEvents request;
+    double eventTime = 1.0;
+    cancelImport = true;
+    request.import = true;
+    const int beforeCancel = library.ChartCount();
+    commands.Apply(request, false, eventTime);
+    ok &= Check(importPickerCalls == 1 && clockCalls == 1 &&
+                eventTime == 44.5 && beforeCancel == library.ChartCount() &&
+                ui.Selected(library) && ui.Selected(library)->file == selectedFile,
+                "cancelled import stays in library UI and refreshes time");
+    cancelImport = false;
+    commands.Apply(request, false, eventTime);
+    ok &= Check(importPickerCalls == 2 && library.ChartCount() == 3 &&
+                ui.notice.find("IMPORTED") != std::string::npos,
+                "injected import picker updates library without main.cpp");
+
+    request = MenuEvents{};
+    request.exportSelected = true;
+    commands.Apply(request, false, eventTime);
+    ok &= Check(exportPickerCalls == 1 && fs::exists(exportedPackage) &&
+                ui.notice == "SONG SET EXPORTED",
+                "controller exports selected song with native dialog injected");
+
+    // Explicit actions reuse the existing recoverable Trash semantics.
+    ui.SelectSong(2, library);
+    ui.SelectChart(1, library);
+    request = MenuEvents{};
+    request.trashDifficulty = true;
+    commands.Apply(request, false, eventTime);
+    ok &= Check(library.ChartCount() == 2 &&
+                !fs::exists(selectedFile),
+                "file command moves only selected difficulty to Trash");
+    request = MenuEvents{};
+    request.restoreDeleted = true;
+    commands.Apply(request, false, eventTime);
+    ok &= Check(library.ChartCount() == 3 &&
+                fs::exists(selectedFile),
+                "file command can restore a trashed difficulty after rescan");
+    ui.SelectSong(2, library);
+    ui.SelectChart(1, library);
 
     const std::string oldMenu = menuStatus;
     const int oldSong = ui.selectedSong, oldChart = ui.selectedChart;
