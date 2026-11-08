@@ -43,6 +43,12 @@ public:
                 std::filesystem::path& installedChart, std::string& error);
     // Save a new difficulty directly to a Song Set. An optional target folder
     // adds the difficulty to an existing set after verifying shared audio.
+    // Explicitly add a foreign chart to an existing Song Set. The audio
+    // must be byte-identical to the Set's shared audio; never replace it.
+    bool ImportIntoSet(const std::filesystem::path& sourceChart,
+                       const std::filesystem::path& targetSet,
+                       std::filesystem::path& installedChart,
+                       std::string& error);
     bool CreateDifficulty(const std::filesystem::path& sourceAudio,
                           const core::LoadedChart& chart,
                           std::filesystem::path& installedChart,

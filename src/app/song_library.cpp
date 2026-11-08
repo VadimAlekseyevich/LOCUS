@@ -214,6 +214,18 @@ bool SongLibrary::Refresh(std::string& message) {
     return true;
 }
 
+bool SongLibrary::ImportIntoSet(const fs::path& sourceChart,
+                                 const fs::path& targetSet,
+                                 fs::path& installedChart,
+                                 std::string& error) {
+    core::LoadedChart source;
+    std::wstring audio;
+    if (!OpenChartWithAudioPath(sourceChart.wstring(), source, audio, error))
+        return false;
+    return CreateDifficulty(fs::path(audio), source, installedChart,
+                            error, targetSet);
+}
+
 bool SongLibrary::DuplicateDifficulty(const fs::path& original,
                                       fs::path& copied, std::string& error) {
     int song = -1, index = -1;

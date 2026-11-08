@@ -116,7 +116,11 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         const float wheel = GetMouseWheelMove();
         if (wheel != 0.0f)
             libraryUi.MoveSong(wheel > 0.0f ? -1 : 1, library);
-        if (input.chooseChartPressed) events.import = true;
+        if (input.chooseChartPressed) {
+            events.import = true;
+            events.importIntoSelected = IsKeyDown(KEY_LEFT_SHIFT) ||
+                                        IsKeyDown(KEY_RIGHT_SHIFT);
+        }
         if (input.startPressed) events.playSelected = true;
         if (IsKeyPressed(KEY_E)) events.editSelected = true;
         if (IsKeyPressed(KEY_N)) events.newDifficulty = true;

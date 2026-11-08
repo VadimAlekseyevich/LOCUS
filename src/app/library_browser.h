@@ -14,6 +14,11 @@ namespace locus::app {
 bool RefreshLibraryBrowser(SongLibrary& library, SongSelectUi& ui,
                            std::string& menuStatus);
 
+bool ImportLibraryChartToSet(SongLibrary& library, SongSelectUi& ui,
+                             const std::filesystem::path& sourceChart,
+                             const std::filesystem::path& setFolder,
+                             std::string& menuStatus);
+
 // Import (or reimport) a chart and select the resulting difficulty.
 // Failures never replace menu selection or a previously successful status.
 bool ImportLibraryChart(SongLibrary& library, SongSelectUi& ui,

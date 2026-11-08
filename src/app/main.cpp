@@ -986,9 +986,24 @@ int main(int argc, char** argv) {
                 const auto selected = locus::app::ChooseChartFile();
                 now = MonotonicSeconds();
                 if (!selected.path.empty()) {
-                    locus::app::ImportLibraryChart(
-                        library, libraryUi, std::filesystem::path(selected.path),
-                        menuStatus);
+                    if (menuEvents.importIntoSelected &&
+                        libraryUi.selectedSong > 0 &&
+                        libraryUi.selectedSong <=
+                            static_cast<int>(library.Songs().size()) &&
+                        library.Songs()[libraryUi.selectedSong - 1].managed) {
+                        const auto setFolder =
+                            library.Songs()[libraryUi.selectedSong - 1].folder;
+                        locus::app::ImportLibraryChartToSet(
+                            library, libraryUi,
+                            std::filesystem::path(selected.path),
+                            setFolder, menuStatus);
+                    } else if (menuEvents.importIntoSelected) {
+                        libraryUi.notice = "SELECT A MANAGED SONG SET FIRST";
+                    } else {
+                        locus::app::ImportLibraryChart(
+                            library, libraryUi,
+                            std::filesystem::path(selected.path), menuStatus);
+                    }
                 } else if (!selected.canceled) {
                     libraryUi.notice = "IMPORT FAILED: " + selected.error;
                 }

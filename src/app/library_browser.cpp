@@ -55,4 +55,25 @@ bool ImportLibraryChart(SongLibrary& library, SongSelectUi& ui,
     return true;
 }
 
+bool ImportLibraryChartToSet(SongLibrary& library, SongSelectUi& ui,
+                             const std::filesystem::path& sourceChart,
+                             const std::filesystem::path& setFolder,
+                             std::string& menuStatus) {
+    std::filesystem::path installed;
+    std::string error;
+    if (!library.ImportIntoSet(sourceChart, setFolder, installed, error)) {
+        ui.notice = "IMPORT INTO SONG SET FAILED: " + error;
+        return false;
+    }
+    int song = -1, chart = -1;
+    if (library.FindChart(installed, song, chart)) {
+        ui.SelectSong(song + 1, library);
+        ui.SelectChart(chart, library);
+    }
+    ui.notice = "DIFFICULTY ADDED TO SONG SET";
+    menuStatus = "LIBRARY: " + std::to_string(library.Songs().size()) +
+                 " SONGS / " + std::to_string(library.ChartCount()) + " CHARTS";
+    return true;
+}
+
 } // namespace locus::app

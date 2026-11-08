@@ -10,6 +10,7 @@ namespace locus::app {
 
 struct MenuEvents {
     bool import = false;
+    bool importIntoSelected = false;
     bool refresh = false;
     bool playSelected = false;
     bool editSelected = false;
