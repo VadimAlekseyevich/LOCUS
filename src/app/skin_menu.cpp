@@ -148,7 +148,7 @@ void DrawSlider(Rectangle track, double value, const SkinNumberRange& range) {
 
 void PreviewPath(Font font, const Skin& skin) {
     const Rectangle area{605.0f, 193.0f, 298.0f, 248.0f};
-    const Rectangle frame{653.0f, 220.0f, 200.0f, 200.0f};
+    const Rectangle frame{641.0f, 220.0f, 191.0f, 200.0f};
     DrawRectangleRounded(area, 0.07f, 6, skin.background);
     DrawRectangleRoundedLinesEx(area, 0.07f, 6, 1.2f, kMuted);
     Label(font, "SPEED PREVIEW / 120 BPM", 622, 202, 14.0f, kMuted);
@@ -181,6 +181,8 @@ void PreviewPath(Font font, const Skin& skin) {
     }
     const Vector2 marker = point(0.0f);
     const float radius = skin.playerRadius * 0.7f;
+    DrawCircleV(marker, std::max(radius + 3.0f, radius * skin.hitFlashScale * 1.5f),
+                WithOpacity(skin.hitFlash, 0.32f));
     if (skin.playerGlow)
         DrawCircleV(marker, radius * 1.65f, WithOpacity(skin.player, 0.2f));
     DrawCircleV(marker, radius, skin.player);
@@ -202,6 +204,19 @@ void PreviewPath(Font font, const Skin& skin) {
     DrawRectangleLinesEx({frame.x + 0.75f, frame.y + 0.75f,
                           frame.width - 1.5f, frame.height - 1.5f},
                          1.5f, skin.fieldBorder);
+    // The preview must also reflect the HUD and hit-flash palette entries,
+    // not only the route and marker, so each color has a visible example.
+    if (skin.showHud) {
+        const Rectangle hud{836, 255, 63, 104};
+        DrawRectangleRounded(hud, 0.1f, 4, skin.hudBackground);
+        Label(font, "ACC", 841, 263, 11, skin.hudText);
+        Label(font, "98.5%", 839, 282, 11, skin.hudText);
+        Label(font, "PERF", 841, 310, 10, skin.hudText);
+        Label(font, "42", 845, 326, 13, skin.hudText);
+    } else {
+        Label(font, "HUD", 839, 280, 11, kMuted);
+        Label(font, "OFF", 840, 296, 11, kMuted);
+    }
     Label(font, "PLAY: [ / ] OR NUM - / +  (10 PX/S)", 610, 425, 11.0f, kMuted);
 }
 
