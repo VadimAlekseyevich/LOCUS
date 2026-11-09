@@ -21,7 +21,7 @@ struct EditorSetRequest {
     std::filesystem::path folder;
     std::filesystem::path chart;
     bool discardsDraft = false;
-    int previewStepMs = 1000;
+    int previewMs = 0;
 };
 bool EditorSetNeedsConfirmation(const EditorSetRequest& request) noexcept;
 // Parse a whole-millisecond Song Set preview position without touching the chart.
@@ -51,7 +51,8 @@ public:
 
     EditorSetView View() const;
     void HandleControls(const EditorControls& input);
-    void Request(EditorSetAction action, int previewStepMs = 1000);
+    void Request(EditorSetAction action);
+    bool SyncSongTiming(); // Called after BPM/offset edits in AUDIO.
     bool HasPending() const noexcept { return pending_.has_value(); }
     const EditorSetRequest* Pending() const noexcept {
         return pending_ ? &*pending_ : nullptr;

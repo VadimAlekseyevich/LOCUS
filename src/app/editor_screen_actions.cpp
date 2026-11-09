@@ -9,9 +9,15 @@ namespace locus::app {
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     const EditorUiAction uiAction = context_.session.ApplyControls(
         input.editor, now);
-    // SET has independent hitboxes and imported native dialogs; route input
-    // cannot place notes while this tab is active.
-    if (context_.ui.tab == EditorTab::Set) {
+    // BPM/offset are Song Set properties. Confirm a field edit by updating
+    // its one canonical manifest; never change only this difficulty's timing.
+    // Field confirmation may change tabs in the same frame; Undo of a BPM
+    // change can also occur on ROUTE. Compare canonical timing on any edit.
+    if (uiAction.changedChart)
+        context_.sets.SyncSongTiming();
+    // SET owns library tools; AUDIO contains the manual Song Set preview.
+    if (context_.ui.tab == EditorTab::Set ||
+        context_.ui.tab == EditorTab::Audio) {
         context_.sets.HandleControls(input.editor);
         if (context_.clock) now = context_.clock();
     }

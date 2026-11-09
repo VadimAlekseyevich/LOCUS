@@ -90,6 +90,8 @@ int main() {
                     easyInstalled.parent_path() / "set.locus.json", metadata, error) &&
                 !metadata.id.empty() && metadata.title == "song" &&
                 metadata.audioFile == "song.wav" &&
+                metadata.bpm && *metadata.bpm == 120.0 &&
+                metadata.offsetMs && *metadata.offsetMs == 0 &&
                 sharedAudio == library.Songs()[0].charts[0].audioFile &&
                 sharedAudio == library.Songs()[0].charts[1].audioFile &&
                 Read(sharedAudio) == firstBytes,
@@ -108,8 +110,32 @@ int main() {
                 metadata.previewStartMs == 12500 &&
                 Read(easyInstalled) == originalChartBytes,
                 "preview timestamp is atomic and does not rewrite chart timing");
+    // A song's BPM/offset are single manifest properties. All difficulties
+    // are reprojected in memory by exact note timestamps, and raw old chart
+    // files remain byte-for-byte unchanged (recoverable if migration fails).
+    ok &= Check(library.SetSongTiming(0, 150.0, 175, nullptr, error) &&
+                library.Songs()[0].bpm == 150.0 &&
+                library.Songs()[0].offsetMs == 175 &&
+                library.Songs()[0].charts[0].data.route.bpm == 150.0 &&
+                library.Songs()[0].charts[1].data.route.bpm == 150.0 &&
+                library.Songs()[0].charts[0].data.offsetSeconds == 0.175 &&
+                library.Songs()[0].charts[1].data.offsetSeconds == 0.175 &&
+                locus::core::EventTimeMs(
+                    library.Songs()[0].charts[0].data.route,
+                    library.Songs()[0].charts[0].data.route.turns[0],
+                    library.Songs()[0].charts[0].data.offsetSeconds) == 1000 &&
+                Read(easyInstalled) == originalChartBytes,
+                "shared BPM and offset preserve note times and authored files");
+    ok &= Check(LoadSongSetManifest(
+                    easyInstalled.parent_path() / "set.locus.json",
+                    metadata, error) && metadata.bpm &&
+                *metadata.bpm == 150.0 && metadata.offsetMs &&
+                *metadata.offsetMs == 175,
+                "Song Set manifest persists canonical timing once");
     SongLibrary reopened(root);
     ok &= Check(reopened.Refresh(note) &&
+                reopened.Songs()[0].bpm == 150.0 &&
+                reopened.Songs()[0].offsetMs == 175 &&
                 reopened.Songs()[0].previewStartMs == 12500,
                 "preview position survives app restart / library rescan");
     ok &= Check(!library.SetPreviewStartMs(0, -100, error) &&

@@ -47,10 +47,10 @@ Rectangle HomeMenuButton(int index) {
     return {82.0f, 174.0f + 67.0f * index, 290.0f, 55.0f};
 }
 Rectangle LibrarySongRow(int row) {
-    return {54.0f, 177.0f + 42.0f * row, 389.0f, 37.0f};
+    return {498.0f, 171.0f + 35.0f * row, 408.0f, 32.0f};
 }
 Rectangle LibraryChartRow(int row) {
-    return {501.0f, 177.0f + 42.0f * row, 404.0f, 37.0f};
+    return {518.0f, 171.0f + 35.0f * row, 388.0f, 32.0f};
 }
 Rectangle LibraryRefreshButton() { return {618, 82, 147, 34}; }
 Rectangle LibraryPlayButton() { return {501, 458, 125, 43}; }
@@ -72,13 +72,53 @@ Rectangle SettingsShowFpsButton() { return {297, 355, 100, 36}; }
 Rectangle SettingsFullscreenButton() { return {297, 421, 100, 36}; }
 Rectangle MenuBackButton() { return {794, 78, 110, 37}; }
 
+std::vector<LibraryTreeEntry> LibraryTreeRows(const SongLibrary& songs,
+                                               const SongSelectUi& ui) {
+    std::vector<LibraryTreeEntry> entries;
+    const int count = static_cast<int>(songs.Songs().size()) + 1;
+    const int children = ui.selectedSong == 0 ? 1 :
+        ui.selectedSong <= static_cast<int>(songs.Songs().size())
+        ? static_cast<int>(songs.Songs()[
+            static_cast<std::size_t>(ui.selectedSong - 1)].charts.size()) : 0;
+    entries.reserve(static_cast<std::size_t>(count + children));
+    for (int song = 0; song < count; ++song) {
+        entries.push_back({song, -1});
+        if (song == ui.selectedSong) {
+            const int difficulties = song == 0 ? 1
+                : static_cast<int>(songs.Songs()[
+                    static_cast<std::size_t>(song - 1)].charts.size());
+            for (int chart = 0; chart < difficulties; ++chart)
+                entries.push_back({song, chart});
+        }
+    }
+    return entries;
+}
+
+namespace {
+void KeepTreeSelectionVisible(SongSelectUi& ui, const SongLibrary& songs) {
+    const auto rows = LibraryTreeRows(songs, ui);
+    const int maxScroll = std::max(
+        0, static_cast<int>(rows.size()) - kLibraryTreeVisibleRows);
+    ui.treeScroll = std::clamp(ui.treeScroll, 0, maxScroll);
+    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
+        if (rows[i].song != ui.selectedSong ||
+            rows[i].chart != (ui.treeChartFocused ? ui.selectedChart : -1))
+            continue;
+        if (i < ui.treeScroll) ui.treeScroll = i;
+        if (i >= ui.treeScroll + kLibraryTreeVisibleRows)
+            ui.treeScroll = i - kLibraryTreeVisibleRows + 1;
+        break;
+    }
+}
+} // namespace
+
 void SongSelectUi::SelectSong(int index, const SongLibrary& songs) {
-    const int maximum = static_cast<int>(songs.Songs().size());
-    selectedSong = std::clamp(index, 0, maximum);
+    selectedSong = std::clamp(index, 0,
+                             static_cast<int>(songs.Songs().size()));
     selectedChart = 0;
     firstVisibleChart = 0;
-    if (selectedSong < firstVisibleSong) firstVisibleSong = selectedSong;
-    if (selectedSong >= firstVisibleSong + 6) firstVisibleSong = selectedSong - 5;
+    treeChartFocused = false;
+    KeepTreeSelectionVisible(*this, songs);
 }
 void SongSelectUi::MoveSong(int delta, const SongLibrary& songs) {
     SelectSong(selectedSong + delta, songs);
@@ -87,14 +127,34 @@ void SongSelectUi::SelectChart(int index, const SongLibrary& songs) {
     const auto* song = selectedSong > 0 &&
                        selectedSong <= static_cast<int>(songs.Songs().size())
         ? &songs.Songs()[static_cast<std::size_t>(selectedSong - 1)] : nullptr;
-    const int maximum = song ? static_cast<int>(song->charts.size()) : 1;
-    selectedChart = std::clamp(index, 0, std::max(0, maximum - 1));
-    if (selectedChart < firstVisibleChart) firstVisibleChart = selectedChart;
-    if (selectedChart >= firstVisibleChart + 5)
-        firstVisibleChart = selectedChart - 4;
+    const int count = song ? static_cast<int>(song->charts.size()) : 1;
+    selectedChart = std::clamp(index, 0, std::max(0, count - 1));
+    treeChartFocused = true;
+    KeepTreeSelectionVisible(*this, songs);
 }
 void SongSelectUi::MoveChart(int delta, const SongLibrary& songs) {
     SelectChart(selectedChart + delta, songs);
+}
+void SongSelectUi::MoveTree(int delta, const SongLibrary& songs) {
+    const auto rows = LibraryTreeRows(songs, *this);
+    if (rows.empty()) return;
+    int position = 0;
+    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
+        if (rows[i].song == selectedSong &&
+            rows[i].chart == (treeChartFocused ? selectedChart : -1)) {
+            position = i;
+            break;
+        }
+    }
+    const auto target = rows[static_cast<std::size_t>(std::clamp(
+        position + delta, 0, static_cast<int>(rows.size()) - 1))];
+    if (target.chart < 0) SelectSong(target.song, songs);
+    else SelectChart(target.chart, songs);
+}
+void SongSelectUi::ScrollTree(int delta, const SongLibrary& songs) {
+    const auto rows = LibraryTreeRows(songs, *this);
+    treeScroll = std::clamp(treeScroll + delta, 0,
+        std::max(0, static_cast<int>(rows.size()) - kLibraryTreeVisibleRows));
 }
 const LibraryChart* SongSelectUi::Selected(const SongLibrary& songs) const {
     if (selectedSong <= 0 ||
@@ -132,46 +192,90 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     Header(font, "PLAY  /  SONG LIBRARY");
     Button(font, LibraryRefreshButton(), "RESCAN  F5", kViolet);
     Button(font, MenuBackButton(), "BACK", kMuted);
-    Label(font, "SONGS", 54, 145, 18, kMuted);
-    Label(font, "CHARTS  /  DIFFICULTIES", 500, 145, 18, kMuted);
 
-    const int total = static_cast<int>(library.Songs().size()) + 1;
-    for (int row = 0; row < 6; ++row) {
-        const int index = ui.firstVisibleSong + row;
-        if (index >= total) break;
-        const std::string title = index == 0
-            ? "BUILT-IN DEMO" : library.Songs()[index - 1].title;
-        Button(font, LibrarySongRow(row),
-               Clip(title, 29), index == 0 ? kGold : kMint,
-               index == ui.selectedSong);
+    // The right side is a single expanding tree: songs are parent rows,
+    // and only the selected song exposes indented chart rows below it.
+    Label(font, "SONGS / CHARTS", 500, 144, 19, kMint);
+    const auto rows = LibraryTreeRows(library, ui);
+    for (int row = 0; row < kLibraryTreeVisibleRows; ++row) {
+        const int index = ui.treeScroll + row;
+        if (index >= static_cast<int>(rows.size())) break;
+        const auto item = rows[static_cast<std::size_t>(index)];
+        const bool child = item.chart >= 0;
+        const Rectangle rect = child ? LibraryChartRow(row)
+                                     : LibrarySongRow(row);
+        const bool current = item.song == ui.selectedSong &&
+            (child ? ui.treeChartFocused && item.chart == ui.selectedChart
+                   : !ui.treeChartFocused);
+        const bool expanded = !child && item.song == ui.selectedSong;
+        DrawRectangleRounded(rect, 0.12f, 5,
+                             current ? Color{51, 83, 86, 255}
+                                     : child ? Color{35, 39, 57, 255}
+                                             : Color{37, 46, 60, 255});
+        DrawRectangleRoundedLinesEx(rect, 0.12f, 5,
+                                    current ? 2.0f : 1.0f,
+                                    current ? kMint : child ? kViolet : kMuted);
+        std::string label;
+        Color color;
+        if (child) {
+            const auto* song = item.song > 0
+                ? &library.Songs()[static_cast<std::size_t>(item.song - 1)]
+                : nullptr;
+            label = "  |- " + (song
+                ? song->charts[static_cast<std::size_t>(item.chart)].data.title
+                : std::string("ORIGINAL / 120 BPM"));
+            color = kViolet;
+        } else {
+            const auto* song = item.song > 0
+                ? &library.Songs()[static_cast<std::size_t>(item.song - 1)]
+                : nullptr;
+            label = (expanded ? "v  " : ">  ") +
+                    (song ? song->title : std::string("BUILT-IN DEMO"));
+            color = item.song == 0 ? kGold : kMint;
+        }
+        Label(font, Clip(label, child ? 37 : 40),
+              rect.x + 12, rect.y + 6, 16, current ? kText : color);
     }
+    Label(font, TextFormat("SCROLL  %d-%d / %d",
+          rows.empty() ? 0 : ui.treeScroll + 1,
+          std::min(ui.treeScroll + kLibraryTreeVisibleRows,
+                   static_cast<int>(rows.size())),
+          static_cast<int>(rows.size())), 500, 421, 13, kMuted);
+
+    Label(font, "SELECTED SONG", 54, 154, 18, kMuted);
     const LibrarySong* song = ui.selectedSong > 0 &&
         ui.selectedSong <= static_cast<int>(library.Songs().size())
-        ? &library.Songs()[ui.selectedSong - 1] : nullptr;
-    const int count = song ? static_cast<int>(song->charts.size()) : 1;
-    for (int row = 0; row < 5; ++row) {
-        const int index = ui.firstVisibleChart + row;
-        if (index >= count) break;
-        const std::string title = song
-            ? song->charts[index].data.title : "ORIGINAL / 120 BPM";
-        Button(font, LibraryChartRow(row), Clip(title, 32), kViolet,
-               index == ui.selectedChart);
-    }
-    if (const auto* difficulty = ui.Selected(library)) {
-        const auto& chart = difficulty->data.route;
-        Label(font, Clip(difficulty->data.title, 37), 501, 399, 17, kText);
-        Label(font, TextFormat("%.1f BPM / %d x %d / %d TURNS",
-              chart.bpm, chart.gridWidth, chart.gridHeight,
-              static_cast<int>(chart.turns.size())), 501, 427, 15, kMuted);
+        ? &library.Songs()[static_cast<std::size_t>(ui.selectedSong - 1)]
+        : nullptr;
+    Label(font, Clip(song ? song->title : "BUILT-IN DEMO", 29),
+          54, 189, 21, kMint);
+    if (song) {
+        Label(font, Clip(song->artist.empty() ? "ARTIST: UNSPECIFIED"
+                                      : "ARTIST: " + song->artist, 39),
+              54, 230, 14, kMuted);
+        Label(font, TextFormat("%d CHARTS  /  SONG %.3f BPM",
+              static_cast<int>(song->charts.size()), song->bpm),
+              54, 260, 16, kText);
+        Label(font, TextFormat("SONG OFFSET %d MS", song->offsetMs),
+              54, 286, 16, kMuted);
     } else {
-        Label(font, "BUILT-IN CLICK TRACK / CLASSIC ROUTE", 501, 402, 16, kMuted);
+        Label(font, "ORIGINAL CLICK TRACK / 120 BPM", 54, 241, 16, kMuted);
+    }
+    if (const auto* selected = ui.Selected(library)) {
+        Label(font, "SELECTED DIFFICULTY", 54, 331, 15, kMuted);
+        Label(font, Clip(selected->data.title, 31), 54, 357, 19, kViolet);
+        const auto& chart = selected->data.route;
+        Label(font, TextFormat("%d x %d VIEW / %d TURNS",
+              chart.gridWidth, chart.gridHeight,
+              static_cast<int>(chart.turns.size())), 54, 391, 14, kText);
+    } else if (!song) {
+        Label(font, "ORIGINAL / CLASSIC ROUTE", 54, 355, 15, kViolet);
     }
     Button(font, LibraryPlayButton(), "PLAY", kMint);
     Button(font, LibraryEditButton(), "EDIT", kViolet);
-    Label(font, "PLAY SELECTS ONLY; EDIT OPENS THE CHART", 54, 421, 13, kMuted);
-    Label(font, "SONG SET CHANGES ARE IN EDIT > SET", 54, 442, 13, kMuted);
-    Label(font, "PREVIEW / BACKGROUND / IMPORT: EDIT > SET", 54, 476, 14, kMuted);
-    Label(font, Clip(ui.notice, 66), 54, 517, 13,
+    Label(font, "UP/DOWN TREE  LEFT/RIGHT DIFFICULTY", 54, 445, 12, kMuted);
+    Label(font, "EDIT > SET: SONGS / ARTWORK / DELETE", 54, 466, 13, kMuted);
+    Label(font, Clip(ui.notice, 80), 54, 517, 13,
           ui.notice.find("FAILED") == std::string::npos ? kGold
               : Color{240, 138, 142, 255});
     if (ui.pendingDelete != LibraryDeletePending::None) {

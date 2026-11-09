@@ -7,6 +7,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -147,6 +148,30 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
         loaded.previewStartMs > kMaxSongPreviewStartMs) {
         error = "Song Set preview position is out of range."; return false;
     }
+    // Existing Song Sets may lack timing fields; the library derives one
+    // canonical value without touching older chart files.
+    if (data.contains("bpm") != data.contains("offsetMs")) {
+        error = "Song Set BPM and offset must be specified together.";
+        return false;
+    }
+    if (data.contains("bpm")) {
+        if (!data["bpm"].is_number() || !data["offsetMs"].is_number_integer()) {
+            error = "Song Set BPM and offset have incorrect types.";
+            return false;
+        }
+        try {
+            loaded.bpm = data["bpm"].get<double>();
+            loaded.offsetMs = data["offsetMs"].get<int>();
+        } catch (const std::exception&) {
+            error = "Song Set BPM/offset are out of range.";
+            return false;
+        }
+        if (!std::isfinite(*loaded.bpm) || *loaded.bpm <= 0.0 ||
+            *loaded.offsetMs < -3600000 || *loaded.offsetMs > 3600000) {
+            error = "Song Set BPM/offset are invalid.";
+            return false;
+        }
+    }
     if (data.contains("backgroundFile")) {
         if (!data["backgroundFile"].is_string()) {
             error = "Song Set backgroundFile must be a string.";
@@ -171,7 +196,12 @@ bool WriteNewSongSetManifest(const fs::path& path,
          manifest.previewStartMs < 0 ||
          manifest.previewStartMs > kMaxSongPreviewStartMs ||
          (!manifest.backgroundFile.empty() &&
-          !SafeImageFilename(manifest.backgroundFile)))) {
+          !SafeImageFilename(manifest.backgroundFile))) ||
+        (manifest.bpm.has_value() != manifest.offsetMs.has_value()) ||
+        (manifest.bpm && (!std::isfinite(*manifest.bpm) ||
+                          *manifest.bpm <= 0.0 ||
+                          *manifest.offsetMs < -3600000 ||
+                          *manifest.offsetMs > 3600000))) {
         error = "Invalid new Song Set metadata.";
         return false;
     }
@@ -181,12 +211,16 @@ bool WriteNewSongSetManifest(const fs::path& path,
         return false;
     }
     const fs::path stage = path.wstring() + UniqueSuffix();
-    const nlohmann::json data = {
+    nlohmann::json data = {
         {"formatVersion", 1}, {"setId", manifest.id}, {"title", manifest.title},
         {"artist", manifest.artist}, {"audioFile", manifest.audioFile},
         {"previewStartMs", manifest.previewStartMs},
         {"backgroundFile", manifest.backgroundFile}
     };
+    if (manifest.bpm) {
+        data["bpm"] = *manifest.bpm;
+        data["offsetMs"] = *manifest.offsetMs;
+    }
     {
         std::ofstream out(stage, std::ios::binary | std::ios::trunc);
         if (!out) { error = "Cannot stage Song Set metadata."; return false; }
@@ -214,7 +248,12 @@ bool ReplaceSongSetManifest(const fs::path& path,
         manifest.previewStartMs < 0 ||
         manifest.previewStartMs > kMaxSongPreviewStartMs ||
         (!manifest.backgroundFile.empty() &&
-         !SafeImageFilename(manifest.backgroundFile))) {
+         !SafeImageFilename(manifest.backgroundFile)) ||
+        (manifest.bpm.has_value() != manifest.offsetMs.has_value()) ||
+        (manifest.bpm && (!std::isfinite(*manifest.bpm) ||
+                          *manifest.bpm <= 0.0 ||
+                          *manifest.offsetMs < -3600000 ||
+                          *manifest.offsetMs > 3600000))) {
         error = "Invalid Song Set metadata."; return false;
     }
     std::error_code ec;
@@ -222,13 +261,17 @@ bool ReplaceSongSetManifest(const fs::path& path,
         error = "Song Set manifest is missing."; return false;
     }
     const fs::path stage = path.wstring() + UniqueSuffix();
-    const nlohmann::json data = {
+    nlohmann::json data = {
         {"formatVersion", 1}, {"setId", manifest.id},
         {"title", manifest.title}, {"artist", manifest.artist},
         {"audioFile", manifest.audioFile},
         {"previewStartMs", manifest.previewStartMs},
         {"backgroundFile", manifest.backgroundFile}
     };
+    if (manifest.bpm) {
+        data["bpm"] = *manifest.bpm;
+        data["offsetMs"] = *manifest.offsetMs;
+    }
     {
         std::ofstream out(stage, std::ios::binary | std::ios::trunc);
         if (!out) { error = "Cannot stage Song Set metadata."; return false; }

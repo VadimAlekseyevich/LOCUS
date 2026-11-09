@@ -37,6 +37,7 @@
 #include "app/skin_menu.h"
 #include "app/menu_ui.h"
 #include "app/native_close.h"
+#include "app/window_mode.h"
 #include "app/screen_flow.h"
 #include "app/session_transition.h"
 #include "app/quit_media.h"
@@ -183,7 +184,11 @@ int main(int argc, char** argv) {
         std::cerr << "LIBRARY_SCAN_FAIL " << menuStatus << '\n';
     locus::app::SongSelectUi libraryUi;
     libraryUi.notice = menuStatus;
-    if (settings.fullscreen) ToggleBorderlessWindowed();
+    if (settings.fullscreen && !locus::app::SetBorderlessDesktop(true)) {
+        settings.fullscreen = false;
+        settingsUi.notice = "BORDERLESS DESKTOP MODE UNAVAILABLE";
+        settingsUi.noticeError = true;
+    }
 
     AppState state;
     const locus::core::Chart demo = locus::core::MakeDemoChart();
@@ -296,7 +301,12 @@ int main(int argc, char** argv) {
             (wasQuitConfirmation || input.closeRequested) ? MenuEvents{} :
             HandleMenuInput(state, input, library, libraryUi, settings,
                             settingsUi, draftSkin, skinUi);
-        if (menuEvents.toggleFullscreen) ToggleBorderlessWindowed();
+        if (menuEvents.toggleFullscreen &&
+            !locus::app::SetBorderlessDesktop(settings.fullscreen)) {
+            settings.fullscreen = !settings.fullscreen;
+            settingsUi.notice = "DISPLAY MODE SWITCH FAILED";
+            settingsUi.noticeError = true;
+        }
         if (menuEvents.applyDisplaySettings) applyDisplaySettings();
         if (state.screen == Screen::Skin)
             skinProfiles.Apply(menuEvents.skinCommand);
@@ -342,12 +352,23 @@ int main(int argc, char** argv) {
             if (outcome == locus::app::EditorDiscardOutcome::ChangesKept)
                 editorStatus = "CHANGES KEPT - CTRL+S TO SAVE";
         }
+        // TEST is a temporary view of the *same unsaved editor document*.
+        // Returning through SongSelect previously reopened the last selected
+        // saved difficulty, making the edited chart appear to vanish.
+        if (locus::app::EditorTestExitToEditor(
+                state.screen, playCameFromEditor,
+                input.backPressed, input.homePressed)) {
+            input.requestedScreen = Screen::Editor;
+            input.backPressed = false;
+            input.homePressed = false;
+        }
         // Editor discard confirmation must filter F11 before any UI action
         // takes effect; only the approved navigation request may proceed.
         if (input.fullscreenPressed && !input.closeRequested) {
-            ToggleBorderlessWindowed(); // F11: fullscreen desktop / resizable window
-            settings.fullscreen = !settings.fullscreen;
-            persistSettings();
+            if (locus::app::SetBorderlessDesktop(!settings.fullscreen)) {
+                settings.fullscreen = !settings.fullscreen;
+                persistSettings();
+            }
         }
         UpdateState(state, input, smokeWindow);
         if (state.quitConfirmation) input = FrameInput{}; // No actions beneath dialog.
@@ -616,6 +637,7 @@ int main(int argc, char** argv) {
     if (uiFont.owned) {
         UnloadFont(uiFont.value);
     }
+    locus::app::SetBorderlessDesktop(false);
     locus::app::RemoveNativeCloseGuard();
     CloseWindow();
     std::cout << "LOCUS_WINDOW_CLOSED\n";

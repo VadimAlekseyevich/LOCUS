@@ -91,6 +91,21 @@ int main() {
                 ui.selectedChart == 1 && ui.Selected(library) &&
                 ui.Selected(library)->data.title == "Hard",
                 "second import selects a different difficulty in same song");
+    const auto expanded = LibraryTreeRows(library, ui);
+    ok &= Check(expanded.size() == 4 &&
+                expanded[0].song == 0 && expanded[0].chart == -1 &&
+                expanded[1].song == 1 && expanded[1].chart == -1 &&
+                expanded[2].song == 1 && expanded[2].chart == 0 &&
+                expanded[3].song == 1 && expanded[3].chart == 1,
+                "Song Library displays charts indented directly beneath selected song");
+    ui.MoveTree(-1, library);
+    ok &= Check(ui.selectedSong == 1 && ui.selectedChart == 0 &&
+                ui.treeChartFocused,
+                "tree keyboard selection moves between child difficulties");
+    ui.MoveTree(-1, library);
+    ok &= Check(ui.selectedSong == 1 && !ui.treeChartFocused,
+                "tree keyboard selection returns from chart to parent song");
+    ui.SelectChart(1, library);
     // Pure selection policy: no raylib window, file picker or audio device.
     {
         MenuEvents action{};

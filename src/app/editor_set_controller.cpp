@@ -9,6 +9,7 @@
 #include "core/chart_editor.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <iterator>
 #include <string>
@@ -88,6 +89,31 @@ EditorSetView EditorSetController::View() const {
     return view;
 }
 
+bool EditorSetController::SyncSongTiming() {
+    const fs::path folder = ctx_.files.ActiveSetFolder();
+    const auto& all = ctx_.library.Songs();
+    const auto it = std::find_if(all.begin(), all.end(),
+        [&](const LibrarySong& song) {
+            return song.managed && song.folder == folder;
+        });
+    if (it == all.end()) return true; // Uninstalled draft stays local.
+    const auto& data = ctx_.editor.Data();
+    const double bpm = data.route.bpm;
+    const int offsetMs = static_cast<int>(std::llround(
+        data.offsetSeconds * 1000.0));
+    if (it->bpm == bpm && it->offsetMs == offsetMs) return true;
+    const int index = static_cast<int>(std::distance(all.begin(), it));
+    std::string error;
+    if (!ctx_.library.SetSongTiming(index, bpm, offsetMs, &data, error)) {
+        // Revert just the last timing edit, not the user's other unsaved notes.
+        ctx_.editor.Undo();
+        Notice(error, true);
+        return false;
+    }
+    Notice("SONG BPM / OFFSET UPDATED FOR EVERY DIFFICULTY");
+    return true;
+}
+
 void EditorSetController::Notice(const std::string& message, bool failed) {
     ctx_.editorStatus = (failed ? "SET FAILED: " : "SET: ") + message;
     ctx_.ui.feedback = ctx_.editorStatus;
@@ -95,7 +121,9 @@ void EditorSetController::Notice(const std::string& message, bool failed) {
 }
 
 void EditorSetController::HandleControls(const EditorControls& input) {
-    if (ctx_.ui.tab != EditorTab::Set || pending_) return;
+    if (pending_ ||
+        (ctx_.ui.tab != EditorTab::Set && ctx_.ui.tab != EditorTab::Audio))
+        return;
     auto& ui = ctx_.ui;
     const Vector2 mouse = input.mouse;
     const bool clicked = input.mouseClick;
@@ -116,15 +144,12 @@ void EditorSetController::HandleControls(const EditorControls& input) {
                 ui.setPreviewBuffer.clear();
                 ui.setPreviewReplaceOnType = false;
             }
-            // Do not silently drop punctuation: typing "12.5" must fail
-            // validation, not unexpectedly save 125 milliseconds.
-            // Eight or nine visible characters suffice to report invalid
-            // input without overflowing into the adjacent step buttons.
-            if (ui.setPreviewBuffer.size() < 9)
+            // Invalid pasted punctuation stays visible and fails validation.
+            if (ui.setPreviewBuffer.size() < 24)
                 ui.setPreviewBuffer.push_back(static_cast<char>(ch));
         }
         if (input.enter ||
-            (clicked && !CheckCollisionPointRec(mouse, detail::kSetPreviewInput))) {
+            (clicked && !CheckCollisionPointRec(mouse, detail::kAudioPreviewMs))) {
             int parsed = 0;
             if (!ParseSongPreviewMs(ui.setPreviewBuffer, parsed)) {
                 Notice("PREVIEW MUST BE WHOLE MS (0..3600000)", true);
@@ -133,7 +158,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
             EditorSetRequest request;
             request.action = EditorSetAction::SetPreviewExact;
             request.folder = ctx_.files.ActiveSetFolder();
-            request.previewStepMs = parsed; // Exact value, not a step.
+            request.previewMs = parsed;
             if (!Execute(request)) return; // Keep the text for correction.
             ui.editingSetPreview = false;
             ui.setPreviewBuffer.clear();
@@ -142,17 +167,25 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         }
         return;
     }
-    EditorSetView view = View();
-    const int count = static_cast<int>(view.difficulties.size());
-    if (clicked && view.managed &&
-        CheckCollisionPointRec(mouse, detail::kSetPreviewInput)) {
-        ui.editingSetPreview = true;
-        ui.setPreviewReplaceOnType = true;
-        ui.setPreviewBuffer = std::to_string(view.previewStartMs);
-        ui.feedback = "TYPE PREVIEW IN MILLISECONDS / ENTER SAVE / ESC CANCEL";
-        ui.feedbackError = false;
+    // Only a manually typed preview position is editable in AUDIO.
+    if (ui.tab == EditorTab::Audio) {
+        if (clicked && ui.active == EditorField::None &&
+            CheckCollisionPointRec(mouse, detail::kAudioPreviewMs)) {
+            const EditorSetView view = View();
+            if (!view.managed) {
+                Notice("SAVE SONG FIRST (CTRL+S)", true);
+                return;
+            }
+            ui.editingSetPreview = true;
+            ui.setPreviewReplaceOnType = true;
+            ui.setPreviewBuffer = std::to_string(view.previewStartMs);
+            ui.feedback = "PREVIEW MS / CTRL+V PASTE / ENTER SAVE / ESC CANCEL";
+            ui.feedbackError = false;
+        }
         return;
     }
+    EditorSetView view = View();
+    const int count = static_cast<int>(view.difficulties.size());
     const float wheel = input.mouseWheel;
     if (wheel != 0.0f && count > 0) {
         ctx_.ui.setSelected = view.selected; // Browsing need not follow active.
@@ -182,17 +215,16 @@ void EditorSetController::HandleControls(const EditorControls& input) {
     }
     const EditorSetAction action = detail::ClickedSetAction(mouse);
     if (action != EditorSetAction::None)
-        Request(action, input.shiftHeld ? 100 : 1000);
+        Request(action);
 }
 
-void EditorSetController::Request(EditorSetAction action, int previewStepMs) {
+void EditorSetController::Request(EditorSetAction action) {
     if (pending_ || action == EditorSetAction::None) return;
     const fs::path folder = ctx_.files.ActiveSetFolder();
     const LibrarySong* song = FindSet(ctx_.library, folder);
     EditorSetRequest request;
     request.action = action;
     request.folder = folder;
-    request.previewStepMs = previewStepMs == 100 ? 100 : 1000;
     if (action != EditorSetAction::Import &&
         action != EditorSetAction::Restore && !song) {
         Notice("SAVE YOUR SONG FIRST (CTRL+S) OR IMPORT A SONG SET", true);
@@ -244,8 +276,6 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
     const LibrarySong* song = FindSet(ctx_.library, folder);
     std::string error;
     switch (request.action) {
-        case EditorSetAction::PreviewEarlier:
-        case EditorSetAction::PreviewLater:
         case EditorSetAction::SetPreviewExact:
         case EditorSetAction::AttachBackground:
         case EditorSetAction::RemoveBackground: {
@@ -260,15 +290,8 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
                 break;
             }
             const int index = static_cast<int>(std::distance(all.begin(), it));
-            if (request.action == EditorSetAction::PreviewEarlier ||
-                request.action == EditorSetAction::PreviewLater ||
-                request.action == EditorSetAction::SetPreviewExact) {
-                const int step = request.action == EditorSetAction::PreviewEarlier
-                    ? -request.previewStepMs : request.previewStepMs;
-                const int next = request.action == EditorSetAction::SetPreviewExact
-                    ? request.previewStepMs
-                    : std::clamp(song->previewStartMs + step,
-                                 0, kMaxSongPreviewStartMs);
+            if (request.action == EditorSetAction::SetPreviewExact) {
+                const int next = request.previewMs;
                 if (!ctx_.library.SetPreviewStartMs(index, next, error)) break;
                 Notice("PREVIEW FROM " + std::to_string(next) + " MS");
                 return true;

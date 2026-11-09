@@ -4,6 +4,7 @@
 #include "app/chart_filename.h"
 #include "app/audio_revision.h"
 #include "app/song_set_storage.h"
+#include "app/song_timing.h"
 #include "app/image_asset_file.h"
 #include "app/song_archive.h"
 
@@ -15,6 +16,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cctype>
 #include <cstdint>
 #include <filesystem>
@@ -214,6 +216,34 @@ bool SongLibrary::Refresh(std::string& message) {
     }
     if (scanned >= 8192) ++skipped;
     for (auto& song : next) {
+        if (song.managed) {
+            SongSetManifest timing;
+            std::string problem;
+            if (!LoadSongSetManifest(song.folder / L"set.locus.json",
+                                     timing, problem)) {
+                message = "Song Set timing could not be read: " + problem;
+                return false;
+            }
+            // For older sets, choose a stable source chart by filename.
+            // Existing chart files and their absolute timestamps are intact.
+            const auto first = std::min_element(song.charts.begin(),
+                song.charts.end(), [](const LibraryChart& a, const LibraryChart& b) {
+                    return a.file < b.file;
+                });
+            if (first != song.charts.end()) {
+                song.bpm = timing.bpm.value_or(first->data.route.bpm);
+                song.offsetMs = timing.offsetMs.value_or(
+                    static_cast<int>(std::llround(
+                        first->data.offsetSeconds * 1000.0)));
+                for (auto& difficulty : song.charts) {
+                    if (!ApplySongTiming(difficulty.data, song.bpm,
+                                         song.offsetMs, problem)) {
+                        message = "Song Set " + song.title + ": " + problem;
+                        return false;
+                    }
+                }
+            }
+        }
         std::sort(song.charts.begin(), song.charts.end(),
                   [](const LibraryChart& a, const LibraryChart& b) {
                       if (a.data.title != b.data.title)
@@ -230,6 +260,51 @@ bool SongLibrary::Refresh(std::string& message) {
     message = "LIBRARY: " + std::to_string(songs_.size()) + " SONGS / " +
               std::to_string(ChartCount()) + " CHARTS";
     if (skipped) message += " (" + std::to_string(skipped) + " SKIPPED)";
+    return true;
+}
+
+bool SongLibrary::SetSongTiming(int songIndex, double bpm, int offsetMs,
+                                const core::LoadedChart* currentDraft,
+                                std::string& error) {
+    if (songIndex < 0 || songIndex >= static_cast<int>(songs_.size()) ||
+        !songs_[static_cast<std::size_t>(songIndex)].managed) {
+        error = "Choose a managed Song Set before changing BPM/offset.";
+        return false;
+    }
+    auto& song = songs_[static_cast<std::size_t>(songIndex)];
+    if (song.bpm == bpm && song.offsetMs == offsetMs) {
+        error.clear();
+        return true;
+    }
+    std::vector<core::LoadedChart> adjusted;
+    adjusted.reserve(song.charts.size());
+    for (const auto& difficulty : song.charts) {
+        core::LoadedChart candidate = difficulty.data;
+        if (!ApplySongTiming(candidate, bpm, offsetMs, error))
+            return false;
+        adjusted.push_back(std::move(candidate));
+    }
+    if (currentDraft) {
+        core::LoadedChart candidate = *currentDraft;
+        if (!ApplySongTiming(candidate, bpm, offsetMs, error)) return false;
+    }
+    FolderWriteLock lock;
+    if (!lock.Acquire(song.folder, error)) return false;
+    SongSetManifest metadata;
+    const auto manifestFile = song.folder / L"set.locus.json";
+    if (!LoadSongSetManifest(manifestFile, metadata, error)) return false;
+    if (metadata.id != song.id) {
+        error = "Song Set changed on disk; refresh the library.";
+        return false;
+    }
+    metadata.bpm = bpm;
+    metadata.offsetMs = offsetMs;
+    if (!ReplaceSongSetManifest(manifestFile, metadata, error)) return false;
+    song.bpm = bpm;
+    song.offsetMs = offsetMs;
+    for (std::size_t i = 0; i < adjusted.size(); ++i)
+        song.charts[i].data = std::move(adjusted[i]);
+    error.clear();
     return true;
 }
 
@@ -615,6 +690,22 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
             metadata.title = SongDisplayTitle(source);
             metadata.artist.clear();
             metadata.audioFile = source.filename().u8string();
+            metadata.bpm = chart.route.bpm;
+            metadata.offsetMs = static_cast<int>(std::llround(
+                chart.offsetSeconds * 1000.0));
+        }
+        core::LoadedChart installed = chart;
+        if (metadata.bpm) {
+            if (!ApplySongTiming(installed, *metadata.bpm,
+                                 *metadata.offsetMs, error)) return false;
+        } else {
+            const auto other = std::find_if(songs_.begin(), songs_.end(),
+                [&](const LibrarySong& s) {
+                    return s.managed && s.folder == folder;
+                });
+            if (other != songs_.end() &&
+                !ApplySongTiming(installed, other->bpm,
+                                 other->offsetMs, error)) return false;
         }
         const fs::path audio = folder / fs::u8path(metadata.audioFile);
         if (!InstallSharedSongAudio(source, audio, error)) return false;
@@ -632,7 +723,7 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
             return false;
         }
         if (!SaveChartWithAudioPath(result.wstring(), audio.wstring(),
-                                    chart, error, true)) return false;
+                                    installed, error, true)) return false;
         if (!exists && !WriteNewSongSetManifest(manifestFile, metadata, error))
             return false;
     }
@@ -707,6 +798,9 @@ bool SongLibrary::Import(const fs::path& sourceChart,
             metadata.title = SongDisplayTitle(sourceAudio);
             metadata.artist.clear();
             metadata.audioFile = sourceAudio.filename().u8string();
+            metadata.bpm = source.route.bpm;
+            metadata.offsetMs = static_cast<int>(std::llround(
+                source.offsetSeconds * 1000.0));
         }
         if (metadata.audioFile != sourceAudio.filename().u8string()) {
             error = "Existing Song Set uses a different audio filename. "
@@ -722,6 +816,17 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     const std::string difficulty = FilenamePart(actualChart.stem().u8string());
     installedChart = folder /
         (difficulty + "-" + HashText(actualChart) + ".locus.json");
+    if (!legacy && existingSet) {
+        const auto existing = std::find_if(songs_.begin(), songs_.end(),
+            [&](const LibrarySong& s) { return s.managed && s.folder == folder; });
+        if (metadata.bpm) {
+            if (!ApplySongTiming(source, *metadata.bpm,
+                                 *metadata.offsetMs, error)) return false;
+        } else if (existing != songs_.end()) {
+            if (!ApplySongTiming(source, existing->bpm,
+                                 existing->offsetMs, error)) return false;
+        }
+    }
     if (!SaveChartWithAudioPath(installedChart.wstring(),
                                 destinationAudio.wstring(), source, error, true))
         return false;

@@ -137,20 +137,29 @@ int main() {
                 detail::ClickedSetAction({370, 416}) ==
                     EditorSetAction::Restore,
                 "Song Set action buttons have distinct hitboxes");
-    ok &= Check(detail::kSetPreviewInput.x <= 168 &&
-                detail::kSetPreviewInput.y <= 283 &&
-                detail::kSetPreviewInput.x + detail::kSetPreviewInput.width > 168 &&
-                detail::kSetPreviewInput.y + detail::kSetPreviewInput.height > 283,
-                "Song Set preview field supports direct mouse text entry");
-    ok &= Check(detail::ClickedSetAction({320, 280}) ==
-                    EditorSetAction::PreviewEarlier &&
-                detail::ClickedSetAction({400, 280}) ==
-                    EditorSetAction::PreviewLater &&
-                detail::ClickedSetAction({85, 317}) ==
+    ok &= Check(detail::kAudioPreviewMs.x <= 168 &&
+                detail::kAudioPreviewMs.y <= 390 &&
+                detail::kAudioPreviewMs.x + detail::kAudioPreviewMs.width > 168 &&
+                detail::kAudioPreviewMs.y + detail::kAudioPreviewMs.height > 390 &&
+                detail::ClickedSetAction({320, 280}) == EditorSetAction::None,
+                "Song preview lives in AUDIO and has no increment buttons");
+    ok &= Check(detail::ClickedSetAction({85, 317}) ==
                     EditorSetAction::AttachBackground &&
                 detail::ClickedSetAction({285, 317}) ==
                     EditorSetAction::RemoveBackground,
-                "preview and background actions belong to editor SET");
+                "background actions remain in SET");
+    // Ruler labels are real music time; renderer/click detection agree
+    // even at fractional selected positions and different zoom values.
+    ChartEditor ruler;
+    int barFound = -1;
+    detail::ForEachTimelineTimeLabel(ruler, EditorUiState{}, 0.0,
+        [&](int tick, Rectangle bounds) {
+            if (tick == 4 && bounds.width > 60 && bounds.y < 470)
+                barFound = static_cast<int>(std::llround(
+                    ruler.AudioSecondsAtBeat(tick) * 1000));
+        });
+    ok &= Check(barFound == 2000,
+                "timeline time labels map to whole audio milliseconds");
     // FIELD has one integer square size, no editable start coordinates.
     ApplyEditorControls(chart, ui, Click(783, 89));
     ok &= Check(ui.tab == EditorTab::Field, "Field tab opens");

@@ -89,10 +89,8 @@ constexpr Rectangle kRedoEdit{142, 354, 83, 31};
 constexpr Rectangle kTitle{92, 205, 768, 43};
 constexpr Rectangle kBpm{92, 290, 350, 43};
 constexpr Rectangle kOffset{510, 290, 350, 43};
+constexpr Rectangle kAudioPreviewMs{92, 371, 768, 43};
 // Song Set management occupies its own tab without moving the timeline.
-constexpr Rectangle kSetPreviewInput{52, 271, 237, 27};
-constexpr Rectangle kSetPreviewEarlier{299, 271, 63, 27};
-constexpr Rectangle kSetPreviewLater{371, 271, 63, 27};
 constexpr Rectangle kSetBackground{52, 301, 190, 31};
 constexpr Rectangle kSetRemoveBackground{251, 301, 197, 31};
 constexpr Rectangle kSetOpen{52, 340, 123, 27};
@@ -109,8 +107,6 @@ constexpr Rectangle SetDifficultyRow(int row) noexcept {
     return {503.0f, 202.0f + row * 36.0f, 400.0f, 32.0f};
 }
 inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
-    if (CheckCollisionPointRec(p, kSetPreviewEarlier)) return EditorSetAction::PreviewEarlier;
-    if (CheckCollisionPointRec(p, kSetPreviewLater)) return EditorSetAction::PreviewLater;
     if (CheckCollisionPointRec(p, kSetBackground)) return EditorSetAction::AttachBackground;
     if (CheckCollisionPointRec(p, kSetRemoveBackground)) return EditorSetAction::RemoveBackground;
     if (CheckCollisionPointRec(p, kSetOpen)) return EditorSetAction::Open;
@@ -125,6 +121,33 @@ inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
 }
 constexpr Rectangle kGridSize{104, 225, 330, 47};
 constexpr Rectangle kFieldHeading{519, 321, 330, 47};
+
+// Shared layout for drawing the actual song-time labels and clicking them.
+// Times (not beat indices) are copied in whole milliseconds.
+template <typename Visitor>
+void ForEachTimelineTimeLabel(const core::ChartEditor& draft,
+                              const EditorUiState& ui, double previewBeat,
+                              Visitor&& visit) {
+    const auto& chart = draft.Data().route;
+    const double anchor = ui.draggingTimeline
+        ? ui.dragViewBeat : ViewBeat(draft, previewBeat);
+    const float pixels = PixelsPerTick(ui, chart);
+    const int ticks = chart.ticksPerBeat;
+    if (pixels <= 0.0f || ticks <= 0) return;
+    const int first = std::max(chart.firstBeat, static_cast<int>(std::floor(
+        anchor + (kTimelineX - kPlayheadX) / pixels)) - 1);
+    const int last = std::min(chart.lengthBeats - 1, static_cast<int>(std::ceil(
+        anchor + (kTimelineX + kTimelineWidth - kPlayheadX) / pixels)) + 1);
+    const int stride = (PixelsPerBeat(ui) < 20.0f ? 8 : 4) * ticks;
+    for (int tick = first; tick <= last; ++tick) {
+        if (tick % stride != 0) continue;
+        const float x = kPlayheadX +
+            static_cast<float>((static_cast<double>(tick) - anchor) * pixels);
+        if (x < kTimelineX + 5.0f ||
+            x > kTimelineX + kTimelineWidth - 86.0f) continue;
+        visit(tick, Rectangle{x + 4.0f, 449.0f, 81.0f, 18.0f});
+    }
+}
 
 constexpr double kSpeeds[5] = {1.0, 0.75, 0.5, 0.25, 0.1};
 

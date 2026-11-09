@@ -10,12 +10,19 @@ namespace locus::app {
 
 enum class LibraryDeletePending { None, Difficulty, SongSet };
 
+struct LibraryTreeEntry {
+    int song = 0; // 0 is the built-in demo.
+    int chart = -1; // -1 is the parent Song row.
+};
+
 struct SongSelectUi {
     // 0 = the built-in demo, 1..N = permanent user Songs.
     int selectedSong = 0;
     int selectedChart = 0;
     int firstVisibleSong = 0;
     int firstVisibleChart = 0;
+    int treeScroll = 0;
+    bool treeChartFocused = false;
     std::string notice;
     LibraryDeletePending pendingDelete = LibraryDeletePending::None;
 
@@ -23,6 +30,8 @@ struct SongSelectUi {
     void MoveSong(int delta, const SongLibrary& songs);
     void SelectChart(int index, const SongLibrary& songs);
     void MoveChart(int delta, const SongLibrary& songs);
+    void MoveTree(int delta, const SongLibrary& songs);
+    void ScrollTree(int delta, const SongLibrary& songs);
     const LibraryChart* Selected(const SongLibrary& songs) const;
 };
 
@@ -40,6 +49,11 @@ struct SettingsUi {
 Rectangle HomeMenuButton(int index);
 Rectangle LibrarySongRow(int row);
 Rectangle LibraryChartRow(int row);
+// Flat visible rows contain the complete song list and child charts of only
+// the selected song. All drawing, mouse and key hit-testing share these rows.
+constexpr int kLibraryTreeVisibleRows = 7;
+std::vector<LibraryTreeEntry> LibraryTreeRows(const SongLibrary& songs,
+                                               const SongSelectUi& ui);
 Rectangle LibraryRefreshButton();
 Rectangle LibraryPlayButton();
 Rectangle LibraryEditButton();

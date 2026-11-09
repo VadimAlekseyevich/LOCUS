@@ -43,6 +43,7 @@ add_executable(locus
     src/app/quit_media.cpp
     src/app/editor_discard_guard.cpp
     src/app/native_close.cpp
+    src/app/window_mode.cpp
     src/app/demo_transport.cpp
     src/app/audio_device.cpp
     src/app/menu_music_preview.cpp

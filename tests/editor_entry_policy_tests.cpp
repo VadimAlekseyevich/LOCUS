@@ -7,6 +7,11 @@ int main() {
         if (!yes) std::cerr << "EDITOR_ENTRY_FAIL " << name << '\n';
         ok &= yes;
     };
+    check(EditorTestExitToEditor(Screen::Play, true, true, false) &&
+          EditorTestExitToEditor(Screen::Results, true, false, true) &&
+          !EditorTestExitToEditor(Screen::Play, false, true, false) &&
+          !EditorTestExitToEditor(Screen::SongSelect, true, true, false),
+          "TEST returns to the same unsaved editor rather than Song Library");
     check(ChooseEditorEntry(Screen::Home, Screen::Editor, false, true, true) ==
           EditorEntryAction::NewDraft, "Home creates clean draft");
     check(ChooseEditorEntry(Screen::SongSelect, Screen::Editor, false, true, true) ==

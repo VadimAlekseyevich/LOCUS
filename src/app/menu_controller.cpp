@@ -116,14 +116,14 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     }
 
     if (state.screen == Screen::SongSelect) {
-        if (IsKeyPressed(KEY_UP)) libraryUi.MoveSong(-1, library);
-        if (IsKeyPressed(KEY_DOWN)) libraryUi.MoveSong(1, library);
+        if (IsKeyPressed(KEY_UP)) libraryUi.MoveTree(-1, library);
+        if (IsKeyPressed(KEY_DOWN)) libraryUi.MoveTree(1, library);
         if (IsKeyPressed(KEY_LEFT)) libraryUi.MoveChart(-1, library);
         if (IsKeyPressed(KEY_RIGHT)) libraryUi.MoveChart(1, library);
         if (IsKeyPressed(KEY_F5)) events.refresh = true;
         const float wheel = GetMouseWheelMove();
         if (wheel != 0.0f)
-            libraryUi.MoveSong(wheel > 0.0f ? -1 : 1, library);
+            libraryUi.ScrollTree(wheel > 0.0f ? -1 : 1, library);
         if (input.startPressed) events.playSelected = true;
         if (IsKeyPressed(KEY_E)) events.editSelected = true;
     }
@@ -150,13 +150,24 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
         if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
         if (hit(locus::app::LibraryEditButton())) events.editSelected = true;
-        for (int i = 0; i < 6; ++i) {
-            if (hit(locus::app::LibrarySongRow(i)))
-                libraryUi.SelectSong(libraryUi.firstVisibleSong + i, library);
-        }
-        for (int i = 0; i < 5; ++i) {
-            if (hit(locus::app::LibraryChartRow(i)))
-                libraryUi.SelectChart(libraryUi.firstVisibleChart + i, library);
+        // Songs and their nested difficulties form one vertically scrollable
+        // tree. Hit-test the same flattened row identity used for rendering.
+        const auto rows = locus::app::LibraryTreeRows(library, libraryUi);
+        for (int row = 0; row < locus::app::kLibraryTreeVisibleRows; ++row) {
+            const int index = libraryUi.treeScroll + row;
+            if (index >= static_cast<int>(rows.size())) break;
+            const auto entry = rows[static_cast<std::size_t>(index)];
+            const Rectangle bounds = entry.chart >= 0
+                ? locus::app::LibraryChartRow(row)
+                : locus::app::LibrarySongRow(row);
+            if (!hit(bounds)) continue;
+            if (entry.chart < 0) libraryUi.SelectSong(entry.song, library);
+            else {
+                if (libraryUi.selectedSong != entry.song)
+                    libraryUi.SelectSong(entry.song, library);
+                libraryUi.SelectChart(entry.chart, library);
+            }
+            break;
         }
     } else if (state.screen == Screen::Skin) {
         if (hit(locus::app::MenuBackButton())) input.backPressed = true;

@@ -27,6 +27,8 @@ struct LibrarySong {
     std::filesystem::path folder; // Parent of all managed chart files.
     bool managed = false;       // False for legacy installed v1/v2 libraries.
     int previewStartMs = 0; // Song Set menu preview, independent of BPM/offset.
+    double bpm = 120.0; // Authoritative Song Set tempo.
+    int offsetMs = 0; // Shared beat-zero position.
     std::filesystem::path backgroundImage; // Optional Song Set art (not chart timing).
 };
 
@@ -73,6 +75,9 @@ public:
                       std::string& error);
     bool RestoreLastDeleted(std::string& error);
     bool SetPreviewStartMs(int songIndex, int timeMs, std::string& error);
+    // Validates all difficulties before publishing Song Set timing.
+    bool SetSongTiming(int songIndex, double bpm, int offsetMs,
+                       const core::LoadedChart* currentDraft, std::string& error);
     // Empty source removes art; otherwise installs an independent library copy.
     bool SetBackgroundImage(int songIndex, const std::filesystem::path& source,
                             std::string& error);

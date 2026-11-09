@@ -38,6 +38,25 @@ bool EditorFileActions::OpenFromLibrary(const std::wstring& chartFile,
             chartFile, context_.editor, context_.music,
             context_.chartPath, context_.audioPath, error))
         return false;
+    // A managed Song Set supplies canonical BPM/offset. The on-disk chart
+    // may retain older standalone timing; reproject cached notes without
+    // discarding any absolute timeMs or altering the source file.
+    int songIndex = -1, difficultyIndex = -1;
+    if (context_.library.FindChart(std::filesystem::path(chartFile),
+                                   songIndex, difficultyIndex)) {
+        core::LoadedChart shared = context_.library.Songs()[
+            static_cast<std::size_t>(songIndex)].charts[
+            static_cast<std::size_t>(difficultyIndex)].data;
+        if (!core::PrepareChartForSong(
+                shared, context_.music.DurationSeconds(), error))
+            return false;
+        context_.editor.Load(shared);
+        if (!context_.editor.SetSongDuration(
+                context_.music.DurationSeconds())) {
+            error = "Shared song timing does not fit this difficulty.";
+            return false;
+        }
+    }
     newDifficultySet_.clear();
     context_.loadedAudioPath = context_.audioPath;
     context_.ui = EditorUiState{};
@@ -53,6 +72,15 @@ void EditorFileActions::Open(double& now, std::string& error) {
     if (picked.path.empty()) {
         if (!picked.canceled)
             context_.status = "OPEN FAILED: " + picked.error;
+        return;
+    }
+    int librarySong = -1, libraryChart = -1;
+    if (context_.library.FindChart(std::filesystem::path(picked.path),
+                                   librarySong, libraryChart)) {
+        if (!OpenFromLibrary(picked.path, error)) {
+            context_.status = "OPEN FAILED: " + error;
+            return;
+        }
         return;
     }
     if (!LoadDraftFromDisk(
@@ -125,6 +153,18 @@ bool EditorFileActions::NewDifficultyFromLibrary(
         return false;
     }
     draft.SetTitle("New Difficulty");
+    const auto shared = std::find_if(context_.library.Songs().begin(),
+        context_.library.Songs().end(), [&](const LibrarySong& song) {
+            return song.managed &&
+                   song.folder == std::filesystem::path(setFolder);
+        });
+    if (shared != context_.library.Songs().end()) {
+        if (!draft.SetBpm(shared->bpm) ||
+            !draft.SetOffsetMs(shared->offsetMs)) {
+            error = "Cannot prepare a new difficulty with shared Song Set timing.";
+            return false;
+        }
+    }
     context_.preview.Stop();
     context_.music.SwapWith(replacement);
     context_.editor = std::move(draft);

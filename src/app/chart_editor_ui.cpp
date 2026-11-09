@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 
 namespace locus::app {
@@ -155,9 +156,8 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                                static_cast<double>(ui.rangeLast) / ticks),
               50, 422, 17, Color{239, 207, 131, 255});
     } else {
-        Label(font, TextFormat("TIMELINE %.2f / %.2f", anchor / ticks,
-                               static_cast<double>(chart.lengthBeats) / ticks),
-              50, 422, 17, Color{209, 222, 234, 255});
+        Label(font, "TIMELINE / CLICK TIME TO COPY MS", 50, 422, 14,
+              Color{209, 222, 234, 255});
     }
     Label(font, TextFormat("GRID 1/%d", chart.snapDivision), 367, 423, 13,
           Color{164, 188, 208, 255});
@@ -197,8 +197,6 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     const int last = std::min(chart.lengthBeats - 1,
         static_cast<int>(std::ceil(
             anchor + (kTimelineX + kTimelineWidth - kPlayheadX) / pixels)) + 1);
-    const int barLabelStride = PixelsPerBeat(ui) < 20.0f ? 8 : 4;
-
     for (int tick = first; tick <= last; ++tick) {
         if (tick % snapStep != 0) continue;
         const float x = kPlayheadX +
@@ -212,12 +210,19 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                    bar ? Color{199, 220, 234, 255}
                      : major ? Color{113, 141, 163, 255}
                              : Color{81, 126, 135, 220});
-        if (bar && tick % (barLabelStride * ticks) == 0 &&
-            x < kTimelineX + kTimelineWidth - 55.0f) {
-            Label(font, TextFormat("%d", tick / ticks), x + 4.0f, 450.0f, 13,
-                  Color{195, 215, 229, 255});
-        }
     }
+
+    ForEachTimelineTimeLabel(draft, ui, previewBeat,
+        [&](int tick, Rectangle bounds) {
+            const long long ms = std::llround(
+                draft.AudioSecondsAtBeat(tick) * 1000.0);
+            const long long absMs = std::llabs(ms);
+            const std::string value = TextFormat("%s%lld:%02lld.%03lld",
+                ms < 0 ? "-" : "", absMs / 60000,
+                (absMs / 1000) % 60, absMs % 1000);
+            Label(font, value.c_str(), bounds.x, bounds.y + 1.0f, 12,
+                  Color{181, 233, 218, 255});
+        });
 
     // Draw turn symbols from the actual chart: left=teal, right=violet.
     // Iterate authored turns (already sorted), stopping after the view.
@@ -370,17 +375,37 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     } else if (ui.tab == EditorTab::Audio) {
         Label(font, "AUDIO  /  CHART TIMING", 92, 169, 20,
               Color{182, 218, 235, 255});
-        DrawTextField(font, kTitle, "CHART TITLE (TYPE)", draft.Data().title,
+        DrawTextField(font, kTitle, "DIFFICULTY NAME (TYPE)", draft.Data().title,
                       EditorField::Title, ui);
         char bpm[40]{}, offset[40]{};
         std::snprintf(bpm, sizeof(bpm), "%.3f", chart.bpm);
         std::snprintf(offset, sizeof(offset), "%.0f",
                       draft.Data().offsetSeconds * 1000.0);
-        DrawTextField(font, kBpm, "BPM (TYPE)", bpm, EditorField::Bpm, ui);
-        DrawTextField(font, kOffset, "OFFSET MS (WHOLE NUMBER)",
+        DrawTextField(font, kBpm, "SONG BPM (SHARED)", bpm, EditorField::Bpm, ui);
+        DrawTextField(font, kOffset, "SONG OFFSET MS (SHARED)",
                       offset, EditorField::OffsetMs, ui);
-        Label(font, "PRACTICE SPEED: SET ON ROUTE (KEYS 1-5 WORK HERE TOO)",
-              92, 374, 16, Color{172, 199, 218, 255});
+        Label(font, "SONG PREVIEW START (MS) - SHARED BY ALL DIFFICULTIES",
+              92, 348, 16, Color{172, 199, 218, 255});
+        DrawRectangleRounded(kAudioPreviewMs, 0.14f, 5,
+                             ui.editingSetPreview ? Color{47, 68, 78, 255}
+                                                  : Color{35, 43, 56, 255});
+        DrawRectangleRoundedLinesEx(kAudioPreviewMs, 0.14f, 5,
+                                    ui.editingSetPreview ? 2.0f : 1.0f,
+                                    ui.editingSetPreview ? Color{129, 235, 214, 255}
+                                                         : Color{91, 114, 139, 255});
+        const std::string value = ui.editingSetPreview
+            ? ui.setPreviewBuffer
+            : (set.managed ? std::to_string(set.previewStartMs)
+                           : "SAVE SONG FIRST (CTRL+S)");
+        Label(font, value.c_str(), 104, 381, 19,
+              set.managed ? Color{225, 235, 241, 255}
+                          : Color{159, 181, 201, 255});
+        if (ui.editingSetPreview) {
+            const float width = MeasureTextEx(font, value.c_str(), 19, 1).x;
+            const float x = std::min(844.0f, 105.0f + width);
+            DrawLineEx({x, 380}, {x, 404}, 1.6f,
+                       Color{186, 251, 235, 255});
+        }
     } else if (ui.tab == EditorTab::Set) {
         const Color heading{186, 219, 231, 255};
         const Color ordinary{211, 226, 236, 255};
@@ -400,24 +425,6 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             Label(font, "TO CREATE A SONG SET", 52, 265, 15, heading);
         }
         if (set.managed) {
-            DrawRectangleRounded(kSetPreviewInput, 0.14f, 5,
-                                 ui.editingSetPreview ? Color{47, 68, 78, 255}
-                                                      : Color{35, 43, 56, 255});
-            DrawRectangleRoundedLinesEx(kSetPreviewInput, 0.14f, 5,
-                                        ui.editingSetPreview ? 2.0f : 1.0f,
-                                        ui.editingSetPreview ? Color{129, 235, 214, 255}
-                                                             : Color{91, 114, 139, 255});
-            Label(font, "PREVIEW MS", 61, 277, 13, heading);
-            const std::string value = ui.editingSetPreview
-                ? ui.setPreviewBuffer : std::to_string(set.previewStartMs);
-            Label(font, value.c_str(), 168, 275, 17, ordinary);
-            if (ui.editingSetPreview) {
-                const float caret = MeasureTextEx(font, value.c_str(), 17, 1).x;
-                const float x = std::min(281.0f, 170.0f + caret);
-                DrawLineEx({x, 277}, {x, 294}, 1.5f, heading);
-            }
-            Button(font, kSetPreviewEarlier, "-1 S", Color{126, 219, 209, 255});
-            Button(font, kSetPreviewLater, "+1 S", Color{126, 219, 209, 255});
             Button(font, kSetBackground, set.hasBackground ? "REPLACE BG" : "ADD BG",
                    Color{126, 219, 209, 255});
             Button(font, kSetRemoveBackground, "REMOVE BG", Color{227, 198, 137, 255});
