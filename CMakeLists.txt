@@ -136,7 +136,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_chart_difficulty_tests tests/chart_difficulty_tests.cpp)
     target_compile_features(locus_chart_difficulty_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_chart_difficulty_tests PRIVATE locus_core)
-    add_test(NAME locus_chart_difficulty_v1 COMMAND locus_chart_difficulty_tests)
+    add_test(NAME locus_chart_difficulty_v2 COMMAND locus_chart_difficulty_tests)
 
     add_executable(locus_chart_editor_tests tests/chart_editor_tests.cpp)
     target_compile_features(locus_chart_editor_tests PRIVATE cxx_std_17)

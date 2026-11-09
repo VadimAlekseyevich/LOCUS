@@ -35,9 +35,6 @@ bool Finite(const ChartDifficulty& d) {
                          d.stamina,d.peak,d.notesPerSecondPeak,
                          d.keysPerSecondPeak,d.activeSeconds})
         if (!std::isfinite(value) || value < 0.0) return false;
-    for (double value : {d.overall,d.speed,d.rhythm,d.coordination,d.reading,
-                         d.stamina,d.peak})
-        if (value > 10.0) return false;
     return true;
 }
 bool SameDimensions(const ChartDifficulty& a, const ChartDifficulty& b) {
@@ -64,6 +61,26 @@ int main() {
                 fast.overall > easy.overall && fast.notes == 45 &&
                 fast.keyPresses == 45,
                 "more notes per second raises speed and rating, not BPM alone");
+
+    const auto denser = CalculateChartDifficulty(
+        Sequence(180, {55}, {Heading::Right}));
+    const auto extreme = CalculateChartDifficulty(
+        Sequence(180, {35}, {Heading::Right}));
+    ok &= Check(Finite(extreme) && denser.speed > fast.speed &&
+                extreme.speed > denser.speed &&
+                extreme.overall > denser.overall &&
+                extreme.overall > 10.0 && extreme.speed > 10.0,
+                "difficulty grows past ten without saturating on dense streams");
+
+    const auto sustained = CalculateChartDifficulty(
+        Sequence(180, {100}, {Heading::Right}));
+    const auto fragmented = CalculateChartDifficulty(
+        Sequence(180, {100,100,100,100,100,100,100,100,100,100,3000},
+                 {Heading::Right}));
+    ok &= Check(sustained.notes == fragmented.notes &&
+                sustained.speed > fragmented.speed &&
+                sustained.overall > fragmented.overall,
+                "whole-chart sustained density matters beyond isolated bursts");
 
     const auto diagonal = CalculateChartDifficulty(
         Sequence(45, {100}, {Heading::UpRight}));
@@ -159,6 +176,6 @@ int main() {
                 "new blank editor does not reuse previous cached score");
 
     if (!ok) return 1;
-    std::cout << "DIFFICULTY_V1_PASS intrinsic independent chart rating\n";
+    std::cout << "DIFFICULTY_V2_PASS unbounded density-aware chart rating\n";
     return 0;
 }

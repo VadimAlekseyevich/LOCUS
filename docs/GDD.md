@@ -120,4 +120,4 @@ The following areas are not implemented or verified:
 Remaining work is tracked in [ROADMAP.md](ROADMAP.md).
 
 
-Difficulty v1 estimates each chart independently using tempo-adjusted exact timestamps, key combinations, rhythmic variations, route intersections, and sustained exertion. It is displayed in PLAY and EDIT and never written into chart JSON. Full methodology: [CHART_DIFFICULTY.md](CHART_DIFFICULTY.md).
+Difficulty v2 estimates each chart on an uncapped scale using exact timestamps, sustained and peak note density, key combinations, rhythm, route readability and stamina. It is displayed in PLAY and EDIT and never written into chart JSON. Full methodology: [CHART_DIFFICULTY.md](CHART_DIFFICULTY.md).

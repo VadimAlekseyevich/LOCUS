@@ -6,7 +6,7 @@
 
 namespace locus::core {
 
-// Difficulty v1 is a deterministic, chart-only estimate (0..10).
+// Difficulty v2 is an unbounded, nonnegative chart-only estimate.
 // Not a grade, a player skill rating or a promise of sight-readability.
 // No skin, key binding, playback speed or song duration dependence.
 struct ChartDifficulty {

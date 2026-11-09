@@ -1,103 +1,87 @@
-# Chart difficulty — v1
+# Chart difficulty — v2
 
-LOCUS estimates the intrinsic difficulty of a chart on a **0–10** scale.
-This is a heuristic for comparing charts inside LOCUS, **not** a calibrated
-performance rating, a player skill estimate, an accuracy prediction, or a
-guarantee that a first-time player can read the map. The UI explicitly labels
-the number **V1**.
+LOCUS estimates intrinsic chart difficulty on an **uncapped, nonnegative scale**.
+There is no maximum score of 10 (or any other fixed ceiling), and none of the
+six component ratings saturates at a fixed maximum. Scores from v1 are **not
+comparable** with v2; ratings are derived on demand and are not stored in
+chart files.
 
-The calculator runs in `core/chart_difficulty.{h,cpp}`. It needs only the
-absolute note directions, timestamps, song BPM and chart geometry; it does not
-open music, allocate graphics, depend on the current skin, or touch save files.
-Results are recomputed after each authored editor revision, and once per
-difficulty on library rescan. The value is **derived**, never added to JSON.
+This is still a heuristic, **not** a calibrated player skill prediction or a
+guarantee that a pattern is sight-readable. The displayed **V2** label makes
+the current formula explicit.
 
-## Inputs
+The calculator in `core/chart_difficulty.{h,cpp}` uses absolute note
+timestamps, directions, BPM for modest rhythmic accents, and route geometry.
+It neither loads audio nor depends on the current skin, practice speed, key
+bindings or player performance. The editor recalculates after chart changes;
+the song library computes ratings during a rescan.
 
-- **Absolute note timestamps** (`timeMs`), rather than BPM alone or the
-  number of timeline subdivisions. BPM/offset are used only to identify
-  musical placement for a small rhythmic accent and for legacy-free computed
-  timestamps in internal, unsaved charts.
-- **Eight-way direction**, represented internally by a compass heading and
-  its physical 1–2 directional key presses. A diagonal is one note but two
-  simultaneous keys.
-- **Turn geometry**, simulated on the same normalized, infinite route as the
-  game. Nearby older path segments are compared against new segments.
-- **Timing gaps** between events, active duration, and local note/key rates.
+## What contributes
 
-## Six displayed measurements
+1. **SPEED** — rolling 1.8-second note and physical-key rates, plus **active
+   chart-wide physical-key density**. Long or consistently dense streams now
+   weigh substantially more than in v1. Diagonal notes count as one note but
+   two key presses.
+2. **RHYTHM** — irregular adjacent intervals, unusual placements and very
+   short gaps. Its density multiplier has no upper ceiling; a steady triplet
+   pattern is not as irregular as unpredictable alternating intervals.
+3. **KEYS** — simultaneous diagonal input, rapid changes in key masks,
+   opposite-chord switches and repeated-note jacks. No hard rating cap.
+4. **READ** — sharp turns, 180-degree reversals and nearby route segments.
+   Visual ambiguity is approximated geometrically, not from actual rendered
+   pixels. Dense turns intensify this contribution without a hard cap.
+5. **STAMINA** — active duration and chart-wide physical key rate. Longer
+   dense passages increase difficulty even if their fastest 1.8 seconds
+   stay identical; long rests cannot inflate exertion by themselves.
+6. **PEAK** — a secondary indication of especially fast sections, using
+   the 99th-percentile and maximum short-window key rates.
 
-All are individually scaled to **0–10** with saturating curves (high values
-become progressively harder to earn):
+For the chart-wide density and stamina measurements, `activeSeconds` sums
+consecutive note gaps with each gap limited to 1.5 seconds. That discounts
+long silent intervals but does not erase their effect on the average rate.
+One isolated note contributes zero active duration. The calculation uses
+integer-millisecond differences, preserving invariance under shifting all
+note timestamps together with the song offset.
 
-1. **SPEED** — 1.8-second rolling note/key rates. The 85th and 95th
-   percentiles carry more weight than the single fastest burst; diagonal
-   notes consume two keys.
-2. **RHYTHM** — surprises in consecutive intervals, measured by the
-   logarithm of their duration ratio. Small additional weight for placements
-   off the ordinary quarter-beat grid and extremely short intervals. A steady
-   triplet stream does not receive the same penalty as irregular timing.
-3. **KEYS** — diagonal two-key chords, rapid changes in held key masks,
-   full opposite-chord switches and repeated-note jacks. The physical
-   bindings are configurable, so this is **binding-neutral**: it does not
-   assume a particular finger layout or player handedness.
-4. **READ** — relative angle between consecutive *absolute* headings,
-   time pressure on sharp bends, direct 180° reversals and local geometric
-   ambiguity. Nearby crossing or overlapping line segments within the
-   previous 4 seconds contribute a bounded clutter penalty.
-   This approximates visual reading; it does **not** run the actual renderer,
-   recognize images or model a particular player's vision.
-5. **STAMINA** — active note duration multiplied by sustained local key
-   rate. Empty gaps longer than 1.5 seconds contribute at most 1.5 seconds
-   each; a long song with only a few notes cannot inflate this rating.
-6. **PEAK** — an additional indication of very dense sections using the
-   99th-percentile and maximum short-window key rate. It contributes a
-   *small* amount to the final rating, without dominating it.
-
-### Total
-
-The primary total is a weighted root-mean-square of five dimensions:
+## Current formula
 
 ```text
+activeKps = totalPhysicalKeyPresses / activeSeconds  (0 if no active duration)
+q85Nps   = 85th percentile of rolling notes/second
+q85Kps   = 85th percentile of rolling keys/second
+
+SPEED = 1.35 × (0.55 × q85Nps + 0.20 × q85Kps + 0.25 × activeKps)
+
 base = sqrt(
-    0.29 * SPEED^2 +
-    0.19 * RHYTHM^2 +
-    0.22 * KEYS^2 +
-    0.23 * READ^2 +
-    0.07 * STAMINA^2
+    0.52 × SPEED² +
+    0.14 × RHYTHM² +
+    0.14 × KEYS² +
+    0.15 × READ² +
+    0.05 × STAMINA²
 )
-total = clamp(0, 10,
-    (0.96 * base + 0.08 * PEAK)
-    * (0.70 + 0.30 * min(noteCount / 24, 1))
-)
+total = (base + 0.08 × PEAK) × (0.70 + 0.30 × min(noteCount / 24, 1))
 ```
 
-The final factor downweights extremely short excerpts whose isolated bursts
-are unreliable representatives of a full chart. Ratings are intentionally
-subjective: coefficients are **starting hypotheses**, not fitted to a
-dataset of successful player clears.
+All displayed components are nonnegative and **not capped**. RHYTHM, KEYS,
+READ, STAMINA and PEAK retain their own formulas in the calculator source.
+The confidence factor reduces the influence of extremely short samples;
+it does **not** impose an upper limit. Stamina's duration contribution grows
+approximately with the square root of active seconds rather than approaching
+an artificial asymptote.
 
-## Important guarantees
+The weights are hypotheses. They have not been calibrated using a dataset of
+real players, and should be judged by comparing chart examples in-game.
 
-- Rotating or horizontally/vertically reflecting an *entire* chart should
-  not change its rating: the geometrical challenges are the same.
-- Subdivision/tick resolution changes without changing the actual music
-  timestamps or trajectory do not change it.
-- Shifting the whole timeline and song offset together does not change it.
-- No calculation changes a note's direction, time, score, or difficulty JSON.
-- Blank charts report zero; invalid chart parameters report no rating.
-- The rating does not depend on currently selected note, scroll position,
-  practice speed, chosen skin or latest player performance.
+## Guarantees and limitations
 
-## What v1 cannot know
+- Whole-chart rotation or mirroring leaves every component unchanged.
+- Changing tick subdivision without changing notes or musical timestamps
+  leaves the rating unchanged.
+- Shifting note times together with the offset leaves the rating unchanged.
+- The calculation never changes chart timing, headings, scoring or JSON.
+- Blank charts report zero; invalid chart parameters return no useful rating.
+- Audio latency, actual rendered overlap, monitor size, chosen skin, practice
+  speed, human memory and finger technique are not modelled.
 
-Actual difficulty depends on display size, visual effects/skin, monitor
-latency, audio, player experience, background art, practice history and
-readability of lines *as rendered*. The first version cannot reliably
-predict memorization, individual finger techniques, or player-specific
-challenges. A route's apparent overlap is estimated geometrically, not
-from pixels. A real calibrated ranking will require a collection of
-charts and player judgements/clear data, plus side-by-side comparisons.
-
-Compare **relative ratings and component breakdowns** rather than treating
-4.8 versus 5.0 as a definitive statement of skill.
+Compare charts by relative rating and breakdown, not by interpreting a fixed
+number as an objective skill level. A score of 12 or 30 is legitimate.

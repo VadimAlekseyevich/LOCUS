@@ -242,7 +242,10 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
                       .charts[static_cast<std::size_t>(item.chart)].difficulty
                 : core::CalculateChartDifficulty(core::MakeDemoChart());
             Label(font, TextFormat("%.1f", score.overall),
-                  867, rect.y + 7, 15, kGold);
+                  rect.x + rect.width - 12.0f -
+                      MeasureTextEx(font, TextFormat("%.1f", score.overall),
+                                    15.0f, 1.0f).x,
+                  rect.y + 7, 15, kGold);
         }
     }
     Label(font, TextFormat("SCROLL  %d-%d / %d",
@@ -274,7 +277,7 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
         Label(font, "SELECTED DIFFICULTY", 54, 313, 14, kMuted);
         Label(font, Clip(selected->data.title, 30), 54, 332, 18, kViolet);
         const auto& score = selected->difficulty;
-        Label(font, TextFormat("DIFFICULTY V1   %.1f / 10", score.overall),
+        Label(font, TextFormat("DIFFICULTY V2   %.1f", score.overall),
               54, 356, 20, kGold);
         Label(font, TextFormat("SPEED %.1f   RHYTHM %.1f   KEYS %.1f",
               score.speed, score.rhythm, score.coordination),

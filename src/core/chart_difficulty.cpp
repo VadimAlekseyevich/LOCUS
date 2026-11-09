@@ -25,11 +25,8 @@ struct Note {
     double coordination = 0.0;
     double reading = 0.0;
 };
-double Clamp10(double v) {
-    return std::isfinite(v) ? std::clamp(v, 0.0, 10.0) : 0.0;
-}
-double Saturate(double x) {
-    return 10.0 * (1.0 - std::exp(-std::max(0.0, x)));
+double Nonnegative(double value) {
+    return std::isfinite(value) ? std::max(0.0, value) : 0.0;
 }
 int HeadingIndex(Heading h) {
     switch (h) {
@@ -233,42 +230,49 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         result.keysPerSecondPeak = std::max(result.keysPerSecondPeak, kps);
     }
     const double q85Keys = Percentile(keyRates, 0.85);
-    const double q95Keys = Percentile(keyRates, 0.95);
     const double q85Notes = Percentile(noteRates, 0.85);
-    const double speedLoad = 0.55*q85Keys + 0.30*q95Keys + 0.15*q85Notes;
-    result.speed = Clamp10(Saturate(0.092 * (speedLoad - 1.0)));
+    // Local density alone overvalues a short burst. Include the number of
+    // physical presses over the chart's active spans, with rests above 1.5 s
+    // contributing only 1.5 s to the denominator. Repeated dense passages
+    // therefore matter even when the fastest small window is unchanged.
+    const double activeKeysPerSecond = result.activeSeconds > 0.0
+        ? static_cast<double>(totalKeys) / result.activeSeconds : 0.0;
+    result.speed = Nonnegative(1.35 * (
+        0.55*q85Notes + 0.20*q85Keys + 0.25*activeKeysPerSecond));
 
     const double avgRhythm = rhythmSamples.empty() ? 0.0 :
         std::accumulate(rhythmSamples.begin(), rhythmSamples.end(), 0.0) /
         rhythmSamples.size();
-    result.rhythm = Clamp10(Saturate(
+    result.rhythm = Nonnegative(
         (0.38 * Percentile(rhythmRates, 0.85) + 0.30*avgRhythm) *
-        std::clamp(q85Notes / 3.0, 0.3, 1.8)));
-    result.coordination = Clamp10(Saturate(
-        0.14 * (0.75*Percentile(coordRates, 0.85) +
-                0.25*Percentile(coordRates, 0.95))));
-    result.reading = Clamp10(Saturate(
-        0.52 * (0.75*Percentile(readRates, 0.85) +
+        std::max(0.30, q85Notes / 3.0));
+    result.coordination = Nonnegative(
+        0.50 * (0.75*Percentile(coordRates, 0.85) +
+                0.25*Percentile(coordRates, 0.95)));
+    result.reading = Nonnegative(
+        0.80 * (0.75*Percentile(readRates, 0.85) +
                 0.25*Percentile(readRates, 0.95)) *
-        std::clamp(std::sqrt(q85Notes / 3.0), 0.45, 1.75)));
-    // Total "working" time ignores long quiet interludes. Stamina requires
-    // BOTH duration and meaningful density (not simply a long song file).
-    result.stamina = Clamp10(
-        10.0 * (1.0 - std::exp(-result.activeSeconds / 95.0)) *
-        q85Keys / (q85Keys + 5.0));
-    result.peak = Clamp10(Saturate(
-        0.10 * (0.75*Percentile(keyRates, 0.99) +
-                0.25*result.keysPerSecondPeak - 1.0)));
+        std::max(0.45, std::sqrt(q85Notes / 3.0)));
+    // Both how long a dense pattern persists and how many presses it
+    // requires matter. Quiet songs and isolated notes earn no stamina.
+    // Square-root duration grows indefinitely, but at a diminishing rate.
+    result.stamina = Nonnegative(
+        0.85 * std::sqrt(result.activeSeconds / 30.0) *
+        std::max(0.0, activeKeysPerSecond - 1.0));
+    result.peak = Nonnegative(
+        0.48 * (0.75*Percentile(keyRates, 0.99) +
+                0.25*result.keysPerSecondPeak - 1.0));
     const double energy =
-        0.29*result.speed*result.speed +
-        0.19*result.rhythm*result.rhythm +
-        0.22*result.coordination*result.coordination +
-        0.23*result.reading*result.reading +
-        0.07*result.stamina*result.stamina;
+        0.52*result.speed*result.speed +
+        0.14*result.rhythm*result.rhythm +
+        0.14*result.coordination*result.coordination +
+        0.15*result.reading*result.reading +
+        0.05*result.stamina*result.stamina;
+    // Confidence adjusts tiny samples; it is NOT a difficulty ceiling.
     const double sampleConfidence = 0.70 + 0.30 *
         std::min(1.0, static_cast<double>(n)/24.0);
-    result.overall = Clamp10((
-        std::sqrt(energy) * 0.96 + result.peak * 0.08) *
+    result.overall = Nonnegative((
+        std::sqrt(energy) + result.peak * 0.08) *
         sampleConfidence);
     return result;
 }
