@@ -17,11 +17,11 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 | `src/app/listen_session.*`, `skin_profile_actions.*`, `library_playback.*`, `library_browser.*` | Cohesive user-facing session workflows with testable boundaries. |
 | `src/app/app_runtime_policy.*` | Pure screen navigation and judgement-completion policy, independent of rendering and file dialogs. |
 | `src/app/play_screen_actions.*`, `play_adjustments.h` | Play-only pause/retry/practice input, transition start at final note judgement, playback snapshots, and pure speed/preview hotkey repeat/step rules. Held adjustments use the editor's deterministic delay and acceleration; frequent global-skin writes are coalesced. |
-| `src/app/editor_screen_actions.*` | Editor-only New/Open/Attach/Save/TEST command routing and SET tab events, with deterministic precedence and no screen navigation ownership. |
+| `src/app/editor_screen_actions.*`, `editor_set_controller.*` | Editor-only New/Open/Attach/Save/TEST and Song Set mutations, including preview-start and background-file changes. These mutations are never dispatched by PLAY. |
 | `src/app/app_smoke_checks.*` | Headless integration checks behind the existing `--loop-check`, `--screen-check`, and `--session-check` entry points. |
 | `src/app/app_frame_renderer.*`, `app_quit_dialog_layout.h`, `image_asset_texture.*`, `image_cover_geometry.h` | Rendering and OS font selection. Reusable GPU textures load from native-path bytes (Unicode-safe), keep aspect ratio using a headless-tested cover crop and unload before the window closes. The quit confirmation shares hitboxes between renderer and input. |
-| `src/app/library_file_actions.*`, `image_asset_file.h` | Song library file commands (import/export/copy/Trash/restore/background) and injected native pickers. Reusable file guards reject unsafe image paths and signatures, ready for future skin/UI images without coupling them to song data. |
-| `src/app/library_launch_actions.*` | SongSelect launch decisions and effects: pure path-based intent selection and a focused Edit/Play/NewDifficulty coordinator. |
+| `src/app/image_asset_file.h` | Reusable, graphics-independent disk image guards reject unsafe image names, mismatched signatures and truncated PNG/JPEG endings. Decode/upload remains in `image_asset_texture.*`. |
+| `src/app/library_launch_actions.*` | SongSelect browsing and transition into PLAY or EDIT. No direct Song Set data mutation from PLAY. |
 | `src/app/main.cpp` | Composition root, explicit resource lifetime, cross-screen ordering and frame rendering call. Keeps the necessary high-level coordination rather than hiding it in an all-knowing Application object. |
 
 ## Architecture-first refactoring contract
@@ -42,6 +42,11 @@ and reduce the number of unrelated reasons a file can change.
   own narrowly scoped state and dependencies. Native pickers and time sources
   are injected for reproducible tests. A screen controller should not hold
   all application services by default.
+- **Authoring boundary:** PLAY / SongSelect only browses, previews audio,
+  launches scored play and opens EDIT. All persistent Song Set edits (charts,
+  difficulties, imports, exports, `backgroundFile`, `previewStartMs`) belong
+  exclusively to EDIT -> SET, backed by `SongLibrary`. Adding any mutation
+  control to PLAY is an architectural regression.
 - **Lifetime:** the composition root creates and destroys resources in a
   fixed order; the audio device outlives streams; a library refresh invalidates
   pointers to prior cached chart/song records.
@@ -74,6 +79,8 @@ and reduce the number of unrelated reasons a file can change.
    giant frame-state DTO.
 
 ## Completed stabilization
+
+- **2026-11-09:** SongSelect is read-only for Song Set data. EDIT -> SET exclusively owns shared artwork and menu-preview origin. A PNG/JPEG must have a complete end marker before import; GPU decode errors remain visible, and the editor shows its installed artwork without loading textures repeatedly per frame. The former `library_file_actions.*` adapter remains for historical headless tests but is not constructed by the application; remove it when those tests migrate to editor-owned commands.
 
 - **2026-11-08:** Enabled VSync by default and removed the fixed 60-FPS presentation cap. Phone frames showed a horizontal screen-tearing boundary crossing moving path segments, especially vertical segments during horizontal camera movement. Rendering now requests display-synchronized swaps and uses 240 FPS only as a fallback ceiling. Timing and chart geometry remain clock-based; verify live on the target monitor because a GPU driver may override the swap interval.
 
