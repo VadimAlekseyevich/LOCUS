@@ -136,7 +136,7 @@ int main() {
     ApplyEditorControls(chart, ui, Type(u8"ёж"));
     ApplyEditorControls(chart, ui, enter);
     ok &= Check(chart.Data().title == u8"Новый чарт ёж" &&
-                core::utf8::Valid(chart.Data().title),
+                utf8::Valid(chart.Data().title),
                 "title field input and backspace preserve UTF-8 characters");
 
     const auto audioEmpty = ApplyEditorControls(chart, ui, Click(116, 390));
