@@ -18,6 +18,7 @@ add_library(locus_core STATIC
     src/core/music_file.cpp
     src/core/chart_json.cpp
     src/core/chart_editor.cpp
+    src/core/chart_difficulty.cpp
 )
 target_compile_features(locus_core PUBLIC cxx_std_17)
 target_link_libraries(locus_core PRIVATE nlohmann_json::nlohmann_json)
@@ -131,6 +132,11 @@ if(LOCUS_BUILD_TESTS)
     # Keep the shipped example checked by the same parser as real files.
     set_tests_properties(locus_chart_json_compatibility PROPERTIES
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+
+    add_executable(locus_chart_difficulty_tests tests/chart_difficulty_tests.cpp)
+    target_compile_features(locus_chart_difficulty_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_chart_difficulty_tests PRIVATE locus_core)
+    add_test(NAME locus_chart_difficulty_v1 COMMAND locus_chart_difficulty_tests)
 
     add_executable(locus_chart_editor_tests tests/chart_editor_tests.cpp)
     target_compile_features(locus_chart_editor_tests PRIVATE cxx_std_17)

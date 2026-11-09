@@ -118,3 +118,6 @@ The following areas are not implemented or verified:
 - Online hosting/accounts/leaderboards, multiplayer and non-Windows ports.
 
 Remaining work is tracked in [ROADMAP.md](ROADMAP.md).
+
+
+Difficulty v1 estimates each chart independently using tempo-adjusted exact timestamps, key combinations, rhythmic variations, route intersections, and sustained exertion. It is displayed in PLAY and EDIT and never written into chart JSON. Full methodology: [CHART_DIFFICULTY.md](CHART_DIFFICULTY.md).

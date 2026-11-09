@@ -13,6 +13,15 @@ ChartEditor::ChartEditor() {
     NewDraft();
 }
 
+const ChartDifficulty& ChartEditor::Difficulty() const {
+    if (difficultyRevision_ != revision_) {
+        difficulty_ = CalculateChartDifficulty(chart_.route,
+                                                chart_.offsetSeconds);
+        difficultyRevision_ = revision_;
+    }
+    return difficulty_;
+}
+
 void ChartEditor::NewDraft() {
     chart_ = LoadedChart{};
     chart_.title = "Untitled Chart";
@@ -80,6 +89,7 @@ void ChartEditor::ResetHistory() noexcept {
     redo_.clear();
     revision_ = savedRevision_ = nextRevision_ = 0;
     dirty_ = false;
+    difficultyRevision_ = std::numeric_limits<std::uint64_t>::max();
 }
 
 void ChartEditor::MarkSaved() noexcept {
@@ -92,6 +102,7 @@ void ChartEditor::ApplySavedChart(LoadedChart saved) {
     // serialized snapshot avoids Load() resetting the user's current beat
     // (and erasing the Undo/Redo history) on every Ctrl+S.
     chart_ = std::move(saved);
+    difficultyRevision_ = std::numeric_limits<std::uint64_t>::max();
     selectedBeat_ = std::clamp(selectedBeat_, chart_.route.firstBeat,
                                chart_.route.lengthBeats - 1);
     MarkSaved();

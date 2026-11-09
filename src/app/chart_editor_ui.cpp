@@ -280,9 +280,10 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
           hasAudio ? Color{178, 227, 222, 255} : Color{242, 181, 164, 255});
 
     if (ui.tab == EditorTab::Route) {
-        Label(font, TextFormat("ROUTE  /  %d x %d VIEW",
-                              chart.gridWidth, chart.gridHeight),
-              51, 166, 17, Color{188, 215, 227, 255});
+        Label(font, TextFormat("ROUTE / %d x %d   DIFFICULTY V1  %.1f / 10",
+                              chart.gridWidth, chart.gridHeight,
+                              draft.Difficulty().overall),
+              51, 166, 16, Color{188, 215, 227, 255});
         DrawRoutePreview(font, draft, previewBeat, skin);
         Label(font, IsGameDirectionKey(settings, KEY_Q) ||
                     IsGameDirectionKey(settings, KEY_E)
@@ -355,6 +356,11 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
               Color{182, 218, 235, 255});
         DrawTextField(font, kTitle, "DIFFICULTY NAME (TYPE)", draft.Data().title,
                       EditorField::Title, ui);
+        const auto& rating = draft.Difficulty();
+        Label(font, TextFormat("RATING V1 %.1f  SPEED %.1f  RHYTHM %.1f  KEYS %.1f  READ %.1f  END %.1f",
+              rating.overall, rating.speed, rating.rhythm,
+              rating.coordination, rating.reading, rating.stamina),
+              92, 252, 12, Color{239, 202, 137, 255});
         char bpm[40]{}, offset[40]{};
         std::snprintf(bpm, sizeof(bpm), "%.3f", chart.bpm);
         std::snprintf(offset, sizeof(offset), "%.0f",

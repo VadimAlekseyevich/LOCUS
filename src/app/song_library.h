@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/chart_json.h"
+#include "core/chart_difficulty.h"
 
 #include <filesystem>
 #include <string>
@@ -16,6 +17,7 @@ struct LibraryChart {
     std::filesystem::path file;
     core::LoadedChart data; // Parsed once per library refresh.
     std::filesystem::path audioFile; // Actual revision for this difficulty.
+    core::ChartDifficulty difficulty; // Calculated once on library refresh.
 };
 
 struct LibrarySong {

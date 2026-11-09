@@ -1,4 +1,5 @@
 #include "app/menu_ui.h"
+#include "core/chart_difficulty.h"
 #include "core/utf8.h"
 
 #include <algorithm>
@@ -233,8 +234,16 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
                     (song ? song->title : std::string("BUILT-IN DEMO"));
             color = item.song == 0 ? kGold : kMint;
         }
-        Label(font, Clip(label, child ? 37 : 40),
+        Label(font, Clip(label, child ? 29 : 40),
               rect.x + 12, rect.y + 6, 16, current ? kText : color);
+        if (child) {
+            const core::ChartDifficulty score = item.song > 0
+                ? library.Songs()[static_cast<std::size_t>(item.song - 1)]
+                      .charts[static_cast<std::size_t>(item.chart)].difficulty
+                : core::CalculateChartDifficulty(core::MakeDemoChart());
+            Label(font, TextFormat("%.1f", score.overall),
+                  867, rect.y + 7, 15, kGold);
+        }
     }
     Label(font, TextFormat("SCROLL  %d-%d / %d",
           rows.empty() ? 0 : ui.treeScroll + 1,
@@ -262,12 +271,17 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
         Label(font, "ORIGINAL CLICK TRACK / 120 BPM", 54, 241, 16, kMuted);
     }
     if (const auto* selected = ui.Selected(library)) {
-        Label(font, "SELECTED DIFFICULTY", 54, 331, 15, kMuted);
-        Label(font, Clip(selected->data.title, 31), 54, 357, 19, kViolet);
-        const auto& chart = selected->data.route;
-        Label(font, TextFormat("%d x %d VIEW / %d TURNS",
-              chart.gridWidth, chart.gridHeight,
-              static_cast<int>(chart.turns.size())), 54, 391, 14, kText);
+        Label(font, "SELECTED DIFFICULTY", 54, 313, 14, kMuted);
+        Label(font, Clip(selected->data.title, 30), 54, 332, 18, kViolet);
+        const auto& score = selected->difficulty;
+        Label(font, TextFormat("DIFFICULTY V1   %.1f / 10", score.overall),
+              54, 356, 20, kGold);
+        Label(font, TextFormat("SPEED %.1f   RHYTHM %.1f   KEYS %.1f",
+              score.speed, score.rhythm, score.coordination),
+              54, 384, 13, kText);
+        Label(font, TextFormat("READ %.1f   STAMINA %.1f   PEAK %.1f",
+              score.reading, score.stamina, score.peak),
+              54, 405, 13, kMuted);
     } else if (!song) {
         Label(font, "ORIGINAL / CLASSIC ROUTE", 54, 355, 15, kViolet);
     }

@@ -244,6 +244,9 @@ bool SongLibrary::Refresh(std::string& message) {
                 }
             }
         }
+        for (auto& difficulty : song.charts)
+            difficulty.difficulty = core::CalculateChartDifficulty(
+                difficulty.data.route, difficulty.data.offsetSeconds);
         std::sort(song.charts.begin(), song.charts.end(),
                   [](const LibraryChart& a, const LibraryChart& b) {
                       if (a.data.title != b.data.title)
@@ -302,8 +305,11 @@ bool SongLibrary::SetSongTiming(int songIndex, double bpm, int offsetMs,
     if (!ReplaceSongSetManifest(manifestFile, metadata, error)) return false;
     song.bpm = bpm;
     song.offsetMs = offsetMs;
-    for (std::size_t i = 0; i < adjusted.size(); ++i)
+    for (std::size_t i = 0; i < adjusted.size(); ++i) {
         song.charts[i].data = std::move(adjusted[i]);
+        song.charts[i].difficulty = core::CalculateChartDifficulty(
+            song.charts[i].data.route, song.charts[i].data.offsetSeconds);
+    }
     error.clear();
     return true;
 }

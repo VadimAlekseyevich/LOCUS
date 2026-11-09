@@ -1,9 +1,11 @@
 #pragma once
 
 #include "core/chart_json.h"
+#include "core/chart_difficulty.h"
 
 #include <cstdint>
 #include <deque>
+#include <limits>
 #include <vector>
 
 namespace locus::core {
@@ -28,6 +30,8 @@ public:
     // Actual song timestamp for a selected beat and its signed offset.
     double AudioSecondsAtBeat(int beat) const noexcept;
     bool Dirty() const noexcept { return dirty_; }
+    // Recomputed once per authored revision, not on every rendered frame.
+    const ChartDifficulty& Difficulty() const;
     void MarkSaved() noexcept;
     // Accept validated bytes after saving without resetting cursor/history.
     // Unlike Load(), this keeps the active editing session alive.
@@ -96,6 +100,9 @@ private:
     std::uint64_t nextRevision_ = 0;
     std::deque<Snapshot> undo_;
     std::deque<Snapshot> redo_;
+    mutable std::uint64_t difficultyRevision_ =
+        std::numeric_limits<std::uint64_t>::max();
+    mutable ChartDifficulty difficulty_;
 };
 
 } // namespace locus::core

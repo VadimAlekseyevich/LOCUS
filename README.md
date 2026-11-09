@@ -30,7 +30,7 @@ Gameplay direction bindings are configurable in SETTINGS and are **shared with e
 
 ## Screens and editor
 
-Home has **PLAY, EDIT, SKIN, SETTINGS, EXIT**. PLAY opens a read-only library with a song tree on the right: selecting a song expands its indented charts below it. Up/Down navigate rows, Left/Right switch difficulties; use **EDIT** for content changes. Installed songs live under `%LOCALAPPDATA%\LOCUS\Songs`. The built-in demo is always available.
+Home has **PLAY, EDIT, SKIN, SETTINGS, EXIT**. PLAY opens a read-only library with a song tree on the right: selecting a song expands its indented charts below it. Up/Down navigate rows, Left/Right switch difficulties; use **EDIT** for content changes. Each chart displays a **DIFFICULTY V1** rating (0–10), with separate speed, rhythm, key coordination, reading and stamina estimates. The rating is also visible live in EDIT → ROUTE / AUDIO. See [Chart Difficulty V1](docs/CHART_DIFFICULTY.md) for the complete heuristic and its limitations. Installed songs live under `%LOCALAPPDATA%\LOCUS\Songs`. The built-in demo is always available.
 
 EDIT has four tabs and a persistent scrolling timeline:
 
