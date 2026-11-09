@@ -568,7 +568,8 @@ int main(int argc, char** argv) {
                                     adjustmentNoticeUntil,
                                     adjustmentNotice.c_str(),
                                     playOutro.Frame(renderNow)};
-        const auto editorSetView = editorSet.View();
+        const auto editorSetView = visibleState.screen == Screen::Editor
+            ? editorSet.View() : locus::app::EditorSetView{};
         // Artwork lives at Song Set scope, independent of difficulty/BPM.
         // Cached GPU resources change only when the selected image changes.
         std::filesystem::path artPath;
