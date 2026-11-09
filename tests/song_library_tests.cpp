@@ -31,15 +31,15 @@ void Write(const fs::path& file, const std::string& data) {
 bool WriteChart(const fs::path& file, const std::string& name) {
     const std::string json =
         "{"
-        "\"formatVersion\":2,"
+        "\"formatVersion\":3,"
         "\"title\":\"" + name + "\","
         "\"audioPath\":\"song.wav\","
         "\"bpm\":120,\"offsetMs\":0,"
         "\"ticksPerBeat\":1,\"snapDivision\":1,"
         "\"grid\":{\"width\":8,\"height\":8},"
-        "\"start\":{\"x\":3,\"y\":3,\"heading\":\"right\"},"
+        "\"start\":{\"x\":3,\"y\":3,\"heading\":\"r\"},"
         "\"previewLeadBeats\":4,"
-        "\"turns\":[{\"timeMs\":1000,\"turn\":\"left\"}]"
+        "\"turns\":[{\"timeMs\":1000,\"heading\":\"u\"}]"
         "}";
     Write(file, json);
     return fs::exists(file) && Read(file) == json;

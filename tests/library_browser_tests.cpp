@@ -21,11 +21,11 @@ bool Check(bool ok, const char* label) {
 bool WriteChart(const fs::path& file, const char* title,
                 const char* audioName) {
     std::ofstream stream(file, std::ios::binary);
-    stream << "{\"formatVersion\":1,\"title\":\"" << title
+    stream << "{\"formatVersion\":3,\"title\":\"" << title
            << "\",\"audioPath\":\"" << audioName
            << "\",\"bpm\":120,\"offsetMs\":0,"
               "\"grid\":{\"width\":4,\"height\":4},"
-              "\"start\":{\"x\":1,\"y\":1,\"heading\":\"right\"},"
+              "\"start\":{\"x\":1,\"y\":1,\"heading\":\"r\"},"
               "\"previewLeadBeats\":4,\"turns\":[]}";
     return static_cast<bool>(stream);
 }

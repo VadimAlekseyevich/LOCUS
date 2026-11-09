@@ -307,9 +307,9 @@ int main() {
                 "mirror operation is one undo/redo transaction");
     compass.RotateHeading45(1);
     ok &= Check(compass.Data().route.initialHeading == Heading::DownRight &&
-                compass.SetOutgoingHeading(Heading::Down) &&
+                !compass.SetOutgoingHeading(Heading::Down) &&
                 SampleRouteStep(compass.Data().route, 1).heading == Heading::Down,
-                "editor can set a diagonal initial heading in 45 degree increments");
+                "changing initial heading leaves absolute authored notes unchanged");
 
     ChartEditor reverseEditor;
     reverseEditor.NewDraft();
