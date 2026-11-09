@@ -118,7 +118,9 @@ void EditorSetController::HandleControls(const EditorControls& input) {
             }
             // Do not silently drop punctuation: typing "12.5" must fail
             // validation, not unexpectedly save 125 milliseconds.
-            if (ui.setPreviewBuffer.size() < 32)
+            // Eight or nine visible characters suffice to report invalid
+            // input without overflowing into the adjacent step buttons.
+            if (ui.setPreviewBuffer.size() < 9)
                 ui.setPreviewBuffer.push_back(static_cast<char>(ch));
         }
         if (input.enter ||
