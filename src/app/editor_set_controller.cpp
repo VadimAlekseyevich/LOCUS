@@ -112,12 +112,13 @@ void EditorSetController::HandleControls(const EditorControls& input) {
             ui.setPreviewReplaceOnType = false;
         }
         for (unsigned char ch : input.typedUtf8) {
-            if (ch < '0' || ch > '9') continue;
             if (ui.setPreviewReplaceOnType) {
                 ui.setPreviewBuffer.clear();
                 ui.setPreviewReplaceOnType = false;
             }
-            if (ui.setPreviewBuffer.size() < 7)
+            // Do not silently drop punctuation: typing "12.5" must fail
+            // validation, not unexpectedly save 125 milliseconds.
+            if (ui.setPreviewBuffer.size() < 32)
                 ui.setPreviewBuffer.push_back(static_cast<char>(ch));
         }
         if (input.enter ||
