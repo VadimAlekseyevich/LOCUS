@@ -357,6 +357,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Button(font, kCutTurns, "CUT CTRL+X", Color{216, 166, 155, 255});
         Button(font, kUndoEdit, "UNDO", Color{169, 188, 217, 255});
         Button(font, kRedoEdit, "REDO", Color{169, 188, 217, 255});
+        Label(font, "DELETE / BKSP OR CENTER DEL: REMOVE SELECTED TURNS",
+              52, 400, 12, Color{172, 199, 218, 255});
         Label(font, "PLAYBACK SPEED", 618, 185, 14,
               Color{182, 207, 227, 255});
         const char* speeds[5] = {"100%", "75%", "50%", "25%", "10%"};
