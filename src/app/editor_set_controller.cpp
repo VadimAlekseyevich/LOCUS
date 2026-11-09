@@ -52,6 +52,7 @@ EditorSetView EditorSetController::View() const {
     view.newDifficultyDraft = ctx_.chartPath.empty();
     view.previewStartMs = set->previewStartMs;
     view.hasBackground = !set->backgroundImage.empty();
+    view.backgroundPath = set->backgroundImage;
     for (std::size_t i = 0; i < set->charts.size(); ++i) {
         view.difficulties.push_back(set->charts[i].data.title);
         if (!ctx_.chartPath.empty() &&

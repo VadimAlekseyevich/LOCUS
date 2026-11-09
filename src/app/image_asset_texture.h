@@ -24,5 +24,6 @@ public:
 private:
     Texture2D texture_{};
     std::filesystem::path requested_;
+    std::string loadError_;
 };
 } // namespace locus::app

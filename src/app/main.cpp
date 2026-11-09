@@ -568,6 +568,7 @@ int main(int argc, char** argv) {
                                     adjustmentNoticeUntil,
                                     adjustmentNotice.c_str(),
                                     playOutro.Frame(renderNow)};
+        const auto editorSetView = editorSet.View();
         // Artwork lives at Song Set scope, independent of difficulty/BPM.
         // Cached GPU resources change only when the selected image changes.
         std::filesystem::path artPath;
@@ -576,17 +577,27 @@ int main(int argc, char** argv) {
                 libraryUi.selectedSong <= static_cast<int>(library.Songs().size()))
                 artPath = library.Songs()[static_cast<std::size_t>(
                     libraryUi.selectedSong - 1)].backgroundImage;
+        } else if (visibleState.screen == Screen::Editor) {
+            artPath = editorSetView.backgroundPath;
         } else if ((visibleState.screen == Screen::Play ||
                     visibleState.screen == Screen::Results) && customChart) {
             artPath = playedBackgroundPath;
         }
         std::string imageError;
-        if (!songBackground.Sync(artPath, imageError) && !imageError.empty())
-            libraryUi.notice = "BACKGROUND FAILED: " + imageError;
+        if (!songBackground.Sync(artPath, imageError) && !imageError.empty()) {
+            const std::string notice = "BACKGROUND FAILED: " + imageError;
+            if (state.screen == Screen::Editor) {
+                editorStatus = notice;
+                editorUi.feedback = notice;
+                editorUi.feedbackError = true;
+            } else {
+                libraryUi.notice = notice;
+            }
+        }
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
                     editorStatus, editorDiscard.Pending(),
-                    editorSet.View(), editorSet.Pending(),
+                    editorSetView, editorSet.Pending(),
                     musicError, renderNow,
                     library, libraryUi, settings, settingsUi,
                     draftSkin, skinUi, menuStatus,

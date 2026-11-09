@@ -177,9 +177,10 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     // aspect ratio without distortion and crops the excess at the edges.
     if (background && background->Ready() &&
         (state.screen == Screen::Play || state.screen == Screen::Results ||
-         state.screen == Screen::SongSelect)) {
+         state.screen == Screen::SongSelect || state.screen == Screen::Editor)) {
         const unsigned char veil = state.screen == Screen::Play ? 160
-            : state.screen == Screen::SongSelect ? 216 : 190;
+            : state.screen == Screen::SongSelect ? 216
+            : state.screen == Screen::Editor ? 202 : 190;
         background->DrawCover(GetScreenWidth(), GetScreenHeight(), veil);
     }
 

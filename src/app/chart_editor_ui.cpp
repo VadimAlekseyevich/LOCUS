@@ -390,10 +390,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                 : "ARTIST: " + set.artist, 44).c_str(), 52, 233, 14, heading);
             Label(font, Truncate("AUDIO: " + set.audioName, 44).c_str(),
                   52, 255, 14, heading);
-            Label(font, TextFormat("%d DIFFICULTIES%s",
-                  static_cast<int>(set.difficulties.size()),
-                  set.newDifficultyDraft ? " / UNSAVED NEW DRAFT" : ""),
-                  52, 278, 13, amber);
+            if (set.newDifficultyDraft)
+                Label(font, "NEW DIFFICULTY / UNSAVED", 505, 187, 12, amber);
         } else {
             Label(font, "NOT INSTALLED YET", 52, 208, 20, amber);
             Label(font, "ATTACH AUDIO, THEN CTRL+S", 52, 242, 15, heading);

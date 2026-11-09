@@ -6,6 +6,7 @@
 #include "raylib.h"
 
 #include <limits>
+#include <filesystem>
 #include <vector>
 #include <string>
 
@@ -56,6 +57,7 @@ struct EditorSetView {
     bool managed = false;
     bool newDifficultyDraft = false;
     bool hasBackground = false;
+    std::filesystem::path backgroundPath;
     int previewStartMs = 0;
     std::string title, artist, audioName, id;
     std::vector<std::string> difficulties;
