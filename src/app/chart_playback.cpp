@@ -65,7 +65,10 @@ void ChartPlayback::Stop() {
 double ChartPlayback::AudioSeconds(double monotonicSeconds) const noexcept {
     if (finished_) return audio_.DurationSeconds();
     // Negative audio-time coordinates provide silent visual preroll.
-    // Positive offsets allow the song to run before chart beat zero.
+    // At reduced speed, follow the *consumed audio frames*, not an unrelated
+    // synthetic timeline that can advance ahead of a buffered audio stream.
+    if (audioStarted_ && speed_ < 0.999)
+        return audio_.SongSeconds(monotonicSeconds);
     return startAudioSeconds_ + clock_.SecondsAt(monotonicSeconds);
 }
 

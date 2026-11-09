@@ -122,31 +122,15 @@ inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
 constexpr Rectangle kGridSize{104, 225, 330, 47};
 constexpr Rectangle kFieldHeading{519, 321, 330, 47};
 
-// Shared layout for drawing the actual song-time labels and clicking them.
-// Times (not beat indices) are copied in whole milliseconds.
-template <typename Visitor>
-void ForEachTimelineTimeLabel(const core::ChartEditor& draft,
-                              const EditorUiState& ui, double previewBeat,
-                              Visitor&& visit) {
-    const auto& chart = draft.Data().route;
-    const double anchor = ui.draggingTimeline
-        ? ui.dragViewBeat : ViewBeat(draft, previewBeat);
-    const float pixels = PixelsPerTick(ui, chart);
-    const int ticks = chart.ticksPerBeat;
-    if (pixels <= 0.0f || ticks <= 0) return;
-    const int first = std::max(chart.firstBeat, static_cast<int>(std::floor(
-        anchor + (kTimelineX - kPlayheadX) / pixels)) - 1);
-    const int last = std::min(chart.lengthBeats - 1, static_cast<int>(std::ceil(
-        anchor + (kTimelineX + kTimelineWidth - kPlayheadX) / pixels)) + 1);
-    const int stride = (PixelsPerBeat(ui) < 20.0f ? 8 : 4) * ticks;
-    for (int tick = first; tick <= last; ++tick) {
-        if (tick % stride != 0) continue;
-        const float x = kPlayheadX +
-            static_cast<float>((static_cast<double>(tick) - anchor) * pixels);
-        if (x < kTimelineX + 5.0f ||
-            x > kTimelineX + kTimelineWidth - 86.0f) continue;
-        visit(tick, Rectangle{x + 4.0f, 449.0f, 81.0f, 18.0f});
-    }
+// Absolute song milliseconds at the same fractional tick used by the route.
+// The displayed value and copied clipboard value share this calculation.
+constexpr Rectangle kRouteTimeValue{52, 400, 206, 22};
+inline long long RouteTimeMs(const core::ChartEditor& draft, double activeTick) {
+    const auto& loaded = draft.Data();
+    const double tick = ViewBeat(draft, activeTick);
+    const double seconds = loaded.offsetSeconds +
+        tick * 60.0 / (loaded.route.bpm * loaded.route.ticksPerBeat);
+    return static_cast<long long>(std::llround(seconds * 1000.0));
 }
 
 constexpr double kSpeeds[5] = {1.0, 0.75, 0.5, 0.25, 0.1};

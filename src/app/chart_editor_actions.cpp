@@ -403,22 +403,15 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return action;
     }
 
-    // Clicking a visible ruler time copies the absolute audio milliseconds.
-    // Uses exactly the hitboxes of the rendered time labels.
-    if (input.mouseClick) {
-        bool copied = false;
-        ForEachTimelineTimeLabel(draft, ui, input.timelineViewBeat,
-            [&](int tick, Rectangle bounds) {
-                if (copied || !Hit(bounds, input.mouse)) return;
-                const long long ms = std::llround(
-                    draft.AudioSecondsAtBeat(tick) * 1000.0);
-                SetClipboardText(std::to_string(ms).c_str());
-                ui.feedback = "COPIED " + std::to_string(ms) +
-                    " MS - CTRL+V INTO AUDIO PREVIEW";
-                ui.feedbackError = false;
-                copied = true;
-            });
-        if (copied) return action;
+    // The current Route time readout, not individual timeline beats, copies
+    // a single exact audio timestamp as whole milliseconds.
+    if (ui.tab == EditorTab::Route && input.mouseClick &&
+        Hit(kRouteTimeValue, input.mouse)) {
+        const long long ms = RouteTimeMs(draft, input.timelineViewBeat);
+        SetClipboardText(std::to_string(ms).c_str());
+        ui.feedback = std::to_string(ms) + " MS COPIED";
+        ui.feedbackError = false;
+        return action;
     }
 
     // SET is a library-management tab: note keys, undo and the timeline

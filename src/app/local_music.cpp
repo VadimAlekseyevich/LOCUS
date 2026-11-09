@@ -134,7 +134,12 @@ void LocalMusic::Stop() {
 void LocalMusic::Update(double monotonicSeconds) {
     if (!playing_ || paused_) return;
     UpdateMusicStream(music_);
-    if (SongSeconds(monotonicSeconds) >= durationSeconds_) {
+    // At reduced pitch the hardware may consume source frames more slowly
+    // than an ideal wall-clock prediction (buffering, stalls, device jitter).
+    // Let the actual stream determine completion instead of cutting off the
+    // last part of a slow practice preview.
+    if (!IsMusicStreamPlaying(music_) ||
+        SongSeconds(monotonicSeconds) >= durationSeconds_) {
         Stop();
         finished_ = true;
     }
@@ -154,8 +159,20 @@ void LocalMusic::Shutdown() {
 }
 
 double LocalMusic::SongSeconds(double monotonicSeconds) const noexcept {
-    return finished_ ? durationSeconds_
-                     : startPositionSeconds_ + clock_.SecondsAt(monotonicSeconds);
+    if (finished_) return durationSeconds_;
+    // The raylib stream's consumed PCM frame position is the source of truth
+    // for slowed authoring playback. A second synthetic rate clock drifts
+    // ahead when audio output stalls, making authored turns seem late.
+    if (ready_ && playing_ && speed_ < 0.999) {
+        const double cursor = static_cast<double>(GetMusicTimePlayed(music_));
+        if (std::isfinite(cursor) &&
+            cursor >= startPositionSeconds_ - 0.05 &&
+            cursor <= durationSeconds_ + 0.05)
+            return std::clamp(cursor, 0.0, durationSeconds_);
+    }
+    // Keep the monotonic clock for normal-speed scoring and for the brief
+    // period before a seek has populated raylib's streaming buffers.
+    return startPositionSeconds_ + clock_.SecondsAt(monotonicSeconds);
 }
 
 } // namespace locus::app

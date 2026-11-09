@@ -151,15 +151,15 @@ int main() {
     // Ruler labels are real music time; renderer/click detection agree
     // even at fractional selected positions and different zoom values.
     ChartEditor ruler;
-    int barFound = -1;
-    detail::ForEachTimelineTimeLabel(ruler, EditorUiState{}, 0.0,
-        [&](int tick, Rectangle bounds) {
-            if (tick == 4 && bounds.width > 60 && bounds.y < 470)
-                barFound = static_cast<int>(std::llround(
-                    ruler.AudioSecondsAtBeat(tick) * 1000));
-        });
-    ok &= Check(barFound == 2000,
-                "timeline time labels map to whole audio milliseconds");
+    ok &= Check(detail::RouteTimeMs(ruler, 4.0) == 2000 &&
+                detail::RouteTimeMs(ruler, 4.5) == 2250 &&
+                detail::kRouteTimeValue.x <= 70 &&
+                detail::kRouteTimeValue.y <= 409 &&
+                detail::kRouteTimeValue.x +
+                    detail::kRouteTimeValue.width > 70 &&
+                detail::kRouteTimeValue.y +
+                    detail::kRouteTimeValue.height > 409,
+                "clickable Route time uses fractional beat audio milliseconds");
     // FIELD has one integer square size, no editable start coordinates.
     ApplyEditorControls(chart, ui, Click(783, 89));
     ok &= Check(ui.tab == EditorTab::Field, "Field tab opens");

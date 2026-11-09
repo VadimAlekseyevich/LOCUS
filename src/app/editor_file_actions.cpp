@@ -33,30 +33,20 @@ void EditorFileActions::NewDraft() {
 
 bool EditorFileActions::OpenFromLibrary(const std::wstring& chartFile,
                                         std::string& error) {
+    int songIndex = -1, difficultyIndex = -1;
+    const core::LoadedChart* canonical = nullptr;
+    if (context_.library.FindChart(std::filesystem::path(chartFile),
+                                   songIndex, difficultyIndex)) {
+        canonical = &context_.library.Songs()[
+            static_cast<std::size_t>(songIndex)].charts[
+            static_cast<std::size_t>(difficultyIndex)].data;
+    }
+    // One commit point: failed audio or Song Set timing cannot erase a draft.
     context_.preview.Stop();
     if (!LoadDraftFromDisk(
             chartFile, context_.editor, context_.music,
-            context_.chartPath, context_.audioPath, error))
+            context_.chartPath, context_.audioPath, error, canonical))
         return false;
-    // A managed Song Set supplies canonical BPM/offset. The on-disk chart
-    // may retain older standalone timing; reproject cached notes without
-    // discarding any absolute timeMs or altering the source file.
-    int songIndex = -1, difficultyIndex = -1;
-    if (context_.library.FindChart(std::filesystem::path(chartFile),
-                                   songIndex, difficultyIndex)) {
-        core::LoadedChart shared = context_.library.Songs()[
-            static_cast<std::size_t>(songIndex)].charts[
-            static_cast<std::size_t>(difficultyIndex)].data;
-        if (!core::PrepareChartForSong(
-                shared, context_.music.DurationSeconds(), error))
-            return false;
-        context_.editor.Load(shared);
-        if (!context_.editor.SetSongDuration(
-                context_.music.DurationSeconds())) {
-            error = "Shared song timing does not fit this difficulty.";
-            return false;
-        }
-    }
     newDifficultySet_.clear();
     context_.loadedAudioPath = context_.audioPath;
     context_.ui = EditorUiState{};

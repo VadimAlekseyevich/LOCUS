@@ -131,14 +131,16 @@ void DrawRoutePreview(Font font, const core::ChartEditor& draft,
     DrawCircleV(marker, markerRadius * 0.32f, Color{246, 251, 252, 255});
     EndScissorMode();
 
-    Label(font, TextFormat("BEAT %.3f / %.2f", bounded / chart.ticksPerBeat,
-                           static_cast<double>(chart.lengthBeats - 1) /
-                               chart.ticksPerBeat),
-          52, 405, 15, Color{158, 225, 212, 255});
+    const long long ms = RouteTimeMs(draft, bounded);
+    const long long absolute = std::llabs(ms);
+    const std::string currentTime = TextFormat("TIME %s%lld:%02lld.%03lld",
+        ms < 0 ? "-" : "", absolute / 60000,
+        (absolute / 1000) % 60, absolute % 1000);
+    Label(font, currentTime.c_str(),
+          kRouteTimeValue.x, kRouteTimeValue.y + 3, 15,
+          Color{158, 225, 212, 255});
     Label(font, TextFormat("SQUARE VIEW %d", chart.gridWidth),
           266, 405, 15, Color{247, 213, 131, 255});
-    Label(font, "45 DEG = 1 STEP", 430, 406, 13,
-          Color{168, 195, 218, 255});
 }
 
 void DrawTimeline(Font font, const core::ChartEditor& draft,
@@ -156,7 +158,7 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                                static_cast<double>(ui.rangeLast) / ticks),
               50, 422, 17, Color{239, 207, 131, 255});
     } else {
-        Label(font, "TIMELINE / CLICK TIME TO COPY MS", 50, 422, 14,
+        Label(font, "TIMELINE", 50, 422, 14,
               Color{209, 222, 234, 255});
     }
     Label(font, TextFormat("GRID 1/%d", chart.snapDivision), 367, 423, 13,
@@ -211,18 +213,6 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                      : major ? Color{113, 141, 163, 255}
                              : Color{81, 126, 135, 220});
     }
-
-    ForEachTimelineTimeLabel(draft, ui, previewBeat,
-        [&](int tick, Rectangle bounds) {
-            const long long ms = std::llround(
-                draft.AudioSecondsAtBeat(tick) * 1000.0);
-            const long long absMs = std::llabs(ms);
-            const std::string value = TextFormat("%s%lld:%02lld.%03lld",
-                ms < 0 ? "-" : "", absMs / 60000,
-                (absMs / 1000) % 60, absMs % 1000);
-            Label(font, value.c_str(), bounds.x, bounds.y + 1.0f, 12,
-                  Color{181, 233, 218, 255});
-        });
 
     // Draw turn symbols from the actual chart: left=teal, right=violet.
     // Iterate authored turns (already sorted), stopping after the view.
@@ -362,8 +352,6 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Button(font, kCutTurns, "CUT CTRL+X", Color{216, 166, 155, 255});
         Button(font, kUndoEdit, "UNDO", Color{169, 188, 217, 255});
         Button(font, kRedoEdit, "REDO", Color{169, 188, 217, 255});
-        Label(font, "DELETE / BKSP OR CENTER DEL: REMOVE SELECTED TURNS",
-              52, 400, 12, Color{172, 199, 218, 255});
         Label(font, "PLAYBACK SPEED", 618, 185, 14,
               Color{182, 207, 227, 255});
         const char* speeds[5] = {"100%", "75%", "50%", "25%", "10%"};

@@ -18,7 +18,8 @@ namespace locus::app {
 // playback. Saving/opening never silently changes the active Play session.
 bool LoadDraftFromDisk(const std::wstring& file, locus::core::ChartEditor& editor,
                        locus::app::LocalMusic& song, std::wstring& chartPath,
-                       std::wstring& audioPath, std::string& error) {
+                       std::wstring& audioPath, std::string& error,
+                        const core::LoadedChart* canonical) {
     locus::core::LoadedChart candidate;
     std::wstring selectedAudio;
     if (!locus::app::OpenChartWithAudioPath(file, candidate, selectedAudio, error))
@@ -31,6 +32,9 @@ bool LoadDraftFromDisk(const std::wstring& file, locus::core::ChartEditor& edito
         error = replacement.Error();
         return false;
     }
+    // Managed Song Sets override historical chart BPM/offset. Resolve and
+    // validate the canonical in-memory chart BEFORE replacing this draft.
+    if (canonical) candidate = *canonical;
     if (!locus::core::PrepareChartForSong(
             candidate, replacement.DurationSeconds(), error))
         return false;
