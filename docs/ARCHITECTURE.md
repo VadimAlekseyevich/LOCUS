@@ -43,10 +43,10 @@ and reduce the number of unrelated reasons a file can change.
   are injected for reproducible tests. A screen controller should not hold
   all application services by default.
 - **Authoring boundary:** PLAY / SongSelect only browses, previews audio,
-  launches scored play and opens EDIT. All persistent Song Set edits (charts,
-  difficulties, imports, exports, `backgroundFile`, `previewStartMs`) belong
-  exclusively to EDIT -> SET, backed by `SongLibrary`. Adding any mutation
-  control to PLAY is an architectural regression.
+  launches scored play and opens EDIT. Chart/difficulty and artwork actions
+  belong to EDIT -> SET; shared BPM, offset and preview origin belong to
+  EDIT -> AUDIO, backed by one Song Set manifest in `SongLibrary`.
+  Adding any mutation control to PLAY is an architectural regression.
 - **Lifetime:** the composition root creates and destroys resources in a
   fixed order; the audio device outlives streams; a library refresh invalidates
   pointers to prior cached chart/song records.
@@ -80,7 +80,7 @@ and reduce the number of unrelated reasons a file can change.
 
 ## Completed stabilization
 
-- **2026-11-09:** SongSelect is read-only for Song Set data. EDIT -> SET owns shared artwork and exact whole-millisecond menu-preview origin. PNG/JPEG images are decoded before they are installed, while textures stay cached for rendering. Saved skin profiles support confirmed deletion and recovery in `Skins/Trash`, independently of Song Set recovery. The unused `library_file_actions.*` adapter remains only for existing headless tests.
+- **2026-11-09:** PLAY uses a read-only expanding song/difficulty tree. Song Set metadata owns BPM, offset, art and menu preview; AUDIO provides exact manual timing input. TEST exits back to the same unsaved editor draft. Windows F11 uses a non-topmost borderless window for Alt+Tab. PNG/JPEG images are decoded before import, and skin profiles support recoverable deletion.
 
 - **2026-11-08:** Enabled VSync by default and removed the fixed 60-FPS presentation cap. Phone frames showed a horizontal screen-tearing boundary crossing moving path segments, especially vertical segments during horizontal camera movement. Rendering now requests display-synchronized swaps and uses 240 FPS only as a fallback ceiling. Timing and chart geometry remain clock-based; verify live on the target monitor because a GPU driver may override the swap interval.
 

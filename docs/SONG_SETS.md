@@ -11,10 +11,10 @@ also store one optional **shared background image** (PNG/JPEG).
       Songs/
         song-<technical-id>/
           .locus-lock                   OS writer-lock placeholder
-          set.locus.json                setId/title/artist/audioFile/previewStartMs/backgroundFile
+          set.locus.json                setId/title/artist/audioFile/bpm/offsetMs/previewStartMs/backgroundFile
           song.mp3                      SHARED, never silently replaced
           background-<id>.png           optional, shared by all difficulties
-          Easy.locus.json               individual note timestamps/BPM/offset
+          Easy.locus.json               difficulty name/turns/absolute note timestamps
           Hard.locus.json
           .locus-history/
             Easy.locus.json.tmp-....bak previous chart versions
@@ -23,12 +23,16 @@ also store one optional **shared background image** (PNG/JPEG).
           origin.json                   original relative path
           payload                       deleted chart or whole Song Set
 
-Each managed Song Set also stores a **previewStartMs** (default 0), shared
-across its difficulties but independent of the chart's offset and BPM. In
-EDIT -> SET, click PREVIEW MS to enter an exact whole-millisecond position
-(0..3,600,000), press Enter to save or Esc to cancel. -1 S/+1 S adjust by
-one second, or by 100 ms when holding Shift. This is shared Song Set metadata,
-not the AUDIO tab's chart offset. PLAY only reads the saved value.
+Each managed Song Set owns **one BPM and one signed offsetMs** in its
+manifest. EDIT → AUDIO changes them for every difficulty; all note timestamps
+remain in absolute song milliseconds. If the new timing would collapse nearby
+notes, the change is rejected. Older Song Sets without shared timing derive
+their values from the first stable chart filename without rewriting its file.
+
+Each Song Set also stores **previewStartMs** (default 0), independent of
+BPM/offset. In **EDIT → AUDIO**, enter an exact whole-millisecond position
+(0..3,600,000), or Ctrl+V to paste a copied timeline time label. Enter saves,
+Esc cancels, and no increment/decrement buttons are used. PLAY only reads it.
 A separate menu audio decoder fades the old song out before the newly
 selected song fades in. Legacy entries preview from zero.
 
@@ -58,8 +62,10 @@ visible title.
    and Ctrl+S. The new chart and shared audio are installed as one Song Set.
 2. **Create difficulty:** PLAY -> select an installed song -> EDIT -> SET ->
    NEW, then Ctrl+S. No duplicate external authoring copy is created.
-3. **Edit difficulty:** select it -> E -> Ctrl+S changes that chart only.
+3. **Edit difficulty:** select it -> E -> rename/edit notes and Ctrl+S.
+   BPM/offset belong to the entire song, not a single chart.
    Ctrl+Shift+S creates a separate difficulty without overwriting the original.
+   TEST is in-memory; Esc/H returns to the same unsaved draft.
 4. **Copy difficulty:** EDIT -> SET -> select difficulty -> COPY.
 5. **Share a complete set:** EDIT -> SET -> EXPORT creates a
    `.locuspack` archive. This is a standard store-only ZIP, with metadata,

@@ -83,15 +83,15 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 ### 4.3 Menus and safe exit
 
 - Home provides **PLAY, EDIT, SKIN, SETTINGS, EXIT**. **Home → EDIT** always creates a clean draft, not the last-played song. Song Library EDIT opens its selected chart; **Results → E** opens the actual played chart; returning from Editor TEST keeps the unsaved editor document.
-- PLAY is a read-only browser for local songs and difficulties, including the generated demo. EDIT → SET owns Song Set imports, deletion/restoration, precise menu-preview start (whole milliseconds), and the ADD/REPLACE BG / REMOVE BG image controls. A background is shared by all difficulties of its song.
-- **Esc goes Back** from Editor, PLAY, Results and other screens. PLAY/Results return to Song Select with the selected song preview. Editor also has a visible BACK button; unsaved chart changes require Y to discard or N/Esc to cancel.
+- PLAY is a read-only song tree on the right: selecting a song expands its indented difficulties. EDIT → SET owns imports, deletion/restoration and artwork. EDIT → AUDIO owns song-wide BPM, offset and exact manual preview start (whole milliseconds). A background is shared by all difficulties of its song.
+- **Esc goes Back** from Editor, PLAY, Results and other screens. Normal PLAY/Results return to Song Select; after Editor TEST, Esc/H returns to the original unsaved editor draft. Editor also has a visible BACK button; unsaved chart changes require Y to discard or N/Esc to cancel.
 - **Esc on Home**, EXIT, window X and Alt+F4 open one confirmation. **Y quits; N/Esc stays**. An unsaved chart or skin triggers a warning. Active playback pauses while the confirmation is shown.
 
 ## 5. Music, charting and practice
 
 - Local WAV/MP3 playback is supported, without any account or remote chart service. Installed songs/difficulties live under `%LOCALAPPDATA%\LOCUS\Songs`.
-- Chart editor tabs: **SET** (song/difficulty management, artwork, exact Song Set preview position), **ROUTE** (grid-free moving preview, nine-direction pad, note and group actions), **AUDIO** (title, BPM, offset in whole milliseconds), **FIELD** (square visibility size and initial heading).
-- The scrolling timeline is visible on all editor tabs. Left/Right arrows navigate ticks; Up/Down change snap subdivision; PageUp/PageDown and the mouse wheel offer navigation. Modifier shortcuts support bar jumps, moving notes and groups.
+- Chart editor tabs: **SET** (song/difficulty management and artwork), **ROUTE** (grid-free moving preview, nine-direction pad, note and group actions), **AUDIO** (difficulty title, shared song BPM/offset and precise manually entered preview milliseconds), **FIELD** (square visibility size and initial heading).
+- The scrolling timeline is visible on all editor tabs. Clicking a displayed time number copies its exact audio milliseconds, ready for Ctrl+V into the Song Preview field. Left/Right arrows navigate ticks; Up/Down change snap subdivision; PageUp/PageDown and the mouse wheel offer navigation. Modifier shortcuts support bar jumps, moving notes and groups.
 - Snap subdivision choices: **1, 2, 3, 4, 6, 8, 12, 16, 24** per musical beat. Snap, zoom and BPM are **different controls**.
 - Chart **v2** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
 - The writer stores one of seven **relative turns**, including a 180° reversal, and the initial heading; gameplay input still uses absolute directions.

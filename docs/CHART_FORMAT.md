@@ -32,8 +32,8 @@ The [working sample](../examples/first-song.locus.json) contains nine turns; sup
 | `formatVersion` | **2** for new files |
 | `title` | Nonempty UTF-8 text, at most 1024 bytes |
 | `audioPath` | Nonempty local path **relative to the chart folder**, with forward slashes only |
-| `bpm` | Finite positive musical beats per minute |
-| `offsetMs` | Signed **integer**, from -3,600,000 to 3,600,000; audio time of beat zero |
+| `bpm` | Finite positive musical beats per minute; standalone compatibility value, overridden by a managed Song Set manifest |
+| `offsetMs` | Signed **integer**, from -3,600,000 to 3,600,000; managed Song Set uses one shared value for all charts |
 | `ticksPerBeat` | Optional integer 1–48, default 1 |
 | `snapDivision` | Optional 1, 2, 3, 4, 6, 8, 12, 16 or 24, default 1; must divide `ticksPerBeat` |
 | `grid.width`, `grid.height` | Integers 2–16. The editor exposes **one square side length**, default 8, and writes equal values |
@@ -50,7 +50,7 @@ BPM, offset and snapping affect the musical ruler or visual projection, not save
 
 ## Song Set ownership
 
-Installed difficulties in one Song Set share a single audio file beside `set.locus.json`. The metadata file has its own `formatVersion: 1`, `setId`, `title`, `artist` and `audioFile`. It is **not** a playable chart. Managed difficulties are grouped using this manifest and folder, not guessed filenames. See [Song Set storage](SONG_SETS.md).
+Installed difficulties in one Song Set share a single audio file beside `set.locus.json`. The metadata file has its own `formatVersion: 1`, `setId`, `title`, `artist`, `audioFile`, and **canonical song-wide `bpm` and `offsetMs`**. Per-chart BPM/offset remain in chart JSON for standalone compatibility, but the Song Set manifest is authoritative for managed charts. All difficulty note timestamps stay in absolute milliseconds. It is **not** a playable chart. Managed difficulties are grouped using this manifest and folder, not guessed filenames. See [Song Set storage](SONG_SETS.md).
 
 ## File handling
 
