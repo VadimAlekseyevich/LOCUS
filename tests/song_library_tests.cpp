@@ -175,7 +175,10 @@ int main() {
     const fs::path sourceCover = source / "cover.png";
     const unsigned char imageHeader[] = {
         137,80,78,71,13,10,26,10,0,0,0,13,
-        'I','H','D','R',0,0,4,0,0,0,2,0
+        73,72,68,82,0,0,0,2,0,0,0,2,8,2,0,0,0,253,212,154,115,
+        0,0,0,22,73,68,65,84,120,156,99,108,144,75,97,96,96,96,
+        98,96,96,96,96,96,0,0,12,94,1,6,140,139,168,168,
+        0,0,0,0,73,69,78,68,174,66,96,130
     };
     Write(sourceCover, std::string(
         reinterpret_cast<const char*>(imageHeader), sizeof imageHeader));

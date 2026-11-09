@@ -39,15 +39,24 @@ int main() {
     std::error_code ec;
     std::filesystem::create_directories(directory, ec);
     const auto png = directory / "header.png";
+    // Real 2x2 PNG, not an incomplete 24-byte IHDR used as a fake fixture.
     const unsigned char bytes[] = {
         137,80,78,71,13,10,26,10,0,0,0,13,
-        'I','H','D','R',0,0,4,0,0,0,2,0
+        73,72,68,82,0,0,0,2,0,0,0,2,8,2,0,0,0,253,212,154,115,
+        0,0,0,22,73,68,65,84,120,156,99,108,144,75,97,96,96,96,
+        98,96,96,96,96,96,0,0,12,94,1,6,140,139,168,168,
+        0,0,0,0,73,69,78,68,174,66,96,130
     };
     { std::ofstream out(png, std::ios::binary);
       out.write(reinterpret_cast<const char*>(bytes), sizeof bytes); }
     std::string error;
     check(ValidateImageAssetFile(png, error),
-          "PNG dimensions and signature are independently validated");
+          "complete PNG dimensions, signature and end marker are validated");
+    const auto truncated = directory / "truncated.png";
+    { std::ofstream out(truncated, std::ios::binary);
+      out.write(reinterpret_cast<const char*>(bytes), 24); }
+    check(!ValidateImageAssetFile(truncated, error),
+          "a plausible PNG header without image data cannot be imported");
     const auto wrong = directory / "header.jpg";
     std::filesystem::copy_file(png, wrong,
                                std::filesystem::copy_options::overwrite_existing, ec);

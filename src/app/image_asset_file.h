@@ -72,6 +72,29 @@ inline bool ValidateImageAssetFile(const std::filesystem::path& path,
                 error = "Image dimensions must be between 1 and 8192.";
                 return false;
             }
+            // A file with only a PNG header is not an importable image.
+            // IEND must be the final, complete PNG chunk.
+            if (size < 45) {
+                error = "PNG image data is incomplete.";
+                return false;
+            }
+            std::array<unsigned char, 12> end{};
+            stream.seekg(-static_cast<std::streamoff>(end.size()), std::ios::end);
+            if (!stream.read(reinterpret_cast<char*>(end.data()), end.size()) ||
+                end != std::array<unsigned char, 12>{
+                    0, 0, 0, 0, 'I', 'E', 'N', 'D', 0xae, 0x42, 0x60, 0x82}) {
+                error = "PNG is truncated or missing its IEND chunk.";
+                return false;
+            }
+        } else {
+            // A bare JPEG SOI marker does not mean the image was imported.
+            std::array<unsigned char, 2> end{};
+            stream.seekg(-static_cast<std::streamoff>(end.size()), std::ios::end);
+            if (!stream.read(reinterpret_cast<char*>(end.data()), end.size()) ||
+                end[0] != 0xff || end[1] != 0xd9) {
+                error = "JPEG is truncated or missing its EOI marker.";
+                return false;
+            }
         }
         error.clear();
         return true;

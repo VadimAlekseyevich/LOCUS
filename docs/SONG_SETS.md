@@ -25,16 +25,16 @@ also store one optional **shared background image** (PNG/JPEG).
 
 Each managed Song Set also stores a **previewStartMs** (default 0), shared
 across its difficulties but independent of the chart's offset and BPM. In
-PLAY -> Song Library, PREVIEW FROM -/+ adjusts it by one second; Shift+click
-or Shift+PageUp/PageDown adjusts by 100 ms, while plain PageUp/PageDown uses
-one second. This changes only which part of the song is heard when browsing.
+EDIT -> SET, PREVIEW FROM -/+ adjusts it by one second; Shift+click
+adjusts by 100 ms. PLAY reads the saved position but never edits it.
 A separate menu audio decoder fades the old song out before the newly
 selected song fades in. Legacy entries preview from zero.
 
-In Song Library, select a **managed Song Set** and choose **BG IMAGE / B** to
-attach a PNG or JPEG. Use **REMOVE / Shift+B** to clear it. The file is copied
+In EDIT, open a chart belonging to a **managed Song Set**, switch to SET
+and choose **ADD BG** (or **REPLACE BG**) to attach a PNG or JPEG.
+Use **REMOVE BG** to clear it. The file is copied
 into the Song Set, the original is untouched, and all difficulties share the
-same background. It appears in Song Select, PLAY and Results, with its aspect
+same background. It appears in Song Select, EDIT, PLAY and Results, with its aspect
 ratio preserved: the image fills the physical window and any excess is
 center-cropped at the edges, never stretched. A dark overlay keeps routes and
 labels legible; artwork never changes BPM, note timestamps or scores.
@@ -54,23 +54,23 @@ visible title.
 
 1. **Create a song:** Home -> EDIT -> O (attach WAV/MP3), author the chart
    and Ctrl+S. The new chart and shared audio are installed as one Song Set.
-2. **Create difficulty:** PLAY -> select an installed song -> N, then edit and
-   Ctrl+S. No duplicate external authoring copy is created.
+2. **Create difficulty:** PLAY -> select an installed song -> EDIT -> SET ->
+   NEW, then Ctrl+S. No duplicate external authoring copy is created.
 3. **Edit difficulty:** select it -> E -> Ctrl+S changes that chart only.
    Ctrl+Shift+S creates a separate difficulty without overwriting the original.
-4. **Copy difficulty:** select it and press Ctrl+D.
-5. **Share a complete set:** select the song and press X to export a
+4. **Copy difficulty:** EDIT -> SET -> select difficulty -> COPY.
+5. **Share a complete set:** EDIT -> SET -> EXPORT creates a
    `.locuspack` archive. This is a standard store-only ZIP, with metadata,
-   shared audio, optional background art and all chart JSONs. C imports `.locuspack` packages as whole
+   shared audio, optional background art and all chart JSONs. EDIT -> SET -> IMPORT installs `.locuspack` archives as whole
    Song Sets. LOCUS refuses to overwrite an already-installed set with the
    same setId.
-6. **Import charts:** C creates/finds a managed Song Set; Shift+C explicitly
-   adds a chart to the selected Set, but only if its audio bytes match.
+6. **Import charts:** EDIT -> SET -> IMPORT creates/finds a managed Song Set
+   or adds a difficulty to the current Set if its audio bytes match.
    Reimporting the same source chart updates that difficulty, not a duplicate.
-7. **Delete:** Delete confirms deletion of a difficulty; Shift+Delete confirms
-   deletion of an entire Song Set. Y confirms, N/Esc cancels. You cannot
+7. **Delete:** EDIT -> SET has separate DELETE and DELETE SET buttons.
+   Y confirms, N/Esc cancels. You cannot
    delete the final difficulty alone: delete the whole Set instead.
-8. **Restore:** U restores the most recent recoverable item from the LOCUS
+8. **Restore:** EDIT -> SET -> RESTORE LAST restores the newest item from the LOCUS
    Trash, including after an application restart.
 
 An external chart opened through Ctrl+O is installed into the library when
