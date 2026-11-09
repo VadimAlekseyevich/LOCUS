@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <numeric>
 #include <vector>
 
@@ -15,7 +16,7 @@ constexpr double kEpsilon = 1e-9;
 
 struct Point { double x = 0.0, y = 0.0; };
 struct Note {
-    double time = 0.0;
+    std::int64_t timeMs = 0;
     Point pos;
     Heading heading = Heading::Right;
     unsigned mask = 0;
@@ -93,7 +94,8 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
                                          double offsetSeconds) {
     ChartDifficulty result;
     if (!std::isfinite(chart.bpm) || chart.bpm <= 0.0 ||
-        chart.ticksPerBeat <= 0 || !std::isfinite(offsetSeconds))
+        chart.ticksPerBeat <= 0 || !std::isfinite(offsetSeconds) ||
+        std::abs(offsetSeconds) > 3600.0)
         return result;
 
     std::vector<Note> notes;
@@ -101,14 +103,17 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     Point position;
     Heading preceding = chart.initialHeading;
     int lastTick = chart.firstBeat;
-    double lastTime = -1e15;
+    std::int64_t lastTime = std::numeric_limits<std::int64_t>::min();
+    const std::int64_t offsetMs =
+        static_cast<std::int64_t>(std::llround(offsetSeconds * 1000.0));
     std::size_t totalKeys = 0;
     for (const auto& event : chart.turns) {
         if (!ValidHeading(event.direction) || event.beat < lastTick)
             continue;
-        const double currentTime = static_cast<double>(
-            EventTimeMs(chart, event, offsetSeconds)) / 1000.0;
-        if (!std::isfinite(currentTime) || currentTime <= lastTime)
+        const std::int64_t currentTime =
+            EventTimeMs(chart, event, offsetSeconds);
+        if (currentTime < -3600000 || currentTime > 86400000 ||
+            currentTime <= lastTime)
             continue;
         const Point direction = Unit(preceding);
         const double distance = static_cast<double>(event.beat - lastTick) /
@@ -138,7 +143,7 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         Note& cur = notes[i];
         if (i == 0) continue;
         const Note& prev = notes[i-1];
-        const double dt = cur.time - prev.time;
+        const double dt = (cur.timeMs - prev.timeMs) / 1000.0;
         const int angle = std::abs(HeadingIndex(cur.heading) -
                                    HeadingIndex(prev.heading));
         const int eighths = std::min(angle, 8-angle);
@@ -154,7 +159,8 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         if (previousInterval > 0.0 && dt <= 2.0 && previousInterval <= 2.0)
             variation = std::min(2.0, std::abs(
                 std::log2(dt / previousInterval)));
-        const double beat = (cur.time - offsetSeconds) * chart.bpm / 60.0;
+        const double beat = static_cast<double>(cur.timeMs - offsetMs) *
+                            chart.bpm / 60000.0;
         const double quarterDistance = std::abs(beat * 4.0 - std::round(beat * 4.0));
         const double offbeat = std::min(quarterDistance * 2.0, 1.0);
         cur.rhythm = std::min(2.5,
@@ -177,7 +183,7 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         double localClutter = 0.0;
         for (std::size_t back = 2; back <= 12 && back < i; ++back) {
             const std::size_t j = i - back;
-            if (j == 0 || cur.time - notes[j].time > 4.0) break;
+            if (j == 0 || cur.timeMs - notes[j].timeMs > 4000) break;
             const double gap = SegmentDistance(
                 prev.pos, cur.pos, notes[j-1].pos, notes[j].pos);
             if (gap < 0.7) {
@@ -202,12 +208,14 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     int rollingKeys = 0;
     double rollingCoord = 0.0, rollingRead = 0.0, rollingRhythm = 0.0;
     constexpr double window = 1.8;
+    constexpr std::int64_t windowMs = 1800;
     for (std::size_t i = 0; i < n; ++i) {
         rollingKeys += notes[i].keys;
         rollingCoord += notes[i].coordination;
         rollingRead += notes[i].reading;
         rollingRhythm += notes[i].rhythm;
-        while (first < i && notes[i].time - notes[first].time > window) {
+        while (first < i &&
+               notes[i].timeMs - notes[first].timeMs > windowMs) {
             rollingKeys -= notes[first].keys;
             rollingCoord -= notes[first].coordination;
             rollingRead -= notes[first].reading;
