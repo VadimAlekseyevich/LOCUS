@@ -7,21 +7,20 @@
 
 namespace locus::core {
 
-// Preserve original four numeric values for old charts and callers.
+// Authored directions are absolute screen/world compass headings.
 enum class Heading {
     Up, Right, Down, Left,
     UpRight, DownRight, DownLeft, UpLeft
 };
-// Legacy Left/Right remain 90-degree turns.
-enum class Turn { Left, Right, Left45, Right45, Left135, Right135, Reverse };
-
 bool ValidHeading(Heading heading) noexcept;
 bool IsDiagonal(Heading heading) noexcept;
 // Each tick advances one unit of Euclidean distance in all eight directions.
 // Render-world coordinates are scaled by ticksPerBeat.
-// Straight is not a note; an opposite outgoing direction is a 180-degree note.
-Heading HeadingAfterTurn(Heading incoming, Turn turn) noexcept;
-Turn InverseTurn(Turn turn) noexcept;
+// Compass transforms are used by heading rotation and pattern mirroring.
+Heading RotateHeading(Heading heading, int eighthTurns) noexcept;
+Heading MirrorHeadingHorizontal(Heading heading) noexcept; // Left <-> Right.
+Heading MirrorHeadingVertical(Heading heading) noexcept;   // Up <-> Down.
+bool IsOppositeHeading(Heading incoming, Heading outgoing) noexcept;
 unsigned HeadingArrowMask(Heading heading) noexcept;
 std::optional<Heading> HeadingFromArrowMask(unsigned keys) noexcept;
 
@@ -43,7 +42,7 @@ struct GridPoint {
 constexpr std::int64_t kNoTimeMs = std::numeric_limits<std::int64_t>::min();
 struct TurnEvent {
     int beat = 0; // cached tick index for route/editor indexing
-    Turn direction = Turn::Left;
+    Heading direction = Heading::Up; // Absolute outgoing direction at this tick.
     std::int64_t timeMs = kNoTimeMs; // authoritative song position if specified
 };
 
@@ -70,7 +69,7 @@ struct Chart {
     std::vector<TurnEvent> turns;
 };
 
-// Exact stored time if supplied (v2); otherwise old integer-beat timing.
+// Exact stored time if supplied; otherwise derive from authoring tick.
 std::int64_t EventTimeMs(const Chart& chart, const TurnEvent& note,
                          double offsetSeconds) noexcept;
 // Project an absolute song timestamp onto the editor's integer tick lattice.
@@ -82,7 +81,7 @@ struct RouteStep {
     GridPoint from;
     GridPoint to;
     Heading heading;
-    bool wraps = false; // Retained for old aggregate callers; ALWAYS false.
+    bool wraps = false; // Always false: world geometry is unbounded.
     int gridWidth = 8;
     int gridHeight = 8;
 };
@@ -97,7 +96,6 @@ Chart MakeDemoChart();
 // Input/judgements never influence the route.
 // Throws std::out_of_range outside [chart.firstBeat, chart.lengthBeats).
 // P[chart.firstBeat] is chart.start, and each beat is one outgoing step.
-std::optional<Turn> ArrowToTurn(Heading incoming, Heading pressed) noexcept;
 Heading IncomingHeadingAt(const Chart& chart, int beat);
 // Only authored turn junctions touched by the CURRENT one-bar route preview.
 // A turn at beat N first lights when the visible line reaches P[N] from

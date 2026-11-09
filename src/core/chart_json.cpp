@@ -113,31 +113,19 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             return true;
         };
         const Json document = Json::parse(text.begin(), text.end(), checkDuplicates);
-        // offsetMs is the preferred v1 spelling. Previously authored
-        // offsetSeconds charts remain readable, but both fields are forbidden
-        // together so the beat-zero position is never ambiguous.
-        const bool hasMs = document.is_object() && document.contains("offsetMs");
-        const bool hasSeconds = document.is_object() && document.contains("offsetSeconds");
-        if (hasMs == hasSeconds) {
-            error = "offsetMs: provide exactly one of offsetMs or legacy offsetSeconds";
-            return false;
-        }
-        // Optional integer tick resolution for exact halves/triplets.
-        const bool hasTicks = document.is_object() && document.contains("ticksPerBeat");
-        const bool hasSnap = document.is_object() && document.contains("snapDivision");
-        const bool hasLength = document.is_object() && document.contains("lengthBeats");
-        std::set<std::string> expected = {
-            "formatVersion", "title", "audioPath", "bpm",
-            hasMs ? "offsetMs" : "offsetSeconds",
-            "grid", "start", "previewLeadBeats", "turns"
-        };
-        if (hasTicks) expected.insert("ticksPerBeat");
-        if (hasSnap) expected.insert("snapDivision");
-        if (hasLength) expected.insert("lengthBeats");
+        // No compatibility readers before release. Version 3 is the only format.
         if (!document.is_object()) {
             error = "chart: expected an object";
             return false;
         }
+        const bool hasTicks = document.contains("ticksPerBeat");
+        const bool hasSnap = document.contains("snapDivision");
+        std::set<std::string> expected = {
+            "formatVersion", "title", "audioPath", "bpm",
+            "offsetMs", "grid", "start", "previewLeadBeats", "turns"
+        };
+        if (hasTicks) expected.insert("ticksPerBeat");
+        if (hasSnap) expected.insert("snapDivision");
         for (const auto& member : document.items())
             if (!expected.count(member.key())) {
                 error = "chart." + member.key() + ": unknown field";
@@ -148,10 +136,12 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 error = "chart." + name + ": required field is missing";
                 return false;
             }
-
         int version = 0;
-        if (!IntegerInRange(document["formatVersion"], 1, 2, version,
-                            "formatVersion", error)) return false;
+        if (!IntegerInRange(document["formatVersion"], 3, 3, version,
+                            "formatVersion", error)) {
+            error = "formatVersion: only version 3 with absolute headings is supported";
+            return false;
+        }
 
         LoadedChart parsed;
         if (!Text(document["title"], parsed.title, "title", error) ||
@@ -176,21 +166,10 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             error = "snapDivision: must divide ticksPerBeat exactly";
             return false;
         }
-        double offset = 0.0;
-        if (version == 2 && !hasMs) {
-            error = "offsetMs: required for version 2";
-            return false;
-        }
-        if (version == 2) {
-            int offsetInt = 0;
-            if (!IntegerInRange(document["offsetMs"], -3600000, 3600000,
-                                offsetInt, "offsetMs", error)) return false;
-            offset = static_cast<double>(offsetInt);
-        } else if (!Number(document[hasMs ? "offsetMs" : "offsetSeconds"], offset,
-                           hasMs ? "offsetMs" : "offsetSeconds", false, error)) {
-            return false;
-        }
-        parsed.offsetSeconds = hasMs ? offset / 1000.0 : offset;
+        int offsetMs = 0;
+        if (!IntegerInRange(document["offsetMs"], -3600000, 3600000,
+                            offsetMs, "offsetMs", error)) return false;
+        parsed.offsetSeconds = offsetMs / 1000.0;
 
         if (!HasExactMembers(document["grid"], {"width", "height"}, "grid", error))
             return false;
@@ -245,69 +224,52 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
         std::int64_t previousMs = std::numeric_limits<std::int64_t>::min();
         for (std::size_t i = 0; i < turns.size(); ++i) {
             const std::string where = "turns[" + std::to_string(i) + "]";
-            if (!HasExactMembers(turns[i],
-                    version == 2 ? std::initializer_list<const char*>{"timeMs", "turn"}
-                                 : std::initializer_list<const char*>{"beat", "turn"},
-                    where, error)) return false;
-            int beat = 0;
-            std::int64_t timeMs = kNoTimeMs;
-            if (version == 2) {
-                const Json& stamp = turns[i]["timeMs"];
-                if (!stamp.is_number_integer()) {
-                    error = where + ".timeMs: expected whole milliseconds";
-                    return false;
-                }
-                timeMs = stamp.get<std::int64_t>();
-                if (timeMs < -3600000 || timeMs > 86400000 ||
-                    timeMs <= previousMs) {
-                    error = where + ".timeMs: time out of range or not strictly increasing";
-                    return false;
-                }
-                previousMs = timeMs;
-                beat = TickAtTimeMs(parsed.route.bpm, parsed.route.ticksPerBeat,
-                                    parsed.offsetSeconds, timeMs);
-                if (beat < -1000000 || beat > 999999) {
-                    error = where + ".timeMs: outside tick range";
-                    return false;
-                }
-            } else if (!IntegerInRange(turns[i]["beat"], -65536, 65535, beat,
-                                       where + ".beat", error)) return false;
+            if (!HasExactMembers(turns[i], {"timeMs", "heading"}, where, error))
+                return false;
+            const Json& stamp = turns[i]["timeMs"];
+            if (!stamp.is_number_integer()) {
+                error = where + ".timeMs: expected whole milliseconds";
+                return false;
+            }
+            const std::int64_t timeMs = stamp.get<std::int64_t>();
+            if (timeMs < -3600000 || timeMs > 86400000 ||
+                timeMs <= previousMs) {
+                error = where + ".timeMs: out of range or not increasing";
+                return false;
+            }
+            previousMs = timeMs;
+            const int beat = TickAtTimeMs(parsed.route.bpm,
+                parsed.route.ticksPerBeat, parsed.offsetSeconds, timeMs);
+            if (beat < -1000000 || beat > 999999) {
+                error = where + ".timeMs: outside tick range";
+                return false;
+            }
             if (beat <= prior) {
-                error = where + (version == 2 ? ".timeMs: grid resolution merges notes"
-                                                : ".beat: duplicate/out of order");
+                error = where + ".timeMs: grid resolution merges notes";
                 return false;
             }
             prior = beat;
 
-            if (!turns[i]["turn"].is_string()) {
-                error = where + ".turn: expected left/right or an angle variant";
+            if (!turns[i]["heading"].is_string()) {
+                error = where + ".heading: expected an absolute compass direction";
                 return false;
             }
-            constexpr const char* turnNames[] = {
-                "left", "right", "left45", "right45", "left135", "right135", "reverse"
-            };
-            const std::string direction = turns[i]["turn"].get<std::string>();
-            bool recognizedTurn = false;
-            for (int j = 0; j < 7; ++j) {
-                if (direction == turnNames[j]) {
-                    parsed.route.turns.push_back({beat, static_cast<Turn>(j), timeMs});
-                    recognizedTurn = true;
+            const std::string direction = turns[i]["heading"].get<std::string>();
+            bool recognized = false;
+            for (int j = 0; j < 8; ++j) {
+                if (direction == headingNames[j]) {
+                    parsed.route.turns.push_back(
+                        {beat, static_cast<Heading>(j), timeMs});
+                    recognized = true;
                     break;
                 }
             }
-            if (!recognizedTurn) {
-                error = where + ".turn: unknown turn angle or direction";
+            if (!recognized) {
+                error = where + ".heading: unknown compass direction";
                 return false;
             }
         }
         parsed.route.lengthBeats = 1; // Replaced by PrepareChartForSong().
-        if (document.contains("lengthBeats")) {
-            int authored = 0;
-            if (!IntegerInRange(document["lengthBeats"], 1, 65536, authored,
-                                "lengthBeats", error)) return false;
-            // Former manual editor length is intentionally discarded.
-            (void)authored;
-        }
         result = std::move(parsed);
         error.clear();
         return true;
@@ -322,7 +284,7 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
     try {
         using Ordered = nlohmann::ordered_json;
         Ordered document = Ordered::object();
-        document["formatVersion"] = 2;
+        document["formatVersion"] = 3;
         document["title"] = chart.title;
         document["audioPath"] = chart.audioPath;
         document["bpm"] = chart.route.bpm;
@@ -330,7 +292,7 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
             document["ticksPerBeat"] = chart.route.ticksPerBeat;
         if (chart.route.snapDivision != 1)
             document["snapDivision"] = chart.route.snapDivision;
-        // V2 uses ONLY integer absolute milliseconds for song time and
+        // V3 uses ONLY integer absolute milliseconds for song time and
         // offset; the authoring-grid resolution is separate metadata.
         document["offsetMs"] = static_cast<std::int64_t>(
             std::llround(chart.offsetSeconds * 1000.0));
@@ -350,21 +312,17 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
                              {"y", chart.route.start.y},
                              {"heading", headings[heading]}};
         document["previewLeadBeats"] = chart.previewLeadBeats;
-        // Legacy lengthBeats is no longer authored: song length determines it.
+        // Song length is derived from the audio file, not authored.
         document["turns"] = Ordered::array();
 
-        constexpr const char* turnNames[] = {
-            "left", "right", "left45", "right45", "left135", "right135", "reverse"
-        };
         for (const auto& event : chart.route.turns) {
-            const int turnIndex = static_cast<int>(event.direction);
-            if (turnIndex < 0 || turnIndex >= 7) {
-                error = "turns: unsupported turn angle";
+            if (!ValidHeading(event.direction)) {
+                error = "turns: invalid absolute compass heading";
                 return false;
             }
             document["turns"].push_back({
                 {"timeMs", EventTimeMs(chart.route, event, chart.offsetSeconds)},
-                {"turn", turnNames[turnIndex]}
+                {"heading", headings[static_cast<int>(event.direction)]}
             });
         }
         std::string encoded = document.dump(2, ' ', false,
@@ -437,7 +395,6 @@ bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
     }
     chart.route.firstBeat = first;
     chart.route.lengthBeats = end;
-    chart.authoredLengthBeats.reset();
     error.clear();
     return true;
 }

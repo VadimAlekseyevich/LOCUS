@@ -62,8 +62,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     if ((playing && !paused) || audioAlreadyFinished) {
         if (const auto* target = judge_.NextEvent()) {
             const core::Heading incoming = core::IncomingHeadingAt(chart_, target->beat);
-            const core::Heading expected =
-                core::HeadingAfterTurn(incoming, target->direction);
+            const core::Heading expected = target->direction;
             const auto stroke = chord_.Observe(
                 {arrows.pressed, arrows.held, arrows.capturedAt},
                 expected, incoming);

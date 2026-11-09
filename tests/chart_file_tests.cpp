@@ -29,7 +29,7 @@ int main() {
     namespace fs = std::filesystem;
     const auto unique = std::to_string(std::chrono::steady_clock::now()
                                       .time_since_epoch().count());
-    const fs::path root = fs::temp_directory_path() / ("locus-v1-" + unique);
+    const fs::path root = fs::temp_directory_path() / ("locus-v3-" + unique);
     const fs::path audioDirectory = root / "audio";
     std::error_code errorCode;
     fs::create_directories(audioDirectory, errorCode);
@@ -46,14 +46,14 @@ int main() {
     const fs::path chartFile = root / "sample.locus.json";
     {
         std::ofstream file(chartFile, std::ios::binary);
-        file << R"({"formatVersion":1,"title":"Test File",
+        file << R"({"formatVersion":3,"title":"Test File",
                      "audioPath":"audio/sample.wav",
-                     "bpm":120,"offsetSeconds":0.25,
+                     "bpm":120,"offsetMs":250,
                      "grid":{"width":4,"height":4},
                      "start":{"x":0,"y":2,"heading":"left"},
                      "previewLeadBeats":3.5,
-                     "turns":[{"beat":2,"turn":"right"},
-                              {"beat":5,"turn":"left"}]})";
+                     "turns":[{"timeMs":1250,"heading":"up"},
+                              {"timeMs":2750,"heading":"right"}]})";
     }
 
     locus::core::LoadedChart parsed;
@@ -74,8 +74,7 @@ int main() {
     if (opened) {
         parsed.title = "My edited chart";
         parsed.offsetSeconds = -0.125;
-        parsed.route.turns.push_back({7, locus::core::Turn::Right});
-        parsed.authoredLengthBeats = 8;
+        parsed.route.turns.push_back({7, locus::core::Heading::Down});
     }
     const bool savedOnce = opened && locus::app::SaveChartWithAudioPath(
         saved.wstring(), resolved, parsed, message);
@@ -90,7 +89,6 @@ int main() {
         reopened.route.firstBeat == 0 &&
         reopened.route.lengthBeats == 9 &&
         reopened.route.turns[2].beat == 7 &&
-        !reopened.authoredLengthBeats &&
         reopened.offsetSeconds == -0.125 &&
         fs::equivalent(fs::path(songAgain), audio);
 

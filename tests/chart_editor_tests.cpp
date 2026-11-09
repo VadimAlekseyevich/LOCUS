@@ -58,16 +58,16 @@ int main() {
                 "left heading rotation");
 
     draft.SelectBeat(5);
-    draft.PutTurn(Turn::Right);
+    draft.PutTurn(Heading::Right);
     draft.SelectBeat(2);
-    draft.PutTurn(Turn::Left);
+    draft.PutTurn(Heading::Left);
     ok &= Check(draft.Data().route.turns.size() == 2 &&
                 draft.Data().route.turns[0].beat == 2 &&
                 draft.Data().route.turns[1].beat == 5,
                 "events inserted in beat order");
-    draft.PutTurn(Turn::Right);
+    draft.PutTurn(Heading::Right);
     ok &= Check(draft.Data().route.turns.size() == 2 &&
-                draft.Data().route.turns[0].direction == Turn::Right,
+                draft.Data().route.turns[0].direction == Heading::Right,
                 "same-beat turn replaces rather than duplicates");
     ok &= Check(!draft.MoveTurn(3), "moving onto an occupied beat is blocked");
     ok &= Check(draft.MoveTurn(1) && draft.SelectedBeat() == 3 &&
@@ -81,7 +81,7 @@ int main() {
                 "full song length automatically sets the editable timeline");
     const auto routeBefore = SampleRouteStep(draft.Data().route, 5);
     draft.SelectBeat(5);
-    draft.PutTurn(Turn::Left);
+    draft.PutTurn(Heading::Left);
     const auto routeAfter = SampleRouteStep(draft.Data().route, 5);
     ok &= Check(routeBefore.heading != routeAfter.heading &&
                 draft.Dirty(), "preview route recalculates from edited events");
@@ -123,7 +123,7 @@ int main() {
                     draft.Data().route.lengthBeats > 64,
                 "song duration, not manual length, controls chart extent");
     draft.SelectBeat(63);
-    draft.PutTurn(Turn::Left);
+    draft.PutTurn(Heading::Left);
     const int protectedEnd = draft.Data().route.lengthBeats;
     ok &= Check(!draft.SetSongDuration(1.0) &&
                     draft.Data().route.lengthBeats == protectedEnd &&
@@ -165,7 +165,7 @@ int main() {
     ChartEditor savedSession;
     savedSession.NewDraft();
     savedSession.SelectBeat(19);
-    savedSession.PutTurn(Turn::Left);
+    savedSession.PutTurn(Heading::Left);
     const auto onDisk = savedSession.Data();
     ok &= Check(savedSession.Dirty() && savedSession.CanUndo(),
                 "newly-authored turn is undoable before save");
@@ -182,9 +182,9 @@ int main() {
     ChartEditor boundedCopy;
     boundedCopy.NewDraft();
     boundedCopy.SelectBeat(5);
-    boundedCopy.PutTurn(Turn::Left);
+    boundedCopy.PutTurn(Heading::Left);
     boundedCopy.SelectBeat(8);
-    boundedCopy.PutTurn(Turn::Right);
+    boundedCopy.PutTurn(Heading::Right);
     const auto clipped = boundedCopy.CopyTurns(0, 11);
     ok &= Check(clipped.span == 4 && clipped.notes.size() == 2 &&
                 clipped.notes[0].beat == 0 && clipped.notes[1].beat == 3,
@@ -203,11 +203,11 @@ int main() {
     group.NewDraft();
     group.MarkSaved();
     group.SelectBeat(2);
-    group.PutTurn(Turn::Left);
+    group.PutTurn(Heading::Left);
     group.SelectBeat(4);
-    group.PutTurn(Turn::Right);
+    group.PutTurn(Heading::Right);
     group.SelectBeat(8);
-    group.PutTurn(Turn::Left);
+    group.PutTurn(Heading::Left);
     const auto pattern = group.CopyTurns(2, 5);
     ok &= Check(pattern.span == 3 && pattern.notes.size() == 2 &&
                 pattern.notes[0].beat == 0 && pattern.notes[1].beat == 2,
@@ -220,22 +220,22 @@ int main() {
                 group.Data().route.turns[3].beat == 12 &&
                 group.Data().route.turns[4].beat == 14,
                 "pattern paste preserves rests and sorted notes");
-    ok &= Check(group.InvertTurns(12, 14) &&
-                group.Data().route.turns[3].direction == Turn::Right &&
-                group.Data().route.turns[4].direction == Turn::Left,
-                "flip changes Left/Right for the entire selected group");
+    ok &= Check(group.MirrorTurnsHorizontal(12, 14) &&
+                group.Data().route.turns[3].direction == Heading::Right &&
+                group.Data().route.turns[4].direction == Heading::Left,
+                "horizontal mirror swaps absolute Left/Right");
     ok &= Check(group.Undo() &&
-                group.Data().route.turns[3].direction == Turn::Left &&
-                group.Data().route.turns[4].direction == Turn::Right &&
+                group.Data().route.turns[3].direction == Heading::Left &&
+                group.Data().route.turns[4].direction == Heading::Right &&
                 group.Redo() &&
-                group.Data().route.turns[3].direction == Turn::Right,
-                "undo and redo invert the whole group together");
+                group.Data().route.turns[3].direction == Heading::Right,
+                "undo and redo reflect the group atomically");
     ok &= Check(group.ShiftTurns(12, 14, 1) &&
                 group.Data().route.turns[3].beat == 13 &&
                 group.Data().route.turns[4].beat == 15,
                 "group shift moves all notes by one beat");
     group.SelectBeat(16);
-    group.PutTurn(Turn::Left);
+    group.PutTurn(Heading::Left);
     ok &= Check(!group.ShiftTurns(13, 15, 1) &&
                 group.Data().route.turns[4].beat == 15 &&
                 group.Data().route.turns[5].beat == 16,
@@ -254,9 +254,9 @@ int main() {
                 "undo and redo also cover ordinary field edits");
     ChartEditor saved;
     saved.NewDraft();
-    saved.PutTurn(Turn::Left);
+    saved.PutTurn(Heading::Left);
     saved.MarkSaved();
-    saved.PutTurn(Turn::Right);
+    saved.PutTurn(Heading::Right);
     ok &= Check(saved.Dirty() && saved.Undo() && !saved.Dirty() &&
                 saved.Redo() && saved.Dirty(),
                 "undo to last saved revision restores clean status");
@@ -271,7 +271,7 @@ int main() {
                 autoTimeline.Data().route.lengthBeats == 15 &&
                 autoTimeline.SelectBeat(-3),
                 "positive offset exposes selectable negative beats in song");
-    autoTimeline.PutTurn(Turn::Left);
+    autoTimeline.PutTurn(Heading::Left);
     ok &= Check(autoTimeline.CopyTurns(-5, -2).notes.size() == 1 &&
                 autoTimeline.Data().route.turns[0].beat == -3,
                 "pattern editing supports pre-offset negative beat turn");
@@ -287,24 +287,24 @@ int main() {
     compass.NewDraft();
     ok &= Check(compass.SetOutgoingHeading(Heading::UpRight) &&
                 compass.SelectedTurn() &&
-                compass.SelectedTurn()->direction == Turn::Left45 &&
+                compass.SelectedTurn()->direction == Heading::UpRight &&
                 SampleRouteStep(compass.Data().route, 0).heading == Heading::UpRight,
-                "ROUTE compass authors diagonal direction as relative 45 turn");
+                "compass authors absolute outgoing up-right");
     ok &= Check(!compass.SetOutgoingHeading(Heading::UpRight) &&
-                compass.SelectedTurn()->direction == Turn::Left45,
+                compass.SelectedTurn()->direction == Heading::UpRight,
                 "selecting the same outgoing direction does not duplicate a note");
     compass.SelectBeat(1);
     ok &= Check(compass.SetOutgoingHeading(Heading::Down) &&
-                compass.SelectedTurn()->direction == Turn::Right135 &&
-                compass.InvertTurns(0, 1) &&
-                compass.Data().route.turns[0].direction == Turn::Right45 &&
-                compass.Data().route.turns[1].direction == Turn::Left135,
-                "pattern inversion preserves 45/135 degree turn magnitudes");
+                compass.SelectedTurn()->direction == Heading::Down &&
+                compass.MirrorTurnsHorizontal(0, 1) &&
+                compass.Data().route.turns[0].direction == Heading::UpLeft &&
+                compass.Data().route.turns[1].direction == Heading::Down,
+                "horizontal reflection flips x component of absolute headings");
     ok &= Check(compass.Undo() &&
-                compass.Data().route.turns[0].direction == Turn::Left45 &&
+                compass.Data().route.turns[0].direction == Heading::UpRight &&
                 compass.Redo() &&
-                compass.Data().route.turns[0].direction == Turn::Right45,
-                "diagonal inversion is one undo/redo transaction");
+                compass.Data().route.turns[0].direction == Heading::UpLeft,
+                "mirror operation is one undo/redo transaction");
     compass.RotateHeading45(1);
     ok &= Check(compass.Data().route.initialHeading == Heading::DownRight &&
                 compass.SetOutgoingHeading(Heading::Down) &&
@@ -316,25 +316,43 @@ int main() {
     ok &= Check(reverseEditor.SelectBeat(2) &&
                 reverseEditor.SetOutgoingHeading(Heading::Left) &&
                 reverseEditor.SelectedTurn() &&
-                reverseEditor.SelectedTurn()->direction == Turn::Reverse &&
+                reverseEditor.SelectedTurn()->direction == Heading::Left &&
                 SampleRouteStep(reverseEditor.Data().route, 2).heading == Heading::Left &&
                 std::abs(SampleRouteStep(reverseEditor.Data().route, 2).to.x -
                          SampleRouteStep(reverseEditor.Data().route, 1).from.x) < 1e-10,
                 "compass places a 180-degree note and travels backward");
     const auto copiedReverse = reverseEditor.CopyTurns(2, 2);
     ok &= Check(copiedReverse.notes.size() == 1 &&
-                copiedReverse.notes[0].direction == Turn::Reverse &&
-                reverseEditor.InvertTurns(2, 2) &&
-                reverseEditor.SelectedTurn()->direction == Turn::Reverse &&
+                copiedReverse.notes[0].direction == Heading::Left &&
+                reverseEditor.MirrorTurnsHorizontal(2, 2) &&
+                reverseEditor.SelectedTurn()->direction == Heading::Right &&
                 reverseEditor.Undo() && reverseEditor.Redo() &&
-                reverseEditor.SelectedTurn()->direction == Turn::Reverse,
-                "reverse survives copy, inversion, undo and redo");
+                reverseEditor.SelectedTurn()->direction == Heading::Right,
+                "absolute direction survives copying, mirroring and undo/redo");
     ok &= Check(reverseEditor.SelectBeat(4) &&
                 reverseEditor.PasteTurns(4, copiedReverse) &&
                 reverseEditor.SelectedTurn() &&
-                reverseEditor.SelectedTurn()->direction == Turn::Reverse &&
-                SampleRouteStep(reverseEditor.Data().route, 4).heading == Heading::Right,
-                "copied reverse pasted after original reverses heading again");
+                reverseEditor.SelectedTurn()->direction == Heading::Left &&
+                SampleRouteStep(reverseEditor.Data().route, 4).heading == Heading::Left,
+                "pasted absolute heading remains unchanged by previous movement");
+
+    ChartEditor mirrors;
+    mirrors.SelectBeat(2);
+    mirrors.PutTurn(Heading::UpRight);
+    mirrors.SelectBeat(4);
+    mirrors.PutTurn(Heading::DownLeft);
+    ok &= Check(mirrors.MirrorTurnsHorizontal(2, 4) &&
+                mirrors.Data().route.turns[0].direction == Heading::UpLeft &&
+                mirrors.Data().route.turns[1].direction == Heading::DownRight &&
+                mirrors.MirrorTurnsVertical(2, 4) &&
+                mirrors.Data().route.turns[0].direction == Heading::DownLeft &&
+                mirrors.Data().route.turns[1].direction == Heading::UpRight,
+                "horizontal and vertical mirroring reflect independent axes");
+    ok &= Check(mirrors.Undo() &&
+                mirrors.Data().route.turns[0].direction == Heading::UpLeft &&
+                mirrors.Redo() &&
+                mirrors.Data().route.turns[0].direction == Heading::DownLeft,
+                "each reflection can be undone and redone");
 
     // A 250 BPM chart can gain triplets AFTER authoring without moving
     // existing notes in song time or modifying the musical BPM.
@@ -344,7 +362,7 @@ int main() {
                 subdivisions.SetSongDuration(10.0) &&
                 subdivisions.SelectBeat(5),
                 "setup 250 BPM song with integer millisecond offset");
-    subdivisions.PutTurn(Turn::Left);
+    subdivisions.PutTurn(Heading::Left);
     ok &= Check(subdivisions.Data().route.turns[0].timeMs == 1700,
                 "newly placed note stores absolute timeMs, not beat");
     ok &= Check(subdivisions.SetSnapDivision(2) &&
@@ -361,7 +379,7 @@ int main() {
     ok &= Check(subdivisions.StepSnapSelection(1) &&
                 subdivisions.SelectedBeat() == 32,
                 "right-arrow moves to next 1/3 musical-beat grid line");
-    subdivisions.PutTurn(Turn::Right);
+    subdivisions.PutTurn(Heading::Right);
     ok &= Check(subdivisions.Data().route.turns.size() == 2 &&
                 subdivisions.Data().route.turns[1].timeMs == 1780,
                 "new triplet note falls exactly 80 ms after existing note at 250 BPM");
@@ -390,9 +408,9 @@ int main() {
     Chart preciseChart;
     preciseChart.bpm = 250;
     preciseChart.ticksPerBeat = 6;
-    preciseChart.turns.push_back({2, Turn::Left, 583});
+    preciseChart.turns.push_back({2, Heading::Left, 583});
     TurnJudge exactJudge(preciseChart);
-    const auto exactHit = exactJudge.Press(Turn::Left, 0.583);
+    const auto exactHit = exactJudge.PressHeading(Heading::Left, 0.583);
     ok &= Check(exactHit && exactHit->grade == Grade::Perfect &&
                 std::abs(exactHit->timingErrorSeconds) < 1e-12,
                 "scoring uses exact stored 583 ms, not 580 ms grid projection");

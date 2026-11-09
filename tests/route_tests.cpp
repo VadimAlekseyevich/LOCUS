@@ -29,7 +29,7 @@ RouteStep ReferenceStep(const Chart& chart, int requestedBeat) {
     std::size_t index = 0;
     for (int beat = chart.firstBeat; beat <= requestedBeat; ++beat) {
         if (index < chart.turns.size() && chart.turns[index].beat == beat) {
-            heading = HeadingAfterTurn(heading, chart.turns[index].direction);
+            heading = chart.turns[index].direction;
             ++index;
         }
         const unsigned mask = HeadingArrowMask(heading);
@@ -127,22 +127,19 @@ int main() {
     early.firstBeat = -4;
     early.lengthBeats = 5;
     early.start = {1, 1};
-    early.turns = {{-2, Turn::Left}, {0, Turn::Right}};
+    early.turns = {{-2, Heading::Up}, {0, Heading::Right}};
     ok &= Expect(SampleRouteStep(early, -4).from.x == 1 &&
                  SampleRouteStep(early, -2).heading == Heading::Up &&
                  SampleRouteStep(early, 0).heading == Heading::Right &&
                  IncomingHeadingAt(early, 0) == Heading::Up,
                  "negative beat events and incoming-heading lookup work");
-    for (auto incoming : {Heading::Right, Heading::Down, Heading::Left, Heading::Up}) {
-        const auto right = static_cast<Heading>((static_cast<int>(incoming) + 1) % 4);
-        const auto left = static_cast<Heading>((static_cast<int>(incoming) + 3) % 4);
-        const auto opposite = static_cast<Heading>((static_cast<int>(incoming) + 2) % 4);
-        ok &= Expect(ArrowToTurn(incoming, right) == Turn::Right &&
-                     ArrowToTurn(incoming, left) == Turn::Left &&
-                     !ArrowToTurn(incoming, incoming).has_value() &&
-                     ArrowToTurn(incoming, opposite) == Turn::Reverse,
-                     "straight is not a note, opposite cardinal input reverses");
-    }
+    ok &= Expect(RotateHeading(Heading::Right, -2) == Heading::Up &&
+                 RotateHeading(Heading::Right, 4) == Heading::Left &&
+                 MirrorHeadingHorizontal(Heading::UpRight) == Heading::UpLeft &&
+                 MirrorHeadingVertical(Heading::UpRight) == Heading::DownRight &&
+                 IsOppositeHeading(Heading::Right, Heading::Left) &&
+                 !IsOppositeHeading(Heading::Right, Heading::Up),
+                 "absolute compass rotation, both reflections and half turns");
 
     // Preview highlights *future* turn junctions before arrival, and turns
     // them off as soon as their part of the line leaves the one-bar window.
@@ -165,7 +162,7 @@ int main() {
     Chart beatZeroTurn;
     beatZeroTurn.start = Cell{0, 0};
     beatZeroTurn.initialHeading = Heading::Up;
-    beatZeroTurn.turns.push_back(TurnEvent{0, Turn::Left});
+    beatZeroTurn.turns.push_back(TurnEvent{0, Heading::Left});
     const RouteStep initial = SampleRouteStep(beatZeroTurn, 0);
     ok &= Expect(initial.heading == Heading::Left &&
                      CellIs(initial.to, -1, 0) && !initial.wraps,
@@ -194,7 +191,7 @@ int main() {
         const int gap = variation == 0 ? 1
             : variation == 1 ? 2 : variation == 2 ? 7 : 43;
         for (int beat = stress.firstBeat; beat < stress.lengthBeats; beat += gap)
-            stress.turns.push_back({beat, (beat & 1) ? Turn::Left : Turn::Right});
+            stress.turns.push_back({beat, (beat & 1) ? Heading::Left : Heading::Right});
         for (int beat = stress.firstBeat; beat < stress.lengthBeats; ++beat) {
             if (!SameStep(SampleRouteStep(stress, beat), ReferenceStep(stress, beat))) {
                 ok &= Expect(false,
@@ -209,9 +206,9 @@ int main() {
     longSong.gridWidth = 13;
     longSong.gridHeight = 9;
     longSong.start = {12, 8};
-    longSong.turns = {{100, Turn::Right},
-                      {12000, Turn::Left},
-                      {51000, Turn::Left}};
+    longSong.turns = {{100, Heading::Down},
+                      {12000, Heading::Up},
+                      {51000, Heading::Left}};
     ok &= Expect(SameStep(SampleRouteStep(longSong, 65535),
                           ReferenceStep(longSong, 65535)),
                  "65536-beat chart samples correctly without scanning every beat");
@@ -225,8 +222,8 @@ int main() {
     dense.lengthBeats = 65536;
     dense.initialHeading = Heading::UpRight;
     for (int tick = dense.firstBeat; tick < dense.lengthBeats; tick += 2) {
-        const Turn turn = ((tick - dense.firstBeat) % 6 == 0)
-            ? Turn::Right45 : Turn::Left135;
+        const Heading turn = ((tick - dense.firstBeat) % 6 == 0)
+            ? Heading::DownRight : Heading::UpLeft;
         dense.turns.push_back({tick, turn});
     }
     const auto denseWindow = SampleRouteWindow(dense, 62000, 62239);
@@ -276,8 +273,8 @@ int main() {
     diagonal.start = {3, 0};
     diagonal.initialHeading = Heading::Right;
     diagonal.lengthBeats = 10;
-    diagonal.turns = {{0, Turn::Left45}, {2, Turn::Right135},
-                      {5, Turn::Right45}};
+    diagonal.turns = {{0, Heading::UpRight}, {2, Heading::Down},
+                      {5, Heading::DownLeft}};
     const auto diagonal0 = SampleRouteStep(diagonal, 0);
     const auto diagonal1 = SampleRouteStep(diagonal, 1);
     const auto diagonal2 = SampleRouteStep(diagonal, 2);
@@ -291,21 +288,18 @@ int main() {
                  CellIs(diagonal2.from, 3 + 2 * unit, -2 * unit) &&
                  CellIs(diagonal2.to, 3 + 2 * unit, 1 - 2 * unit),
                  "45 and 135 degree changes preserve normalized continuity");
-    ok &= Expect(HeadingAfterTurn(Heading::Right, Turn::Left) == Heading::Up &&
-                 HeadingAfterTurn(Heading::Right, Turn::Right) == Heading::Down &&
-                 HeadingAfterTurn(Heading::UpRight, Turn::Left45) == Heading::Up &&
-                 HeadingAfterTurn(Heading::UpRight, Turn::Right45) == Heading::Right &&
-                 ArrowToTurn(Heading::Right, Heading::UpRight) == Turn::Left45 &&
-                 ArrowToTurn(Heading::UpRight, Heading::Down) == Turn::Right135 &&
-                 ArrowToTurn(Heading::UpRight, Heading::DownLeft) == Turn::Reverse &&
-                 InverseTurn(Turn::Reverse) == Turn::Reverse,
-                 "cardinal, diagonal, 45/135 and 180 reversal mapping");
+    ok &= Expect(RotateHeading(Heading::Right, -2) == Heading::Up &&
+                 RotateHeading(Heading::UpRight, 3) == Heading::Down &&
+                 MirrorHeadingHorizontal(Heading::DownLeft) == Heading::DownRight &&
+                 MirrorHeadingVertical(Heading::UpLeft) == Heading::DownLeft &&
+                 IsOppositeHeading(Heading::UpRight, Heading::DownLeft),
+                 "absolute compass supports all eighth-turn geometry and mirrors");
     // Overlapping geometry is intentional: no offset, teleport or side lane.
     Chart backtrack;
     backtrack.start = {3, 3};
     backtrack.initialHeading = Heading::Right;
     backtrack.lengthBeats = 6;
-    backtrack.turns = {{2, Turn::Reverse}, {4, Turn::Reverse}};
+    backtrack.turns = {{2, Heading::Left}, {4, Heading::Right}};
     const auto forward = SampleRouteStep(backtrack, 1);
     const auto backward = SampleRouteStep(backtrack, 2);
     const auto backwardAgain = SampleRouteStep(backtrack, 3);
@@ -326,16 +320,16 @@ int main() {
     for (auto incoming : {Heading::Up, Heading::UpRight, Heading::Right,
                           Heading::DownRight, Heading::Down, Heading::DownLeft,
                           Heading::Left, Heading::UpLeft}) {
-        const Heading outgoing = HeadingAfterTurn(incoming, Turn::Reverse);
-        ok &= Expect(ArrowToTurn(incoming, outgoing) == Turn::Reverse &&
-                     HeadingAfterTurn(outgoing, Turn::Reverse) == incoming,
+        const Heading outgoing = RotateHeading(incoming, 4);
+        ok &= Expect(IsOppositeHeading(incoming, outgoing) &&
+                     RotateHeading(outgoing, 4) == incoming,
                      "180 degree turn reverses all eight headings exactly");
     }
     Chart diagonalReverse;
     diagonalReverse.start = {3, 3};
     diagonalReverse.initialHeading = Heading::UpRight;
     diagonalReverse.lengthBeats = 4;
-    diagonalReverse.turns = {{1, Turn::Reverse}};
+    diagonalReverse.turns = {{1, Heading::DownLeft}};
     const auto outbound = SampleRouteStep(diagonalReverse, 0);
     const auto inbound = SampleRouteStep(diagonalReverse, 1);
     ok &= Expect(inbound.heading == Heading::DownLeft &&
@@ -362,7 +356,7 @@ int main() {
     octagon.lengthBeats = 9;
     octagon.initialHeading = Heading::Right;
     for (int beat = 1; beat < 8; ++beat)
-        octagon.turns.push_back({beat, Turn::Right45});
+        octagon.turns.push_back({beat, RotateHeading(Heading::Right, beat)});
     for (int beat = 0; beat < 8; ++beat) {
         const RouteStep side = SampleRouteStep(octagon, beat);
         ok &= Expect(std::abs(std::hypot(side.to.x - side.from.x,

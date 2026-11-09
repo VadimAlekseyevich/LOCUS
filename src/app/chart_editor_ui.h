@@ -20,14 +20,13 @@ struct EditorControls {
     int heldBarDirection = 0; // -1 = left, +1 = right, 0 = released.
     float elapsedSeconds = 0.0f;
     bool movePrevious = false, moveNext = false;
-    bool addLeft = false, addRight = false, removeTurn = false;
+    bool removeTurn = false;
     // Reuse gameplay's configurable direction keys in ROUTE.
     // Adjacent simultaneous keys form diagonals, using the game chord window.
     unsigned directionKeysHeld = 0; // Left=1 Down=2 Up=4 Right=8
     float directionChordWindowSeconds = 0.09f;
     bool directionKeysSuppressed = false; // modifiers cancel an unfinished chord
-    bool addLeft45 = false, addRight45 = false;
-    bool addLeft135 = false, addRight135 = false;
+
     bool headingLeft = false, headingRight = false;
     bool mouseClick = false, mouseHeld = false, mouseReleased = false;
     bool shiftHeld = false;
@@ -38,7 +37,8 @@ struct EditorControls {
     bool zoomIn = false, zoomOut = false;
     bool snapMore = false, snapLess = false; // Placement grid, NOT BPM or zoom.
     bool copyRange = false, cutRange = false, pasteRange = false;
-    bool invertRange = false, undo = false, redo = false;
+    bool mirrorHorizontal = false, mirrorVertical = false;
+    bool undo = false, redo = false;
     bool shiftRangePrevious = false, shiftRangeNext = false;
 
     bool enter = false, escape = false, backspace = false, tab = false;

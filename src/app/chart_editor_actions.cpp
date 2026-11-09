@@ -116,9 +116,7 @@ bool CommitField(EditorUiState& ui, core::ChartEditor& draft) {
     return true;
 }
 
-// Key masks correspond to the visual 3x3 direction pad, not relative
-// left/right turn types. The chart editor resolves these into a turn using
-// its incoming route heading; no chart or timing semantics change.
+// Keys and the 3x3 pad directly author absolute outgoing compass headings.
 std::optional<core::Heading> DirectionForKeys(unsigned mask) {
     switch (mask) {
         case 1u: return core::Heading::Left;       // D
@@ -271,7 +269,9 @@ EditorControls PollEditorControls(const GameSettings& settings,
     input.directionChordWindowSeconds = settings.chordWindowMs / 1000.0f;
     input.elapsedSeconds = GetFrameTime();
 
-    input.invertRange = plain(KEY_I);
+    input.mirrorHorizontal = plain(KEY_I);
+    input.mirrorVertical = shift && !control && available(KEY_I) &&
+                           IsKeyPressed(KEY_I);
     input.zoomIn = (available(KEY_EQUAL) && IsKeyPressed(KEY_EQUAL)) ||
                    (available(KEY_KP_ADD) && IsKeyPressed(KEY_KP_ADD)) ||
                    (available(KEY_RIGHT_BRACKET) && IsKeyPressed(KEY_RIGHT_BRACKET));
@@ -485,7 +485,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     bool copy = input.copyRange && ui.tab == EditorTab::Route;
     bool cut = input.cutRange && ui.tab == EditorTab::Route;
     bool paste = input.pasteRange && ui.tab == EditorTab::Route;
-    bool invert = input.invertRange && ui.tab == EditorTab::Route;
+    bool mirrorH = input.mirrorHorizontal && ui.tab == EditorTab::Route;
+    bool mirrorV = input.mirrorVertical && ui.tab == EditorTab::Route;
     bool deleteTurns = input.removeTurn && ui.tab == EditorTab::Route;
 
     if (input.mouseClick) {
@@ -516,7 +517,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
         else if (ui.tab == EditorTab::Route && Hit(kCopyTurns, mouse)) copy = true;
         else if (ui.tab == EditorTab::Route && Hit(kPasteTurns, mouse)) paste = true;
-        else if (ui.tab == EditorTab::Route && Hit(kInvertTurns, mouse)) invert = true;
+        else if (ui.tab == EditorTab::Route && Hit(kMirrorHorizontal, mouse)) mirrorH = true;
+        else if (ui.tab == EditorTab::Route && Hit(kMirrorVertical, mouse)) mirrorV = true;
         else if (ui.tab == EditorTab::Route && Hit(kCutTurns, mouse)) cut = true;
         else if (ui.tab == EditorTab::Route && Hit(kUndoEdit, mouse)) {
             action.changedChart = draft.Undo();
@@ -670,12 +672,6 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                                                            draft.Data().route.snapDivision);
         if (input.moveNext && !ui.HasRange()) action.changedChart |= draft.MoveTurn(draft.Data().route.ticksPerBeat /
                                                           draft.Data().route.snapDivision);
-        if (input.addLeft) { draft.PutTurn(core::Turn::Left); action.changedChart = true; }
-        if (input.addRight) { draft.PutTurn(core::Turn::Right); action.changedChart = true; }
-        if (input.addLeft45) { draft.PutTurn(core::Turn::Left45); action.changedChart = true; }
-        if (input.addRight45) { draft.PutTurn(core::Turn::Right45); action.changedChart = true; }
-        if (input.addLeft135) { draft.PutTurn(core::Turn::Left135); action.changedChart = true; }
-        if (input.addRight135) { draft.PutTurn(core::Turn::Right135); action.changedChart = true; }
         const int first = ui.HasRange() ? ui.rangeFirst : draft.SelectedBeat();
         const int last = ui.HasRange() ? ui.rangeLast : draft.SelectedBeat();
         const bool valid = first >= draft.Data().route.firstBeat &&
@@ -722,10 +718,14 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             notice(ok ? "PATTERN PASTED - RANGE STILL SELECTED"
                       : "CANNOT PASTE - EMPTY CLIPBOARD, SAME NOTES OR OUT OF BOUNDS", !ok);
         }
-        if (invert) {
-            const bool ok = valid && draft.InvertTurns(first, last);
+        if (mirrorH || mirrorV) {
+            const bool ok = valid && (mirrorH
+                ? draft.MirrorTurnsHorizontal(first, last)
+                : draft.MirrorTurnsVertical(first, last));
             action.changedChart |= ok;
-            notice(ok ? "LEFT / RIGHT REVERSED" : "NO TURNS TO INVERT", !ok);
+            notice(ok ? (mirrorH ? "HORIZONTAL MIRROR APPLIED"
+                                   : "VERTICAL MIRROR APPLIED")
+                      : "NO DIRECTIONS CHANGED", !ok);
         }
         if (deleteTurns) {
             const bool ok = valid && draft.DeleteTurns(first, last);

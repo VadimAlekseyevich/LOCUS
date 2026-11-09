@@ -68,16 +68,13 @@ int main() {
                     Near(dx * std::cos(finish) + dy * std::sin(finish), 0.0),
                     "every cap bulges opposite outgoing motion; diameter is perpendicular");
     }
-    ok &= Check(app::NeedsReverseCap(core::Turn::Reverse) &&
-                !app::NeedsReverseCap(core::Turn::Left) &&
-                !app::NeedsReverseCap(core::Turn::Right) &&
-                !app::NeedsReverseCap(core::Turn::Left45) &&
-                !app::NeedsReverseCap(core::Turn::Right45) &&
-                !app::NeedsReverseCap(core::Turn::Left135) &&
-                !app::NeedsReverseCap(core::Turn::Right135) &&
+    ok &= Check(app::NeedsReverseCap(core::Heading::Right, core::Heading::Left) &&
+                app::NeedsReverseCap(core::Heading::UpRight, core::Heading::DownLeft) &&
+                !app::NeedsReverseCap(core::Heading::Right, core::Heading::Up) &&
+                !app::NeedsReverseCap(core::Heading::Left, core::Heading::Left) &&
                 app::Skin{}.reverseCapScale == app::kDefaultReverseCapScale &&
                 app::kDefaultReverseCapScale == 3.2f,
-                "no cap for ordinary turns and reverse cap protrudes beyond the dot");
+                "caps follow actual incoming/outgoing reversal, not note labels");
 
     if (!ok) return 1;
     std::cout << "REVERSE_CAP_PASS directions=8 normal-junctions=unchanged\n";

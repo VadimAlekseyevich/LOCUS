@@ -214,7 +214,7 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                              : Color{81, 126, 135, 220});
     }
 
-    // Draw turn symbols from the actual chart: left=teal, right=violet.
+    // Draw absolute compass directions: cardinal=teal, diagonal=violet.
     // Iterate authored turns (already sorted), stopping after the view.
     for (const auto& event : chart.turns) {
         if (event.beat < first) continue;
@@ -223,27 +223,22 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                         static_cast<float>((static_cast<double>(event.beat) - anchor) * pixels);
         if (x < kTimelineX + 8.0f || x > kTimelineX + kTimelineWidth - 8.0f)
             continue;
-        const bool left = event.direction == core::Turn::Left ||
-                          event.direction == core::Turn::Left45 ||
-                          event.direction == core::Turn::Left135;
-        const bool reverse = event.direction == core::Turn::Reverse;
+        const bool diagonal = core::IsDiagonal(event.direction);
         const float spacing = pixels * snapStep;
         const bool narrow = spacing < 26.0f;
         const float width = narrow ? std::max(5.0f, std::min(spacing - 1.0f, 12.0f))
                                    : std::min(spacing - 3.0f, 32.0f);
-        DrawRectangleRec({x - width * 0.5f, 481.0f, width, 15.0f},
-                         left ? Color{96, 220, 193, 255}
-                              : Color{175, 155, 236, 255});
+        const Color tint = diagonal ? Color{175, 155, 236, 255}
+                                    : Color{111, 214, 202, 255};
+        DrawRectangleRec({x - width * 0.5f, 483.0f, width, 13.0f}, tint);
         if (!narrow) {
-            const char* angle = event.direction == core::Turn::Left45 ||
-                                event.direction == core::Turn::Right45 ? "45"
-                              : event.direction == core::Turn::Left135 ||
-                                event.direction == core::Turn::Right135 ? "135" : "90";
-            // Ordinary timeline note shows the correct angle; no extra
-            // graphic marker or geometry offset for reversed segments.
-            Label(font, reverse ? "180" : TextFormat("%s%s", left ? "L" : "R", angle),
-                  x - width * 0.5f + 2.0f, 482.0f,
-                  10.0f, Color{22, 26, 36, 255});
+            constexpr const char* names[] = {
+                "U", "R", "D", "L", "UR", "DR", "DL", "UL"
+            };
+            const char* label = names[static_cast<int>(event.direction)];
+            const float textWidth = MeasureTextEx(font, label, 11, 1).x;
+            Label(font, label, x - textWidth * 0.5f, 482.0f, 11,
+                  Color{18, 26, 36, 255});
         }
     }
 
@@ -308,12 +303,11 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                Color{119, 229, 188, 255});
         const auto* turn = draft.SelectedTurn();
         const auto incoming = core::IncomingHeadingAt(chart, draft.SelectedBeat());
-        const auto outgoing = turn ? core::HeadingAfterTurn(incoming, turn->direction)
-                                   : incoming;
+        const auto outgoing = turn ? turn->direction : incoming;
         Label(font, TextFormat("BEAT %.3f / %s",
                               static_cast<double>(draft.SelectedBeat()) /
                                   chart.ticksPerBeat,
-                              turn ? core::TurnName(turn->direction) : "STRAIGHT"),
+                              turn ? core::DirectionName(turn->direction) : "STRAIGHT"),
               744, 250, 12, Color{216, 232, 239, 255});
         const char* padNames[9] = {"UL", "U", "UR", "L", "DEL", "R",
                                    "DL", "D", "DR"};
@@ -348,7 +342,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
               Color{193, 215, 226, 255});
         Button(font, kCopyTurns, "COPY CTRL+C", Color{126, 190, 221, 255});
         Button(font, kPasteTurns, "PASTE CTRL+V", Color{127, 224, 199, 255});
-        Button(font, kInvertTurns, "FLIP L/R  I", Color{190, 168, 229, 255});
+        Button(font, kMirrorHorizontal, "FLIP H", Color{190, 168, 229, 255});
+        Button(font, kMirrorVertical, "FLIP V", Color{190, 168, 229, 255});
         Button(font, kCutTurns, "CUT CTRL+X", Color{216, 166, 155, 255});
         Button(font, kUndoEdit, "UNDO", Color{169, 188, 217, 255});
         Button(font, kRedoEdit, "REDO", Color{169, 188, 217, 255});

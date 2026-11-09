@@ -19,7 +19,6 @@ void ChartEditor::NewDraft() {
     chart_.route = Chart{};
     chart_.route.bpm = 120.0;
     chart_.route.lengthBeats = 32;
-    chart_.authoredLengthBeats.reset();
     songDurationSeconds_ = 0.0;
     chart_.route.start = Cell{3, 3}; // Automatic centre of default 8x8 grid.
     chart_.route.initialHeading = Heading::Right;
@@ -63,7 +62,6 @@ bool ChartEditor::ReflowSongRange() noexcept {
     if (!TurnRangeFits(first, end)) return false;
     chart_.route.firstBeat = first;
     chart_.route.lengthBeats = end;
-    chart_.authoredLengthBeats.reset();
     selectedBeat_ = std::clamp(selectedBeat_, first, end - 1);
     return true;
 }
@@ -361,9 +359,8 @@ void ChartEditor::RotateHeading45(int eighthTurns) {
     const int steps = (eighthTurns % 8 + 8) % 8;
     if (steps == 0) return;
     SaveUndo();
-    for (int i = 0; i < steps; ++i)
-        chart_.route.initialHeading = HeadingAfterTurn(
-            chart_.route.initialHeading, Turn::Right45);
+    chart_.route.initialHeading =
+        locus::core::RotateHeading(chart_.route.initialHeading, steps);
     MarkDirty();
 }
 
@@ -371,9 +368,8 @@ bool ChartEditor::SetOutgoingHeading(Heading heading) {
     if (!ValidHeading(heading)) return false;
     const Heading incoming = IncomingHeadingAt(chart_.route, selectedBeat_);
     if (heading == incoming) return RemoveTurn(); // Straight means no note.
-    const auto turn = ArrowToTurn(incoming, heading);
-    if (!turn || (SelectedTurn() && SelectedTurn()->direction == *turn)) return false;
-    PutTurn(*turn);
+    if (SelectedTurn() && SelectedTurn()->direction == heading) return false;
+    PutTurn(heading);
     return true;
 }
 
@@ -385,21 +381,21 @@ const TurnEvent* ChartEditor::SelectedTurn() const noexcept {
     return (found != events.end() && found->beat == selectedBeat_) ? &*found : nullptr;
 }
 
-void ChartEditor::PutTurn(Turn turn) {
+void ChartEditor::PutTurn(Heading heading) {
     auto& events = chart_.route.turns;
     const auto found = std::lower_bound(
         events.begin(), events.end(), selectedBeat_,
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
     if (found != events.end() && found->beat == selectedBeat_) {
-        if (found->direction == turn) return;
+        if (found->direction == heading) return;
         SaveUndo();
-        found->direction = turn;
+        found->direction = heading;
         found->timeMs = static_cast<std::int64_t>(
             std::llround(AudioSecondsAtBeat(selectedBeat_) * 1000.0));
     } else {
         SaveUndo();
         events.insert(found, TurnEvent{
-            selectedBeat_, turn, static_cast<std::int64_t>(
+            selectedBeat_, heading, static_cast<std::int64_t>(
                 std::llround(AudioSecondsAtBeat(selectedBeat_) * 1000.0))});
     }
     MarkDirty();
@@ -426,7 +422,7 @@ bool ChartEditor::MoveTurn(int beats) {
                     [destination](const TurnEvent& event) {
                         return event.beat == destination;
                     })) return false;
-    const Turn direction = SelectedTurn()->direction;
+    const Heading direction = SelectedTurn()->direction;
     SaveUndo();
     const auto original = std::lower_bound(events.begin(), events.end(), selectedBeat_,
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
@@ -538,18 +534,42 @@ bool ChartEditor::ShiftTurns(int firstBeat, int lastBeat, int deltaBeats) {
     return true;
 }
 
-bool ChartEditor::InvertTurns(int firstBeat, int lastBeat) {
+bool ChartEditor::MirrorTurnsHorizontal(int firstBeat, int lastBeat) {
     if (firstBeat < chart_.route.firstBeat || lastBeat < firstBeat ||
         lastBeat >= chart_.route.lengthBeats) return false;
-    bool any = false;
-    for (const auto& event : chart_.route.turns)
-        if (event.beat >= firstBeat && event.beat <= lastBeat) { any = true; break; }
-    if (!any) return false;
+    auto& turns = chart_.route.turns;
+    const auto first = std::lower_bound(turns.begin(), turns.end(), firstBeat,
+        [](const TurnEvent& event, int beat) { return event.beat < beat; });
+    const auto last = std::upper_bound(first, turns.end(), lastBeat,
+        [](int beat, const TurnEvent& event) { return beat < event.beat; });
+    if (first == last) return false;
+    bool changed = std::any_of(first, last, [](const TurnEvent& event) {
+        return MirrorHeadingHorizontal(event.direction) != event.direction;
+    });
+    if (!changed) return false;
     SaveUndo();
-    for (auto& event : chart_.route.turns) {
-        if (event.beat >= firstBeat && event.beat <= lastBeat)
-            event.direction = InverseTurn(event.direction);
-    }
+    for (auto it = first; it != last; ++it)
+        it->direction = MirrorHeadingHorizontal(it->direction);
+    MarkDirty();
+    return true;
+}
+
+bool ChartEditor::MirrorTurnsVertical(int firstBeat, int lastBeat) {
+    if (firstBeat < chart_.route.firstBeat || lastBeat < firstBeat ||
+        lastBeat >= chart_.route.lengthBeats) return false;
+    auto& turns = chart_.route.turns;
+    const auto first = std::lower_bound(turns.begin(), turns.end(), firstBeat,
+        [](const TurnEvent& event, int beat) { return event.beat < beat; });
+    const auto last = std::upper_bound(first, turns.end(), lastBeat,
+        [](int beat, const TurnEvent& event) { return beat < event.beat; });
+    if (first == last) return false;
+    bool changed = std::any_of(first, last, [](const TurnEvent& event) {
+        return MirrorHeadingVertical(event.direction) != event.direction;
+    });
+    if (!changed) return false;
+    SaveUndo();
+    for (auto it = first; it != last; ++it)
+        it->direction = MirrorHeadingVertical(it->direction);
     MarkDirty();
     return true;
 }

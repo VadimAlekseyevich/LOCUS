@@ -1,5 +1,5 @@
 {
-  "formatVersion": 2,
+  "formatVersion": 3,
   "title": "My First Song",
   "audioPath": "song.mp3",
   "bpm": 120,
@@ -19,39 +19,39 @@
   "turns": [
     {
       "timeMs": 1000,
-      "turn": "right"
+      "heading": "down"
     },
     {
       "timeMs": 2500,
-      "turn": "left"
+      "heading": "right"
     },
     {
       "timeMs": 4000,
-      "turn": "left"
+      "heading": "up"
     },
     {
       "timeMs": 6000,
-      "turn": "right"
+      "heading": "right"
     },
     {
       "timeMs": 8000,
-      "turn": "right"
+      "heading": "down"
     },
     {
       "timeMs": 9500,
-      "turn": "right"
+      "heading": "left"
     },
     {
       "timeMs": 11500,
-      "turn": "left"
+      "heading": "down"
     },
     {
       "timeMs": 13500,
-      "turn": "left"
+      "heading": "right"
     },
     {
       "timeMs": 15000,
-      "turn": "left"
+      "heading": "up"
     }
   ]
 }

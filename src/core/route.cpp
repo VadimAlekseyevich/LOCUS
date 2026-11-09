@@ -29,19 +29,6 @@ int CompassIndex(Heading heading) noexcept {
     return 0;
 }
 
-int RotationEighths(Turn turn) noexcept {
-    switch (turn) {
-        case Turn::Left: return -2;
-        case Turn::Right: return 2;
-        case Turn::Left45: return -1;
-        case Turn::Right45: return 1;
-        case Turn::Left135: return -3;
-        case Turn::Right135: return 3;
-        case Turn::Reverse: return 4;
-    }
-    return 0;
-}
-
 void HeadingDelta(Heading heading, int& dx, int& dy) noexcept {
     dx = 0;
     dy = 0;
@@ -112,22 +99,38 @@ bool IsDiagonal(Heading heading) noexcept {
     return ValidHeading(heading) && static_cast<int>(heading) >= 4;
 }
 
-Heading HeadingAfterTurn(Heading incoming, Turn turn) noexcept {
-    const int index = CompassIndex(incoming);
-    return kCompass[(index + RotationEighths(turn) + 8) % 8];
+Heading RotateHeading(Heading heading, int eighthTurns) noexcept {
+    if (!ValidHeading(heading)) return heading;
+    return kCompass[(CompassIndex(heading) + (eighthTurns % 8) + 8) % 8];
 }
 
-Turn InverseTurn(Turn turn) noexcept {
-    switch (turn) {
-        case Turn::Left: return Turn::Right;
-        case Turn::Right: return Turn::Left;
-        case Turn::Left45: return Turn::Right45;
-        case Turn::Right45: return Turn::Left45;
-        case Turn::Left135: return Turn::Right135;
-        case Turn::Right135: return Turn::Left135;
-        case Turn::Reverse: return Turn::Reverse; // Half-turn is self-inverse.
+Heading MirrorHeadingHorizontal(Heading heading) noexcept {
+    switch (heading) {
+        case Heading::Left: return Heading::Right;
+        case Heading::Right: return Heading::Left;
+        case Heading::UpLeft: return Heading::UpRight;
+        case Heading::UpRight: return Heading::UpLeft;
+        case Heading::DownLeft: return Heading::DownRight;
+        case Heading::DownRight: return Heading::DownLeft;
+        default: return heading;
     }
-    return turn;
+}
+
+Heading MirrorHeadingVertical(Heading heading) noexcept {
+    switch (heading) {
+        case Heading::Up: return Heading::Down;
+        case Heading::Down: return Heading::Up;
+        case Heading::UpLeft: return Heading::DownLeft;
+        case Heading::DownLeft: return Heading::UpLeft;
+        case Heading::UpRight: return Heading::DownRight;
+        case Heading::DownRight: return Heading::UpRight;
+        default: return heading;
+    }
+}
+
+bool IsOppositeHeading(Heading incoming, Heading outgoing) noexcept {
+    return ValidHeading(incoming) && ValidHeading(outgoing) &&
+           RotateHeading(incoming, 4) == outgoing;
 }
 
 unsigned HeadingArrowMask(Heading heading) noexcept {
@@ -155,21 +158,6 @@ std::optional<Heading> HeadingFromArrowMask(unsigned keys) noexcept {
         case 12: return Heading::DownLeft;
         case 9: return Heading::UpLeft;
         default: return std::nullopt;
-    }
-}
-
-std::optional<Turn> ArrowToTurn(Heading incoming, Heading pressed) noexcept {
-    if (!ValidHeading(incoming) || !ValidHeading(pressed)) return std::nullopt;
-    const int delta = (CompassIndex(pressed) - CompassIndex(incoming) + 8) % 8;
-    switch (delta) {
-        case 1: return Turn::Right45;
-        case 2: return Turn::Right;
-        case 3: return Turn::Right135;
-        case 4: return Turn::Reverse;
-        case 5: return Turn::Left135;
-        case 6: return Turn::Left;
-        case 7: return Turn::Left45;
-        default: return std::nullopt; // Straight does not create a note.
     }
 }
 
@@ -225,9 +213,9 @@ Chart MakeDemoChart() {
     chart.initialHeading = Heading::Right;
     chart.lengthBeats = 32;
     chart.turns = {
-        {2, Turn::Right}, {5, Turn::Left},  {8, Turn::Left},
-        {12, Turn::Right}, {16, Turn::Right}, {19, Turn::Right},
-        {23, Turn::Left}, {27, Turn::Left}, {30, Turn::Left}
+        {2, Heading::Down}, {5, Heading::Right}, {8, Heading::Up},
+        {12, Heading::Right}, {16, Heading::Down}, {19, Heading::Left},
+        {23, Heading::Down}, {27, Heading::Right}, {30, Heading::Up}
     };
     return chart;
 }
@@ -254,7 +242,7 @@ RouteStep SampleRouteStep(const Chart& chart, int beat) {
         if (event.beat > beat) break;
         if (event.beat < cursor) continue;
         position = AdvanceStraight(position, heading, event.beat - cursor);
-        heading = HeadingAfterTurn(heading, event.direction);
+        heading = event.direction;
         cursor = event.beat;
     }
     position = AdvanceStraight(position, heading, beat - cursor);
@@ -286,7 +274,7 @@ std::vector<RouteStep> SampleRouteWindow(const Chart& chart, int firstBeat,
     for (int tick = firstBeat; tick < lastBeat; ++tick) {
         const int nextTick = tick + 1;
         while (nextTurn != chart.turns.end() && nextTurn->beat == nextTick) {
-            heading = HeadingAfterTurn(heading, nextTurn->direction);
+            heading = nextTurn->direction;
             ++nextTurn;
         }
         const GridPoint to = AdvanceStraight(position, heading, 1);

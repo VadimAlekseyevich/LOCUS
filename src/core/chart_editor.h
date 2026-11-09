@@ -49,11 +49,11 @@ public:
     // Reject a resize that would silently move an authored starting cell.
     bool SetGridSize(int width, int height);
     bool SetStart(Cell cell);
-    void RotateHeading(int quarterTurns); // legacy API, 90 degrees per step
+    void RotateHeading(int quarterTurns); // 90-degree steps.
     void RotateHeading45(int eighthTurns);
     bool SetOutgoingHeading(Heading heading); // compass authoring on ROUTE
     bool SetTitle(const std::string& title);
-    void PutTurn(Turn turn);
+    void PutTurn(Heading heading);
     bool RemoveTurn();
     bool MoveTurn(int beats); // preserves sorted, unique turn events
     const TurnEvent* SelectedTurn() const noexcept;
@@ -63,7 +63,8 @@ public:
     Pattern CopyTurns(int firstBeat, int lastBeat) const;
     bool PasteTurns(int destinationBeat, const Pattern& pattern);
     bool ShiftTurns(int firstBeat, int lastBeat, int deltaBeats);
-    bool InvertTurns(int firstBeat, int lastBeat);
+    bool MirrorTurnsHorizontal(int firstBeat, int lastBeat);
+    bool MirrorTurnsVertical(int firstBeat, int lastBeat);
     bool DeleteTurns(int firstBeat, int lastBeat);
     bool Undo();
     bool Redo();

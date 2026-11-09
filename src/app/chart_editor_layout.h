@@ -81,7 +81,8 @@ inline std::optional<core::Heading> DirectionPadHeading(int row, int col) noexce
 }
 constexpr Rectangle kCopyTurns{52, 213, 173, 31};
 constexpr Rectangle kPasteTurns{52, 248, 173, 31};
-constexpr Rectangle kInvertTurns{52, 283, 173, 31};
+constexpr Rectangle kMirrorHorizontal{52, 283, 83, 31};
+constexpr Rectangle kMirrorVertical{142, 283, 83, 31};
 constexpr Rectangle kCutTurns{52, 318, 173, 31};
 constexpr Rectangle kUndoEdit{52, 354, 83, 31};
 constexpr Rectangle kRedoEdit{142, 354, 83, 31};

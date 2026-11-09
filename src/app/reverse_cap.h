@@ -28,8 +28,12 @@ constexpr ReverseCapArc ReverseCapForOutgoing(core::Heading outgoing) noexcept {
     return {};
 }
 
-constexpr bool NeedsReverseCap(core::Turn turn) noexcept {
-    return turn == core::Turn::Reverse;
+inline bool NeedsReverseCap(core::Heading incoming,
+                               core::Heading outgoing) noexcept {
+    // A reverse cap exists only for an actual 180-degree change at this beat.
+    // An absolute heading alone does not imply a reversal.
+    return core::ValidHeading(incoming) && core::ValidHeading(outgoing) &&
+           core::IsOppositeHeading(incoming, outgoing);
 }
 
 } // namespace locus::app

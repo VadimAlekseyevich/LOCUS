@@ -186,7 +186,7 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
             });
         if (first == last) return;
         // One window even if every visible tick contains a turn.
-        const int base = first->beat;
+        const int base = std::max(chart.firstBeat, first->beat - 1);
         const int end = (last - 1)->beat;
         const auto steps = core::SampleRouteWindow(chart, base, end);
         for (auto turn = first; turn != last; ++turn) {
@@ -203,13 +203,14 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
             if (skin.junctionGlow)
                 DrawCircleV(point, radius * 1.45f,
                             WithOpacity(skin.junction, opacity * 0.26f));
-            if (NeedsReverseCap(turn->direction)) {
-                const core::Heading outgoing =
-                    steps[static_cast<std::size_t>(turn->beat - base)].heading;
+            const auto outgoing = turn->direction;
+            const auto incoming = turn->beat == chart.firstBeat
+                ? chart.initialHeading
+                : steps[static_cast<std::size_t>(turn->beat - base - 1)].heading;
+            if (NeedsReverseCap(incoming, outgoing))
                 DrawReverseCap(point, radius, outgoing,
                                skin.junction, opacity, skin.junctionGlow,
                                skin.reverseCapScale);
-            }
             DrawCircleV(point, radius, WithOpacity(skin.junction, opacity));
             DrawCircleV(point, radius * 0.35f,
                         WithOpacity(skin.playerCore, opacity));
@@ -228,22 +229,23 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
     const auto end = std::upper_bound(
         begin, chart.turns.end(), lastVisible,
         [](int tick, const core::TurnEvent& event) { return tick < event.beat; });
-    if (std::any_of(begin, end, [](const core::TurnEvent& event) {
-            return NeedsReverseCap(event.direction);
-        })) {
-        // Batch-sample once even when the editor shows many dense reversals.
-        const int firstTurnBeat = begin->beat;
-        const auto steps = core::SampleRouteWindow(chart, firstTurnBeat,
+    if (begin != end) {
+        // Sample the previous step too; reversal depends on the incoming
+        // direction, never on the absolute note value alone.
+        const int base = std::max(chart.firstBeat, begin->beat - 1);
+        const auto steps = core::SampleRouteWindow(chart, base,
                                                    (end - 1)->beat);
         for (auto turn = begin; turn != end; ++turn) {
-            if (!NeedsReverseCap(turn->direction)) continue;
+            const auto& step = steps[static_cast<std::size_t>(turn->beat - base)];
+            const auto incoming = turn->beat == chart.firstBeat
+                ? chart.initialHeading
+                : steps[static_cast<std::size_t>(turn->beat - base - 1)].heading;
+            if (!NeedsReverseCap(incoming, step.heading)) continue;
             const float opacity = turn->beat <= current
                 ? 1.0f : TrajectoryOpacity(
                     (turn->beat - chart.ticksPerBeat - beat) /
                     chart.ticksPerBeat);
             if (opacity <= 0.0f) continue;
-            const auto& step = steps[static_cast<std::size_t>(
-                turn->beat - firstTurnBeat)];
             const Vector2 point = canvas.Position(step.from);
             const float radius = std::min(
                 11.0f, canvas.step * chart.ticksPerBeat * 0.39f);

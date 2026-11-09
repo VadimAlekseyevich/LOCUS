@@ -69,7 +69,7 @@ int main() {
     Chart normalized = chart.Data().route;
     normalized.initialHeading = Heading::UpRight;
     normalized.lengthBeats = 8;
-    normalized.turns = {{2, Turn::Right45}};
+    normalized.turns = {{2, Heading::Right}};
     const detail::EditorView preview(normalized, 0.0);
     const GridPoint firstPoint = RoutePositionAt(normalized, 0.0);
     const GridPoint nextPoint = RoutePositionAt(normalized, 1.0);
@@ -282,9 +282,9 @@ int main() {
     chart.NewDraft();
     ui = EditorUiState{};
     chart.SelectBeat(6);
-    chart.PutTurn(Turn::Left);
+    chart.PutTurn(Heading::Left);
     chart.SelectBeat(8);
-    chart.PutTurn(Turn::Right);
+    chart.PutTurn(Heading::Right);
     chart.SelectBeat(6);
 
     EditorControls press = Click(cursor, 477);
@@ -342,22 +342,22 @@ int main() {
     ok &= Check(ui.HasRange() && ui.rangeFirst == 12 && ui.rangeLast == 14,
                 "Shift+click extends selection without opening another tab");
     EditorControls invert;
-    invert.invertRange = true;
+    invert.mirrorHorizontal = true;
     const auto flipped = ApplyEditorControls(chart, ui, invert);
     ok &= Check(flipped.changedChart &&
-                chart.Data().route.turns[2].direction == Turn::Right &&
-                chart.Data().route.turns[3].direction == Turn::Left,
-                "I inverts Left and Right for selected interval");
+                chart.Data().route.turns[2].direction == Heading::Right &&
+                chart.Data().route.turns[3].direction == Heading::Left,
+                "I mirrors left/right components of selected absolute headings");
     EditorControls undo;
     undo.undo = true;
     ApplyEditorControls(chart, ui, undo);
-    ok &= Check(chart.Data().route.turns[2].direction == Turn::Left,
-                "Ctrl+Z undoes the entire inversion");
+    ok &= Check(chart.Data().route.turns[2].direction == Heading::Left,
+                "Ctrl+Z undoes the entire reflection");
     EditorControls redo;
     redo.redo = true;
     ApplyEditorControls(chart, ui, redo);
-    ok &= Check(chart.Data().route.turns[2].direction == Turn::Right,
-                "Ctrl+Y redoes inverted group");
+    ok &= Check(chart.Data().route.turns[2].direction == Heading::Right,
+                "Ctrl+Y redoes mirrored group");
     EditorControls shift;
     shift.shiftRangePrevious = true;
     const auto shifted = ApplyEditorControls(chart, ui, shift);
@@ -474,9 +474,9 @@ int main() {
     ChartEditor padded;
     EditorUiState paddedUi;
     padded.SelectBeat(6);
-    padded.PutTurn(Turn::Left);
+    padded.PutTurn(Heading::Left);
     padded.SelectBeat(9);
-    padded.PutTurn(Turn::Right);
+    padded.PutTurn(Heading::Right);
     padded.SelectBeat(13);
     paddedUi.rangeFirst = 2;
     paddedUi.rangeLast = 13; // 4 empty beats before + 4 after.
@@ -644,23 +644,21 @@ int main() {
     auto chooseNE = ApplyEditorControls(compassUi, diagonalUi, Click(882, 292));
     ok &= Check(chooseNE.changedChart &&
                 compassUi.SelectedTurn() &&
-                compassUi.SelectedTurn()->direction == Turn::Left45 &&
+                compassUi.SelectedTurn()->direction == Heading::UpRight &&
                 SampleRouteStep(compassUi.Data().route, 0).heading == Heading::UpRight,
-                "compass NE button authors the appropriate 45 degree turn");
+                "compass NE button authors absolute up-right");
     compassUi.SelectBeat(1);
     auto chooseEast = ApplyEditorControls(compassUi, diagonalUi, Click(882, 331));
     ok &= Check(chooseEast.changedChart &&
                 compassUi.SelectedTurn() &&
-                compassUi.SelectedTurn()->direction == Turn::Right45 &&
+                compassUi.SelectedTurn()->direction == Heading::Right &&
                 SampleRouteStep(compassUi.Data().route, 1).heading == Heading::Right,
                 "compass cardinal button supports diagonal-to-cardinal transitions");
-    EditorControls halfTurn;
-    halfTurn.addLeft135 = true;
     compassUi.SelectBeat(2);
-    ApplyEditorControls(compassUi, diagonalUi, halfTurn);
+    ApplyEditorControls(compassUi, diagonalUi, Click(766, 292));
     ok &= Check(compassUi.SelectedTurn() &&
-                compassUi.SelectedTurn()->direction == Turn::Left135,
-                "editor keyboard can author 135 degree turns");
+                compassUi.SelectedTurn()->direction == Heading::UpLeft,
+                "compass button authors an absolute up-left heading");
     EditorControls rotateStart;
     rotateStart.headingRight = true;
     ApplyEditorControls(compassUi, diagonalUi, rotateStart);
@@ -674,7 +672,7 @@ int main() {
     const auto clickBack = ApplyEditorControls(
         reverseUi, reverseState, Click(766, 330)); // L from default Right.
     ok &= Check(clickBack.changedChart && reverseUi.SelectedTurn() &&
-                reverseUi.SelectedTurn()->direction == Turn::Reverse &&
+                reverseUi.SelectedTurn()->direction == Heading::Left &&
                 SampleRouteStep(reverseUi.Data().route, 0).heading == Heading::Left,
                 "direction pad authors a normal 180-degree note");
     reverseUi.SelectBeat(1);
@@ -685,7 +683,7 @@ int main() {
     ApplyEditorControls(reverseUi, reverseState, tapRight);
     const auto keyReverse = ApplyEditorControls(reverseUi, reverseState, tapRight);
     ok &= Check(keyReverse.changedChart && reverseUi.SelectedTurn() &&
-                reverseUi.SelectedTurn()->direction == Turn::Reverse &&
+                reverseUi.SelectedTurn()->direction == Heading::Right &&
                 SampleRouteStep(reverseUi.Data().route, 1).heading == Heading::Right,
                 "game direction key can author the return trip without a new control");
 
@@ -694,7 +692,7 @@ int main() {
     EditorUiState snapUi;
     snapChart.SetBpm(250);
     snapChart.SelectBeat(5);
-    snapChart.PutTurn(Turn::Left);
+    snapChart.PutTurn(Heading::Left);
     const auto originalTime = snapChart.Data().route.turns.front().timeMs;
     const auto half = ApplyEditorControls(snapChart, snapUi, Click(614, 430));
     const auto third = ApplyEditorControls(snapChart, snapUi, Click(614, 430));

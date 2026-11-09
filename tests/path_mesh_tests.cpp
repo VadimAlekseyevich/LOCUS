@@ -130,7 +130,7 @@ int main() {
 
     // A 135-degree corner is the sharpest mitered authorable turn.
     core::Chart sharp = chart;
-    sharp.turns = {{2, core::Turn::Right135}};
+    sharp.turns = {{2, core::Heading::UpLeft}};
     const auto sharpRibbon = app::BuildScoredPathRibbon(
         sharp, playhead, canvas, skin);
     int sharpJunctions = 0;
@@ -149,7 +149,7 @@ int main() {
                 "sharp corner does not split or create multiple overlapping tips");
 
     core::Chart reverse = chart;
-    reverse.turns = {{2, core::Turn::Reverse}, {4, core::Turn::Reverse}};
+    reverse.turns = {{2, core::Heading::Left}, {4, core::Heading::Right}};
     const auto returnRibbon = app::BuildScoredPathRibbon(
         reverse, playhead, canvas, skin);
     ok &= CheckRibbon(returnRibbon, playhead, 5.25, skin,
@@ -199,11 +199,11 @@ int main() {
     dense.ticksPerBeat = 24;
     dense.snapDivision = 24;
     dense.lengthBeats = 240;
-    dense.turns = {{24, core::Turn::Right45},
-                   {48, core::Turn::Right135},
-                   {72, core::Turn::Reverse},
-                   {96, core::Turn::Left45},
-                   {120, core::Turn::Left135}};
+    dense.turns = {{24, core::Heading::DownRight},
+                   {48, core::Heading::UpLeft},
+                   {72, core::Heading::DownRight},
+                   {96, core::Heading::UpRight},
+                   {120, core::Heading::DownLeft}};
     const auto denseRibbon = app::BuildScoredPathRibbon(
         dense, 22.375, canvas, skin);
     ok &= CheckRibbon(denseRibbon, 22.375, 118.375, skin, 24,

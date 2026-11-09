@@ -2,7 +2,6 @@
 
 #include "core/route.h"
 
-#include <optional>
 #include <string>
 #include <string_view>
 
@@ -16,15 +15,13 @@ struct LoadedChart {
     std::string audioPath;
     double offsetSeconds = 0.0;
     double previewLeadBeats = 4.0;
-    // Legacy v1 metadata: readable, but ignored and never written by new saves.
-    std::optional<int> authoredLengthBeats;
 };
 
 // No filesystem or audio device required. Reject malformed/duplicate/unknown
 // members instead of changing authored beat positions or directions.
 bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& error);
 
-// Stable UTF-8 chart v2 JSON with absolute timeMs and offsetMs. No file IO.
+// Version 3: absolute note timestamps and absolute outgoing compass headings.
 bool SerializeChartJson(const LoadedChart& chart, std::string& json,
                         std::string& error);
 

@@ -44,7 +44,7 @@ int main() {
                 "invalid duration cannot partly replace prepared chart");
 
     app::LibraryChart outOfRange = difficulty;
-    outOfRange.data.route.turns.push_back({500000, core::Turn::Right45});
+    outOfRange.data.route.turns.push_back({500000, core::Heading::UpRight});
     ok &= Check(!app::PrepareLibraryDifficulty(outOfRange, 30.0, prepared, error) &&
                 prepared.title == previousTitle && !error.empty(),
                 "events outside actual song duration are rejected without mutation");

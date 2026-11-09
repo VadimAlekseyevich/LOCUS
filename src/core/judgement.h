@@ -42,7 +42,7 @@ struct GradeCounts {
 };
 
 const char* GradeName(Grade grade) noexcept;
-const char* TurnName(Turn turn) noexcept;
+const char* DirectionName(Heading heading) noexcept;
 
 // One judgement per authored event. Wrong directions inside a window are
 // Miss; stray presses outside all windows are ignored. Keyboard input never
@@ -69,7 +69,6 @@ public:
 
     // Fresh key-down only, timestamped in the same song-time domain as
     // marker animation. Returns nullopt for ignored/out-of-window presses.
-    std::optional<Judgement> Press(Turn direction, double songSeconds) noexcept;
     // Absolute direction input. Diagonals require the corresponding two
     // arrow keys, but still score as one authored turn event.
     std::optional<Judgement> PressHeading(Heading outgoing, double songSeconds);
