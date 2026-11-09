@@ -345,12 +345,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                 DirectionButton(font, DirectionPadBounds(row, col),
                                 padNames[row * 3 + col],
                                 padKeys[row * 3 + col].c_str(),
-                                !heading ? Color{224, 150, 148, 255}
+                                !heading ? Color{127, 140, 156, 255}
                                   : core::IsDiagonal(*heading)
                                     ? Color{186, 160, 235, 255}
                                     : Color{110, 220, 198, 255},
                                 heading ? (turn && *heading == outgoing)
-                                        : turn != nullptr);
+                                        : false); // DEL is always neutral, never selected
             }
         Label(font, "GAME BINDS: 2=DIAGONAL", 744, 398, 11,
               Color{165, 198, 213, 255});
