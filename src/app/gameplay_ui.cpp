@@ -1,4 +1,5 @@
 #include "app/gameplay_ui.h"
+#include "core/utf8.h"
 
 #include "app/visual_style.h"
 
@@ -168,7 +169,7 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay) {
                             : "RESULTS PREVIEW",
                   Vector2{100.0f, 111.0f}, 41.0f,
                   Color{195, 237, 232, 255});
-    const std::string title = gameplay.title.substr(0, 29);
+    const std::string title = core::utf8::Truncate(gameplay.title, 29);
     DrawTextLabel(font, title.c_str(), Vector2{570.0f, 167.0f},
                   17.0f, Color{170, 215, 222, 255});
     DrawTextLabel(font, TextFormat("PERFECT   %d", counts.perfect),

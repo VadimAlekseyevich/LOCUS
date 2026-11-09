@@ -1,5 +1,9 @@
 # LOCUS — Song Sets and data recovery
 
+Song Set `title` and `artist`, difficulty titles, source audio filenames and
+skin-profile names use **UTF-8**. Windows filesystem paths use Unicode APIs;
+authored-name limits are in Unicode characters rather than arbitrary bytes.
+
 ## New installed layout
 
 Permanent songs live in **%LOCALAPPDATA%\LOCUS\Songs**. Each managed Song Set

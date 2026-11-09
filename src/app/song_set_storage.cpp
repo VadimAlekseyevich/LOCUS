@@ -1,4 +1,5 @@
 #include "app/song_set_storage.h"
+#include "core/utf8.h"
 #include "app/image_asset_file.h"
 
 #include <nlohmann/json.hpp>
@@ -34,6 +35,7 @@ namespace fs = std::filesystem;
 
 bool SafeAudioFilename(const std::string& name) {
     if (name.empty() || name == "." || name == ".." || name.size() > 255 ||
+        !core::utf8::Valid(name) ||
         name.find('/') != std::string::npos ||
         name.find('\\') != std::string::npos ||
         name.find(':') != std::string::npos) return false;
@@ -130,8 +132,10 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
     if (!field("setId", loaded.id) || !field("title", loaded.title) ||
         !field("artist", loaded.artist) || !field("audioFile", loaded.audioFile) ||
         loaded.id.empty() || loaded.id.size() > 128 ||
-        loaded.title.empty() || loaded.title.size() > 1024 ||
-        loaded.artist.size() > 1024 || !SafeAudioFilename(loaded.audioFile)) {
+        !core::utf8::ValidName(loaded.title, 256, 1024) ||
+        (!loaded.artist.empty() &&
+         !core::utf8::ValidName(loaded.artist, 256, 1024)) ||
+        !SafeAudioFilename(loaded.audioFile)) {
         error = "Song Set metadata has missing or invalid fields.";
         return false;
     }
@@ -191,7 +195,10 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
 
 bool WriteNewSongSetManifest(const fs::path& path,
                              const SongSetManifest& manifest, std::string& error) {
-    if (manifest.id.empty() || manifest.title.empty() ||
+    if (manifest.id.empty() ||
+        !core::utf8::ValidName(manifest.title, 256, 1024) ||
+        (!manifest.artist.empty() &&
+         !core::utf8::ValidName(manifest.artist, 256, 1024)) ||
         (!SafeAudioFilename(manifest.audioFile) ||
          manifest.previewStartMs < 0 ||
          manifest.previewStartMs > kMaxSongPreviewStartMs ||
@@ -243,7 +250,10 @@ bool WriteNewSongSetManifest(const fs::path& path,
 // Call while holding the Song Set folder writer lock.
 bool ReplaceSongSetManifest(const fs::path& path,
                             const SongSetManifest& manifest, std::string& error) {
-    if (manifest.id.empty() || manifest.title.empty() ||
+    if (manifest.id.empty() ||
+        !core::utf8::ValidName(manifest.title, 256, 1024) ||
+        (!manifest.artist.empty() &&
+         !core::utf8::ValidName(manifest.artist, 256, 1024)) ||
         !SafeAudioFilename(manifest.audioFile) ||
         manifest.previewStartMs < 0 ||
         manifest.previewStartMs > kMaxSongPreviewStartMs ||

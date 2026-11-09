@@ -1,4 +1,5 @@
 #include "core/chart_json.h"
+#include "core/utf8.h"
 #include "core/route.h"
 
 #include <cmath>
@@ -78,6 +79,19 @@ int main() {
                  again.route.turns[2].direction == Heading::Left &&
                  again.route.turns[2].timeMs == 4250,
                  "round trip preserves absolute directions and music timestamps");
+    LoadedChart localized = parsed;
+    localized.title = u8"Сложность: Ёжик, Café 日本語 🎵";
+    std::string localizedJson;
+    LoadedChart localizedAgain;
+    ok &= Expect(SerializeChartJson(localized, localizedJson, error) &&
+                 localizedJson.find(localized.title) != std::string::npos &&
+                 ParseChartJson(localizedJson, localizedAgain, error) &&
+                 localizedAgain.title == localized.title &&
+                 utf8::Valid(localizedAgain.title),
+                 "chart JSON round-trips literal UTF-8 title characters");
+    localized.title = std::string("Invalid ") + std::string("\xC0\xAF", 2);
+    ok &= Expect(!SerializeChartJson(localized, localizedJson, error),
+                 "invalid UTF-8 chart titles are not serialized");
     const char* shortCodes[8] = {"u", "r", "d", "l", "ru", "rd", "ld", "lu"};
     for (int index = 0; index < 8; ++index) {
         LoadedChart variant = parsed;

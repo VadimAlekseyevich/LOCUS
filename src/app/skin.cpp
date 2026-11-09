@@ -1,4 +1,5 @@
 #include "app/skin.h"
+#include "core/utf8.h"
 
 #include <nlohmann/json.hpp>
 
@@ -80,9 +81,8 @@ const Color& SkinColor(const Skin& skin, int index) noexcept {
 }
 
 bool Skin::Valid(std::string& error) const {
-    if (name.empty() || name.size() > 64 ||
-        name.find_first_of("\r\n\t") != std::string::npos) {
-        error = "Skin name must be 1..64 bytes without control characters.";
+    if (!core::utf8::ValidName(name, 64, 256)) {
+        error = "Skin name must be 1..64 Unicode characters (valid UTF-8).";
         return false;
     }
     const struct { float value, min, max; const char* label; } fields[] = {

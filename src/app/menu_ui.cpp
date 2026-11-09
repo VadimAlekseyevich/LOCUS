@@ -1,4 +1,5 @@
 #include "app/menu_ui.h"
+#include "core/utf8.h"
 
 #include <algorithm>
 #include <cmath>
@@ -19,8 +20,7 @@ void Label(Font font, const std::string& str, float x, float y,
 }
 
 std::string Clip(const std::string& input, std::size_t length = 34) {
-    return input.size() <= length ? input
-        : input.substr(0, length - 3) + "...";
+    return core::utf8::Truncate(input, length);
 }
 
 void Button(Font font, Rectangle area, const std::string& label,

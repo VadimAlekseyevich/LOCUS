@@ -30,7 +30,7 @@ The [working sample](../examples/first-song.locus.json) contains nine turns; sup
 | Field | Rules |
 | --- | --- |
 | `formatVersion` | **3** (older chart versions are rejected) |
-| `title` | Nonempty UTF-8 text, at most 1024 bytes |
+| `title` | Valid UTF-8, no control characters, at most 1024 bytes; the editor allows 100 Unicode characters |
 | `audioPath` | Nonempty local path **relative to the chart folder**, with forward slashes only |
 | `bpm` | Finite positive musical beats per minute; standalone compatibility value, overridden by a managed Song Set manifest |
 | `offsetMs` | Signed **integer**, from -3,600,000 to 3,600,000; managed Song Set uses one shared value for all charts |

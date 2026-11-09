@@ -1,4 +1,5 @@
 #include "app/local_file_io.h"
+#include "core/utf8.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -7,6 +8,7 @@
 #endif
 
 #include <algorithm>
+#include <cstdint>
 #include <new>
 #include <string>
 #include <vector>
@@ -14,27 +16,32 @@
 namespace locus::app {
 
 std::string DisplayLocalFileName(const std::wstring& path) {
-    const std::size_t slash = path.find_last_of(L"\\/");
-    std::wstring name = path.substr(slash == std::wstring::npos ? 0 : slash + 1);
+    const auto slash = path.find_last_of(L"\\/");
+    const std::wstring name = path.substr(
+        slash == std::wstring::npos ? 0 : slash + 1);
     if (name.empty()) return "Local song";
-    if (name.size() > 36) name = name.substr(0, 33) + L"...";
 #ifdef _WIN32
-    const int count = WideCharToMultiByte(CP_UTF8, 0, name.c_str(),
-                                         static_cast<int>(name.size()), nullptr, 0,
-                                         nullptr, nullptr);
-    if (count <= 0) return "Local song";
-    std::string utf8(static_cast<std::size_t>(count), '\0');
-    const int converted = WideCharToMultiByte(CP_UTF8, 0, name.c_str(),
-                                              static_cast<int>(name.size()),
-                                              utf8.data(), count, nullptr, nullptr);
-    return (converted == count) ? utf8 : "Local song";
+    // Convert the whole UTF-16 name before truncating. A 36-wchar cut
+    // previously could split a surrogate pair into a replacement character.
+    const int needed = WideCharToMultiByte(
+        CP_UTF8, WC_ERR_INVALID_CHARS, name.data(),
+        static_cast<int>(name.size()), nullptr, 0, nullptr, nullptr);
+    if (needed <= 0) return "Local song";
+    std::string result(static_cast<std::size_t>(needed), '\0');
+    if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, name.data(),
+                            static_cast<int>(name.size()), result.data(),
+                            needed, nullptr, nullptr) != needed)
+        return "Local song";
 #else
-    std::string display;
-    for (wchar_t c : name) {
-        display.push_back((c >= 32 && c <= 126) ? static_cast<char>(c) : '?');
+    // wchar_t is UTF-32 on the supported Unix targets.
+    std::string result;
+    for (const wchar_t wc : name) {
+        const auto part = core::utf8::Encode(static_cast<std::uint32_t>(wc));
+        if (part.empty()) return "Local song";
+        result += part;
     }
-    return display;
 #endif
+    return core::utf8::Truncate(result, 36);
 }
 
 bool ReadLocalFileBytes(const std::wstring& path, std::vector<std::uint8_t>& bytes,

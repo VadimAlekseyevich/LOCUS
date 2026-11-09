@@ -1,4 +1,5 @@
 #include "core/chart_editor.h"
+#include "core/utf8.h"
 
 #include <algorithm>
 #include <cmath>
@@ -297,8 +298,7 @@ bool ChartEditor::SetOffsetMs(double milliseconds) {
 }
 
 bool ChartEditor::SetTitle(const std::string& title) {
-    if (title.empty() || title.size() > 100 ||
-        title.find_first_not_of(" \t\n\r") == std::string::npos) return false;
+    if (!utf8::ValidName(title, 100, 1024)) return false;
     if (title != chart_.title) {
         SaveUndo();
         chart_.title = title;

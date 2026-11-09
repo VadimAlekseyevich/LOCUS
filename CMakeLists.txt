@@ -88,8 +88,10 @@ set_target_properties(locus PROPERTIES
 )
 
 if(MSVC)
-    target_compile_options(locus_core PRIVATE /W4 /permissive-)
-    target_compile_options(locus PRIVATE /W4 /permissive-)
+    # Text literals and UTF-8 test fixtures must not depend on system ANSI locale.
+    add_compile_options(/utf-8)
+    target_compile_options(locus_core PRIVATE /W4 /permissive- /utf-8)
+    target_compile_options(locus PRIVATE /W4 /permissive- /utf-8)
 else()
     target_compile_options(locus_core PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(locus PRIVATE -Wall -Wextra -Wpedantic)

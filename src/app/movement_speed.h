@@ -8,7 +8,7 @@ namespace locus::app {
 // It is independent of song tempo, snap resolution and playback rate.
 inline constexpr float kDefaultBaseSpeed = 135.0f;
 inline constexpr float kMinBaseSpeed = 20.0f;
-inline constexpr float kMaxBaseSpeed = 700.0f;
+inline constexpr float kMaxBaseSpeed = 2000.0f;
 inline constexpr float kSpeedHotkeyStep = 10.0f;
 
 inline float AdjustBaseSpeed(float current, int direction) noexcept {

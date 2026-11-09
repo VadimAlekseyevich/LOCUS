@@ -1,4 +1,5 @@
 #include "core/chart_editor.h"
+#include "core/utf8.h"
 #include "core/judgement.h"
 #include "core/route.h"
 
@@ -133,6 +134,20 @@ int main() {
                     draft.Data().title == "Typed title" &&
                     !draft.SetTitle("   "),
                 "typed title is stored and empty titles rejected");
+
+    const std::string russian = u8"Сложность Ёжик 🎵";
+    const std::string truncated = russian.substr(0, russian.size() - 1);
+    ok &= Check(draft.SetTitle(russian) && draft.Data().title == russian &&
+                !draft.SetTitle(truncated) &&
+                draft.Data().title == russian,
+                "chart accepts Cyrillic but rejects malformed UTF-8");
+    std::string hundred;
+    for (int i = 0; i < 100; ++i) hundred += u8"я";
+    ok &= Check(draft.SetTitle(hundred) &&
+                utf8::Count(draft.Data().title) == 100 &&
+                !draft.SetTitle(hundred + u8"я") &&
+                utf8::Truncate(u8"Привет", 5) == u8"Пр...",
+                "name length and truncation count Unicode characters");
 
     // Ctrl+arrow navigation jumps four beats (one 4/4 bar), with edge
     // clamping and no accidental modification of the saved chart.

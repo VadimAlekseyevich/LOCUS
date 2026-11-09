@@ -1,4 +1,5 @@
 #include "app/skin_menu.h"
+#include "core/utf8.h"
 
 #include "app/menu_ui.h"
 #include "app/skin_controls.h"
@@ -346,31 +347,12 @@ void SetSliderAt(Vector2 mouse, Skin& skin, SkinUi& ui) {
 }
 
 std::string CodepointUtf8(int point) {
-    if (point < 32 || point > 0x10ffff ||
-        (point >= 0xd800 && point <= 0xdfff)) return {};
-    std::string utf8;
-    if (point < 0x80) utf8 += static_cast<char>(point);
-    else if (point < 0x800) {
-        utf8 += static_cast<char>(0xc0 | (point >> 6));
-        utf8 += static_cast<char>(0x80 | (point & 0x3f));
-    } else if (point < 0x10000) {
-        utf8 += static_cast<char>(0xe0 | (point >> 12));
-        utf8 += static_cast<char>(0x80 | ((point >> 6) & 0x3f));
-        utf8 += static_cast<char>(0x80 | (point & 0x3f));
-    } else {
-        utf8 += static_cast<char>(0xf0 | (point >> 18));
-        utf8 += static_cast<char>(0x80 | ((point >> 12) & 0x3f));
-        utf8 += static_cast<char>(0x80 | ((point >> 6) & 0x3f));
-        utf8 += static_cast<char>(0x80 | (point & 0x3f));
-    }
-    return utf8;
+    return point < 32 ? std::string{} :
+           core::utf8::Encode(static_cast<std::uint32_t>(point));
 }
 
 void DeleteLastCodepoint(std::string& text) {
-    while (!text.empty() &&
-           (static_cast<unsigned char>(text.back()) & 0xc0) == 0x80)
-        text.pop_back();
-    if (!text.empty()) text.pop_back();
+    core::utf8::PopBack(text);
 }
 
 } // namespace
@@ -473,7 +455,7 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     const char* actions[] = {"LOAD", "SAVE", "SAVE AS", "RESET"};
     for (int i = 0; i < 4; ++i)
         Button(font, SkinActionButton(i), actions[i]);
-    Label(font, ui.notice.substr(0, 112), 53, 515, 13,
+    Label(font, core::utf8::Truncate(ui.notice, 112), 53, 515, 13,
           ui.noticeError ? Color{245, 150, 150, 255} : kGold);
     if (!ui.pendingDeleteProfile.empty()) {
         DrawRectangle(0, 0, 960, 540, Color{12, 14, 22, 202});
@@ -682,6 +664,16 @@ void HandleSkinTextInput(Skin& skin, SkinUi& ui) {
         return;
     }
     const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    if (ctrl && ui.editingName && IsKeyPressed(KEY_V)) {
+        if (const char* clipboard = GetClipboardText()) {
+            std::string next = ui.nameSelectAll ? "" : skin.name;
+            if (core::utf8::AppendLimited(next, clipboard, 64, 256)) {
+                skin.name = std::move(next);
+                ui.nameSelectAll = false;
+            }
+        }
+        return;
+    }
     if (ctrl && ui.editingHex && IsKeyPressed(KEY_V)) {
         const char* clipboard = GetClipboardText();
         if (clipboard) {
@@ -731,12 +723,20 @@ void HandleSkinTextInput(Skin& skin, SkinUi& ui) {
         } else if (!ui.editingName &&
                    character.find_first_not_of("0123456789+-.,eE") !=
                    std::string::npos) continue;
-        const std::size_t limit = ui.editingName ? 64 : ui.editingHex ? 9 : 32;
-        const std::size_t used = selected ? 0 : buffer.size();
-        if (used + character.size() > limit) continue;
-        if (selected) buffer.clear();
-        buffer += character;
-        selected = false;
+        if (ui.editingName) {
+            std::string next = selected ? "" : buffer;
+            if (core::utf8::AppendLimited(next, character, 64, 256)) {
+                buffer = std::move(next);
+                selected = false;
+            }
+        } else {
+            const std::size_t limit = ui.editingHex ? 9 : 32;
+            const std::size_t used = selected ? 0 : buffer.size();
+            if (used + character.size() > limit) continue;
+            if (selected) buffer.clear();
+            buffer += character;
+            selected = false;
+        }
     }
 }
 

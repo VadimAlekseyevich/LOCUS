@@ -96,6 +96,17 @@ int main() {
                 sharedAudio == library.Songs()[0].charts[1].audioFile &&
                 Read(sharedAudio) == firstBytes,
                 "manifest and all difficulties refer to one immutable audio");
+    SongSetManifest unicodeMetadata = metadata;
+    unicodeMetadata.title = u8"Песня — Ночной город";
+    unicodeMetadata.artist = u8"Исполнитель Ёж";
+    const fs::path unicodeManifest = folder / "unicode-set.json";
+    SongSetManifest unicodeLoaded;
+    ok &= Check(WriteNewSongSetManifest(unicodeManifest, unicodeMetadata, error) &&
+                LoadSongSetManifest(unicodeManifest, unicodeLoaded, error) &&
+                unicodeLoaded.title == unicodeMetadata.title &&
+                unicodeLoaded.artist == unicodeMetadata.artist,
+                "Song Set title and artist round-trip UTF-8 without corruption");
+    fs::remove(unicodeManifest, ec);
     // Menu listening start is SONG SET metadata, not a difficulty's
     // BPM/offset or note timestamps. It persists and survives ZIP export.
     const auto originalChartBytes = Read(easyInstalled);

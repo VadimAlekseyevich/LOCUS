@@ -1,4 +1,5 @@
 #include "core/chart_json.h"
+#include "core/utf8.h"
 
 #include <nlohmann/json.hpp>
 
@@ -70,9 +71,8 @@ bool Text(const Json& value, std::string& output, const std::string& field,
         return false;
     }
     output = value.get<std::string>();
-    if (output.find_first_not_of(" \r\t\n") == std::string::npos ||
-        output.size() > 1024) {
-        error = field + ": expected nonempty text of at most 1024 UTF-8 bytes";
+    if (!utf8::ValidName(output, 1024, 1024)) {
+        error = field + ": expected valid, nonempty UTF-8 text of at most 1024 bytes";
         return false;
     }
     return true;

@@ -1,4 +1,5 @@
 #include "app/chart_editor_layout.h"
+#include "core/utf8.h"
 #include "app/viewport.h"
 
 #include <algorithm>
@@ -354,28 +355,30 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                 ui.buffer.clear();
                 ui.replaceOnType = false;
             } else if (!ui.buffer.empty()) {
-                std::size_t pos = ui.buffer.size() - 1;
-                while (pos > 0 &&
-                       (static_cast<unsigned char>(ui.buffer[pos]) & 0xc0) == 0x80)
-                    --pos;
-                ui.buffer.erase(pos);
+                core::utf8::PopBack(ui.buffer);
             }
         }
         if (!input.typedUtf8.empty()) {
-            if (ui.replaceOnType) {
-                ui.buffer.clear();
-                ui.replaceOnType = false;
-            }
-            for (unsigned char c : input.typedUtf8) {
-                const bool wholeGrid = ui.active == EditorField::GridSize;
-                if (ui.active == EditorField::Title ||
-                    (!wholeGrid && (c == '.' || c == ',') &&
-                     ui.active != EditorField::OffsetMs) ||
-                    (!wholeGrid && c == '-') ||
-                    (c >= '0' && c <= '9')) {
-                    if (ui.buffer.size() < 100)
-                        ui.buffer.push_back(static_cast<char>(
-                            c == ',' && ui.active != EditorField::Title ? '.' : c));
+            if (ui.active == EditorField::Title) {
+                std::string next = ui.replaceOnType ? "" : ui.buffer;
+                if (core::utf8::AppendLimited(next, input.typedUtf8, 100, 1024)) {
+                    ui.buffer = std::move(next);
+                    ui.replaceOnType = false;
+                }
+            } else {
+                if (ui.replaceOnType) {
+                    ui.buffer.clear();
+                    ui.replaceOnType = false;
+                }
+                for (unsigned char c : input.typedUtf8) {
+                    const bool wholeGrid = ui.active == EditorField::GridSize;
+                    if ((!wholeGrid && (c == '.' || c == ',') &&
+                         ui.active != EditorField::OffsetMs) ||
+                        (!wholeGrid && c == '-') ||
+                        (c >= '0' && c <= '9')) {
+                        if (ui.buffer.size() < 100)
+                            ui.buffer.push_back(static_cast<char>(c == ',' ? '.' : c));
+                    }
                 }
             }
         }

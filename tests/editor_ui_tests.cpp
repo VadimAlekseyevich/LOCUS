@@ -1,4 +1,5 @@
 #include "app/chart_editor_ui.h"
+#include "core/utf8.h"
 #include "app/chart_editor_layout.h"
 #include "app/visual_style.h"
 #include "app/viewport.h"
@@ -127,6 +128,16 @@ int main() {
     ApplyEditorControls(chart, ui, enter);
     ok &= Check(chart.Data().title == "My rhythm chart",
                 "chart title can be typed in Audio tab");
+    ApplyEditorControls(chart, ui, Click(145, 226));
+    ApplyEditorControls(chart, ui, Type(u8"Новый чарт 🎵"));
+    EditorControls backspaceUtf8;
+    backspaceUtf8.backspace = true;
+    ApplyEditorControls(chart, ui, backspaceUtf8);
+    ApplyEditorControls(chart, ui, Type(u8"ёж"));
+    ApplyEditorControls(chart, ui, enter);
+    ok &= Check(chart.Data().title == u8"Новый чарт ёж" &&
+                core::utf8::Valid(chart.Data().title),
+                "title field input and backspace preserve UTF-8 characters");
 
     const auto audioEmpty = ApplyEditorControls(chart, ui, Click(116, 390));
     ok &= Check(audioEmpty.speedIndex == -1,

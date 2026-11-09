@@ -1,4 +1,5 @@
 #include "app/app_frame_renderer.h"
+#include "core/utf8.h"
 #include "app/app_quit_dialog_layout.h"
 #include "app/viewport.h"
 
@@ -255,7 +256,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         // EditorSetController publishes the same notice to editorStatus and
         // ui.feedback. Display it once, at the feedback position.
         if (!editorStatus.empty() && editorStatus != editorUi.feedback) {
-            const std::string statusLine = editorStatus.substr(0, 68);
+            const std::string statusLine = core::utf8::Truncate(editorStatus, 68);
             DrawTextLabel(font, statusLine.c_str(), Vector2{50.0f, 525.0f},
                           12.0f, Color{175, 212, 213, 255});
         }

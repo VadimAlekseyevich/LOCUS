@@ -41,6 +41,18 @@ int main() {
           restored.reverseCapScale == 4.75f &&
           !restored.junctionGlow && !restored.showHud,
           "all values round trip");
+    Skin localized = original;
+    localized.name = u8"Мой скин — Café 日本語";
+    Skin localizedRoundtrip;
+    std::string localizedError;
+    const std::string localizedJson = SerializeSkin(localized);
+    check(ParseSkin(localizedJson, localizedRoundtrip, localizedError) &&
+          localizedRoundtrip.name == localized.name &&
+          localizedJson.find(localized.name) != std::string::npos,
+          "skin name round-trips Unicode without corruption");
+    localized.name += std::string("\xED\xA0\x80", 3);
+    check(!localized.Valid(localizedError),
+          "malformed UTF-8 skin names are rejected");
     check(kSkinColorCount == 10 &&
           std::string(SkinColorLabel(9)) == "FIELD BORDER" &&
           SkinColor(original, 9).g == 207,
@@ -104,7 +116,7 @@ int main() {
     invalid.lookaheadMs = 0.0f;
     check(!invalid.Valid(error), "reject invalid lookahead");
     invalid = original;
-    invalid.baseSpeedPxPerSecond = 701.0f;
+    invalid.baseSpeedPxPerSecond = 2001.0f;
     check(!invalid.Valid(error), "reject invalid base speed");
     // Draggers have modest limits, but exact input can go further.
     SkinNumberRange limits;
@@ -121,7 +133,7 @@ int main() {
           limits.inputMin == 0.0 && limits.inputMax == 12.0,
           "reverse cap size has an editable slider and an extended typed range");
     check(GetSkinNumberRange(1, 1, limits) &&
-          limits.sliderMax == 320.0 && limits.inputMax == 700.0,
+          limits.sliderMax == 320.0 && limits.inputMax == 2000.0,
           "fixed speed has extended typed limit");
     Skin edited;
     double parsed = 0.0;
@@ -136,9 +148,16 @@ int main() {
     check(SetSkinNumber(edited, 1, 1, 1, 235.25, false, error) &&
           std::abs(edited.baseSpeedPxPerSecond - 235.25f) < 0.001f,
           "typed speed is stored in skin");
-    check(!SetSkinNumber(edited, 1, 1, 1, 701.0, false, error) &&
-          std::abs(edited.baseSpeedPxPerSecond - 235.25f) < 0.001f,
-          "invalid speed is not applied");
+    check(SetSkinNumber(edited, 1, 1, 1, 2000.0, false, error) &&
+          edited.baseSpeedPxPerSecond == 2000.0f &&
+          !SetSkinNumber(edited, 1, 1, 1, 2001.0, false, error) &&
+          edited.baseSpeedPxPerSecond == 2000.0f,
+          "speed range includes 2000 px/s but no higher");
+    const std::string fastestJson = SerializeSkin(edited);
+    Skin fastestLoaded;
+    check(ParseSkin(fastestJson, fastestLoaded, error) &&
+          fastestLoaded.baseSpeedPxPerSecond == 2000.0f,
+          "maximum speed persists in skin JSON");
     check(AdjustBaseSpeed(135.0f, 1) == 145.0f &&
           AdjustBaseSpeed(135.0f, -1) == 125.0f &&
           AdjustBaseSpeed(kMaxBaseSpeed, 1) == kMaxBaseSpeed,
