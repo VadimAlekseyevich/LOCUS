@@ -26,7 +26,7 @@ To the right, the game shows **Accuracy** and counts for Perfect, Good, Bad and 
 | Diagonal | Two adjacent directions together (for example J+K) |
 | Pause / retry / Home | **Space / R / H** |
 
-Gameplay direction bindings are configurable in SETTINGS and are **shared with editor note placement**. The default two-key chord window is 85 ms.
+Gameplay direction bindings are configurable in SETTINGS and are **shared with editor note placement**. The default two-key chord window is 85 ms. During PLAY (including editor TEST), a fresh press of any bound direction during a long unmapped intro skips the music forward to the first note minus the smallest whole number of **4/4 measures lasting at least one second**. The triggering press is not scored; near-note presses and normal music with no long intro are unaffected.
 
 ## Screens and editor
 
