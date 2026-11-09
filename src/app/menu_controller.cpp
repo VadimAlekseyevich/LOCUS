@@ -96,73 +96,17 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         return events;
     }
 
-    if (state.screen == Screen::SongSelect && 
-        libraryUi.pendingDelete != LibraryDeletePending::None) {
-        // Destructive confirmation is modal; Y/N/Esc cannot simultaneously
-        // navigate to another screen or activate the current difficulty.
-        input.startPressed = false;
-        input.backPressed = false;
-        input.homePressed = false;
-        input.chooseChartPressed = false;
-        input.requestedScreen.reset();
-        if (IsKeyPressed(KEY_Y)) {
-            events.trashSongSet =
-                libraryUi.pendingDelete == LibraryDeletePending::SongSet;
-            events.trashDifficulty =
-                libraryUi.pendingDelete == LibraryDeletePending::Difficulty;
-            libraryUi.pendingDelete = LibraryDeletePending::None;
-        } else if (IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE)) {
-            libraryUi.pendingDelete = LibraryDeletePending::None;
-        }
-        return events;
-    }
     if (state.screen == Screen::SongSelect) {
         if (IsKeyPressed(KEY_UP)) libraryUi.MoveSong(-1, library);
         if (IsKeyPressed(KEY_DOWN)) libraryUi.MoveSong(1, library);
         if (IsKeyPressed(KEY_LEFT)) libraryUi.MoveChart(-1, library);
         if (IsKeyPressed(KEY_RIGHT)) libraryUi.MoveChart(1, library);
         if (IsKeyPressed(KEY_F5)) events.refresh = true;
-        // PageUp/PageDown adjust the selected Song Set's menu listening
-        // origin, not BPM, chart offset, or the current difficulty's notes.
-        const int previewStep = (IsKeyDown(KEY_LEFT_SHIFT) ||
-                                 IsKeyDown(KEY_RIGHT_SHIFT)) ? 100 : 1000;
-        if (IsKeyPressed(KEY_PAGE_UP))
-            events.previewStartDeltaMs = -previewStep;
-        if (IsKeyPressed(KEY_PAGE_DOWN))
-            events.previewStartDeltaMs = previewStep;
         const float wheel = GetMouseWheelMove();
         if (wheel != 0.0f)
             libraryUi.MoveSong(wheel > 0.0f ? -1 : 1, library);
-        if (input.chooseChartPressed) {
-            events.import = true;
-            events.importIntoSelected = IsKeyDown(KEY_LEFT_SHIFT) ||
-                                        IsKeyDown(KEY_RIGHT_SHIFT);
-        }
         if (input.startPressed) events.playSelected = true;
         if (IsKeyPressed(KEY_E)) events.editSelected = true;
-        if (IsKeyPressed(KEY_N)) events.newDifficulty = true;
-        if (IsKeyPressed(KEY_U)) events.restoreDeleted = true;
-        if (IsKeyPressed(KEY_X)) events.exportSelected = true;
-        if (IsKeyPressed(KEY_B)) {
-            events.removeBackground = IsKeyDown(KEY_LEFT_SHIFT) ||
-                                      IsKeyDown(KEY_RIGHT_SHIFT);
-            events.attachBackground = !events.removeBackground;
-        }
-        const bool control = IsKeyDown(KEY_LEFT_CONTROL) ||
-                             IsKeyDown(KEY_RIGHT_CONTROL);
-        if (control && IsKeyPressed(KEY_D))
-            events.duplicateDifficulty = true;
-        if (IsKeyPressed(KEY_DELETE)) {
-            libraryUi.pendingDelete =
-                (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
-                ? LibraryDeletePending::SongSet
-                : LibraryDeletePending::Difficulty;
-            events.playSelected = false;
-            events.editSelected = false;
-            events.newDifficulty = false;
-            events.duplicateDifficulty = false;
-            return events;
-        }
     }
 
     if (!mouseClick || !validMouse) return events;
@@ -184,22 +128,9 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         }
     } else if (state.screen == Screen::SongSelect) {
         if (hit(locus::app::MenuBackButton())) input.backPressed = true;
-        if (hit(locus::app::LibraryImportButton())) events.import = true;
         if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
-        if (hit(locus::app::LibraryBackgroundButton()))
-            events.attachBackground = true;
-        if (hit(locus::app::LibraryRemoveBackgroundButton()))
-            events.removeBackground = true;
-        if (hit(locus::app::LibraryPreviewMinusButton()))
-            events.previewStartDeltaMs = (IsKeyDown(KEY_LEFT_SHIFT) ||
-                IsKeyDown(KEY_RIGHT_SHIFT)) ? -100 : -1000;
-        if (hit(locus::app::LibraryPreviewPlusButton()))
-            events.previewStartDeltaMs = (IsKeyDown(KEY_LEFT_SHIFT) ||
-                IsKeyDown(KEY_RIGHT_SHIFT)) ? 100 : 1000;
         if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
         if (hit(locus::app::LibraryEditButton())) events.editSelected = true;
-        if (hit(locus::app::LibraryNewDifficultyButton()))
-            events.newDifficulty = true;
         for (int i = 0; i < 6; ++i) {
             if (hit(locus::app::LibrarySongRow(i)))
                 libraryUi.SelectSong(libraryUi.firstVisibleSong + i, library);

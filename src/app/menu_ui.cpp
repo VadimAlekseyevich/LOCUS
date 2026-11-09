@@ -52,15 +52,9 @@ Rectangle LibrarySongRow(int row) {
 Rectangle LibraryChartRow(int row) {
     return {501.0f, 177.0f + 42.0f * row, 404.0f, 37.0f};
 }
-Rectangle LibraryImportButton() { return {465, 82, 142, 34}; }
 Rectangle LibraryRefreshButton() { return {618, 82, 147, 34}; }
 Rectangle LibraryPlayButton() { return {501, 458, 125, 43}; }
 Rectangle LibraryEditButton() { return {637, 458, 122, 43}; }
-Rectangle LibraryNewDifficultyButton() { return {770, 458, 135, 43}; }
-Rectangle LibraryPreviewMinusButton() { return {54, 463, 40, 36}; }
-Rectangle LibraryPreviewPlusButton() { return {385, 463, 40, 36}; }
-Rectangle LibraryBackgroundButton() { return {501, 506, 142, 28}; }
-Rectangle LibraryRemoveBackgroundButton() { return {655, 506, 149, 28}; }
 Rectangle SettingsBindingButton(int index) {
     return {736.0f, 192.0f + 39.0f * index, 167.0f, 33.0f};
 }
@@ -136,7 +130,6 @@ void DrawMainMenu(Font font, const SongLibrary& library,
 void DrawSongSelectMenu(Font font, const SongLibrary& library,
                         const SongSelectUi& ui) {
     Header(font, "PLAY  /  SONG LIBRARY");
-    Button(font, LibraryImportButton(), "IMPORT  C", kMint);
     Button(font, LibraryRefreshButton(), "RESCAN  F5", kViolet);
     Button(font, MenuBackButton(), "BACK", kMuted);
     Label(font, "SONGS", 54, 145, 18, kMuted);
@@ -175,21 +168,9 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     }
     Button(font, LibraryPlayButton(), "PLAY", kMint);
     Button(font, LibraryEditButton(), "EDIT", kViolet);
-    Button(font, LibraryNewDifficultyButton(), "NEW  N", kGold);
-    Label(font, "N NEW  CTRL+D COPY  X EXPORT  DEL DIFF", 54, 421, 13, kMuted);
-    Label(font, "SHIFT+DEL SONG  U RESTORE  ESC BACK", 54, 442, 13, kMuted);
-    if (song && song->managed) {
-        Button(font, LibraryPreviewMinusButton(), "-", kMint);
-        Button(font, LibraryPreviewPlusButton(), "+", kMint);
-        Label(font, TextFormat("PREVIEW FROM %.1f S",
-              song->previewStartMs / 1000.0), 102, 474, 16, kText);
-    } else {
-        Label(font, "PREVIEW FROM 0 S", 54, 477, 14, kMuted);
-    }
-    if (song && song->managed) {
-        Button(font, LibraryBackgroundButton(), "BG IMAGE  B", kMint);
-        Button(font, LibraryRemoveBackgroundButton(), "REMOVE  SHIFT+B", kGold);
-    }
+    Label(font, "PLAY SELECTS ONLY; EDIT OPENS THE CHART", 54, 421, 13, kMuted);
+    Label(font, "SONG SET CHANGES ARE IN EDIT > SET", 54, 442, 13, kMuted);
+    Label(font, "PREVIEW / BACKGROUND / IMPORT: EDIT > SET", 54, 476, 14, kMuted);
     Label(font, Clip(ui.notice, 66), 54, 517, 13,
           ui.notice.find("FAILED") == std::string::npos ? kGold
               : Color{240, 138, 142, 255});

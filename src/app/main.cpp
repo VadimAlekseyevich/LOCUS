@@ -30,7 +30,7 @@
 #include "app/gameplay_ui.h"
 #include "app/song_library.h"
 #include "app/song_set_storage.h"
-#include "app/library_file_actions.h"
+#include "app/library_browser.h"
 #include "app/library_launch_actions.h"
 #include "app/game_settings.h"
 #include "app/skin.h"
@@ -228,12 +228,6 @@ int main(int argc, char** argv) {
          {activeChart, chartTitle, judge, gameSession, customChart},
          musicError, MonotonicSeconds}
     };
-    locus::app::LibraryFileActions libraryFiles{
-        library, libraryUi, menuStatus, musicError,
-        {locus::app::ChooseLibraryImportFile,
-         locus::app::ChooseSongSetExportFile, MonotonicSeconds,
-         locus::app::ChooseSongBackgroundFile}
-    };
     const locus::app::SessionTransitionContext transitions{
         activeChart, demo, judge, gameSession, chartPlayback, localSong, editorUi,
         customChart, sessionCompleted, chartTitle
@@ -297,9 +291,6 @@ int main(int argc, char** argv) {
             input.baseSpeedHeld, input.previewTimeHeld, GetFrameTime());
         input.baseSpeedDelta += repeatSpeed;
         input.previewTimeDelta += repeatPreview;
-        const bool importFromHome =
-            !wasQuitConfirmation && !input.closeRequested &&
-            state.screen == Screen::Home && input.chooseChartPressed;
         const MenuEvents menuEvents =
             (wasQuitConfirmation || input.closeRequested) ? MenuEvents{} :
             HandleMenuInput(state, input, library, libraryUi, settings,
@@ -417,23 +408,8 @@ int main(int argc, char** argv) {
 
         bool loadedNewChart = false;
         if (state.screen == Screen::SongSelect) {
-            if (menuEvents.previewStartDeltaMs != 0 &&
-                libraryUi.selectedSong > 0 &&
-                libraryUi.selectedSong <= static_cast<int>(library.Songs().size())) {
-                const auto& selected = library.Songs()[static_cast<std::size_t>(
-                    libraryUi.selectedSong - 1)];
-                const int next = std::clamp(
-                    selected.previewStartMs + menuEvents.previewStartDeltaMs,
-                    0, locus::app::kMaxSongPreviewStartMs);
-                std::string error;
-                if (!library.SetPreviewStartMs(libraryUi.selectedSong - 1,
-                                               next, error))
-                    libraryUi.notice = "PREVIEW START FAILED: " + error;
-                else
-                    libraryUi.notice = "MENU PREVIEW FROM " +
-                        std::to_string(next) + " MS (SONG SET ONLY)";
-            }
-            libraryFiles.Apply(menuEvents, importFromHome, now);
+            if (menuEvents.refresh)
+                locus::app::RefreshLibraryBrowser(library, libraryUi, menuStatus);
             loadedNewChart = locus::app::LaunchLibrarySelection(
                 libraryLaunch, menuEvents, now);
         }

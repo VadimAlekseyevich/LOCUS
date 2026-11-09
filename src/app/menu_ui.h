@@ -40,15 +40,9 @@ struct SettingsUi {
 Rectangle HomeMenuButton(int index);
 Rectangle LibrarySongRow(int row);
 Rectangle LibraryChartRow(int row);
-Rectangle LibraryImportButton();
 Rectangle LibraryRefreshButton();
 Rectangle LibraryPlayButton();
 Rectangle LibraryEditButton();
-Rectangle LibraryNewDifficultyButton();
-Rectangle LibraryPreviewMinusButton();
-Rectangle LibraryPreviewPlusButton();
-Rectangle LibraryBackgroundButton();
-Rectangle LibraryRemoveBackgroundButton();
 Rectangle SettingsBindingButton(int action);
 Rectangle SettingsGameTab();
 Rectangle SettingsDisplayTab();
