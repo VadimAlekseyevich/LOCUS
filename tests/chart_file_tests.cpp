@@ -50,10 +50,10 @@ int main() {
                      "audioPath":"audio/sample.wav",
                      "bpm":120,"offsetMs":250,
                      "grid":{"width":4,"height":4},
-                     "start":{"x":0,"y":2,"heading":"left"},
+                     "start":{"x":0,"y":2,"heading":"l"},
                      "previewLeadBeats":3.5,
-                     "turns":[{"timeMs":1250,"heading":"up"},
-                              {"timeMs":2750,"heading":"right"}]})";
+                     "turns":[{"timeMs":1250,"heading":"u"},
+                              {"timeMs":2750,"heading":"r"}]})";
     }
 
     locus::core::LoadedChart parsed;

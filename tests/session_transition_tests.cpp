@@ -55,7 +55,7 @@ int main() {
                 "E from Results opens Editor instead of replaying");
     // TEST starts from Editor with the chart and test origin already selected.
     activeChart = demoChart;
-    activeChart.turns = {{1, core::Turn::Right45}, {3, core::Turn::Left}};
+    activeChart.turns = {{1, core::Heading::DownRight}, {3, core::Heading::Up}};
     customChart = true;
     title = "CUSTOM TEST";
     game.SetTestOrigin({0.5, 1});
@@ -105,7 +105,7 @@ int main() {
                                 false, 16.0);
 
     // Song library already loaded/validated a new chart before navigation.
-    activeChart.turns = {{2, core::Turn::Left45}};
+    activeChart.turns = {{2, core::Heading::UpRight}};
     customChart = true;
     title = "LIBRARY SONG";
     app::ApplySessionTransition(context, Screen::SongSelect, Screen::Play,

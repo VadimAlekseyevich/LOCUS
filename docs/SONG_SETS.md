@@ -116,9 +116,8 @@ Back up **%LOCALAPPDATA%\LOCUS** before changing chart/storage formats.
 ## Pre-release compatibility
 
 Before the first public release, **backwards compatibility is not promised**.
-Some legacy v1/v2 parsing and old audio-version directories may still be
-read by the code, but new work targets managed Song Sets. Any deliberate
-breaking change must be disclosed to the developer.
+Chart JSON v1/v2 and long heading names are deliberately unsupported.
+Only version 3 with short absolute heading codes is accepted.
 
 ## Remaining limitations
 

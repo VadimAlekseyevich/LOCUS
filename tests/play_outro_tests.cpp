@@ -16,7 +16,7 @@ int main() {
        "easing is clamped and non-linear");
     const auto chart = core::MakeDemoChart();
     core::Chart early = chart;
-    early.turns = {{4, core::Turn::Reverse}};
+    early.turns = {{4, core::Heading::Left}};
     app::PlayOutroTransition earlyOutro;
     earlyOutro.Begin(early, 3.95, 4.0);
     ck(earlyOutro.Frame(4.0).outgoing == core::Heading::Left,

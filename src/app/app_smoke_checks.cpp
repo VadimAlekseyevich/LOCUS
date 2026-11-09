@@ -236,7 +236,7 @@ bool CheckSessionFlow() {
 
     // A turn can be judged without ever changing authored movement.
     const auto baseline = locus::core::SampleRouteStep(chart, 8);
-    judge.Press(locus::core::Turn::Right, 1.0);
+    judge.PressHeading(locus::core::Heading::Down, 1.0);
     if (judge.Counts().perfect != 1) return false;
 
     FrameInput goHome;
@@ -255,9 +255,9 @@ bool CheckSessionFlow() {
     if (ChartReadyForResults(judge, false)) return false;
     judge.Advance(14.819); // The last demo note is at 15 seconds.
     if (ChartReadyForResults(judge, false)) return false;
-    // Beat 30 is the last turn (LEFT) at 15.0 seconds. A hit here
+    // Beat 30 ends with the absolute UP direction at 15.0 seconds. A hit here
     // ends immediately; the synthesized demo click track lasts 16 s.
-    const auto finalHit = judge.Press(locus::core::Turn::Left, 15.0);
+    const auto finalHit = judge.PressHeading(locus::core::Heading::Up, 15.0);
     if (!finalHit || finalHit->grade != locus::core::Grade::Perfect ||
         !ChartReadyForResults(judge, false)) return false;
     FinishSession(state, judge);

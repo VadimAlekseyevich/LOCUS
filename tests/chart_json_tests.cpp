@@ -22,12 +22,12 @@ std::string Sample() {
         "ticksPerBeat": 1,
         "snapDivision": 1,
         "grid": {"width": 8, "height": 8},
-        "start": {"x": 3, "y": 3, "heading": "right"},
+        "start": {"x": 3, "y": 3, "heading": "r"},
         "previewLeadBeats": 4,
         "turns": [
-            {"timeMs": 1250, "heading": "up"},
-            {"timeMs": 2750, "heading": "up-right"},
-            {"timeMs": 4250, "heading": "left"}
+            {"timeMs": 1250, "heading": "u"},
+            {"timeMs": 2750, "heading": "ru"},
+            {"timeMs": 4250, "heading": "l"}
         ]
     })";
 }
@@ -59,17 +59,17 @@ int main() {
         parsed.route.turns[1].beat == 5 &&
         parsed.route.turns[0].timeMs == 1250,
         "absolute headings and times do not depend on incoming travel");
+    ok &= Expect(PrepareChartForSong(parsed, 11.0, error) &&
+                 parsed.route.lengthBeats == 22,
+                 "audio duration derives playable chart span");
     ok &= Expect(SampleRouteStep(parsed.route, 2).heading == Heading::Up &&
                  SampleRouteStep(parsed.route, 5).heading == Heading::UpRight &&
                  SampleRouteStep(parsed.route, 8).heading == Heading::Left,
                  "JSON heading drives geometry without relative rotation");
-    ok &= Expect(PrepareChartForSong(parsed, 11.0, error) &&
-                 parsed.route.lengthBeats == 22,
-                 "audio duration derives playable chart span");
     std::string encoded;
     ok &= Expect(SerializeChartJson(parsed, encoded, error) &&
                  encoded.find("\"formatVersion\": 3") != std::string::npos &&
-                 encoded.find("\"heading\": \"up-right\"") != std::string::npos &&
+                 encoded.find("\"heading\": \"ru\"") != std::string::npos &&
                  encoded.find("\"turn\"") == std::string::npos,
                  "writer emits only version 3 absolute headings");
     LoadedChart again;
@@ -78,19 +78,37 @@ int main() {
                  again.route.turns[2].direction == Heading::Left &&
                  again.route.turns[2].timeMs == 4250,
                  "round trip preserves absolute directions and music timestamps");
+    const char* shortCodes[8] = {"u", "r", "d", "l", "ru", "rd", "ld", "lu"};
+    for (int index = 0; index < 8; ++index) {
+        LoadedChart variant = parsed;
+        const Heading direction = static_cast<Heading>(index);
+        variant.route.initialHeading = direction;
+        variant.route.turns[0].direction = direction;
+        std::string compact;
+        LoadedChart reopened;
+        const bool roundTrip = SerializeChartJson(variant, compact, error) &&
+            ParseChartJson(compact, reopened, error) &&
+            reopened.route.initialHeading == direction &&
+            reopened.route.turns[0].direction == direction &&
+            compact.find(std::string("\"heading\": \"") + shortCodes[index] +
+                         "\"") != std::string::npos;
+        ok &= Expect(roundTrip, "all eight short compass values round-trip");
+    }
     ok &= Expect(Reject(source, "\"formatVersion\": 3",
                        "\"formatVersion\": 2", "formatVersion") &&
                  Reject(source, "\"formatVersion\": 3",
                        "\"formatVersion\": 1", "formatVersion"),
                  "no pre-release backwards compatibility for old chart schemas");
-    ok &= Expect(Reject(source, "\"heading\": \"up-right\"",
+    ok &= Expect(Reject(source, "\"heading\": \"ru\"",
                        "\"turn\": \"left45\"", "turn") &&
-                 Reject(source, "\"heading\": \"up-right\"",
+                 Reject(source, "\"heading\": \"ru\"",
                        "\"heading\": \"reverse\"", "heading"),
                  "relative turn fields and values are rejected");
-    ok &= Expect(Reject(source, "\"heading\": \"up-right\"",
+    ok &= Expect(Reject(source, "\"heading\": \"ru\"",
+                       "\"heading\": \"up-right\"", "heading") &&
+                 Reject(source, "\"heading\": \"ru\"",
                        "\"heading\": \"north\"", "heading") &&
-                 Reject(source, "\"heading\": \"right\"",
+                 Reject(source, "\"heading\": \"r\"",
                        "\"heading\": \"north\"", "start.heading"),
                  "all compass headings must use supported spellings");
     ok &= Expect(Reject(source, "\"timeMs\": 2750",

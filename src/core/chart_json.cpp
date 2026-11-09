@@ -194,8 +194,8 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             return false;
         }
         constexpr const char* headingNames[] = {
-            "up", "right", "down", "left",
-            "up-right", "down-right", "down-left", "up-left"
+            "u", "r", "d", "l",
+            "ru", "rd", "ld", "lu"
         };
         const std::string name = heading.get<std::string>();
         bool recognized = false;
@@ -300,8 +300,8 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
                              {"height", chart.route.gridHeight}};
 
         const char* headings[] = {
-            "up", "right", "down", "left",
-            "up-right", "down-right", "down-left", "up-left"
+            "u", "r", "d", "l",
+            "ru", "rd", "ld", "lu"
         };
         const int heading = static_cast<int>(chart.route.initialHeading);
         if (!ValidHeading(chart.route.initialHeading)) {

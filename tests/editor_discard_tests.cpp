@@ -29,13 +29,13 @@ int main() {
     waiting.editorTest = true;
     waiting.pausePressed = true;
     waiting.fullscreenPressed = true;
-    waiting.editor.addLeft = true;
+    waiting.editor.directionKeysHeld = 1u;
     ok &= Check(guard.Handle(waiting, true, false, false) ==
                     EditorDiscardOutcome::None &&
                 guard.Pending() == EditorPending::Home &&
                 !waiting.editorOpen && !waiting.editorTest &&
                 !waiting.pausePressed && !waiting.fullscreenPressed &&
-                !waiting.editor.addLeft,
+                waiting.editor.directionKeysHeld == 0u,
                 "pending confirmation blocks unrelated file open");
 
     FrameInput cancel;
@@ -72,12 +72,12 @@ int main() {
     FrameInput confirmedNew;
     confirmedNew.editorTest = true;
     confirmedNew.chooseMusicPressed = true;
-    confirmedNew.editor.addRight = true;
+    confirmedNew.editor.directionKeysHeld = 8u;
     ok &= Check(guard.Handle(confirmedNew, true, true, false) ==
                     EditorDiscardOutcome::Approved &&
                 confirmedNew.editorNew && !confirmedNew.editorOpen &&
                 !confirmedNew.editorTest && !confirmedNew.chooseMusicPressed &&
-                !confirmedNew.editor.addRight,
+                confirmedNew.editor.directionKeysHeld == 0u,
                 "Y runs exactly the confirmed New Draft action");
 
     FrameInput requestOpen;

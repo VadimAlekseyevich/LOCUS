@@ -13,45 +13,45 @@
   "start": {
     "x": 3,
     "y": 3,
-    "heading": "right"
+    "heading": "r"
   },
   "previewLeadBeats": 4,
   "turns": [
     {
       "timeMs": 1000,
-      "heading": "down"
+      "heading": "d"
     },
     {
       "timeMs": 2500,
-      "heading": "right"
+      "heading": "r"
     },
     {
       "timeMs": 4000,
-      "heading": "up"
+      "heading": "u"
     },
     {
       "timeMs": 6000,
-      "heading": "right"
+      "heading": "r"
     },
     {
       "timeMs": 8000,
-      "heading": "down"
+      "heading": "d"
     },
     {
       "timeMs": 9500,
-      "heading": "left"
+      "heading": "l"
     },
     {
       "timeMs": 11500,
-      "heading": "down"
+      "heading": "d"
     },
     {
       "timeMs": 13500,
-      "heading": "right"
+      "heading": "r"
     },
     {
       "timeMs": 15000,
-      "heading": "up"
+      "heading": "u"
     }
   ]
 }

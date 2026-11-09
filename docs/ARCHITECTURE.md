@@ -89,7 +89,7 @@ and reduce the number of unrelated reasons a file can change.
 
 - Chart loading prepares and validates replacement state before replacing active game/editor state.
 - Screen flow, input, menu actions, viewport mapping, gameplay drawing and route geometry have separate modules.
-- Chart v2 timestamps are authoritative in song milliseconds; editor snapping and visualization do not rewrite timing.
+- Chart v3 note timestamps and abbreviated absolute headings are authoritative; editor snapping and visualization do not rewrite timing.
 - Movement speed is independent of BPM, snap subdivisions and heading; diagonals are Euclidean unit steps.
 - **2026-11-06:** Visible-route range sampling replaces repeated full-history scans for each preview segment. Random-access geometry remains available. The dense 240-tick window regression compares batched and standalone samples.
 - **2026-11-08:** `SkinProfileActions` isolates Load/Save/Save As/Reset, personal profile scanning and activation under `Skins/Profiles`, and owns skin draft-vs-active publication. Native file pickers are injected. A missing user-selected skin is a hard error (preserves the working draft), while a missing startup profile intentionally uses defaults; tests cover both cases, canceled dialogs, exporting and invalid drafts.
@@ -138,4 +138,4 @@ Check Unicode paths, permission errors, full disks, canceled native dialogs, and
 
 ## Non-goals
 
-No new chart semantics, speculative plugin architecture, per-beat heap cache, dependence on a network service, or changes to gameplay judgement to pursue architectural tidiness. Favor small, independently testable commits and do not silently discard user data. Before the first release, old chart/storage compatibility may be broken explicitly when necessary.
+No speculative plugin architecture, per-beat heap cache, dependence on a network service, or changes to gameplay judgement to pursue architectural tidiness. Favor small, independently testable commits and do not silently discard user data. Before the first release, old chart/storage compatibility may be broken explicitly when necessary.

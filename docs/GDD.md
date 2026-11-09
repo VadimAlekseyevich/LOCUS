@@ -17,7 +17,7 @@
 
 - The route lives on an **unbounded two-dimensional plane**. There is **no Wrap, teleport, bounce, physical grid edge or collision** at the viewing boundary.
 - At each musical tick the chart's heading determines the next displacement. Eight compass directions are available: up, up-right, right, down-right, down, down-left, left, up-left. Every tick moves **one unit of distance**: cardinals change one axis by 1; diagonals change both axes by **1/√2**. All eight headings therefore have the same speed.
-- The route's **relative turn events** change heading by 45°, 90° or 135° left/right, or by 180° for a direct reversal. Straight travel needs no event. Reversals retrace exactly the same geometry, without artificial offsets or extra lanes. A reverse junction receives a semicircular cap oriented toward the arriving side; the cap's straight diameter is perpendicular to the line. SKIN → PATH provides a REVERSE CAP SIZE slider (default 3.2× junction radius, twice the former 1.6×, with 0 disabling the cap); junction colour and glow are shared. The SKIN preview includes an example of the cap; the saved profile's cap size also applies to the editor's route preview. This is a rendering-only extension of the normal turn dot, not a new gameplay cue or an alternate route.
+- Every authored event sets an **absolute compass heading**, one of `u/r/d/l/ru/rd/ld/lu`. The next movement direction does not depend on the previous heading. Straight travel needs no event. Reversals retrace exactly the same geometry, without artificial offsets or extra lanes. A reverse junction receives a semicircular cap oriented toward the arriving side; the cap's straight diameter is perpendicular to the line. SKIN → PATH provides a REVERSE CAP SIZE slider (default 3.2× junction radius, twice the former 1.6×, with 0 disabling the cap); junction colour and glow are shared. The SKIN preview includes an example of the cap; the saved profile's cap size also applies to the editor's route preview. This is a rendering-only extension of the normal turn dot, not a new gameplay cue or an alternate route.
 - The marker stays fixed at the screen center. The route translates with the instantaneous fractional song beat; the camera does not rotate or lag behind.
 - Missing a note or pressing the wrong direction never changes any later route position.
 
@@ -40,7 +40,7 @@
 
 ## 3. Input and judgement
 
-- The player presses the **absolute outgoing direction**, not a fixed relative "turn left/right" button. The required direction depends on the heading before the authored turn.
+- The player presses the **absolute outgoing direction**, not a fixed relative "turn left/right" button. The required direction equals the note's absolute heading.
 - Four keys cover the cardinal directions; holding or pressing two adjacent directions in the configured chord window selects a diagonal.
 - **Default bindings:** **D=Left, F=Down, J=Up, K=Right**. Space=Pause, R=Retry, H=Home. The same four directional binds place notes in the editor. All seven bindings are configurable in SETTINGS.
 - The default diagonal chord window is **85 ms**, adjustable from **40 to 160 ms** in settings.
@@ -93,9 +93,9 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 - Chart editor tabs: **SET** (song/difficulty management and artwork), **ROUTE** (grid-free moving preview, nine-direction pad, note and group actions), **AUDIO** (difficulty title, shared song BPM/offset and precise manually entered preview milliseconds), **FIELD** (square visibility size and initial heading).
 - The scrolling timeline is visible on all editor tabs. Clicking the single TIME readout below the ROUTE preview copies its current song position in whole milliseconds, ready for Ctrl+V into the Song Preview field. The ruler itself stays uncluttered. Left/Right arrows navigate ticks; Up/Down change snap subdivision; PageUp/PageDown and the mouse wheel offer navigation. Modifier shortcuts support bar jumps, moving notes and groups.
 - Snap subdivision choices: **1, 2, 3, 4, 6, 8, 12, 16, 24** per musical beat. Snap, zoom and BPM are **different controls**.
-- Chart **v2** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
-- The writer stores one of seven **relative turns**, including a 180° reversal, and the initial heading; gameplay input still uses absolute directions.
-- Editor can add/edit/cut/copy/paste/invert/shift/undo turns, open JSON and TEST from the selected audio position. Ctrl+S saves directly into the installed Song Set; Ctrl+Shift+S creates a separate difficulty. Backwards compatibility before the first release is not guaranteed.
+- Chart **v3** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
+- The writer stores an abbreviated absolute `heading` for each note and for the initial route direction. A 180° reversal is detected from the incoming and outgoing headings, not from a special relative note type.
+- Editor can add/edit/cut/copy/paste/mirror horizontally or vertically/shift/undo directions, open JSON and TEST from the selected audio position. Ctrl+S saves directly into the installed Song Set; Ctrl+Shift+S creates a separate difficulty. Backwards compatibility before the first release is not guaranteed.
 - Editor preview and scored custom-song play can use **100%, 75%, 50%, 25%, 10%** audio speeds. The present slowdown changes pitch; it is **not** pitch-preserving time stretch. Below 100% the preview timeline follows consumed audio-stream frames rather than extrapolating a separate wall-clock position, preventing accumulating visual/audio drift when buffering fluctuates. In scored practice, screen-space movement speed remains fixed even as playback slows.
 
 ## 6. Skins and accessibility
