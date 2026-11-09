@@ -83,14 +83,14 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 ### 4.3 Menus and safe exit
 
 - Home provides **PLAY, EDIT, SKIN, SETTINGS, EXIT**. **Home → EDIT** always creates a clean draft, not the last-played song. Song Library EDIT opens its selected chart; **Results → E** opens the actual played chart; returning from Editor TEST keeps the unsaved editor document.
-- PLAY opens the local song library with separate songs and difficulties, including the generated demo. **B / BG IMAGE** attaches a PNG/JPEG background to a managed Song Set; **Shift+B / REMOVE** clears it. A background is shared by all difficulties of its song.
+- PLAY is a read-only browser for local songs and difficulties, including the generated demo. EDIT → SET owns Song Set imports, deletion/restoration, precise menu-preview start (whole milliseconds), and the ADD/REPLACE BG / REMOVE BG image controls. A background is shared by all difficulties of its song.
 - **Esc goes Back** from Editor, PLAY, Results and other screens. PLAY/Results return to Song Select with the selected song preview. Editor also has a visible BACK button; unsaved chart changes require Y to discard or N/Esc to cancel.
 - **Esc on Home**, EXIT, window X and Alt+F4 open one confirmation. **Y quits; N/Esc stays**. An unsaved chart or skin triggers a warning. Active playback pauses while the confirmation is shown.
 
 ## 5. Music, charting and practice
 
 - Local WAV/MP3 playback is supported, without any account or remote chart service. Installed songs/difficulties live under `%LOCALAPPDATA%\LOCUS\Songs`.
-- Chart editor tabs: **ROUTE** (grid-free moving preview, nine-direction pad, note and group actions), **AUDIO** (title, BPM, offset in whole milliseconds), **FIELD** (square visibility size and initial heading).
+- Chart editor tabs: **SET** (song/difficulty management, artwork, exact Song Set preview position), **ROUTE** (grid-free moving preview, nine-direction pad, note and group actions), **AUDIO** (title, BPM, offset in whole milliseconds), **FIELD** (square visibility size and initial heading).
 - The scrolling timeline is visible on all editor tabs. Left/Right arrows navigate ticks; Up/Down change snap subdivision; PageUp/PageDown and the mouse wheel offer navigation. Modifier shortcuts support bar jumps, moving notes and groups.
 - Snap subdivision choices: **1, 2, 3, 4, 6, 8, 12, 16, 24** per musical beat. Snap, zoom and BPM are **different controls**.
 - Chart **v2** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
@@ -100,10 +100,10 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 
 ## 6. Skins and accessibility
 
-- Each managed Song Set stores one shared audio file, a `set.locus.json` manifest, and independent difficulty charts. Importing a chart never silently replaces the shared audio. Folder locks serialize writers, chart overwrites leave backups in `.locus-history/`, and deleted songs/difficulties go to recoverable `%LOCALAPPDATA%/LOCUS/Trash`. New difficulties can be added with N or Shift+C. See [Song Sets](SONG_SETS.md).
+- Each managed Song Set stores one shared audio file, a `set.locus.json` manifest, and independent difficulty charts. Importing a chart never silently replaces the shared audio. Folder locks serialize writers, chart overwrites leave backups in `.locus-history/`, and deleted songs/difficulties go to recoverable `%LOCALAPPDATA%/LOCUS/Trash`. New difficulties are created in EDIT → SET; notes can be removed on ROUTE with Backspace/Delete and Ctrl+Z restores them. See [Song Sets](SONG_SETS.md).
 - One independent **global skin** affects presentation across Play and editor TEST; no skin is embedded in a chart.
 - PATH, PLAYER and COLORS pages expose path width/opacity/fade, marker size, fixed base speed (20–700 logical px/s), hit-effect scale, gameplay HUD visibility, and ten editable RGBA colors including **FIELD BORDER**. COLORS uses a hue wheel, a saturation/value square, and exact `#RRGGBBAA` entry; the live preview is visible on every page. Only the non-color numeric settings retain sliders. Numeric controls round to sensible precision (whole milliseconds for PREVIEW TIME, hundredths for other numeric fields) and omit trailing zeroes/floating-point noise in their UI labels.
-- MY SKINS is a personal profile library at `%LOCALAPPDATA%/LOCUS/Skins/Profiles`. STORE COPY saves a new named JSON profile, ACTIVATE selects it without losing unsaved drafts, and REFRESH discovers external additions. The chosen skin is copied to the global active file so gameplay and chart testing use the same appearance.
+- MY SKINS is a personal profile library at `%LOCALAPPDATA%/LOCUS/Skins/Profiles`. STORE saves a new named JSON profile, ACTIVATE selects it without losing unsaved drafts, and REFRESH discovers external additions. DELETE moves a selected profile to a separate `Skins/Trash` after confirmation; UNDO restores it. The applied appearance is preserved when its profile is deleted. The chosen skin is copied to the global active file so gameplay and chart testing use the same appearance.
 - Skin JSON v2 saves `player.speedPxPerSecond` and `path.lookaheadMs` (default 800). Legacy skins with `path.lookaheadBeats` still load; their preview duration resets to 800 ms because BPM-independent conversion from beats is impossible. Legacy v1 `cameraStep` is converted on load to the same approximate speed at 120 BPM on the default 8×8 chart.
 - The skin cannot alter chart timestamps, judgement rules or authored route geometry.
 - Windows system fonts are used when available; gameplay readability at non-16:9 aspect ratios must be checked on actual displays.

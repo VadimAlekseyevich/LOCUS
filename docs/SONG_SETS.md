@@ -25,16 +25,18 @@ also store one optional **shared background image** (PNG/JPEG).
 
 Each managed Song Set also stores a **previewStartMs** (default 0), shared
 across its difficulties but independent of the chart's offset and BPM. In
-EDIT -> SET, PREVIEW FROM -/+ adjusts it by one second; Shift+click
-adjusts by 100 ms. PLAY reads the saved position but never edits it.
+EDIT -> SET, click PREVIEW MS to enter an exact whole-millisecond position
+(0..3,600,000), press Enter to save or Esc to cancel. -1 S/+1 S adjust by
+one second, or by 100 ms when holding Shift. This is shared Song Set metadata,
+not the AUDIO tab's chart offset. PLAY only reads the saved value.
 A separate menu audio decoder fades the old song out before the newly
 selected song fades in. Legacy entries preview from zero.
 
 In EDIT, open a chart belonging to a **managed Song Set**, switch to SET
 and choose **ADD BG** (or **REPLACE BG**) to attach a PNG or JPEG.
-Use **REMOVE BG** to clear it. The file is copied
-into the Song Set, the original is untouched, and all difficulties share the
-same background. It appears in Song Select, EDIT, PLAY and Results, with its aspect
+Use **REMOVE BG** to clear it. Image data must successfully decode before
+LOCUS installs a copy; invalid files leave the previous background untouched.
+The original is untouched and all difficulties share the same background. It appears in Song Select, EDIT, PLAY and Results, with its aspect
 ratio preserved: the image fills the physical window and any excess is
 center-cropped at the edges, never stretched. A dark overlay keeps routes and
 labels legible; artwork never changes BPM, note timestamps or scores.
@@ -67,9 +69,11 @@ visible title.
 6. **Import charts:** EDIT -> SET -> IMPORT creates/finds a managed Song Set
    or adds a difficulty to the current Set if its audio bytes match.
    Reimporting the same source chart updates that difficulty, not a duplicate.
-7. **Delete:** EDIT -> SET has separate DELETE and DELETE SET buttons.
-   Y confirms, N/Esc cancels. You cannot
+7. **Delete:** EDIT -> SET has separate DELETE (selected difficulty) and
+   DELETE SET (entire song) buttons. Y confirms, N/Esc cancels. You cannot
    delete the final difficulty alone: delete the whole Set instead.
+   ROUTE uses Backspace/Delete or the center DEL button for selected notes;
+   Ctrl+Z restores a removed note.
 8. **Restore:** EDIT -> SET -> RESTORE LAST restores the newest item from the LOCUS
    Trash, including after an application restart.
 

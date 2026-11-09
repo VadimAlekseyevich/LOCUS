@@ -20,7 +20,7 @@ Reviewed: 2026-11-08. Scope: current Windows/raylib rhythm game, not prospective
 | `src/app/editor_screen_actions.*`, `editor_set_controller.*` | Editor-only New/Open/Attach/Save/TEST and Song Set mutations, including preview-start and background-file changes. These mutations are never dispatched by PLAY. |
 | `src/app/app_smoke_checks.*` | Headless integration checks behind the existing `--loop-check`, `--screen-check`, and `--session-check` entry points. |
 | `src/app/app_frame_renderer.*`, `app_quit_dialog_layout.h`, `image_asset_texture.*`, `image_cover_geometry.h` | Rendering and OS font selection. Reusable GPU textures load from native-path bytes (Unicode-safe), keep aspect ratio using a headless-tested cover crop and unload before the window closes. The quit confirmation shares hitboxes between renderer and input. |
-| `src/app/image_asset_file.h` | Reusable, graphics-independent disk image guards reject unsafe image names, mismatched signatures and truncated PNG/JPEG endings. Decode/upload remains in `image_asset_texture.*`. |
+| `src/app/image_asset_file.h`, `image_asset_decode.h` | Graphics-independent filename/header guard plus CPU-only raylib PNG/JPEG decode before publishing assets; `image_asset_texture.*` owns GPU uploads and caches textures. The pinned raylib target explicitly enables JPEG. |
 | `src/app/library_launch_actions.*` | SongSelect browsing and transition into PLAY or EDIT. No direct Song Set data mutation from PLAY. |
 | `src/app/main.cpp` | Composition root, explicit resource lifetime, cross-screen ordering and frame rendering call. Keeps the necessary high-level coordination rather than hiding it in an all-knowing Application object. |
 
@@ -80,7 +80,7 @@ and reduce the number of unrelated reasons a file can change.
 
 ## Completed stabilization
 
-- **2026-11-09:** SongSelect is read-only for Song Set data. EDIT -> SET exclusively owns shared artwork and menu-preview origin. A PNG/JPEG must have a complete end marker before import; GPU decode errors remain visible, and the editor shows its installed artwork without loading textures repeatedly per frame. The former `library_file_actions.*` adapter remains for historical headless tests but is not constructed by the application; remove it when those tests migrate to editor-owned commands.
+- **2026-11-09:** SongSelect is read-only for Song Set data. EDIT -> SET owns shared artwork and exact whole-millisecond menu-preview origin. PNG/JPEG images are decoded before they are installed, while textures stay cached for rendering. Saved skin profiles support confirmed deletion and recovery in `Skins/Trash`, independently of Song Set recovery. The unused `library_file_actions.*` adapter remains only for existing headless tests.
 
 - **2026-11-08:** Enabled VSync by default and removed the fixed 60-FPS presentation cap. Phone frames showed a horizontal screen-tearing boundary crossing moving path segments, especially vertical segments during horizontal camera movement. Rendering now requests display-synchronized swaps and uses 240 FPS only as a fallback ceiling. Timing and chart geometry remain clock-based; verify live on the target monitor because a GPU driver may override the swap interval.
 
@@ -110,7 +110,7 @@ and reduce the number of unrelated reasons a file can change.
 
 ### P1 — Song Set durability and recovery
 
-Managed Song Sets have one shared audio file, a manifest and per-difficulty charts. Import and editor Save hold an OS-backed library lock before per-folder write locks. Shared audio is compared byte-for-byte: a conflicting import is refused rather than silently changing older difficulties. Overwrites use a staged, flushed JSON, previous-version backup and on-volume replacement. Deletion moves files or a whole Set to LOCUS Trash with an origin journal; U restores the newest entry. Interrupted processes may leave orphan staging files; cleanup is intentionally conservative. Pending: power-loss, permissions and disk-full fault injection on real Windows; archive import/export and history browsing. There is no pre-release compatibility guarantee.
+Managed Song Sets have one shared audio file, a manifest and per-difficulty charts. Import and editor Save hold an OS-backed library lock before per-folder write locks. Shared audio is compared byte-for-byte: a conflicting import is refused rather than silently changing older difficulties. Overwrites use a staged, flushed JSON, previous-version backup and on-volume replacement. Deletion moves files or whole Song Sets to LOCUS Trash with an origin journal; EDIT → SET → RESTORE LAST restores the newest entry. Interrupted processes may leave orphan staging files; cleanup is intentionally conservative. Pending: power-loss, permissions and disk-full fault injection on real Windows; archive import/export and history browsing. There is no pre-release compatibility guarantee.
 
 ### Stage 1 architecture boundaries — complete
 
