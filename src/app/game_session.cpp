@@ -1,4 +1,5 @@
 #include "app/game_session.h"
+#include "app/play_intro_skip.h"
 
 #include "core/route.h"
 
@@ -57,6 +58,31 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     const bool playing = customChart ? local_.Playing() : demo_.Playing();
     const bool paused = customChart ? local_.Paused() : demo_.Paused();
     const bool audioAlreadyFinished = customChart ? local_.Finished() : demo_.Finished();
+    // Only a *fresh* gameplay direction press can skip a long empty intro.
+    // The seek moves both audio and visual clocks. Consume this key press:
+    // it is not an attempt to hit the upcoming note, nor a chord half-press.
+    if (playing && !paused && !chart_.turns.empty() &&
+        judge_.NextEvent() == &chart_.turns.front() &&
+        judge_.Counts().Resolved() == 0 &&
+        std::any_of(arrows.pressed.begin(), arrows.pressed.end(),
+                    [](bool pressed) { return pressed; })) {
+        const double current = customChart ? local_.AudioSeconds(now)
+                                           : demo_.SongSeconds(now);
+        const double offset = customChart ? local_.OffsetSeconds() : 0.0;
+        if (const auto target = IntroSkipDestination(chart_, offset, current)) {
+            const bool seeked = customChart
+                ? local_.StartAtAudioSeconds(*target, now)
+                : demo_.StartAtAudioSeconds(*target, now);
+            if (seeked) {
+                chord_.Reset();
+                hitFlash_.Reset();
+                if (customChart) local_.Update(now);
+                else demo_.Update(now);
+                judge_.Advance(*target);
+                return;
+            }
+        }
+    }
     // During the silent tail, allow late directional input up to the
     // standard judgement window after the final chart note.
     if ((playing && !paused) || audioAlreadyFinished) {

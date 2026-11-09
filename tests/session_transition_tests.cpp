@@ -1,5 +1,6 @@
 #include "app/session_transition.h"
 #include "app/play_screen_actions.h"
+#include "app/play_intro_skip.h"
 #include "app/play_outro_transition.h"
 #include "app/chart_editor_ui.h"
 #include "app/chart_playback.h"
@@ -10,6 +11,7 @@
 #include "core/route.h"
 
 #include <iostream>
+#include <cmath>
 #include <string>
 
 namespace {
@@ -23,6 +25,29 @@ int main() {
     using namespace locus;
     using app::Screen;
     bool ok = true;
+    // Only forward skip while in an unmapped intro; a 4/4 whole-measure
+    // lead must be at least one second, and note timeMs beats cached ticks.
+    core::Chart intro;
+    intro.bpm = 120.0;
+    intro.turns = {{12, core::Heading::Up, 11000}};
+    const auto oneBar = app::IntroSkipDestination(intro, 0.0, 1.0);
+    ok &= Check(oneBar && std::abs(*oneBar - 9.0) < 1e-9,
+                "120 BPM seeks to one 2-second measure before first note");
+    intro.bpm = 250.0;
+    intro.turns.front().timeMs = 20000;
+    const auto twoBars = app::IntroSkipDestination(intro, 0.0, 1.0);
+    ok &= Check(twoBars && std::abs(*twoBars - 18.08) < 1e-9,
+                "250 BPM needs two 0.96-second measures (1.92 seconds)");
+    ok &= Check(!app::IntroSkipDestination(intro, 0.0, 18.1) &&
+                !app::IntroSkipDestination(intro, 0.0, 19.9),
+                "skip never seeks backward or steals near-note input");
+    intro.turns.front().timeMs = 1000;
+    ok &= Check(!app::IntroSkipDestination(intro, 0.0, 0.2),
+                "no skip if the lead-in cannot fit before song zero");
+    intro.turns.clear();
+    ok &= Check(!app::IntroSkipDestination(intro, 0.0, 0.0),
+                "no notes means no intro skip");
+
     const core::Chart demoChart = core::MakeDemoChart();
     core::Chart activeChart = demoChart;
     core::TurnJudge judge(activeChart);

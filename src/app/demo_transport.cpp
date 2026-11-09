@@ -56,15 +56,23 @@ void DemoTransport::SetVolume(float level) {
 }
 
 void DemoTransport::Start(double monotonicSeconds) {
-    if (!musicLoaded_) {
-        return;
-    }
+    (void)StartAtAudioSeconds(0.0, monotonicSeconds);
+}
+
+bool DemoTransport::StartAtAudioSeconds(double audioSeconds,
+                                       double monotonicSeconds) {
+    if (!musicLoaded_ || !std::isfinite(audioSeconds) ||
+        audioSeconds < 0.0 || audioSeconds >= durationSeconds_) return false;
     Stop();
     finished_ = false;
+    startPositionSeconds_ = audioSeconds;
     PlayMusicStream(music_);
+    if (audioSeconds > 0.0)
+        SeekMusicStream(music_, static_cast<float>(audioSeconds));
     clock_.Start(monotonicSeconds);
     playing_ = true;
     std::cout << "DEMO_AUDIO_PLAY\n";
+    return true;
 }
 
 void DemoTransport::Pause(double monotonicSeconds) {
@@ -90,6 +98,7 @@ void DemoTransport::Stop() {
     playing_ = false;
     paused_ = false;
     clock_.Stop();
+    startPositionSeconds_ = 0.0;
 }
 
 void DemoTransport::Update(double monotonicSeconds) {
@@ -97,7 +106,7 @@ void DemoTransport::Update(double monotonicSeconds) {
         return;
     }
     UpdateMusicStream(music_);
-    if (clock_.SecondsAt(monotonicSeconds) >= durationSeconds_) {
+    if (SongSeconds(monotonicSeconds) >= durationSeconds_) {
         Stop();
         finished_ = true;
         std::cout << "DEMO_AUDIO_FINISHED\n";
@@ -117,7 +126,8 @@ void DemoTransport::Shutdown() {
 }
 
 double DemoTransport::SongSeconds(double monotonicSeconds) const noexcept {
-    return finished_ ? durationSeconds_ : clock_.SecondsAt(monotonicSeconds);
+    return finished_ ? durationSeconds_ :
+        startPositionSeconds_ + clock_.SecondsAt(monotonicSeconds);
 }
 
 double DemoTransport::Beat(double monotonicSeconds) const noexcept {

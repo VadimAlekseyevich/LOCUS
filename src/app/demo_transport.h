@@ -21,6 +21,8 @@ public:
 
     bool Initialize(const core::Chart& chart);
     void Start(double monotonicSeconds);
+    // Seek source audio and clock together, without changing chart data.
+    bool StartAtAudioSeconds(double audioSeconds, double monotonicSeconds);
     void Pause(double monotonicSeconds);
     void Resume(double monotonicSeconds);
     void Stop();
@@ -43,6 +45,7 @@ private:
     double bpm_ = 120.0;
     float volume_ = 0.7f;
     double durationSeconds_ = 0.0;
+    double startPositionSeconds_ = 0.0;
     bool musicLoaded_ = false;
     bool playing_ = false;
     bool paused_ = false;

@@ -22,6 +22,7 @@ public:
     void Update(double monotonicSeconds);
     void SetSpeed(double fraction, double monotonicSeconds);
     double Speed() const noexcept { return speed_; }
+    double OffsetSeconds() const noexcept { return offsetSeconds_; }
 
     bool Playing() const noexcept { return playing_; }
     bool Paused() const noexcept { return paused_; }
