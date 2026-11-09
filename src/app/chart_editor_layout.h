@@ -5,6 +5,7 @@
 #include "core/route_view.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace locus::app::detail {
@@ -79,6 +80,21 @@ inline std::optional<core::Heading> DirectionPadHeading(int row, int col) noexce
         (row == 1 && col == 1)) return std::nullopt;
     return values[row * 3 + col];
 }
+// Live counts of physical direction presses in the full chart.
+// A diagonal increments its own pad plus both cardinal components.
+inline std::array<int, 8> DirectionPressCounts(const core::Chart& chart) noexcept {
+    std::array<int, 8> counts{};
+    for (const auto& note : chart.turns) {
+        if (!core::ValidHeading(note.direction)) continue;
+        const unsigned mask = core::HeadingArrowMask(note.direction);
+        for (int cardinal = 0; cardinal < 4; ++cardinal)
+            if (mask & (1u << cardinal)) ++counts[static_cast<std::size_t>(cardinal)];
+        if (core::IsDiagonal(note.direction))
+            ++counts[static_cast<std::size_t>(note.direction)];
+    }
+    return counts;
+}
+
 constexpr Rectangle kCopyTurns{52, 213, 173, 31};
 constexpr Rectangle kPasteTurns{52, 248, 173, 31};
 constexpr Rectangle kMirrorHorizontal{52, 283, 83, 31};

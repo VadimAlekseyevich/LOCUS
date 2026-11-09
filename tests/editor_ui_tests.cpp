@@ -54,6 +54,18 @@ int main() {
                 std::abs(TrajectoryOpacity(2.0) - 0.5f) < 1e-6f &&
                 std::abs(TrajectoryOpacity(4.0)) < 1e-6f,
                 "one-bar red path uses four beats and a linear fade");
+    // Diagonals count both their physical cardinal presses as well.
+    Chart counterFixture;
+    counterFixture.turns = {
+        {0, Heading::Up}, {1, Heading::UpRight},
+        {2, Heading::DownLeft}, {3, Heading::UpRight},
+        {4, Heading::Left}, {5, Heading::DownRight},
+        {6, Heading::DownRight}, {7, Heading::Down}
+    };
+    const auto counters = detail::DirectionPressCounts(counterFixture);
+    ok &= Check(counters == std::array<int, 8>{3, 4, 4, 2, 2, 2, 1, 0},
+                "direction pad counts cardinals plus diagonal components");
+
     ChartEditor chart;
     EditorUiState ui;
     ok &= Check(ui.tab == EditorTab::Route &&

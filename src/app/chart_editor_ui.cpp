@@ -309,8 +309,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                                   chart.ticksPerBeat,
                               turn ? core::DirectionName(turn->direction) : "STRAIGHT"),
               744, 250, 12, Color{216, 232, 239, 255});
-        const char* padNames[9] = {"UL", "U", "UR", "L", "DEL", "R",
-                                   "DL", "D", "DR"};
+        // Full-chart totals, including each diagonal's two cardinals.
+        const auto pressCounts = DirectionPressCounts(chart);
         // Same per-direction bindings as PLAY, including custom rebinds.
         const std::string padKeys[9] = {
             EditorDirectionShortcut(settings, 5u),
@@ -326,8 +326,11 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         for (int row = 0; row < 3; ++row)
             for (int col = 0; col < 3; ++col) {
                 const auto heading = DirectionPadHeading(row, col);
+                const std::string label = heading
+                    ? std::to_string(pressCounts[static_cast<std::size_t>(*heading)])
+                    : "DEL";
                 DirectionButton(font, DirectionPadBounds(row, col),
-                                padNames[row * 3 + col],
+                                label.c_str(),
                                 padKeys[row * 3 + col].c_str(),
                                 !heading ? Color{127, 140, 156, 255}
                                   : core::IsDiagonal(*heading)
