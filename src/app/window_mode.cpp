@@ -1,11 +1,13 @@
 #include "app/window_mode.h"
 
-#include "raylib.h"
-
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+
+// Avoid the WinAPI CloseWindow/ShowCursor names colliding with raylib.
+// Only the native HWND accessor is needed on Windows.
+extern "C" void* GetWindowHandle(void);
 
 namespace locus::app {
 namespace {
@@ -51,6 +53,8 @@ bool SetBorderlessDesktop(bool enabled) noexcept {
 }
 } // namespace locus::app
 #else
+#include "raylib.h"
+
 namespace locus::app {
 namespace { bool borderless = false; }
 bool SetBorderlessDesktop(bool enabled) noexcept {
