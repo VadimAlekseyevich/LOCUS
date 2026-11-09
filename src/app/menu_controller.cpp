@@ -25,6 +25,25 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     const Vector2 mouse = transform.ToVirtual(GetMousePosition());
 
     if (state.screen == Screen::Skin) {
+        if (!skinUi.pendingDeleteProfile.empty()) {
+            // Modal owns input until explicitly confirmed or canceled.
+            input.backPressed = false;
+            input.homePressed = false;
+            input.requestedScreen.reset();
+            const bool confirm = IsKeyPressed(KEY_Y) ||
+                (mouseClick && validMouse &&
+                 CheckCollisionPointRec(mouse, SkinDeleteConfirmRect()));
+            const bool cancel = IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE) ||
+                (mouseClick && validMouse &&
+                 CheckCollisionPointRec(mouse, SkinDeleteCancelRect()));
+            if (confirm) events.skinCommand = SkinCommand::DeleteProfile;
+            else if (cancel) {
+                skinUi.pendingDeleteProfile.clear();
+                skinUi.notice = "SKIN DELETION CANCELED";
+                skinUi.noticeError = false;
+            }
+            return events;
+        }
         if (locus::app::SkinMenuEditingText(skinUi)) {
             // Enter and Escape belong to the field, not the menu navigation.
             // Clicking away attempts a commit; invalid numbers keep focus.

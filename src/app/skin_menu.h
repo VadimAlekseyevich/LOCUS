@@ -10,7 +10,8 @@
 namespace locus::app {
 
 enum class SkinCommand {
-    None, Load, Save, SaveAs, Reset, ActivateProfile, StoreProfile, RefreshProfiles
+    None, Load, Save, SaveAs, Reset, ActivateProfile, StoreProfile, RefreshProfiles,
+    DeleteProfile, RestoreProfile
 };
 struct SkinProfileItem {
     std::filesystem::path path;
@@ -35,6 +36,7 @@ struct SkinUi {
     std::string hexBuffer;      // #RRGGBB or #RRGGBBAA
     std::vector<SkinProfileItem> profiles;
     int selectedProfile = -1, profileOffset = 0;
+    std::filesystem::path pendingDeleteProfile; // Captured file identity for confirmation.
 
     std::string notice = "COLOR WHEEL + HEX; SKINS IN PERSONAL PROFILES FOLDER";
     bool noticeError = false;
@@ -61,5 +63,7 @@ Rectangle SkinColorSquareRect();
 Vector2 SkinColorWheelCenter();
 Rectangle SkinProfileRow(int index);
 Rectangle SkinProfileActionRect(int index);
+Rectangle SkinDeleteConfirmRect();
+Rectangle SkinDeleteCancelRect();
 
 } // namespace locus::app

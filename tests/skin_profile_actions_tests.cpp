@@ -179,6 +179,31 @@ int main() {
     bad.Apply(SkinCommand::ActivateProfile);
     ok &= Check(ui.noticeError && active.name == "Personal blue",
                 "corrupt selected profile cannot replace active skin");
+
+    // A profile, including the active one, can be deleted and restored
+    // without affecting the currently applied appearance or unsaved draft.
+    ui.pendingDeleteProfile = broken;
+    bad.Apply(SkinCommand::DeleteProfile);
+    ok &= Check(!ui.noticeError && !fs::exists(broken) &&
+                ui.profiles.size() == 2 && active.name == "Personal blue" &&
+                fs::exists(profileDir.parent_path() / "Trash"),
+                "invalid personal profile moves to independent skin Trash");
+    bad.Apply(SkinCommand::RestoreProfile);
+    ok &= Check(!ui.noticeError && fs::exists(broken) &&
+                ui.profiles.size() == 3,
+                "undo restores the exact previously deleted profile");
+    ui.pendingDeleteProfile = firstProfile;
+    bad.Apply(SkinCommand::DeleteProfile);
+    ok &= Check(!ui.noticeError && !fs::exists(firstProfile) &&
+                active.name == "Personal blue" && !ui.dirty,
+                "deleting active profile preserves its applied appearance");
+    bad.Apply(SkinCommand::Save);
+    ok &= Check(!fs::exists(firstProfile) &&
+                active.name == "Personal blue",
+                "later Save cannot silently recreate a deleted profile");
+    bad.Apply(SkinCommand::RestoreProfile);
+    ok &= Check(!ui.noticeError && fs::exists(firstProfile),
+                "undo restores a deleted active profile file");
     std::error_code ec;
     fs::remove_all(root, ec);
     if (!ok) return 1;

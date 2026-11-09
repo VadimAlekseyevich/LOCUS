@@ -395,8 +395,10 @@ Rectangle SkinProfileRow(int row) {
     return {69, 220.0f + row * 37.0f, 482, 32};
 }
 Rectangle SkinProfileActionRect(int index) {
-    return {70.0f + index * 166.0f, 416, 158, 34};
+    return {70.0f + index * 97.0f, 416, 92, 34};
 }
+Rectangle SkinDeleteConfirmRect() { return {283, 310, 169, 42}; }
+Rectangle SkinDeleteCancelRect() { return {506, 310, 169, 42}; }
 
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     Label(font, "SKIN  /  GAMEPLAY APPEARANCE", 52, 88, 27, kAccent);
@@ -457,8 +459,10 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
                   index == ui.selectedProfile ? kGold : kText);
         }
         Button(font, SkinProfileActionRect(0), "ACTIVATE");
-        Button(font, SkinProfileActionRect(1), "STORE COPY");
+        Button(font, SkinProfileActionRect(1), "STORE");
         Button(font, SkinProfileActionRect(2), "REFRESH");
+        Button(font, SkinProfileActionRect(3), "DELETE");
+        Button(font, SkinProfileActionRect(4), "UNDO");
         PreviewPath(font, skin);
     }
     Label(font, "SKIN NAME", 616, 111, 12, kMuted);
@@ -471,6 +475,15 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
         Button(font, SkinActionButton(i), actions[i]);
     Label(font, ui.notice.substr(0, 112), 53, 515, 13,
           ui.noticeError ? Color{245, 150, 150, 255} : kGold);
+    if (!ui.pendingDeleteProfile.empty()) {
+        DrawRectangle(0, 0, 960, 540, Color{12, 14, 22, 202});
+        Panel({171, 188, 618, 183});
+        Label(font, "MOVE THIS SKIN PROFILE TO TRASH?", 206, 214, 22, kGold);
+        Label(font, FitText(font, ui.pendingDeleteProfile.filename().u8string(),
+                             520, 16), 226, 259, 16, kText);
+        Button(font, SkinDeleteConfirmRect(), "DELETE / Y");
+        Button(font, SkinDeleteCancelRect(), "CANCEL / N");
+    }
 }
 
 SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
@@ -507,6 +520,20 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
         if (Hit(mouse, SkinProfileActionRect(1))) return SkinCommand::StoreProfile;
         if (Hit(mouse, SkinProfileActionRect(2)))
             return SkinCommand::RefreshProfiles;
+        if (Hit(mouse, SkinProfileActionRect(3))) {
+            if (ui.selectedProfile < 0 ||
+                ui.selectedProfile >= static_cast<int>(ui.profiles.size())) {
+                ui.notice = "SELECT A PERSONAL SKIN TO DELETE";
+                ui.noticeError = true;
+            } else {
+                ui.pendingDeleteProfile =
+                    ui.profiles[static_cast<std::size_t>(ui.selectedProfile)].path;
+                ui.noticeError = false;
+            }
+            return SkinCommand::None;
+        }
+        if (Hit(mouse, SkinProfileActionRect(4)))
+            return SkinCommand::RestoreProfile;
         return SkinCommand::None;
     }
     if (ui.page == 2) {

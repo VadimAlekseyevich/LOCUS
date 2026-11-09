@@ -424,6 +424,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_skin_profile_actions_tests
         tests/skin_profile_actions_tests.cpp
         src/app/skin_profile_actions.cpp
+        src/app/song_set_storage.cpp
         src/app/skin.cpp
     )
     target_compile_features(locus_skin_profile_actions_tests PRIVATE cxx_std_17)

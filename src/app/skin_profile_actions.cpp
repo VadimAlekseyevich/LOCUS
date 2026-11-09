@@ -1,4 +1,5 @@
 #include "app/skin_profile_actions.h"
+#include "app/song_set_storage.h"
 
 #include <algorithm>
 #include <chrono>
@@ -48,8 +49,8 @@ bool SkinProfileActions::RefreshProfiles() {
     std::vector<SkinProfileItem> entries;
     for (fs::directory_iterator it(root, ec), end;
          !ec && it != end; it.increment(ec)) {
-        if (!it->is_regular_file(ec) || ec || !ProfileExtension(it->path()))
-            continue;
+        if (it->is_symlink(ec) || ec || !it->is_regular_file(ec) ||
+            ec || !ProfileExtension(it->path())) continue;
         if (entries.size() >= 256) break;
         Skin candidate;
         std::string error;
@@ -205,6 +206,51 @@ void SkinProfileActions::Apply(SkinCommand command) {
             ui_.dirty = false;
             activeProfile_ = selectedFile;
             ui_.notice = "PERSONAL SKIN ACTIVATED";
+            ui_.noticeError = false;
+            break;
+        }
+        case SkinCommand::DeleteProfile: {
+            // Confirmed path is captured before any list reordering or rescan.
+            const fs::path target = ui_.pendingDeleteProfile;
+            ui_.pendingDeleteProfile.clear();
+            const fs::path root = activeFile_.parent_path() / L"Profiles";
+            const auto listed = std::find_if(ui_.profiles.begin(), ui_.profiles.end(),
+                [&](const SkinProfileItem& item) { return item.path == target; });
+            std::error_code ec;
+            if (listed == ui_.profiles.end() || target.parent_path() != root ||
+                fs::is_symlink(target, ec) || ec ||
+                !fs::is_regular_file(target, ec) || ec) {
+                ui_.notice = "PROFILE NO LONGER EXISTS; REFRESH PERSONAL SKINS";
+                ui_.noticeError = true;
+                break;
+            }
+            std::string error;
+            FolderWriteLock lock;
+            if (!lock.Acquire(root, error) || !TrashLibraryItem(root, target, error)) {
+                ui_.notice = "DELETE FAILED: " + error;
+                ui_.noticeError = true;
+                break;
+            }
+            // Current appearance survives, but Save must not recreate the
+            // just-deleted personal profile file.
+            if (activeProfile_ == target) activeProfile_.clear();
+            RefreshProfiles();
+            ui_.notice = "SKIN MOVED TO TRASH / UNDO TO RESTORE";
+            ui_.noticeError = false;
+            break;
+        }
+        case SkinCommand::RestoreProfile: {
+            const fs::path root = activeFile_.parent_path() / L"Profiles";
+            std::string error;
+            FolderWriteLock lock;
+            if (!lock.Acquire(root, error) ||
+                !RestoreLatestTrashItem(root, error)) {
+                ui_.notice = "RESTORE FAILED: " + error;
+                ui_.noticeError = true;
+                break;
+            }
+            RefreshProfiles();
+            ui_.notice = "LAST DELETED SKIN RESTORED";
             ui_.noticeError = false;
             break;
         }
