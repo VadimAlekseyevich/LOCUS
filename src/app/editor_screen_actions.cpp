@@ -14,7 +14,8 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     if (context_.ui.tab == EditorTab::Set) {
         context_.sets.HandleClick(input.editor.mouse,
                                   input.editor.mouseClick,
-                                  input.editor.mouseWheel);
+                                  input.editor.mouseWheel,
+                                  input.editor.shiftHeld);
         if (context_.clock) now = context_.clock();
     }
 

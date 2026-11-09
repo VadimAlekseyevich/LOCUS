@@ -221,7 +221,8 @@ int main(int argc, char** argv) {
         {library, editorFiles, editor, editorUi, editorChartPath,
          editorStatus, libraryUi, menuStatus},
         {locus::app::ChooseLibraryImportFile,
-         locus::app::ChooseSongSetExportFile}
+         locus::app::ChooseSongSetExportFile,
+         locus::app::ChooseSongBackgroundFile}
     };
     locus::app::EditorScreenActions editorActions{
         {editorSession, editorFiles, editorSet, editorUi,

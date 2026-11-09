@@ -4,10 +4,12 @@
 #include "app/editor_file_actions.h"
 #include "app/menu_ui.h"
 #include "app/song_library.h"
+#include "app/song_set_storage.h"
 #include "core/chart_editor.h"
 
 #include <algorithm>
 #include <filesystem>
+#include <iterator>
 #include <string>
 
 namespace locus::app {
@@ -48,6 +50,8 @@ EditorSetView EditorSetController::View() const {
     view.audioName = set->audioFile.filename().u8string();
     view.id = set->id;
     view.newDifficultyDraft = ctx_.chartPath.empty();
+    view.previewStartMs = set->previewStartMs;
+    view.hasBackground = !set->backgroundImage.empty();
     for (std::size_t i = 0; i < set->charts.size(); ++i) {
         view.difficulties.push_back(set->charts[i].data.title);
         if (!ctx_.chartPath.empty() &&
@@ -76,7 +80,8 @@ void EditorSetController::Notice(const std::string& message, bool failed) {
     ctx_.ui.feedbackError = failed;
 }
 
-void EditorSetController::HandleClick(Vector2 mouse, bool clicked, float wheel) {
+void EditorSetController::HandleClick(Vector2 mouse, bool clicked, float wheel,
+                                      bool shiftHeld) {
     if (ctx_.ui.tab != EditorTab::Set || pending_) return;
     EditorSetView view = View();
     const int count = static_cast<int>(view.difficulties.size());
@@ -107,16 +112,18 @@ void EditorSetController::HandleClick(Vector2 mouse, bool clicked, float wheel) 
         }
     }
     const EditorSetAction action = detail::ClickedSetAction(mouse);
-    if (action != EditorSetAction::None) Request(action);
+    if (action != EditorSetAction::None)
+        Request(action, shiftHeld ? 100 : 1000);
 }
 
-void EditorSetController::Request(EditorSetAction action) {
+void EditorSetController::Request(EditorSetAction action, int previewStepMs) {
     if (pending_ || action == EditorSetAction::None) return;
     const fs::path folder = ctx_.files.ActiveSetFolder();
     const LibrarySong* song = FindSet(ctx_.library, folder);
     EditorSetRequest request;
     request.action = action;
     request.folder = folder;
+    request.previewStepMs = previewStepMs == 100 ? 100 : 1000;
     if (action != EditorSetAction::Import &&
         action != EditorSetAction::Restore && !song) {
         Notice("SAVE YOUR SONG FIRST (CTRL+S) OR IMPORT A SONG SET", true);
@@ -168,6 +175,51 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
     const LibrarySong* song = FindSet(ctx_.library, folder);
     std::string error;
     switch (request.action) {
+        case EditorSetAction::PreviewEarlier:
+        case EditorSetAction::PreviewLater:
+        case EditorSetAction::AttachBackground:
+        case EditorSetAction::RemoveBackground: {
+            if (!song) { error = "Song Set no longer exists."; break; }
+            const auto& all = ctx_.library.Songs();
+            const auto it = std::find_if(all.begin(), all.end(),
+                [&](const LibrarySong& candidate) {
+                    return candidate.managed && candidate.folder == folder;
+                });
+            if (it == all.end()) {
+                error = "Song Set no longer exists.";
+                break;
+            }
+            const int index = static_cast<int>(std::distance(all.begin(), it));
+            if (request.action == EditorSetAction::PreviewEarlier ||
+                request.action == EditorSetAction::PreviewLater) {
+                const int step = request.action == EditorSetAction::PreviewEarlier
+                    ? -request.previewStepMs : request.previewStepMs;
+                const int next = std::clamp(song->previewStartMs + step,
+                                            0, kMaxSongPreviewStartMs);
+                if (!ctx_.library.SetPreviewStartMs(index, next, error)) break;
+                Notice("PREVIEW FROM " + std::to_string(next) + " MS");
+                return true;
+            }
+            if (request.action == EditorSetAction::RemoveBackground) {
+                if (!ctx_.library.SetBackgroundImage(index, {}, error)) break;
+                Notice("SONG BACKGROUND REMOVED");
+                return true;
+            }
+            if (!pickers_.chooseBackground) {
+                error = "Background file picker unavailable.";
+                break;
+            }
+            const auto picked = pickers_.chooseBackground();
+            if (picked.canceled) return true;
+            if (picked.path.empty()) {
+                error = picked.error.empty() ? "No image selected." : picked.error;
+                break;
+            }
+            if (!ctx_.library.SetBackgroundImage(index, fs::path(picked.path), error))
+                break;
+            Notice("SONG BACKGROUND SAVED (ALL DIFFICULTIES)");
+            return true;
+        }
         case EditorSetAction::Open: {
             if (!ctx_.files.OpenFromLibrary(request.chart.wstring(), error)) break;
             ctx_.ui.tab = EditorTab::Set;

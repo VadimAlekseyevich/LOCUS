@@ -399,6 +399,15 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             Label(font, "ATTACH AUDIO, THEN CTRL+S", 52, 242, 15, heading);
             Label(font, "TO CREATE A SONG SET", 52, 265, 15, heading);
         }
+        if (set.managed) {
+            Label(font, TextFormat("PREVIEW FROM %.1f S",
+                  set.previewStartMs / 1000.0), 52, 272, 15, ordinary);
+            Button(font, kSetPreviewEarlier, "- 1 S", Color{126, 219, 209, 255});
+            Button(font, kSetPreviewLater, "+ 1 S", Color{126, 219, 209, 255});
+            Button(font, kSetBackground, set.hasBackground ? "REPLACE BG" : "ADD BG",
+                   Color{126, 219, 209, 255});
+            Button(font, kSetRemoveBackground, "REMOVE BG", Color{227, 198, 137, 255});
+        }
         Button(font, kSetOpen, "OPEN", Color{126, 219, 209, 255});
         Button(font, kSetNew, "NEW", Color{239, 203, 129, 255});
         Button(font, kSetDuplicate, "COPY", Color{162, 178, 239, 255});

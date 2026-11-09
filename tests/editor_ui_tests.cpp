@@ -130,13 +130,22 @@ int main() {
     ApplyEditorControls(chart, ui, noModification);
     ok &= Check(chart.Data().title == titleBeforeSet && ui.tab == EditorTab::Set,
                 "SET tab does not mutate chart from editing shortcuts");
-    ok &= Check(detail::ClickedSetAction({240, 319}) ==
+    ok &= Check(detail::ClickedSetAction({240, 353}) ==
                     EditorSetAction::NewDifficulty &&
-                detail::ClickedSetAction({370, 361}) ==
+                detail::ClickedSetAction({370, 383}) ==
                     EditorSetAction::DeleteDifficulty &&
-                detail::ClickedSetAction({370, 408}) ==
+                detail::ClickedSetAction({370, 416}) ==
                     EditorSetAction::Restore,
                 "Song Set action buttons have distinct hitboxes");
+    ok &= Check(detail::ClickedSetAction({320, 280}) ==
+                    EditorSetAction::PreviewEarlier &&
+                detail::ClickedSetAction({400, 280}) ==
+                    EditorSetAction::PreviewLater &&
+                detail::ClickedSetAction({85, 317}) ==
+                    EditorSetAction::AttachBackground &&
+                detail::ClickedSetAction({285, 317}) ==
+                    EditorSetAction::RemoveBackground,
+                "preview and background actions belong to editor SET");
     // FIELD has one integer square size, no editable start coordinates.
     ApplyEditorControls(chart, ui, Click(783, 89));
     ok &= Check(ui.tab == EditorTab::Field, "Field tab opens");

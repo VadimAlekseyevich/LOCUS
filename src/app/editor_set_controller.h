@@ -20,6 +20,7 @@ struct EditorSetRequest {
     std::filesystem::path folder;
     std::filesystem::path chart;
     bool discardsDraft = false;
+    int previewStepMs = 1000;
 };
 bool EditorSetNeedsConfirmation(const EditorSetRequest& request) noexcept;
 
@@ -37,6 +38,7 @@ struct EditorSetContext {
 struct EditorSetPickers {
     MusicPickResult (*chooseImport)();
     MusicPickResult (*chooseExport)(const std::wstring&);
+    MusicPickResult (*chooseBackground)() = nullptr;
 };
 
 class EditorSetController {
@@ -45,8 +47,9 @@ public:
         : ctx_(context), pickers_(pickers) {}
 
     EditorSetView View() const;
-    void HandleClick(Vector2 mouse, bool clicked, float wheel);
-    void Request(EditorSetAction action);
+    void HandleClick(Vector2 mouse, bool clicked, float wheel,
+                     bool shiftHeld = false);
+    void Request(EditorSetAction action, int previewStepMs = 1000);
     bool HasPending() const noexcept { return pending_.has_value(); }
     const EditorSetRequest* Pending() const noexcept {
         return pending_ ? &*pending_ : nullptr;

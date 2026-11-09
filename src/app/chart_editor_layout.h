@@ -90,20 +90,28 @@ constexpr Rectangle kTitle{92, 205, 768, 43};
 constexpr Rectangle kBpm{92, 290, 350, 43};
 constexpr Rectangle kOffset{510, 290, 350, 43};
 // Song Set management occupies its own tab without moving the timeline.
-constexpr Rectangle kSetOpen{52, 304, 123, 33};
-constexpr Rectangle kSetNew{184, 304, 123, 33};
-constexpr Rectangle kSetDuplicate{316, 304, 132, 33};
-constexpr Rectangle kSetImport{52, 345, 123, 33};
-constexpr Rectangle kSetExport{184, 345, 123, 33};
-constexpr Rectangle kSetDeleteDifficulty{316, 345, 132, 33};
-constexpr Rectangle kSetDeleteSong{52, 386, 190, 33};
-constexpr Rectangle kSetRestore{251, 386, 197, 33};
+constexpr Rectangle kSetPreviewEarlier{299, 265, 63, 30};
+constexpr Rectangle kSetPreviewLater{371, 265, 63, 30};
+constexpr Rectangle kSetBackground{52, 301, 190, 31};
+constexpr Rectangle kSetRemoveBackground{251, 301, 197, 31};
+constexpr Rectangle kSetOpen{52, 340, 123, 27};
+constexpr Rectangle kSetNew{184, 340, 123, 27};
+constexpr Rectangle kSetDuplicate{316, 340, 132, 27};
+constexpr Rectangle kSetImport{52, 371, 123, 27};
+constexpr Rectangle kSetExport{184, 371, 123, 27};
+constexpr Rectangle kSetDeleteDifficulty{316, 371, 132, 27};
+constexpr Rectangle kSetDeleteSong{52, 402, 190, 27};
+constexpr Rectangle kSetRestore{251, 402, 197, 27};
 constexpr Rectangle kSetPrevious{507, 394, 118, 29};
 constexpr Rectangle kSetNext{785, 394, 118, 29};
 constexpr Rectangle SetDifficultyRow(int row) noexcept {
     return {503.0f, 202.0f + row * 36.0f, 400.0f, 32.0f};
 }
 inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
+    if (CheckCollisionPointRec(p, kSetPreviewEarlier)) return EditorSetAction::PreviewEarlier;
+    if (CheckCollisionPointRec(p, kSetPreviewLater)) return EditorSetAction::PreviewLater;
+    if (CheckCollisionPointRec(p, kSetBackground)) return EditorSetAction::AttachBackground;
+    if (CheckCollisionPointRec(p, kSetRemoveBackground)) return EditorSetAction::RemoveBackground;
     if (CheckCollisionPointRec(p, kSetOpen)) return EditorSetAction::Open;
     if (CheckCollisionPointRec(p, kSetNew)) return EditorSetAction::NewDifficulty;
     if (CheckCollisionPointRec(p, kSetDuplicate)) return EditorSetAction::Duplicate;

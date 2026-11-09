@@ -49,11 +49,14 @@ struct EditorControls {
 enum class EditorTab { Route, Audio, Field, Set };
 enum class EditorSetAction {
     None, Open, NewDifficulty, Duplicate, Import, Export,
-    DeleteDifficulty, DeleteSongSet, Restore
+    DeleteDifficulty, DeleteSongSet, Restore,
+    AttachBackground, RemoveBackground, PreviewEarlier, PreviewLater
 };
 struct EditorSetView {
     bool managed = false;
     bool newDifficultyDraft = false;
+    bool hasBackground = false;
+    int previewStartMs = 0;
     std::string title, artist, audioName, id;
     std::vector<std::string> difficulties;
     int current = -1, selected = -1, firstVisible = 0;
