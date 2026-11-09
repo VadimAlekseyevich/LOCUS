@@ -12,10 +12,7 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     // SET has independent hitboxes and imported native dialogs; route input
     // cannot place notes while this tab is active.
     if (context_.ui.tab == EditorTab::Set) {
-        context_.sets.HandleClick(input.editor.mouse,
-                                  input.editor.mouseClick,
-                                  input.editor.mouseWheel,
-                                  input.editor.shiftHeld);
+        context_.sets.HandleControls(input.editor);
         if (context_.clock) now = context_.clock();
     }
 

@@ -33,6 +33,18 @@ bool ReplacesDraft(EditorSetAction action) {
 
 } // namespace
 
+bool ParseSongPreviewMs(std::string_view input, int& value) noexcept {
+    if (input.empty() || input.size() > 7) return false;
+    int parsed = 0;
+    for (unsigned char ch : input) {
+        if (ch < '0' || ch > '9') return false;
+        parsed = parsed * 10 + (ch - '0');
+    }
+    if (parsed > kMaxSongPreviewStartMs) return false;
+    value = parsed;
+    return true;
+}
+
 bool EditorSetNeedsConfirmation(const EditorSetRequest& request) noexcept {
     return request.discardsDraft ||
            request.action == EditorSetAction::DeleteDifficulty ||
@@ -82,11 +94,63 @@ void EditorSetController::Notice(const std::string& message, bool failed) {
     ctx_.ui.feedbackError = failed;
 }
 
-void EditorSetController::HandleClick(Vector2 mouse, bool clicked, float wheel,
-                                      bool shiftHeld) {
+void EditorSetController::HandleControls(const EditorControls& input) {
     if (ctx_.ui.tab != EditorTab::Set || pending_) return;
+    auto& ui = ctx_.ui;
+    const Vector2 mouse = input.mouse;
+    const bool clicked = input.mouseClick;
+    if (ui.editingSetPreview) {
+        if (input.escape) {
+            ui.editingSetPreview = false;
+            ui.setPreviewBuffer.clear();
+            ui.feedback.clear();
+            return;
+        }
+        if (input.backspace) {
+            if (ui.setPreviewReplaceOnType) ui.setPreviewBuffer.clear();
+            else if (!ui.setPreviewBuffer.empty()) ui.setPreviewBuffer.pop_back();
+            ui.setPreviewReplaceOnType = false;
+        }
+        for (unsigned char ch : input.typedUtf8) {
+            if (ch < '0' || ch > '9') continue;
+            if (ui.setPreviewReplaceOnType) {
+                ui.setPreviewBuffer.clear();
+                ui.setPreviewReplaceOnType = false;
+            }
+            if (ui.setPreviewBuffer.size() < 7)
+                ui.setPreviewBuffer.push_back(static_cast<char>(ch));
+        }
+        if (input.enter ||
+            (clicked && !CheckCollisionPointRec(mouse, detail::kSetPreviewInput))) {
+            int parsed = 0;
+            if (!ParseSongPreviewMs(ui.setPreviewBuffer, parsed)) {
+                Notice("PREVIEW MUST BE WHOLE MS (0..3600000)", true);
+                return;
+            }
+            EditorSetRequest request;
+            request.action = EditorSetAction::SetPreviewExact;
+            request.folder = ctx_.files.ActiveSetFolder();
+            request.previewStepMs = parsed; // Exact value, not a step.
+            if (!Execute(request)) return; // Keep the text for correction.
+            ui.editingSetPreview = false;
+            ui.setPreviewBuffer.clear();
+            ui.setPreviewReplaceOnType = false;
+            if (clicked) ui.tab = detail::ClickedTab(mouse, ui.tab);
+        }
+        return;
+    }
     EditorSetView view = View();
     const int count = static_cast<int>(view.difficulties.size());
+    if (clicked && view.managed &&
+        CheckCollisionPointRec(mouse, detail::kSetPreviewInput)) {
+        ui.editingSetPreview = true;
+        ui.setPreviewReplaceOnType = true;
+        ui.setPreviewBuffer = std::to_string(view.previewStartMs);
+        ui.feedback = "TYPE PREVIEW IN MILLISECONDS / ENTER SAVE / ESC CANCEL";
+        ui.feedbackError = false;
+        return;
+    }
+    const float wheel = input.mouseWheel;
     if (wheel != 0.0f && count > 0) {
         ctx_.ui.setSelected = view.selected; // Browsing need not follow active.
         const int delta = wheel > 0.0f ? -1 : 1;
@@ -115,7 +179,7 @@ void EditorSetController::HandleClick(Vector2 mouse, bool clicked, float wheel,
     }
     const EditorSetAction action = detail::ClickedSetAction(mouse);
     if (action != EditorSetAction::None)
-        Request(action, shiftHeld ? 100 : 1000);
+        Request(action, input.shiftHeld ? 100 : 1000);
 }
 
 void EditorSetController::Request(EditorSetAction action, int previewStepMs) {
@@ -179,6 +243,7 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
     switch (request.action) {
         case EditorSetAction::PreviewEarlier:
         case EditorSetAction::PreviewLater:
+        case EditorSetAction::SetPreviewExact:
         case EditorSetAction::AttachBackground:
         case EditorSetAction::RemoveBackground: {
             if (!song) { error = "Song Set no longer exists."; break; }
@@ -193,11 +258,14 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
             }
             const int index = static_cast<int>(std::distance(all.begin(), it));
             if (request.action == EditorSetAction::PreviewEarlier ||
-                request.action == EditorSetAction::PreviewLater) {
+                request.action == EditorSetAction::PreviewLater ||
+                request.action == EditorSetAction::SetPreviewExact) {
                 const int step = request.action == EditorSetAction::PreviewEarlier
                     ? -request.previewStepMs : request.previewStepMs;
-                const int next = std::clamp(song->previewStartMs + step,
-                                            0, kMaxSongPreviewStartMs);
+                const int next = request.action == EditorSetAction::SetPreviewExact
+                    ? request.previewStepMs
+                    : std::clamp(song->previewStartMs + step,
+                                 0, kMaxSongPreviewStartMs);
                 if (!ctx_.library.SetPreviewStartMs(index, next, error)) break;
                 Notice("PREVIEW FROM " + std::to_string(next) + " MS");
                 return true;

@@ -90,8 +90,9 @@ constexpr Rectangle kTitle{92, 205, 768, 43};
 constexpr Rectangle kBpm{92, 290, 350, 43};
 constexpr Rectangle kOffset{510, 290, 350, 43};
 // Song Set management occupies its own tab without moving the timeline.
-constexpr Rectangle kSetPreviewEarlier{299, 265, 63, 30};
-constexpr Rectangle kSetPreviewLater{371, 265, 63, 30};
+constexpr Rectangle kSetPreviewInput{52, 271, 237, 27};
+constexpr Rectangle kSetPreviewEarlier{299, 271, 63, 27};
+constexpr Rectangle kSetPreviewLater{371, 271, 63, 27};
 constexpr Rectangle kSetBackground{52, 301, 190, 31};
 constexpr Rectangle kSetRemoveBackground{251, 301, 197, 31};
 constexpr Rectangle kSetOpen{52, 340, 123, 27};

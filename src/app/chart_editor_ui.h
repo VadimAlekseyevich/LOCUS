@@ -51,7 +51,8 @@ enum class EditorTab { Route, Audio, Field, Set };
 enum class EditorSetAction {
     None, Open, NewDifficulty, Duplicate, Import, Export,
     DeleteDifficulty, DeleteSongSet, Restore,
-    AttachBackground, RemoveBackground, PreviewEarlier, PreviewLater
+    AttachBackground, RemoveBackground, PreviewEarlier, PreviewLater,
+    SetPreviewExact
 };
 struct EditorSetView {
     bool managed = false;
@@ -88,8 +89,13 @@ struct EditorUiState {
     }
     int setSelected = -1; // -1 follows the currently open difficulty.
     int setFirstVisible = 0;
+    bool editingSetPreview = false;
+    bool setPreviewReplaceOnType = false;
+    std::string setPreviewBuffer;
     int timelineZoomIndex = 3; // Default 36 px/beat; zoom changes view only.
-    bool EditingText() const noexcept { return active != EditorField::None; }
+    bool EditingText() const noexcept {
+        return active != EditorField::None || editingSetPreview;
+    }
 };
 
 struct EditorUiAction {

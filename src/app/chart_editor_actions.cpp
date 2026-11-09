@@ -331,6 +331,10 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         ui.feedbackError = error;
     };
 
+    // Song Set preview time belongs to the Set controller, not the chart.
+    // Suppress route/transport shortcuts; the Set controller consumes text.
+    if (ui.editingSetPreview) return action;
+
     // Keep all editor shortcuts away from active text fields.
     if (ui.EditingText()) {
         ui.pendingDirection = 0;

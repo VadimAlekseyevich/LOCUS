@@ -398,10 +398,24 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             Label(font, "TO CREATE A SONG SET", 52, 265, 15, heading);
         }
         if (set.managed) {
-            Label(font, TextFormat("PREVIEW FROM %.1f S",
-                  set.previewStartMs / 1000.0), 52, 272, 15, ordinary);
-            Button(font, kSetPreviewEarlier, "- 1 S", Color{126, 219, 209, 255});
-            Button(font, kSetPreviewLater, "+ 1 S", Color{126, 219, 209, 255});
+            DrawRectangleRounded(kSetPreviewInput, 0.14f, 5,
+                                 ui.editingSetPreview ? Color{47, 68, 78, 255}
+                                                      : Color{35, 43, 56, 255});
+            DrawRectangleRoundedLinesEx(kSetPreviewInput, 0.14f, 5,
+                                        ui.editingSetPreview ? 2.0f : 1.0f,
+                                        ui.editingSetPreview ? Color{129, 235, 214, 255}
+                                                             : Color{91, 114, 139, 255});
+            Label(font, "PREVIEW MS", 61, 277, 13, heading);
+            const std::string value = ui.editingSetPreview
+                ? ui.setPreviewBuffer : std::to_string(set.previewStartMs);
+            Label(font, value.c_str(), 168, 275, 17, ordinary);
+            if (ui.editingSetPreview) {
+                const float caret = MeasureTextEx(font, value.c_str(), 17, 1).x;
+                const float x = std::min(281.0f, 170.0f + caret);
+                DrawLineEx({x, 277}, {x, 294}, 1.5f, heading);
+            }
+            Button(font, kSetPreviewEarlier, "-1 S", Color{126, 219, 209, 255});
+            Button(font, kSetPreviewLater, "+1 S", Color{126, 219, 209, 255});
             Button(font, kSetBackground, set.hasBackground ? "REPLACE BG" : "ADD BG",
                    Color{126, 219, 209, 255});
             Button(font, kSetRemoveBackground, "REMOVE BG", Color{227, 198, 137, 255});

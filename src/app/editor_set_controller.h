@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace locus::core { class ChartEditor; }
 namespace locus::app {
@@ -23,6 +24,8 @@ struct EditorSetRequest {
     int previewStepMs = 1000;
 };
 bool EditorSetNeedsConfirmation(const EditorSetRequest& request) noexcept;
+// Parse a whole-millisecond Song Set preview position without touching the chart.
+bool ParseSongPreviewMs(std::string_view input, int& value) noexcept;
 
 struct EditorSetContext {
     SongLibrary& library;
@@ -47,8 +50,7 @@ public:
         : ctx_(context), pickers_(pickers) {}
 
     EditorSetView View() const;
-    void HandleClick(Vector2 mouse, bool clicked, float wheel,
-                     bool shiftHeld = false);
+    void HandleControls(const EditorControls& input);
     void Request(EditorSetAction action, int previewStepMs = 1000);
     bool HasPending() const noexcept { return pending_.has_value(); }
     const EditorSetRequest* Pending() const noexcept {

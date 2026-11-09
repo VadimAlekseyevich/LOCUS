@@ -137,6 +137,11 @@ int main() {
                 detail::ClickedSetAction({370, 416}) ==
                     EditorSetAction::Restore,
                 "Song Set action buttons have distinct hitboxes");
+    ok &= Check(detail::kSetPreviewInput.x <= 168 &&
+                detail::kSetPreviewInput.y <= 283 &&
+                detail::kSetPreviewInput.x + detail::kSetPreviewInput.width > 168 &&
+                detail::kSetPreviewInput.y + detail::kSetPreviewInput.height > 283,
+                "Song Set preview field supports direct mouse text entry");
     ok &= Check(detail::ClickedSetAction({320, 280}) ==
                     EditorSetAction::PreviewEarlier &&
                 detail::ClickedSetAction({400, 280}) ==

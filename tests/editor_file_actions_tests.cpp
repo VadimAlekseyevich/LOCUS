@@ -94,6 +94,18 @@ int main() {
                 libraryUi.notice == "OLD LIBRARY NOTICE",
                 "missing audio rejects save before displaying native Save As");
 
+    int previewMs = -9;
+    ok &= Check(app::ParseSongPreviewMs("12567", previewMs) &&
+                previewMs == 12567 &&
+                app::ParseSongPreviewMs("3600000", previewMs) &&
+                previewMs == 3600000 &&
+                !app::ParseSongPreviewMs("-1", previewMs) &&
+                !app::ParseSongPreviewMs("12.5", previewMs) &&
+                !app::ParseSongPreviewMs("3600001", previewMs) &&
+                !app::ParseSongPreviewMs("", previewMs) &&
+                previewMs == 3600000,
+                "preview field accepts exact whole milliseconds and rejects invalid values");
+
     // The global dirty-document guard approves this action BEFORE calling
     // NewDraft(). The operation itself must fully detach the old song.
     failed.NewDraft();
