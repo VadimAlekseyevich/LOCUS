@@ -68,7 +68,7 @@ int main() {
     const Image generated = GenImageColor(8, 8, Color{40, 100, 220, 255});
     for (const char* extension : {".png", ".jpg"}) {
         int length = 0;
-        unsigned char* encoded = ExportImageToMemory(extension, generated, &length);
+        unsigned char* encoded = ExportImageToMemory(generated, extension, &length);
         const bool encodedOk = encoded && length > 24;
         check(encodedOk, "PNG and JPEG encoders must both be enabled");
         if (encodedOk) {
