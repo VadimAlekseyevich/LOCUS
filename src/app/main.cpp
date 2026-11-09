@@ -587,7 +587,6 @@ int main(int argc, char** argv) {
         if (!songBackground.Sync(artPath, imageError) && !imageError.empty()) {
             const std::string notice = "BACKGROUND FAILED: " + imageError;
             if (state.screen == Screen::Editor) {
-                editorStatus = notice;
                 editorUi.feedback = notice;
                 editorUi.feedbackError = true;
             } else {

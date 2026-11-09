@@ -1,5 +1,6 @@
 #include "app/image_cover_geometry.h"
 #include "app/image_asset_file.h"
+#include "app/image_asset_decode.h"
 
 #include <cmath>
 #include <filesystem>
@@ -62,6 +63,30 @@ int main() {
                                std::filesystem::copy_options::overwrite_existing, ec);
     check(!ValidateImageAssetFile(wrong, error),
           "extension spoofing is rejected before GPU decode");
+    // Exercise the actual raylib 6 decoder without a graphics context.
+    // Both codecs must be enabled in the linked library (JPEG is off by default).
+    const Image generated = GenImageColor(8, 8, Color{40, 100, 220, 255});
+    for (const char* extension : {".png", ".jpg"}) {
+        int length = 0;
+        unsigned char* encoded = ExportImageToMemory(extension, generated, &length);
+        const bool encodedOk = encoded && length > 24;
+        check(encodedOk, "PNG and JPEG encoders must both be enabled");
+        if (encodedOk) {
+            const auto file = directory / (std::string("generated") + extension);
+            { std::ofstream out(file, std::ios::binary);
+              out.write(reinterpret_cast<const char*>(encoded), length); }
+            Image decoded{};
+            check(DecodeImageAssetFile(file, decoded, error) &&
+                  IsImageValid(decoded) && decoded.width == 8 && decoded.height == 8,
+                  "both formats decode from real on-disk files without a GPU");
+            if (IsImageValid(decoded)) UnloadImage(decoded);
+        }
+        if (encoded) UnloadFileData(encoded);
+    }
+    UnloadImage(generated);
+    Image invalid{};
+    check(!DecodeImageAssetFile(png, invalid, error),
+          "signature-only fixture does not count as a decodable background");
     std::filesystem::remove_all(directory, ec);
     if (ok) std::cout << "IMAGE_ASSET_PASS crop=1 paths=1 signatures=1\n";
     return ok ? 0 : 1;

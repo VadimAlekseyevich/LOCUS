@@ -2,6 +2,7 @@
 
 #include "app/chart_editor_layout.h"
 #include "app/editor_file_actions.h"
+#include "app/image_asset_decode.h"
 #include "app/menu_ui.h"
 #include "app/song_library.h"
 #include "app/song_set_storage.h"
@@ -216,6 +217,12 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
                 error = picked.error.empty() ? "No image selected." : picked.error;
                 break;
             }
+            // Validate real decoded pixels BEFORE copying and publishing
+            // the Song Set manifest. A valid header alone is not sufficient.
+            Image candidate{};
+            if (!DecodeImageAssetFile(fs::path(picked.path), candidate, error))
+                break;
+            UnloadImage(candidate);
             if (!ctx_.library.SetBackgroundImage(index, fs::path(picked.path), error))
                 break;
             Notice("SONG BACKGROUND SAVED (ALL DIFFICULTIES)");

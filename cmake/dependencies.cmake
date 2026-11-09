@@ -29,4 +29,7 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(raylib nlohmann_json)
+# raylib 6 disables JPEG by default, while LOCUS allows JPEG song artwork.
+# Set this on the decoder's actual library target, not just our game executable.
+target_compile_definitions(raylib PRIVATE SUPPORT_FILEFORMAT_JPG=1)
 

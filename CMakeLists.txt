@@ -288,6 +288,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_image_asset_tests tests/image_asset_tests.cpp)
     target_compile_features(locus_image_asset_tests PRIVATE cxx_std_17)
     target_include_directories(locus_image_asset_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(locus_image_asset_tests PRIVATE raylib)
     add_test(NAME locus_image_asset_geometry_and_validation COMMAND locus_image_asset_tests)
 
     add_executable(locus_editor_entry_tests tests/editor_entry_policy_tests.cpp)

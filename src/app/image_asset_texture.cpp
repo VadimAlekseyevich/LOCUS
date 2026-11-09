@@ -1,10 +1,5 @@
 #include "app/image_asset_texture.h"
-#include "app/image_asset_file.h"
-
-#include <algorithm>
-#include <cctype>
-#include <fstream>
-#include <vector>
+#include "app/image_asset_decode.h"
 
 namespace locus::app {
 bool ImageAssetTexture::Sync(const std::filesystem::path& imagePath,
@@ -19,41 +14,9 @@ bool ImageAssetTexture::Sync(const std::filesystem::path& imagePath,
         error.clear();
         return true;
     }
-    if (!ValidateImageAssetFile(imagePath, error)) {
+    Image image{};
+    if (!DecodeImageAssetFile(imagePath, image, error)) {
         loadError_ = error;
-        return false;
-    }
-    // Open using std::filesystem's native path (UTF-16 on Windows), then
-    // decode from memory. This also supports Cyrillic/Unicode asset paths
-    // regardless of raylib's narrow-filename implementation.
-    std::ifstream stream(imagePath, std::ios::binary | std::ios::ate);
-    if (!stream) {
-        error = loadError_ = "Cannot open image data.";
-        return false;
-    }
-    const auto count = stream.tellg();
-    if (count <= 0 || count > static_cast<std::streamoff>(kMaxImageAssetBytes)) {
-        error = loadError_ = "Image data exceeds supported size.";
-        return false;
-    }
-    std::vector<unsigned char> bytes(static_cast<std::size_t>(count));
-    stream.seekg(0, std::ios::beg);
-    if (!stream.read(reinterpret_cast<char*>(bytes.data()), count)) {
-        error = loadError_ = "Cannot read image data.";
-        return false;
-    }
-    std::string extension = imagePath.extension().u8string();
-    std::transform(extension.begin(), extension.end(), extension.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    Image image = LoadImageFromMemory(extension.c_str(), bytes.data(),
-                                      static_cast<int>(bytes.size()));
-    if (!IsImageValid(image)) {
-        error = loadError_ = "Cannot decode the background PNG/JPEG image.";
-        return false;
-    }
-    if (image.width > 8192 || image.height > 8192) {
-        UnloadImage(image);
-        error = loadError_ = "Background image exceeds 8192 pixels per dimension.";
         return false;
     }
     texture_ = LoadTextureFromImage(image);
