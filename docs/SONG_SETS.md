@@ -31,7 +31,7 @@ their values from the first stable chart filename without rewriting its file.
 
 Each Song Set also stores **previewStartMs** (default 0), independent of
 BPM/offset. In **EDIT → AUDIO**, enter an exact whole-millisecond position
-(0..3,600,000), or Ctrl+V to paste a copied timeline time label. Enter saves,
+(0..3,600,000), or Ctrl+V to paste a value copied by clicking the TIME display on ROUTE. Enter saves,
 Esc cancels, and no increment/decrement buttons are used. PLAY only reads it.
 A separate menu audio decoder fades the old song out before the newly
 selected song fades in. Legacy entries preview from zero.

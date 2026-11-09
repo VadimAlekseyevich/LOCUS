@@ -91,12 +91,12 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 
 - Local WAV/MP3 playback is supported, without any account or remote chart service. Installed songs/difficulties live under `%LOCALAPPDATA%\LOCUS\Songs`.
 - Chart editor tabs: **SET** (song/difficulty management and artwork), **ROUTE** (grid-free moving preview, nine-direction pad, note and group actions), **AUDIO** (difficulty title, shared song BPM/offset and precise manually entered preview milliseconds), **FIELD** (square visibility size and initial heading).
-- The scrolling timeline is visible on all editor tabs. Clicking a displayed time number copies its exact audio milliseconds, ready for Ctrl+V into the Song Preview field. Left/Right arrows navigate ticks; Up/Down change snap subdivision; PageUp/PageDown and the mouse wheel offer navigation. Modifier shortcuts support bar jumps, moving notes and groups.
+- The scrolling timeline is visible on all editor tabs. Clicking the single TIME readout below the ROUTE preview copies its current song position in whole milliseconds, ready for Ctrl+V into the Song Preview field. The ruler itself stays uncluttered. Left/Right arrows navigate ticks; Up/Down change snap subdivision; PageUp/PageDown and the mouse wheel offer navigation. Modifier shortcuts support bar jumps, moving notes and groups.
 - Snap subdivision choices: **1, 2, 3, 4, 6, 8, 12, 16, 24** per musical beat. Snap, zoom and BPM are **different controls**.
 - Chart **v2** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
 - The writer stores one of seven **relative turns**, including a 180° reversal, and the initial heading; gameplay input still uses absolute directions.
 - Editor can add/edit/cut/copy/paste/invert/shift/undo turns, open JSON and TEST from the selected audio position. Ctrl+S saves directly into the installed Song Set; Ctrl+Shift+S creates a separate difficulty. Backwards compatibility before the first release is not guaranteed.
-- Editor preview and scored custom-song play can use **100%, 75%, 50%, 25%, 10%** audio speeds. The present slowdown changes pitch; it is **not** pitch-preserving time stretch. In scored practice, screen-space movement speed remains fixed even as playback slows.
+- Editor preview and scored custom-song play can use **100%, 75%, 50%, 25%, 10%** audio speeds. The present slowdown changes pitch; it is **not** pitch-preserving time stretch. Below 100% the preview timeline follows consumed audio-stream frames rather than extrapolating a separate wall-clock position, preventing accumulating visual/audio drift when buffering fluctuates. In scored practice, screen-space movement speed remains fixed even as playback slows.
 
 ## 6. Skins and accessibility
 
