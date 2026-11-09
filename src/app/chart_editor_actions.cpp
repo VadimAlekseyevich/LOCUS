@@ -487,6 +487,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     bool paste = input.pasteRange && ui.tab == EditorTab::Route;
     bool mirrorH = input.mirrorHorizontal && ui.tab == EditorTab::Route;
     bool mirrorV = input.mirrorVertical && ui.tab == EditorTab::Route;
+    bool rotateCW = input.rotateClockwise && ui.tab == EditorTab::Route;
+    bool rotateCCW = input.rotateCounterclockwise && ui.tab == EditorTab::Route;
     bool deleteTurns = input.removeTurn && ui.tab == EditorTab::Route;
 
     if (input.mouseClick) {
@@ -519,6 +521,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         else if (ui.tab == EditorTab::Route && Hit(kPasteTurns, mouse)) paste = true;
         else if (ui.tab == EditorTab::Route && Hit(kMirrorHorizontal, mouse)) mirrorH = true;
         else if (ui.tab == EditorTab::Route && Hit(kMirrorVertical, mouse)) mirrorV = true;
+        else if (ui.tab == EditorTab::Route && Hit(kRotateCounterclockwise, mouse)) rotateCCW = true;
+        else if (ui.tab == EditorTab::Route && Hit(kRotateClockwise, mouse)) rotateCW = true;
         else if (ui.tab == EditorTab::Route && Hit(kCutTurns, mouse)) cut = true;
         else if (ui.tab == EditorTab::Route && Hit(kUndoEdit, mouse)) {
             action.changedChart = draft.Undo();
@@ -726,6 +730,14 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             notice(ok ? (mirrorH ? "HORIZONTAL MIRROR APPLIED"
                                    : "VERTICAL MIRROR APPLIED")
                       : "NO DIRECTIONS CHANGED", !ok);
+        }
+        if (rotateCW || rotateCCW) {
+            const bool ok = valid &&
+                draft.RotateTurns(first, last, rotateCW ? 1 : -1);
+            action.changedChart |= ok;
+            notice(ok ? (rotateCW ? "PATTERN ROTATED 90 CLOCKWISE"
+                                   : "PATTERN ROTATED 90 COUNTERCLOCKWISE")
+                      : "NO TURNS TO ROTATE", !ok);
         }
         if (deleteTurns) {
             const bool ok = valid && draft.DeleteTurns(first, last);

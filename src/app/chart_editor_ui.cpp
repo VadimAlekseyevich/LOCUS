@@ -347,6 +347,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Button(font, kPasteTurns, "PASTE CTRL+V", Color{127, 224, 199, 255});
         Button(font, kMirrorHorizontal, "FLIP H", Color{190, 168, 229, 255});
         Button(font, kMirrorVertical, "FLIP V", Color{190, 168, 229, 255});
+        Button(font, kRotateCounterclockwise, "ROT -90", Color{140, 196, 237, 255});
+        Button(font, kRotateClockwise, "ROT +90", Color{140, 196, 237, 255});
         Button(font, kCutTurns, "CUT CTRL+X", Color{216, 166, 155, 255});
         Button(font, kUndoEdit, "UNDO", Color{169, 188, 217, 255});
         Button(font, kRedoEdit, "REDO", Color{169, 188, 217, 255});

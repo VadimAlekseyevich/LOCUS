@@ -354,6 +354,37 @@ int main() {
                 mirrors.Data().route.turns[0].direction == Heading::DownLeft,
                 "each reflection can be undone and redone");
 
+    // Rotating a selected pattern changes *only* outgoing absolute headings.
+    // Outside notes and source timestamps cannot move.
+    ChartEditor rotation;
+    rotation.SelectBeat(2);
+    rotation.PutTurn(Heading::Up);
+    rotation.SelectBeat(4);
+    rotation.PutTurn(Heading::UpRight);
+    rotation.SelectBeat(6);
+    rotation.PutTurn(Heading::Left);
+    const auto before = rotation.Data().route.turns;
+    ok &= Check(rotation.RotateTurns(2, 4, 1) &&
+                rotation.Data().route.turns[0].direction == Heading::Right &&
+                rotation.Data().route.turns[1].direction == Heading::DownRight &&
+                rotation.Data().route.turns[2].direction == Heading::Left &&
+                rotation.Data().route.turns[0].beat == before[0].beat &&
+                rotation.Data().route.turns[1].timeMs == before[1].timeMs,
+                "clockwise 90-degree turn rotates only the selected headings");
+    ok &= Check(rotation.Undo() &&
+                rotation.Data().route.turns[0].direction == Heading::Up &&
+                rotation.Data().route.turns[1].direction == Heading::UpRight &&
+                rotation.Redo() &&
+                rotation.Data().route.turns[1].direction == Heading::DownRight,
+                "90-degree pattern rotation is one Undo/Redo transaction");
+    ok &= Check(rotation.RotateTurns(2, 4, -1) &&
+                rotation.Data().route.turns[0].direction == Heading::Up &&
+                rotation.Data().route.turns[1].direction == Heading::UpRight &&
+                !rotation.RotateTurns(2, 4, 4) &&
+                !rotation.RotateTurns(3, 3, 1) &&
+                rotation.Data().route.turns[2].direction == Heading::Left,
+                "counterclockwise rotation reverses clockwise; empty/no-op rejected");
+
     // A 250 BPM chart can gain triplets AFTER authoring without moving
     // existing notes in song time or modifying the musical BPM.
     ChartEditor subdivisions;

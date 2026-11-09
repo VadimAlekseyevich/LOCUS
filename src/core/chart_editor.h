@@ -65,6 +65,9 @@ public:
     bool ShiftTurns(int firstBeat, int lastBeat, int deltaBeats);
     bool MirrorTurnsHorizontal(int firstBeat, int lastBeat);
     bool MirrorTurnsVertical(int firstBeat, int lastBeat);
+    // Rotate absolute headings by 90-degree steps around the selected time
+    // range. Authored timestamps, tick positions and note order stay intact.
+    bool RotateTurns(int firstBeat, int lastBeat, int quarterTurns);
     bool DeleteTurns(int firstBeat, int lastBeat);
     bool Undo();
     bool Redo();

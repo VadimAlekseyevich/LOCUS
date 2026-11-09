@@ -99,7 +99,9 @@ constexpr Rectangle kCopyTurns{52, 213, 173, 31};
 constexpr Rectangle kPasteTurns{52, 248, 173, 31};
 constexpr Rectangle kMirrorHorizontal{52, 283, 83, 31};
 constexpr Rectangle kMirrorVertical{142, 283, 83, 31};
-constexpr Rectangle kCutTurns{52, 318, 173, 31};
+constexpr Rectangle kRotateCounterclockwise{52, 318, 83, 31};
+constexpr Rectangle kRotateClockwise{142, 318, 83, 31};
+constexpr Rectangle kCutTurns{52, 389, 173, 31};
 constexpr Rectangle kUndoEdit{52, 354, 83, 31};
 constexpr Rectangle kRedoEdit{142, 354, 83, 31};
 

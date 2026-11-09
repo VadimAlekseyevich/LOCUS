@@ -38,6 +38,7 @@ struct EditorControls {
     bool snapMore = false, snapLess = false; // Placement grid, NOT BPM or zoom.
     bool copyRange = false, cutRange = false, pasteRange = false;
     bool mirrorHorizontal = false, mirrorVertical = false;
+    bool rotateClockwise = false, rotateCounterclockwise = false;
     bool undo = false, redo = false;
     bool shiftRangePrevious = false, shiftRangeNext = false;
 

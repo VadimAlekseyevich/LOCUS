@@ -574,6 +574,24 @@ bool ChartEditor::MirrorTurnsVertical(int firstBeat, int lastBeat) {
     return true;
 }
 
+bool ChartEditor::RotateTurns(int firstBeat, int lastBeat, int quarterTurns) {
+    const int steps = (quarterTurns % 4 + 4) % 4;
+    if (firstBeat < chart_.route.firstBeat || lastBeat < firstBeat ||
+        lastBeat >= chart_.route.lengthBeats || steps == 0) return false;
+    auto& turns = chart_.route.turns;
+    const auto first = std::lower_bound(turns.begin(), turns.end(), firstBeat,
+        [](const TurnEvent& event, int beat) { return event.beat < beat; });
+    const auto last = std::upper_bound(first, turns.end(), lastBeat,
+        [](int beat, const TurnEvent& event) { return beat < event.beat; });
+    if (first == last) return false;
+
+    SaveUndo();
+    for (auto it = first; it != last; ++it)
+        it->direction = locus::core::RotateHeading(it->direction, steps * 2);
+    MarkDirty();
+    return true;
+}
+
 bool ChartEditor::DeleteTurns(int firstBeat, int lastBeat) {
     if (firstBeat < chart_.route.firstBeat || lastBeat < firstBeat ||
         lastBeat >= chart_.route.lengthBeats) return false;

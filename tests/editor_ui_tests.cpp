@@ -370,6 +370,17 @@ int main() {
     ApplyEditorControls(chart, ui, redo);
     ok &= Check(chart.Data().route.turns[2].direction == Heading::Right,
                 "Ctrl+Y redoes mirrored group");
+    // Rotation buttons share the selected interval with FLIP H / FLIP V.
+    const auto rotateRight = ApplyEditorControls(chart, ui, Click(181, 332));
+    ok &= Check(rotateRight.changedChart && ui.HasRange() &&
+                chart.Data().route.turns[2].direction == Heading::Down &&
+                chart.Data().route.turns[3].direction == Heading::Up,
+                "ROT +90 button rotates the selected pattern without shifting beats");
+    const auto rotateLeft = ApplyEditorControls(chart, ui, Click(92, 332));
+    ok &= Check(rotateLeft.changedChart &&
+                chart.Data().route.turns[2].direction == Heading::Right &&
+                chart.Data().route.turns[3].direction == Heading::Left,
+                "ROT -90 button reverses rotation on the same selection");
     EditorControls shift;
     shift.shiftRangePrevious = true;
     const auto shifted = ApplyEditorControls(chart, ui, shift);
