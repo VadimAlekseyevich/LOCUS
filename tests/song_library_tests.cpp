@@ -196,6 +196,7 @@ int main() {
                 Read(duplicate).find("Easy Copy") != std::string::npos,
                 "duplicate difficulty uses shared audio and a separate JSON");
 
+    const auto beforeArtworkBytes = Read(easyInstalled);
     // Image assets are independent of chart JSONs, shared by all difficulties,
     // and never permitted to overwrite their source audio.
     const fs::path sourceCover = source / "cover.png";
@@ -215,7 +216,7 @@ int main() {
                 LoadSongSetManifest(easyInstalled.parent_path() /
                                     "set.locus.json", metadata, error) &&
                 !metadata.backgroundFile.empty() &&
-                Read(easyInstalled) == originalChartBytes,
+                Read(easyInstalled) == beforeArtworkBytes,
                 "background image installs without touching chart timing");
     SongLibrary artReloaded(root);
     ok &= Check(artReloaded.Refresh(note) &&
