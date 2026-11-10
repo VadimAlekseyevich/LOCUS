@@ -44,6 +44,7 @@ add_executable(locus
     src/app/main.cpp
     src/app/app_runtime_policy.cpp
     src/app/play_screen_actions.cpp
+    src/app/play_presentation.cpp
     src/app/app_smoke_checks.cpp
     src/app/app_frame_renderer.cpp
     src/app/image_asset_texture.cpp

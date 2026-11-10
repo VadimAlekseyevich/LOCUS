@@ -10,8 +10,8 @@
 namespace locus::app {
 
 // Presentation-only post-judgement phase. The audio clock is NOT stopped;
-// only note input stops. The camera freezes at the last judged beat (also
-// preserving its adaptive look-ahead), while the avatar exits the square.
+// only note input stops. The camera freezes at the last judged beat,
+// preserving its velocity-derived trailing offset while the avatar exits.
 struct PlayOutroFrame {
     bool active = false;
     core::GridPoint frozenCamera{};

@@ -10,8 +10,7 @@
 #include "app/app_runtime_policy.h"
 #include "app/play_screen_actions.h"
 #include "app/play_adjustments.h"
-#include "app/play_outro_transition.h"
-#include "app/adaptive_camera.h"
+#include "app/play_presentation.h"
 #include "app/screen_fade_transition.h"
 #include "app/app_smoke_checks.h"
 #include "app/app_frame_renderer.h"
@@ -166,8 +165,6 @@ int main(int argc, char** argv) {
     }
     draftSkin = activeSkin;
     skinUi.saved = activeSkin;
-    double adjustmentNoticeUntil = -1.0;
-    std::string adjustmentNotice;
     locus::app::SongLibrary library(userData / L"Songs");
     std::string menuStatus;
     bool hotkeySkinSavePending = false;
@@ -243,13 +240,10 @@ int main(int argc, char** argv) {
         library, libraryUi, editorFiles, transitions, loadedAudioPath,
         state, musicError
     };
-    locus::app::PlayOutroTransition playOutro;
-    locus::app::AdaptiveCameraFollower cameraFollower;
-    double cameraLastBeat = 0.0;
-    bool cameraWasPlaying = false;
+    locus::app::PlayPresentation presentation;
     locus::app::PlayScreenActions playActions{
         {state, gameSession, judge, transport, chartPlayback,
-         customChart, sessionCompleted, activeChart, playOutro}
+         customChart, sessionCompleted, activeChart, presentation.Outro()}
     };
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
@@ -410,11 +404,11 @@ int main(int argc, char** argv) {
         if (!wasQuitConfirmation && state.quitConfirmation) {
             if (state.screen == Screen::SongSelect) menuMusic.Pause(now);
             if (state.screen == Screen::Play || state.screen == Screen::Results)
-                playOutro.Pause(now);
+                presentation.Pause(now);
         } else if (wasQuitConfirmation && !state.quitConfirmation) {
             if (state.screen == Screen::SongSelect) menuMusic.Resume(now);
             if (state.screen == Screen::Play || state.screen == Screen::Results)
-                playOutro.Resume(now);
+                presentation.Resume(now);
         }
         bool loadedNewSong = false;
         // Home uses E to enter Editor and E also rotates its heading.
@@ -460,7 +454,7 @@ int main(int argc, char** argv) {
             if (state.screen == Screen::Play && previousScreen != Screen::Results)
                 playCameFromEditor = previousScreen == Screen::Editor;
             if (state.screen == Screen::Play) {
-                playOutro.Reset();
+                presentation.EnterPlay();
                 drainingGameplayAudio = false;
                 // The outgoing menu song fades first; the new gameplay
                 // stream starts silent and eases up just afterwards.
@@ -526,12 +520,12 @@ int main(int argc, char** argv) {
                 activeSkin.lookaheadMs = nextPreview;
                 draftSkin = activeSkin;
                 skinUi.saved = activeSkin;
-                adjustmentNotice = previewChanged
-                    ? "PREVIEW " + std::to_string(
-                          static_cast<int>(nextPreview)) + " MS"
-                    : "SPEED " + std::to_string(
-                          static_cast<int>(nextSpeed)) + " PX/S";
-                adjustmentNoticeUntil = now + 1.5;
+                presentation.ShowAdjustment(
+                    previewChanged
+                        ? "PREVIEW " + std::to_string(
+                              static_cast<int>(nextPreview)) + " MS"
+                        : "SPEED " + std::to_string(
+                              static_cast<int>(nextSpeed)) + " PX/S", now);
                 // Repeat reaches 25 adjustments/s: persist only after idle.
                 hotkeySkinSavePending = true;
                 hotkeySkinSaveAfter = now + 0.25;
@@ -583,43 +577,13 @@ int main(int argc, char** argv) {
         if (!state.quitConfirmation)
             visibleState.screen = fadeFrame.visibleScreen;
         const auto transportView = playActions.Transport(renderNow);
-        const auto outroFrame = playOutro.Frame(renderNow);
-        const double visualBeat = outroFrame.active
-            ? outroFrame.frozenBeat : transportView.beat;
-        // Feed the follower ONLY the live player's current world position.
-        // A song restart or navigation opens a fresh camera, while pause and
-        // outro preserve the last offset. Rendering remains read-only.
-        locus::core::GridPoint cameraAnchor{};
-        const bool showGameplay = state.screen == Screen::Play;
-        if (showGameplay) {
-            if (!cameraWasPlaying ||
-                visualBeat < cameraLastBeat - 0.01)
-                cameraFollower.Reset();
-            cameraWasPlaying = true;
-            cameraLastBeat = visualBeat;
-            const float step = locus::app::StepForFixedSpeed(
-                activeSkin.baseSpeedPxPerSecond, activeChart.bpm,
-                activeChart.ticksPerBeat, transportView.practiceSpeed);
-            const locus::core::GridPoint playerPosition =
-                locus::core::RoutePositionAt(activeChart, visualBeat);
-            cameraAnchor = cameraFollower.Follow(
-                playerPosition, step, renderNow,
-                transportView.paused || outroFrame.active ||
-                state.quitConfirmation, activeSkin.cameraLagMs);
-        } else {
-            cameraFollower.Reset();
-            cameraWasPlaying = false;
-        }
-        const GameplayView gameplay{activeChart, judge, gameSession.Flash(),
-                                    chartTitle, transportView.songSeconds,
-                                    transportView.beat, transportView.paused,
-                                    sessionCompleted, customChart,
-                                    transportView.practiceSpeed,
-                                    transportView.status,
-                                    settings.hitFlash, settings, activeSkin,
-                                    adjustmentNoticeUntil,
-                                    adjustmentNotice.c_str(),
-                                    outroFrame, showGameplay, cameraAnchor};
+        const GameplayView gameplay = presentation.Prepare(
+            {activeChart, judge, gameSession.Flash(), chartTitle,
+             transportView.songSeconds, transportView.beat,
+             transportView.paused, sessionCompleted, customChart,
+             transportView.practiceSpeed, transportView.status,
+             settings.hitFlash, settings, activeSkin},
+            state.screen == Screen::Play, state.quitConfirmation, renderNow);
         const auto editorSetView = visibleState.screen == Screen::Editor
             ? editorSet.View() : locus::app::EditorSetView{};
         // Artwork lives at Song Set scope, independent of difficulty/BPM.

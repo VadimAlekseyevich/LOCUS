@@ -17,8 +17,8 @@ void DrawTextLabel(Font font, const char* message, Vector2 position,
 
 void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     // Both route and marker use the SAME camera transform. The follower
-    // only uses the player's current position and is updated in main, not
-    // during rendering. Freeze the anchor during the final-note outro.
+    // only uses the player's current position and is updated by
+    // PlayPresentation, not during rendering. Freeze during the outro.
     const double displayBeat = gameplay.outro.active
         ? gameplay.outro.frozenBeat : gameplay.beat;
     GameplayCamera camera(gameplay.chart, displayBeat, gameplay.skin,
