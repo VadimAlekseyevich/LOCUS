@@ -605,7 +605,7 @@ int main(int argc, char** argv) {
             cameraAnchor = cameraFollower.Follow(
                 playerPosition, step, renderNow,
                 transportView.paused || outroFrame.active ||
-                state.quitConfirmation);
+                state.quitConfirmation, activeSkin.cameraLagMs);
         } else {
             cameraFollower.Reset();
             cameraWasPlaying = false;

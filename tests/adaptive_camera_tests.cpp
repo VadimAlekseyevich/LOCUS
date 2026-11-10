@@ -42,6 +42,26 @@ int main() {
     using namespace locus;
     bool ok = true;
 
+    // The saved skin parameter changes the follow time; zero switches back
+    // to the exact centered camera (and clears accumulated lag).
+    app::AdaptiveCameraFollower adjustable;
+    adjustable.Follow({0.0, 0.0}, 3.0f, 0.0, false, 350.0);
+    const auto stronger = adjustable.Follow(
+        {50.0, 0.0}, 3.0f, 1.0, false, 350.0);
+    app::AdaptiveCameraFollower shorter;
+    shorter.Follow({0.0, 0.0}, 3.0f, 0.0, false, 80.0);
+    const auto weaker = shorter.Follow(
+        {50.0, 0.0}, 3.0f, 1.0, false, 80.0);
+    ok &= Check(OffsetX({50.0, 0.0}, stronger, 3.0f) >
+                OffsetX({50.0, 0.0}, weaker, 3.0f),
+                "skin lag setting directly changes camera response");
+    const auto disabled = adjustable.Follow(
+        {60.0, 0.0}, 3.0f, 1.1, false, 0.0);
+    const auto reenabled = adjustable.Follow(
+        {70.0, 0.0}, 3.0f, 1.2, false, 180.0);
+    ok &= Check(Near(disabled.x, 60.0) && Near(disabled.y, 0.0) &&
+                Near(reenabled.x, 70.0),
+                "zero lag restores fixed center and reenabling starts clean");
     const auto slow = Drive(100.0f, 3.0f, 60);
     const auto fast = Drive(200.0f, 3.0f, 60);
     ok &= Check(OffsetX(slow.player, slow.camera, 3.0f) > 0.0 &&

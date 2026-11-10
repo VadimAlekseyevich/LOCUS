@@ -2,19 +2,21 @@
   "version": 2,
   "name": "Default",
   "path": {
-    "lookaheadBeats": 4,
+    "lookaheadMs": 800,
     "width": 6,
     "outlineScale": 1.8,
     "fadePower": 1,
     "opacity": 1,
     "junctionRadius": 9.5,
-    "junctionGlow": true
+    "junctionGlow": true,
+    "reverseCapScale": 3.2
   },
   "player": {
     "radius": 12.5,
     "glow": true,
     "hitFlashScale": 1,
-    "speedPxPerSecond": 135
+    "speedPxPerSecond": 135,
+    "cameraLagMs": 180
   },
   "hud": {
     "visible": true

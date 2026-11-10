@@ -30,6 +30,7 @@ bool GetSkinNumberRange(int page, int row, SkinNumberRange& range) noexcept {
             case 0: range = {6.0, 22.0, 1.0, 80.0}; return true;
             case 1: range = {60.0, 320.0, kMinBaseSpeed, kMaxBaseSpeed}; return true;
             case 3: range = {0.5, 2.0, 0.1, 8.0}; return true;
+            case 5: range = {0.0, 500.0, 0.0, 1500.0}; return true;
             default: return false;
         }
     }
@@ -58,6 +59,7 @@ double GetSkinNumber(const Skin& skin, int page, int row,
             case 0: return skin.playerRadius;
             case 1: return skin.baseSpeedPxPerSecond;
             case 3: return skin.hitFlashScale;
+            case 5: return skin.cameraLagMs;
         }
     } else if (page == 2 && selectedColor >= 0 &&
                selectedColor < kSkinColorCount) {
@@ -106,7 +108,7 @@ bool SetSkinNumber(Skin& skin, int page, int row, int selectedColor,
         // duration is integral milliseconds; the other numeric properties
         // support hundredths. Quantize before converting to float to prevent
         // values such as "1.8200001" after dragging a slider.
-        value = page == 0 && row == 0
+        value = (page == 0 && row == 0) || (page == 1 && row == 5)
             ? std::round(value)
             : std::round(value * 100.0) / 100.0;
         const float number = static_cast<float>(value);
@@ -126,6 +128,7 @@ bool SetSkinNumber(Skin& skin, int page, int row, int selectedColor,
                 case 0: skin.playerRadius = number; break;
                 case 1: skin.baseSpeedPxPerSecond = number; break;
                 case 3: skin.hitFlashScale = number; break;
+                case 5: skin.cameraLagMs = number; break;
                 default: return false;
             }
         } else return false;

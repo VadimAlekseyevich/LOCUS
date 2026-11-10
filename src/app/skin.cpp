@@ -95,6 +95,7 @@ bool Skin::Valid(std::string& error) const {
         {reverseCapScale, 0.0f, 12.0f, "Reverse cap size"},
         {playerRadius, 1.0f, 80.0f, "Player radius"},
         {baseSpeedPxPerSecond, kMinBaseSpeed, kMaxBaseSpeed, "Base movement speed"},
+        {cameraLagMs, 0.0f, 1500.0f, "Camera lag (ms)"},
         {hitFlashScale, 0.1f, 8.0f, "Hit flash scale"}
     };
     for (const auto& field : fields) {
@@ -127,6 +128,7 @@ std::string SerializeSkin(const Skin& skin) {
         {"player", {
             {"radius", skin.playerRadius},
             {"speedPxPerSecond", skin.baseSpeedPxPerSecond},
+            {"cameraLagMs", skin.cameraLagMs},
             {"glow", skin.playerGlow},
             {"hitFlashScale", skin.hitFlashScale}
         }},
@@ -189,6 +191,9 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         } else {
             parsed.baseSpeedPxPerSecond = player.at("speedPxPerSecond").get<float>();
         }
+        // Existing saved skins preserve the original follower setting.
+        if (player.contains("cameraLagMs"))
+            parsed.cameraLagMs = player.at("cameraLagMs").get<float>();
         parsed.playerGlow = player.at("glow").get<bool>();
         parsed.hitFlashScale = player.at("hitFlashScale").get<float>();
         parsed.showHud = object.at("hud").at("visible").get<bool>();

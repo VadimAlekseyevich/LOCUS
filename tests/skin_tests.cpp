@@ -20,6 +20,7 @@ int main() {
     original.name = "Blue practice";
     original.lookaheadMs = 1150.0f;
     original.baseSpeedPxPerSecond = 185.0f;
+    original.cameraLagMs = 320.0f;
     original.trajectory = Color{12, 99, 180, 222};
     original.fieldBorder = Color{39, 207, 255, 196};
     original.junctionGlow = false;
@@ -32,6 +33,7 @@ int main() {
     check(restored.name == original.name &&
           restored.lookaheadMs == 1150.0f &&
           restored.baseSpeedPxPerSecond == 185.0f &&
+          restored.cameraLagMs == 320.0f &&
           restored.trajectory.b == 180 &&
           restored.trajectory.a == 222 &&
           restored.fieldBorder.r == 39 &&
@@ -64,6 +66,19 @@ int main() {
           olderProfile.reverseCapScale == kDefaultReverseCapScale &&
           kDefaultReverseCapScale == 3.2f,
           "preexisting skin JSON adopts the doubled default cap size");
+    auto withoutCamera = nlohmann::json::parse(json);
+    withoutCamera["player"].erase("cameraLagMs");
+    Skin previousSkin;
+    check(ParseSkin(withoutCamera.dump(), previousSkin, error) &&
+          previousSkin.cameraLagMs == 180.0f,
+          "existing profiles inherit original camera lag");
+    auto invalidCamera = nlohmann::json::parse(json);
+    invalidCamera["player"]["cameraLagMs"] = -2.0;
+    Skin unchangedCamera;
+    unchangedCamera.name = "Before";
+    check(!ParseSkin(invalidCamera.dump(), unchangedCamera, error) &&
+          unchangedCamera.name == "Before",
+          "invalid camera lag cannot corrupt existing skin");
     auto newFile = nlohmann::json::parse(json);
     check(newFile["path"].contains("lookaheadMs") &&
           !newFile["path"].contains("lookaheadBeats") &&
@@ -135,6 +150,10 @@ int main() {
     check(GetSkinNumberRange(1, 1, limits) &&
           limits.sliderMax == 320.0 && limits.inputMax == 2000.0,
           "fixed speed has extended typed limit");
+    check(GetSkinNumberRange(1, 5, limits) &&
+          limits.sliderMin == 0.0 && limits.sliderMax == 500.0 &&
+          limits.inputMin == 0.0 && limits.inputMax == 1500.0,
+          "camera lag has a zero-off slider and extended typed limit");
     Skin edited;
     double parsed = 0.0;
     check(ParseSkinNumber("24,75", parsed) && parsed == 24.75,
@@ -148,6 +167,16 @@ int main() {
     check(SetSkinNumber(edited, 1, 1, 1, 235.25, false, error) &&
           std::abs(edited.baseSpeedPxPerSecond - 235.25f) < 0.001f,
           "typed speed is stored in skin");
+    check(SetSkinNumber(edited, 1, 5, 1, 0.0, false, error) &&
+          edited.cameraLagMs == 0.0f &&
+          SetSkinNumber(edited, 1, 5, 1, 750.3, false, error) &&
+          edited.cameraLagMs == 750.0f &&
+          !SetSkinNumber(edited, 1, 5, 1, 1501.0, false, error) &&
+          edited.cameraLagMs == 750.0f,
+          "camera lag accepts zero-off and validates typed milliseconds");
+    check(SetSkinNumber(edited, 1, 5, 1, 1000.0, true, error) &&
+          edited.cameraLagMs == 500.0f,
+          "camera lag slider clamps to its editing range");
     check(SetSkinNumber(edited, 1, 1, 1, 2000.0, false, error) &&
           edited.baseSpeedPxPerSecond == 2000.0f &&
           !SetSkinNumber(edited, 1, 1, 1, 2001.0, false, error) &&
@@ -156,8 +185,9 @@ int main() {
     const std::string fastestJson = SerializeSkin(edited);
     Skin fastestLoaded;
     check(ParseSkin(fastestJson, fastestLoaded, error) &&
-          fastestLoaded.baseSpeedPxPerSecond == 2000.0f,
-          "maximum speed persists in skin JSON");
+          fastestLoaded.baseSpeedPxPerSecond == 2000.0f &&
+          fastestLoaded.cameraLagMs == 500.0f,
+          "maximum speed and camera lag persist in skin JSON");
     check(AdjustBaseSpeed(135.0f, 1) == 145.0f &&
           AdjustBaseSpeed(135.0f, -1) == 125.0f &&
           AdjustBaseSpeed(kMaxBaseSpeed, 1) == kMaxBaseSpeed,

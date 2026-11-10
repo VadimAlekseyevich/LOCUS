@@ -60,12 +60,12 @@ const char* RowName(int page, int row) {
     };
     static constexpr const char* player[] = {
         "PLAYER SIZE", "SPEED (PX/S)", "PLAYER GLOW",
-        "HIT FLASH SIZE", "SHOW HUD"
+        "HIT FLASH SIZE", "SHOW HUD", "CAMERA LAG (MS)"
     };
     return page == 0 ? path[row] : player[row];
 }
 
-int RowCount(int page) { return page == 0 ? 8 : 5; }
+int RowCount(int page) { return page == 0 ? 8 : 6; }
 
 bool ToggleValue(const Skin& skin, int page, int row) {
     return page == 0 ? skin.junctionGlow
@@ -164,9 +164,14 @@ void PreviewPath(Font font, const Skin& skin) {
         frame.width / kVirtualHeight;
     const float horizon = static_cast<float>(
         ScoredPreviewTicks(skin.lookaheadMs, 120.0, 1));
+    // Steady rightward travel: the avatar appears ahead of the
+    // camera center by the same speed-dependent lag as in PLAY.
+    const float lagPx = std::min(
+        72.0f, skin.baseSpeedPxPerSecond * skin.cameraLagMs / 1000.0f) *
+        frame.width / kVirtualHeight;
     const auto point = [&](float beats) {
         const float progress = beats / horizon;
-        return Vector2{687.0f + beats * pixelsPerBeat,
+        return Vector2{687.0f + lagPx + beats * pixelsPerBeat,
                        335.0f - 46.0f * std::sin(progress * 5.2f)};
     };
     for (int i = 95; i >= 0; --i) {

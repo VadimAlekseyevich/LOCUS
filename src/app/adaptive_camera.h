@@ -29,8 +29,10 @@ public:
     }
 
     core::GridPoint Follow(core::GridPoint player, float pixelsPerUnit,
-                           double now, bool frozen = false) noexcept {
+                           double now, bool frozen = false,
+                           double cameraLagMs = 180.0) noexcept {
         if (!kExperimentalAdaptiveCamera ||
+            !std::isfinite(cameraLagMs) || cameraLagMs <= 0.0 ||
             !std::isfinite(player.x) || !std::isfinite(player.y) ||
             !std::isfinite(pixelsPerUnit) || pixelsPerUnit <= 0.0f ||
             !std::isfinite(now)) {
@@ -54,9 +56,10 @@ public:
 
         const double dt = now - lastTime_;
         if (dt > 0.0) {
-            const double decay = std::exp(-dt / kAdaptiveCameraCatchupSeconds);
-            const double velocityResponse = kAdaptiveCameraCatchupSeconds *
-                (-std::expm1(-dt / kAdaptiveCameraCatchupSeconds)) / dt;
+            const double catchupSeconds = cameraLagMs / 1000.0;
+            const double decay = std::exp(-dt / catchupSeconds);
+            const double velocityResponse = catchupSeconds *
+                (-std::expm1(-dt / catchupSeconds)) / dt;
             const double dx = (player.x - lastPlayer_.x) * pixelsPerUnit;
             const double dy = (player.y - lastPlayer_.y) * pixelsPerUnit;
             lagX_ = lagX_ * decay + dx * velocityResponse;

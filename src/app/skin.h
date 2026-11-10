@@ -27,6 +27,7 @@ struct Skin {
 
     float playerRadius = 12.5f;
     float baseSpeedPxPerSecond = kDefaultBaseSpeed; // all headings
+    float cameraLagMs = 180.0f; // zero disables the camera follower
     bool playerGlow = true;
     float hitFlashScale = 1.0f;
     bool showHud = true;
