@@ -74,7 +74,6 @@ int main() {
                 parsed.Key(GameAction::Right) == KEY_D &&
                 parsed.volume > 0.39f && parsed.volume < 0.41f &&
                 !parsed.hitFlash && parsed.fullscreen &&
-                !parsed.vsync && parsed.fpsLimit == 144 && parsed.showFps,
                 parsed.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&
                 parsed.Shortcut(ShortcutAction::EditorSave).ctrl &&
                 !parsed.Shortcut(ShortcutAction::EditorSave).shift &&

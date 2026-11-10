@@ -84,24 +84,38 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         }
     }
     if (state.screen == Screen::Settings && settingsUi.capturing >= 0) {
-        // Esc cancels rebind, not the settings screen or application. Using
-        // GetKeyPressed preserves arbitrary keys (WASD, arrows, numpad...)
-        // rather than only character input from GetCharPressed().
+        // Exclusive capture: neither the newly pressed key nor its modifier
+        // combination may activate another menu or navigation command.
         input.backPressed = false;
         input.homePressed = false;
         input.requestedScreen.reset();
         input.fullscreenPressed = false;
-        if (IsKeyPressed(KEY_ESCAPE)) {
+        const int index = settingsUi.capturing;
+        const bool escBindable = index == static_cast<int>(GameAction::Pause) ||
+            index == kGameActionCount + static_cast<int>(ShortcutAction::Back);
+        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) ||
+            (!escBindable && IsKeyPressed(KEY_ESCAPE))) {
             settingsUi.capturing = -1;
             settingsUi.notice = "KEY BINDING CANCELED";
             settingsUi.noticeError = false;
         } else {
             const int key = GetKeyPressed();
             if (key != KEY_NULL) {
+                const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) ||
+                                  IsKeyDown(KEY_RIGHT_CONTROL);
+                const bool shift = IsKeyDown(KEY_LEFT_SHIFT) ||
+                                   IsKeyDown(KEY_RIGHT_SHIFT);
+                // Ignore modifier key-down until the real key is captured.
+                if (key == KEY_LEFT_CONTROL || key == KEY_RIGHT_CONTROL ||
+                    key == KEY_LEFT_SHIFT || key == KEY_RIGHT_SHIFT ||
+                    key == KEY_LEFT_ALT || key == KEY_RIGHT_ALT) return events;
                 std::string error;
-                if (settings.Rebind(
-                        static_cast<locus::app::GameAction>(settingsUi.capturing),
-                        key, error)) {
+                const bool saved = index < kGameActionCount
+                    ? settings.Rebind(static_cast<GameAction>(index), key, error)
+                    : settings.RebindShortcut(
+                        static_cast<ShortcutAction>(index - kGameActionCount),
+                        {key, ctrl, shift}, error);
+                if (saved) {
                     settingsUi.notice = "KEY BINDING SAVED";
                     settingsUi.noticeError = false;
                     events.saveSettings = true;
@@ -113,6 +127,16 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             }
         }
         return events;
+    }
+
+    if (state.screen == Screen::Settings) {
+        const float wheel = GetMouseWheelMove();
+        if (wheel != 0.0f) {
+            settingsUi.firstBinding = std::clamp(
+                settingsUi.firstBinding + (wheel > 0.0f ? -1 : 1),
+                0, std::max(0, SettingsBindingCount(settingsUi.bindingGroup) -
+                              kVisibleSettingBindings));
+        }
     }
 
     if (state.screen == Screen::SongSelect) {
@@ -177,10 +201,29 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             input.backPressed = true;
             return events;
         }
-        for (int i = 0; i < locus::app::kGameActionCount; ++i) {
-            if (!hit(locus::app::SettingsBindingButton(i))) continue;
-            settingsUi.capturing = i;
-            settingsUi.notice = "PRESS A NEW KEY  /  ESC CANCELS";
+        for (int group = 0; group < 3; ++group) {
+            if (!hit(SettingsBindingGroupButton(group))) continue;
+            settingsUi.bindingGroup = group;
+            settingsUi.firstBinding = 0;
+            return events;
+        }
+        const int limit = std::max(0, SettingsBindingCount(settingsUi.bindingGroup) -
+                                      kVisibleSettingBindings);
+        if (hit(SettingsBindingsPreviousButton())) {
+            settingsUi.firstBinding = std::max(
+                0, settingsUi.firstBinding - kVisibleSettingBindings);
+            return events;
+        }
+        if (hit(SettingsBindingsNextButton())) {
+            settingsUi.firstBinding = std::min(
+                limit, settingsUi.firstBinding + kVisibleSettingBindings);
+            return events;
+        }
+        for (int row = 0; row < kVisibleSettingBindings; ++row) {
+            const int index = SettingsBindingIndex(settingsUi, row);
+            if (index < 0 || !hit(SettingsBindingButton(row))) continue;
+            settingsUi.capturing = index;
+            settingsUi.notice = "PRESS KEY (+CTRL/SHIFT) / RIGHT-CLICK CANCEL";
             settingsUi.noticeError = false;
             return events;
         }

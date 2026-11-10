@@ -39,10 +39,15 @@ enum class SettingsPage { Game, Display };
 
 struct SettingsUi {
     SettingsPage page = SettingsPage::Game;
-    int capturing = -1; // GameAction to remap; -1 = normal menu.
+    int bindingGroup = 0; // 0=PLAY, 1=MENUS/LISTEN, 2=EDITOR.
+    int firstBinding = 0; // Scroll within the selected group.
+    int capturing = -1; // Global index: 0..gameplay + shortcut actions.
     std::string notice;
     bool noticeError = false;
 };
+constexpr int kVisibleSettingBindings = 6;
+int SettingsBindingCount(int group) noexcept;
+int SettingsBindingIndex(const SettingsUi& ui, int visibleRow) noexcept;
 
 // These layout helpers are shared by drawing and hit-testing. Coordinates
 // are in the same virtual 960x540 space as the existing editor.
@@ -57,7 +62,10 @@ std::vector<LibraryTreeEntry> LibraryTreeRows(const SongLibrary& songs,
 Rectangle LibraryRefreshButton();
 Rectangle LibraryPlayButton();
 Rectangle LibraryEditButton();
-Rectangle SettingsBindingButton(int action);
+Rectangle SettingsBindingButton(int visibleRow);
+Rectangle SettingsBindingGroupButton(int group);
+Rectangle SettingsBindingsPreviousButton();
+Rectangle SettingsBindingsNextButton();
 Rectangle SettingsGameTab();
 Rectangle SettingsDisplayTab();
 Rectangle SettingsVsyncButton();
@@ -67,8 +75,6 @@ Rectangle SettingsShowFpsButton();
 Rectangle SettingsVolumeMinus();
 Rectangle SettingsVolumePlus();
 Rectangle SettingsFlashButton();
-Rectangle SettingsChordMinus();
-Rectangle SettingsChordPlus();
 Rectangle SettingsFullscreenButton();
 Rectangle MenuBackButton();
 

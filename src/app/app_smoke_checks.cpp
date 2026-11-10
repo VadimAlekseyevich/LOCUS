@@ -83,7 +83,6 @@ bool CheckPresentationLayout() {
         locus::app::SettingsGameTab(), locus::app::SettingsDisplayTab(),
         locus::app::SettingsVolumeMinus(), locus::app::SettingsVolumePlus(),
         locus::app::SettingsFlashButton(),
-        locus::app::SettingsChordMinus(), locus::app::SettingsChordPlus(),
         locus::app::SettingsVsyncButton(),
         locus::app::SettingsFpsMinus(), locus::app::SettingsFpsPlus(),
         locus::app::SettingsShowFpsButton(),
@@ -91,7 +90,7 @@ bool CheckPresentationLayout() {
     };
     for (const auto control : leftControls)
         if (!inside(left, control)) return false;
-    for (int i = 0; i < locus::app::kGameActionCount; ++i) {
+    for (int i = 0; i < locus::app::kVisibleSettingBindings; ++i) {
         const auto button = locus::app::SettingsBindingButton(i);
         if (!inside(right, button)) return false;
         if (button.y + button.height >= 474.0f) return false;
@@ -100,6 +99,12 @@ bool CheckPresentationLayout() {
             if (button.y < previous.y + previous.height) return false;
         }
     }
+    for (int group = 0; group < 3; ++group)
+        if (!inside(right, locus::app::SettingsBindingGroupButton(group)))
+            return false;
+    if (!inside(right, locus::app::SettingsBindingsPreviousButton()) ||
+        !inside(right, locus::app::SettingsBindingsNextButton()))
+        return false;
     // Player remains centered and speed must not depend on chart grid size.
     for (int dimensions : {2, 4, 8, 16}) {
         auto chart = locus::core::MakeDemoChart();

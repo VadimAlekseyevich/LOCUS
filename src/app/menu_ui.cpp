@@ -49,16 +49,34 @@ Rectangle LibraryChartRow(int row) {
 Rectangle LibraryRefreshButton() { return {618, 82, 147, 34}; }
 Rectangle LibraryPlayButton() { return {501, 458, 125, 43}; }
 Rectangle LibraryEditButton() { return {637, 458, 122, 43}; }
-Rectangle SettingsBindingButton(int index) {
-    return {736.0f, 192.0f + 39.0f * index, 167.0f, 33.0f};
+Rectangle SettingsBindingButton(int row) {
+    return {737.0f, 217.0f + 37.0f * row, 165.0f, 31.0f};
+}
+Rectangle SettingsBindingGroupButton(int group) {
+    return {504.0f + group * 132.0f, 180.0f, 124.0f, 29.0f};
+}
+Rectangle SettingsBindingsPreviousButton() { return {642, 445, 100, 28}; }
+Rectangle SettingsBindingsNextButton() { return {800, 445, 100, 28}; }
+
+int SettingsBindingCount(int group) noexcept {
+    return group == 0 ? kGameActionCount
+         : group == 1 ? kNavigationShortcutCount
+         : group == 2 ? kShortcutActionCount - kNavigationShortcutCount : 0;
+}
+int SettingsBindingIndex(const SettingsUi& ui, int visibleRow) noexcept {
+    if (visibleRow < 0 || visibleRow >= kVisibleSettingBindings ||
+        ui.firstBinding + visibleRow >= SettingsBindingCount(ui.bindingGroup))
+        return -1;
+    const int index = ui.firstBinding + visibleRow;
+    return ui.bindingGroup == 0 ? index
+         : ui.bindingGroup == 1 ? kGameActionCount + index
+         : kGameActionCount + kNavigationShortcutCount + index;
 }
 Rectangle SettingsGameTab() { return {71, 158, 170, 31}; }
 Rectangle SettingsDisplayTab() { return {251, 158, 190, 31}; }
 Rectangle SettingsVolumeMinus() { return {300, 230, 43, 35}; }
 Rectangle SettingsVolumePlus() { return {354, 230, 43, 35}; }
 Rectangle SettingsFlashButton() { return {297, 303, 100, 35}; }
-Rectangle SettingsChordMinus() { return {300, 386, 43, 35}; }
-Rectangle SettingsChordPlus() { return {354, 386, 43, 35}; }
 Rectangle SettingsVsyncButton() { return {297, 211, 100, 36}; }
 Rectangle SettingsFpsMinus() { return {301, 286, 43, 35}; }
 Rectangle SettingsFpsPlus() { return {354, 286, 43, 35}; }
@@ -336,12 +354,10 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
                kGold, settings.hitFlash);
         DrawLine(72, 347, 441, 347, edge);
 
-        Label(font, "EDITOR DIAGONAL CHORD WINDOW", 73, 367, 16, kMuted);
-        Label(font, TextFormat("%d MS", settings.chordWindowMs),
-              84, 393, 21, kText);
-        Button(font, SettingsChordMinus(), "-", kViolet);
-        Button(font, SettingsChordPlus(), "+", kViolet);
-        Label(font, "ONLY FOR PLACING DIAGONALS IN EDIT", 73, 451, 12, kMuted);
+        Label(font, "CONTROLS / REMAPPABLE SHORTCUTS", 73, 367, 16, kMuted);
+        Label(font, "PLAY: ESC PAUSES / RESUMES", 73, 397, 16, kText);
+        Label(font, "LEAVING PLAY REQUIRES CONFIRMATION", 73, 431, 13, kMuted);
+        Label(font, "EDITOR NOTES: CLICK THE COMPASS", 73, 451, 12, kMuted);
     } else {
         Label(font, "VERTICAL SYNC", 73, 214, 16, kMuted);
         Button(font, SettingsVsyncButton(), settings.vsync ? "ON" : "OFF",
@@ -364,21 +380,39 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
                settings.fullscreen ? "ON" : "OFF", kMuted, settings.fullscreen);
     }
 
-    Label(font, "GAME + EDITOR KEY BINDINGS", 508, 161, 18, kMint);
-    Label(font, "DIRECTIONS ALSO PLACE NOTES IN ROUTE", 508, 181, 12, kMuted);
-    for (int i = 0; i < kGameActionCount; ++i) {
-        const auto action = static_cast<GameAction>(i);
-        Label(font, ActionName(action), 506, 200.0f + i * 39.0f, 17, kText);
-        Button(font, SettingsBindingButton(i),
-               ui.capturing == i ? "PRESS KEY..." :
-               KeyboardKeyName(settings.Key(action)), kViolet,
-               ui.capturing == i);
+    Label(font, "KEY BINDINGS", 508, 156, 17, kMint);
+    const char* groups[] = {"PLAY", "MENUS", "EDITOR"};
+    for (int i = 0; i < 3; ++i)
+        Button(font, SettingsBindingGroupButton(i), groups[i], kViolet,
+               ui.bindingGroup == i);
+    for (int row = 0; row < kVisibleSettingBindings; ++row) {
+        const int index = SettingsBindingIndex(ui, row);
+        if (index < 0) continue;
+        const bool game = index < kGameActionCount;
+        const std::string actionName = game
+            ? ActionName(static_cast<GameAction>(index))
+            : ShortcutName(static_cast<ShortcutAction>(
+                index - kGameActionCount));
+        const std::string key = ui.capturing == index ? "PRESS KEY..." :
+            game ? KeyboardKeyName(settings.Key(static_cast<GameAction>(index)))
+                 : KeyboardChordName(settings.Shortcut(
+                       static_cast<ShortcutAction>(index - kGameActionCount)));
+        Label(font, Clip(actionName, 22), 505, 224.0f + row * 37.0f, 15, kText);
+        Button(font, SettingsBindingButton(row), key, kViolet,
+               ui.capturing == index);
     }
+    const int total = SettingsBindingCount(ui.bindingGroup);
+    Button(font, SettingsBindingsPreviousButton(), "PREV", kMuted);
+    Button(font, SettingsBindingsNextButton(), "NEXT", kMuted);
+    Label(font, TextFormat("%d-%d / %d",
+          ui.firstBinding + 1,
+          std::min(total, ui.firstBinding + kVisibleSettingBindings), total),
+          515, 452, 13, kMuted);
 
     // Footer notices are outside the two settings panels, not over controls.
     Label(font, Clip(ui.notice, 49), 64, 495, 13,
           ui.noticeError ? Color{243, 142, 145, 255} : kGold);
-    Label(font, "DISPLAY CHANGES APPLY IMMEDIATELY  /  ESC BACK",
+    Label(font, "ESC CANCEL / RIGHT-CLICK CANCELS BIND",
           492, 495, 12, kMuted);
 }
 
