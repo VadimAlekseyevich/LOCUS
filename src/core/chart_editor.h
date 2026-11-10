@@ -77,15 +77,40 @@ public:
     bool Redo();
     bool CanUndo() const noexcept { return !undo_.empty(); }
     bool CanRedo() const noexcept { return !redo_.empty(); }
+    // Diagnostic: how many note records the 64-step history actually owns.
+    // A single-note edit stores at most its old/new note, not every note.
+    std::size_t HistoryStoredTurns() const noexcept;
 
 private:
-    struct Snapshot {
-        LoadedChart chart;
+    // Immutable chart metadata is cheap to snapshot; the potentially
+    // enormous turns vector is deliberately excluded from this structure.
+    struct HistoryMetadata {
+        std::string title, audioPath;
+        double offsetSeconds = 0.0, previewLeadBeats = 4.0;
+        double bpm = 120.0;
+        int ticksPerBeat = 1, snapDivision = 1;
+        int gridWidth = 8, gridHeight = 8;
+        Cell start{};
+        Heading initialHeading = Heading::Right;
+        int firstBeat = 0, lengthBeats = 32;
         int selectedBeat = 0;
         std::uint64_t revision = 0;
     };
-    void SaveUndo();
-    void MarkDirty() noexcept;
+    struct HistoryEdit {
+        HistoryMetadata before, after;
+        // Reversible splice at this vector index. Only events within the
+        // touched beat range are owned; neighboring turns remain untouched.
+        std::size_t turnIndex = 0;
+        int firstTouchedBeat = 1, lastTouchedBeat = 0; // empty range
+        std::vector<TurnEvent> beforeTurns, afterTurns;
+    };
+    HistoryMetadata CaptureMetadata() const;
+    void RestoreMetadata(const HistoryMetadata& metadata);
+    void SaveUndo(); // metadata-only
+    void SaveUndo(int firstTouchedBeat, int lastTouchedBeat);
+    void SaveUndoAllTurns();
+    void ApplyHistory(const HistoryEdit& edit, bool undo);
+    void MarkDirty();
     void ResetHistory() noexcept;
     bool ReflowSongRange() noexcept;
     bool TurnRangeFits(int firstBeat, int endBeat) const noexcept;
@@ -98,8 +123,8 @@ private:
     std::uint64_t revision_ = 0;
     std::uint64_t savedRevision_ = 0;
     std::uint64_t nextRevision_ = 0;
-    std::deque<Snapshot> undo_;
-    std::deque<Snapshot> redo_;
+    std::deque<HistoryEdit> undo_;
+    std::deque<HistoryEdit> redo_;
     mutable std::uint64_t difficultyRevision_ =
         std::numeric_limits<std::uint64_t>::max();
     mutable ChartDifficulty difficulty_;

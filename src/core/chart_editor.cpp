@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iterator>
+#include <limits>
 #include <numeric>
 #include <utility>
 
@@ -108,41 +109,134 @@ void ChartEditor::ApplySavedChart(LoadedChart saved) {
     MarkSaved();
 }
 
-void ChartEditor::MarkDirty() noexcept {
-    revision_ = ++nextRevision_;
+ChartEditor::HistoryMetadata ChartEditor::CaptureMetadata() const {
+    const auto& route = chart_.route;
+    HistoryMetadata state;
+    state.title = chart_.title;
+    state.audioPath = chart_.audioPath;
+    state.offsetSeconds = chart_.offsetSeconds;
+    state.previewLeadBeats = chart_.previewLeadBeats;
+    state.bpm = route.bpm;
+    state.ticksPerBeat = route.ticksPerBeat;
+    state.snapDivision = route.snapDivision;
+    state.gridWidth = route.gridWidth;
+    state.gridHeight = route.gridHeight;
+    state.start = route.start;
+    state.initialHeading = route.initialHeading;
+    state.firstBeat = route.firstBeat;
+    state.lengthBeats = route.lengthBeats;
+    state.selectedBeat = selectedBeat_;
+    state.revision = revision_;
+    return state;
+}
+
+void ChartEditor::RestoreMetadata(const HistoryMetadata& state) {
+    auto& route = chart_.route;
+    chart_.title = state.title;
+    chart_.audioPath = state.audioPath;
+    chart_.offsetSeconds = state.offsetSeconds;
+    chart_.previewLeadBeats = state.previewLeadBeats;
+    route.bpm = state.bpm;
+    route.ticksPerBeat = state.ticksPerBeat;
+    route.snapDivision = state.snapDivision;
+    route.gridWidth = state.gridWidth;
+    route.gridHeight = state.gridHeight;
+    route.start = state.start;
+    route.initialHeading = state.initialHeading;
+    route.firstBeat = state.firstBeat;
+    route.lengthBeats = state.lengthBeats;
+    selectedBeat_ = state.selectedBeat;
+    revision_ = state.revision;
     dirty_ = revision_ != savedRevision_;
+    difficultyRevision_ = std::numeric_limits<std::uint64_t>::max();
 }
 
 void ChartEditor::SaveUndo() {
+    SaveUndo(1, 0); // no turns changed
+}
+
+void ChartEditor::SaveUndoAllTurns() {
+    SaveUndo(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+}
+
+void ChartEditor::SaveUndo(int firstTouchedBeat, int lastTouchedBeat) {
+    HistoryEdit edit;
+    edit.before = CaptureMetadata();
+    edit.firstTouchedBeat = firstTouchedBeat;
+    edit.lastTouchedBeat = lastTouchedBeat;
+    const auto& turns = chart_.route.turns;
+    if (firstTouchedBeat <= lastTouchedBeat) {
+        const auto begin = std::lower_bound(turns.begin(), turns.end(),
+            firstTouchedBeat,
+            [](const TurnEvent& event, int beat) { return event.beat < beat; });
+        const auto end = std::upper_bound(begin, turns.end(), lastTouchedBeat,
+            [](int beat, const TurnEvent& event) { return beat < event.beat; });
+        edit.turnIndex = static_cast<std::size_t>(begin - turns.begin());
+        edit.beforeTurns.assign(begin, end);
+    }
     if (undo_.size() == kMaxHistory) undo_.pop_front();
-    undo_.push_back({chart_, selectedBeat_, revision_});
+    undo_.push_back(std::move(edit));
     redo_.clear();
+}
+
+void ChartEditor::MarkDirty() {
+    revision_ = ++nextRevision_;
+    dirty_ = revision_ != savedRevision_;
+    // Every mutator calls SaveUndo before its first modification, then
+    // MarkDirty exactly once. Complete the reversible transaction here.
+    HistoryEdit& edit = undo_.back();
+    edit.after = CaptureMetadata();
+    if (edit.firstTouchedBeat <= edit.lastTouchedBeat) {
+        const auto& turns = chart_.route.turns;
+        const auto begin = std::lower_bound(turns.begin(), turns.end(),
+            edit.firstTouchedBeat,
+            [](const TurnEvent& event, int beat) { return event.beat < beat; });
+        const auto end = std::upper_bound(begin, turns.end(), edit.lastTouchedBeat,
+            [](int beat, const TurnEvent& event) { return beat < event.beat; });
+        edit.afterTurns.assign(begin, end);
+    }
+}
+
+void ChartEditor::ApplyHistory(const HistoryEdit& edit, bool undo) {
+    const auto& outgoing = undo ? edit.afterTurns : edit.beforeTurns;
+    const auto& incoming = undo ? edit.beforeTurns : edit.afterTurns;
+    if (edit.firstTouchedBeat <= edit.lastTouchedBeat) {
+        auto& turns = chart_.route.turns;
+        const auto start = turns.begin() +
+            static_cast<std::ptrdiff_t>(edit.turnIndex);
+        const auto finish = start + static_cast<std::ptrdiff_t>(outgoing.size());
+        turns.erase(start, finish);
+        turns.insert(turns.begin() + static_cast<std::ptrdiff_t>(edit.turnIndex),
+                     incoming.begin(), incoming.end());
+    }
+    RestoreMetadata(undo ? edit.before : edit.after);
 }
 
 bool ChartEditor::Undo() {
     if (undo_.empty()) return false;
-    if (redo_.size() == kMaxHistory) redo_.pop_front();
-    redo_.push_back({chart_, selectedBeat_, revision_});
-    Snapshot previous = std::move(undo_.back());
+    HistoryEdit edit = std::move(undo_.back());
     undo_.pop_back();
-    chart_ = std::move(previous.chart);
-    selectedBeat_ = previous.selectedBeat;
-    revision_ = previous.revision;
-    dirty_ = revision_ != savedRevision_;
+    ApplyHistory(edit, true);
+    redo_.push_back(std::move(edit));
     return true;
 }
 
 bool ChartEditor::Redo() {
     if (redo_.empty()) return false;
-    if (undo_.size() == kMaxHistory) undo_.pop_front();
-    undo_.push_back({chart_, selectedBeat_, revision_});
-    Snapshot next = std::move(redo_.back());
+    HistoryEdit edit = std::move(redo_.back());
     redo_.pop_back();
-    chart_ = std::move(next.chart);
-    selectedBeat_ = next.selectedBeat;
-    revision_ = next.revision;
-    dirty_ = revision_ != savedRevision_;
+    ApplyHistory(edit, false);
+    undo_.push_back(std::move(edit));
     return true;
+}
+
+std::size_t ChartEditor::HistoryStoredTurns() const noexcept {
+    std::size_t count = 0;
+    for (const auto& edit : undo_)
+        count += edit.beforeTurns.size() + edit.afterTurns.size();
+    for (const auto& edit : redo_)
+        count += edit.beforeTurns.size() + edit.afterTurns.size();
+    return count;
 }
 
 double ChartEditor::AudioSecondsAtBeat(int beat) const noexcept {
@@ -221,7 +315,8 @@ bool ChartEditor::SetSnapDivision(int division) {
         }
     }
 
-    SaveUndo();
+    if (factor > 1) SaveUndoAllTurns();
+    else SaveUndo();
     for (auto& event : chart_.route.turns) event.beat *= factor;
     selectedBeat_ = std::clamp(selectedBeat_ * factor, first, end - 1);
     chart_.route.firstBeat = first;
@@ -257,7 +352,7 @@ bool ChartEditor::SetBpm(double bpm) {
     }
     const std::int64_t selectedMs = static_cast<std::int64_t>(std::llround(
         AudioSecondsAtBeat(selectedBeat_) * 1000.0));
-    SaveUndo();
+    SaveUndoAllTurns();
     chart_.route.turns = std::move(remapped);
     chart_.route.bpm = bpm;
     chart_.route.firstBeat = first;
@@ -296,7 +391,7 @@ bool ChartEditor::SetOffsetMs(double milliseconds) {
     }
     const std::int64_t selectedMs = static_cast<std::int64_t>(std::llround(
         AudioSecondsAtBeat(selectedBeat_) * 1000.0));
-    SaveUndo();
+    SaveUndoAllTurns();
     chart_.route.turns = std::move(remapped);
     chart_.offsetSeconds = offset;
     chart_.route.firstBeat = first;
@@ -399,12 +494,12 @@ void ChartEditor::PutTurn(Heading heading) {
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
     if (found != events.end() && found->beat == selectedBeat_) {
         if (found->direction == heading) return;
-        SaveUndo();
+        SaveUndo(selectedBeat_, selectedBeat_);
         found->direction = heading;
         found->timeMs = static_cast<std::int64_t>(
             std::llround(AudioSecondsAtBeat(selectedBeat_) * 1000.0));
     } else {
-        SaveUndo();
+        SaveUndo(selectedBeat_, selectedBeat_);
         events.insert(found, TurnEvent{
             selectedBeat_, heading, static_cast<std::int64_t>(
                 std::llround(AudioSecondsAtBeat(selectedBeat_) * 1000.0))});
@@ -418,7 +513,7 @@ bool ChartEditor::RemoveTurn() {
         events.begin(), events.end(), selectedBeat_,
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
     if (found == events.end() || found->beat != selectedBeat_) return false;
-    SaveUndo();
+    SaveUndo(selectedBeat_, selectedBeat_);
     events.erase(found);
     MarkDirty();
     return true;
@@ -434,7 +529,8 @@ bool ChartEditor::MoveTurn(int beats) {
                         return event.beat == destination;
                     })) return false;
     const Heading direction = SelectedTurn()->direction;
-    SaveUndo();
+    SaveUndo(std::min(selectedBeat_, static_cast<int>(destination)),
+             std::max(selectedBeat_, static_cast<int>(destination)));
     const auto original = std::lower_bound(events.begin(), events.end(), selectedBeat_,
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
     events.erase(original);
@@ -514,7 +610,8 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
         }
     }
     if (!changed) return false;
-    SaveUndo();
+    SaveUndo(destinationBeat, static_cast<int>(
+        static_cast<long long>(destinationBeat) + span - 1));
     chart_.route.turns = std::move(updated);
     MarkDirty();
     return true;
@@ -539,7 +636,8 @@ bool ChartEditor::ShiftTurns(int firstBeat, int lastBeat, int deltaBeats) {
               [](const TurnEvent& a, const TurnEvent& b) { return a.beat < b.beat; });
     for (std::size_t i = 1; i < updated.size(); ++i)
         if (updated[i - 1].beat == updated[i].beat) return false; // No collision.
-    SaveUndo();
+    SaveUndo(std::min(firstBeat, firstBeat + deltaBeats),
+             std::max(lastBeat, lastBeat + deltaBeats));
     chart_.route.turns = std::move(updated);
     MarkDirty();
     return true;
@@ -558,7 +656,7 @@ bool ChartEditor::MirrorTurnsHorizontal(int firstBeat, int lastBeat) {
         return MirrorHeadingHorizontal(event.direction) != event.direction;
     });
     if (!changed) return false;
-    SaveUndo();
+    SaveUndo(firstBeat, lastBeat);
     for (auto it = first; it != last; ++it)
         it->direction = MirrorHeadingHorizontal(it->direction);
     MarkDirty();
@@ -578,7 +676,7 @@ bool ChartEditor::MirrorTurnsVertical(int firstBeat, int lastBeat) {
         return MirrorHeadingVertical(event.direction) != event.direction;
     });
     if (!changed) return false;
-    SaveUndo();
+    SaveUndo(firstBeat, lastBeat);
     for (auto it = first; it != last; ++it)
         it->direction = MirrorHeadingVertical(it->direction);
     MarkDirty();
@@ -596,7 +694,7 @@ bool ChartEditor::RotateTurns(int firstBeat, int lastBeat, int quarterTurns) {
         [](int beat, const TurnEvent& event) { return beat < event.beat; });
     if (first == last) return false;
 
-    SaveUndo();
+    SaveUndo(firstBeat, lastBeat);
     for (auto it = first; it != last; ++it)
         it->direction = locus::core::RotateHeading(it->direction, steps * 2);
     MarkDirty();
@@ -612,7 +710,7 @@ bool ChartEditor::DeleteTurns(int firstBeat, int lastBeat) {
     const auto finish = std::upper_bound(events.begin(), events.end(), lastBeat,
         [](int beat, const TurnEvent& event) { return beat < event.beat; });
     if (start == finish) return false;
-    SaveUndo();
+    SaveUndo(firstBeat, lastBeat);
     events.erase(start, finish);
     MarkDirty();
     return true;
