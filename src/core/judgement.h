@@ -55,7 +55,7 @@ const char* DirectionName(Heading heading) noexcept;
 // depends on whether either note was hit.
 class TurnJudge {
 public:
-    explicit TurnJudge(const Chart& chart) noexcept : chart_(chart) {}
+    explicit TurnJudge(const Chart& chart) noexcept : chart_(chart) { Reset(); }
 
     // Offset is audio time at which chart beat zero occurs. Call between sessions.
     void SetOffsetSeconds(double offset) noexcept {
@@ -86,7 +86,7 @@ public:
     // Total includes only notes at/after the editor TEST start position.
     // Once every playable note has a judgement (hit or Miss), Results may
     // open immediately without waiting for the audio file to finish.
-    std::size_t ScorableCount() const noexcept;
+    std::size_t ScorableCount() const noexcept { return scorableCount_; }
     bool AllScorableJudged() const noexcept {
         return ScorableCount() != 0 && NextEvent() == nullptr;
     }
@@ -94,11 +94,13 @@ public:
 private:
     void Resolve(Grade grade, double errorSeconds, bool wrongDirection,
                  Heading arrow) noexcept;
+    void RecountScorable() noexcept;
 
     const Chart& chart_;
     double offsetSeconds_ = 0.0;
     std::size_t nextEvent_ = 0;
     std::size_t firstScoredEvent_ = 0;
+    std::size_t scorableCount_ = 0;
     // Resolved physical-arrow mask of the current authored turn. The next
     // turn is reached only after all required components are graded.
     unsigned resolvedArrows_ = 0u;

@@ -35,6 +35,7 @@ void TurnJudge::Reset() noexcept {
     resolvedArrows_ = 0u;
     counts_ = GradeCounts{};
     last_.reset();
+    RecountScorable();
 }
 
 void TurnJudge::ResetFromBeat(int firstScoredBeat) noexcept {
@@ -46,6 +47,7 @@ void TurnJudge::ResetFromBeat(int firstScoredBeat) noexcept {
                              return event.beat < beat;
                          }) - chart_.turns.begin());
     firstScoredEvent_ = nextEvent_;
+    RecountScorable();
 }
 
 void TurnJudge::ResetFromAudioSeconds(double audioSeconds) noexcept {
@@ -61,6 +63,7 @@ void TurnJudge::ResetFromAudioSeconds(double audioSeconds) noexcept {
                              return time < seconds - 1e-9;
                          }) - chart_.turns.begin());
     firstScoredEvent_ = nextEvent_;
+    RecountScorable();
 }
 
 const TurnEvent* TurnJudge::NextEvent() const noexcept {
@@ -91,12 +94,11 @@ int ArrowCount(unsigned mask) noexcept {
 }
 } // namespace
 
-std::size_t TurnJudge::ScorableCount() const noexcept {
-    std::size_t total = 0;
+void TurnJudge::RecountScorable() noexcept {
+    scorableCount_ = 0;
     for (std::size_t i = firstScoredEvent_; i < chart_.turns.size(); ++i)
-        total += static_cast<std::size_t>(
+        scorableCount_ += static_cast<std::size_t>(
             ArrowCount(HeadingArrowMask(chart_.turns[i].direction)));
-    return total;
 }
 
 void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
