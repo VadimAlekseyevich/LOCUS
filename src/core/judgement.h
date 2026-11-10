@@ -20,6 +20,9 @@ struct Judgement {
     int beat = 0;
     double timingErrorSeconds = 0.0; // Negative means early.
     bool wrongDirection = false;
+    // A diagonal turn yields one judgement for each cardinal component.
+    // This is the physical arrow whose result was recorded.
+    Heading arrow = Heading::Up;
 };
 
 struct GradeCounts {
@@ -44,9 +47,12 @@ struct GradeCounts {
 const char* GradeName(Grade grade) noexcept;
 const char* DirectionName(Heading heading) noexcept;
 
-// One judgement per authored event. Wrong directions inside a window are
-// Miss; stray presses outside all windows are ignored. Keyboard input never
-// changes the const Chart or the deterministic route derived from it.
+// One judgement per *physical arrow*. An authored diagonal turn has two
+// independent notes at the same timestamp, each with its own timing grade;
+// their presses need not overlap or occur in any chord window. Wrong cardinal
+// directions remain Miss; unrelated keys during a diagonal are ignored and
+// its unpressed component eventually becomes Miss. Chart geometry never
+// depends on whether either note was hit.
 class TurnJudge {
 public:
     explicit TurnJudge(const Chart& chart) noexcept : chart_(chart) {}
@@ -69,8 +75,8 @@ public:
 
     // Fresh key-down only, timestamped in the same song-time domain as
     // marker animation. Returns nullopt for ignored/out-of-window presses.
-    // Absolute direction input. Diagonals require the corresponding two
-    // arrow keys, but still score as one authored turn event.
+    // One fresh physical arrow key-down; accepts Up/Right/Down/Left only.
+    // For a diagonal each expected arrow is resolved once, in any order.
     std::optional<Judgement> PressHeading(Heading outgoing, double songSeconds);
 
     const GradeCounts& Counts() const noexcept { return counts_; }
@@ -80,20 +86,22 @@ public:
     // Total includes only notes at/after the editor TEST start position.
     // Once every playable note has a judgement (hit or Miss), Results may
     // open immediately without waiting for the audio file to finish.
-    std::size_t ScorableCount() const noexcept {
-        return chart_.turns.size() - firstScoredEvent_;
-    }
+    std::size_t ScorableCount() const noexcept;
     bool AllScorableJudged() const noexcept {
         return ScorableCount() != 0 && NextEvent() == nullptr;
     }
 
 private:
-    void Resolve(Grade grade, double errorSeconds, bool wrongDirection) noexcept;
+    void Resolve(Grade grade, double errorSeconds, bool wrongDirection,
+                 Heading arrow) noexcept;
 
     const Chart& chart_;
     double offsetSeconds_ = 0.0;
     std::size_t nextEvent_ = 0;
     std::size_t firstScoredEvent_ = 0;
+    // Resolved physical-arrow mask of the current authored turn. The next
+    // turn is reached only after all required components are graded.
+    unsigned resolvedArrows_ = 0u;
     GradeCounts counts_;
     std::optional<Judgement> last_;
 };

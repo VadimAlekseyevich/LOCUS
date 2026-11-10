@@ -4,7 +4,6 @@
 #include "app/hit_flash.h"
 #include "app/demo_transport.h"
 #include "core/judgement.h"
-#include "core/arrow_chord.h"
 
 #include <array>
 #include <optional>
@@ -43,9 +42,6 @@ public:
     void TogglePause(bool customChart, double now);
     void SetPracticeSpeed(bool customChart, double speed, double now);
     void Update(bool customChart, double now, const ArrowInput& arrows);
-    void SetChordWindowMs(int milliseconds) noexcept {
-        chord_.SetChordWindowSeconds(milliseconds / 1000.0);
-    }
     const HitFlash& Flash() const noexcept { return hitFlash_; }
 
 private:
@@ -54,7 +50,6 @@ private:
     DemoTransport& demo_;
     ChartPlayback& local_;
     std::optional<EditorTestOrigin> testOrigin_;
-    core::ArrowChordTracker chord_;
     HitFlash hitFlash_;
 
     // Audio is allowed to end before the last note's late 180ms window.

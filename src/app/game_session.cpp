@@ -8,7 +8,6 @@
 namespace locus::app {
 
 void GameSession::Start(bool customChart, double now) {
-    chord_.Reset();
     hitFlash_.Reset();
     audioEndedAt_ = -1.0;
     audioEndSongSeconds_ = 0.0;
@@ -30,7 +29,6 @@ void GameSession::Restart(bool customChart, double now) {
 }
 
 void GameSession::Stop(bool customChart) {
-    chord_.Reset();
     hitFlash_.Reset();
     audioEndedAt_ = -1.0;
     audioEndSongSeconds_ = 0.0;
@@ -39,7 +37,6 @@ void GameSession::Stop(bool customChart) {
 }
 
 void GameSession::TogglePause(bool customChart, double now) {
-    chord_.Reset();
     hitFlash_.Reset();
     if (customChart) {
         if (local_.Paused()) local_.Resume(now);
@@ -74,8 +71,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 ? local_.StartAtAudioSeconds(*target, now)
                 : demo_.StartAtAudioSeconds(*target, now);
             if (seeked) {
-                chord_.Reset();
-                hitFlash_.Reset();
+                            hitFlash_.Reset();
                 if (customChart) local_.Update(now);
                 else demo_.Update(now);
                 judge_.Advance(*target);
@@ -86,24 +82,25 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     // During the silent tail, allow late directional input up to the
     // standard judgement window after the final chart note.
     if ((playing && !paused) || audioAlreadyFinished) {
-        if (const auto* target = judge_.NextEvent()) {
-            const core::Heading incoming = core::IncomingHeadingAt(chart_, target->beat);
-            const core::Heading expected = target->direction;
-            const auto stroke = chord_.Observe(
-                {arrows.pressed, arrows.held, arrows.capturedAt},
-                expected, incoming);
-            if (stroke) {
-                const double timestamp = audioEndedAt_ >= 0.0
-                    ? audioEndSongSeconds_ +
-                        std::max(0.0, stroke->capturedAt - audioEndedAt_) *
-                            (customChart ? local_.Speed() : 1.0)
-                    : (customChart ? local_.AudioSeconds(stroke->capturedAt)
-                                   : demo_.SongSeconds(stroke->capturedAt));
-                const auto judgement = judge_.PressHeading(stroke->outgoing, timestamp);
-                if (judgement && !judgement->wrongDirection &&
-                    judgement->grade != core::Grade::Miss)
-                    hitFlash_.Trigger(judgement->grade, now);
-            }
+        // Each fresh physical arrow is a separate note input. Two keys
+        // sharing a diagonal target are graded at their own key-down times.
+        constexpr core::Heading directions[4] = {
+            core::Heading::Up, core::Heading::Right,
+            core::Heading::Down, core::Heading::Left
+        };
+        for (std::size_t i = 0; i < arrows.pressed.size(); ++i) {
+            if (!arrows.pressed[i]) continue;
+            const double capturedAt = arrows.capturedAt[i];
+            const double timestamp = audioEndedAt_ >= 0.0
+                ? audioEndSongSeconds_ +
+                    std::max(0.0, capturedAt - audioEndedAt_) *
+                        (customChart ? local_.Speed() : 1.0)
+                : (customChart ? local_.AudioSeconds(capturedAt)
+                               : demo_.SongSeconds(capturedAt));
+            const auto judgement = judge_.PressHeading(directions[i], timestamp);
+            if (judgement && !judgement->wrongDirection &&
+                judgement->grade != core::Grade::Miss)
+                hitFlash_.Trigger(judgement->grade, now);
         }
     }
     if (customChart) local_.Update(now);
