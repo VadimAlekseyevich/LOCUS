@@ -46,12 +46,13 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     if (ui.EditingText())
         return editor_text::HandleTextInput(draft, ui, input);
 
-    // The comparison selector is handled by EditorSetController after this
-    // pure edit pass. Do not let popup clicks trigger note or field actions.
+    // Comparison picker owns its mouse and keyboard input until dismissed.
+    // A click outside it may close the popup, but must NEVER trigger a
+    // direction change, transport action or destructive pattern command.
+    // EditorSetController handles the picker after this pure editing pass.
     if (ui.tab == EditorTab::Route &&
-        ((input.mouseClick && (Hit(kCompareToggle, input.mouse) ||
-           (ui.comparisonPickerOpen && Hit(kComparePopup, input.mouse)))) ||
-         (ui.comparisonPickerOpen && input.escape)))
+        (ui.comparisonPickerOpen ||
+         (input.mouseClick && Hit(kCompareToggle, input.mouse))))
         return action;
 
     // The current Route time readout, not individual timeline beats, copies
