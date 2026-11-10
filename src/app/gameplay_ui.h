@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/game_settings.h"
+#include "app/adaptive_camera.h"
 #include "app/hit_flash.h"
 #include "app/route_renderer.h"
 #include "app/play_outro_transition.h"
@@ -62,16 +63,18 @@ inline float GameplayRightSidebarWidth(int width, int height) noexcept {
 struct GameplayCamera {
     static constexpr float kCenterX = kVirtualWidth * 0.5f;
     static constexpr float kCenterY = kVirtualHeight * 0.5f;
-    // All eight headings travel one world unit per tick: equal px/s.
+    // The anchor travels along the authored route; the player may be
+    // slightly behind screen center, but scoring uses unmodified song time.
     locus::core::GridPoint world{};
     float step = 1.0f;
 
     GameplayCamera(const locus::core::Chart& chart, double beat,
                    const locus::app::Skin& skin = locus::app::Skin{},
                    double practiceRate = 1.0)
-        : world(locus::core::RoutePositionAt(chart, beat)),
-          step(StepForFixedSpeed(skin.baseSpeedPxPerSecond, chart.bpm,
-                                 chart.ticksPerBeat, practiceRate)) {}
+        : step(StepForFixedSpeed(skin.baseSpeedPxPerSecond, chart.bpm,
+                                 chart.ticksPerBeat, practiceRate)) {
+        world = AdaptiveCameraAnchor(chart, beat, step, practiceRate);
+    }
 
     locus::app::RouteCanvas Canvas() const noexcept {
         return {kCenterX, kCenterY, step, world};

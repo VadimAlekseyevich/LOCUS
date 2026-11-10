@@ -16,9 +16,13 @@ void DrawTextLabel(Font font, const char* message, Vector2 position,
 } // namespace
 
 void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
-    GameplayCamera camera(gameplay.chart, gameplay.beat, gameplay.skin,
+    // Both route and marker use the SAME camera transform. Freezing the
+    // song beat during the outro also freezes the adaptive offset, avoiding
+    // a snap back to center at the final note.
+    const double displayBeat = gameplay.outro.active
+        ? gameplay.outro.frozenBeat : gameplay.beat;
+    GameplayCamera camera(gameplay.chart, displayBeat, gameplay.skin,
                           gameplay.practiceSpeed);
-    if (gameplay.outro.active) camera.world = gameplay.outro.frozenCamera;
     const auto canvas = camera.Canvas();
 
     // Scissor coordinates are physical pixels while all world points remain
@@ -31,11 +35,8 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     const auto clip = transform.Scissor(kGameplayWorldViewport);
     BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
 
-    // PLAY and editor TEST: only a gradually thinning/fading red route
-    // *ahead* of the marker, red turn targets and the centred avatar.
-    // No past-route trail, grid or debug overlay.
-    const double displayBeat = gameplay.outro.active
-        ? gameplay.outro.frozenBeat : gameplay.beat;
+    // PLAY and editor TEST: the route, turn targets and avatar share a
+    // smooth, bounded look-ahead camera. No past trail, grid or debug UI.
     Vector2 marker = locus::app::DrawRouteTrajectory(
         gameplay.chart, displayBeat, canvas,
         locus::app::RouteRenderMode::Gameplay, gameplay.skin);

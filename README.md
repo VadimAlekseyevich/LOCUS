@@ -16,7 +16,7 @@ A local log folder is created under `.locus-runs/` (Git-ignored). Logs are not u
 
 ## Gameplay
 
-The world is infinite. A stationary marker stays at the center while the **red forward route moves beneath it**. Only the part inside the centered square is visible. In landscape the square's side equals the **window height**; a thin white frame can be recolored in SKIN. No gameplay grid or text is drawn on the left.
+The world is infinite. During PLAY, an experimental adaptive camera looks slightly ahead along the route, shifting the marker behind center to reveal more of the path; the shift grows with movement speed and is capped to remain inside the square. The **red forward route moves with the camera**. Only the part inside the centered square is visible. In landscape the square's side equals the **window height**; a thin white frame can be recolored in SKIN. No gameplay grid or text is drawn on the left.
 
 To the right, the game shows **Accuracy** and counts for Perfect, Good, Bad and Miss. Accuracy is `(100×Perfect + 75×Good + 50×Bad) / all judged notes`; a Miss contributes zero. A chart ends **when its final note is judged**, not when the music file ends. Results shows the final accuracy and counts.
 

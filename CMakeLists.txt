@@ -342,6 +342,13 @@ if(LOCUS_BUILD_TESTS)
 
     # Validate the semicircular reverse marker's orientation headlessly.
     # The cap has no impact on chart geometry, timing or saved data.
+    # Deterministic, frame-rate-independent experimental camera projection.
+    add_executable(locus_adaptive_camera_tests tests/adaptive_camera_tests.cpp)
+    target_compile_features(locus_adaptive_camera_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_adaptive_camera_tests PRIVATE locus_core)
+    target_include_directories(locus_adaptive_camera_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    add_test(NAME locus_adaptive_camera_projection COMMAND locus_adaptive_camera_tests)
+
     add_executable(locus_reverse_cap_tests tests/reverse_cap_tests.cpp)
     target_compile_features(locus_reverse_cap_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_reverse_cap_tests PRIVATE locus_core raylib)
