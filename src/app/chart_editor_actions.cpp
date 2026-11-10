@@ -1,5 +1,6 @@
 #include "app/chart_editor_layout.h"
 #include "app/editor_text_fields.h"
+#include "app/editor_pattern_actions.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,99 +14,6 @@ namespace locus::app {
 using namespace detail;
 namespace {
 
-// Keys and the 3x3 pad directly author absolute outgoing compass headings.
-std::optional<core::Heading> DirectionForKeys(unsigned mask) {
-    switch (mask) {
-        case 1u: return core::Heading::Left;       // D
-        case 2u: return core::Heading::Down;       // F
-        case 4u: return core::Heading::Up;         // J
-        case 8u: return core::Heading::Right;      // K
-        case 3u: return core::Heading::DownLeft;   // D+F
-        case 5u: return core::Heading::UpLeft;     // D+J
-        case 10u: return core::Heading::DownRight; // F+K
-        case 12u: return core::Heading::UpRight;   // J+K
-        default: return std::nullopt;              // opposite or 3+ keys
-    }
-}
-
-void ApplyDirectionChord(core::ChartEditor& draft, EditorUiState& ui,
-                         const EditorControls& input, EditorUiAction& action) {
-    const unsigned held = input.directionKeysHeld & 15u;
-    if (input.directionKeysSuppressed) {
-        ui.pendingDirection = 0;
-        ui.pendingDirectionSeconds = 0.0f;
-        ui.directionKeysHandled = true; // re-arm only after release
-        return;
-    }
-    // Exactly one insertion for a held key / chord, even if a key is released
-    // earlier than the other. Re-arm only after *all* keys are released.
-    if (ui.directionKeysHandled) {
-        if (held == 0) {
-            ui.directionKeysHandled = false;
-            ui.pendingDirection = 0;
-            ui.pendingDirectionSeconds = 0.0f;
-        }
-        return;
-    }
-    const auto commit = [&](unsigned keys) {
-        const auto heading = DirectionForKeys(keys);
-        if (!heading) {
-            ui.feedback = "USE ONE GAME DIRECTION OR TWO ADJACENT KEYS";
-            ui.feedbackError = true;
-            return;
-        }
-        const bool changed = draft.SetOutgoingHeading(*heading);
-        action.changedChart |= changed;
-        if (!changed) {
-            ui.feedback = "NO CHANGE - ALREADY HEADING THAT WAY";
-            ui.feedbackError = true;
-        } else {
-            ui.feedback.clear();
-            ui.feedbackError = false;
-        }
-    };
-
-    if (ui.pendingDirection == 0) {
-        if (held == 0) return;
-        if ((held & (held - 1u)) != 0u) {
-            commit(held); // Multiple keys pressed in the same frame.
-            ui.directionKeysHandled = true;
-            return;
-        }
-        ui.pendingDirection = held;
-        ui.pendingDirectionSeconds = 0.0f;
-        return;
-    }
-
-    if (held == 0) {
-        commit(ui.pendingDirection); // Quick tap: resolve on release.
-        ui.pendingDirection = 0;
-        ui.pendingDirectionSeconds = 0.0f;
-        return;
-    }
-    if (held != ui.pendingDirection) {
-        if ((held & (held - 1u)) != 0u) {
-            commit(held); // Chord resolves before its first single note.
-            ui.pendingDirection = 0;
-            ui.pendingDirectionSeconds = 0.0f;
-            ui.directionKeysHandled = true;
-            return;
-        }
-        // Non-overlapping keys changed in one frame. Do not lose the tap.
-        commit(ui.pendingDirection);
-        ui.pendingDirection = held;
-        ui.pendingDirectionSeconds = 0.0f;
-        return;
-    }
-    ui.pendingDirectionSeconds += std::clamp(input.elapsedSeconds, 0.0f, 0.1f);
-    if (ui.pendingDirectionSeconds >=
-        std::clamp(input.directionChordWindowSeconds, 0.04f, 0.16f)) {
-        commit(held);
-        ui.pendingDirection = 0;
-        ui.pendingDirectionSeconds = 0.0f;
-        ui.directionKeysHandled = true;
-    }
-}
 
 } // namespace
 
@@ -203,14 +111,15 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return action;
     }
 
-    bool copy = input.copyRange && ui.tab == EditorTab::Route;
-    bool cut = input.cutRange && ui.tab == EditorTab::Route;
-    bool paste = input.pasteRange && ui.tab == EditorTab::Route;
-    bool mirrorH = input.mirrorHorizontal && ui.tab == EditorTab::Route;
-    bool mirrorV = input.mirrorVertical && ui.tab == EditorTab::Route;
-    bool rotateCW = input.rotateClockwise && ui.tab == EditorTab::Route;
-    bool rotateCCW = input.rotateCounterclockwise && ui.tab == EditorTab::Route;
-    bool deleteTurns = input.removeTurn && ui.tab == EditorTab::Route;
+    editor_pattern::Commands commands;
+    commands.copy = input.copyRange && ui.tab == EditorTab::Route;
+    commands.cut = input.cutRange && ui.tab == EditorTab::Route;
+    commands.paste = input.pasteRange && ui.tab == EditorTab::Route;
+    commands.mirrorH = input.mirrorHorizontal && ui.tab == EditorTab::Route;
+    commands.mirrorV = input.mirrorVertical && ui.tab == EditorTab::Route;
+    commands.rotateCW = input.rotateClockwise && ui.tab == EditorTab::Route;
+    commands.rotateCCW = input.rotateCounterclockwise && ui.tab == EditorTab::Route;
+    commands.deleteTurns = input.removeTurn && ui.tab == EditorTab::Route;
 
     if (input.mouseClick) {
         ui.draggingTimeline = false;
@@ -238,13 +147,13 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
         else if (Hit(kZoomIn, mouse))
             ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
-        else if (ui.tab == EditorTab::Route && Hit(kCopyTurns, mouse)) copy = true;
-        else if (ui.tab == EditorTab::Route && Hit(kPasteTurns, mouse)) paste = true;
-        else if (ui.tab == EditorTab::Route && Hit(kMirrorHorizontal, mouse)) mirrorH = true;
-        else if (ui.tab == EditorTab::Route && Hit(kMirrorVertical, mouse)) mirrorV = true;
-        else if (ui.tab == EditorTab::Route && Hit(kRotateCounterclockwise, mouse)) rotateCCW = true;
-        else if (ui.tab == EditorTab::Route && Hit(kRotateClockwise, mouse)) rotateCW = true;
-        else if (ui.tab == EditorTab::Route && Hit(kCutTurns, mouse)) cut = true;
+        else if (ui.tab == EditorTab::Route && Hit(kCopyTurns, mouse)) commands.copy = true;
+        else if (ui.tab == EditorTab::Route && Hit(kPasteTurns, mouse)) commands.paste = true;
+        else if (ui.tab == EditorTab::Route && Hit(kMirrorHorizontal, mouse)) commands.mirrorH = true;
+        else if (ui.tab == EditorTab::Route && Hit(kMirrorVertical, mouse)) commands.mirrorV = true;
+        else if (ui.tab == EditorTab::Route && Hit(kRotateCounterclockwise, mouse)) commands.rotateCCW = true;
+        else if (ui.tab == EditorTab::Route && Hit(kRotateClockwise, mouse)) commands.rotateCW = true;
+        else if (ui.tab == EditorTab::Route && Hit(kCutTurns, mouse)) commands.cut = true;
         else if (ui.tab == EditorTab::Route && Hit(kUndoEdit, mouse)) {
             action.changedChart = draft.Undo();
             notice(action.changedChart ? "UNDO APPLIED" : "NOTHING TO UNDO",
@@ -274,7 +183,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                         if (!changed) notice(
                             "NO CHANGE - ALREADY HEADING THAT WAY", true);
                     } else {
-                        deleteTurns = true;
+                        commands.deleteTurns = true;
                     }
                 }
         } else if (ui.tab == EditorTab::Route &&
@@ -391,96 +300,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         }
     }
 
-    if (ui.tab == EditorTab::Route) {
-        ApplyDirectionChord(draft, ui, input, action);
-        if (input.movePrevious && !ui.HasRange()) action.changedChart |= draft.MoveTurn(-draft.Data().route.ticksPerBeat /
-                                                           draft.Data().route.snapDivision);
-        if (input.moveNext && !ui.HasRange()) action.changedChart |= draft.MoveTurn(draft.Data().route.ticksPerBeat /
-                                                          draft.Data().route.snapDivision);
-        const int first = ui.HasRange() ? ui.rangeFirst : draft.SelectedBeat();
-        const int last = ui.HasRange() ? ui.rangeLast : draft.SelectedBeat();
-        const bool valid = first >= draft.Data().route.firstBeat &&
-                           last < draft.Data().route.lengthBeats;
-
-        if (copy || cut) {
-            ui.clipboard = valid ? draft.CopyTurns(first, last)
-                                 : core::ChartEditor::Pattern{};
-            const bool any = !ui.clipboard.notes.empty();
-            if (any) {
-                // Reflect actual copied note bounds instead of empty ticks
-                // that the mouse happened to include before/after the notes.
-                const auto& turns = draft.Data().route.turns;
-                const auto lower = std::lower_bound(turns.begin(), turns.end(), first,
-                    [](const core::TurnEvent& event, int beat) {
-                        return event.beat < beat;
-                    });
-                const auto upper = std::upper_bound(lower, turns.end(), last,
-                    [](int beat, const core::TurnEvent& event) {
-                        return beat < event.beat;
-                    });
-                ui.rangeFirst = lower->beat;
-                ui.rangeLast = (upper - 1)->beat;
-            }
-            if (cut && any) action.changedChart |= draft.DeleteTurns(first, last);
-            notice(any ? (cut ? "TURNS CUT - CTRL+V TO PASTE"
-                              : "TURNS COPIED - NO LEADING/TRAILING GAPS")
-                       : "NO TURNS IN SELECTION", !any);
-        }
-        if (paste) {
-            const int destination = draft.SelectedBeat();
-            const bool ok = draft.PasteTurns(destination, ui.clipboard);
-            action.changedChart |= ok;
-            if (ok) {
-                // Keep the entire pasted pattern selected, including rests
-                // between notes, for immediate shift / flip / copy / delete.
-                // PasteTurns already checks that the whole span fits.
-                ui.rangeFirst = destination;
-                ui.rangeLast = destination +
-                    (ui.clipboard.span - 1) *
-                    (draft.Data().route.ticksPerBeat / ui.clipboard.ticksPerBeat);
-                ui.draggingTimeline = false;
-            }
-            notice(ok ? "PATTERN PASTED - RANGE STILL SELECTED"
-                      : "CANNOT PASTE - EMPTY CLIPBOARD, SAME NOTES OR OUT OF BOUNDS", !ok);
-        }
-        if (mirrorH || mirrorV) {
-            const bool ok = valid && (mirrorH
-                ? draft.MirrorTurnsHorizontal(first, last)
-                : draft.MirrorTurnsVertical(first, last));
-            action.changedChart |= ok;
-            notice(ok ? (mirrorH ? "HORIZONTAL MIRROR APPLIED"
-                                   : "VERTICAL MIRROR APPLIED")
-                      : "NO DIRECTIONS CHANGED", !ok);
-        }
-        if (rotateCW || rotateCCW) {
-            const bool ok = valid &&
-                draft.RotateTurns(first, last, rotateCW ? 1 : -1);
-            action.changedChart |= ok;
-            notice(ok ? (rotateCW ? "PATTERN ROTATED 90 CLOCKWISE"
-                                   : "PATTERN ROTATED 90 COUNTERCLOCKWISE")
-                      : "NO TURNS TO ROTATE", !ok);
-        }
-        if (deleteTurns) {
-            const bool ok = valid && draft.DeleteTurns(first, last);
-            action.changedChart |= ok;
-            notice(ok ? "SELECTED TURNS DELETED" : "NO TURNS TO DELETE", !ok);
-        }
-        if (input.shiftRangePrevious || input.shiftRangeNext) {
-            const int delta = (input.shiftRangePrevious ? -1 : 1) *
-                              (draft.Data().route.ticksPerBeat /
-                               draft.Data().route.snapDivision);
-            const bool ok = ui.HasRange() && valid &&
-                            draft.ShiftTurns(first, last, delta);
-            action.changedChart |= ok;
-            if (ok) {
-                ui.rangeFirst += delta;
-                ui.rangeLast += delta;
-                draft.StepSelection(delta);
-            }
-            notice(ok ? "PATTERN SHIFTED ONE BEAT"
-                      : "SHIFT BLOCKED - SELECT TURNS OR AVOID COLLISIONS", !ok);
-        }
-    }
+    if (ui.tab == EditorTab::Route)
+        editor_pattern::Apply(draft, ui, input, commands, action);
     if (ui.tab != EditorTab::Audio) {
         if (input.headingLeft) { draft.RotateHeading45(-1); action.changedChart = true; }
         if (input.headingRight) { draft.RotateHeading45(1); action.changedChart = true; }
