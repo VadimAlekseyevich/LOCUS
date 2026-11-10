@@ -246,11 +246,15 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                           Color{5, 6, 11, static_cast<unsigned char>(
                               std::lround(gameplay.outro.resultBlackOpacity * 255.0f))});
     } else if (state.screen == Screen::Editor) {
-        const double selectedBeat = editorTransport.Playing()
-            ? editorTransport.Beat(now) : static_cast<double>(editor.SelectedBeat());
+        // One visual song-time snapshot for every preview pane AND ruler.
+        // At slow playback, do not let the timeline use an unsmoothed tick
+        // while the compared routes use the interpolated audio cursor.
         const double songSeconds = editorTransport.Playing()
             ? editorTransport.VisualAudioSeconds(now)
             : editor.AudioSecondsAtBeat(editor.SelectedBeat());
+        const double selectedBeat = editorTransport.Playing()
+            ? editorTransport.BeatAtAudioSeconds(songSeconds)
+            : static_cast<double>(editor.SelectedBeat());
         locus::app::RenderChartEditor(font, editor, editorUi,
                                      localSong.DisplayName(), localSong.Ready(),
                                      editorTransport.Playing(), editorTransport.Paused(),

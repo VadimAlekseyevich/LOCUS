@@ -81,8 +81,12 @@ int main() {
                 chart.Data().route.start.y == 3,
                 "editor opens with 8x8 square view and automatic route origin");
     const detail::EditorView defaultGeometry(chart.Data().route, 0.0);
-    ok &= Check(std::abs(defaultGeometry.step - 30.0f) < 0.001f,
-                "8-unit preview scale is unchanged after removal of the drawn grid");
+    ok &= Check(std::abs(defaultGeometry.step - 30.0f) < 0.001f &&
+                std::abs(detail::EditorPreviewPixelsPerSecond(
+                    chart.Data().route) - 60.0f) < 0.001f &&
+                std::abs(detail::EditorPreviewLookaheadMs(
+                    4.0, 120.0, 800.0f) - 2000.0f) < 0.001f,
+                "authoring magnification and four-beat lookahead survive compare mode");
 
     Chart normalized = chart.Data().route;
     normalized.initialHeading = Heading::UpRight;

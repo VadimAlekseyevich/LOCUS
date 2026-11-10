@@ -85,7 +85,7 @@ void DrawTextField(Font font, Rectangle rect, const char* label,
 }
 
 void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
-                            double songSeconds, double practiceRate,
+                            double songSeconds, float pixelsPerSongSecond,
                             const Skin& skin) {
     const int count = std::clamp(comparison.count, 1, 4);
     for (int index = 0; index < count; ++index) {
@@ -100,9 +100,7 @@ void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
         if (pane.route && pane.route->Ready()) {
             // One visual px/s scale across every pane, regardless of BPM,
             // authoring snap/grid, note density or panel dimensions.
-            const float velocity = skin.baseSpeedPxPerSecond /
-                static_cast<float>(std::max(0.1, practiceRate));
-            const float step = velocity /
+            const float step = pixelsPerSongSecond /
                 static_cast<float>(pane.route->UnitsPerSecond());
             const RouteCanvas canvas{
                 bounds.x + bounds.width * 0.5f,
@@ -368,8 +366,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             fallback.count = 1;
             comparisons = &fallback;
         }
-        DrawComparisonPreviews(font, *comparisons,
-                               previewSeconds, playbackSpeed, skin);
+        Skin previewSkin = skin;
+        previewSkin.lookaheadMs = EditorPreviewLookaheadMs(
+            draft.Data().previewLeadBeats, chart.bpm, skin.lookaheadMs);
+        DrawComparisonPreviews(font, *comparisons, previewSeconds,
+                               EditorPreviewPixelsPerSecond(chart),
+                               previewSkin);
         Label(font, IsGameDirectionKey(settings, KEY_Q) ||
                     IsGameDirectionKey(settings, KEY_E)
                ? "START HEADING (CLICK)" : "START HEADING Q/E 45",

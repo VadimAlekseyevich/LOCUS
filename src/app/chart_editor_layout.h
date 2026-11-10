@@ -29,6 +29,24 @@ constexpr Rectangle kSnapLess{511, 416, 64, 27};
 constexpr Rectangle kSnapMore{583, 416, 64, 27};
 constexpr int kSnapDivisions[9] = {1, 2, 3, 4, 6, 8, 12, 16, 24};
 
+// Preserve the original ROUTE editor magnification while all compared
+// charts share one px-per-song-second scale. The current chart's grid size,
+// not each reference's grid, controls comparison zoom.
+inline float EditorPreviewPixelsPerSecond(const core::Chart& active) noexcept {
+    if (!std::isfinite(active.bpm) || active.bpm <= 0.0) return 0.0f;
+    return kGridMaxSpan /
+        std::max(1, std::max(active.gridWidth, active.gridHeight)) *
+        static_cast<float>(active.bpm / 60.0);
+}
+
+inline float EditorPreviewLookaheadMs(double previewLeadBeats, double bpm,
+                                     float skinLookaheadMs) noexcept {
+    if (!std::isfinite(previewLeadBeats) || previewLeadBeats <= 0.0 ||
+        !std::isfinite(bpm) || bpm <= 0.0) return skinLookaheadMs;
+    return std::max(skinLookaheadMs, static_cast<float>(
+        std::clamp(previewLeadBeats * 60000.0 / bpm, 100.0, 10000.0)));
+}
+
 inline float PixelsPerBeat(const EditorUiState& ui) {
     return kZoomPixelsPerBeat[std::clamp(ui.timelineZoomIndex, 0, kZoomMax)];
 }
