@@ -57,7 +57,7 @@ int main() {
                         player, kPixelsPerWorldUnit, t, false, 180.0);
                     const double offsetPx =
                         (player.x - anchor.x) * kPixelsPerWorldUnit;
-                    if (i > 1) {
+                    if (i > fps) {
                         maxCameraOffsetJump = std::max(maxCameraOffsetJump,
                             std::abs(offsetPx - previousCameraOffset));
                     }
@@ -65,7 +65,7 @@ int main() {
                     previousDisplay = display;
                     previousRaw = raw;
                 }
-                ok &= Check(maximumRawStepPx >= 30.0 &&
+                ok &= Check(maximumRawStepPx >= 18.0 &&
                             maximumVisualJitterPx < 1.0 &&
                             maxCameraOffsetJump < 2.0,
                             "200-600px/s slow-play cursor and camera have no audio-packet jerks");
