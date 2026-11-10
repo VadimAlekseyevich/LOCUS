@@ -44,6 +44,7 @@ add_executable(locus
     src/app/quit_media.cpp
     src/app/editor_discard_guard.cpp
     src/app/native_close.cpp
+    src/app/open_folder.cpp
     src/app/window_mode.cpp
     src/app/demo_transport.cpp
     src/app/audio_device.cpp
@@ -196,6 +197,7 @@ if(LOCUS_BUILD_TESTS)
         tests/editor_file_actions_tests.cpp
         src/app/editor_file_actions.cpp
         src/app/editor_set_controller.cpp
+        src/app/open_folder.cpp
         src/app/editor_document.cpp
         src/app/music_picker.cpp
         src/app/local_music.cpp
@@ -433,6 +435,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_skin_profile_actions_tests
         tests/skin_profile_actions_tests.cpp
         src/app/skin_profile_actions.cpp
+        src/app/open_folder.cpp
         src/app/song_set_storage.cpp
         src/app/skin.cpp
     )
