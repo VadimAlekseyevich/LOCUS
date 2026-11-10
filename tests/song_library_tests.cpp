@@ -379,6 +379,40 @@ int main() {
                     sorted.front().difficulty.overall,
                 "Song Set difficulties default to ascending calculated difficulty");
 
+    // A no-op rescan must reuse the cached difficulty and chart parse.
+    const std::size_t chartTotal = library.ChartCount();
+    ok &= Check(library.Refresh(note) &&
+                library.LastRefreshStats().parsedCharts == 0 &&
+                library.LastRefreshStats().reusedCharts == chartTotal &&
+                library.LastRefreshStats().calculatedDifficulties == 0,
+                "unchanged library refresh reuses every chart and difficulty");
+
+    ok &= Check(library.SetPreviewStartMs(0, 21000, error) &&
+                library.Refresh(note) &&
+                library.Songs()[0].previewStartMs == 21000 &&
+                library.LastRefreshStats().calculatedDifficulties == 0,
+                "manifest-only preview change does not re-rate unchanged charts");
+
+    // External modification of one difficulty invalidates exactly that
+    // cached file; the other songs/difficulties remain cached.
+    const auto densePosition = std::find_if(
+        library.Songs()[0].charts.begin(), library.Songs()[0].charts.end(),
+        [&](const LibraryChart& item) { return item.file == denseInstalled; });
+    if (densePosition == library.Songs()[0].charts.end()) {
+        ok &= Check(false, "dense chart remains indexed before cache test");
+    } else {
+        core::LoadedChart editedDense = densePosition->data;
+        editedDense.title += " Renamed Externally";
+        ok &= Check(SaveChartWithAudioPath(
+                        denseInstalled.wstring(), densePosition->audioFile.wstring(),
+                        editedDense, error, true) &&
+                    library.Refresh(note) &&
+                    library.LastRefreshStats().parsedCharts == 1 &&
+                    library.LastRefreshStats().reusedCharts == chartTotal - 1 &&
+                    library.LastRefreshStats().calculatedDifficulties == 1,
+                    "editing a single chart invalidates only that chart cache");
+    }
+
     fs::remove_all(folder, ec);
     if (!ok) return 1;
     std::cout << "SONG_SET_PASS shared-audio=1 copies=1 backups=1 trash=1\n";

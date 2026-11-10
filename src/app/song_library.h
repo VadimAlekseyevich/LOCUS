@@ -3,6 +3,7 @@
 #include "core/chart_json.h"
 #include "core/chart_difficulty.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -17,7 +18,11 @@ struct LibraryChart {
     std::filesystem::path file;
     core::LoadedChart data; // Parsed once per library refresh.
     std::filesystem::path audioFile; // Actual revision for this difficulty.
-    core::ChartDifficulty difficulty; // Calculated once on library refresh.
+    core::ChartDifficulty difficulty; // Reused while file and timing are unchanged.
+    // Transient index fingerprint, not serialized with charts or Song Sets.
+    std::uintmax_t indexedFileSize = 0;
+    std::filesystem::file_time_type indexedWriteTime{};
+    bool indexedFingerprintValid = false;
 };
 
 struct LibrarySong {
@@ -32,6 +37,15 @@ struct LibrarySong {
     double bpm = 120.0; // Authoritative Song Set tempo.
     int offsetMs = 0; // Shared beat-zero position.
     std::filesystem::path backgroundImage; // Optional Song Set art (not chart timing).
+};
+
+// A refreshed index reuses parsed charts and ratings when filesystem
+// signatures are unchanged. Manifest timing is checked independently, so
+// external Song Set BPM changes invalidate only affected ratings.
+struct LibraryRefreshStats {
+    std::size_t parsedCharts = 0;
+    std::size_t reusedCharts = 0;
+    std::size_t calculatedDifficulties = 0;
 };
 
 // On-disk Songs folders are authoritative. The index is kept in RAM and
@@ -88,11 +102,13 @@ public:
 
     const std::filesystem::path& Root() const noexcept { return root_; }
     const std::vector<LibrarySong>& Songs() const noexcept { return songs_; }
+    const LibraryRefreshStats& LastRefreshStats() const noexcept { return lastRefreshStats_; }
     std::size_t ChartCount() const noexcept;
 
 private:
     std::filesystem::path root_;
     std::vector<LibrarySong> songs_;
+    LibraryRefreshStats lastRefreshStats_{};
 };
 
 } // namespace locus::app

@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <set>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -29,6 +30,16 @@ bool SongLibrary::Refresh(std::string& message) {
         return false;
     }
 
+    // Keep the last published index untouched until this scan fully succeeds.
+    // File identity is checked by both last-write timestamp and byte length;
+    // Song Set timing is resolved separately from its authoritative manifest.
+    std::map<fs::path, const LibraryChart*> previous;
+    for (const auto& song : songs_)
+        for (const auto& chart : song.charts)
+            previous.emplace(chart.file, &chart);
+    LibraryRefreshStats stats;
+    std::set<fs::path> reusedFiles;
+    std::map<fs::path, SongSetManifest> manifestCache;
     std::vector<LibrarySong> next;
     std::map<fs::path, std::size_t> byAudio; // Logical song, not specific revision.
     std::size_t skipped = 0;
@@ -56,19 +67,51 @@ bool SongLibrary::Refresh(std::string& message) {
             ec.clear();
             continue;
         }
-        core::LoadedChart chart;
-        std::wstring audio;
-        std::string problem;
-        if (!OpenChartWithAudioPath(path.wstring(), chart, audio, problem)) {
-            ++skipped;
-            continue;
+        // A filesystem metadata probe is only a cache hint. If the probe
+        // fails, still try parsing the chart normally instead of losing it.
+        const auto timestamp = current.last_write_time(ec);
+        const bool hasTimestamp = !ec;
+        ec.clear();
+        const auto bytes = current.file_size(ec);
+        const bool hasFingerprint = hasTimestamp && !ec;
+        ec.clear();
+
+        LibraryChart indexed;
+        const auto old = previous.find(path);
+        const bool reuse = hasFingerprint && old != previous.end() &&
+            old->second->indexedFingerprintValid &&
+            old->second->indexedWriteTime == timestamp &&
+            old->second->indexedFileSize == bytes;
+        if (reuse) {
+            indexed = *old->second;
+            reusedFiles.insert(path);
+            ++stats.reusedCharts;
+        } else {
+            core::LoadedChart chart;
+            std::wstring audio;
+            std::string problem;
+            if (!OpenChartWithAudioPath(path.wstring(), chart, audio, problem)) {
+                ++skipped;
+                continue;
+            }
+            indexed.file = path;
+            indexed.data = std::move(chart);
+            indexed.audioFile = fs::path(audio);
+            ++stats.parsedCharts;
         }
-        const fs::path audioFile = fs::canonical(fs::path(audio), ec);
+        indexed.indexedFingerprintValid = hasFingerprint;
+        if (hasFingerprint) {
+            indexed.indexedWriteTime = timestamp;
+            indexed.indexedFileSize = bytes;
+        }
+        const fs::path audioFile = fs::canonical(indexed.audioFile, ec);
         if (ec || !Inside(root, audioFile)) {
             ++skipped;
             ec.clear();
+            reusedFiles.erase(path);
             continue;
         }
+        indexed.audioFile = audioFile;
 
         // Managed Song Sets are grouped by their folder, not by incidental
         // audio-revision paths. Existing legacy folders remain untouched.
@@ -77,9 +120,16 @@ bool SongLibrary::Refresh(std::string& message) {
         if (ec) { ++skipped; ec.clear(); continue; }
         SongSetManifest metadata;
         if (managed) {
-            if (!LoadSongSetManifest(manifestPath, metadata, problem)) {
-                ++skipped;
-                continue;
+            const auto manifest = manifestCache.find(manifestPath);
+            if (manifest == manifestCache.end()) {
+                std::string problem;
+                if (!LoadSongSetManifest(manifestPath, metadata, problem)) {
+                    ++skipped;
+                    continue;
+                }
+                manifestCache.emplace(manifestPath, metadata);
+            } else {
+                metadata = manifest->second;
             }
             const fs::path expected = path.parent_path() /
                 fs::u8path(metadata.audioFile);
@@ -111,7 +161,7 @@ bool SongLibrary::Refresh(std::string& message) {
         } else {
             index = found->second;
         }
-        next[index].charts.push_back({path, std::move(chart), audioFile});
+        next[index].charts.push_back(std::move(indexed));
     }
     if (scanned >= 8192) ++skipped;
     for (auto& song : next) {
@@ -143,9 +193,29 @@ bool SongLibrary::Refresh(std::string& message) {
                 }
             }
         }
-        for (auto& difficulty : song.charts)
-            difficulty.difficulty = core::CalculateChartDifficulty(
-                difficulty.data.route, difficulty.data.offsetSeconds);
+        for (auto& difficulty : song.charts) {
+            // The cached difficulty belongs to a particular audio timing,
+            // not just to the original JSON bytes. A changed manifest BPM
+            // or offset may reproject every note of this Song Set.
+            const bool sameTiming = !song.managed ||
+                (difficulty.data.route.bpm == song.bpm &&
+                 static_cast<int>(std::llround(
+                     difficulty.data.offsetSeconds * 1000.0)) == song.offsetMs);
+            // ApplySongTiming above has already overwritten the in-memory
+            // values, so compare with the pre-scan cached version instead.
+            const auto previousChart = previous.find(difficulty.file);
+            const bool oldTimingMatches = !song.managed ||
+                (previousChart != previous.end() &&
+                 previousChart->second->data.route.bpm == song.bpm &&
+                 static_cast<int>(std::llround(
+                     previousChart->second->data.offsetSeconds * 1000.0)) == song.offsetMs);
+            if (!sameTiming || !oldTimingMatches ||
+                reusedFiles.count(difficulty.file) == 0) {
+                difficulty.difficulty = core::CalculateChartDifficulty(
+                    difficulty.data.route, difficulty.data.offsetSeconds);
+                ++stats.calculatedDifficulties;
+            }
+        }
         SortChartDifficulties(song.charts);
     }
     std::sort(next.begin(), next.end(),
@@ -154,6 +224,7 @@ bool SongLibrary::Refresh(std::string& message) {
                   return a.audioFile < b.audioFile;
               });
     songs_ = std::move(next);
+    lastRefreshStats_ = stats;
     message = "LIBRARY: " + std::to_string(songs_.size()) + " SONGS / " +
               std::to_string(ChartCount()) + " CHARTS";
     if (skipped) message += " (" + std::to_string(skipped) + " SKIPPED)";
