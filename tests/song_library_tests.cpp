@@ -402,7 +402,7 @@ int main() {
     if (densePosition == library.Songs()[0].charts.end()) {
         ok &= Check(false, "dense chart remains indexed before cache test");
     } else {
-        core::LoadedChart editedDense = densePosition->data;
+        locus::core::LoadedChart editedDense = densePosition->data;
         editedDense.title += " Renamed Externally";
         const bool saved = SaveChartWithAudioPath(
             denseInstalled.wstring(), densePosition->audioFile.wstring(),
