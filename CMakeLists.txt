@@ -78,6 +78,7 @@ add_executable(locus
     src/app/menu_ui.cpp
     src/app/chart_editor_ui.cpp
     src/app/chart_editor_actions.cpp
+        src/app/editor_timeline_actions.cpp
         src/app/editor_pattern_actions.cpp
         src/app/editor_text_fields.cpp
         src/app/editor_input.cpp
@@ -158,6 +159,7 @@ if(LOCUS_BUILD_TESTS)
         tests/editor_ui_tests.cpp
         src/app/chart_editor_ui.cpp
         src/app/chart_editor_actions.cpp
+        src/app/editor_timeline_actions.cpp
         src/app/editor_pattern_actions.cpp
         src/app/editor_text_fields.cpp
         src/app/editor_input.cpp
@@ -229,6 +231,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/editor_session.cpp
         src/app/chart_editor_ui.cpp
         src/app/chart_editor_actions.cpp
+        src/app/editor_timeline_actions.cpp
         src/app/editor_pattern_actions.cpp
         src/app/editor_text_fields.cpp
         src/app/editor_input.cpp
