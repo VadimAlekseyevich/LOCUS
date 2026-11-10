@@ -154,7 +154,8 @@ void TurnJudge::Advance(double songSeconds) noexcept {
 }
 
 void TurnJudge::FinishRemainingMisses() noexcept {
-    while (const auto index = NextEventIndex(); index < chart_.turns.size()) {
+    while (NextEvent()) {
+        const auto index = NextEventIndex();
         for (int i = 0; i < 4; ++i)
             if (nextByArrow_[i] == index)
                 Resolve(Grade::Miss, 0.0, false, kArrows[i]);

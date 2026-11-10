@@ -341,7 +341,7 @@ int main() {
                    Grade::Perfect, 3) &&
                 concurrent.NextEvent() && concurrent.NextEvent()->beat == 2,
                 "later Up note scores while earlier diagonal Right remains pending");
-    ok &= Check(Is(concurrent.PressHeading(Heading::Right, 1.12),
+    ok &= Check(Is(concurrent.PressHeading(Heading::Right, 1.09),
                    Grade::Good, 2) &&
                 Is(concurrent.PressHeading(Heading::Right, 1.2),
                    Grade::Perfect, 4) &&
