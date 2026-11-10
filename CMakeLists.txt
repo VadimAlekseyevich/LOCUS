@@ -75,6 +75,7 @@ add_executable(locus
     src/app/skin_profile_actions.cpp
     src/app/skin_controls.cpp
     src/app/skin_menu.cpp
+    src/app/skin_menu_draw.cpp
     src/app/menu_ui.cpp
     src/app/chart_editor_ui.cpp
     src/app/chart_editor_actions.cpp
