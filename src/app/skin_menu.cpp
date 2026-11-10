@@ -53,29 +53,18 @@ Rectangle SwitchRect(int page, int row) {
 }
 
 const char* RowName(int page, int row) {
-    static constexpr const char* path[] = {
-        "PREVIEW TIME (MS)", "PATH WIDTH", "OUTLINE SCALE",
-        "FADE CURVE", "PATH OPACITY", "TURN SIZE", "TURN GLOW",
-        "REVERSE CAP SIZE"
-    };
-    static constexpr const char* player[] = {
-        "PLAYER SIZE", "SPEED (PX/S)", "PLAYER GLOW",
-        "HIT FLASH SIZE", "SHOW HUD", "CAMERA LAG (MS)"
-    };
-    return page == 0 ? path[row] : player[row];
+    const SkinSetting* setting = GetSkinSetting(page, row);
+    return setting ? setting->label : "";
 }
 
-int RowCount(int page) { return page == 0 ? 8 : 6; }
+int RowCount(int page) { return SkinSettingCount(page); }
 
 bool ToggleValue(const Skin& skin, int page, int row) {
-    return page == 0 ? skin.junctionGlow
-         : row == 2 ? skin.playerGlow : skin.showHud;
+    return GetSkinToggle(skin, page, row);
 }
 
 void FlipToggle(Skin& skin, int page, int row) {
-    if (page == 0 && row == 6) skin.junctionGlow = !skin.junctionGlow;
-    else if (page == 1 && row == 2) skin.playerGlow = !skin.playerGlow;
-    else if (page == 1 && row == 4) skin.showHud = !skin.showHud;
+    FlipSkinToggle(skin, page, row);
 }
 
 void DrawSwitch(Font font, Rectangle rect, bool enabled) {

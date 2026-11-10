@@ -133,6 +133,26 @@ int main() {
     invalid = original;
     invalid.baseSpeedPxPerSecond = 2001.0f;
     check(!invalid.Valid(error), "reject invalid base speed");
+    // The settings catalog binds labels, toggles and ranges to real fields.
+    check(SkinSettingCount(0) == 8 && SkinSettingCount(1) == 6 &&
+          SkinSettingCount(2) == 0 &&
+          std::string(GetSkinSetting(0, 0)->label) == "PREVIEW TIME (MS)" &&
+          std::string(GetSkinSetting(1, 5)->label) == "CAMERA LAG (MS)" &&
+          GetSkinSetting(1, 5)->number == &Skin::cameraLagMs &&
+          GetSkinSetting(0, 6)->toggle == &Skin::junctionGlow &&
+          GetSkinSetting(1, 4)->toggle == &Skin::showHud &&
+          !GetSkinSetting(0, 6)->number &&
+          GetSkinSetting(1, 5)->wholeMilliseconds,
+          "skin row descriptors are the single source for numeric and toggle widgets");
+    Skin toggleFixture;
+    check(FlipSkinToggle(toggleFixture, 0, 6) && !toggleFixture.junctionGlow &&
+          !GetSkinToggle(toggleFixture, 0, 6) &&
+          FlipSkinToggle(toggleFixture, 1, 2) && !toggleFixture.playerGlow &&
+          FlipSkinToggle(toggleFixture, 1, 4) && !toggleFixture.showHud &&
+          !FlipSkinToggle(toggleFixture, 1, 5) &&
+          !FlipSkinToggle(toggleFixture, 2, 0) &&
+          !GetSkinSetting(1, 6),
+          "toggles use actual fields and numeric/invalid rows are not switches");
     // Draggers have modest limits, but exact input can go further.
     SkinNumberRange limits;
     check(GetSkinNumberRange(0, 0, limits) &&

@@ -16,8 +16,22 @@ struct SkinNumberRange {
     double inputMax = 1.0;
 };
 
-// Page 0: path rows 0..5 and 7; page 1: player rows 0,1,3,5;
-// page 2: four RGBA channels (rows 0..3) of selectedColor.
+// Each PATH/PLAYER row is described exactly once here: its label,
+// field binding, widget type, numeric limits, and editing precision.
+// COLORS uses independent RGBA-channel controls.
+struct SkinSetting {
+    const char* label = "";
+    SkinNumberRange numberRange{};
+    float Skin::*number = nullptr;
+    bool Skin::*toggle = nullptr;
+    bool wholeMilliseconds = false;
+};
+const SkinSetting* GetSkinSetting(int page, int row) noexcept;
+int SkinSettingCount(int page) noexcept;
+bool GetSkinToggle(const Skin& skin, int page, int row) noexcept;
+bool FlipSkinToggle(Skin& skin, int page, int row) noexcept;
+
+// Page 0/1 use the setting catalog; page 2 is four RGBA channels.
 bool GetSkinNumberRange(int page, int row, SkinNumberRange& range) noexcept;
 double GetSkinNumber(const Skin& skin, int page, int row,
                      int selectedColor) noexcept;

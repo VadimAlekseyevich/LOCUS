@@ -6,37 +6,72 @@
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
+#include <iterator>
 #include <locale>
 #include <sstream>
 #include <string>
 
 namespace locus::app {
 
+namespace {
+// The display order is the array order. Adding a new presentation control
+// requires one entry rather than synchronized row indices across UI, range,
+// getter, setter and boolean dispatch.
+constexpr SkinSetting kPathSettings[] = {
+    {"PREVIEW TIME (MS)", {200, 2000, 50, 10000}, &Skin::lookaheadMs, nullptr, true},
+    {"PATH WIDTH",       {1, 12, 0.25, 40},       &Skin::pathWidth},
+    {"OUTLINE SCALE",    {1, 3, 1, 8},           &Skin::outlineScale},
+    {"FADE CURVE",       {0.5, 2.5, 0.1, 8},     &Skin::fadePower},
+    {"PATH OPACITY",     {0, 1, 0, 1},           &Skin::pathOpacity},
+    {"TURN SIZE",        {3, 18, 1, 64},         &Skin::junctionRadius},
+    {"TURN GLOW",        {}, nullptr, &Skin::junctionGlow},
+    {"REVERSE CAP SIZE", {0, 6, 0, 12},          &Skin::reverseCapScale}
+};
+constexpr SkinSetting kPlayerSettings[] = {
+    {"PLAYER SIZE",      {6, 22, 1, 80},            &Skin::playerRadius},
+    {"SPEED (PX/S)",     {60, 320, kMinBaseSpeed, kMaxBaseSpeed},
+                                                    &Skin::baseSpeedPxPerSecond},
+    {"PLAYER GLOW",      {}, nullptr, &Skin::playerGlow},
+    {"HIT FLASH SIZE",   {0.5, 2, 0.1, 8},          &Skin::hitFlashScale},
+    {"SHOW HUD",         {}, nullptr, &Skin::showHud},
+    {"CAMERA LAG (MS)",  {0, 500, 0, 1500},         &Skin::cameraLagMs, nullptr, true}
+};
+}
+
+const SkinSetting* GetSkinSetting(int page, int row) noexcept {
+    if (row < 0) return nullptr;
+    if (page == 0 && row < static_cast<int>(std::size(kPathSettings)))
+        return &kPathSettings[row];
+    if (page == 1 && row < static_cast<int>(std::size(kPlayerSettings)))
+        return &kPlayerSettings[row];
+    return nullptr;
+}
+
+int SkinSettingCount(int page) noexcept {
+    return page == 0 ? static_cast<int>(std::size(kPathSettings))
+         : page == 1 ? static_cast<int>(std::size(kPlayerSettings)) : 0;
+}
+
+bool GetSkinToggle(const Skin& skin, int page, int row) noexcept {
+    const SkinSetting* setting = GetSkinSetting(page, row);
+    return setting && setting->toggle ? skin.*(setting->toggle) : false;
+}
+
+bool FlipSkinToggle(Skin& skin, int page, int row) noexcept {
+    const SkinSetting* setting = GetSkinSetting(page, row);
+    if (!setting || !setting->toggle) return false;
+    skin.*(setting->toggle) = ! (skin.*(setting->toggle));
+    return true;
+}
+
 bool GetSkinNumberRange(int page, int row, SkinNumberRange& range) noexcept {
-    if (page == 0) {
-        switch (row) {
-            case 0: range = {200.0, 2000.0, 50.0, 10000.0}; return true;
-            case 1: range = {1.0, 12.0, 0.25, 40.0}; return true;
-            case 2: range = {1.0, 3.0, 1.0, 8.0}; return true;
-            case 3: range = {0.5, 2.5, 0.1, 8.0}; return true;
-            case 4: range = {0.0, 1.0, 0.0, 1.0}; return true;
-            case 5: range = {3.0, 18.0, 1.0, 64.0}; return true;
-            case 7: range = {0.0, 6.0, 0.0, 12.0}; return true;
-            default: return false;
-        }
-    }
-    if (page == 1) {
-        switch (row) {
-            case 0: range = {6.0, 22.0, 1.0, 80.0}; return true;
-            case 1: range = {60.0, 320.0, kMinBaseSpeed, kMaxBaseSpeed}; return true;
-            case 3: range = {0.5, 2.0, 0.1, 8.0}; return true;
-            case 5: range = {0.0, 500.0, 0.0, 1500.0}; return true;
-            default: return false;
-        }
+    if (const SkinSetting* setting = GetSkinSetting(page, row)) {
+        if (!setting->number) return false;
+        range = setting->numberRange;
+        return true;
     }
     if (page == 2 && row >= 0 && row < 4) {
-        // RGBA has a hard representational limit: 8-bit integer channels.
-        range = {0.0, 255.0, 0.0, 255.0};
+        range = {0, 255, 0, 255};
         return true;
     }
     return false;
@@ -44,31 +79,19 @@ bool GetSkinNumberRange(int page, int row, SkinNumberRange& range) noexcept {
 
 double GetSkinNumber(const Skin& skin, int page, int row,
                      int selectedColor) noexcept {
-    if (page == 0) {
-        switch (row) {
-            case 0: return skin.lookaheadMs;
-            case 1: return skin.pathWidth;
-            case 2: return skin.outlineScale;
-            case 3: return skin.fadePower;
-            case 4: return skin.pathOpacity;
-            case 5: return skin.junctionRadius;
-            case 7: return skin.reverseCapScale;
-        }
-    } else if (page == 1) {
-        switch (row) {
-            case 0: return skin.playerRadius;
-            case 1: return skin.baseSpeedPxPerSecond;
-            case 3: return skin.hitFlashScale;
-            case 5: return skin.cameraLagMs;
-        }
-    } else if (page == 2 && selectedColor >= 0 &&
-               selectedColor < kSkinColorCount) {
+    if (const SkinSetting* setting = GetSkinSetting(page, row)) {
+        if (setting->number) return skin.*(setting->number);
+        return 0.0;
+    }
+    if (page == 2 && selectedColor >= 0 &&
+        selectedColor < kSkinColorCount) {
         const Color color = SkinColor(skin, selectedColor);
         switch (row) {
             case 0: return color.r;
             case 1: return color.g;
             case 2: return color.b;
             case 3: return color.a;
+            default: break;
         }
     }
     return 0.0;
@@ -88,6 +111,7 @@ bool SetSkinNumber(Skin& skin, int page, int row, int selectedColor,
                 FormatSkinNumber(range.inputMax);
         return false;
     }
+
     if (page == 2) {
         if (selectedColor < 0 || selectedColor >= kSkinColorCount ||
             (!fromSlider && std::floor(value) != value)) {
@@ -104,34 +128,15 @@ bool SetSkinNumber(Skin& skin, int page, int row, int selectedColor,
             default: return false;
         }
     } else {
-        // All skin values have a predictable editable precision. Preview
-        // duration and camera lag are integral milliseconds; other numeric
-        // properties support hundredths. Quantize before converting to float to prevent
-        // values such as "1.8200001" after dragging a slider.
-        value = (page == 0 && row == 0) || (page == 1 && row == 5)
-            ? std::round(value)
-            : std::round(value * 100.0) / 100.0;
-        const float number = static_cast<float>(value);
-        if (page == 0) {
-            switch (row) {
-                case 0: skin.lookaheadMs = number; break;
-                case 1: skin.pathWidth = number; break;
-                case 2: skin.outlineScale = number; break;
-                case 3: skin.fadePower = number; break;
-                case 4: skin.pathOpacity = number; break;
-                case 5: skin.junctionRadius = number; break;
-                case 7: skin.reverseCapScale = number; break;
-                default: return false;
-            }
-        } else if (page == 1) {
-            switch (row) {
-                case 0: skin.playerRadius = number; break;
-                case 1: skin.baseSpeedPxPerSecond = number; break;
-                case 3: skin.hitFlashScale = number; break;
-                case 5: skin.cameraLagMs = number; break;
-                default: return false;
-            }
-        } else return false;
+        const SkinSetting* setting = GetSkinSetting(page, row);
+        if (!setting || !setting->number) {
+            error = "Invalid numeric skin value.";
+            return false;
+        }
+        // Keep pixel/size fields to hundredths; durations to whole ms.
+        value = setting->wholeMilliseconds
+            ? std::round(value) : std::round(value * 100.0) / 100.0;
+        skin.*(setting->number) = static_cast<float>(value);
     }
     error.clear();
     return true;
