@@ -65,9 +65,9 @@ and reduce the number of unrelated reasons a file can change.
    and native quit-input mapping now have separate owners. This is an
    intentional boundary: only extract more if a new feature proves the
    coupling harmful, rather than moving 400 lines into a God Object.
-2. `chart_editor_actions.cpp` combines editor keyboard/mouse interaction,
-   timeline movement, route edits and selection state. Split these by
-   input operation and preserve its pure action tests.
+2. Editor input and authoring operations now have separate modules;
+   `chart_editor_actions.cpp` retains only screen dispatch and hitbox routing.
+   Further isolate hitbox mapping only if new controls increase its coupling.
 3. `skin_menu.cpp` combines palette math, personal profile UI, live preview,
    drawing and text-input interaction; distinguish color-editor interaction
    from rendering and profile persistence.
@@ -79,6 +79,9 @@ and reduce the number of unrelated reasons a file can change.
    giant frame-state DTO.
 
 ## Completed stabilization
+
+- **2026-11-10:** Split editor input polling, focused text fields, selection/timeline, and pattern/chord commands into separate owner modules. The editor returns clipboard-copy commands instead of calling OS clipboard APIs from its pure action dispatcher; the screen handler publishes them. A single Undo/Redo path now clears outdated selections for both buttons and keyboard after changing tick resolution. No chart format changes.
+
 
 - **2026-11-10:** Chart editor Undo/Redo uses reversible note-range splices and lightweight metadata records instead of copying `LoadedChart` for every edit. Placing a note in a 10,000-note chart now retains only that changed note in the 64-entry history. Moving, pasting, shifting, mirroring and rotating remain one-step transactions; BPM, offset and tick-resolution remaps intentionally capture all affected notes. Existing in-memory editor API and chart file format are unchanged. Direct tests cover dense-note retention and full-range timing undo.
 

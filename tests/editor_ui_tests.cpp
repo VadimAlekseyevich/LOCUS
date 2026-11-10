@@ -761,6 +761,30 @@ int main() {
                 snapChart.Data().route.snapDivision == 2,
                 "existing zoom buttons remain independent of snap division");
 
+    // Button Undo must clear the selected range after undoing a tick
+    // resolution expansion, just like Ctrl+Z. Old code had two paths.
+    ChartEditor undoChart;
+    EditorUiState undoUi;
+    undoChart.SelectBeat(2);
+    undoChart.PutTurn(Heading::Up);
+    undoChart.SetSnapDivision(2);
+    undoUi.rangeFirst = 4;
+    undoUi.rangeLast = 6;
+    const auto mouseUndo = ApplyEditorControls(undoChart, undoUi, Click(82, 370));
+    ok &= Check(mouseUndo.changedChart &&
+                undoChart.Data().route.ticksPerBeat == 1 &&
+                !undoUi.HasRange(),
+                "Undo button clears old tick-domain selection");
+    undoUi.rangeFirst = 2;
+    undoUi.rangeLast = 3;
+    EditorControls redoInput;
+    redoInput.redo = true;
+    const auto keyboardRedo = ApplyEditorControls(undoChart, undoUi, redoInput);
+    ok &= Check(keyboardRedo.changedChart &&
+                undoChart.Data().route.ticksPerBeat == 2 &&
+                !undoUi.HasRange(),
+                "Ctrl+Y and button Undo share one selection cleanup path");
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS tabs=3 grid=8x8 preview=1 zoom=1\n";
     return 0;

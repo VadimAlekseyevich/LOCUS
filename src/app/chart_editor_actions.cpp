@@ -4,18 +4,31 @@
 #include "app/editor_timeline_actions.h"
 
 #include <algorithm>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <limits>
-#include <optional>
 #include <string>
 
 namespace locus::app {
 using namespace detail;
 namespace {
 
-
+// Keyboard and button Undo/Redo must apply the same tick-domain selection
+// cleanup. Otherwise a mouse Undo after a grid change leaves a stale range.
+void ApplyHistoryAction(core::ChartEditor& draft, EditorUiState& ui,
+                        bool undo, EditorUiAction& action) {
+    const int beforeTicks = draft.Data().route.ticksPerBeat;
+    const bool changed = undo ? draft.Undo() : draft.Redo();
+    action.changedChart = changed;
+    ui.feedback = changed
+        ? (undo ? "UNDO APPLIED" : "REDO APPLIED")
+        : (undo ? "NOTHING TO UNDO" : "NOTHING TO REDO");
+    ui.feedbackError = !changed;
+    if (changed && beforeTicks != draft.Data().route.ticksPerBeat) {
+        ui.rangeFirst = ui.rangeLast = -1;
+        ui.draggingTimeline = false;
+    } else if (changed && ui.HasRange() &&
+               ui.rangeLast >= draft.Data().route.lengthBeats) {
+        ui.rangeFirst = ui.rangeLast = -1;
+    }
+}
 } // namespace
 
 EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
@@ -30,7 +43,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     // Suppress route/transport shortcuts; the Set controller consumes text.
     if (ui.editingSetPreview) return action;
 
-        if (ui.EditingText())
+    if (ui.EditingText())
         return editor_text::HandleTextInput(draft, ui, input);
 
     // The current Route time readout, not individual timeline beats, copies
@@ -63,21 +76,9 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return action;
     }
 
-    // Undo/redo also cover non-pattern edits (BPM, grid size, individual turns).
+    // Undo/redo also cover field edits, history of notes and grid changes.
     if (input.undo || input.redo) {
-        const int originalTicks = draft.Data().route.ticksPerBeat;
-        const bool ok = input.undo ? draft.Undo() : draft.Redo();
-        action.changedChart = ok;
-        notice(ok ? (input.undo ? "UNDO APPLIED" : "REDO APPLIED")
-                  : (input.undo ? "NOTHING TO UNDO" : "NOTHING TO REDO"), !ok);
-        if (ok && originalTicks != draft.Data().route.ticksPerBeat) {
-            // A range from the old tick domain would select wrong notes.
-            ui.rangeFirst = ui.rangeLast = -1;
-            ui.draggingTimeline = false;
-        } else if (ok && ui.HasRange() &&
-                   ui.rangeLast >= draft.Data().route.lengthBeats) {
-            ui.rangeFirst = ui.rangeLast = -1;
-        }
+        ApplyHistoryAction(draft, ui, input.undo, action);
         return action;
     }
 
@@ -130,14 +131,10 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         else if (ui.tab == EditorTab::Route && Hit(kRotateClockwise, mouse)) commands.rotateCW = true;
         else if (ui.tab == EditorTab::Route && Hit(kCutTurns, mouse)) commands.cut = true;
         else if (ui.tab == EditorTab::Route && Hit(kUndoEdit, mouse)) {
-            action.changedChart = draft.Undo();
-            notice(action.changedChart ? "UNDO APPLIED" : "NOTHING TO UNDO",
-                   !action.changedChart);
+            ApplyHistoryAction(draft, ui, true, action);
             return action;
         } else if (ui.tab == EditorTab::Route && Hit(kRedoEdit, mouse)) {
-            action.changedChart = draft.Redo();
-            notice(action.changedChart ? "REDO APPLIED" : "NOTHING TO REDO",
-                   !action.changedChart);
+            ApplyHistoryAction(draft, ui, false, action);
             return action;
         } else if (ui.tab == EditorTab::Route && Hit(kHeading, mouse)) {
             draft.RotateHeading45(1);

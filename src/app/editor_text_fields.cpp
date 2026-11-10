@@ -11,7 +11,7 @@
 namespace locus::app::editor_text {
 using namespace detail;
 
-const char* FieldName(EditorField field) {
+static const char* FieldName(EditorField field) {
     switch (field) {
         case EditorField::Title: return "TITLE";
         case EditorField::Bpm: return "BPM";
@@ -22,7 +22,7 @@ const char* FieldName(EditorField field) {
     return "";
 }
 
-Rectangle FieldBounds(EditorField field) {
+static Rectangle FieldBounds(EditorField field) {
     switch (field) {
         case EditorField::Title: return kTitle;
         case EditorField::Bpm: return kBpm;
@@ -45,7 +45,7 @@ EditorField ClickedField(Vector2 mouse, EditorTab tab) {
     return EditorField::None;
 }
 
-std::string InitialValue(const core::ChartEditor& draft, EditorField field) {
+static std::string InitialValue(const core::ChartEditor& draft, EditorField field) {
     char text[100]{};
     switch (field) {
         case EditorField::Title: return draft.Data().title;
@@ -68,7 +68,7 @@ void BeginField(EditorUiState& ui, const core::ChartEditor& draft, EditorField f
     ui.feedback = "";
 }
 
-bool ParseNumeric(const std::string& string, double& result) {
+static bool ParseNumeric(const std::string& string, double& result) {
     if (string.empty()) return false;
     char* end = nullptr;
     result = std::strtod(string.c_str(), &end);
@@ -76,7 +76,7 @@ bool ParseNumeric(const std::string& string, double& result) {
 }
 
 // One integer controls the square's side: never accept a width/height pair.
-bool ParseSquareSize(const std::string& value, int& size) {
+static bool ParseSquareSize(const std::string& value, int& size) {
     if (value.empty() || value.size() > 2 ||
         !std::all_of(value.begin(), value.end(),
                      [](unsigned char c) { return c >= '0' && c <= '9'; }))

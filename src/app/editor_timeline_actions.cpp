@@ -10,51 +10,51 @@ using namespace detail;
 
 void ChangeSnap(core::ChartEditor& draft, EditorUiState& ui,
                 int direction, EditorUiAction& action) {
-        const int oldTicks = draft.Data().route.ticksPerBeat;
-        const int prior = draft.Data().route.snapDivision;
-        int index = 0;
-        while (index < 9 && kSnapDivisions[index] != prior) ++index;
-        if (index == 9) return;
-        const int next = std::clamp(index + direction, 0, 8);
-        if (next == index) return;
-        if (!draft.SetSnapDivision(kSnapDivisions[next])) {
-            ui.feedback = "GRID TOO DENSE FOR SONG LENGTH (MAX 65536 TICKS)";
-            ui.feedbackError = true;
-            return;
-        }
-        const int factor = draft.Data().route.ticksPerBeat / oldTicks;
-        if (ui.HasRange()) {
-            ui.rangeFirst *= factor;
-            ui.rangeLast *= factor;
-        }
-        ui.dragAnchorBeat *= factor;
-        ui.dragViewBeat *= factor;
-        ui.draggingTimeline = false;
-        action.changedChart = true;
-        ui.feedback = "GRID 1/" + std::to_string(kSnapDivisions[next]) +
-                      " - ORIGINAL NOTES / BPM UNCHANGED";
-        ui.feedbackError = false;
+    const int oldTicks = draft.Data().route.ticksPerBeat;
+    const int prior = draft.Data().route.snapDivision;
+    int index = 0;
+    while (index < 9 && kSnapDivisions[index] != prior) ++index;
+    if (index == 9) return;
+    const int next = std::clamp(index + direction, 0, 8);
+    if (next == index) return;
+    if (!draft.SetSnapDivision(kSnapDivisions[next])) {
+        ui.feedback = "GRID TOO DENSE FOR SONG LENGTH (MAX 65536 TICKS)";
+        ui.feedbackError = true;
+        return;
+    }
+    const int factor = draft.Data().route.ticksPerBeat / oldTicks;
+    if (ui.HasRange()) {
+        ui.rangeFirst *= factor;
+        ui.rangeLast *= factor;
+    }
+    ui.dragAnchorBeat *= factor;
+    ui.dragViewBeat *= factor;
+    ui.draggingTimeline = false;
+    action.changedChart = true;
+    ui.feedback = "GRID 1/" + std::to_string(kSnapDivisions[next]) +
+                  " - ORIGINAL NOTES / BPM UNCHANGED";
+    ui.feedbackError = false;
 }
 
 void BeginSelection(core::ChartEditor& draft, EditorUiState& ui,
                     const EditorControls& input) {
     const Vector2 mouse = input.mouse;
-            const double anchor = ViewBeat(draft, input.timelineViewBeat);
-            const double clicked = anchor + (mouse.x - kPlayheadX) /
-                                                 PixelsPerTick(ui, draft.Data().route);
-            const int beat = SnapTick(clicked, draft.Data().route);
-            if (ui.tab == EditorTab::Route && input.shiftHeld) {
-                const int origin = draft.SelectedBeat();
-                ui.rangeFirst = std::min(origin, beat);
-                ui.rangeLast = std::max(origin, beat);
-                ui.draggingTimeline = false;
-            } else {
-                ui.rangeFirst = ui.rangeLast = -1;
-                ui.draggingTimeline = ui.tab == EditorTab::Route && input.mouseHeld;
-                ui.dragAnchorBeat = beat;
-                ui.dragViewBeat = anchor;
-            }
-            draft.SelectBeat(beat);
+    const double anchor = ViewBeat(draft, input.timelineViewBeat);
+    const double clicked = anchor + (mouse.x - kPlayheadX) /
+                                         PixelsPerTick(ui, draft.Data().route);
+    const int beat = SnapTick(clicked, draft.Data().route);
+    if (ui.tab == EditorTab::Route && input.shiftHeld) {
+        const int origin = draft.SelectedBeat();
+        ui.rangeFirst = std::min(origin, beat);
+        ui.rangeLast = std::max(origin, beat);
+        ui.draggingTimeline = false;
+    } else {
+        ui.rangeFirst = ui.rangeLast = -1;
+        ui.draggingTimeline = ui.tab == EditorTab::Route && input.mouseHeld;
+        ui.dragAnchorBeat = beat;
+        ui.dragViewBeat = anchor;
+    }
+    draft.SelectBeat(beat);
 }
 
 void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,
@@ -136,7 +136,6 @@ void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,
             }
         }
     }
-
 }
 
 void ApplyWheel(core::ChartEditor& draft, float wheel) {
