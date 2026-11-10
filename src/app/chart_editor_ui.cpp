@@ -304,7 +304,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
               ui.tab == EditorTab::Audio);
     navButton(font, kTabField, "FIELD", Color{239, 203, 129, 255},
               ui.tab == EditorTab::Field);
-    navButton(font, kEditorBack, "BACK", Color{247, 202, 145, 255});
+    navButton(font, kEditorBack, "BACK", Color{247, 202, 145, 255}, false);
 
     const bool running = previewPlaying && !previewPaused;
     if (routeTab) {
@@ -531,10 +531,10 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
 
     DrawTimeline(font, draft, ui, previewBeat);
     const auto fileButton = routeTab ? CompactButton : Button;
-    fileButton(font, kEditorFileSave, "SAVE", Color{131, 219, 184, 255});
-    fileButton(font, kEditorFileSaveAs, "SAVE AS", Color{131, 219, 184, 255});
-    fileButton(font, kEditorFileOpen, "OPEN", Color{173, 187, 239, 255});
-    fileButton(font, kEditorFileNew, "NEW", Color{237, 190, 148, 255});
+    fileButton(font, kEditorFileSave, "SAVE", Color{131, 219, 184, 255}, false);
+    fileButton(font, kEditorFileSaveAs, "SAVE AS", Color{131, 219, 184, 255}, false);
+    fileButton(font, kEditorFileOpen, "OPEN", Color{173, 187, 239, 255}, false);
+    fileButton(font, kEditorFileNew, "NEW", Color{237, 190, 148, 255}, false);
     if (routeTab) DrawComparisonPicker(font, ui, set);
 }
 

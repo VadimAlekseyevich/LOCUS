@@ -110,6 +110,9 @@ int main() {
     ok &= Check(missing.count == 2,
                 "deleted or missing reference is never rendered");
     view.managed = false;
+    ReconcileEditorComparisons(ui, view);
+    ok &= Check(ui.comparisonFiles.empty() && !ui.comparisonPickerOpen,
+                "comparison selection resets when Song Set disappears");
     ok &= Check(cache.Prepare(editor, ui, view, 10.0).count == 1,
                 "no Song Set means single editable chart");
     if (ok) std::cout << "EDITOR_COMPARE_PASS exact_time=1 panes=4 readonly=1\n";

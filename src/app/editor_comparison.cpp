@@ -33,6 +33,33 @@ bool ToggleEditorComparison(EditorUiState& ui, const EditorSetView& set,
     return true;
 }
 
+void ReconcileEditorComparisons(EditorUiState& ui,
+                                const EditorSetView& set) {
+    if (!set.managed) {
+        ui.comparisonFiles.clear();
+        ui.comparisonPickerOpen = false;
+        ui.comparisonPickerFirst = 0;
+        return;
+    }
+    std::vector<std::filesystem::path> valid;
+    for (const auto& file : ui.comparisonFiles) {
+        const auto found = std::find_if(set.comparisonOptions.begin(),
+            set.comparisonOptions.end(),
+            [&](const EditorComparisonOption& option) {
+                return option.file == file && option.chart;
+            });
+        if (found == set.comparisonOptions.end() ||
+            found - set.comparisonOptions.begin() == set.current ||
+            std::find(valid.begin(), valid.end(), file) != valid.end())
+            continue;
+        if (valid.size() == 3) break;
+        valid.push_back(file);
+    }
+    ui.comparisonFiles = std::move(valid);
+    ui.comparisonPickerFirst = std::clamp(ui.comparisonPickerFirst, 0,
+        std::max(0, static_cast<int>(set.comparisonOptions.size()) - 5));
+}
+
 void EditorComparisonCache::Reset() noexcept {
     active_ = Cached{};
     activeRevision_ = ~std::uint64_t{0};

@@ -27,6 +27,9 @@ bool ToggleEditorComparison(EditorUiState& ui, const EditorSetView& set,
                             int optionIndex);
 bool HasEditorComparison(const EditorUiState& ui,
                          const std::filesystem::path& file) noexcept;
+// Drop missing/now-active references after file removal or library refresh.
+void ReconcileEditorComparisons(EditorUiState& ui,
+                                const EditorSetView& set);
 
 // Owns compiled routes for one editable chart and up to three read-only
 // difficulties. A playback frame supplies ONE song timestamp to all routes.

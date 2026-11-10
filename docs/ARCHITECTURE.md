@@ -10,6 +10,7 @@ pre-release; incompatible changes are allowed but must be called out.
 | --- | --- | --- |
 | `src/core` | Chart timestamps, musical-grid editing, exact-time `TimedRoute` index, eight-way headings, judgement, difficulty and chart JSON | GPU, native dialogs, filesystem library policies |
 | `ChartEditor` | Mutable authoring document, selection, revisioned undo/redo | Saved-file selection, playback device, render UI |
+| `EditorComparisonCache` | One revision-cached editable `TimedRoute`, up to three file-identity-cached reference routes; read-only render frame | Audio transport, modifying other charts, Song Set ownership |
 | `SongLibrary` / `song_set_storage` | Installed Song Sets, authoritative shared BPM/offset, file transactions, recovery, cache/index | Gameplay scoring or editor keyboard state |
 | `ChartPlayback` / `GameSession` | Audio-time transport and per-arrow judgement | Screen rendering, camera, skin settings |
 | `PlayPresentation` | Presentation-only camera lag, outro and adjustment notice | Authoritative song time or note results |
@@ -19,8 +20,11 @@ pre-release; incompatible changes are allowed but must be called out.
 
 Play: physical input → `GameSession`/`TurnJudge` → read-only
 `GameplayView` prepared by `PlayPresentation` → route/marker rendering.
-Editor: authoring input → `ChartEditor` revision → editor preview; TEST
-borrows a prepared draft without writing it. Library: disk → validated
+Editor: authoring input → `ChartEditor` revision → one compiled editable route;
+optional Song Set references are compiled read-only by `EditorComparisonCache`.
+All one-to-four panes consume the editor's single audio-time cursor and fixed
+px/s scale; neither opening a reference nor navigating its picker edits notes.
+TEST borrows a prepared draft without writing it. Library: disk → validated
 Song Set index → explicit chart/audio activation. Audio streams are unloaded
 before the shared audio device; GPU textures before the window.
 
@@ -34,7 +38,9 @@ before the shared audio device; GPU textures before the window.
 - An authored chart remains unchanged on miss or wrong input. No artificial
   coordinate offsets for reversals; the route is infinite and eight-way.
 - Editor draft, active gameplay chart and library cache have different
-  lifetimes. Library refresh may invalidate indexed song/chart pointers.
+  lifetimes. Library refresh may invalidate indexed song/chart pointers;
+  comparison selection stores filesystem identities, never raw pointers
+  across frames. Editor revisions invalidate only the active compiled route.
 - Write failures must never discard an unsaved draft or silently overwrite
   another difficulty's audio. A Song Set manifest owns shared timing.
 - `SKIN` controls appearance, including fixed visual speed and optional

@@ -129,6 +129,8 @@ void EditorSetController::HandleControls(const EditorControls& input) {
     const Vector2 mouse = input.mouse;
     const bool clicked = input.mouseClick;
     if (ui.tab == EditorTab::Route) {
+        const EditorSetView view = View();
+        ReconcileEditorComparisons(ui, view);
         if (ui.active != EditorField::None) return;
         if (input.escape && ui.comparisonPickerOpen) {
             ui.comparisonPickerOpen = false;
@@ -136,12 +138,15 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         }
         if (!clicked) return;
         if (detail::Hit(detail::kCompareToggle, mouse)) {
-            ui.comparisonPickerOpen = !ui.comparisonPickerOpen;
+            const bool hasChoices =
+                !view.comparisonOptions.empty() &&
+                (view.current < 0 || view.comparisonOptions.size() > 1);
+            if (view.managed && hasChoices)
+                ui.comparisonPickerOpen = !ui.comparisonPickerOpen;
             ui.comparisonPickerFirst = 0;
             return;
         }
         if (!ui.comparisonPickerOpen) return;
-        const EditorSetView view = View();
         const int count = static_cast<int>(view.comparisonOptions.size());
         if (detail::Hit(detail::kComparePickerPrev, mouse)) {
             ui.comparisonPickerFirst = std::max(0, ui.comparisonPickerFirst - 5);
