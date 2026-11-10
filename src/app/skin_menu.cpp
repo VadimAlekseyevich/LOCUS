@@ -2,6 +2,7 @@
 #include "core/utf8.h"
 
 #include "app/menu_ui.h"
+#include "app/ui_button.h"
 #include "app/skin_controls.h"
 #include "app/route_renderer.h"
 #include "app/visual_style.h"
@@ -26,14 +27,7 @@ void Label(Font font, const std::string& label, float x, float y,
 }
 
 void Button(Font font, Rectangle r, const char* text, bool active = false) {
-    DrawRectangleRounded(r, 0.12f, 4,
-                         active ? Color{49, 69, 82, 255}
-                                : Color{35, 41, 56, 255});
-    DrawRectangleRoundedLinesEx(r, 0.12f, 4, 1.3f,
-                                active ? kGold : kAccent);
-    const auto size = MeasureTextEx(font, text, 15.0f, 1.0f);
-    Label(font, text, r.x + (r.width - size.x) * 0.5f,
-          r.y + (r.height - size.y) * 0.5f, 15.0f);
+    DrawUiButton(font, r, text, SkinButtonStyle(), active);
 }
 
 bool Hit(Vector2 mouse, Rectangle rect) {

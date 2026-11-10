@@ -1,6 +1,7 @@
 #include "app/menu_ui.h"
 #include "core/chart_difficulty.h"
 #include "core/utf8.h"
+#include "app/ui_button.h"
 
 #include <algorithm>
 #include <cmath>
@@ -26,15 +27,7 @@ std::string Clip(const std::string& input, std::size_t length = 34) {
 
 void Button(Font font, Rectangle area, const std::string& label,
             Color accent, bool selected = false) {
-    DrawRectangleRounded(area, 0.10f, 5,
-                         selected ? Color{42, 75, 83, 255}
-                                  : Color{36, 42, 58, 255});
-    DrawRectangleRoundedLinesEx(area, 0.10f, 5, selected ? 2.5f : 1.6f, accent);
-    const float fontSize = 17.0f;
-    const Vector2 measure = MeasureTextEx(font, label.c_str(), fontSize, 1.0f);
-    Label(font, label, area.x + (area.width - measure.x) / 2.0f,
-          area.y + (area.height - measure.y) / 2.0f,
-          fontSize, kText);
+    DrawUiButton(font, area, label.c_str(), MenuButtonStyle(accent), selected);
 }
 
 void Header(Font font, const char* section) {

@@ -4,6 +4,7 @@
 #include "core/judgement.h"
 #include "app/route_renderer.h"
 #include "app/viewport.h"
+#include "app/ui_button.h"
 
 #include <algorithm>
 #include <cmath>
@@ -24,23 +25,13 @@ std::string Truncate(const std::string& value, std::size_t maxCharacters) {
 }
 
 void Button(Font font, Rectangle rect, const char* text, Color tint, bool active = false) {
-    DrawRectangleRounded(rect, 0.16f, 5,
-                         active ? Color{45, 81, 88, 255}
-                                : Color{36, 43, 58, 255});
-    DrawRectangleRoundedLinesEx(rect, 0.16f, 5, 1.7f, tint);
-    const Vector2 measure = MeasureTextEx(font, text, 17.0f, 1.0f);
-    Label(font, text, rect.x + (rect.width - measure.x) / 2.0f,
-          rect.y + (rect.height - measure.y) / 2.0f,
-          17.0f, Color{232, 238, 245, 255});
+    DrawUiButton(font, rect, text, EditorButtonStyle(tint), active);
 }
 
 // The nine compass pads remain clickable, with a small key-label line.
 void DirectionButton(Font font, Rectangle rect, const char* name,
                      const char* keys, Color tint, bool active = false) {
-    DrawRectangleRounded(rect, 0.16f, 5,
-                         active ? Color{45, 81, 88, 255}
-                                : Color{36, 43, 58, 255});
-    DrawRectangleRoundedLinesEx(rect, 0.16f, 5, 1.7f, tint);
+    DrawUiButtonChrome(rect, EditorButtonStyle(tint), active);
     const auto headingSize = MeasureTextEx(font, name, 13.0f, 1.0f);
     // An arbitrary rebind can be longer than "J+K" (e.g. "LEFT+UP").
     // Fit the actual shortcut inside the existing 52px button hitbox.
