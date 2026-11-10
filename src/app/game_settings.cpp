@@ -25,18 +25,43 @@
 namespace locus::app {
 namespace {
 const char* kNames[kGameActionCount] = {
-    "UP", "RIGHT", "DOWN", "LEFT", "PAUSE", "RETRY", "HOME"
+    "UP", "RIGHT", "DOWN", "LEFT", "PAUSE / RESUME", "RETRY", "LEAVE LEVEL",
+    "PRACTICE 100%", "PRACTICE 75%", "PRACTICE 50%", "PRACTICE 25%",
+    "PRACTICE 10%", "SPEED +", "SPEED -", "PREVIEW +", "PREVIEW -"
 };
 const char* kJsonKeys[kGameActionCount] = {
-    "up", "right", "down", "left", "pause", "retry", "home"
+    "up", "right", "down", "left", "pause", "retry", "home",
+    "practice100", "practice75", "practice50", "practice25", "practice10",
+    "speedUp", "speedDown", "previewUp", "previewDown"
+};
+const char* kShortcutNames[kShortcutActionCount] = {
+    "BACK / CANCEL", "SONG LIBRARY", "OPEN EDITOR", "OPEN SKIN",
+    "OPEN SETTINGS", "FULLSCREEN", "RESCAN SONGS", "CHOOSE MUSIC",
+    "CHOOSE CHART", "LISTEN PAUSE", "LISTEN REPLAY",
+    "SAVE CHART", "SAVE CHART AS", "OPEN CHART", "NEW CHART",
+    "TEST PLAY", "PREVIEW PAUSE", "PREVIEW RESTART",
+    "COPY", "CUT", "PASTE", "UNDO", "REDO",
+    "MIRROR H", "MIRROR V", "HEADING LEFT", "HEADING RIGHT",
+    "ZOOM IN", "ZOOM OUT", "GRID FINER", "GRID COARSER"
+};
+const char* kShortcutJson[kShortcutActionCount] = {
+    "back", "openLibrary", "openEditor", "openSkin", "openSettings",
+    "fullscreen", "refreshLibrary", "chooseMusic", "chooseChart",
+    "listenPause", "listenReplay",
+    "editorSave", "editorSaveAs", "editorOpen", "editorNew", "editorTest",
+    "editorPreview", "editorRestart", "editorCopy", "editorCut", "editorPaste",
+    "editorUndo", "editorRedo", "editorMirrorH", "editorMirrorV",
+    "editorHeadingLeft", "editorHeadingRight", "editorZoomIn",
+    "editorZoomOut", "editorSnapMore", "editorSnapLess"
 };
 
-bool AllowedKey(int key) noexcept {
-    // Keep Escape reserved for backing out of the interface, F11 for window
-    // mode and Enter for activating menu options. Exclude system modifiers.
+bool AllowedKey(int key, bool escape = false, bool fullscreen = false) noexcept {
+    // ESC is the default PAUSE key in PLAY and BACK elsewhere. F11 belongs
+    // to the configurable fullscreen action; modifiers cannot be primary keys.
     if (key < KEY_SPACE || key > KEY_KB_MENU ||
-        key == KEY_ESCAPE || key == KEY_ENTER || key == KEY_TAB ||
-        key == KEY_BACKSPACE || key == KEY_F11 ||
+        (key == KEY_ESCAPE && !escape) ||
+        (key == KEY_F11 && !fullscreen) ||
+        key == KEY_ENTER || key == KEY_TAB || key == KEY_BACKSPACE ||
         (key >= KEY_F1 && key <= KEY_F4) ||
         (key >= KEY_LEFT_SHIFT && key <= KEY_RIGHT_SUPER))
         return false;
@@ -47,6 +72,17 @@ bool AllowedKey(int key) noexcept {
 const char* ActionName(GameAction action) noexcept {
     const int index = static_cast<int>(action);
     return (index >= 0 && index < kGameActionCount) ? kNames[index] : "UNKNOWN";
+}
+
+const char* ShortcutName(ShortcutAction action) noexcept {
+    const int index = static_cast<int>(action);
+    return index >= 0 && index < kShortcutActionCount
+        ? kShortcutNames[index] : "UNKNOWN";
+}
+
+std::string KeyboardChordName(KeyChord chord) {
+    return std::string(chord.ctrl ? "CTRL+" : "") +
+           (chord.shift ? "SHIFT+" : "") + KeyboardKeyName(chord.key);
 }
 
 std::string KeyboardKeyName(int key) {
@@ -64,6 +100,7 @@ std::string KeyboardKeyName(int key) {
         case KEY_DOWN: return "DOWN";
         case KEY_LEFT: return "LEFT";
         case KEY_SPACE: return "SPACE";
+        case KEY_ESCAPE: return "ESC";
         case KEY_LEFT_BRACKET: return "[";
         case KEY_RIGHT_BRACKET: return "]";
         case KEY_SEMICOLON: return ";";
@@ -122,12 +159,8 @@ bool GameSettings::Valid(std::string& error) const {
         error = "FPS limit must be one of the available display presets.";
         return false;
     }
-    if (chordWindowMs < 40 || chordWindowMs > 160) {
-        error = "Chord window must be 40..160 milliseconds.";
-        return false;
-    }
     for (int i = 0; i < kGameActionCount; ++i) {
-        if (!AllowedKey(keys[i])) {
+        if (!AllowedKey(keys[i], i == static_cast<int>(GameAction::Pause))) {
             error = std::string(ActionName(static_cast<GameAction>(i))) +
                     ": key is reserved or unsupported.";
             return false;
@@ -139,6 +172,25 @@ bool GameSettings::Valid(std::string& error) const {
                 return false;
             }
         }
+    }
+    for (int i = 0; i < kShortcutActionCount; ++i) {
+        const auto value = shortcuts[i];
+        if (!AllowedKey(value.key,
+                        i == static_cast<int>(ShortcutAction::Back),
+                        i == static_cast<int>(ShortcutAction::Fullscreen))) {
+            error = std::string(ShortcutName(static_cast<ShortcutAction>(i))) +
+                    ": unsupported or reserved shortcut.";
+            return false;
+        }
+        // Duplicates are forbidden only within the same focused context.
+        // Menu/Listen and Editor shortcuts intentionally share many keys.
+        for (int j = (i < kNavigationShortcutCount ? 0 : kNavigationShortcutCount);
+             j < i; ++j)
+            if (shortcuts[i] == shortcuts[j]) {
+                error = std::string(ShortcutName(static_cast<ShortcutAction>(i))) +
+                        ": duplicate shortcut in this section.";
+                return false;
+            }
     }
     error.clear();
     return true;
@@ -157,21 +209,42 @@ bool GameSettings::Rebind(GameAction action, int key, std::string& error) {
     return false;
 }
 
+bool GameSettings::RebindShortcut(ShortcutAction action, KeyChord chord,
+                                  std::string& error) {
+    const int index = static_cast<int>(action);
+    if (index < 0 || index >= kShortcutActionCount) {
+        error = "Unknown keyboard shortcut.";
+        return false;
+    }
+    const auto previous = shortcuts[index];
+    shortcuts[index] = chord;
+    if (Valid(error)) return true;
+    shortcuts[index] = previous;
+    return false;
+}
+
 std::string SerializeGameSettings(const GameSettings& settings) {
     using Json = nlohmann::ordered_json;
     Json bindings = Json::object();
     for (int i = 0; i < kGameActionCount; ++i)
         bindings[kJsonKeys[i]] = settings.keys[i];
+    Json shortcuts = Json::object();
+    for (int i = 0; i < kShortcutActionCount; ++i) {
+        const auto chord = settings.shortcuts[i];
+        shortcuts[kShortcutJson[i]] = {
+            {"key", chord.key}, {"ctrl", chord.ctrl}, {"shift", chord.shift}
+        };
+    }
     Json object = {
-        {"version", 2},
+        {"version", 3},
         {"volume", settings.volume},
         {"hitFlash", settings.hitFlash},
-        {"chordWindowMs", settings.chordWindowMs},
         {"fullscreen", settings.fullscreen},
         {"vsync", settings.vsync},
         {"fpsLimit", settings.fpsLimit},
         {"showFps", settings.showFps},
-        {"bindings", std::move(bindings)}
+        {"bindings", std::move(bindings)},
+        {"shortcuts", std::move(shortcuts)}
     };
     return object.dump(2) + "\n";
 }
@@ -183,14 +256,13 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
         if (!object.is_object() || !object.contains("version") ||
             !object["version"].is_number_integer() ||
             (object["version"].get<int>() != 1 &&
-             object["version"].get<int>() != 2)) {
+             object["version"].get<int>() != 2 &&
+             object["version"].get<int>() != 3)) {
             error = "Unsupported settings version.";
             return false;
         }
         GameSettings parsed;
         if (!object.contains("volume") || !object["volume"].is_number() ||
-            !object.contains("chordWindowMs") ||
-            !object["chordWindowMs"].is_number_integer() ||
             !object.contains("hitFlash") || !object["hitFlash"].is_boolean() ||
             !object.contains("fullscreen") || !object["fullscreen"].is_boolean() ||
             !object.contains("bindings") || !object["bindings"].is_object()) {
@@ -198,7 +270,6 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             return false;
         }
         parsed.volume = object["volume"].get<float>();
-        parsed.chordWindowMs = object["chordWindowMs"].get<int>();
         parsed.hitFlash = object["hitFlash"].get<bool>();
         parsed.fullscreen = object["fullscreen"].get<bool>();
         // Configs written before the DISPLAY page existed use the stable
@@ -219,7 +290,9 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             parsed.fpsLimit = object["fpsLimit"].get<int>();
         if (object.contains("showFps"))
             parsed.showFps = object["showFps"].get<bool>();
-        for (int i = 0; i < kGameActionCount; ++i) {
+        const int version = object["version"].get<int>();
+        const int expectedGameBindings = version < 3 ? 7 : kGameActionCount;
+        for (int i = 0; i < expectedGameBindings; ++i) {
             const auto& bindings = object["bindings"];
             if (!bindings.contains(kJsonKeys[i]) ||
                 !bindings[kJsonKeys[i]].is_number_integer()) {
@@ -228,12 +301,41 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             }
             parsed.keys[i] = bindings[kJsonKeys[i]].get<int>();
         }
+        // Version 2 predates the expanded controls and Escape-to-pause
+        // default. Its explicit custom pause binding is still honored.
+        if (version == 3) {
+            if (!object.contains("shortcuts") ||
+                !object["shortcuts"].is_object()) {
+                error = "Settings JSON is missing shortcut bindings.";
+                return false;
+            }
+            for (int i = 0; i < kShortcutActionCount; ++i) {
+                const auto& shortcuts = object["shortcuts"];
+                const char* key = kShortcutJson[i];
+                if (!shortcuts.contains(key) || !shortcuts[key].is_object() ||
+                    !shortcuts[key].contains("key") ||
+                    !shortcuts[key]["key"].is_number_integer() ||
+                    !shortcuts[key].contains("ctrl") ||
+                    !shortcuts[key]["ctrl"].is_boolean() ||
+                    !shortcuts[key].contains("shift") ||
+                    !shortcuts[key]["shift"].is_boolean()) {
+                    error = "Missing or invalid keyboard shortcut: " +
+                            std::string(key);
+                    return false;
+                }
+                parsed.shortcuts[i] = {
+                    shortcuts[key]["key"].get<int>(),
+                    shortcuts[key]["ctrl"].get<bool>(),
+                    shortcuts[key]["shift"].get<bool>()
+                };
+            }
+        }
         if (!parsed.Valid(error)) return false;
         // Old v1 files commonly contain the prior default arrow bindings.
         // Migrate only that exact untouched directional preset; customized
         // old layouts remain untouched. V2 supports intentionally remapping
         // back to arrows without any automatic migration on next launch.
-        if (object["version"].get<int>() == 1 &&
+        if (version == 1 &&
             parsed.Key(GameAction::Up) == KEY_UP &&
             parsed.Key(GameAction::Right) == KEY_RIGHT &&
             parsed.Key(GameAction::Down) == KEY_DOWN &&
