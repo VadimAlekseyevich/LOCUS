@@ -73,14 +73,20 @@ and reduce the number of unrelated reasons a file can change.
    (`skin_menu_layout.h`). When skin image assets arrive, move profile
    actions and color-picker state into a dedicated controller rather than
    reintroducing device input into rendering.
-4. `song_library.cpp` combines scanning, set identity, import/installation,
-   mutation and removal; move storage operations behind focused interfaces
-   and preserve lock ordering and data-durability tests.
+4. Song library is split across `song_library_scan.cpp`,
+   `song_library_metadata.cpp`, `song_library_install.cpp`,
+   `song_library_packages.cpp` and `song_library_trash.cpp`.
+   Review future changes to writer lock order (root before Song Set) and
+   preserve atomic chart/manifest publication. Refresh reuses unchanged chart
+   parses and difficulty ratings; timing changes invalidate ratings.
 5. `app_frame_renderer.cpp` still has a broad frame signature. Make
    per-screen view types as screens gain features; resist a mutable
    giant frame-state DTO.
 
 ## Completed stabilization
+
+- **2026-11-10:** `SongLibrary` now exposes a read-only index with separate implementations for discovery, Song Set manifest edits, chart installation, package import/export, and recoverable deletion. `Refresh` caches chart parses and calculated difficulty by file size + last-write timestamp, rechecking Song Set timing before reusing difficulty scores; unchanged scans no longer rate every chart. Manifest timing writes under the folder lock reject stale chart files (including additional difficulties added outside the app). CMake lists the library source files once for all targets. File and archive formats are unchanged.
+
 
 - **2026-11-10:** Split SKIN rendering into `skin_menu_draw.cpp`, interactive controls into `skin_menu.cpp` and shared clickable geometry into `skin_menu_layout.h`. Color wheel and live route preview keep their exact existing drawing paths, while pointer hitboxes share the same coordinates. The renderer does not mutate skin state or read input. No disk-format changes.
 

@@ -29,6 +29,17 @@ target_include_directories(locus_core PUBLIC
     "${PROJECT_SOURCE_DIR}/src"
 )
 
+# Catalog scanner and disk writers form one cohesive module set. Keep
+# executable/test target dependencies synchronized in exactly one location.
+set(LOCUS_SONG_LIBRARY_SOURCES
+    src/app/song_library.cpp
+    src/app/song_library_scan.cpp
+    src/app/song_library_metadata.cpp
+    src/app/song_library_packages.cpp
+    src/app/song_library_install.cpp
+    src/app/song_library_trash.cpp
+)
+
 add_executable(locus
     src/app/main.cpp
     src/app/app_runtime_policy.cpp
@@ -63,12 +74,7 @@ add_executable(locus
     src/app/listen_session.cpp
     src/app/chart_playback.cpp
     src/app/game_session.cpp
-    src/app/song_library.cpp
-        src/app/song_library_scan.cpp
-        src/app/song_library_metadata.cpp
-        src/app/song_library_packages.cpp
-        src/app/song_library_install.cpp
-        src/app/song_library_trash.cpp
+        ${LOCUS_SONG_LIBRARY_SOURCES}
     src/app/song_archive.cpp
     src/app/library_playback.cpp
     src/app/library_browser.cpp
@@ -219,12 +225,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_file.cpp
         src/app/chart_save.cpp
         src/app/chart_playback.cpp
-        src/app/song_library.cpp
-        src/app/song_library_scan.cpp
-        src/app/song_library_metadata.cpp
-        src/app/song_library_packages.cpp
-        src/app/song_library_install.cpp
-        src/app/song_library_trash.cpp
+            ${LOCUS_SONG_LIBRARY_SOURCES}
         src/app/song_archive.cpp
         src/app/audio_revision.cpp
         src/app/song_set_storage.cpp
@@ -423,12 +424,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/library_file_actions.cpp
         src/app/menu_ui.cpp
         src/app/game_settings.cpp
-        src/app/song_library.cpp
-        src/app/song_library_scan.cpp
-        src/app/song_library_metadata.cpp
-        src/app/song_library_packages.cpp
-        src/app/song_library_install.cpp
-        src/app/song_library_trash.cpp
+            ${LOCUS_SONG_LIBRARY_SOURCES}
         src/app/song_archive.cpp
         src/app/audio_revision.cpp
         src/app/chart_file.cpp
@@ -443,12 +439,7 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_song_library_tests
         tests/song_library_tests.cpp
-        src/app/song_library.cpp
-        src/app/song_library_scan.cpp
-        src/app/song_library_metadata.cpp
-        src/app/song_library_packages.cpp
-        src/app/song_library_install.cpp
-        src/app/song_library_trash.cpp
+            ${LOCUS_SONG_LIBRARY_SOURCES}
         src/app/song_archive.cpp
         src/app/audio_revision.cpp
         src/app/chart_file.cpp
