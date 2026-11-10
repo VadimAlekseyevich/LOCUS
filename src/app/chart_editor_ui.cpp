@@ -187,8 +187,8 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
         Label(font, TextFormat("RANGE %.3f-%.3f",
                                static_cast<double>(ui.rangeFirst) / ticks,
                                static_cast<double>(ui.rangeLast) / ticks),
-              50, 422, 14, Color{239, 207, 131, 255});
-    Label(font, TextFormat("GRID 1/%d", chart.snapDivision), 367, 423, 13,
+              50, 432, 11, Color{239, 207, 131, 255});
+    Label(font, TextFormat("GRID 1/%d", chart.snapDivision), 367, 432, 11,
           Color{164, 188, 208, 255});
     CompactButton(font, kSnapLess, "LESS", Color{128, 221, 202, 255});
     CompactButton(font, kSnapMore, "MORE", Color{128, 221, 202, 255});
