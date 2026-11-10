@@ -1,6 +1,7 @@
 #include "app/song_library.h"
 #include "app/song_library_internal.h"
 #include "app/chart_file.h"
+#include "app/audio_revision.h"
 #include "app/song_set_storage.h"
 #include "app/song_timing.h"
 #include <algorithm>
