@@ -13,12 +13,18 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
                      const locus::app::GameSettings& settings,
                      double eventTimeSeconds) {
     FrameInput input;
-    const bool escape = IsKeyPressed(KEY_ESCAPE);
-    // Esc always goes BACK outside Home, including ROUTE editor.
-    // Only Esc on Home or the window X requests app termination.
-    input.closeRequested = locus::app::ConsumeNativeCloseRequest() ||
-                           (escape && currentScreen == Screen::Home);
-    input.backPressed = escape && currentScreen != Screen::Home;
+    const auto shortcut = [&](ShortcutAction action) {
+        return ShortcutPressed(settings, action);
+    };
+    const bool back = shortcut(ShortcutAction::Back);
+    const bool gameplayKeys = currentScreen == Screen::Play ||
+                              currentScreen == Screen::Results;
+    input.closeRequested = ConsumeNativeCloseRequest() ||
+                           (back && currentScreen == Screen::Home);
+    // The pause key (default ESC) NEVER performs navigation from PLAY.
+    // The Home/Leave action uses a separate confirmation before exiting.
+    input.backPressed = back && currentScreen != Screen::Home &&
+                        currentScreen != Screen::Play;
     if (debugScreens) {
         if (IsKeyPressed(KEY_F1)) input.requestedScreen = Screen::Home;
         else if (IsKeyPressed(KEY_F2)) input.requestedScreen = Screen::Play;
@@ -26,63 +32,51 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
         else if (IsKeyPressed(KEY_F4)) input.requestedScreen = Screen::Results;
     }
     input.startPressed = IsKeyPressed(KEY_ENTER);
-    const bool gameplayKeys = currentScreen == Screen::Play ||
-                              currentScreen == Screen::Results;
-    input.pausePressed = IsKeyPressed(gameplayKeys
-        ? settings.Key(locus::app::GameAction::Pause) : KEY_SPACE);
-    input.restartPressed = IsKeyPressed(gameplayKeys
-        ? settings.Key(locus::app::GameAction::Retry) : KEY_R);
-    input.homePressed = IsKeyPressed(gameplayKeys
-        ? settings.Key(locus::app::GameAction::Home) : KEY_H) &&
-        !(currentScreen == Screen::Editor &&
-          locus::app::IsGameDirectionKey(settings, KEY_H));
-    input.fullscreenPressed = IsKeyPressed(KEY_F11);
-    input.chooseMusicPressed = IsKeyPressed(KEY_O) &&
-        !(currentScreen == Screen::Editor &&
-          locus::app::IsGameDirectionKey(settings, KEY_O));
-    input.chooseChartPressed = IsKeyPressed(KEY_C);
-    input.openEditorPressed = IsKeyPressed(KEY_E);
-    input.openPlayPressed = IsKeyPressed(KEY_P);
-    input.openSkinPressed = IsKeyPressed(KEY_K);
-    const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    input.pausePressed = gameplayKeys
+        ? IsKeyPressed(settings.Key(GameAction::Pause))
+        : currentScreen == Screen::Listen &&
+            shortcut(ShortcutAction::ListenPause);
+    input.restartPressed = gameplayKeys
+        ? IsKeyPressed(settings.Key(GameAction::Retry))
+        : currentScreen == Screen::Listen &&
+            shortcut(ShortcutAction::ListenReplay);
+    input.homePressed = (gameplayKeys || currentScreen == Screen::Listen) &&
+                        IsKeyPressed(settings.Key(GameAction::Home));
+    input.fullscreenPressed = shortcut(ShortcutAction::Fullscreen);
+    input.chooseMusicPressed = shortcut(ShortcutAction::ChooseMusic);
+    input.chooseChartPressed = shortcut(ShortcutAction::ChooseChart);
+    input.openEditorPressed = shortcut(ShortcutAction::OpenEditor);
+    input.openPlayPressed = shortcut(ShortcutAction::OpenLibrary);
+    input.openSkinPressed = shortcut(ShortcutAction::OpenSkin);
+    input.openSettingsPressed = shortcut(ShortcutAction::OpenSettings);
+    input.editorSave = shortcut(ShortcutAction::EditorSave);
+    input.editorSaveAs = shortcut(ShortcutAction::EditorSaveAs);
+    input.editorOpen = shortcut(ShortcutAction::EditorOpen);
+    input.editorNew = shortcut(ShortcutAction::EditorNew);
+    input.editorTest = shortcut(ShortcutAction::EditorTest);
+    input.practiceSpeedIndex = -1;
+    for (int i = 0; i < 5; ++i) {
+        if (IsKeyPressed(settings.Key(static_cast<GameAction>(
+                static_cast<int>(GameAction::Practice100) + i)))) {
+            input.practiceSpeedIndex = i;
+            break;
+        }
+    }
+    const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-    input.openSettingsPressed = !control && IsKeyPressed(KEY_S);
-    input.editorSave = control && IsKeyPressed(KEY_S) && !shift;
-    input.editorSaveAs = control && IsKeyPressed(KEY_S) && shift;
-    input.editorOpen = control && IsKeyPressed(KEY_O);
-    input.editorNew = control && IsKeyPressed(KEY_N);
-    input.editorTest = IsKeyPressed(KEY_T) &&
-        !(currentScreen == Screen::Editor &&
-          locus::app::IsGameDirectionKey(settings, KEY_T));
-    input.practiceSpeedIndex = IsKeyPressed(KEY_ONE) ? 0
-                              : IsKeyPressed(KEY_TWO) ? 1
-                              : IsKeyPressed(KEY_THREE) ? 2
-                              : IsKeyPressed(KEY_FOUR) ? 3
-                              : IsKeyPressed(KEY_FIVE) ? 4 : -1;
-    if (currentScreen == Screen::Play && !control && !shift) {
-        // Gameplay bindings take priority over speed hotkeys.
-        const auto available = [&](int key) {
-            for (int bound : settings.keys)
-                if (key == bound) return false;
-            return true;
-        };
-        const auto pressed = [&](int key) {
-            return available(key) && IsKeyPressed(key);
-        };
-        const auto held = [&](int key) {
-            return available(key) && IsKeyDown(key);
-        };
-        input.baseSpeedDelta =
-            static_cast<int>(pressed(KEY_RIGHT_BRACKET) || pressed(KEY_KP_ADD)) -
-            static_cast<int>(pressed(KEY_LEFT_BRACKET) || pressed(KEY_KP_SUBTRACT));
-        input.baseSpeedHeld =
-            static_cast<int>(held(KEY_RIGHT_BRACKET) || held(KEY_KP_ADD)) -
-            static_cast<int>(held(KEY_LEFT_BRACKET) || held(KEY_KP_SUBTRACT));
-        // Comma/period adjust preview time. Rebound gameplay keys win.
-        input.previewTimeDelta = static_cast<int>(pressed(KEY_PERIOD)) -
-                                 static_cast<int>(pressed(KEY_COMMA));
-        input.previewTimeHeld = static_cast<int>(held(KEY_PERIOD)) -
-                                static_cast<int>(held(KEY_COMMA));
+    if (currentScreen == Screen::Play && !ctrl && !shift) {
+        const int faster = settings.Key(GameAction::SpeedUp);
+        const int slower = settings.Key(GameAction::SpeedDown);
+        const int more = settings.Key(GameAction::PreviewUp);
+        const int less = settings.Key(GameAction::PreviewDown);
+        input.baseSpeedDelta = static_cast<int>(IsKeyPressed(faster)) -
+                               static_cast<int>(IsKeyPressed(slower));
+        input.baseSpeedHeld = static_cast<int>(IsKeyDown(faster)) -
+                              static_cast<int>(IsKeyDown(slower));
+        input.previewTimeDelta = static_cast<int>(IsKeyPressed(more)) -
+                                 static_cast<int>(IsKeyPressed(less));
+        input.previewTimeHeld = static_cast<int>(IsKeyDown(more)) -
+                                static_cast<int>(IsKeyDown(less));
     }
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.

@@ -25,8 +25,11 @@ int main() {
                 options.Key(GameAction::Right) == KEY_K &&
                 options.Key(GameAction::Down) == KEY_F &&
                 options.Key(GameAction::Left) == KEY_D &&
+                options.Key(GameAction::Pause) == KEY_ESCAPE &&
+                options.Shortcut(ShortcutAction::EditorSave).key == KEY_S &&
+                options.Shortcut(ShortcutAction::EditorSave).ctrl &&
                 options.vsync && options.fpsLimit == 240 && !options.showFps,
-                "defaults share DFJK direction bindings between game and chart editor");
+                "default play pause is ESC and editor actions are configurable");
     ok &= Check(IsGameDirectionKey(options, KEY_D) &&
                 !IsGameDirectionKey(options, KEY_LEFT),
                 "direction bindings belong to scored gameplay only");
@@ -41,15 +44,26 @@ int main() {
     ok &= Check(!options.Rebind(GameAction::Left, KEY_W, error) &&
                 options.Key(GameAction::Left) == KEY_A,
                 "duplicate binding is rejected without changing old key");
-    ok &= Check(!options.Rebind(GameAction::Pause, KEY_ESCAPE, error) &&
+    ok &= Check(options.Rebind(GameAction::Pause, KEY_SPACE, error) &&
+                options.Rebind(GameAction::Pause, KEY_ESCAPE, error) &&
                 !options.Rebind(GameAction::Retry, KEY_F11, error) &&
-                options.Key(GameAction::Pause) == KEY_SPACE,
-                "reserved Escape and fullscreen shortcut cannot be rebound");
+                !options.Rebind(GameAction::Up, KEY_ESCAPE, error) &&
+                options.Key(GameAction::Pause) == KEY_ESCAPE,
+                "ESC can bind to pause only, F11 remains fullscreen-specific");
+    ok &= Check(options.RebindShortcut(
+                    ShortcutAction::EditorSave, {KEY_B, true}, error) &&
+                options.RebindShortcut(
+                    ShortcutAction::EditorSaveAs, {KEY_B, true, true}, error) &&
+                !options.RebindShortcut(
+                    ShortcutAction::EditorOpen, {KEY_B, true}, error) &&
+                options.Shortcut(ShortcutAction::EditorOpen).key == KEY_O &&
+                KeyboardChordName(options.Shortcut(ShortcutAction::EditorSave)) ==
+                    "CTRL+B",
+                "editor hotkeys include modifiers, reject duplicate chords");
 
     options.volume = 0.4f;
     options.hitFlash = false;
     options.fullscreen = true;
-    options.chordWindowMs = 120;
     options.vsync = false;
     options.fpsLimit = 144;
     options.showFps = true;
@@ -60,9 +74,12 @@ int main() {
                 parsed.Key(GameAction::Right) == KEY_D &&
                 parsed.volume > 0.39f && parsed.volume < 0.41f &&
                 !parsed.hitFlash && parsed.fullscreen &&
-                parsed.chordWindowMs == 120 &&
                 !parsed.vsync && parsed.fpsLimit == 144 && parsed.showFps,
-                "all audio, visuals, chords and custom keys survive JSON roundtrip");
+                parsed.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&
+                parsed.Shortcut(ShortcutAction::EditorSave).ctrl &&
+                !parsed.Shortcut(ShortcutAction::EditorSave).shift &&
+                !parsed.vsync && parsed.fpsLimit == 144 && parsed.showFps,
+                "all audio, visuals, play keys and editor shortcuts survive JSON");
     ok &= Check(parsed.Key(GameAction::Up) == KEY_W,
                 "persisted gameplay direction keys survive restarting");
     GameSettings display = parsed;
@@ -109,15 +126,15 @@ int main() {
     ok &= Check(!ParseGameSettings(invalidDisplay.dump(), unmodified, error) &&
                 !unmodified.vsync && unmodified.fpsLimit == 144,
                 "unsupported frame caps are rejected atomically");
-    // Previously saved untouched arrow defaults move to the new DFJK preset,
+    // Previously saved untouched arrow defaults move to the DFJK preset,
     // but explicit arrow bindings stored by v2 remain customizable.
     GameSettings previousDefault;
     previousDefault.keys = {{KEY_UP, KEY_RIGHT, KEY_DOWN, KEY_LEFT,
                               KEY_SPACE, KEY_R, KEY_H}};
     std::string oldConfig = SerializeGameSettings(previousDefault);
-    const auto oldVersion = oldConfig.find("\"version\": 2");
+    const auto oldVersion = oldConfig.find("\"version\": 3");
     if (oldVersion != std::string::npos)
-        oldConfig.replace(oldVersion, sizeof("\"version\": 2") - 1,
+        oldConfig.replace(oldVersion, sizeof("\"version\": 3") - 1,
                           "\"version\": 1");
     GameSettings migrated;
     ok &= Check(ParseGameSettings(oldConfig, migrated, error) &&
@@ -135,8 +152,8 @@ int main() {
 
     GameSettings unchanged = parsed;
     const std::string corrupt =
-        std::string(serialized).replace(serialized.find("\"version\": 2"),
-                                        sizeof("\"version\": 2") - 1,
+        std::string(serialized).replace(serialized.find("\"version\": 3"),
+                                        sizeof("\"version\": 3") - 1,
                                         "\"version\": 999");
     ok &= Check(!ParseGameSettings(corrupt, unchanged, error) &&
                 unchanged.Key(GameAction::Up) == KEY_W,
@@ -154,9 +171,9 @@ int main() {
     ok &= Check(SaveGameSettings(file, options, error) &&
                 LoadGameSettings(file, onDisk, error) &&
                 onDisk.Key(GameAction::Up) == KEY_W &&
-                onDisk.chordWindowMs == 120 &&
                 !onDisk.hitFlash &&
                 !onDisk.vsync && onDisk.fpsLimit == 144 && onDisk.showFps,
+                onDisk.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&
                 "settings persist across application restart");
     options.volume = 0.9f;
     ok &= Check(SaveGameSettings(file, options, error) &&

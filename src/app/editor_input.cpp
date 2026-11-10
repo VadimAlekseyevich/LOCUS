@@ -19,26 +19,20 @@ EditorControls PollEditorControls(const GameSettings& settings) {
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     input.shiftHeld = shift;
-    input.copyRange = control && IsKeyPressed(KEY_C);
-    input.cutRange = control && IsKeyPressed(KEY_X);
-    input.pasteRange = control && IsKeyPressed(KEY_V);
-    input.undo = control && !shift && IsKeyPressed(KEY_Z);
-    input.redo = (control && IsKeyPressed(KEY_Y)) ||
-                 (control && shift && IsKeyPressed(KEY_Z));
-
-    // Gameplay direction bindings never author notes in the editor.
-    // Editor shortcuts only navigate or manipulate existing patterns.
-    const auto available = [&](int key) {
-        return !IsGameDirectionKey(settings, key);
+    const auto pressed = [&](ShortcutAction action) {
+        return ShortcutPressed(settings, action);
     };
-    const auto plain = [&](int key) {
-        return !control && !shift && available(key) && IsKeyPressed(key);
-    };
+    input.copyRange = pressed(ShortcutAction::EditorCopy);
+    input.cutRange = pressed(ShortcutAction::EditorCut);
+    input.pasteRange = pressed(ShortcutAction::EditorPaste);
+    input.undo = pressed(ShortcutAction::EditorUndo);
+    input.redo = pressed(ShortcutAction::EditorRedo);
+    // Navigation is independent of scoring directions: no key creates notes.
     const auto navigation = [&](int key) {
-        return (control || shift || available(key)) && IsKeyPressed(key);
+        return IsKeyPressed(key);
     };
     const auto navigationHeld = [&](int key) {
-        return (control || shift || available(key)) && IsKeyDown(key);
+        return IsKeyDown(key);
     };
     const bool previous = navigation(KEY_LEFT) || navigation(KEY_PAGE_UP);
     const bool next = navigation(KEY_RIGHT) || navigation(KEY_PAGE_DOWN);
@@ -57,34 +51,31 @@ EditorControls PollEditorControls(const GameSettings& settings) {
 
     input.elapsedSeconds = GetFrameTime();
 
-    input.mirrorHorizontal = plain(KEY_I);
-    input.mirrorVertical = shift && !control && available(KEY_I) &&
-                           IsKeyPressed(KEY_I);
-    input.zoomIn = (available(KEY_EQUAL) && IsKeyPressed(KEY_EQUAL)) ||
-                   (available(KEY_KP_ADD) && IsKeyPressed(KEY_KP_ADD)) ||
-                   (available(KEY_RIGHT_BRACKET) && IsKeyPressed(KEY_RIGHT_BRACKET));
-    input.zoomOut = (available(KEY_MINUS) && IsKeyPressed(KEY_MINUS)) ||
-                    (available(KEY_KP_SUBTRACT) && IsKeyPressed(KEY_KP_SUBTRACT)) ||
-                    (available(KEY_LEFT_BRACKET) && IsKeyPressed(KEY_LEFT_BRACKET));
-    // Vertical arrows change snap density and horizontal arrows move the
-    // timeline cursor; only clicking compass buttons creates direction notes.
-    input.snapMore = plain(KEY_PERIOD) || plain(KEY_UP);
-    input.snapLess = plain(KEY_COMMA) || plain(KEY_DOWN);
+    input.mirrorHorizontal = pressed(ShortcutAction::EditorMirrorH);
+    input.mirrorVertical = pressed(ShortcutAction::EditorMirrorV);
+    input.zoomIn = pressed(ShortcutAction::EditorZoomIn);
+    input.zoomOut = pressed(ShortcutAction::EditorZoomOut);
+    input.snapMore = pressed(ShortcutAction::EditorSnapMore);
+    input.snapLess = pressed(ShortcutAction::EditorSnapLess);
     input.removeTurn = IsKeyPressed(KEY_BACKSPACE) ||
-                       (available(KEY_DELETE) && IsKeyPressed(KEY_DELETE));
-    input.headingLeft = plain(KEY_Q);
-    input.headingRight = plain(KEY_E);
-    input.previewToggle = plain(KEY_SPACE);
-    input.previewRestart = plain(KEY_R);
+                       IsKeyPressed(KEY_DELETE);
+    input.headingLeft = pressed(ShortcutAction::EditorHeadingLeft);
+    input.headingRight = pressed(ShortcutAction::EditorHeadingRight);
+    input.previewToggle = pressed(ShortcutAction::EditorPreview);
+    input.previewRestart = pressed(ShortcutAction::EditorRestart);
     input.enter = IsKeyPressed(KEY_ENTER);
     input.escape = IsKeyPressed(KEY_ESCAPE);
     input.backspace = IsKeyPressed(KEY_BACKSPACE);
     input.tab = IsKeyPressed(KEY_TAB);
-    input.speedIndex = plain(KEY_ONE) ? 0
-                     : plain(KEY_TWO) ? 1
-                     : plain(KEY_THREE) ? 2
-                     : plain(KEY_FOUR) ? 3
-                     : plain(KEY_FIVE) ? 4 : -1;
+    input.speedIndex = -1;
+    if (!control && !shift) {
+        for (int i = 0; i < 5; ++i)
+            if (IsKeyPressed(settings.Key(static_cast<GameAction>(
+                    static_cast<int>(GameAction::Practice100) + i)))) {
+                input.speedIndex = i;
+                break;
+            }
+    }
     input.mouseClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     input.mouseHeld = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     input.mouseReleased = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
@@ -103,7 +94,7 @@ EditorControls PollEditorControls(const GameSettings& settings) {
         if (utf8 && bytes > 0) input.typedUtf8.append(utf8, bytes);
         codepoint = GetCharPressed();
     }
-    if (control && IsKeyPressed(KEY_V)) {
+    if (pressed(ShortcutAction::EditorPaste)) {
         const char* clipboard = GetClipboardText();
         if (clipboard) input.typedUtf8 = clipboard;
     }

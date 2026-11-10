@@ -68,7 +68,7 @@ PlayTransportView PlayScreenActions::Transport(double now) const {
     const bool finished = context_.local.Finished();
     const bool paused = context_.local.Paused();
     const char* status = finished ? "CHART FINISHED"
-        : paused ? "PAUSED  |  SPACE RESUME"
+        : paused ? "PAUSED  |  PRESS PAUSE KEY TO RESUME"
         : song < 0.0 ? "SILENT PREROLL  |  ARROWS TO TURN"
                      : "CUSTOM SONG  |  ARROWS TO TURN";
     return {song, context_.local.BeatAtAudioSeconds(song), paused, finished,

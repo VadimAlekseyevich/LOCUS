@@ -91,6 +91,16 @@ struct GameSettings {
     bool Valid(std::string& error) const;
 };
 
+// Strict modifier matching prevents Ctrl+S from also activating bare S.
+inline bool ShortcutPressed(const GameSettings& settings,
+                            ShortcutAction action) noexcept {
+    const auto chord = settings.Shortcut(action);
+    const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    return ctrl == chord.ctrl && shift == chord.shift &&
+           IsKeyPressed(chord.key);
+}
+
 bool IsGameDirectionKey(const GameSettings& settings, int key) noexcept;
 
 bool ParseGameSettings(std::string_view text, GameSettings& result,
