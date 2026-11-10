@@ -100,8 +100,7 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
 
 FrameInput PollFrameInput(bool debugScreens, const AppState& state,
                           const GameSettings& settings,
-                          double eventTimeSeconds, bool playPaused,
-                          bool editorRouteTab) {
+                          double eventTimeSeconds, bool playPaused) {
     if (state.quitConfirmation) {
         // Repeated native X presses cannot bypass an already-open modal.
         ConsumeNativeCloseRequest();
@@ -155,10 +154,8 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
             return CheckCollisionPointRec(mouse, r);
         };
         if (hit(detail::kEditorBack)) input.backPressed = true;
-        else if (!editorRouteTab && hit(detail::kEditorFileSave)) input.editorSave = true;
-        else if (!editorRouteTab && hit(detail::kEditorFileSaveAs)) input.editorSaveAs = true;
-        else if (!editorRouteTab && hit(detail::kEditorFileOpen)) input.editorOpen = true;
-        else if (!editorRouteTab && hit(detail::kEditorFileNew)) input.editorNew = true;
+        // File operations are keyboard shortcuts (Ctrl+S / Ctrl+Shift+S /
+        // Ctrl+O / Ctrl+N); there are no duplicate footer buttons.
     }
     if ((state.screen == Screen::Listen || state.screen == Screen::Results) &&
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {

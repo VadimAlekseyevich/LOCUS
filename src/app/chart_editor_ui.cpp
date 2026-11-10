@@ -495,11 +495,6 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                 Color{125, 183, 222, 255},
                 std::abs(playbackSpeed - kSpeeds[i]) < 0.001);
         DrawComparisonPicker(font, ui, set);
-    } else {
-        Button(font, kEditorFileSave, "SAVE", Color{131, 219, 184, 255});
-        Button(font, kEditorFileSaveAs, "SAVE AS", Color{131, 219, 184, 255});
-        Button(font, kEditorFileOpen, "OPEN", Color{173, 187, 239, 255});
-        Button(font, kEditorFileNew, "NEW", Color{237, 190, 148, 255});
     }
 }
 

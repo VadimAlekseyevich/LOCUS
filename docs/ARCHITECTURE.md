@@ -22,8 +22,10 @@ Play: physical input → `GameSession`/`TurnJudge` → read-only
 `GameplayView` prepared by `PlayPresentation` → route/marker rendering.
 Editor: authoring input → `ChartEditor` revision → one compiled editable route;
 optional Song Set references are compiled read-only by `EditorComparisonCache`.
-All one-to-four panes consume the editor's single audio-time cursor and fixed
-px/s scale; neither opening a reference nor navigating its picker edits notes.
+All one-to-four panes consume the editor's single audio-time cursor, SKIN
+base speed and PREVIEW TIME (MS); neither opening a reference nor navigating
+its picker edits notes. SET opens a difficulty on a single click, retaining
+the unsaved-change confirmation when the active draft would be discarded.
 TEST borrows a prepared draft without writing it. Library: disk → validated
 Song Set index → explicit chart/audio activation. Audio streams are unloaded
 before the shared audio device; GPU textures before the window.

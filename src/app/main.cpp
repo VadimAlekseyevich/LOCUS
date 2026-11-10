@@ -297,9 +297,7 @@ int main(int argc, char** argv) {
         FrameInput input = locus::app::PollFrameInput(
             debugScreens, state, settings, MonotonicSeconds(),
             state.screen == Screen::Play &&
-                (customChart ? chartPlayback.Paused() : transport.Paused()),
-            state.screen == Screen::Editor &&
-                editorUi.tab == locus::app::EditorTab::Route);
+                (customChart ? chartPlayback.Paused() : transport.Paused()));
         const auto [repeatSpeed, repeatPreview] = adjustmentRepeater.Advance(
             input.baseSpeedHeld, input.previewTimeHeld, GetFrameTime());
         input.baseSpeedDelta += repeatSpeed;

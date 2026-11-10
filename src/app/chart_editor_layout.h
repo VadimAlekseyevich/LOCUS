@@ -59,13 +59,6 @@ constexpr Rectangle kSong{49, 115, 162, 37};
 constexpr Rectangle kPlay{220, 115, 157, 37};
 constexpr Rectangle kStop{386, 115, 115, 37};
 constexpr Rectangle kTest{510, 115, 102, 37};
-// Bottom file row remains on SET/AUDIO/FIELD. ROUTE uses it for
-// playback-rate presets; Ctrl+S is the file action while mapping.
-constexpr Rectangle kEditorFileSave{52, 505, 97, 28};
-constexpr Rectangle kEditorFileSaveAs{158, 505, 98, 28};
-constexpr Rectangle kEditorFileOpen{265, 505, 97, 28};
-constexpr Rectangle kEditorFileNew{371, 505, 97, 28};
-
 // Eight directions around DEL (center); positioned above the timeline.
 constexpr Rectangle DirectionPadBounds(int row, int col) noexcept {
     return {744.0f + col * 56.0f, 275.0f + row * 39.0f, 52.0f, 35.0f};

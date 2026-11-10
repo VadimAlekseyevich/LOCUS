@@ -36,13 +36,13 @@ The [working sample](../examples/first-song.locus.json) contains nine turns; sup
 | `offsetMs` | Signed **integer**, from -3,600,000 to 3,600,000; managed Song Set uses one shared value for all charts |
 | `ticksPerBeat` | Optional integer 1–48, default 1 |
 | `snapDivision` | Optional 1, 2, 3, 4, 6, 8, 12, 16 or 24, default 1; must divide `ticksPerBeat` |
-| `grid.width`, `grid.height` | Integers 2–16. The editor exposes **one square side length**, default 8, and writes equal values |
+| `grid.width`, `grid.height` | Integers 2–16; retained as stored chart metadata. ROUTE preview sizing no longer depends on them |
 | `start.x`, `start.y` | Zero-based internal initial position, within grid dimensions; automatically chosen by the editor |
 | `start.heading` | `u`, `r`, `d`, `l`, `ru`, `rd`, `ld` or `lu` |
-| `previewLeadBeats` | Finite positive forward preview length; default editor/skin presentation is four beats |
+| `previewLeadBeats` | Optional finite positive chart metadata; ROUTE/PLAY preview length is controlled by global SKIN PREVIEW TIME (MS) |
 | `turns[]` | Ordered array of at most 65,536 events with `timeMs` and absolute `heading` |
 
-Every event sets the **absolute outgoing direction**, independent of the previous heading: `u` (up), `r` (right), `d` (down), `l` (left), `ru` (right-up), `rd` (right-down), `ld` (left-down), `lu` (left-up). Unchanged travel needs no new event. An opposite heading is a 180° reversal; its junction gets a semicircular reverse cap without extra JSON fields. **FLIP H** swaps left/right components; **FLIP V** swaps up/down components of notes in the selected pattern without moving their timestamps. Movement is continuous on an unbounded plane; the square size controls visible density, not world boundaries.
+Every event sets the **absolute outgoing direction**, independent of the previous heading: `u` (up), `r` (right), `d` (down), `l` (left), `ru` (right-up), `rd` (right-down), `ld` (left-down), `lu` (left-up). Unchanged travel needs no new event. An opposite heading is a 180° reversal; its junction gets a semicircular reverse cap without extra JSON fields. **FLIP H** swaps left/right components; **FLIP V** swaps up/down components of notes in the selected pattern without moving their timestamps. Movement is continuous on an unbounded plane; SKIN speed and preview duration determine on-screen spacing and visible future, not the stored grid dimensions.
 
 Each `timeMs` is a signed whole number between **-3,600,000 and 86,400,000**. Times must be strictly increasing, and two events must not project to the same musical tick. When music is loaded, notes outside playable audio time (except permitted negative-offset preroll) are rejected. Song duration determines the timeline length; there is **no editable length field**.
 
