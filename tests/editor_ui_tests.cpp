@@ -259,6 +259,24 @@ int main() {
     const auto slow = ApplyEditorControls(chart, ui, Click(586, 130));
     ok &= Check(normal.speedIndex == 0 && slow.speedIndex == 4,
                 "compact practice speed 100 and 10 percent are clickable on Route");
+    // A modal comparison picker consumes clicks and editor shortcuts:
+    // dismissing it must not place a note or execute hidden toolbar actions.
+    ChartEditor popupChart;
+    EditorUiState popupUi;
+    popupUi.comparisonPickerOpen = true;
+    const auto blockedNote = ApplyEditorControls(
+        popupChart, popupUi, Click(766, 292));
+    const auto blockedPlay = ApplyEditorControls(
+        popupChart, popupUi, Click(195, 129));
+    EditorControls blockedDelete;
+    blockedDelete.removeTurn = true;
+    const auto blockedEdit = ApplyEditorControls(
+        popupChart, popupUi, blockedDelete);
+    ok &= Check(!blockedNote.changedChart &&
+                !blockedPlay.previewToggle && !blockedEdit.changedChart &&
+                !popupChart.Dirty() && popupChart.Data().route.turns.empty(),
+                "open comparison picker blocks hidden editor actions");
+
     const auto compactPlay = ApplyEditorControls(chart, ui, Click(195, 129));
     const auto compactRestart = ApplyEditorControls(chart, ui, Click(280, 129));
     const auto compactTest = ApplyEditorControls(chart, ui, Click(360, 129));
