@@ -189,7 +189,11 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
         const int base = std::max(chart.firstBeat, first->beat - 1);
         const int end = (last - 1)->beat;
         const auto steps = core::SampleRouteWindow(chart, base, end);
-        for (auto turn = first; turn != last; ++turn) {
+        // Draw distant turn markers first. A nearer junction must remain
+        // legible when the route revisits the exact same world position.
+        // The path ribbon already uses this far-to-near layering order.
+        for (auto turn = last; turn != first;) {
+            --turn;
             const float proximity = ScoredPathOpacity(
                 turn->beat - beat, horizon, skin.fadePower);
             const float opacity = proximity * skin.pathOpacity;
