@@ -60,7 +60,9 @@ and reduce the number of unrelated reasons a file can change.
 ### Remaining coupling to remove
 
 1. `main.cpp` retains window/audio lifetime, settings/skin changes,
-   cross-screen navigation, render-view assembly and the frame ordering.
+   cross-screen navigation, read-only render-view composition and frame ordering.
+   `PlayPresentation` owns the camera, outro and short-lived gameplay notice
+   and prepares `GameplayView` without mutating judgement/audio.
    Play controls/scoring, editor file commands, library launch/file commands
    and native quit-input mapping now have separate owners. This is an
    intentional boundary: only extract more if a new feature proves the
@@ -84,6 +86,9 @@ and reduce the number of unrelated reasons a file can change.
    giant frame-state DTO.
 
 ## Completed stabilization
+
+- **2026-11-10:** `PlayPresentation` owns the speed-proportional camera follower, outro and speed/preview notice. It produces an immutable-by-convention `GameplayView` for the renderer and is reset on entering PLAY; Results retain only the outro reveal. Scoring stays in `PlayScreenActions`/`GameSession`. Dedicated tests cover pause/modal, frozen departure, retry, screen exit and skin camera disable. Chart/skin formats unchanged.
+
 
 - **2026-11-10:** `SongLibrary` now exposes a read-only index with separate implementations for discovery, Song Set manifest edits, chart installation, package import/export, and recoverable deletion. `Refresh` caches chart parses and calculated difficulty by file size + last-write timestamp, rechecking Song Set timing before reusing difficulty scores; unchanged scans no longer rate every chart. Manifest timing writes under the folder lock reject stale chart files (including additional difficulties added outside the app). CMake lists the library source files once for all targets. File and archive formats are unchanged.
 

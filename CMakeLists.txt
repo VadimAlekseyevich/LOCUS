@@ -311,6 +311,16 @@ if(LOCUS_BUILD_TESTS)
     target_include_directories(locus_audio_fade_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
     add_test(NAME locus_music_transition_easing COMMAND locus_audio_fade_tests)
 
+    # Stateful visual playback runs headlessly; it does not draw or
+    # manipulate the scored transport.
+    add_executable(locus_play_presentation_tests
+        tests/play_presentation_tests.cpp
+        src/app/play_presentation.cpp
+    )
+    target_compile_features(locus_play_presentation_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_play_presentation_tests PRIVATE locus_core raylib)
+    add_test(NAME locus_play_presentation_lifecycle COMMAND locus_play_presentation_tests)
+
     add_executable(locus_play_outro_tests tests/play_outro_tests.cpp)
     target_compile_features(locus_play_outro_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_play_outro_tests PRIVATE locus_core)
