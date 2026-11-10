@@ -59,8 +59,6 @@ EditorControls PollEditorControls(const GameSettings& settings) {
     input.snapLess = pressed(ShortcutAction::EditorSnapLess);
     input.removeTurn = IsKeyPressed(KEY_BACKSPACE) ||
                        IsKeyPressed(KEY_DELETE);
-    input.headingLeft = pressed(ShortcutAction::EditorHeadingLeft);
-    input.headingRight = pressed(ShortcutAction::EditorHeadingRight);
     input.previewToggle = pressed(ShortcutAction::EditorPreview);
     input.previewRestart = pressed(ShortcutAction::EditorRestart);
     input.enter = IsKeyPressed(KEY_ENTER);

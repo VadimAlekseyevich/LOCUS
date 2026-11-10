@@ -34,8 +34,8 @@ void Button(Font font, Rectangle rect, const char* text, Color tint, bool active
 void CompactButton(Font font, Rectangle rect, const char* text, Color tint,
                    bool active = false) {
     UiButtonStyle style = EditorButtonStyle(tint);
-    style.fontSize = 11.0f;
-    style.fontSpacing = 0.4f;
+    style.fontSize = rect.height <= 26.0f ? 12.0f : 14.0f;
+    style.fontSpacing = 0.5f;
     style.strokeWidth = 1.1f;
     style.selectedStrokeWidth = 1.5f;
     DrawUiButton(font, rect, text, style, active);
@@ -183,21 +183,15 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     const int ticks = chart.ticksPerBeat;
     const int snapStep = ticks / chart.snapDivision;
 
-    if (ui.HasRange()) {
+    if (ui.HasRange())
         Label(font, TextFormat("RANGE %.3f-%.3f",
                                static_cast<double>(ui.rangeFirst) / ticks,
                                static_cast<double>(ui.rangeLast) / ticks),
-              50, 422, 17, Color{239, 207, 131, 255});
-    } else {
-        Label(font, "TIMELINE", 50, 422, 14,
-              Color{209, 222, 234, 255});
-    }
+              50, 422, 14, Color{239, 207, 131, 255});
     Label(font, TextFormat("GRID 1/%d", chart.snapDivision), 367, 423, 13,
           Color{164, 188, 208, 255});
     CompactButton(font, kSnapLess, "LESS", Color{128, 221, 202, 255});
     CompactButton(font, kSnapMore, "MORE", Color{128, 221, 202, 255});
-    Label(font, TextFormat("%d PX/BEAT", static_cast<int>(PixelsPerBeat(ui))),
-          693, 423, 13, Color{174, 205, 229, 255});
     CompactButton(font, kZoomOut, "-", Color{125, 167, 205, 255});
     CompactButton(font, kZoomIn, "+", Color{125, 167, 205, 255});
 
@@ -306,34 +300,17 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
 
     const bool running = previewPlaying && !previewPaused;
     if (routeTab) {
-        CompactButton(font, kRouteSong, "SONG", Color{97, 222, 193, 255});
-        CompactButton(font, kRoutePlay, running ? "PAUSE" : "PLAY",
-                      Color{137, 211, 235, 255});
-        CompactButton(font, kRouteStop, "RESTART", Color{211, 178, 137, 255});
-        CompactButton(font, kRouteTest, "TEST", Color{188, 176, 232, 255});
-        const char* speeds[5] = {"100%", "75%", "50%", "25%", "10%"};
-        for (int i = 0; i < 5; ++i)
-            CompactButton(font, RouteSpeedBounds(i), speeds[i],
-                Color{125, 183, 222, 255},
-                std::abs(playbackSpeed - kSpeeds[i]) < 0.001);
-        Label(font, hasAudio ? Truncate(songName, 17).c_str() : "NO AUDIO",
-              615, 123, 12,
-              hasAudio ? Color{178, 227, 222, 255}
-                       : Color{242, 181, 164, 255});
+        CompactButton(font, kRouteTest, "TEST CHART",
+                      Color{188, 176, 232, 255});
     } else {
-        // Non-ROUTE tabs retain their established full-size transport.
-        Button(font, kSong, IsGameDirectionKey(settings, KEY_O)
-               ? "LOAD SONG" : "LOAD SONG  O", Color{97, 222, 193, 255});
-        Button(font, kPlay, IsGameDirectionKey(settings, KEY_SPACE)
-               ? (running ? "PAUSE" : "PLAY")
-               : (running ? "PAUSE SPACE" : "PLAY SPACE"),
+        // The SET/AUDIO/FIELD transport stays operable but no longer
+        // advertises obsolete hardcoded key names under every button.
+        Button(font, kSong, "SONG", Color{97, 222, 193, 255});
+        Button(font, kPlay, running ? "PAUSE" : "PLAY",
                Color{137, 211, 235, 255});
-        Button(font, kStop, IsGameDirectionKey(settings, KEY_R)
-               ? "RESTART" : "RESTART R", Color{211, 178, 137, 255});
-        Button(font, kTest, IsGameDirectionKey(settings, KEY_T)
-               ? "TEST" : "TEST T", Color{188, 176, 232, 255});
-        Label(font, hasAudio ? Truncate(songName, 30).c_str()
-                             : "NO SONG - LOAD SONG",
+        Button(font, kStop, "RESTART", Color{211, 178, 137, 255});
+        Button(font, kTest, "TEST", Color{188, 176, 232, 255});
+        Label(font, hasAudio ? Truncate(songName, 26).c_str() : "NO AUDIO",
               626, 127, 15,
               hasAudio ? Color{178, 227, 222, 255}
                        : Color{242, 181, 164, 255});
@@ -366,32 +343,25 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             fallback.count = 1;
             comparisons = &fallback;
         }
-        Skin previewSkin = skin;
-        previewSkin.lookaheadMs = EditorPreviewLookaheadMs(
-            draft.Data().previewLeadBeats, chart.bpm, skin.lookaheadMs);
+        // ROUTE previews are deliberately the same speed and lookahead
+        // configuration as PLAY; the deprecated grid size no longer
+        // controls the visible geometry. Account for slow playback so
+        // effective screen px/s stays constant just like gameplay.
         DrawComparisonPreviews(font, *comparisons, previewSeconds,
-                               EditorPreviewPixelsPerSecond(chart),
-                               previewSkin);
+            skin.baseSpeedPxPerSecond /
+                static_cast<float>(std::max(0.1, playbackSpeed)), skin);
         // Live difficulty remains available without a verbose route header.
         Label(font, TextFormat("DIFF %.1f", draft.Difficulty().overall),
               281, 409, 12, Color{239, 202, 137, 255});
-        Label(font, TextFormat("%d x %d", chart.gridWidth, chart.gridHeight),
-              374, 409, 12, Color{172, 199, 218, 255});
-        Label(font, IsGameDirectionKey(settings, KEY_Q) ||
-                    IsGameDirectionKey(settings, KEY_E)
-               ? "START HEADING (CLICK)" : "START HEADING Q/E 45",
-              744, 177, 13,
-              Color{172, 199, 218, 255});
-        Button(font, kHeading, HeadingName(chart.initialHeading),
-               Color{119, 229, 188, 255});
+        // Starting direction is owned by FIELD, not duplicated here.
         const auto* turn = draft.SelectedTurn();
         const auto incoming = core::IncomingHeadingAt(chart, draft.SelectedBeat());
         const auto outgoing = turn ? turn->direction : incoming;
-        Label(font, TextFormat("BEAT %.3f / %s",
+        Label(font, TextFormat("%.3f  %s",
                               static_cast<double>(draft.SelectedBeat()) /
                                   chart.ticksPerBeat,
                               turn ? core::DirectionName(turn->direction) : "STRAIGHT"),
-              744, 250, 12, Color{216, 232, 239, 255});
+              744, 244, 12, Color{216, 232, 239, 255});
         // Full-chart totals, including each diagonal's two cardinals.
         const auto pressCounts = DirectionPressCounts(chart);
         for (int row = 0; row < 3; ++row)
@@ -410,12 +380,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                                         : false); // DEL is always neutral, never selected
             }
     } else if (ui.tab == EditorTab::Audio) {
-        Label(font, "AUDIO  /  CHART TIMING", 92, 169, 20,
+        Label(font, "SONG TIMING", 92, 169, 20,
               Color{182, 218, 235, 255});
         DrawTextField(font, kTitle, "DIFFICULTY NAME (TYPE)", draft.Data().title,
                       EditorField::Title, ui);
         const auto& rating = draft.Difficulty();
-        Label(font, TextFormat("RATING V2 %.1f  SPEED %.1f  RHYTHM %.1f  KEYS %.1f  READ %.1f  END %.1f",
+        Label(font, TextFormat("DIFFICULTY %.1f  SPEED %.1f  RHYTHM %.1f  KEYS %.1f  READ %.1f  STAMINA %.1f",
               rating.overall, rating.speed, rating.rhythm,
               rating.coordination, rating.reading, rating.stamina),
               92, 252, 12, Color{239, 202, 137, 255});
@@ -426,7 +396,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         DrawTextField(font, kBpm, "SONG BPM (SHARED)", bpm, EditorField::Bpm, ui);
         DrawTextField(font, kOffset, "SONG OFFSET MS (SHARED)",
                       offset, EditorField::OffsetMs, ui);
-        Label(font, "SONG PREVIEW START (MS) - SHARED BY ALL DIFFICULTIES",
+        Label(font, "SONG PREVIEW START (MS)",
               92, 348, 16, Color{172, 199, 218, 255});
         DrawRectangleRounded(kAudioPreviewMs, 0.14f, 5,
                              ui.editingSetPreview ? Color{47, 68, 78, 255}
@@ -452,12 +422,13 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         const Color heading{186, 219, 231, 255};
         const Color ordinary{211, 226, 236, 255};
         const Color amber{239, 202, 137, 255};
-        Label(font, "SONG SET / LIBRARY", 52, 170, 20, heading);
+        Label(font, "SONG SET", 52, 170, 20, heading);
         if (set.managed) {
             Label(font, Truncate(set.title, 35).c_str(), 52, 201, 20, ordinary);
-            Label(font, Truncate(set.artist.empty() ? "ARTIST: NOT SET"
-                : "ARTIST: " + set.artist, 44).c_str(), 52, 233, 14, heading);
-            Label(font, Truncate("AUDIO: " + set.audioName, 44).c_str(),
+            if (!set.artist.empty())
+                Label(font, Truncate(set.artist, 44).c_str(),
+                      52, 233, 14, heading);
+            Label(font, Truncate(set.audioName, 44).c_str(),
                   52, 255, 14, heading);
             if (set.newDifficultyDraft)
                 Label(font, "NEW DIFFICULTY / UNSAVED", 505, 187, 12, amber);
@@ -472,7 +443,6 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                    Color{126, 219, 209, 255});
             Button(font, kSetRemoveBackground, "REMOVE BG", Color{227, 198, 137, 255});
         }
-        Button(font, kSetOpen, "OPEN", Color{126, 219, 209, 255});
         Button(font, kSetNew, "NEW", Color{239, 203, 129, 255});
         Button(font, kSetDuplicate, "COPY", Color{162, 178, 239, 255});
         Button(font, kSetImport, "IMPORT", Color{122, 209, 226, 255});
@@ -498,51 +468,39 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             if (active)
                 Label(font, "EDITING", rect.x + 311, rect.y + 9, 12, amber);
         }
-        Button(font, kSetPrevious, "PREV ^", Color{120, 176, 207, 255});
-        Button(font, kSetNext, "NEXT v", Color{120, 176, 207, 255});
-        Label(font, TextFormat("%d-%d / %d",
-              set.difficulties.empty() ? 0 : set.firstVisible + 1,
-              std::min(set.firstVisible + 5,
-                       static_cast<int>(set.difficulties.size())),
-              static_cast<int>(set.difficulties.size())),
-              641, 400, 14, heading);
+        // The list scrolls with the mouse wheel; clicking any row opens it.
+        // No paging buttons or duplicate OPEN action.
     } else {
-        Label(font, "FIELD  /  EDITOR GRID VIEW", 104, 169, 20,
-              Color{239, 210, 159, 255});
-        Label(font, "NOT A MUSIC TIME SIGNATURE", 548, 172, 14,
-              Color{161, 187, 210, 255});
-        DrawTextField(font, kGridSize, "VISIBLE SQUARE SIDE (2..16)",
-                      std::to_string(chart.gridWidth), EditorField::GridSize, ui);
-        Label(font, "ONE NUMBER = EQUAL WIDTH / HEIGHT", 505, 231, 14,
-              Color{169, 204, 218, 255});
-        Label(font, "AUTOMATIC ROUTE ORIGIN", 505, 255, 13,
-              Color{169, 204, 218, 255});
-        Label(font, draft.HasSongDuration()
-              ? TextFormat("SONG TIMELINE: %d TO %d (AUTO FROM BPM / OFFSET)",
-                           chart.firstBeat / chart.ticksPerBeat,
-                           (chart.lengthBeats - 1) / chart.ticksPerBeat)
-              : "SONG TIMELINE: LOAD AUDIO TO CALCULATE",
-              104, 329, 15, Color{188, 218, 228, 255});
-        Label(font, IsGameDirectionKey(settings, KEY_Q) ||
-                    IsGameDirectionKey(settings, KEY_E)
-               ? "START HEADING (CLICK)" : "START HEADING  Q/E 45 DEG",
-              519, 299, 16,
-              Color{172, 199, 218, 255});
+        Label(font, "INITIAL HEADING", 104, 207, 17,
+              Color{194, 218, 231, 255});
+        Button(font, kFieldHeadingPrev, "<", Color{145, 189, 221, 255});
         Button(font, kFieldHeading, HeadingName(chart.initialHeading),
                Color{119, 229, 188, 255});
-        Label(font, "SONG TIME IS INDEPENDENT OF VISIBLE SQUARE SIZE.",
-              104, 384, 14, Color{169, 204, 218, 255});
-        Label(font, "PLAY CLIPS THE ROUTE TO ITS CENTRED SQUARE FRAME.",
-              104, 403, 13, Color{226, 197, 146, 255});
+        Button(font, kFieldHeadingNext, ">", Color{145, 189, 221, 255});
+        Label(font, TextFormat("SPEED %d PX/S", 
+              static_cast<int>(skin.baseSpeedPxPerSecond)),
+              104, 329, 16, Color{169, 210, 218, 255});
+        Label(font, TextFormat("PREVIEW %d MS",
+              static_cast<int>(skin.lookaheadMs)),
+              383, 329, 16, Color{169, 210, 218, 255});
+
     }
 
     DrawTimeline(font, draft, ui, previewBeat);
-    const auto fileButton = routeTab ? CompactButton : Button;
-    fileButton(font, kEditorFileSave, "SAVE", Color{131, 219, 184, 255}, false);
-    fileButton(font, kEditorFileSaveAs, "SAVE AS", Color{131, 219, 184, 255}, false);
-    fileButton(font, kEditorFileOpen, "OPEN", Color{173, 187, 239, 255}, false);
-    fileButton(font, kEditorFileNew, "NEW", Color{237, 190, 148, 255}, false);
-    if (routeTab) DrawComparisonPicker(font, ui, set);
+    if (routeTab) {
+        // Practice speed now lives below the ruler, not beside TEST.
+        const char* speeds[5] = {"100%", "75%", "50%", "25%", "10%"};
+        for (int i = 0; i < 5; ++i)
+            CompactButton(font, RouteSpeedBounds(i), speeds[i],
+                Color{125, 183, 222, 255},
+                std::abs(playbackSpeed - kSpeeds[i]) < 0.001);
+        DrawComparisonPicker(font, ui, set);
+    } else {
+        Button(font, kEditorFileSave, "SAVE", Color{131, 219, 184, 255});
+        Button(font, kEditorFileSaveAs, "SAVE AS", Color{131, 219, 184, 255});
+        Button(font, kEditorFileOpen, "OPEN", Color{173, 187, 239, 255});
+        Button(font, kEditorFileNew, "NEW", Color{237, 190, 148, 255});
+    }
 }
 
 } // namespace locus::app

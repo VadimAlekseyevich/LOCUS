@@ -30,6 +30,11 @@ bool HasEditorComparison(const EditorUiState& ui,
 // Drop missing/now-active references after file removal or library refresh.
 void ReconcileEditorComparisons(EditorUiState& ui,
                                 const EditorSetView& set);
+// Handles a ROUTE picker click exclusively, including opening from
+// COMPARE+. The caller must not pass the same click to note/transport input.
+void HandleEditorComparisonControls(EditorUiState& ui,
+                                    const EditorSetView& set,
+                                    const EditorControls& input);
 
 // Owns compiled routes for one editable chart and up to three read-only
 // difficulties. A playback frame supplies ONE song timestamp to all routes.

@@ -80,37 +80,12 @@ int main() {
                 chart.Data().route.start.x == 3 &&
                 chart.Data().route.start.y == 3,
                 "editor opens with 8x8 square view and automatic route origin");
-    const detail::EditorView defaultGeometry(chart.Data().route, 0.0);
-    ok &= Check(std::abs(defaultGeometry.step - 30.0f) < 0.001f &&
-                std::abs(detail::EditorPreviewPixelsPerSecond(
-                    chart.Data().route) - 60.0f) < 0.001f &&
-                std::abs(detail::EditorPreviewLookaheadMs(
-                    4.0, 120.0, 800.0f) - 2000.0f) < 0.001f,
-                "authoring magnification and four-beat lookahead survive compare mode");
-
-    Chart normalized = chart.Data().route;
-    normalized.initialHeading = Heading::UpRight;
-    normalized.lengthBeats = 8;
-    normalized.turns = {{2, Heading::Right}};
-    const detail::EditorView preview(normalized, 0.0);
-    const GridPoint firstPoint = RoutePositionAt(normalized, 0.0);
-    const GridPoint nextPoint = RoutePositionAt(normalized, 1.0);
-    const GridPoint junction = RoutePositionAt(normalized, 2.0);
-    const Vector2 screen0 = preview.Point(firstPoint);
-    const Vector2 screen1 = preview.Point(nextPoint);
-    const Vector2 screenJunction = preview.Point(junction);
-    const auto visibleTurns = PreviewTurnPoints(normalized, 0.0, 4);
-    ok &= Check(std::abs(std::hypot(screen1.x - screen0.x,
-                                     screen1.y - screen0.y) - preview.step) < 0.001f &&
-                visibleTurns.size() == 1 &&
-                std::abs(screenJunction.x - preview.Point(visibleTurns[0].position).x)
-                    < 0.001f &&
-                std::abs(screenJunction.y - preview.Point(visibleTurns[0].position).y)
-                    < 0.001f &&
-                std::abs((screenJunction.x - screen0.x) / preview.step -
-                         std::round((screenJunction.x - screen0.x) / preview.step)) >
-                    0.1f,
-                "grid-free preview maintains equal-length diagonal steps and exact junctions");
+    // Preview magnification is global SKIN speed; editor grid metadata no
+    // longer changes on-screen distance or playback time.
+    const auto referenceSquare = detail::ComparisonPreviewBounds(4, 0);
+    ok &= Check(referenceSquare.width >= 218.0f &&
+                referenceSquare.height >= 218.0f,
+                "comparison keeps editable preview large at four panes");
 
     // Audio settings are no longer stacked on top of the route grid.
     ApplyEditorControls(chart, ui, Click(612, 89));
@@ -199,46 +174,24 @@ int main() {
     ok &= Check(timeCopyAction.clipboardWrite == "2250" &&
                 timeCopyUi.feedback == "2250 MS COPIED",
                 "copy timestamp is a pure command without a native clipboard call");
-    // FIELD has one integer square size, no editable start coordinates.
+    // FIELD contains only the starting compass direction. Old grid-size
+    // text entry is gone, and heading changes require clicking the controls.
     ApplyEditorControls(chart, ui, Click(783, 89));
-    ok &= Check(ui.tab == EditorTab::Field, "Field tab opens");
-    ApplyEditorControls(chart, ui, Click(157, 247));
-    ApplyEditorControls(chart, ui, Type("12"));
-    ApplyEditorControls(chart, ui, enter);
-    ok &= Check(chart.Data().route.gridWidth == 12 &&
-                chart.Data().route.gridHeight == 12 &&
-                chart.Data().route.start.x == 5 &&
-                chart.Data().route.start.y == 5,
-                "typing a single size 12 sets 12x12 with automatic start");
-    ok &= Check(std::abs(
-                    detail::EditorView(chart.Data().route, 0.0).step - 20.0f) <
-                    0.001f,
-                "view size still determines square preview magnification");
-    ApplyEditorControls(chart, ui, Click(598, 247));
-    ok &= Check(!ui.EditingText(),
-                "removed start coordinate field cannot receive focus");
-    ApplyEditorControls(chart, ui, Click(157, 247));
-    ApplyEditorControls(chart, ui, Type("8/8"));
-    ApplyEditorControls(chart, ui, enter);
-    ok &= Check(ui.EditingText() &&
-                chart.Data().route.gridWidth == 12 &&
-                !ui.feedback.empty(),
-                "width/height matrix input is no longer accepted");
-    EditorControls escape;
-    escape.escape = true;
-    ApplyEditorControls(chart, ui, escape);
-    ApplyEditorControls(chart, ui, Click(157, 247));
-    ApplyEditorControls(chart, ui, Type("4"));
-    ApplyEditorControls(chart, ui, enter);
-    ok &= Check(!ui.EditingText() &&
-                chart.Data().route.gridWidth == 4 &&
-                chart.Data().route.gridHeight == 4 &&
-                chart.Data().route.start.x == 1 &&
-                chart.Data().route.start.y == 1,
-                "shrinking square automatically re-centers the hidden start");
-    ApplyEditorControls(chart, ui, Click(155, 343));
-    ok &= Check(!ui.EditingText(),
-                "song duration stays read-only on Field");
+    ok &= Check(ui.tab == EditorTab::Field, "FIELD tab opens");
+    const auto oldGrid = chart.Data().route.gridWidth;
+    const auto previousHeading = chart.Data().route.initialHeading;
+    const auto rotateForward =
+        ApplyEditorControls(chart, ui, Click(425, 253));
+    const auto rotateBackward =
+        ApplyEditorControls(chart, ui, Click(122, 253));
+    ok &= Check(rotateForward.changedChart && rotateBackward.changedChart &&
+                chart.Data().route.initialHeading == previousHeading &&
+                chart.Data().route.gridWidth == oldGrid &&
+                !ui.EditingText(),
+                "FIELD controls change initial heading but never grid size");
+    const auto blank = ApplyEditorControls(chart, ui, Click(523, 248));
+    ok &= Check(!blank.changedChart && !ui.EditingText(),
+                "removed visible-square field is not clickable");
 
     ok &= Check(chart.SetSongDuration(10.0) &&
                 chart.Data().route.lengthBeats > 0,
@@ -255,8 +208,8 @@ int main() {
 
     ApplyEditorControls(chart, ui, Click(450, 89));
     ok &= Check(ui.tab == EditorTab::Route, "Route tab restores the large grid");
-    const auto normal = ApplyEditorControls(chart, ui, Click(430, 130));
-    const auto slow = ApplyEditorControls(chart, ui, Click(586, 130));
+    const auto normal = ApplyEditorControls(chart, ui, Click(98, 519));
+    const auto slow = ApplyEditorControls(chart, ui, Click(505, 519));
     ok &= Check(normal.speedIndex == 0 && slow.speedIndex == 4,
                 "compact practice speed 100 and 10 percent are clickable on Route");
     // A modal comparison picker consumes clicks and editor shortcuts:
@@ -277,12 +230,13 @@ int main() {
                 !popupChart.Dirty() && popupChart.Data().route.turns.empty(),
                 "open comparison picker blocks hidden editor actions");
 
-    const auto compactPlay = ApplyEditorControls(chart, ui, Click(195, 129));
-    const auto compactRestart = ApplyEditorControls(chart, ui, Click(280, 129));
-    const auto compactTest = ApplyEditorControls(chart, ui, Click(360, 129));
-    ok &= Check(compactPlay.previewToggle &&
-                compactRestart.previewRestart && compactTest.testPlay,
-                "ROUTE transport uses compact hitboxes without losing actions");
+    const auto compactTest = ApplyEditorControls(chart, ui, Click(109, 130));
+    const auto unusedTransport = ApplyEditorControls(chart, ui, Click(620, 130));
+    ok &= Check(compactTest.testPlay &&
+                !unusedTransport.previewToggle &&
+                !unusedTransport.previewRestart,
+                "ROUTE has TEST but no obsolete PLAY/RESTART/SONG toolbar");
+
     for (int n = 1; n <= 4; ++n) {
         const auto mainPane = detail::ComparisonPreviewBounds(n, 0);
         ok &= Check(mainPane.width >= 218.0f && mainPane.height >= 218.0f &&
@@ -435,12 +389,12 @@ int main() {
     ok &= Check(chart.Data().route.turns[2].direction == Heading::Right,
                 "Ctrl+Y redoes mirrored group");
     // Rotation buttons share the selected interval with FLIP H / FLIP V.
-    const auto rotateRight = ApplyEditorControls(chart, ui, Click(585, 166));
+    const auto rotateRight = ApplyEditorControls(chart, ui, Click(520, 166));
     ok &= Check(rotateRight.changedChart && ui.HasRange() &&
                 chart.Data().route.turns[2].direction == Heading::Down &&
                 chart.Data().route.turns[3].direction == Heading::Up,
                 "ROT +90 button rotates the selected pattern without shifting beats");
-    const auto rotateLeft = ApplyEditorControls(chart, ui, Click(515, 166));
+    const auto rotateLeft = ApplyEditorControls(chart, ui, Click(390, 166));
     ok &= Check(rotateLeft.changedChart &&
                 chart.Data().route.turns[2].direction == Heading::Right &&
                 chart.Data().route.turns[3].direction == Heading::Left,
@@ -456,7 +410,7 @@ int main() {
     // The on-screen PASTE button must preserve selection just like Ctrl+V.
     chart.SelectBeat(20);
     ui.rangeFirst = ui.rangeLast = -1;
-    const auto clickedPaste = ApplyEditorControls(chart, ui, Click(148, 166));
+    const auto clickedPaste = ApplyEditorControls(chart, ui, Click(342, 130));
     ok &= Check(clickedPaste.changedChart && ui.HasRange() &&
                 ui.rangeFirst == 20 && ui.rangeLast == 22 &&
                 chart.Data().route.turns.back().beat == 22,
@@ -616,11 +570,10 @@ int main() {
     ok &= Check(compassUi.SelectedTurn() &&
                 compassUi.SelectedTurn()->direction == Heading::UpLeft,
                 "compass button authors an absolute up-left heading");
-    EditorControls rotateStart;
-    rotateStart.headingRight = true;
-    ApplyEditorControls(compassUi, diagonalUi, rotateStart);
+    ApplyEditorControls(compassUi, diagonalUi, Click(785, 90));
+    ApplyEditorControls(compassUi, diagonalUi, Click(425, 253));
     ok &= Check(compassUi.Data().route.initialHeading == Heading::DownRight,
-                "Q/E start heading supports diagonal increments");
+                "initial heading rotates only with the FIELD control");
 
     // A compass direction opposite to the incoming route is an ordinary
     // note, whether clicked or pressed using the game direction binding.
@@ -677,7 +630,7 @@ int main() {
     undoChart.SetSnapDivision(2);
     undoUi.rangeFirst = 4;
     undoUi.rangeLast = 6;
-    const auto mouseUndo = ApplyEditorControls(undoChart, undoUi, Click(265, 166));
+    const auto mouseUndo = ApplyEditorControls(undoChart, undoUi, Click(548, 130));
     ok &= Check(mouseUndo.changedChart &&
                 undoChart.Data().route.ticksPerBeat == 1 &&
                 !undoUi.HasRange(),
@@ -693,6 +646,6 @@ int main() {
                 "Ctrl+Y and button Undo share one selection cleanup path");
 
     if (!ok) return 1;
-    std::cout << "EDITOR_UI_PASS tabs=3 grid=8x8 preview=1 zoom=1\n";
+    std::cout << "EDITOR_UI_PASS route_controls=1 field_heading=1 zoom=1\n";
     return 0;
 }

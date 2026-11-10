@@ -21,7 +21,6 @@ struct EditorControls {
     float elapsedSeconds = 0.0f;
     bool movePrevious = false, moveNext = false;
     bool removeTurn = false;
-    bool headingLeft = false, headingRight = false;
     bool mouseClick = false, mouseHeld = false, mouseReleased = false;
     bool shiftHeld = false;
     Vector2 mouse{};
@@ -67,7 +66,7 @@ struct EditorSetView {
     std::vector<EditorComparisonOption> comparisonOptions;
     int current = -1, selected = -1, firstVisible = 0;
 };
-enum class EditorField { None, Title, Bpm, OffsetMs, GridSize };
+enum class EditorField { None, Title, Bpm, OffsetMs };
 
 struct EditorUiState {
     EditorField active = EditorField::None;

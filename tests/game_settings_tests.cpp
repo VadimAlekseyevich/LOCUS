@@ -26,6 +26,7 @@ int main() {
                 options.Key(GameAction::Down) == KEY_F &&
                 options.Key(GameAction::Left) == KEY_D &&
                 options.Key(GameAction::Pause) == KEY_ESCAPE &&
+                std::string(ActionName(GameAction::Pause)) == "PAUSE / MENU" &&
                 options.Shortcut(ShortcutAction::EditorSave).key == KEY_S &&
                 options.Shortcut(ShortcutAction::EditorSave).ctrl &&
                 options.vsync && options.fpsLimit == 240 && !options.showFps,
@@ -146,8 +147,9 @@ int main() {
                 migrated.Key(GameAction::Up) == KEY_J &&
                 migrated.Key(GameAction::Right) == KEY_K &&
                 migrated.Key(GameAction::Down) == KEY_F &&
-                migrated.Key(GameAction::Left) == KEY_D,
-                "legacy default arrow settings automatically migrate once");
+                migrated.Key(GameAction::Left) == KEY_D &&
+                migrated.Key(GameAction::Pause) == KEY_ESCAPE,
+                "legacy default arrows and Space-to-pause migrate to Esc");
     GameSettings deliberateArrows;
     ok &= Check(ParseGameSettings(SerializeGameSettings(previousDefault),
                                   deliberateArrows, error) &&

@@ -237,22 +237,16 @@ void EditorSetController::HandleControls(const EditorControls& input) {
             view.firstVisible + delta, 0, std::max(0, count - 5));
     }
     if (!clicked) return;
-    if (CheckCollisionPointRec(mouse, detail::kSetPrevious)) {
-        ctx_.ui.setSelected = view.selected;
-        ctx_.ui.setFirstVisible = std::max(0, view.firstVisible - 5);
-        return;
-    }
-    if (CheckCollisionPointRec(mouse, detail::kSetNext)) {
-        ctx_.ui.setSelected = view.selected;
-        ctx_.ui.setFirstVisible = std::min(
-            std::max(0, count - 5), view.firstVisible + 5);
-        return;
-    }
     for (int row = 0; row < 5; ++row) {
         const int index = view.firstVisible + row;
         if (index >= count) break;
         if (CheckCollisionPointRec(mouse, detail::SetDifficultyRow(row))) {
             ctx_.ui.setSelected = index;
+            // Clicking a difficulty opens it immediately. Keep the existing
+            // unsaved-change confirmation; no separate OPEN button or double
+            // click is required.
+            if (index != view.current)
+                Request(EditorSetAction::Open);
             return;
         }
     }
@@ -372,7 +366,12 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
             return true;
         }
         case EditorSetAction::Open: {
+            // Opening another difficulty in this set should not silently
+            // discard selected reference panes from the comparison workspace.
+            const auto comparisons = ctx_.ui.comparisonFiles;
             if (!ctx_.files.OpenFromLibrary(request.chart.wstring(), error)) break;
+            ctx_.ui.comparisonFiles = comparisons;
+            ReconcileEditorComparisons(ctx_.ui, View());
             ctx_.ui.tab = EditorTab::Set;
             ctx_.ui.setSelected = -1;
             Notice("DIFFICULTY OPENED");

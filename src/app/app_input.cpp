@@ -100,7 +100,8 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
 
 FrameInput PollFrameInput(bool debugScreens, const AppState& state,
                           const GameSettings& settings,
-                          double eventTimeSeconds, bool playPaused) {
+                          double eventTimeSeconds, bool playPaused,
+                          bool editorRouteTab) {
     if (state.quitConfirmation) {
         // Repeated native X presses cannot bypass an already-open modal.
         ConsumeNativeCloseRequest();
@@ -154,10 +155,10 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
             return CheckCollisionPointRec(mouse, r);
         };
         if (hit(detail::kEditorBack)) input.backPressed = true;
-        else if (hit(detail::kEditorFileSave)) input.editorSave = true;
-        else if (hit(detail::kEditorFileSaveAs)) input.editorSaveAs = true;
-        else if (hit(detail::kEditorFileOpen)) input.editorOpen = true;
-        else if (hit(detail::kEditorFileNew)) input.editorNew = true;
+        else if (!editorRouteTab && hit(detail::kEditorFileSave)) input.editorSave = true;
+        else if (!editorRouteTab && hit(detail::kEditorFileSaveAs)) input.editorSaveAs = true;
+        else if (!editorRouteTab && hit(detail::kEditorFileOpen)) input.editorOpen = true;
+        else if (!editorRouteTab && hit(detail::kEditorFileNew)) input.editorNew = true;
     }
     if ((state.screen == Screen::Listen || state.screen == Screen::Results) &&
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {

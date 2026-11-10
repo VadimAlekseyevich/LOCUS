@@ -3,11 +3,24 @@
 #include "app/editor_file_actions.h"
 #include "app/editor_set_controller.h"
 #include "app/chart_editor_ui.h"
+#include "app/chart_editor_layout.h"
 #include "raylib.h"
 
 namespace locus::app {
 
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
+    // Process the picker BEFORE the editor: the former implementation
+    // passed its click through generic editor actions first, and a popup
+    // often never opened. A picker interaction consumes the whole frame.
+    const bool compareInteraction =
+        context_.ui.tab == EditorTab::Route &&
+        (context_.ui.comparisonPickerOpen ||
+         (input.editor.mouseClick &&
+          detail::Hit(detail::kCompareToggle, input.editor.mouse)));
+    if (compareInteraction) {
+        context_.sets.HandleControls(input.editor);
+        return false;
+    }
     const EditorUiAction uiAction = context_.session.ApplyControls(
         input.editor, now);
     if (!uiAction.clipboardWrite.empty())

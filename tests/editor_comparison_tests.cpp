@@ -49,6 +49,40 @@ int main() {
         {"/songs/set/extra.json", "EXTRA", &fourth}
     };
 
+    // Clicking COMPARE+ must be routed to the popup BEFORE pure editor
+    // actions. Its rows change comparison selection, not the draft.
+    EditorUiState popup;
+    EditorControls open;
+    open.mouseClick = true;
+    open.mouse = {665.0f, 165.0f};
+    HandleEditorComparisonControls(popup, view, open);
+    ok &= Check(popup.comparisonPickerOpen &&
+                popup.comparisonFiles.empty(),
+                "COMPARE+ click opens Song Set picker");
+    EditorControls choose;
+    choose.mouseClick = true;
+    choose.mouse = {555.0f, 251.0f}; // second difficulty row
+    HandleEditorComparisonControls(popup, view, choose);
+    ok &= Check(popup.comparisonPickerOpen &&
+                popup.comparisonFiles.size() == 1 &&
+                popup.comparisonFiles.front() ==
+                    view.comparisonOptions[1].file,
+                "picker row adds a different difficulty by one click");
+    HandleEditorComparisonControls(popup, view, choose);
+    ok &= Check(popup.comparisonFiles.empty(),
+                "picker row toggles a selected reference off");
+    EditorControls dismiss;
+    dismiss.mouseClick = true;
+    dismiss.mouse = {748.0f, 405.0f}; // outside picker
+    HandleEditorComparisonControls(popup, view, dismiss);
+    ok &= Check(!popup.comparisonPickerOpen,
+                "outside click dismisses picker");
+    view.managed = false;
+    HandleEditorComparisonControls(popup, view, open);
+    ok &= Check(!popup.comparisonPickerOpen,
+                "COMPARE+ remains closed without managed Song Set");
+    view.managed = true;
+
     const auto revision = editor.RouteRevision();
     ok &= Check(!ToggleEditorComparison(ui, view, 0) &&
                 ui.comparisonFiles.empty() &&

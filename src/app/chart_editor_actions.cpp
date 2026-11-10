@@ -121,14 +121,14 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
         if (Hit(kSnapLess, mouse)) { editor_timeline::ChangeSnap(draft, ui, -1, action); return action; }
         if (Hit(kSnapMore, mouse)) { editor_timeline::ChangeSnap(draft, ui, 1, action); return action; }
-        const Rectangle song = ui.tab == EditorTab::Route ? kRouteSong : kSong;
-        const Rectangle play = ui.tab == EditorTab::Route ? kRoutePlay : kPlay;
-        const Rectangle stop = ui.tab == EditorTab::Route ? kRouteStop : kStop;
-        const Rectangle test = ui.tab == EditorTab::Route ? kRouteTest : kTest;
-        if (Hit(song, mouse)) action.chooseAudio = true;
-        else if (Hit(play, mouse)) action.previewToggle = true;
-        else if (Hit(stop, mouse)) action.previewRestart = true;
-        else if (Hit(test, mouse)) action.testPlay = true;
+        if (ui.tab != EditorTab::Route && Hit(kSong, mouse))
+            action.chooseAudio = true;
+        else if (ui.tab != EditorTab::Route && Hit(kPlay, mouse))
+            action.previewToggle = true;
+        else if (ui.tab != EditorTab::Route && Hit(kStop, mouse))
+            action.previewRestart = true;
+        else if (Hit(ui.tab == EditorTab::Route ? kRouteTest : kTest, mouse))
+            action.testPlay = true;
         else if (Hit(kZoomOut, mouse))
             ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
         else if (Hit(kZoomIn, mouse))
@@ -146,10 +146,12 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         } else if (ui.tab == EditorTab::Route && Hit(kRedoEdit, mouse)) {
             ApplyHistoryAction(draft, ui, false, action);
             return action;
-        } else if (ui.tab == EditorTab::Route && Hit(kHeading, mouse)) {
-            draft.RotateHeading45(1);
+        } else if (ui.tab == EditorTab::Field &&
+                   Hit(kFieldHeadingPrev, mouse)) {
+            draft.RotateHeading45(-1);
             action.changedChart = true;
-        } else if (ui.tab == EditorTab::Field && Hit(kFieldHeading, mouse)) {
+        } else if (ui.tab == EditorTab::Field &&
+                   (Hit(kFieldHeading, mouse) || Hit(kFieldHeadingNext, mouse))) {
             draft.RotateHeading45(1);
             action.changedChart = true;
         } else if (ui.tab == EditorTab::Route &&
@@ -169,8 +171,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                     }
                 }
         } else if (ui.tab == EditorTab::Route &&
-                   mouse.y >= 116.0f && mouse.y < 143.0f &&
-                   mouse.x >= 415.0f && mouse.x < 606.0f) {
+                   mouse.y >= 505.0f && mouse.y < 533.0f &&
+                   mouse.x >= 52.0f && mouse.x < 554.0f) {
             for (int i = 0; i < 5; ++i) {
                 if (Hit(RouteSpeedBounds(i), mouse)) {
                     action.speedIndex = i;
@@ -188,10 +190,6 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
     if (ui.tab == EditorTab::Route)
         editor_pattern::Apply(draft, ui, input, commands, action);
-    if (ui.tab != EditorTab::Audio) {
-        if (input.headingLeft) { draft.RotateHeading45(-1); action.changedChart = true; }
-        if (input.headingRight) { draft.RotateHeading45(1); action.changedChart = true; }
-    }
     editor_timeline::ApplyWheel(draft, input.mouseWheel);
     action.previewToggle |= input.previewToggle;
     action.previewRestart |= input.previewRestart;

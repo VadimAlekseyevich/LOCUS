@@ -16,7 +16,6 @@ static const char* FieldName(EditorField field) {
         case EditorField::Title: return "TITLE";
         case EditorField::Bpm: return "BPM";
         case EditorField::OffsetMs: return "OFFSET (MS)";
-        case EditorField::GridSize: return "SQUARE SIZE";
         case EditorField::None: break;
     }
     return "";
@@ -27,7 +26,6 @@ static Rectangle FieldBounds(EditorField field) {
         case EditorField::Title: return kTitle;
         case EditorField::Bpm: return kBpm;
         case EditorField::OffsetMs: return kOffset;
-        case EditorField::GridSize: return kGridSize;
         case EditorField::None: break;
     }
     return {0, 0, 0, 0};
@@ -39,8 +37,6 @@ EditorField ClickedField(Vector2 mouse, EditorTab tab) {
                                   EditorField::OffsetMs}) {
             if (Hit(FieldBounds(field), mouse)) return field;
         }
-    } else if (tab == EditorTab::Field) {
-        if (Hit(kGridSize, mouse)) return EditorField::GridSize;
     }
     return EditorField::None;
 }
@@ -55,8 +51,6 @@ static std::string InitialValue(const core::ChartEditor& draft, EditorField fiel
         case EditorField::OffsetMs:
             std::snprintf(text, sizeof(text), "%.0f", draft.Data().offsetSeconds * 1000.0);
             return text;
-        case EditorField::GridSize:
-            return std::to_string(draft.Data().route.gridWidth);
         default: return "";
     }
 }
@@ -75,26 +69,12 @@ static bool ParseNumeric(const std::string& string, double& result) {
     return end && end != string.c_str() && *end == '\0' && std::isfinite(result);
 }
 
-// One integer controls the square's side: never accept a width/height pair.
-static bool ParseSquareSize(const std::string& value, int& size) {
-    if (value.empty() || value.size() > 2 ||
-        !std::all_of(value.begin(), value.end(),
-                     [](unsigned char c) { return c >= '0' && c <= '9'; }))
-        return false;
-    size = std::atoi(value.c_str());
-    return size >= core::kMinGridSize && size <= core::kMaxGridSize;
-}
-
 bool CommitField(EditorUiState& ui, core::ChartEditor& draft) {
     if (!ui.EditingText()) return true;
     const auto field = ui.active;
     bool valid = false;
     if (field == EditorField::Title) {
         valid = draft.SetTitle(ui.buffer);
-    } else if (field == EditorField::GridSize) {
-        int size = 0;
-        if (ParseSquareSize(ui.buffer, size))
-            valid = draft.SetGridSize(size, size);
     } else {
         double value = 0.0;
         if (ParseNumeric(ui.buffer, value)) {
@@ -150,11 +130,9 @@ EditorUiAction HandleTextInput(core::ChartEditor& draft, EditorUiState& ui,
                     ui.replaceOnType = false;
                 }
                 for (unsigned char c : input.typedUtf8) {
-                    const bool wholeGrid = ui.active == EditorField::GridSize;
-                    if ((!wholeGrid && (c == '.' || c == ',') &&
+                    if (((c == '.' || c == ',') &&
                          ui.active != EditorField::OffsetMs) ||
-                        (!wholeGrid && c == '-') ||
-                        (c >= '0' && c <= '9')) {
+                        c == '-' || (c >= '0' && c <= '9')) {
                         if (ui.buffer.size() < 100)
                             ui.buffer.push_back(static_cast<char>(c == ',' ? '.' : c));
                     }

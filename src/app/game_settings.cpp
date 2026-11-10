@@ -25,7 +25,7 @@
 namespace locus::app {
 namespace {
 const char* kNames[kGameActionCount] = {
-    "UP", "RIGHT", "DOWN", "LEFT", "PAUSE / RESUME", "RETRY", "LEAVE LEVEL",
+    "UP", "RIGHT", "DOWN", "LEFT", "PAUSE / MENU", "RETRY", "LEAVE LEVEL",
     "PRACTICE 100%", "PRACTICE 75%", "PRACTICE 50%", "PRACTICE 25%",
     "PRACTICE 10%", "SPEED +", "SPEED -", "PREVIEW +", "PREVIEW -"
 };
@@ -41,7 +41,7 @@ const char* kShortcutNames[kShortcutActionCount] = {
     "SAVE CHART", "SAVE CHART AS", "OPEN CHART", "NEW CHART",
     "TEST PLAY", "PREVIEW PAUSE", "PREVIEW RESTART",
     "COPY", "CUT", "PASTE", "UNDO", "REDO",
-    "MIRROR H", "MIRROR V", "HEADING LEFT", "HEADING RIGHT",
+    "MIRROR H", "MIRROR V",
     "ZOOM IN", "ZOOM OUT", "GRID FINER", "GRID COARSER"
 };
 const char* kShortcutJson[kShortcutActionCount] = {
@@ -51,8 +51,7 @@ const char* kShortcutJson[kShortcutActionCount] = {
     "editorSave", "editorSaveAs", "editorOpen", "editorNew", "editorTest",
     "editorPreview", "editorRestart", "editorCopy", "editorCut", "editorPaste",
     "editorUndo", "editorRedo", "editorMirrorH", "editorMirrorV",
-    "editorHeadingLeft", "editorHeadingRight", "editorZoomIn",
-    "editorZoomOut", "editorSnapMore", "editorSnapLess"
+    "editorZoomIn", "editorZoomOut", "editorSnapMore", "editorSnapLess"
 };
 
 bool AllowedKey(int key, bool escape = false, bool fullscreen = false) noexcept {
@@ -301,8 +300,8 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             }
             parsed.keys[i] = bindings[kJsonKeys[i]].get<int>();
         }
-        // Version 2 predates the expanded controls and Escape-to-pause
-        // default. Its explicit custom pause binding is still honored.
+        // Legacy settings may contain extra, now-removed editor heading
+        // shortcuts. They are ignored; initial heading is set in FIELD.
         if (version == 3) {
             if (!object.contains("shortcuts") ||
                 !object["shortcuts"].is_object()) {
@@ -335,6 +334,8 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
         // Migrate only that exact untouched directional preset; customized
         // old layouts remain untouched. V2 supports intentionally remapping
         // back to arrows without any automatic migration on next launch.
+        if (version < 3 && parsed.Key(GameAction::Pause) == KEY_SPACE)
+            parsed.keys[static_cast<int>(GameAction::Pause)] = KEY_ESCAPE;
         if (version == 1 &&
             parsed.Key(GameAction::Up) == KEY_UP &&
             parsed.Key(GameAction::Right) == KEY_RIGHT &&

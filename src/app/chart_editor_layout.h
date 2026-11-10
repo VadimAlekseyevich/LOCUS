@@ -1,8 +1,6 @@
 #pragma once
 
 #include "app/chart_editor_ui.h"
-#include "app/visual_style.h"
-#include "core/route_view.h"
 
 #include <algorithm>
 #include <array>
@@ -28,24 +26,6 @@ constexpr Rectangle kZoomIn{863, 416, 34, 27};
 constexpr Rectangle kSnapLess{511, 416, 64, 27};
 constexpr Rectangle kSnapMore{583, 416, 64, 27};
 constexpr int kSnapDivisions[9] = {1, 2, 3, 4, 6, 8, 12, 16, 24};
-
-// Preserve the original ROUTE editor magnification while all compared
-// charts share one px-per-song-second scale. The current chart's grid size,
-// not each reference's grid, controls comparison zoom.
-inline float EditorPreviewPixelsPerSecond(const core::Chart& active) noexcept {
-    if (!std::isfinite(active.bpm) || active.bpm <= 0.0) return 0.0f;
-    return kGridMaxSpan /
-        std::max(1, std::max(active.gridWidth, active.gridHeight)) *
-        static_cast<float>(active.bpm / 60.0);
-}
-
-inline float EditorPreviewLookaheadMs(double previewLeadBeats, double bpm,
-                                     float skinLookaheadMs) noexcept {
-    if (!std::isfinite(previewLeadBeats) || previewLeadBeats <= 0.0 ||
-        !std::isfinite(bpm) || bpm <= 0.0) return skinLookaheadMs;
-    return std::max(skinLookaheadMs, static_cast<float>(
-        std::clamp(previewLeadBeats * 60000.0 / bpm, 100.0, 10000.0)));
-}
 
 inline float PixelsPerBeat(const EditorUiState& ui) {
     return kZoomPixelsPerBeat[std::clamp(ui.timelineZoomIndex, 0, kZoomMax)];
@@ -79,15 +59,13 @@ constexpr Rectangle kSong{49, 115, 162, 37};
 constexpr Rectangle kPlay{220, 115, 157, 37};
 constexpr Rectangle kStop{386, 115, 115, 37};
 constexpr Rectangle kTest{510, 115, 102, 37};
+// Bottom file row remains on SET/AUDIO/FIELD. ROUTE uses it for
+// playback-rate presets; Ctrl+S is the file action while mapping.
 constexpr Rectangle kEditorFileSave{52, 505, 97, 28};
 constexpr Rectangle kEditorFileSaveAs{158, 505, 98, 28};
 constexpr Rectangle kEditorFileOpen{265, 505, 97, 28};
 constexpr Rectangle kEditorFileNew{371, 505, 97, 28};
 
-constexpr Rectangle kHeading{744, 201, 168, 40};
-constexpr Rectangle kLeftTurn{744, 271, 168, 37};
-constexpr Rectangle kRightTurn{744, 314, 168, 37};
-constexpr Rectangle kRemoveTurn{744, 357, 168, 37};
 // Eight directions around DEL (center); positioned above the timeline.
 constexpr Rectangle DirectionPadBounds(int row, int col) noexcept {
     return {744.0f + col * 56.0f, 275.0f + row * 39.0f, 52.0f, 35.0f};
@@ -117,27 +95,24 @@ inline std::array<int, 8> DirectionPressCounts(const core::Chart& chart) noexcep
     return counts;
 }
 
-// Compact ROUTE-only action rows. Other tabs retain their established controls.
-constexpr Rectangle kRouteSong{52, 116, 106, 27};
-constexpr Rectangle kRoutePlay{166, 116, 76, 27};
-constexpr Rectangle kRouteStop{250, 116, 80, 27};
-constexpr Rectangle kRouteTest{338, 116, 66, 27};
-constexpr Rectangle kCompareToggle{623, 154, 109, 24};
-constexpr Rectangle kComparePopup{491, 182, 243, 205};
+// Same click geometry is used by the pure controls and renderer.
+constexpr Rectangle kRouteTest{52, 115, 120, 30};
+constexpr Rectangle kCopyTurns{184, 115, 100, 30};
+constexpr Rectangle kPasteTurns{294, 115, 100, 30};
+constexpr Rectangle kCutTurns{404, 115, 92, 30};
+constexpr Rectangle kUndoEdit{506, 115, 108, 30};
+constexpr Rectangle kRedoEdit{624, 115, 110, 30};
+constexpr Rectangle kMirrorHorizontal{52, 152, 127, 30};
+constexpr Rectangle kMirrorVertical{190, 152, 127, 30};
+constexpr Rectangle kRotateCounterclockwise{328, 152, 127, 30};
+constexpr Rectangle kRotateClockwise{466, 152, 127, 30};
+constexpr Rectangle kCompareToggle{604, 152, 130, 30};
+constexpr Rectangle kComparePopup{489, 191, 245, 207};
 constexpr Rectangle ComparePickerRow(int row) noexcept {
-    return {499.0f, 207.0f + row * 29.0f, 227.0f, 25.0f};
+    return {499.0f, 215.0f + row * 29.0f, 225.0f, 25.0f};
 }
-constexpr Rectangle kComparePickerPrev{502, 363, 80, 20};
-constexpr Rectangle kComparePickerNext{638, 363, 84, 20};
-constexpr Rectangle kCopyTurns{52, 155, 60, 23};
-constexpr Rectangle kPasteTurns{118, 155, 60, 23};
-constexpr Rectangle kCutTurns{184, 155, 50, 23};
-constexpr Rectangle kUndoEdit{240, 155, 51, 23};
-constexpr Rectangle kRedoEdit{297, 155, 51, 23};
-constexpr Rectangle kMirrorHorizontal{354, 155, 58, 23};
-constexpr Rectangle kMirrorVertical{418, 155, 58, 23};
-constexpr Rectangle kRotateCounterclockwise{482, 155, 65, 23};
-constexpr Rectangle kRotateClockwise{553, 155, 65, 23};
+constexpr Rectangle kComparePickerPrev{503, 373, 80, 20};
+constexpr Rectangle kComparePickerNext{638, 373, 84, 20};
 
 // All preview panes share one physical song-time scale. Primary stays large
 // even when there are four routes; references shrink instead of the editor.
@@ -172,16 +147,13 @@ constexpr Rectangle kAudioPreviewMs{92, 371, 768, 43};
 constexpr Rectangle kSetOpenFolder{251, 270, 197, 27};
 constexpr Rectangle kSetBackground{52, 301, 190, 31};
 constexpr Rectangle kSetRemoveBackground{251, 301, 197, 31};
-constexpr Rectangle kSetOpen{52, 340, 123, 27};
-constexpr Rectangle kSetNew{184, 340, 123, 27};
-constexpr Rectangle kSetDuplicate{316, 340, 132, 27};
+constexpr Rectangle kSetNew{52, 340, 190, 27};
+constexpr Rectangle kSetDuplicate{251, 340, 197, 27};
 constexpr Rectangle kSetImport{52, 371, 123, 27};
 constexpr Rectangle kSetExport{184, 371, 123, 27};
 constexpr Rectangle kSetDeleteDifficulty{316, 371, 132, 27};
 constexpr Rectangle kSetDeleteSong{52, 402, 190, 27};
 constexpr Rectangle kSetRestore{251, 402, 197, 27};
-constexpr Rectangle kSetPrevious{507, 394, 118, 29};
-constexpr Rectangle kSetNext{785, 394, 118, 29};
 constexpr Rectangle SetDifficultyRow(int row) noexcept {
     return {503.0f, 202.0f + row * 36.0f, 400.0f, 32.0f};
 }
@@ -189,7 +161,6 @@ inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
     if (CheckCollisionPointRec(p, kSetOpenFolder)) return EditorSetAction::OpenFolder;
     if (CheckCollisionPointRec(p, kSetBackground)) return EditorSetAction::AttachBackground;
     if (CheckCollisionPointRec(p, kSetRemoveBackground)) return EditorSetAction::RemoveBackground;
-    if (CheckCollisionPointRec(p, kSetOpen)) return EditorSetAction::Open;
     if (CheckCollisionPointRec(p, kSetNew)) return EditorSetAction::NewDifficulty;
     if (CheckCollisionPointRec(p, kSetDuplicate)) return EditorSetAction::Duplicate;
     if (CheckCollisionPointRec(p, kSetImport)) return EditorSetAction::Import;
@@ -199,8 +170,9 @@ inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
     if (CheckCollisionPointRec(p, kSetRestore)) return EditorSetAction::Restore;
     return EditorSetAction::None;
 }
-constexpr Rectangle kGridSize{104, 225, 330, 47};
-constexpr Rectangle kFieldHeading{519, 321, 330, 47};
+constexpr Rectangle kFieldHeadingPrev{104, 235, 51, 47};
+constexpr Rectangle kFieldHeading{162, 235, 234, 47};
+constexpr Rectangle kFieldHeadingNext{403, 235, 51, 47};
 
 // Absolute song milliseconds at the same fractional tick used by the route.
 // The displayed value and copied clipboard value share this calculation.
@@ -216,29 +188,11 @@ inline long long RouteTimeMs(const core::ChartEditor& draft, double activeTick) 
 constexpr double kSpeeds[5] = {1.0, 0.75, 0.5, 0.25, 0.1};
 
 inline Rectangle RouteSpeedBounds(int index) {
-    return {415.0f + index * 39.0f, 116.0f, 35.0f, 27.0f};
+    return {52.0f + index * 102.0f, 505.0f, 94.0f, 28.0f};
 }
 
 inline bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(pos, bounds); }
 
-// Camera for the uncluttered, continuous ROUTE preview.
-// The chart's view size only adjusts magnification, not route geometry.
-struct EditorView {
-    float left = kGridCenterX, top = kGridCenterY, step = 1.0f;
-    core::GridPoint origin{};
-    int ticksPerBeat = 1;
-
-    explicit EditorView(const core::Chart& chart, double tick) {
-        const int visibleCells = std::max(chart.gridWidth, chart.gridHeight);
-        step = kGridMaxSpan / static_cast<float>(std::max(1, visibleCells));
-        origin = core::RoutePositionAt(chart, tick);
-        ticksPerBeat = chart.ticksPerBeat;
-    }
-    Vector2 Point(core::GridPoint raw) const {
-        return {left + static_cast<float>((raw.x - origin.x) * step / ticksPerBeat),
-                top + static_cast<float>((raw.y - origin.y) * step / ticksPerBeat)};
-    }
-};
 inline EditorTab ClickedTab(Vector2 mouse, EditorTab previous) {
     if (Hit(kTabSet, mouse)) return EditorTab::Set;
     if (Hit(kTabRoute, mouse)) return EditorTab::Route;

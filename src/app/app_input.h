@@ -53,6 +53,7 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
 FrameInput PollFrameInput(bool debugScreens, const AppState& state,
                           const GameSettings& settings,
                           double eventTimeSeconds,
-                          bool playPaused = false);
+                          bool playPaused = false,
+                          bool editorRouteTab = false);
 
 } // namespace locus::app

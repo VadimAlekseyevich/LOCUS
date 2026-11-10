@@ -24,7 +24,7 @@ enum class ShortcutAction : int {
     EditorSave, EditorSaveAs, EditorOpen, EditorNew, EditorTest,
     EditorPreview, EditorRestart, EditorCopy, EditorCut, EditorPaste,
     EditorUndo, EditorRedo, EditorMirrorH, EditorMirrorV,
-    EditorHeadingLeft, EditorHeadingRight, EditorZoomIn, EditorZoomOut,
+    EditorZoomIn, EditorZoomOut,
     EditorSnapMore, EditorSnapLess, Count
 };
 constexpr int kNavigationShortcutCount =
@@ -61,7 +61,7 @@ struct GameSettings {
         {KEY_O, true}, {KEY_N, true}, {KEY_T},
         {KEY_SPACE}, {KEY_R}, {KEY_C, true}, {KEY_X, true},
         {KEY_V, true}, {KEY_Z, true}, {KEY_Y, true},
-        {KEY_I}, {KEY_I, false, true}, {KEY_Q}, {KEY_E},
+        {KEY_I}, {KEY_I, false, true},
         {KEY_EQUAL}, {KEY_MINUS}, {KEY_PERIOD}, {KEY_COMMA}
     }};
     float volume = 0.7f;
