@@ -91,10 +91,19 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         std::abs(offsetSeconds) > 3600.0)
         return result;
 
+    // A parsed library chart is rated before the audio duration is known.
+    // Its default lengthBeats can be shorter than the authored note range;
+    // that is not an invalid chart. Build a local geometry-only boundary
+    // without changing any note, exact timestamp or caller-owned chart.
+    Chart geometryChart = chart;
+    if (!geometryChart.turns.empty() &&
+        geometryChart.turns.back().beat >= geometryChart.lengthBeats) {
+        geometryChart.lengthBeats = geometryChart.turns.back().beat + 1;
+    }
     // Reading complexity follows the same exact-time geometry as PLAY.
     // Keep the rating's spatial scale in musical beats (not editor ticks).
     TimedRoute route;
-    if (!route.Compile(chart, offsetSeconds)) return result;
+    if (!route.Compile(geometryChart, offsetSeconds)) return result;
     std::vector<Note> notes;
     notes.reserve(chart.turns.size());
     int lastTick = chart.firstBeat;

@@ -53,6 +53,15 @@ int main() {
     ok &= Check(blank.overall == 0 && blank.notes == 0 &&
                 blank.keyPresses == 0, "empty chart has zero difficulty");
 
+    // Imported library difficulties have not yet decoded their song file.
+    // Their chart length stays at its default until play activation.
+    Chart unprepared = Sequence(60, {200}, {Heading::Right, Heading::Up});
+    unprepared.lengthBeats = 32;
+    const auto indexed = CalculateChartDifficulty(unprepared);
+    ok &= Check(indexed.notes == unprepared.turns.size() &&
+                indexed.overall > 0.0 && indexed.reading > 0.0,
+                "valid imported chart is rated before audio duration is known");
+
     const auto easyChart = Sequence(45, {500}, {Heading::Right});
     const auto fastChart = Sequence(45, {100}, {Heading::Right});
     const auto easy = CalculateChartDifficulty(easyChart);

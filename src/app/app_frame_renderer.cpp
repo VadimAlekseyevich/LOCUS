@@ -253,13 +253,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                                      selectedBeat, editorTransport.Speed(),
                                      gameplay.bindings, gameplay.skin,
                                      editorSetView);
-        // EditorSetController publishes the same notice to editorStatus and
-        // ui.feedback. Display it once, at the feedback position.
-        if (!editorStatus.empty() && editorStatus != editorUi.feedback) {
-            const std::string statusLine = core::utf8::Truncate(editorStatus, 68);
-            DrawTextLabel(font, statusLine.c_str(), Vector2{50.0f, 525.0f},
-                          12.0f, Color{175, 212, 213, 255});
-        }
+        // Editor and preview statuses must not be painted over file buttons.
+        // Keep status for workflows, but not as an overlay in the action row.
         if (editorSetPending && editorPending == EditorPending::None) {
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
                           Color{10, 13, 21, 225});

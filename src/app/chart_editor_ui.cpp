@@ -442,29 +442,10 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     }
 
     DrawTimeline(font, draft, ui, previewBeat);
-    const bool horizontalArrows = !IsGameDirectionKey(settings, KEY_LEFT) &&
-                                 !IsGameDirectionKey(settings, KEY_RIGHT);
-    const bool verticalArrows = !IsGameDirectionKey(settings, KEY_UP) &&
-                               !IsGameDirectionKey(settings, KEY_DOWN);
-    const std::string navigationHint = horizontalArrows
-        ? (verticalArrows ? "LR NAV / UP-DOWN GRID" : "LR NAV / GRID +/-")
-        : (IsGameDirectionKey(settings, KEY_PAGE_UP) ||
-           IsGameDirectionKey(settings, KEY_PAGE_DOWN)
-            ? "WHEEL NAV" : "PGUP/PGDN NAV");
     Button(font, kEditorFileSave, "SAVE", Color{131, 219, 184, 255});
     Button(font, kEditorFileSaveAs, "SAVE AS", Color{131, 219, 184, 255});
     Button(font, kEditorFileOpen, "OPEN", Color{173, 187, 239, 255});
     Button(font, kEditorFileNew, "NEW", Color{237, 190, 148, 255});
-    const std::string message = ui.feedback.empty()
-        ? (ui.EditingText() ? "TYPE VALUE, ENTER CONFIRMS, ESC CANCELS"
-           : navigationHint + "  ESC BACK  CTRL+S SAVE  CTRL+O OPEN" +
-             (IsGameDirectionKey(settings, KEY_H) ? "" : "  H HOME") +
-             "  F11 FULLSCREEN")
-        : ui.feedback;
-    Label(font, Truncate(message, 47).c_str(), 484, 510, 12,
-          ui.feedback.empty() ? Color{177, 198, 218, 255}
-              : ui.feedbackError ? Color{238, 166, 154, 255}
-                                 : Color{142, 232, 207, 255});
 }
 
 } // namespace locus::app
