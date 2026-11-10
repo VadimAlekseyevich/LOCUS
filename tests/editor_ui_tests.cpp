@@ -413,12 +413,12 @@ int main() {
     ok &= Check(chart.Data().route.turns[2].direction == Heading::Right,
                 "Ctrl+Y redoes mirrored group");
     // Rotation buttons share the selected interval with FLIP H / FLIP V.
-    const auto rotateRight = ApplyEditorControls(chart, ui, Click(181, 332));
+    const auto rotateRight = ApplyEditorControls(chart, ui, Click(585, 166));
     ok &= Check(rotateRight.changedChart && ui.HasRange() &&
                 chart.Data().route.turns[2].direction == Heading::Down &&
                 chart.Data().route.turns[3].direction == Heading::Up,
                 "ROT +90 button rotates the selected pattern without shifting beats");
-    const auto rotateLeft = ApplyEditorControls(chart, ui, Click(92, 332));
+    const auto rotateLeft = ApplyEditorControls(chart, ui, Click(515, 166));
     ok &= Check(rotateLeft.changedChart &&
                 chart.Data().route.turns[2].direction == Heading::Right &&
                 chart.Data().route.turns[3].direction == Heading::Left,
@@ -434,7 +434,7 @@ int main() {
     // The on-screen PASTE button must preserve selection just like Ctrl+V.
     chart.SelectBeat(20);
     ui.rangeFirst = ui.rangeLast = -1;
-    const auto clickedPaste = ApplyEditorControls(chart, ui, Click(120, 262));
+    const auto clickedPaste = ApplyEditorControls(chart, ui, Click(148, 166));
     ok &= Check(clickedPaste.changedChart && ui.HasRange() &&
                 ui.rangeFirst == 20 && ui.rangeLast == 22 &&
                 chart.Data().route.turns.back().beat == 22,
@@ -655,7 +655,7 @@ int main() {
     undoChart.SetSnapDivision(2);
     undoUi.rangeFirst = 4;
     undoUi.rangeLast = 6;
-    const auto mouseUndo = ApplyEditorControls(undoChart, undoUi, Click(82, 370));
+    const auto mouseUndo = ApplyEditorControls(undoChart, undoUi, Click(265, 166));
     ok &= Check(mouseUndo.changedChart &&
                 undoChart.Data().route.ticksPerBeat == 1 &&
                 !undoUi.HasRange(),
