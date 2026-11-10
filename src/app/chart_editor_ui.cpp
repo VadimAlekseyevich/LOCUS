@@ -136,7 +136,7 @@ void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
         ms < 0 ? "-" : "", absolute / 60000,
         (absolute / 1000) % 60, absolute % 1000);
     Label(font, current.c_str(),
-          kRouteTimeValue.x, kRouteTimeValue.y + 1, 13.0f,
+          kRouteTimeValue.x, kRouteTimeValue.y + 5, 13.0f,
           Color{158, 225, 212, 255});
 }
 
