@@ -30,7 +30,12 @@ bool SongLibrary::TrashDifficulty(const fs::path& chart,
         error = "This is the final difficulty; delete the Song Set instead.";
         return false;
     }
-    const fs::path root = fs::canonical(root_);
+    std::error_code ec;
+    const fs::path root = fs::canonical(root_, ec);
+    if (ec || !Inside(root, chart)) {
+        error = "Cannot resolve the selected difficulty inside Songs.";
+        return false;
+    }
     FolderWriteLock libraryLock, setLock;
     if (!libraryLock.Acquire(root, error) ||
         !setLock.Acquire(set.folder, error)) return false;

@@ -404,10 +404,17 @@ int main() {
     } else {
         core::LoadedChart editedDense = densePosition->data;
         editedDense.title += " Renamed Externally";
-        ok &= Check(SaveChartWithAudioPath(
-                        denseInstalled.wstring(), densePosition->audioFile.wstring(),
-                        editedDense, error, true) &&
-                    library.Refresh(note) &&
+        const bool saved = SaveChartWithAudioPath(
+            denseInstalled.wstring(), densePosition->audioFile.wstring(),
+            editedDense, error, true);
+        const double beforeBpm = library.Songs()[0].bpm;
+        const int beforeOffset = library.Songs()[0].offsetMs;
+        ok &= Check(saved &&
+                    !library.SetSongTiming(0, beforeBpm + 5.0,
+                                           beforeOffset, nullptr, error) &&
+                    library.Songs()[0].bpm == beforeBpm,
+                    "stale difficulty files block shared timing publication");
+        ok &= Check(library.Refresh(note) &&
                     library.LastRefreshStats().parsedCharts == 1 &&
                     library.LastRefreshStats().reusedCharts == chartTotal - 1 &&
                     library.LastRefreshStats().calculatedDifficulties == 1,

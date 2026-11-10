@@ -10,12 +10,51 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <set>
 #include <string>
 #include <system_error>
 #include <utility>
 namespace locus::app {
 namespace fs = std::filesystem;
 using namespace detail;
+
+namespace {
+// Recheck the authoritative on-disk difficulties under the Song Set lock
+// before publishing new shared BPM/offset. No cached validation may be
+// applied to a chart replaced by another editor since the last refresh.
+bool SameSongSetFiles(const LibrarySong& song, std::string& error) {
+    const auto stale = [&]() {
+        error = "Song Set files changed on disk; refresh the library before editing timing.";
+        return false;
+    };
+    std::set<fs::path> indexed;
+    std::error_code ec;
+    for (const auto& chart : song.charts) {
+        indexed.insert(chart.file);
+        if (!chart.indexedFingerprintValid) return stale();
+        const auto size = fs::file_size(chart.file, ec);
+        if (ec || size != chart.indexedFileSize) return stale();
+        const auto time = fs::last_write_time(chart.file, ec);
+        if (ec || time != chart.indexedWriteTime) return stale();
+    }
+
+    // A new difficulty could have been added while our in-memory catalog
+    // was stale. It must also be included in the timing compatibility check.
+    fs::directory_iterator it(song.folder, ec), end;
+    if (ec) return stale();
+    for (; it != end; it.increment(ec)) {
+        if (ec) return stale();
+        const fs::path file = it->path();
+        if (file.extension() != L".json" ||
+            file.filename() == L"set.locus.json") continue;
+        if (it->is_symlink(ec) || !it->is_regular_file(ec) ||
+            indexed.count(file) == 0 || ec) return stale();
+    }
+    if (ec) return stale();
+    return true;
+}
+} // namespace
+
 bool SongLibrary::SetSongTiming(int songIndex, double bpm, int offsetMs,
                                 const core::LoadedChart* currentDraft,
                                 std::string& error) {
@@ -43,11 +82,14 @@ bool SongLibrary::SetSongTiming(int songIndex, double bpm, int offsetMs,
     }
     FolderWriteLock lock;
     if (!lock.Acquire(song.folder, error)) return false;
+    if (!SameSongSetFiles(song, error)) return false;
     SongSetManifest metadata;
     const auto manifestFile = song.folder / L"set.locus.json";
     if (!LoadSongSetManifest(manifestFile, metadata, error)) return false;
-    if (metadata.id != song.id) {
-        error = "Song Set changed on disk; refresh the library.";
+    if (metadata.id != song.id ||
+        (metadata.bpm && *metadata.bpm != song.bpm) ||
+        (metadata.offsetMs && *metadata.offsetMs != song.offsetMs)) {
+        error = "Song Set timing changed on disk; refresh the library.";
         return false;
     }
     metadata.bpm = bpm;
