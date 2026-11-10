@@ -1,5 +1,6 @@
 #include "app/skin.h"
 #include "app/skin_controls.h"
+#include "app/skin_hue_geometry.h"
 #include "app/movement_speed.h"
 #include <nlohmann/json.hpp>
 
@@ -16,6 +17,27 @@ int main() {
         if (!pass) std::cerr << "SKIN_FAIL " << what << '\n';
         ok &= pass;
     };
+    // The hue painted under each cardinal point MUST match the color
+    // selected by clicking that exact point (raylib uses sin/cos angles).
+    const Vector2 center{429.0f, 315.0f};
+    for (int sector = 0; sector < 12; ++sector) {
+        const float h = (sector + 0.5f) / 12.0f;
+        const float raylibAngle = SkinRingAngleForHue(h) *
+                                  kSkinHuePi / 180.0f;
+        const Vector2 point{
+            center.x + std::sin(raylibAngle) * 74.0f,
+            center.y + std::cos(raylibAngle) * 74.0f
+        };
+        const float pickedHue = SkinHueFromPointer(point, center);
+        check(std::abs(pickedHue - h) < 0.00001f,
+              "wheel picker selects exactly the hue painted at its location");
+        const Color painted = SkinColorFromHsv({h, 1.0f, 1.0f});
+        const Color selected = SkinColorFromHsv({pickedHue, 1.0f, 1.0f});
+        check(std::abs(static_cast<int>(painted.r) - selected.r) <= 1 &&
+              std::abs(static_cast<int>(painted.g) - selected.g) <= 1 &&
+              std::abs(static_cast<int>(painted.b) - selected.b) <= 1,
+              "wheel displayed RGB and actual selection agree across all hues");
+    }
     Skin original;
     original.name = "Blue practice";
     original.lookaheadMs = 1150.0f;

@@ -1,5 +1,6 @@
 #include "app/skin_menu.h"
 #include "app/skin_menu_layout.h"
+#include "app/skin_hue_geometry.h"
 #include "core/utf8.h"
 
 #include <algorithm>
@@ -16,10 +17,7 @@ void ChangeColorPointer(Vector2 mouse, Skin& skin, SkinUi& ui) {
     SkinHsv hsv = SkinColorToHsv(color);
     if (hsv.s < 0.0001f) hsv.h = ui.pickerHue;
     if (ui.draggingColor == 1) {
-        float angle = std::atan2(mouse.y - SkinColorWheelCenter().y,
-                                 mouse.x - SkinColorWheelCenter().x);
-        if (angle < 0.0f) angle += 2.0f * kPi;
-        ui.pickerHue = angle / (2.0f * kPi);
+        ui.pickerHue = SkinHueFromPointer(mouse, SkinColorWheelCenter());
         hsv.h = ui.pickerHue;
         if (hsv.s < 0.0001f) hsv.s = 0.8f;
         if (hsv.v < 0.001f) hsv.v = 1.0f;

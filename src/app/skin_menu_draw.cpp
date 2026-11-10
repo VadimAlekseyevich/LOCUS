@@ -1,5 +1,6 @@
 #include "app/skin_menu.h"
 #include "app/skin_menu_layout.h"
+#include "app/skin_hue_geometry.h"
 #include "app/menu_ui.h"
 #include "app/ui_button.h"
 #include "app/route_renderer.h"
@@ -191,11 +192,17 @@ void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
     // Native raylib primitives draw this wheel. No external GUI framework,
     // texture files, or R/G/B/A sliders are needed.
     for (int i = 0; i < 120; ++i) {
-        const float hue = i / 120.0f;
-        const Color tint = SkinColorFromHsv({hue, 1.0f, 1.0f});
+        const float startHue = i / 120.0f;
+        const float endHue = (i + 1.0f) / 120.0f;
+        const Color tint = SkinColorFromHsv({
+            (startHue + endHue) * 0.5f, 1.0f, 1.0f
+        });
+        // DrawRing's positive angle runs counterclockwise on screen,
+        // while our HSV pointer angle increases clockwise. Its API also
+        // requires endAngle > startAngle, so reverse the hue endpoints.
         DrawRing(center, kWheelInner, kWheelOuter,
-                 hue * 360.0f + 90.0f,
-                 (hue + 1.0f / 120.0f) * 360.0f + 90.0f, 2, tint);
+                 SkinRingAngleForHue(endHue),
+                 SkinRingAngleForHue(startHue), 2, tint);
     }
     const Vector2 marker{
         center.x + 74.0f * std::cos(hsv.h * 2.0f * kPi),
