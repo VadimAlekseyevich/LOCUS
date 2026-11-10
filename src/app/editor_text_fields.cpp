@@ -142,11 +142,8 @@ EditorUiAction HandleTextInput(core::ChartEditor& draft, EditorUiState& ui,
         if (input.enter || input.tab) {
             const bool committed = CommitField(ui, draft);
             action.changedChart = committed;
-            if (committed && input.tab) {
-                const EditorField next = ui.tab == EditorTab::Audio
-                    ? EditorField::Bpm : EditorField::GridSize;
-                BeginField(ui, draft, next);
-            }
+            if (committed && input.tab && ui.tab == EditorTab::Audio)
+                BeginField(ui, draft, EditorField::Bpm);
         } else if (input.mouseClick) {
             const EditorField target = ClickedField(input.mouse, ui.tab);
             const EditorTab nextTab = ClickedTab(input.mouse, ui.tab);
