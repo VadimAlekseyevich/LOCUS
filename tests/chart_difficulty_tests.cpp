@@ -62,6 +62,39 @@ int main() {
                 indexed.overall > 0.0 && indexed.reading > 0.0,
                 "valid imported chart is rated before audio duration is known");
 
+    // Imported multi-minute charts have no decoded duration. The parser
+    // deliberately leaves lengthBeats=1. Reproduce the sizes, tempos and
+    // offsets of all four Eviternity-package difficulties.
+    struct ImportedProfile {
+        int ticks;
+        int count;
+        int firstMs;
+        int spacingMs;
+    };
+    for (const ImportedProfile p : {
+            ImportedProfile{12, 228, 19413, 240},
+            ImportedProfile{24, 127, 165333, 120},
+            ImportedProfile{24, 79, 149973, 240},
+            ImportedProfile{12, 271, 19413, 240}}) {
+        Chart imported;
+        imported.bpm = 250.0;
+        imported.ticksPerBeat = p.ticks;
+        imported.lengthBeats = 1; // ParseChartJson before audio loading.
+        imported.start = {0, 0};
+        for (int i = 0; i < p.count; ++i) {
+            const auto time = static_cast<std::int64_t>(p.firstMs) +
+                              static_cast<std::int64_t>(i) * p.spacingMs;
+            imported.turns.push_back({
+                TickAtTimeMs(imported.bpm, imported.ticksPerBeat, 1.173, time),
+                (i % 2 == 0) ? Heading::UpRight : Heading::Left, time});
+        }
+        const auto actual = CalculateChartDifficulty(imported, 1.173);
+        ok &= Check(actual.notes == imported.turns.size() &&
+                    actual.overall > 0.0 && actual.speed > 0.0 &&
+                    actual.reading > 0.0,
+                    "dense imported chart has nonzero difficulty before audio");
+    }
+
     const auto easyChart = Sequence(45, {500}, {Heading::Right});
     const auto fastChart = Sequence(45, {100}, {Heading::Right});
     const auto easy = CalculateChartDifficulty(easyChart);

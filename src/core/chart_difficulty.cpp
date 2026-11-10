@@ -1,5 +1,4 @@
 #include "core/chart_difficulty.h"
-#include "core/timed_route.h"
 
 #include <algorithm>
 #include <array>
@@ -12,10 +11,23 @@
 namespace locus::core {
 namespace {
 
-constexpr double kPi = 3.14159265358979323846;
+constexpr double kInvSqrt2 = 0.707106781186547524400844362104849039;
 constexpr double kEpsilon = 1e-9;
 
 struct Point { double x = 0.0, y = 0.0; };
+Point Unit(Heading heading) noexcept {
+    switch (heading) {
+        case Heading::Up: return {0.0, -1.0};
+        case Heading::Right: return {1.0, 0.0};
+        case Heading::Down: return {0.0, 1.0};
+        case Heading::Left: return {-1.0, 0.0};
+        case Heading::UpRight: return {kInvSqrt2, -kInvSqrt2};
+        case Heading::DownRight: return {kInvSqrt2, kInvSqrt2};
+        case Heading::DownLeft: return {-kInvSqrt2, kInvSqrt2};
+        case Heading::UpLeft: return {-kInvSqrt2, -kInvSqrt2};
+    }
+    return {};
+}
 struct Note {
     std::int64_t timeMs = 0;
     Point pos;
@@ -91,22 +103,14 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         std::abs(offsetSeconds) > 3600.0)
         return result;
 
-    // A parsed library chart is rated before the audio duration is known.
-    // Its default lengthBeats can be shorter than the authored note range;
-    // that is not an invalid chart. Build a local geometry-only boundary
-    // without changing any note, exact timestamp or caller-owned chart.
-    Chart geometryChart = chart;
-    if (!geometryChart.turns.empty() &&
-        geometryChart.turns.back().beat >= geometryChart.lengthBeats) {
-        geometryChart.lengthBeats = geometryChart.turns.back().beat + 1;
-    }
-    // Reading complexity follows the same exact-time geometry as PLAY.
-    // Keep the rating's spatial scale in musical beats (not editor ticks).
-    TimedRoute route;
-    if (!route.Compile(geometryChart, offsetSeconds)) return result;
+    // Difficulty needs relative distances between exact note timestamps,
+    // not the song endpoint. Imported JSON deliberately has lengthBeats=1
+    // until the audio is loaded; creating a gameplay route here is incorrect.
     std::vector<Note> notes;
     notes.reserve(chart.turns.size());
     int lastTick = chart.firstBeat;
+    Point position{};
+    Heading preceding = chart.initialHeading;
     std::int64_t lastTime = std::numeric_limits<std::int64_t>::min();
     const std::int64_t offsetMs =
         static_cast<std::int64_t>(std::llround(offsetSeconds * 1000.0));
@@ -119,10 +123,15 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         if (currentTime < -3600000 || currentTime > 86400000 ||
             currentTime <= lastTime)
             continue;
-        const GridPoint world = route.PositionAt(currentTime / 1000.0);
-        const Point position{
-            (world.x - chart.start.x) / chart.ticksPerBeat,
-            (world.y - chart.start.y) / chart.ticksPerBeat};
+        // Equivalent to the time-indexed gameplay trajectory, but invariant
+        // under translation and independent of chart length or audio data.
+        if (lastTime != std::numeric_limits<std::int64_t>::min()) {
+            const double distance = static_cast<double>(currentTime - lastTime)
+                * chart.bpm / 60000.0;
+            const Point unit = Unit(preceding);
+            position.x += unit.x * distance;
+            position.y += unit.y * distance;
+        }
         const unsigned mask = HeadingArrowMask(event.direction);
         const int keys = Bits(mask);
         if (keys == 0) continue;
@@ -130,6 +139,7 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         totalKeys += static_cast<std::size_t>(keys);
         lastTick = event.beat;
         lastTime = currentTime;
+        preceding = event.direction;
     }
     const std::size_t n = notes.size();
     result.notes = n;

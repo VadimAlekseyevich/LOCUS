@@ -206,7 +206,16 @@ bool SongLibrary::Refresh(std::string& message) {
                  previousChart->second->data.route.bpm == song.bpm &&
                  static_cast<int>(std::llround(
                      previousChart->second->data.offsetSeconds * 1000.0)) == song.offsetMs);
-            if (!oldTimingMatches || reusedFiles.count(difficulty.file) == 0) {
+            // Old in-memory indices may contain the zero-rating result
+            // produced by the former audio-duration-dependent calculator.
+            // Re-evaluate just those entries on Refresh, while preserving
+            // the fast path for valid unchanged files and song timing.
+            const bool invalidCachedRating = !difficulty.data.route.turns.empty() &&
+                (difficulty.difficulty.notes != difficulty.data.route.turns.size() ||
+                 !std::isfinite(difficulty.difficulty.overall) ||
+                 difficulty.difficulty.overall <= 0.0);
+            if (!oldTimingMatches || reusedFiles.count(difficulty.file) == 0 ||
+                invalidCachedRating) {
                 difficulty.difficulty = core::CalculateChartDifficulty(
                     difficulty.data.route, difficulty.data.offsetSeconds);
                 ++stats.calculatedDifficulties;

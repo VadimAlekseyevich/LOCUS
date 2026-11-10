@@ -272,6 +272,19 @@ int main() {
                 Read(copiedLibrary.Songs()[0].backgroundImage) == Read(sourceCover) &&
                 Read(importedFolder / "song.wav") == firstBytes,
                 "ZIP import restores manifest, audio and four difficulties");
+    // Package import runs library rating before audio duration is decoded.
+    // Every imported difficulty (including sparse ones) must be rated.
+    ok &= Check(copiedLibrary.Songs().size() == 1 &&
+                std::all_of(copiedLibrary.Songs()[0].charts.begin(),
+                            copiedLibrary.Songs()[0].charts.end(),
+                            [](const LibraryChart& chart) {
+                                return !chart.data.route.turns.empty() &&
+                                    chart.difficulty.notes ==
+                                        chart.data.route.turns.size() &&
+                                    chart.difficulty.overall > 0.0;
+                            }),
+                "imported package charts retain nonzero ratings before play");
+
     ok &= Check(copiedLibrary.SetBackgroundImage(0, {}, error) &&
                 copiedLibrary.Songs()[0].backgroundImage.empty() &&
                 !fs::exists(importedFolder / fs::u8path(metadata.backgroundFile)) &&
