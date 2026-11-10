@@ -87,6 +87,9 @@ and reduce the number of unrelated reasons a file can change.
 
 ## Completed stabilization
 
+- **2026-11-10:** Fixed stepped player/camera movement during 50% (and slower) practice playback at 200–600 px/s. `GetMusicTimePlayed()` is consumed-buffer paced, so `ChartPlayback::VisualAudioSeconds` now uses a presentation-only rate-aware interpolator with a quantization deadband and gradual drift correction. `PlayScreenActions::Transport` supplies one consistent interpolated audio time/beat to trajectory, marker, camera and outro. `TurnJudge` and `GameSession` continue using the raw consumed-audio time, preserving hit timing. Added simulation checks for 60/120/240 FPS, practice rates 0.1/0.25/0.5, pausing, seeking, speed changes and drift. No saved-format changes.
+
+
 - **2026-11-10:** Diagonal judgement now assigns two independent arrow grades per authored diagonal turn (same target time, separate hit times/window results). `TurnJudge` tracks pending components and counts physical arrow notes for accuracy/completion; `GameSession` submits every fresh key-down with its own capture timestamp rather than merging into a chord. Removed `ArrowChordTracker` from gameplay; `chordWindowMs` remains in the version-2 settings file and applies only to the editor's diagonal authoring input. No settings format change. Chart file format and route geometry remain unchanged.
 
 
