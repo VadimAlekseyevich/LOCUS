@@ -35,7 +35,7 @@ int main() {
                 EditorDirectionMask({false, false, false, true}) == 1u &&
                 EditorDirectionMask({true, true, false, false}) == 12u &&
                 EditorDirectionMask({false, false, true, true}) == 3u,
-                "game directions and diagonal chords map consistently to editor pad");
+                "gameplay arrow keys and editor diagonal placement share bindings");
     ok &= Check(EditorDirectionShortcut(options, 5u) == "D+J" &&
                 EditorDirectionShortcut(options, 12u) == "J+K" &&
                 IsGameDirectionKey(options, KEY_D) &&
@@ -80,7 +80,7 @@ int main() {
                 "audio, visuals, and custom keys survive JSON roundtrip");
     ok &= Check(EditorDirectionShortcut(parsed, 12u) == "W+D" &&
                 EditorDirectionMask({true, true, false, false}) == 12u,
-                "persisted bindings drive the same editor chords after restarting");
+                "persisted bindings also drive editor diagonal placement");
     GameSettings display = parsed;
     display.StepFpsLimit(1);
     ok &= Check(display.fpsLimit == 165 &&

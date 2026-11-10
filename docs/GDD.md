@@ -41,16 +41,16 @@
 ## 3. Input and judgement
 
 - The player presses the **absolute outgoing direction**, not a fixed relative "turn left/right" button. The required direction equals the note's absolute heading.
-- Four keys cover the cardinal directions; holding or pressing two adjacent directions in the configured chord window selects a diagonal.
+- Four keys cover the cardinal directions. An authored diagonal turn is **two independent arrow notes at the same target timestamp**: each of its two constituent directions is graded separately when freshly pressed. The keys may be pressed in either order or more than 85 ms apart, provided each falls in its own hit window.
 - **Default bindings:** **D=Left, F=Down, J=Up, K=Right**. Space=Pause, R=Retry, H=Home. The same four directional binds place notes in the editor. All seven bindings are configurable in SETTINGS.
-- The default diagonal chord window is **85 ms**, adjustable from **40 to 160 ms** in settings.
+- There is **no gameplay chord-skew window**. The old diagonal chord tolerance control has been removed from SETTINGS; this does not change the editor's ability to author diagonal turns.
 - **SETTINGS → DISPLAY** controls VSync (on by default to prevent screen tearing), FPS cap (30, 60, 90, 120, 144, 165, 240 or unlimited; default 240), FPS counter overlay (off by default), and borderless fullscreen. The FPS cap is a ceiling; with VSync enabled, the monitor's refresh rate normally limits actual FPS. Rendering options are persisted and applied without restarting; rhythm judgement still uses the audio clock.
 - A correctly aimed press is Perfect within **±50 ms**, Good within **±110 ms**, Bad within **±180 ms**; a wrong direction in the hit window or an expired note is Miss. Ignored stray presses do not create extra grades.
-- A note is judged **exactly once**. No Fail remains active for all grades.
+- A **cardinal turn counts as one note**; a **diagonal turn counts as two notes** in Perfect/Good/Bad/Miss statistics, accuracy and Results completion. Hitting one diagonal arrow cannot automatically grade the other: its missing half receives Miss after its own late window. Each physical arrow is judged at most once; holding it or re-pressing an already-scored component cannot farm score. No Fail remains active for all grades.
 
 ### 3.1 Accuracy and completion
 
-The accuracy percentage uses **judged notes**, not the number of keyboard presses:
+The accuracy percentage uses **judged arrow notes**, not the number of keyboard presses:
 
 ```text
 Accuracy (%) = (100 × Perfect + 75 × Good + 50 × Bad)

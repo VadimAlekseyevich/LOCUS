@@ -57,7 +57,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     const bool audioAlreadyFinished = customChart ? local_.Finished() : demo_.Finished();
     // Only a *fresh* gameplay direction press can skip a long empty intro.
     // The seek moves both audio and visual clocks. Consume this key press:
-    // it is not an attempt to hit the upcoming note, nor a chord half-press.
+    // it is not an attempt to hit the upcoming note.
     if (playing && !paused && !chart_.turns.empty() &&
         judge_.NextEvent() == &chart_.turns.front() &&
         judge_.Counts().Resolved() == 0 &&
@@ -71,7 +71,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 ? local_.StartAtAudioSeconds(*target, now)
                 : demo_.StartAtAudioSeconds(*target, now);
             if (seeked) {
-                            hitFlash_.Reset();
+                hitFlash_.Reset();
                 if (customChart) local_.Update(now);
                 else demo_.Update(now);
                 judge_.Advance(*target);

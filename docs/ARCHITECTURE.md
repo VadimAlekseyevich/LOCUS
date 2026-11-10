@@ -87,6 +87,9 @@ and reduce the number of unrelated reasons a file can change.
 
 ## Completed stabilization
 
+- **2026-11-10:** Diagonal judgement now assigns two independent arrow grades per authored diagonal turn (same target time, separate hit times/window results). `TurnJudge` tracks pending components and counts physical arrow notes for accuracy/completion; `GameSession` submits every fresh key-down with its own capture timestamp rather than merging into a chord. Removed `ArrowChordTracker` and the obsolete gameplay chord tolerance setting; settings JSON now writes version 3 and accepts existing pre-release settings. Chart file format and route geometry remain unchanged.
+
+
 - **2026-11-10:** `PlayPresentation` owns the speed-proportional camera follower, outro and speed/preview notice. It produces an immutable-by-convention `GameplayView` for the renderer and is reset on entering PLAY; Results retain only the outro reveal. Scoring stays in `PlayScreenActions`/`GameSession`. Dedicated tests cover pause/modal, frozen departure, retry, screen exit and skin camera disable. Chart/skin formats unchanged.
 
 

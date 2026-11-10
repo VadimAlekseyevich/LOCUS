@@ -249,25 +249,134 @@ int main() {
                 millisecondJudge.AllScorableJudged(),
                 "absolute millisecond last note is judged at exact stored time");
 
+    // A diagonal is two real notes with the same target time, not a
+    // time-limited chord. Both components have independent grade/accuracy.
     Chart diagonalChart;
     diagonalChart.initialHeading = Heading::Right;
     diagonalChart.turns = {{2, Heading::UpRight}, {4, Heading::Right}};
     TurnJudge diagonalJudge(diagonalChart);
-    const auto hitDiagonal = diagonalJudge.PressHeading(Heading::UpRight, 1.0);
-    const auto hitCardinal = diagonalJudge.PressHeading(Heading::Right, 2.0);
-    ok &= Check(hitDiagonal && hitDiagonal->grade == Grade::Perfect &&
-                hitCardinal && hitCardinal->grade == Grade::Perfect &&
-                diagonalJudge.Counts().perfect == 2,
-                "diagonal and cardinal absolute outgoing headings score correctly");
-    diagonalJudge.Reset();
-    const auto wrongDiagonal = diagonalJudge.PressHeading(Heading::Up, 1.0);
-    ok &= Check(wrongDiagonal && wrongDiagonal->wrongDirection &&
-                diagonalJudge.Counts().miss == 1,
-                "single arrow is wrong for an authored diagonal stroke");
-    diagonalJudge.Reset();
-    ok &= Check(!diagonalJudge.PressHeading(Heading::UpRight, 0.1) &&
+    ok &= Check(diagonalJudge.ScorableCount() == 3 &&
                 diagonalJudge.Counts().Resolved() == 0,
-                "early chord does not consume a later diagonal note");
+                "diagonal contributes two scorable notes, cardinal one");
+    const auto up = diagonalJudge.PressHeading(Heading::Up, 0.96);
+    ok &= Check(up && up->grade == Grade::Perfect &&
+                up->arrow == Heading::Up &&
+                diagonalJudge.Counts().perfect == 1 &&
+                diagonalJudge.NextEvent()->beat == 2 &&
+                !diagonalJudge.AllScorableJudged(),
+                "first diagonal arrow scores immediately while second stays pending");
+    ok &= Check(!diagonalJudge.PressHeading(Heading::Up, 1.01) &&
+                !diagonalJudge.PressHeading(Heading::Down, 1.02) &&
+                !diagonalJudge.PressHeading(Heading::UpRight, 1.02) &&
+                diagonalJudge.Counts().Resolved() == 1,
+                "repeated and unrelated arrows cannot steal pending diagonal notes");
+    const auto right = diagonalJudge.PressHeading(Heading::Right, 1.15);
+    ok &= Check(right && right->grade == Grade::Bad &&
+                right->arrow == Heading::Right &&
+                right->timingErrorSeconds > 0.14 &&
+                diagonalJudge.Counts().perfect == 1 &&
+                diagonalJudge.Counts().bad == 1 &&
+                diagonalJudge.NextEvent()->beat == 4,
+                "second arrow 190ms after first gets its OWN Bad timing grade");
+    const auto hitCardinal = diagonalJudge.PressHeading(Heading::Right, 2.0);
+    ok &= Check(hitCardinal && hitCardinal->grade == Grade::Perfect &&
+                diagonalJudge.Counts().perfect == 2 &&
+                diagonalJudge.Counts().bad == 1 &&
+                diagonalJudge.Counts().Resolved() == 3 &&
+                diagonalJudge.AllScorableJudged() &&
+                std::abs(diagonalJudge.Counts().AccuracyPercent() -
+                         (250.0 / 3.0)) < 1e-9,
+                "stats, denominator and last-note completion count each arrow");
+
+    diagonalJudge.Reset();
+    const auto firstRight = diagonalJudge.PressHeading(Heading::Right, 1.08);
+    const auto thenUp = diagonalJudge.PressHeading(Heading::Up, 0.995);
+    ok &= Check(Is(firstRight, Grade::Good, 2) &&
+                firstRight->arrow == Heading::Right &&
+                Is(thenUp, Grade::Perfect, 2) &&
+                thenUp->arrow == Heading::Up &&
+                diagonalJudge.Counts().good == 1 &&
+                diagonalJudge.Counts().perfect == 1,
+                "diagonal keys may arrive in reverse order with independent timing");
+
+    diagonalJudge.Reset();
+    ok &= Check(Is(diagonalJudge.PressHeading(Heading::Up, 1.0),
+                   Grade::Perfect, 2) &&
+                !diagonalJudge.AllScorableJudged(),
+                "hitting only one half does not finish the event");
+    diagonalJudge.Advance(1.18);
+    ok &= Check(diagonalJudge.Counts().perfect == 1 &&
+                diagonalJudge.Counts().miss == 0 &&
+                diagonalJudge.NextEvent()->beat == 2,
+                "other half remains hittable through late Bad-window edge");
+    diagonalJudge.Advance(1.181);
+    ok &= Check(diagonalJudge.Counts().perfect == 1 &&
+                diagonalJudge.Counts().miss == 1 &&
+                diagonalJudge.Counts().Resolved() == 2 &&
+                diagonalJudge.Last() && diagonalJudge.Last()->arrow == Heading::Right &&
+                !diagonalJudge.Last()->wrongDirection &&
+                diagonalJudge.NextEvent()->beat == 4,
+                "unpressed half expires as exactly one independent Miss");
+    diagonalJudge.FinishRemainingMisses();
+    diagonalJudge.FinishRemainingMisses();
+    ok &= Check(diagonalJudge.Counts().miss == 2 &&
+                diagonalJudge.Counts().perfect == 1 &&
+                diagonalJudge.Counts().Resolved() == 3,
+                "song-end finalization does not double-count resolved halves");
+
+    // A diagonal as the final event holds the Results transition until both
+    // arrow notes have a grade, including a late miss for an unpressed half.
+    Chart finalDiagonal;
+    finalDiagonal.turns = {{2, Heading::DownLeft, 1000}};
+    TurnJudge finalPair(finalDiagonal);
+    ok &= Check(finalPair.ScorableCount() == 2 &&
+                Is(finalPair.PressHeading(Heading::Left, 1.0),
+                   Grade::Perfect, 2) &&
+                !finalPair.AllScorableJudged(),
+                "Results waits for both independent parts of a final diagonal");
+    ok &= Check(Is(finalPair.PressHeading(Heading::Down, 1.10),
+                   Grade::Good, 2) &&
+                finalPair.AllScorableJudged() &&
+                finalPair.Counts().Resolved() == 2,
+                "final diagonal completes as soon as both notes score");
+
+    finalPair.Reset();
+    finalPair.PressHeading(Heading::Left, 1.0);
+    finalPair.Advance(1.181);
+    ok &= Check(finalPair.AllScorableJudged() &&
+                finalPair.Counts().miss == 1 &&
+                finalPair.Counts().perfect == 1,
+                "missed half of final diagonal ends chart after its own window");
+
+    finalPair.ResetFromAudioSeconds(1.001);
+    ok &= Check(finalPair.ScorableCount() == 0 &&
+                !finalPair.AllScorableJudged(),
+                "Editor TEST skips both components of turns before start time");
+    finalPair.ResetFromAudioSeconds(1.0);
+    ok &= Check(finalPair.ScorableCount() == 2 &&
+                finalPair.NextEvent() && finalPair.Counts().Resolved() == 0,
+                "Editor TEST includes both notes at exact start timestamp");
+
+    // All four diagonal pairings use the identical independent contract.
+    for (const auto heading : {Heading::UpRight, Heading::DownRight,
+                               Heading::DownLeft, Heading::UpLeft}) {
+        Chart pairChart;
+        pairChart.turns = {{2, heading}};
+        TurnJudge pair(pairChart);
+        const unsigned mask = HeadingArrowMask(heading);
+        ok &= Check(pair.ScorableCount() == 2,
+                    "every diagonal orientation counts as two notes");
+        for (int i = 0; i < 4; ++i) {
+            if (!(mask & (1u << i))) continue;
+            const Heading key = i == 0 ? Heading::Up
+                : i == 1 ? Heading::Right
+                : i == 2 ? Heading::Down : Heading::Left;
+            ok &= Check(Is(pair.PressHeading(key, 1.0), Grade::Perfect, 2),
+                        "each of the four diagonal pairs scores either arrow");
+        }
+        ok &= Check(pair.AllScorableJudged() && pair.Counts().perfect == 2,
+                    "both diagonal components produce separate Perfects");
+    }
 
     Chart reversalChart;
     reversalChart.initialHeading = Heading::Right;
