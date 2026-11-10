@@ -22,6 +22,7 @@ LoadedChart Reference(const char* title, Heading turn, int timeMs) {
     loaded.route.ticksPerBeat = 1;
     loaded.route.firstBeat = 0;
     loaded.route.lengthBeats = 1; // Unprepared library JSON, not yet decoded.
+    loaded.route.start = {0, 0}; // Relative-position expectations below.
     loaded.route.turns = {{timeMs / 500, turn, timeMs}};
     return loaded;
 }
