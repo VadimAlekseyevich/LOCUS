@@ -279,6 +279,7 @@ void EditorFileActions::Save(bool saveAs, double& now) {
     }
     int s = -1, c = -1;
     if (context_.library.FindChart(destination, s, c)) {
+        context_.ui.setSelected = -1; // Follow the saved chart after resorting.
         // Keep this headless file-action module independent of menu renderer.
         context_.libraryUi.selectedSong = s + 1;
         context_.libraryUi.selectedChart = c;

@@ -90,6 +90,17 @@ std::string SongDisplayTitle(const fs::path& audio) {
     return name.empty() ? std::string("Unknown song") : name;
 }
 
+void SortChartDifficulties(std::vector<LibraryChart>& charts) {
+    std::sort(charts.begin(), charts.end(),
+              [](const LibraryChart& a, const LibraryChart& b) {
+                  if (a.difficulty.overall != b.difficulty.overall)
+                      return a.difficulty.overall < b.difficulty.overall;
+                  if (a.data.title != b.data.title)
+                      return a.data.title < b.data.title;
+                  return a.file < b.file;
+              });
+}
+
 } // namespace
 
 std::filesystem::path UserDataDirectory() {
@@ -247,15 +258,7 @@ bool SongLibrary::Refresh(std::string& message) {
         for (auto& difficulty : song.charts)
             difficulty.difficulty = core::CalculateChartDifficulty(
                 difficulty.data.route, difficulty.data.offsetSeconds);
-        std::sort(song.charts.begin(), song.charts.end(),
-                  [](const LibraryChart& a, const LibraryChart& b) {
-                      // One default order for PLAY and EDIT -> SET.
-                      if (a.difficulty.overall != b.difficulty.overall)
-                          return a.difficulty.overall < b.difficulty.overall;
-                      if (a.data.title != b.data.title)
-                          return a.data.title < b.data.title;
-                      return a.file < b.file;
-                  });
+        SortChartDifficulties(song.charts);
     }
     std::sort(next.begin(), next.end(),
               [](const LibrarySong& a, const LibrarySong& b) {
@@ -313,6 +316,7 @@ bool SongLibrary::SetSongTiming(int songIndex, double bpm, int offsetMs,
         song.charts[i].difficulty = core::CalculateChartDifficulty(
             song.charts[i].data.route, song.charts[i].data.offsetSeconds);
     }
+    SortChartDifficulties(song.charts); // Also keep order after shared timing edits.
     error.clear();
     return true;
 }

@@ -111,6 +111,7 @@ bool EditorSetController::SyncSongTiming() {
         Notice(error, true);
         return false;
     }
+    ctx_.ui.setSelected = -1; // Recomputed ratings may reorder difficulties.
     Notice("SONG BPM / OFFSET UPDATED FOR EVERY DIFFICULTY");
     return true;
 }
