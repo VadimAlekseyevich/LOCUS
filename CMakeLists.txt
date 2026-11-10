@@ -10,7 +10,6 @@ include(cmake/dependencies.cmake)
 
 add_library(locus_core STATIC
     src/core/route.cpp
-    src/core/arrow_chord.cpp
     src/core/route_view.cpp
     src/core/judgement.cpp
     src/core/song_clock.cpp
@@ -122,11 +121,6 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_route_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_route_tests PRIVATE locus_core)
     add_test(NAME locus_demo_route COMMAND locus_route_tests)
-
-    add_executable(locus_arrow_chord_tests tests/arrow_chord_tests.cpp)
-    target_compile_features(locus_arrow_chord_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_arrow_chord_tests PRIVATE locus_core)
-    add_test(NAME locus_diagonal_arrow_chords COMMAND locus_arrow_chord_tests)
 
     add_executable(locus_route_view_tests tests/route_view_tests.cpp)
     target_compile_features(locus_route_view_tests PRIVATE cxx_std_17)

@@ -67,8 +67,6 @@ Rectangle SettingsShowFpsButton();
 Rectangle SettingsVolumeMinus();
 Rectangle SettingsVolumePlus();
 Rectangle SettingsFlashButton();
-Rectangle SettingsChordMinus();
-Rectangle SettingsChordPlus();
 Rectangle SettingsFullscreenButton();
 Rectangle MenuBackButton();
 

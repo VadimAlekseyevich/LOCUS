@@ -207,12 +207,6 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             else if (hit(SettingsFlashButton())) {
                 settings.hitFlash = !settings.hitFlash;
                 events.saveSettings = true;
-            } else if (hit(SettingsChordMinus())) {
-                settings.chordWindowMs = std::max(40, settings.chordWindowMs - 10);
-                events.saveSettings = true;
-            } else if (hit(SettingsChordPlus())) {
-                settings.chordWindowMs = std::min(160, settings.chordWindowMs + 10);
-                events.saveSettings = true;
             }
         } else {
             if (hit(SettingsVsyncButton())) {

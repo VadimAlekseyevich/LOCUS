@@ -257,7 +257,7 @@ int main(int argc, char** argv) {
     bool drainingCustomAudio = false;
     transport.SetVolume(settings.volume);
     localSong.SetVolume(settings.volume);
-    gameSession.SetChordWindowMs(settings.chordWindowMs);
+
 
     const auto persistSettings = [&]() {
         std::string failure;
@@ -311,7 +311,7 @@ int main(int argc, char** argv) {
         if (menuEvents.saveSettings) {
             transport.SetVolume(settings.volume);
             localSong.SetVolume(settings.volume);
-            gameSession.SetChordWindowMs(settings.chordWindowMs);
+        
             persistSettings();
         }
         // Typing into a field cannot simultaneously leave the editor or

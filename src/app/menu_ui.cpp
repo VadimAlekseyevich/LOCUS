@@ -57,8 +57,6 @@ Rectangle SettingsDisplayTab() { return {251, 158, 190, 31}; }
 Rectangle SettingsVolumeMinus() { return {300, 230, 43, 35}; }
 Rectangle SettingsVolumePlus() { return {354, 230, 43, 35}; }
 Rectangle SettingsFlashButton() { return {297, 303, 100, 35}; }
-Rectangle SettingsChordMinus() { return {300, 386, 43, 35}; }
-Rectangle SettingsChordPlus() { return {354, 386, 43, 35}; }
 Rectangle SettingsVsyncButton() { return {297, 211, 100, 36}; }
 Rectangle SettingsFpsMinus() { return {301, 286, 43, 35}; }
 Rectangle SettingsFpsPlus() { return {354, 286, 43, 35}; }
@@ -336,12 +334,9 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
                kGold, settings.hitFlash);
         DrawLine(72, 347, 441, 347, edge);
 
-        Label(font, "DIAGONAL CHORD WINDOW", 73, 367, 16, kMuted);
-        Label(font, TextFormat("%d MS", settings.chordWindowMs),
-              84, 393, 21, kText);
-        Button(font, SettingsChordMinus(), "-", kViolet);
-        Button(font, SettingsChordPlus(), "+", kViolet);
-        Label(font, "AFFECTS TWO-KEY DIRECTION INPUT", 73, 451, 12, kMuted);
+        Label(font, "DIAGONAL DIRECTIONS", 73, 367, 16, kMuted);
+        Label(font, "TWO INDEPENDENT ARROWS", 84, 395, 16, kText);
+        Label(font, "EACH HAS ITS OWN HIT WINDOW", 73, 451, 12, kMuted);
     } else {
         Label(font, "VERTICAL SYNC", 73, 214, 16, kMuted);
         Button(font, SettingsVsyncButton(), settings.vsync ? "ON" : "OFF",

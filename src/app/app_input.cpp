@@ -86,7 +86,8 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     }
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.
-    // Absolute direction input; a diagonal is a two-key stroke.
+    // Each physical arrow has its own captured key-down time, including
+    // the two independent components of a diagonal turn.
     // The original four enum indices still map to Up, Right, Down, Left.
     for (int i = 0; i < 4; ++i) {
         const int key = settings.keys[static_cast<std::size_t>(i)];

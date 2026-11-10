@@ -63,20 +63,21 @@ int main() {
     options.volume = 0.4f;
     options.hitFlash = false;
     options.fullscreen = true;
-    options.chordWindowMs = 120;
     options.vsync = false;
     options.fpsLimit = 144;
     options.showFps = true;
     const std::string serialized = SerializeGameSettings(options);
     GameSettings parsed;
+    ok &= Check(serialized.find("chordWindowMs") == std::string::npos &&
+                serialized.find("\"version\": 3") != std::string::npos,
+                "unused chord skew setting is removed from settings v3");
     ok &= Check(ParseGameSettings(serialized, parsed, error) &&
                 parsed.Key(GameAction::Up) == KEY_W &&
                 parsed.Key(GameAction::Right) == KEY_D &&
                 parsed.volume > 0.39f && parsed.volume < 0.41f &&
                 !parsed.hitFlash && parsed.fullscreen &&
-                parsed.chordWindowMs == 120 &&
                 !parsed.vsync && parsed.fpsLimit == 144 && parsed.showFps,
-                "all audio, visuals, chords and custom keys survive JSON roundtrip");
+                "audio, visuals, and custom keys survive JSON roundtrip");
     ok &= Check(EditorDirectionShortcut(parsed, 12u) == "W+D" &&
                 EditorDirectionMask({true, true, false, false}) == 12u,
                 "persisted bindings drive the same editor chords after restarting");
@@ -130,9 +131,9 @@ int main() {
     previousDefault.keys = {{KEY_UP, KEY_RIGHT, KEY_DOWN, KEY_LEFT,
                               KEY_SPACE, KEY_R, KEY_H}};
     std::string oldConfig = SerializeGameSettings(previousDefault);
-    const auto oldVersion = oldConfig.find("\"version\": 2");
+    const auto oldVersion = oldConfig.find("\"version\": 3");
     if (oldVersion != std::string::npos)
-        oldConfig.replace(oldVersion, sizeof("\"version\": 2") - 1,
+        oldConfig.replace(oldVersion, sizeof("\"version\": 3") - 1,
                           "\"version\": 1");
     GameSettings migrated;
     ok &= Check(ParseGameSettings(oldConfig, migrated, error) &&
@@ -141,6 +142,20 @@ int main() {
                 migrated.Key(GameAction::Down) == KEY_F &&
                 migrated.Key(GameAction::Left) == KEY_D,
                 "legacy default arrow settings automatically migrate once");
+    // A pre-release v2 settings file containing the old chord window
+    // remains readable; writing it again drops that obsolete parameter.
+    std::string priorConfig = serialized;
+    const auto currentVersion = priorConfig.find("\"version\": 3");
+    if (currentVersion != std::string::npos)
+        priorConfig.replace(currentVersion, sizeof("\"version\": 3") - 1,
+                            "\"version\": 2");
+    const auto volField = priorConfig.find("  \"volume\":");
+    if (volField != std::string::npos)
+        priorConfig.insert(volField, "  \"chordWindowMs\": 120,\n");
+    GameSettings oldSettings;
+    ok &= Check(ParseGameSettings(priorConfig, oldSettings, error) &&
+                oldSettings.volume > 0.39f && oldSettings.volume < 0.41f,
+                "existing saved settings load without requiring a chord window");
     GameSettings deliberateArrows;
     ok &= Check(ParseGameSettings(SerializeGameSettings(previousDefault),
                                   deliberateArrows, error) &&
@@ -150,8 +165,8 @@ int main() {
 
     GameSettings unchanged = parsed;
     const std::string corrupt =
-        std::string(serialized).replace(serialized.find("\"version\": 2"),
-                                        sizeof("\"version\": 2") - 1,
+        std::string(serialized).replace(serialized.find("\"version\": 3"),
+                                        sizeof("\"version\": 3") - 1,
                                         "\"version\": 999");
     ok &= Check(!ParseGameSettings(corrupt, unchanged, error) &&
                 unchanged.Key(GameAction::Up) == KEY_W,
@@ -169,7 +184,6 @@ int main() {
     ok &= Check(SaveGameSettings(file, options, error) &&
                 LoadGameSettings(file, onDisk, error) &&
                 onDisk.Key(GameAction::Up) == KEY_W &&
-                onDisk.chordWindowMs == 120 &&
                 !onDisk.hitFlash &&
                 !onDisk.vsync && onDisk.fpsLimit == 144 && onDisk.showFps,
                 "settings persist across application restart");
