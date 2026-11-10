@@ -10,7 +10,8 @@ namespace locus::app {
 // Rendering-only values: chart geometry, audio timing and scoring never read
 // these. A future player skin can load a palette and layout into the same
 // structs without changing the route sampler or chart JSON format.
-// No user-editable skins, textures or drag-and-drop layout exist yet.
+// Skins now edit presentation colors and numeric effects. Gameplay image
+// assets and UI button styles are kept separately from route judgement.
 struct RouteVisualStyle {
     // These form the future skin's fully-colored / semi-colored / overlaid path.
     Color fullTrajectory{255, 70, 84, 255};

@@ -137,7 +137,7 @@ void PreviewPath(Font font, const Skin& skin) {
     DrawRectangleRoundedLinesEx(area, 0.07f, 6, 1.2f, kMuted);
     Label(font, "SPEED PREVIEW / 120 BPM", 622, 202, 14.0f, kMuted);
 
-    // The SKIN preview clips exactly like the real centred gameplay window,
+    // The SKIN preview clips like the real gameplay square,
     // including thick outline strokes and partially visible junctions.
     const auto clip = ViewportTransform::Menu(
         GetScreenWidth(), GetScreenHeight()).Scissor(frame);

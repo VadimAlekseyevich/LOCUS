@@ -68,9 +68,10 @@ and reduce the number of unrelated reasons a file can change.
 2. Editor input and authoring operations now have separate modules;
    `chart_editor_actions.cpp` retains only screen dispatch and hitbox routing.
    Further isolate hitbox mapping only if new controls increase its coupling.
-3. `skin_menu.cpp` combines palette math, personal profile UI, live preview,
-   drawing and text-input interaction; distinguish color-editor interaction
-   from rendering and profile persistence.
+3. `skin_menu.cpp` still combines personal profile UI, live preview,
+   color-picker interaction and text input; split it when extending skin
+   assets/palette editing. PATH/PLAYER controls already use one typed setting
+   catalog, and standard buttons share a rendering primitive across screens.
 4. `song_library.cpp` combines scanning, set identity, import/installation,
    mutation and removal; move storage operations behind focused interfaces
    and preserve lock ordering and data-durability tests.
@@ -79,6 +80,9 @@ and reduce the number of unrelated reasons a file can change.
    giant frame-state DTO.
 
 ## Completed stabilization
+
+- **2026-11-10:** Skin PATH/PLAYER sliders and toggles are now defined in one typed setting catalog (`skin_controls.*`): display label, presentation order, concrete Skin member, slider/edit ranges and integer-ms precision. `skin_menu.cpp` uses it for labels, switches, and row counts, removing duplicated switch logic. Common `ui_button.h` owns button chrome and centered text for SKIN, Home/Settings and Editor, with separate style presets retaining the existing visuals. Persisted skin JSON and song/chart formats have not changed.
+
 
 - **2026-11-10:** Split editor input polling, focused text fields, selection/timeline, and pattern/chord commands into separate owner modules. The editor returns clipboard-copy commands instead of calling OS clipboard APIs from its pure action dispatcher; the screen handler publishes them. A single Undo/Redo path now clears outdated selections for both buttons and keyboard after changing tick resolution. No chart format changes.
 
