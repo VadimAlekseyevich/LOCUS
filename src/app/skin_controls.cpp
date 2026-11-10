@@ -105,8 +105,8 @@ bool SetSkinNumber(Skin& skin, int page, int row, int selectedColor,
         }
     } else {
         // All skin values have a predictable editable precision. Preview
-        // duration is integral milliseconds; the other numeric properties
-        // support hundredths. Quantize before converting to float to prevent
+        // duration and camera lag are integral milliseconds; other numeric
+        // properties support hundredths. Quantize before converting to float to prevent
         // values such as "1.8200001" after dragging a slider.
         value = (page == 0 && row == 0) || (page == 1 && row == 5)
             ? std::round(value)

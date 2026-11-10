@@ -10,7 +10,6 @@ namespace locus::app {
 // Experimental presentation-only follower. Switch to false to return to
 // the original fixed-center camera without changing saved files or scoring.
 inline constexpr bool kExperimentalAdaptiveCamera = true;
-inline constexpr double kAdaptiveCameraCatchupSeconds = 0.18;
 inline constexpr double kAdaptiveCameraMaxOffsetPx = 72.0;
 
 // Follows the CURRENT player position with a small, speed-proportional lag.

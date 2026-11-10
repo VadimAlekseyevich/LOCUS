@@ -6,7 +6,7 @@
 
 - **Route-first, no fail.** A marker follows the authored line regardless of presses. Bad timing and wrong direction alter grades, never the physical route.
 - **Music-anchored timing.** The visual position and judgement share the song clock and authored note timestamps, not frames.
-- **Spatial rhythm, not a lane chart.** The player reads an eight-direction path that moves beneath a stationary central marker.
+- **Spatial rhythm, not a lane chart.** The player reads an eight-direction path that moves beneath a marker followed by a gently lagging camera (or a fixed-centered marker when camera lag is set to zero).
 - **Clear playable window.** The route is clipped to a centered square; outside it, the world still exists but is invisible.
 - **Creation inside the game.** A built-in editor, local songs and reusable skins are core features, not someday placeholders.
 - **Restraint.** One red forward-only route, modest hit feedback, minimal in-game stats and no clutter.
