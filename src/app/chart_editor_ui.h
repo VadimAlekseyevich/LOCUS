@@ -48,6 +48,14 @@ enum class EditorSetAction {
     DeleteDifficulty, DeleteSongSet, Restore,
     AttachBackground, RemoveBackground, SetPreviewExact, OpenFolder
 };
+struct EditorComparisonOption {
+    std::filesystem::path file;
+    std::string title;
+    const core::LoadedChart* chart = nullptr; // Borrowed from SongLibrary for this frame.
+    std::uintmax_t fileSize = 0;
+    std::filesystem::file_time_type modified{};
+};
+
 struct EditorSetView {
     bool managed = false;
     bool newDifficultyDraft = false;
@@ -56,6 +64,7 @@ struct EditorSetView {
     int previewStartMs = 0;
     std::string title, artist, audioName, id;
     std::vector<std::string> difficulties;
+    std::vector<EditorComparisonOption> comparisonOptions;
     int current = -1, selected = -1, firstVisible = 0;
 };
 enum class EditorField { None, Title, Bpm, OffsetMs, GridSize };
@@ -83,6 +92,11 @@ struct EditorUiState {
     bool editingSetPreview = false;
     bool setPreviewReplaceOnType = false;
     std::string setPreviewBuffer;
+    // Reference charts are identities, not song-library indices: rating
+    // recalculation can reorder the library without changing the selection.
+    std::vector<std::filesystem::path> comparisonFiles; // At most 3.
+    bool comparisonPickerOpen = false;
+    int comparisonPickerFirst = 0;
     int timelineZoomIndex = 3; // Default 36 px/beat; zoom changes view only.
     bool EditingText() const noexcept {
         return active != EditorField::None || editingSetPreview;
@@ -110,6 +124,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        bool hasAudio, bool previewPlaying, bool previewPaused,
                        double previewBeat, double playbackSpeed,
                        const GameSettings& settings, const Skin& skin,
-                       const EditorSetView& set = {});
+                       const EditorSetView& set = {},
+                       const struct EditorComparisonFrame* comparisons = nullptr,
+                       double previewSeconds = 0.0);
 
 } // namespace locus::app

@@ -31,6 +31,9 @@ public:
     // Actual song timestamp for a selected beat and its signed offset.
     double AudioSecondsAtBeat(int beat) const noexcept;
     bool Dirty() const noexcept { return dirty_; }
+    // Monotonic presentation cache key, including document reloads, undo,
+    // save replacement and audio-duration reflow (not cursor navigation).
+    std::uint64_t RouteRevision() const noexcept { return routeRevision_; }
     // Recomputed once per authored revision, not on every rendered frame.
     const ChartDifficulty& Difficulty() const;
     void MarkSaved() noexcept;
@@ -122,6 +125,7 @@ private:
     int selectedBeat_ = 0;
     bool dirty_ = false;
     std::uint64_t revision_ = 0;
+    std::uint64_t routeRevision_ = 0;
     std::uint64_t savedRevision_ = 0;
     std::uint64_t nextRevision_ = 0;
     std::deque<HistoryEdit> undo_;

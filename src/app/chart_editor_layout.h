@@ -99,15 +99,52 @@ inline std::array<int, 8> DirectionPressCounts(const core::Chart& chart) noexcep
     return counts;
 }
 
-constexpr Rectangle kCopyTurns{52, 213, 173, 31};
-constexpr Rectangle kPasteTurns{52, 248, 173, 31};
-constexpr Rectangle kMirrorHorizontal{52, 283, 83, 31};
-constexpr Rectangle kMirrorVertical{142, 283, 83, 31};
-constexpr Rectangle kRotateCounterclockwise{52, 318, 83, 31};
-constexpr Rectangle kRotateClockwise{142, 318, 83, 31};
-constexpr Rectangle kCutTurns{52, 389, 173, 31};
-constexpr Rectangle kUndoEdit{52, 354, 83, 31};
-constexpr Rectangle kRedoEdit{142, 354, 83, 31};
+// Compact ROUTE-only action rows. Other tabs retain their established controls.
+constexpr Rectangle kRouteSong{52, 116, 106, 27};
+constexpr Rectangle kRoutePlay{166, 116, 76, 27};
+constexpr Rectangle kRouteStop{250, 116, 80, 27};
+constexpr Rectangle kRouteTest{338, 116, 66, 27};
+constexpr Rectangle kCompareToggle{623, 154, 109, 24};
+constexpr Rectangle kComparePopup{491, 182, 243, 205};
+constexpr Rectangle ComparePickerRow(int row) noexcept {
+    return {499.0f, 207.0f + row * 29.0f, 227.0f, 25.0f};
+}
+constexpr Rectangle kComparePickerPrev{502, 363, 80, 20};
+constexpr Rectangle kComparePickerNext{638, 363, 84, 20};
+constexpr Rectangle kCopyTurns{52, 155, 60, 23};
+constexpr Rectangle kPasteTurns{118, 155, 60, 23};
+constexpr Rectangle kCutTurns{184, 155, 50, 23};
+constexpr Rectangle kUndoEdit{240, 155, 51, 23};
+constexpr Rectangle kRedoEdit{297, 155, 51, 23};
+constexpr Rectangle kMirrorHorizontal{354, 155, 58, 23};
+constexpr Rectangle kMirrorVertical{418, 155, 58, 23};
+constexpr Rectangle kRotateCounterclockwise{482, 155, 65, 23};
+constexpr Rectangle kRotateClockwise{553, 155, 65, 23};
+
+// All preview panes share one physical song-time scale. Primary stays large
+// even when there are four routes; references shrink instead of the editor.
+constexpr float kPreviewLeft = 52.0f;
+constexpr float kPreviewRight = 734.0f;
+constexpr float kPreviewTop = 184.0f;
+constexpr float kPreviewSide = 219.0f;
+constexpr float kPreviewGap = 8.0f;
+inline Rectangle ComparisonPreviewBounds(int count, int index) noexcept {
+    const int visible = std::clamp(count, 1, 4);
+    const int followers = visible - 1;
+    const float secondary = followers == 0 ? 0.0f :
+        std::min(kPreviewSide,
+            (kPreviewRight - kPreviewLeft - kPreviewSide -
+             kPreviewGap * followers) / followers);
+    const float total = kPreviewSide + followers * (secondary + kPreviewGap);
+    const float x0 = kPreviewLeft +
+        (kPreviewRight - kPreviewLeft - total) * 0.5f;
+    if (index <= 0) return {x0, kPreviewTop, kPreviewSide, kPreviewSide};
+    if (index >= visible) return {};
+    return {x0 + kPreviewSide + kPreviewGap +
+        (index - 1) * (secondary + kPreviewGap),
+        kPreviewTop + (kPreviewSide - secondary) * 0.5f,
+        secondary, secondary};
+}
 
 constexpr Rectangle kTitle{92, 205, 768, 43};
 constexpr Rectangle kBpm{92, 290, 350, 43};
@@ -161,11 +198,7 @@ inline long long RouteTimeMs(const core::ChartEditor& draft, double activeTick) 
 constexpr double kSpeeds[5] = {1.0, 0.75, 0.5, 0.25, 0.1};
 
 inline Rectangle RouteSpeedBounds(int index) {
-    const auto& layout = kDefaultEditorRouteLayout;
-    return {layout.practiceSpeedX,
-            layout.practiceSpeedStartY + index *
-                (layout.practiceSpeedHeight + layout.practiceSpeedGap),
-            layout.practiceSpeedWidth, layout.practiceSpeedHeight};
+    return {415.0f + index * 39.0f, 116.0f, 35.0f, 27.0f};
 }
 
 inline bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(pos, bounds); }

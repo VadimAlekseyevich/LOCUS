@@ -46,6 +46,14 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     if (ui.EditingText())
         return editor_text::HandleTextInput(draft, ui, input);
 
+    // The comparison selector is handled by EditorSetController after this
+    // pure edit pass. Do not let popup clicks trigger note or field actions.
+    if (ui.tab == EditorTab::Route &&
+        ((input.mouseClick && (Hit(kCompareToggle, input.mouse) ||
+           (ui.comparisonPickerOpen && Hit(kComparePopup, input.mouse)))) ||
+         (ui.comparisonPickerOpen && input.escape)))
+        return action;
+
     // The current Route time readout, not individual timeline beats, copies
     // a single exact audio timestamp as whole milliseconds.
     if (ui.tab == EditorTab::Route && input.mouseClick &&
@@ -100,6 +108,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         const Vector2 mouse = input.mouse;
         const EditorTab nextTab = ClickedTab(mouse, ui.tab);
         if (nextTab != ui.tab) {
+            ui.comparisonPickerOpen = false;
             ui.tab = nextTab;
             return action;
         }
@@ -111,10 +120,14 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
         if (Hit(kSnapLess, mouse)) { editor_timeline::ChangeSnap(draft, ui, -1, action); return action; }
         if (Hit(kSnapMore, mouse)) { editor_timeline::ChangeSnap(draft, ui, 1, action); return action; }
-        if (Hit(kSong, mouse)) action.chooseAudio = true;
-        else if (Hit(kPlay, mouse)) action.previewToggle = true;
-        else if (Hit(kStop, mouse)) action.previewRestart = true;
-        else if (Hit(kTest, mouse)) action.testPlay = true;
+        const Rectangle song = ui.tab == EditorTab::Route ? kRouteSong : kSong;
+        const Rectangle play = ui.tab == EditorTab::Route ? kRoutePlay : kPlay;
+        const Rectangle stop = ui.tab == EditorTab::Route ? kRouteStop : kStop;
+        const Rectangle test = ui.tab == EditorTab::Route ? kRouteTest : kTest;
+        if (Hit(song, mouse)) action.chooseAudio = true;
+        else if (Hit(play, mouse)) action.previewToggle = true;
+        else if (Hit(stop, mouse)) action.previewRestart = true;
+        else if (Hit(test, mouse)) action.testPlay = true;
         else if (Hit(kZoomOut, mouse))
             ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
         else if (Hit(kZoomIn, mouse))
@@ -155,13 +168,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                     }
                 }
         } else if (ui.tab == EditorTab::Route &&
-                   mouse.x >= kDefaultEditorRouteLayout.practiceSpeedX &&
-                   mouse.x <= kDefaultEditorRouteLayout.practiceSpeedX +
-                              kDefaultEditorRouteLayout.practiceSpeedWidth &&
-                   mouse.y >= kDefaultEditorRouteLayout.practiceSpeedStartY &&
-                   mouse.y < kDefaultEditorRouteLayout.practiceSpeedStartY +
-                       5 * (kDefaultEditorRouteLayout.practiceSpeedHeight +
-                            kDefaultEditorRouteLayout.practiceSpeedGap)) {
+                   mouse.y >= 116.0f && mouse.y < 143.0f &&
+                   mouse.x >= 415.0f && mouse.x < 606.0f) {
             for (int i = 0; i < 5; ++i) {
                 if (Hit(RouteSpeedBounds(i), mouse)) {
                     action.speedIndex = i;

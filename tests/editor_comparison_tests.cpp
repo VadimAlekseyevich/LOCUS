@@ -1,0 +1,117 @@
+#include "app/editor_comparison.h"
+#include "core/chart_editor.h"
+
+#include <cmath>
+#include <iostream>
+
+using namespace locus::app;
+using namespace locus::core;
+
+namespace {
+bool Check(bool yes, const char* message) {
+    if (!yes) std::cerr << "EDITOR_COMPARE_FAIL " << message << '\n';
+    return yes;
+}
+bool Near(double a, double b) {
+    return std::abs(a - b) < 1e-7;
+}
+LoadedChart Reference(const char* title, Heading turn, int timeMs) {
+    LoadedChart loaded;
+    loaded.title = title;
+    loaded.route.bpm = 120.0;
+    loaded.route.ticksPerBeat = 1;
+    loaded.route.firstBeat = 0;
+    loaded.route.lengthBeats = 1; // Unprepared library JSON, not yet decoded.
+    loaded.route.turns = {{timeMs / 500, turn, timeMs}};
+    return loaded;
+}
+} // namespace
+
+int main() {
+    bool ok = true;
+    ChartEditor editor;
+    ok &= Check(editor.SetSongDuration(10.0), "attach active song duration");
+    EditorUiState ui;
+    EditorSetView view;
+    view.managed = true;
+    view.current = 0;
+    LoadedChart original = Reference("CURRENT SAVED", Heading::Up, 500);
+    LoadedChart first = Reference("EASY", Heading::Up, 500);
+    LoadedChart second = Reference("NORMAL", Heading::Down, 750);
+    LoadedChart third = Reference("HARD", Heading::Left, 1000);
+    LoadedChart fourth = Reference("EXTRA", Heading::UpRight, 1250);
+    view.comparisonOptions = {
+        {"/songs/set/current.json", "CURRENT SAVED", &original},
+        {"/songs/set/easy.json", "EASY", &first},
+        {"/songs/set/normal.json", "NORMAL", &second},
+        {"/songs/set/hard.json", "HARD", &third},
+        {"/songs/set/extra.json", "EXTRA", &fourth}
+    };
+
+    const auto revision = editor.RouteRevision();
+    ok &= Check(!ToggleEditorComparison(ui, view, 0) &&
+                ui.comparisonFiles.empty() &&
+                ToggleEditorComparison(ui, view, 1) &&
+                ToggleEditorComparison(ui, view, 2) &&
+                ToggleEditorComparison(ui, view, 3) &&
+                !ToggleEditorComparison(ui, view, 4) &&
+                ui.comparisonFiles.size() == 3 &&
+                editor.RouteRevision() == revision &&
+                !editor.Dirty(),
+                "one editable route, three optional read-only slots, never dirties draft");
+
+    EditorComparisonCache cache;
+    const auto four = cache.Prepare(editor, ui, view, 10.0);
+    ok &= Check(four.count == 4 &&
+                four.panes[0].editable &&
+                four.panes[1].route && four.panes[2].route &&
+                four.panes[3].route &&
+                !four.panes[1].editable && !four.panes[3].editable &&
+                four.panes[0].route->Ready(),
+                "four indexed previews share one active draft and one song duration");
+
+    // All windows query the SAME time, never a per-chart snapped beat.
+    // At 750ms reference 1 has turned up, reference 2 just turns down.
+    const auto at1 = four.panes[1].route->PositionAt(0.75);
+    const auto at2 = four.panes[2].route->PositionAt(0.75);
+    const auto at3 = four.panes[3].route->PositionAt(0.75);
+    ok &= Check(Near(at1.x, 1.0) && Near(at1.y, -0.5) &&
+                Near(at2.x, 1.5) && Near(at2.y, 0.0) &&
+                Near(at3.x, 1.5) && Near(at3.y, 0.0),
+                "references advance at their own note timestamps, common audio clock");
+    const auto before = cache.Prepare(editor, ui, view, 10.0);
+    ok &= Check(before.panes[1].route == four.panes[1].route,
+                "unmodified Song Set references reuse compiled timed routes");
+
+    editor.SelectBeat(2);
+    editor.SetOutgoingHeading(Heading::Left);
+    const auto changed = cache.Prepare(editor, ui, view, 10.0);
+    ok &= Check(editor.Dirty() && changed.panes[0].route &&
+                changed.panes[0].route->Turns().size() == 1 &&
+                changed.panes[1].route == four.panes[1].route,
+                "live draft rebuild does not mutate or reload read-only references");
+    ok &= Check(editor.Undo() &&
+                cache.Prepare(editor, ui, view, 10.0)
+                    .panes[0].route->Turns().empty(),
+                "undo immediately updates the active preview");
+
+    first.route.turns[0] = {2, Heading::Up, 1000};
+    ++view.comparisonOptions[1].fileSize;
+    const auto revised = cache.Prepare(editor, ui, view, 10.0);
+    ok &= Check(Near(revised.panes[1].route->Turns()[0].songSeconds, 1.0),
+                "library file revision invalidates only changed reference");
+
+    ok &= Check(ToggleEditorComparison(ui, view, 2) &&
+                ui.comparisonFiles.size() == 2 &&
+                cache.Prepare(editor, ui, view, 10.0).count == 3,
+                "individual reference removes without touching active chart");
+    view.comparisonOptions.erase(view.comparisonOptions.begin() + 1);
+    const auto missing = cache.Prepare(editor, ui, view, 10.0);
+    ok &= Check(missing.count == 2,
+                "deleted or missing reference is never rendered");
+    view.managed = false;
+    ok &= Check(cache.Prepare(editor, ui, view, 10.0).count == 1,
+                "no Song Set means single editable chart");
+    if (ok) std::cout << "EDITOR_COMPARE_PASS exact_time=1 panes=4 readonly=1\n";
+    return ok ? 0 : 1;
+}

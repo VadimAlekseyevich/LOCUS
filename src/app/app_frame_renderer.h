@@ -6,6 +6,7 @@
 #include "app/chart_editor_ui.h"
 #include "app/editor_discard_guard.h"
 #include "app/editor_set_controller.h"
+#include "app/editor_comparison.h"
 #include "app/local_music.h"
 #include "app/chart_playback.h"
 #include "app/song_library.h"
@@ -37,6 +38,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::app::ChartPlayback& editorTransport,
                  const std::string& editorStatus, EditorPending editorPending,
                  const locus::app::EditorSetView& editorSetView,
+                 const locus::app::EditorComparisonFrame& comparisons,
                  const locus::app::EditorSetRequest* editorSetPending,
                  const std::string& musicError, double now,
                   const locus::app::SongLibrary& library,

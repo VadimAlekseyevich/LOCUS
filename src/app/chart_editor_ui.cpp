@@ -1,4 +1,5 @@
 #include "app/chart_editor_ui.h"
+#include "app/editor_comparison.h"
 #include "core/utf8.h"
 #include "app/chart_editor_layout.h"
 #include "core/judgement.h"
@@ -26,6 +27,18 @@ std::string Truncate(const std::string& value, std::size_t maxCharacters) {
 
 void Button(Font font, Rectangle rect, const char* text, Color tint, bool active = false) {
     DrawUiButton(font, rect, text, EditorButtonStyle(tint), active);
+}
+
+// ROUTE toolbar controls are shorter and less visually dominant than notes.
+// Hitboxes are exactly the rectangles from chart_editor_layout.h.
+void CompactButton(Font font, Rectangle rect, const char* text, Color tint,
+                   bool active = false) {
+    UiButtonStyle style = EditorButtonStyle(tint);
+    style.fontSize = 11.0f;
+    style.fontSpacing = 0.4f;
+    style.strokeWidth = 1.1f;
+    style.selectedStrokeWidth = 1.5f;
+    DrawUiButton(font, rect, text, style, active);
 }
 
 // The compass pad authors direction notes by clicking, never by keybinding.
@@ -71,44 +84,96 @@ void DrawTextField(Font font, Rectangle rect, const char* label,
     }
 }
 
-void DrawRoutePreview(Font font, const core::ChartEditor& draft,
-                      double previewBeat, const Skin& skin) {
-    const auto& chart = draft.Data().route;
-    const double bounded = std::clamp(previewBeat,
-                                     static_cast<double>(chart.firstBeat),
-                                     static_cast<double>(chart.lengthBeats));
-    const EditorView view(chart, bounded);
-    const RouteCanvas canvas{view.left, view.top,
-                             view.step / chart.ticksPerBeat, view.origin};
+void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
+                            double songSeconds, double practiceRate,
+                            const Skin& skin) {
+    const int count = std::clamp(comparison.count, 1, 4);
+    for (int index = 0; index < count; ++index) {
+        const auto& pane = comparison.panes[static_cast<std::size_t>(index)];
+        const Rectangle bounds = ComparisonPreviewBounds(count, index);
+        DrawRectangleRounded(bounds, 0.05f, 5, Color{23, 30, 43, 242});
+        const Color accent = pane.editable
+            ? Color{111, 221, 198, 255}
+            : Color{141, 157, 195, 255};
+        DrawRectangleRoundedLinesEx(bounds, 0.05f, 5,
+                                    pane.editable ? 2.0f : 1.0f, accent);
+        if (pane.route && pane.route->Ready()) {
+            // One visual px/s scale across every pane, regardless of BPM,
+            // authoring snap/grid, note density or panel dimensions.
+            const float velocity = skin.baseSpeedPxPerSecond /
+                static_cast<float>(std::max(0.1, practiceRate));
+            const float step = velocity /
+                static_cast<float>(pane.route->UnitsPerSecond());
+            const RouteCanvas canvas{
+                bounds.x + bounds.width * 0.5f,
+                bounds.y + bounds.height * 0.5f,
+                step, pane.route->PositionAt(songSeconds)};
+            // Scissor coordinates are physical pixels, not virtual UI units.
+            const auto clip = ViewportTransform::Menu(
+                GetScreenWidth(), GetScreenHeight()).Scissor(bounds);
+            BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
+            const Vector2 marker = DrawTimedRouteTrajectory(
+                *pane.route, songSeconds, canvas, skin);
+            DrawTimedRouteJunctions(*pane.route, songSeconds, canvas, skin);
+            const float radius = std::min(10.0f, bounds.width * 0.04f);
+            DrawCircleV(marker, radius * 1.65f,
+                        Color{112, 219, 216, 48});
+            DrawCircleV(marker, radius, Color{124, 229, 225, 255});
+            DrawCircleV(marker, radius * 0.34f,
+                        Color{246, 251, 252, 255});
+            EndScissorMode();
+        }
+        // Draw a short identifier rather than prose across the playing field.
+        const int maxCharacters = std::max(6, static_cast<int>(
+            (bounds.width - 12.0f) / 7.6f));
+        const std::string title = (pane.editable ? "EDIT " : "VIEW ") +
+            Truncate(pane.title, static_cast<std::size_t>(maxCharacters - 5));
+        Label(font, title.c_str(), bounds.x + 5.0f, bounds.y + 5.0f,
+              bounds.width < 155.0f ? 10.0f : 12.0f, accent);
+    }
 
-    // Grid-free moving preview; the square is a clipping region only.
-    // The normalized route and its junctions need not land on grid nodes.
-    const float x0 = kGridCenterX - kGridMaxSpan * 0.5f;
-    const float y0 = kGridCenterY - kGridMaxSpan * 0.5f;
-    const auto clip = ViewportTransform::Menu(
-        GetScreenWidth(), GetScreenHeight()).Scissor(
-            {x0, y0, kGridMaxSpan, kGridMaxSpan});
-    BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
-
-    const Vector2 marker = DrawRouteTrajectory(
-        chart, bounded, canvas, RouteRenderMode::Editor, skin);
-    DrawRouteJunctions(chart, bounded, canvas, RouteRenderMode::Editor, skin);
-    const float markerRadius = std::min(13.0f, view.step * 0.39f);
-    DrawCircleV(marker, markerRadius * 1.7f, Color{112, 219, 216, 48});
-    DrawCircleV(marker, markerRadius, Color{124, 229, 225, 255});
-    DrawCircleV(marker, markerRadius * 0.32f, Color{246, 251, 252, 255});
-    EndScissorMode();
-
-    const long long ms = RouteTimeMs(draft, bounded);
-    const long long absolute = std::llabs(ms);
-    const std::string currentTime = TextFormat("TIME %s%lld:%02lld.%03lld",
+    const auto ms = static_cast<long long>(std::llround(songSeconds * 1000.0));
+    const auto absolute = std::llabs(ms);
+    const std::string current = TextFormat("TIME %s%lld:%02lld.%03lld",
         ms < 0 ? "-" : "", absolute / 60000,
         (absolute / 1000) % 60, absolute % 1000);
-    Label(font, currentTime.c_str(),
-          kRouteTimeValue.x, kRouteTimeValue.y + 3, 15,
+    Label(font, current.c_str(),
+          kRouteTimeValue.x, kRouteTimeValue.y + 1, 13.0f,
           Color{158, 225, 212, 255});
-    Label(font, TextFormat("SQUARE VIEW %d", chart.gridWidth),
-          266, 405, 15, Color{247, 213, 131, 255});
+}
+
+void DrawComparisonPicker(Font font, const EditorUiState& ui,
+                          const EditorSetView& set) {
+    if (!ui.comparisonPickerOpen) return;
+    DrawRectangleRounded(kComparePopup, 0.08f, 6,
+                         Color{21, 29, 44, 253});
+    DrawRectangleRoundedLinesEx(kComparePopup, 0.08f, 6, 1.5f,
+                                Color{118, 208, 198, 255});
+    Label(font, "COMPARE / SAME SONG", kComparePopup.x + 10,
+          kComparePopup.y + 6, 12.0f, Color{209, 234, 232, 255});
+    const int count = static_cast<int>(set.comparisonOptions.size());
+    for (int row = 0; row < 5; ++row) {
+        const int index = ui.comparisonPickerFirst + row;
+        if (index >= count) break;
+        const auto& option = set.comparisonOptions[
+            static_cast<std::size_t>(index)];
+        const bool editable = index == set.current;
+        const bool checked = HasEditorComparison(ui, option.file);
+        const Rectangle rect = ComparePickerRow(row);
+        const std::string label =
+            (editable ? "EDIT  " : checked ? "[-]  " : "[+]  ") +
+            Truncate(option.title, 23);
+        CompactButton(font, rect, label.c_str(),
+            editable ? Color{110, 219, 194, 255}
+                     : checked ? Color{116, 217, 204, 255}
+                               : Color{164, 186, 224, 255},
+            editable || checked);
+    }
+    CompactButton(font, kComparePickerPrev, "PREV", Color{148, 163, 193, 255});
+    CompactButton(font, kComparePickerNext, "NEXT", Color{148, 163, 193, 255});
+    Label(font, TextFormat("%d / %d",
+        std::min(count, ui.comparisonPickerFirst + 5), count),
+        586, 366, 12.0f, Color{183, 202, 216, 255});
 }
 
 void DrawTimeline(Font font, const core::ChartEditor& draft,
@@ -131,12 +196,12 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     }
     Label(font, TextFormat("GRID 1/%d", chart.snapDivision), 367, 423, 13,
           Color{164, 188, 208, 255});
-    Button(font, kSnapLess, "LESS", Color{128, 221, 202, 255});
-    Button(font, kSnapMore, "MORE", Color{128, 221, 202, 255});
+    CompactButton(font, kSnapLess, "LESS", Color{128, 221, 202, 255});
+    CompactButton(font, kSnapMore, "MORE", Color{128, 221, 202, 255});
     Label(font, TextFormat("%d PX/BEAT", static_cast<int>(PixelsPerBeat(ui))),
           693, 423, 13, Color{174, 205, 229, 255});
-    Button(font, kZoomOut, "-", Color{125, 167, 205, 255});
-    Button(font, kZoomIn, "+", Color{125, 167, 205, 255});
+    CompactButton(font, kZoomOut, "-", Color{125, 167, 205, 255});
+    CompactButton(font, kZoomIn, "+", Color{125, 167, 205, 255});
 
     const Rectangle strip{kTimelineX, kTimelineY, kTimelineWidth, kTimelineHeight};
     DrawRectangleRounded(strip, 0.15f, 5, Color{34, 44, 59, 255});
@@ -224,43 +289,87 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        bool hasAudio, bool previewPlaying, bool previewPaused,
                        double previewBeat, double playbackSpeed,
                        const GameSettings& settings, const Skin& skin,
-                       const EditorSetView& set) {
+                       const EditorSetView& set,
+                       const EditorComparisonFrame* comparisons,
+                       double previewSeconds) {
     const auto& chart = draft.Data().route;
     Label(font, "CHART EDITOR", 49, 80, 22, Color{194, 236, 231, 255});
-    Button(font, kTabSet, "SET", Color{244, 197, 124, 255},
-           ui.tab == EditorTab::Set);
-    Button(font, kTabRoute, "ROUTE", Color{126, 219, 209, 255},
-           ui.tab == EditorTab::Route);
-    Button(font, kTabAudio, "AUDIO", Color{131, 190, 237, 255},
-           ui.tab == EditorTab::Audio);
-    Button(font, kTabField, "FIELD", Color{239, 203, 129, 255},
-           ui.tab == EditorTab::Field);
-    Button(font, kEditorBack, "BACK", Color{247, 202, 145, 255});
+    const bool routeTab = ui.tab == EditorTab::Route;
+    const auto navButton = routeTab ? CompactButton : Button;
+    navButton(font, kTabSet, "SET", Color{244, 197, 124, 255},
+              ui.tab == EditorTab::Set);
+    navButton(font, kTabRoute, "ROUTE", Color{126, 219, 209, 255},
+              routeTab);
+    navButton(font, kTabAudio, "AUDIO", Color{131, 190, 237, 255},
+              ui.tab == EditorTab::Audio);
+    navButton(font, kTabField, "FIELD", Color{239, 203, 129, 255},
+              ui.tab == EditorTab::Field);
+    navButton(font, kEditorBack, "BACK", Color{247, 202, 145, 255});
 
-    // Transport and timeline persist across editor tabs.
-    // Direction placement is mouse-only, independent of game bindings.
-    Button(font, kSong, IsGameDirectionKey(settings, KEY_O)
-           ? "LOAD SONG" : "LOAD SONG  O", Color{97, 222, 193, 255});
     const bool running = previewPlaying && !previewPaused;
-    Button(font, kPlay, IsGameDirectionKey(settings, KEY_SPACE)
-           ? (running ? "PAUSE" : "PLAY")
-           : (running ? "PAUSE SPACE" : "PLAY SPACE"),
-           Color{137, 211, 235, 255});
-    Button(font, kStop, IsGameDirectionKey(settings, KEY_R)
-           ? "RESTART" : "RESTART R", Color{211, 178, 137, 255});
-    Button(font, kTest, IsGameDirectionKey(settings, KEY_T)
-           ? "TEST" : "TEST T", Color{188, 176, 232, 255});
-    Label(font, hasAudio ? Truncate(songName, 30).c_str()
-                         : "NO SONG - LOAD SONG",
-          626, 127, 15,
-          hasAudio ? Color{178, 227, 222, 255} : Color{242, 181, 164, 255});
+    if (routeTab) {
+        CompactButton(font, kRouteSong, "SONG", Color{97, 222, 193, 255});
+        CompactButton(font, kRoutePlay, running ? "PAUSE" : "PLAY",
+                      Color{137, 211, 235, 255});
+        CompactButton(font, kRouteStop, "RESTART", Color{211, 178, 137, 255});
+        CompactButton(font, kRouteTest, "TEST", Color{188, 176, 232, 255});
+        const char* speeds[5] = {"100%", "75%", "50%", "25%", "10%"};
+        for (int i = 0; i < 5; ++i)
+            CompactButton(font, RouteSpeedBounds(i), speeds[i],
+                Color{125, 183, 222, 255},
+                std::abs(playbackSpeed - kSpeeds[i]) < 0.001);
+        Label(font, hasAudio ? Truncate(songName, 17).c_str() : "NO AUDIO",
+              615, 123, 12,
+              hasAudio ? Color{178, 227, 222, 255}
+                       : Color{242, 181, 164, 255});
+    } else {
+        // Non-ROUTE tabs retain their established full-size transport.
+        Button(font, kSong, IsGameDirectionKey(settings, KEY_O)
+               ? "LOAD SONG" : "LOAD SONG  O", Color{97, 222, 193, 255});
+        Button(font, kPlay, IsGameDirectionKey(settings, KEY_SPACE)
+               ? (running ? "PAUSE" : "PLAY")
+               : (running ? "PAUSE SPACE" : "PLAY SPACE"),
+               Color{137, 211, 235, 255});
+        Button(font, kStop, IsGameDirectionKey(settings, KEY_R)
+               ? "RESTART" : "RESTART R", Color{211, 178, 137, 255});
+        Button(font, kTest, IsGameDirectionKey(settings, KEY_T)
+               ? "TEST" : "TEST T", Color{188, 176, 232, 255});
+        Label(font, hasAudio ? Truncate(songName, 30).c_str()
+                             : "NO SONG - LOAD SONG",
+              626, 127, 15,
+              hasAudio ? Color{178, 227, 222, 255}
+                       : Color{242, 181, 164, 255});
+    }
 
     if (ui.tab == EditorTab::Route) {
-        Label(font, TextFormat("ROUTE / %d x %d   DIFFICULTY V2  %.1f",
-                              chart.gridWidth, chart.gridHeight,
-                              draft.Difficulty().overall),
-              51, 166, 16, Color{188, 215, 227, 255});
-        DrawRoutePreview(font, draft, previewBeat, skin);
+        CompactButton(font, kCopyTurns, "COPY", Color{126, 190, 221, 255});
+        CompactButton(font, kPasteTurns, "PASTE", Color{127, 224, 199, 255});
+        CompactButton(font, kCutTurns, "CUT", Color{216, 166, 155, 255});
+        CompactButton(font, kUndoEdit, "UNDO", Color{169, 188, 217, 255});
+        CompactButton(font, kRedoEdit, "REDO", Color{169, 188, 217, 255});
+        CompactButton(font, kMirrorHorizontal, "FLIP H",
+                      Color{190, 168, 229, 255});
+        CompactButton(font, kMirrorVertical, "FLIP V",
+                      Color{190, 168, 229, 255});
+        CompactButton(font, kRotateCounterclockwise, "ROT -90",
+                      Color{140, 196, 237, 255});
+        CompactButton(font, kRotateClockwise, "ROT +90",
+                      Color{140, 196, 237, 255});
+        CompactButton(font, kCompareToggle,
+                      ui.comparisonFiles.empty() ? "COMPARE +" : "COMPARE",
+                      set.managed ? Color{124, 217, 206, 255}
+                                  : Color{112, 131, 147, 255},
+                      ui.comparisonPickerOpen);
+        EditorComparisonFrame fallback;
+        core::TimedRoute one;
+        if (!comparisons) {
+            if (one.Compile(draft.Data().route, draft.Data().offsetSeconds))
+                fallback.panes[0] = {&one, draft.Data().title, true};
+            fallback.count = 1;
+            comparisons = &fallback;
+        }
+        DrawComparisonPreviews(font, *comparisons,
+                               previewSeconds, playbackSpeed, skin);
         Label(font, IsGameDirectionKey(settings, KEY_Q) ||
                     IsGameDirectionKey(settings, KEY_E)
                ? "START HEADING (CLICK)" : "START HEADING Q/E 45",
@@ -293,27 +402,6 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                                 heading ? (turn && *heading == outgoing)
                                         : false); // DEL is always neutral, never selected
             }
-        Label(font, "CLICK TO PLACE / DEL TO REMOVE", 744, 398, 11,
-              Color{165, 198, 213, 255});
-        Label(font, "PATTERN  /  DRAG RULER", 52, 188, 14,
-              Color{193, 215, 226, 255});
-        Button(font, kCopyTurns, "COPY CTRL+C", Color{126, 190, 221, 255});
-        Button(font, kPasteTurns, "PASTE CTRL+V", Color{127, 224, 199, 255});
-        Button(font, kMirrorHorizontal, "FLIP H", Color{190, 168, 229, 255});
-        Button(font, kMirrorVertical, "FLIP V", Color{190, 168, 229, 255});
-        Button(font, kRotateCounterclockwise, "ROT -90", Color{140, 196, 237, 255});
-        Button(font, kRotateClockwise, "ROT +90", Color{140, 196, 237, 255});
-        Button(font, kCutTurns, "CUT CTRL+X", Color{216, 166, 155, 255});
-        Button(font, kUndoEdit, "UNDO", Color{169, 188, 217, 255});
-        Button(font, kRedoEdit, "REDO", Color{169, 188, 217, 255});
-        Label(font, "PLAYBACK SPEED", 618, 185, 14,
-              Color{182, 207, 227, 255});
-        const char* speeds[5] = {"100%", "75%", "50%", "25%", "10%"};
-        for (int i = 0; i < 5; ++i) {
-            Button(font, RouteSpeedBounds(i), speeds[i],
-                   Color{125, 183, 222, 255},
-                   std::abs(playbackSpeed - kSpeeds[i]) < 0.001);
-        }
     } else if (ui.tab == EditorTab::Audio) {
         Label(font, "AUDIO  /  CHART TIMING", 92, 169, 20,
               Color{182, 218, 235, 255});
@@ -442,10 +530,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     }
 
     DrawTimeline(font, draft, ui, previewBeat);
-    Button(font, kEditorFileSave, "SAVE", Color{131, 219, 184, 255});
-    Button(font, kEditorFileSaveAs, "SAVE AS", Color{131, 219, 184, 255});
-    Button(font, kEditorFileOpen, "OPEN", Color{173, 187, 239, 255});
-    Button(font, kEditorFileNew, "NEW", Color{237, 190, 148, 255});
+    const auto fileButton = routeTab ? CompactButton : Button;
+    fileButton(font, kEditorFileSave, "SAVE", Color{131, 219, 184, 255});
+    fileButton(font, kEditorFileSaveAs, "SAVE AS", Color{131, 219, 184, 255});
+    fileButton(font, kEditorFileOpen, "OPEN", Color{173, 187, 239, 255});
+    fileButton(font, kEditorFileNew, "NEW", Color{237, 190, 148, 255});
+    if (routeTab) DrawComparisonPicker(font, ui, set);
 }
 
 } // namespace locus::app

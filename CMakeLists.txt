@@ -71,6 +71,7 @@ add_executable(locus
     src/app/editor_session.cpp
     src/app/editor_file_actions.cpp
     src/app/editor_set_controller.cpp
+    src/app/editor_comparison.cpp
     src/app/editor_screen_actions.cpp
     src/app/listen_session.cpp
     src/app/chart_playback.cpp
@@ -176,6 +177,7 @@ if(LOCUS_BUILD_TESTS)
     # Editor actions and hitboxes run headlessly; native polling is only linked.
     add_executable(locus_editor_ui_tests
         tests/editor_ui_tests.cpp
+        src/app/editor_comparison.cpp
         src/app/chart_editor_ui.cpp
         src/app/chart_editor_actions.cpp
         src/app/editor_timeline_actions.cpp
@@ -190,6 +192,14 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_editor_ui_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
     add_test(NAME locus_editor_controls COMMAND locus_editor_ui_tests)
+
+    add_executable(locus_editor_comparison_tests
+        tests/editor_comparison_tests.cpp
+        src/app/editor_comparison.cpp)
+    target_compile_features(locus_editor_comparison_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_editor_comparison_tests PRIVATE
+        locus_core raylib nlohmann_json::nlohmann_json)
+    add_test(NAME locus_editor_comparison COMMAND locus_editor_comparison_tests)
 
     add_executable(locus_chart_file_tests
         tests/chart_file_tests.cpp
@@ -224,6 +234,7 @@ if(LOCUS_BUILD_TESTS)
         tests/editor_file_actions_tests.cpp
         src/app/editor_file_actions.cpp
         src/app/editor_set_controller.cpp
+        src/app/editor_comparison.cpp
         src/app/open_folder.cpp
         src/app/editor_document.cpp
         src/app/music_picker.cpp
@@ -248,6 +259,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_editor_session_tests
         tests/editor_session_tests.cpp
         src/app/editor_session.cpp
+        src/app/editor_comparison.cpp
         src/app/chart_editor_ui.cpp
         src/app/chart_editor_actions.cpp
         src/app/editor_timeline_actions.cpp

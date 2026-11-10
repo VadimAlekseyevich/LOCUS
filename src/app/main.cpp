@@ -20,6 +20,7 @@
 #include "app/editor_session.h"
 #include "app/editor_file_actions.h"
 #include "app/editor_set_controller.h"
+#include "app/editor_comparison.h"
 #include "app/editor_screen_actions.h"
 #include "app/editor_entry_policy.h"
 #include "app/listen_session.h"
@@ -228,6 +229,7 @@ int main(int argc, char** argv) {
          locus::app::ChooseSongSetExportFile,
          locus::app::ChooseSongBackgroundFile}
     };
+    locus::app::EditorComparisonCache editorComparison;
     locus::app::EditorScreenActions editorActions{
         {editorSession, editorFiles, editorSet, editorUi,
          {activeChart, chartTitle, judge, gameSession, customChart},
@@ -318,6 +320,14 @@ int main(int argc, char** argv) {
             localSong.SetVolume(settings.volume);
         
             persistSettings();
+        }
+        // Escape closes the comparison picker without leaving Editor.
+        if (state.screen == Screen::Editor &&
+            editorUi.tab == locus::app::EditorTab::Route &&
+            editorUi.comparisonPickerOpen &&
+            (input.editor.escape || input.backPressed)) {
+            input.backPressed = false;
+            input.homePressed = false;
         }
         // Typing into a field cannot simultaneously leave the editor or
         // trigger a file dialog, shortcut, heading rotation, or Test Play.
@@ -612,6 +622,10 @@ int main(int argc, char** argv) {
             state.quitConfirmation || state.levelExitConfirmation, renderNow);
         const auto editorSetView = visibleState.screen == Screen::Editor
             ? editorSet.View() : locus::app::EditorSetView{};
+        const auto comparisonFrame = visibleState.screen == Screen::Editor
+            ? editorComparison.Prepare(editor, editorUi, editorSetView,
+                                       localSong.DurationSeconds())
+            : locus::app::EditorComparisonFrame{};
         // Artwork lives at Song Set scope, independent of difficulty/BPM.
         // Cached GPU resources change only when the selected image changes.
         std::filesystem::path artPath;
@@ -639,7 +653,7 @@ int main(int argc, char** argv) {
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, chartPlayback,
                     editorStatus, editorDiscard.Pending(),
-                    editorSetView, editorSet.Pending(),
+                    editorSetView, comparisonFrame, editorSet.Pending(),
                     musicError, renderNow,
                     library, libraryUi, settings, settingsUi,
                     draftSkin, skinUi, menuStatus,

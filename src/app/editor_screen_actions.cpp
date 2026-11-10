@@ -18,8 +18,10 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     // change can also occur on ROUTE. Compare canonical timing on any edit.
     if (uiAction.changedChart)
         context_.sets.SyncSongTiming();
-    // SET owns library tools; AUDIO contains the manual Song Set preview.
-    if (context_.ui.tab == EditorTab::Set ||
+    // ROUTE owns comparison selection; SET owns library tools; AUDIO has
+    // the editable Song Set preview start. Selection never edits chart data.
+    if (context_.ui.tab == EditorTab::Route ||
+        context_.ui.tab == EditorTab::Set ||
         context_.ui.tab == EditorTab::Audio) {
         context_.sets.HandleControls(input.editor);
         if (context_.clock) now = context_.clock();

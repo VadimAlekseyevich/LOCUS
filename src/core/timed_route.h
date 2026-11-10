@@ -34,6 +34,7 @@ public:
     double StartSeconds() const noexcept { return startSeconds_; }
     double EndSeconds() const noexcept { return endSeconds_; }
     int TicksPerBeat() const noexcept { return ticksPerBeat_; }
+    double UnitsPerSecond() const noexcept { return unitsPerSecond_; }
 
     // O(log event count), clamped to the chart's playable time span.
     GridPoint PositionAt(double songSeconds) const noexcept;

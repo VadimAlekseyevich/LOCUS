@@ -251,10 +251,29 @@ int main() {
 
     ApplyEditorControls(chart, ui, Click(450, 89));
     ok &= Check(ui.tab == EditorTab::Route, "Route tab restores the large grid");
-    const auto normal = ApplyEditorControls(chart, ui, Click(668, 221));
-    const auto slow = ApplyEditorControls(chart, ui, Click(668, 370));
+    const auto normal = ApplyEditorControls(chart, ui, Click(430, 130));
+    const auto slow = ApplyEditorControls(chart, ui, Click(586, 130));
     ok &= Check(normal.speedIndex == 0 && slow.speedIndex == 4,
-                "practice speed 100 and 10 percent are clickable on Route");
+                "compact practice speed 100 and 10 percent are clickable on Route");
+    const auto compactPlay = ApplyEditorControls(chart, ui, Click(195, 129));
+    const auto compactRestart = ApplyEditorControls(chart, ui, Click(280, 129));
+    const auto compactTest = ApplyEditorControls(chart, ui, Click(360, 129));
+    ok &= Check(compactPlay.previewToggle &&
+                compactRestart.previewRestart && compactTest.testPlay,
+                "ROUTE transport uses compact hitboxes without losing actions");
+    for (int n = 1; n <= 4; ++n) {
+        const auto mainPane = detail::ComparisonPreviewBounds(n, 0);
+        ok &= Check(mainPane.width >= 218.0f && mainPane.height >= 218.0f &&
+                    mainPane.x >= 50.0f && mainPane.x + mainPane.width <= 735.0f,
+                    "editable route retains large square for all pane counts");
+        for (int i = 1; i < n; ++i) {
+            const auto pane = detail::ComparisonPreviewBounds(n, i);
+            ok &= Check(pane.width > 120.0f &&
+                        pane.x >= mainPane.x + mainPane.width &&
+                        pane.x + pane.width <= 734.01f,
+                        "comparison preview squares fit with unchanged compass pad");
+        }
+    }
 
     // At x = 50 + 860/3, the selected beat stays under the fixed playhead.
     constexpr float cursor = 50.0f + 860.0f / 3.0f;

@@ -162,6 +162,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::app::ChartPlayback& editorTransport,
                  const std::string& editorStatus, EditorPending editorPending,
                  const locus::app::EditorSetView& editorSetView,
+                 const locus::app::EditorComparisonFrame& comparisons,
                  const locus::app::EditorSetRequest* editorSetPending,
                  const std::string& musicError, double now,
                   const locus::app::SongLibrary& library,
@@ -247,12 +248,15 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::Editor) {
         const double selectedBeat = editorTransport.Playing()
             ? editorTransport.Beat(now) : static_cast<double>(editor.SelectedBeat());
+        const double songSeconds = editorTransport.Playing()
+            ? editorTransport.VisualAudioSeconds(now)
+            : editor.AudioSecondsAtBeat(editor.SelectedBeat());
         locus::app::RenderChartEditor(font, editor, editorUi,
                                      localSong.DisplayName(), localSong.Ready(),
                                      editorTransport.Playing(), editorTransport.Paused(),
                                      selectedBeat, editorTransport.Speed(),
                                      gameplay.bindings, gameplay.skin,
-                                     editorSetView);
+                                     editorSetView, &comparisons, songSeconds);
         // Editor and preview statuses must not be painted over file buttons.
         // Keep status for workflows, but not as an overlay in the action row.
         if (editorSetPending && editorPending == EditorPending::None) {

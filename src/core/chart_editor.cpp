@@ -62,6 +62,7 @@ bool ChartEditor::SetSongDuration(double seconds) {
         songDurationSeconds_ = old;
         return false;
     }
+    if (old != seconds) ++routeRevision_;
     return true;
 }
 
@@ -87,6 +88,7 @@ bool ChartEditor::TurnRangeFits(int firstBeat, int endBeat) const noexcept {
 }
 
 void ChartEditor::ResetHistory() noexcept {
+    ++routeRevision_;
     undo_.clear();
     redo_.clear();
     revision_ = savedRevision_ = nextRevision_ = 0;
@@ -104,6 +106,7 @@ void ChartEditor::ApplySavedChart(LoadedChart saved) {
     // serialized snapshot avoids Load() resetting the user's current beat
     // (and erasing the Undo/Redo history) on every Ctrl+S.
     chart_ = std::move(saved);
+    ++routeRevision_;
     difficultyRevision_ = std::numeric_limits<std::uint64_t>::max();
     selectedBeat_ = std::clamp(selectedBeat_, chart_.route.firstBeat,
                                chart_.route.lengthBeats - 1);
@@ -132,6 +135,7 @@ ChartEditor::HistoryMetadata ChartEditor::CaptureMetadata() const {
 }
 
 void ChartEditor::RestoreMetadata(const HistoryMetadata& state) {
+    ++routeRevision_;
     auto& route = chart_.route;
     chart_.title = state.title;
     chart_.audioPath = state.audioPath;
@@ -181,6 +185,7 @@ void ChartEditor::SaveUndo(int firstTouchedBeat, int lastTouchedBeat) {
 }
 
 void ChartEditor::MarkDirty() {
+    ++routeRevision_;
     revision_ = ++nextRevision_;
     dirty_ = revision_ != savedRevision_;
     // Every mutator calls SaveUndo before its first modification, then
