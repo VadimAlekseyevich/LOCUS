@@ -171,8 +171,8 @@ int main() {
                 LoadGameSettings(file, onDisk, error) &&
                 onDisk.Key(GameAction::Up) == KEY_W &&
                 !onDisk.hitFlash &&
-                !onDisk.vsync && onDisk.fpsLimit == 144 && onDisk.showFps,
-                onDisk.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&
+                !onDisk.vsync && onDisk.fpsLimit == 144 && onDisk.showFps &&
+                onDisk.Shortcut(ShortcutAction::EditorSave).key == KEY_B,
                 "settings persist across application restart");
     options.volume = 0.9f;
     ok &= Check(SaveGameSettings(file, options, error) &&
