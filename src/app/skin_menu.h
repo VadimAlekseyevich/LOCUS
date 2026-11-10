@@ -11,7 +11,7 @@ namespace locus::app {
 
 enum class SkinCommand {
     None, Load, Save, SaveAs, Reset, ActivateProfile, StoreProfile, RefreshProfiles,
-    DeleteProfile, RestoreProfile
+    DeleteProfile, RestoreProfile, OpenProfilesFolder
 };
 struct SkinProfileItem {
     std::filesystem::path path;
@@ -63,6 +63,7 @@ Rectangle SkinColorSquareRect();
 Vector2 SkinColorWheelCenter();
 Rectangle SkinProfileRow(int index);
 Rectangle SkinProfileActionRect(int index);
+Rectangle SkinProfilesFolderRect();
 Rectangle SkinDeleteConfirmRect();
 Rectangle SkinDeleteCancelRect();
 

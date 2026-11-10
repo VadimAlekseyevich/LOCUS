@@ -379,6 +379,7 @@ Rectangle SkinProfileRow(int row) {
 Rectangle SkinProfileActionRect(int index) {
     return {70.0f + index * 97.0f, 416, 92, 34};
 }
+Rectangle SkinProfilesFolderRect() { return {377, 184, 177, 28}; }
 Rectangle SkinDeleteConfirmRect() { return {283, 310, 169, 42}; }
 Rectangle SkinDeleteCancelRect() { return {506, 310, 169, 42}; }
 
@@ -425,6 +426,7 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
         PreviewPath(font, skin); // Always visible on COLORS as well.
     } else {
         Label(font, "PERSONAL SKINS / PROFILES", 69, 195, 18, kGold);
+        Button(font, SkinProfilesFolderRect(), "OPEN FOLDER");
         if (ui.profiles.empty())
             Label(font, "NO SAVED PROFILES YET", 80, 250, 17, kMuted);
         for (int row = 0; row < 5; ++row) {
@@ -492,6 +494,8 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
             return static_cast<SkinCommand>(static_cast<int>(SkinCommand::Load) + i);
 
     if (ui.page == 3) {
+        if (Hit(mouse, SkinProfilesFolderRect()))
+            return SkinCommand::OpenProfilesFolder;
         for (int row=0; row<5; ++row)
             if (ui.profileOffset + row < static_cast<int>(ui.profiles.size()) &&
                 Hit(mouse, SkinProfileRow(row))) {

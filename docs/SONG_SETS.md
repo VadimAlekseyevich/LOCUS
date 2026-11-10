@@ -57,8 +57,18 @@ make an otherwise valid chart disappear. Unmanaged legacy folders remain
 read-only until a new managed Song Set is installed.
 
 The files on disk are authoritative. The library index is rebuilt at startup
-or on explicit rescan. A Song Set's technical ID stays independent of its
+or on explicit rescan. Within each Song Set, difficulties are displayed in
+ascending calculated V2 rating (easiest first), using title and filename only
+to break ties. A Song Set's technical ID stays independent of its
 visible title.
+
+When editing an installed difficulty, changing its title and pressing Ctrl+S
+also renames its .locus.json file within that Song Set. A conflicting filename
+receives a numeric suffix rather than overwriting another difficulty. Save
+failure attempts to restore the original filename; successful saves keep the
+editor and library selection attached to the new path. The chart format is
+unchanged. EDIT -> SET -> OPEN FOLDER opens that Song Set in Windows Explorer.
+SKIN -> MY SKINS -> OPEN FOLDER opens the personal Profiles directory.
 
 ## Everyday workflow
 

@@ -31,6 +31,11 @@ EditorControls Type(const char* text) {
 
 int main() {
     bool ok = true;
+    ok &= Check(detail::ClickedSetAction({280, 283}) ==
+                EditorSetAction::OpenFolder &&
+                detail::ClickedSetAction({290, 314}) ==
+                EditorSetAction::RemoveBackground,
+                "Set folder shortcut owns an isolated clickable hitbox");
     // A physical window maps both drawing and hitboxes to the same virtual
     // positions, with the gameplay square touching the limiting window edge.
     const auto wide = ViewportTransform::Gameplay(1280, 800);

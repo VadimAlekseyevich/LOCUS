@@ -1,4 +1,5 @@
 #include "app/editor_file_actions.h"
+#include "app/chart_filename.h"
 #include "app/editor_set_controller.h"
 #include "app/chart_editor_ui.h"
 #include "app/chart_playback.h"
@@ -9,6 +10,8 @@
 #include "core/chart_editor.h"
 
 #include <filesystem>
+#include <fstream>
+#include <chrono>
 #include <iostream>
 #include <string>
 
@@ -35,6 +38,27 @@ bool Check(bool ok, const char* description) {
 
 int main() {
     bool ok = true;
+    const auto namingFolder = std::filesystem::temp_directory_path() /
+        ("locus-name-plan-" + std::to_string(
+            std::chrono::steady_clock::now().time_since_epoch().count()));
+    std::filesystem::create_directories(namingFolder);
+    const auto originalFile = namingFolder / L"Original.locus.json";
+    { std::ofstream(originalFile) << "original"; }
+    { std::ofstream(namingFolder / L"Changed.locus.json") << "other"; }
+    { std::ofstream(namingFolder / L"Changed-2.locus.json") << "other2"; }
+    std::error_code filenameError;
+    ok &= Check(app::RenamedChartFilePath(
+                    originalFile, "Changed", filenameError) ==
+                    namingFolder / L"Changed-3.locus.json" &&
+                !filenameError &&
+                app::RenamedChartFilePath(
+                    originalFile, u8"Сложность Ё", filenameError).filename() ==
+                    std::filesystem::u8path(u8"Сложность Ё.locus.json") &&
+                app::RenamedChartFilePath(
+                    originalFile, "Original", filenameError) == originalFile,
+                "rename creates a collision-free UTF-8 title filename");
+    std::filesystem::remove_all(namingFolder, filenameError);
+
     core::ChartEditor editor;
     editor.SetTitle("UNSAVED CHART");
     app::EditorUiState ui;

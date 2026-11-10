@@ -1,5 +1,6 @@
 #include "app/skin_profile_actions.h"
 #include "app/song_set_storage.h"
+#include "app/open_folder.h"
 
 #include <algorithm>
 #include <chrono>
@@ -115,6 +116,21 @@ bool SkinProfileActions::SaveActive() {
 
 void SkinProfileActions::Apply(SkinCommand command) {
     switch (command) {
+        case SkinCommand::OpenProfilesFolder: {
+            const fs::path folder = activeFile_.parent_path() / L"Profiles";
+            std::error_code ec;
+            fs::create_directories(folder, ec);
+            std::string error;
+            if (ec || !OpenFolderInExplorer(folder, error)) {
+                ui_.notice = "OPEN FOLDER FAILED: " +
+                    (ec ? ec.message() : error);
+                ui_.noticeError = true;
+                break;
+            }
+            ui_.notice = "PERSONAL SKINS FOLDER OPENED";
+            ui_.noticeError = false;
+            break;
+        }
         case SkinCommand::Load: {
             const auto picked = pickers_.chooseLoad();
             if (picked.path.empty()) {

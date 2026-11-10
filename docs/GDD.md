@@ -83,7 +83,7 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 ### 4.3 Menus and safe exit
 
 - Home provides **PLAY, EDIT, SKIN, SETTINGS, EXIT**. **Home → EDIT** always creates a clean draft, not the last-played song. Song Library EDIT opens its selected chart; **Results → E** opens the actual played chart; returning from Editor TEST keeps the unsaved editor document.
-- PLAY is a read-only song tree on the right: selecting a song expands its indented difficulties. EDIT → SET owns imports, deletion/restoration and artwork. EDIT → AUDIO owns song-wide BPM, offset and exact manual preview start (whole milliseconds). A background is shared by all difficulties of its song.
+- PLAY is a read-only song tree on the right: selecting a song expands its indented difficulties in ascending calculated difficulty order. EDIT → SET owns imports, deletion/restoration and artwork. EDIT → AUDIO owns song-wide BPM, offset and exact manual preview start (whole milliseconds). A background is shared by all difficulties of its song.
 - **Esc goes Back** from Editor, PLAY, Results and other screens. Normal PLAY/Results return to Song Select; after Editor TEST, Esc/H returns to the original unsaved editor draft. Editor also has a visible BACK button; unsaved chart changes require Y to discard or N/Esc to cancel.
 - **Esc on Home**, EXIT, window X and Alt+F4 open one confirmation. **Y quits; N/Esc stays**. An unsaved chart or skin triggers a warning. Active playback pauses while the confirmation is shown.
 

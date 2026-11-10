@@ -350,6 +350,35 @@ int main() {
                 restarted.Songs().size() == 1 && restarted.Songs()[0].managed &&
                 Read(sharedAudio) == firstBytes,
                 "restart reconstructs Song Set and retains audio bytes");
+    // Alphabetical order would put AAA first. Difficulty order instead
+    // puts the much denser pattern last in both PLAY and EDIT -> SET.
+    const fs::path denseSource = source / "dense.locus.json";
+    std::string denseJson = Read(easy);
+    const auto replaceDense = [&](const std::string& before,
+                                  const std::string& after) {
+        const auto at = denseJson.find(before);
+        if (at != std::string::npos) denseJson.replace(at, before.size(), after);
+    };
+    replaceDense("\"title\":\"Easy\"", "\"title\":\"AAA Dense\"");
+    replaceDense("\"ticksPerBeat\":1", "\"ticksPerBeat\":24");
+    replaceDense("\"snapDivision\":1", "\"snapDivision\":24");
+    replaceDense("\"turns\":[{\"timeMs\":1000,\"heading\":\"u\"}]",
+                 "\"turns\":[{\"timeMs\":1000,\"heading\":\"u\"},"
+                 "{\"timeMs\":1100,\"heading\":\"r\"},"
+                 "{\"timeMs\":1200,\"heading\":\"d\"},"
+                 "{\"timeMs\":1300,\"heading\":\"l\"}]");
+    Write(denseSource, denseJson);
+    fs::path denseInstalled;
+    const bool denseAdded = library.Import(denseSource, denseInstalled, error);
+    if (!denseAdded) std::cerr << "DENSE_IMPORT_ERROR " << error << '\n';
+    const auto& sorted = library.Songs()[0].charts;
+    ok &= Check(denseAdded && sorted.size() == 5 &&
+                sorted.front().file != denseInstalled &&
+                sorted.back().file == denseInstalled &&
+                sorted.back().difficulty.overall >
+                    sorted.front().difficulty.overall,
+                "Song Set difficulties default to ascending calculated difficulty");
+
     fs::remove_all(folder, ec);
     if (!ok) return 1;
     std::cout << "SONG_SET_PASS shared-audio=1 copies=1 backups=1 trash=1\n";
