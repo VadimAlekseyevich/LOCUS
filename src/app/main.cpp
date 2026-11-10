@@ -589,7 +589,7 @@ int main(int argc, char** argv) {
         // Feed the follower ONLY the live player's current world position.
         // A song restart or navigation opens a fresh camera, while pause and
         // outro preserve the last offset. Rendering remains read-only.
-        core::GridPoint cameraAnchor{};
+        locus::core::GridPoint cameraAnchor{};
         const bool showGameplay = state.screen == Screen::Play;
         if (showGameplay) {
             if (!cameraWasPlaying ||
@@ -600,8 +600,8 @@ int main(int argc, char** argv) {
             const float step = locus::app::StepForFixedSpeed(
                 activeSkin.baseSpeedPxPerSecond, activeChart.bpm,
                 activeChart.ticksPerBeat, transportView.practiceSpeed);
-            const core::GridPoint playerPosition =
-                core::RoutePositionAt(activeChart, visualBeat);
+            const locus::core::GridPoint playerPosition =
+                locus::core::RoutePositionAt(activeChart, visualBeat);
             cameraAnchor = cameraFollower.Follow(
                 playerPosition, step, renderNow,
                 transportView.paused || outroFrame.active ||
