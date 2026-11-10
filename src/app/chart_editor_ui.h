@@ -52,7 +52,7 @@ enum class EditorTab { Route, Audio, Field, Set };
 enum class EditorSetAction {
     None, Open, NewDifficulty, Duplicate, Import, Export,
     DeleteDifficulty, DeleteSongSet, Restore,
-    AttachBackground, RemoveBackground, SetPreviewExact
+    AttachBackground, RemoveBackground, SetPreviewExact, OpenFolder
 };
 struct EditorSetView {
     bool managed = false;

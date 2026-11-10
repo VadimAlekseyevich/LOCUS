@@ -3,6 +3,7 @@
 #include "app/chart_editor_ui.h"
 #include "app/chart_playback.h"
 #include "app/chart_file.h"
+#include "app/chart_filename.h"
 #include "app/editor_document.h"
 #include "app/local_music.h"
 #include "app/menu_ui.h"
@@ -14,6 +15,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <string>
+#include <system_error>
 #include <utility>
 
 namespace locus::app {
@@ -197,7 +199,6 @@ void EditorFileActions::Save(bool saveAs, double& now) {
         return;
     }
     const std::filesystem::path current(context_.chartPath);
-    const std::filesystem::path root = context_.library.Root();
     int songIndex = -1, chartIndex = -1;
     // Library paths are authoritative. Do not create a duplicate external
     // authoring file on every save, or an implicit second library import.
@@ -205,26 +206,52 @@ void EditorFileActions::Save(bool saveAs, double& now) {
         context_.library.FindChart(current, songIndex, chartIndex);
     std::filesystem::path destination;
     if (installed && !saveAs) {
-        // All editor/library mutations serialize on the root lock, including
-        // whole-set deletion from another process. The per-folder lock is
-        // acquired inside SaveChartWithAudioPath afterwards.
-        FolderWriteLock libraryLock;
-        if (!libraryLock.Acquire(context_.library.Root(), error)) {
-            context_.status = "SAVE FAILED: " + error;
-            return;
-        }
-        // Normal Ctrl+S edits exactly the selected chart and keeps its undo
-        // history. Existing shared audio must remain inside this Song Set.
-        if (!SaveDraftToDisk(context_.editor, context_.music,
-                             context_.chartPath, context_.audioPath,
-                             false, error, pickers_.chooseSave)) {
+        // Hold both locks through the rename and atomic save.
+        FolderWriteLock libraryLock, setLock;
+        if (!libraryLock.Acquire(context_.library.Root(), error) ||
+            !setLock.Acquire(current.parent_path(), error)) {
             context_.status = "SAVE FAILED: " + error;
             return;
         }
         destination = current;
+        const auto& stored = context_.library.Songs()[
+            static_cast<std::size_t>(songIndex)].charts[
+            static_cast<std::size_t>(chartIndex)];
+        std::error_code ec;
+        if (checked.title != stored.data.title) {
+            destination = RenamedChartFilePath(current, checked.title, ec);
+            if (ec || destination.empty()) {
+                context_.status = "SAVE FAILED: CANNOT ALLOCATE CHART FILENAME";
+                return;
+            }
+        }
+        const bool moved = destination != current;
+        if (moved) {
+            std::filesystem::rename(current, destination, ec);
+            if (ec) {
+                context_.status = "SAVE FAILED: CANNOT RENAME CHART: " + ec.message();
+                return;
+            }
+        }
+        std::wstring savedPath = destination.wstring();
+        if (!SaveDraftToDisk(context_.editor, context_.music,
+                             savedPath, context_.audioPath,
+                             false, error, pickers_.chooseSave, true)) {
+            if (moved) {
+                std::error_code rollback;
+                std::filesystem::rename(destination, current, rollback);
+                if (rollback) error += " (rename rollback failed: " +
+                                       rollback.message() + ")";
+            }
+            context_.status = "SAVE FAILED: " + error;
+            return;
+        }
+        context_.chartPath = savedPath;
         std::string notice;
-        if (!context_.library.Refresh(notice))
+        if (!context_.library.Refresh(notice)) {
             context_.status = "SAVED (LIBRARY REFRESH FAILED: " + notice + ")";
+            return;
+        }
     } else {
         const std::filesystem::path target = !newDifficultySet_.empty()
             ? std::filesystem::path(newDifficultySet_)

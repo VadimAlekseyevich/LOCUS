@@ -4,6 +4,7 @@
 #include "app/editor_file_actions.h"
 #include "app/image_asset_decode.h"
 #include "app/menu_ui.h"
+#include "app/open_folder.h"
 #include "app/song_library.h"
 #include "app/song_set_storage.h"
 #include "core/chart_editor.h"
@@ -276,6 +277,12 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
     const LibrarySong* song = FindSet(ctx_.library, folder);
     std::string error;
     switch (request.action) {
+        case EditorSetAction::OpenFolder: {
+            if (!song) { error = "Song Set no longer exists."; break; }
+            if (!OpenFolderInExplorer(folder, error)) break;
+            Notice("SONG SET FOLDER OPENED");
+            return true;
+        }
         case EditorSetAction::SetPreviewExact:
         case EditorSetAction::AttachBackground:
         case EditorSetAction::RemoveBackground: {

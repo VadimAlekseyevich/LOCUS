@@ -110,6 +110,7 @@ constexpr Rectangle kBpm{92, 290, 350, 43};
 constexpr Rectangle kOffset{510, 290, 350, 43};
 constexpr Rectangle kAudioPreviewMs{92, 371, 768, 43};
 // Song Set management occupies its own tab without moving the timeline.
+constexpr Rectangle kSetOpenFolder{251, 270, 197, 27};
 constexpr Rectangle kSetBackground{52, 301, 190, 31};
 constexpr Rectangle kSetRemoveBackground{251, 301, 197, 31};
 constexpr Rectangle kSetOpen{52, 340, 123, 27};
@@ -126,6 +127,7 @@ constexpr Rectangle SetDifficultyRow(int row) noexcept {
     return {503.0f, 202.0f + row * 36.0f, 400.0f, 32.0f};
 }
 inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
+    if (CheckCollisionPointRec(p, kSetOpenFolder)) return EditorSetAction::OpenFolder;
     if (CheckCollisionPointRec(p, kSetBackground)) return EditorSetAction::AttachBackground;
     if (CheckCollisionPointRec(p, kSetRemoveBackground)) return EditorSetAction::RemoveBackground;
     if (CheckCollisionPointRec(p, kSetOpen)) return EditorSetAction::Open;

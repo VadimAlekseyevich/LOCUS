@@ -56,7 +56,8 @@ bool SaveDraftToDisk(locus::core::ChartEditor& editor,
                      const locus::app::LocalMusic& song,
                      std::wstring& chartPath, const std::wstring& audioPath,
                      bool saveAs, std::string& error,
-                     ChartSavePicker chooseFile) {
+                     ChartSavePicker chooseFile,
+                     bool folderLockAlreadyHeld) {
     if (audioPath.empty() || !song.Ready()) {
         error = "PRESS O TO ATTACH YOUR WAV / MP3 FIRST";
         return false;
@@ -86,7 +87,8 @@ bool SaveDraftToDisk(locus::core::ChartEditor& editor,
         }
         destination = selected.path;
     }
-    if (!locus::app::SaveChartWithAudioPath(destination, audioPath, checked, error))
+    if (!locus::app::SaveChartWithAudioPath(
+            destination, audioPath, checked, error, folderLockAlreadyHeld))
         return false;
 
     // Reopen exactly the bytes that were saved, preserving editor semantics

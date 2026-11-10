@@ -23,6 +23,7 @@ using ChartSavePicker = MusicPickResult (*)(const std::wstring&);
 bool SaveDraftToDisk(core::ChartEditor& editor, const LocalMusic& song,
                      std::wstring& chartPath, const std::wstring& audioPath,
                      bool saveAs, std::string& error,
-                     ChartSavePicker chooseFile = ChooseChartSaveFile);
+                     ChartSavePicker chooseFile = ChooseChartSaveFile,
+                     bool folderLockAlreadyHeld = false);
 
 } // namespace locus::app

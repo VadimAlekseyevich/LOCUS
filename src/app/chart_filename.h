@@ -1,13 +1,15 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <string_view>
+#include <system_error>
 
 namespace locus::app {
 
 // Turns an authored UTF-8 chart title into a safe default Windows filename.
-// This only supplies the Save As suggestion; it never renames existing files.
+// Existing charts also use this when their authored title changes on Save.
 inline std::wstring SuggestedChartFileName(std::string_view title) {
     std::wstring name;
     name.reserve(title.size());
@@ -82,6 +84,30 @@ inline std::wstring SuggestedChartFileName(std::string_view title) {
                            stem[3] >= L'1' && stem[3] <= L'9');
     if (reserved) name.insert(name.begin(), L'_');
     return name + L".locus.json";
+}
+
+ // Collision-free same-folder destination for a changed installed chart title.
+ // The caller must hold the Song Set lock. Never overwrite another difficulty.
+inline std::filesystem::path RenamedChartFilePath(
+    const std::filesystem::path& current, std::string_view title,
+    std::error_code& ec) {
+    namespace fs = std::filesystem;
+    ec.clear();
+    if (current.empty() || current.parent_path().empty()) return {};
+    const std::wstring suggested = SuggestedChartFileName(title);
+    const std::wstring suffix = L".locus.json";
+    const std::wstring stem = suggested.substr(0, suggested.size() - suffix.size());
+    for (int number = 1; number <= 10000; ++number) {
+        const fs::path candidate = current.parent_path() /
+            (stem + (number == 1 ? L"" : L"-" + std::to_wstring(number)) + suffix);
+        if (candidate == current) return current;
+        const bool occupied = fs::exists(candidate, ec);
+        if (ec) return {};
+        if (!occupied) return candidate;
+        if (fs::equivalent(candidate, current, ec)) return candidate;
+        if (ec) return {};
+    }
+    return {};
 }
 
 } // namespace locus::app

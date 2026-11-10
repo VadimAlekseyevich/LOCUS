@@ -249,6 +249,9 @@ bool SongLibrary::Refresh(std::string& message) {
                 difficulty.data.route, difficulty.data.offsetSeconds);
         std::sort(song.charts.begin(), song.charts.end(),
                   [](const LibraryChart& a, const LibraryChart& b) {
+                      // One default order for PLAY and EDIT -> SET.
+                      if (a.difficulty.overall != b.difficulty.overall)
+                          return a.difficulty.overall < b.difficulty.overall;
                       if (a.data.title != b.data.title)
                           return a.data.title < b.data.title;
                       return a.file < b.file;

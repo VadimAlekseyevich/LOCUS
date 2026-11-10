@@ -409,6 +409,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             Label(font, "TO CREATE A SONG SET", 52, 265, 15, heading);
         }
         if (set.managed) {
+            Button(font, kSetOpenFolder, "OPEN FOLDER", Color{174, 198, 234, 255});
             Button(font, kSetBackground, set.hasBackground ? "REPLACE BG" : "ADD BG",
                    Color{126, 219, 209, 255});
             Button(font, kSetRemoveBackground, "REMOVE BG", Color{227, 198, 137, 255});
