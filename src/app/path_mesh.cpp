@@ -46,6 +46,61 @@ PathRibbonRow MakeRow(const PathSample& sample, RouteCanvas canvas,
     };
 }
 
+std::vector<PathRibbonRow> MakeRows(const std::vector<PathSample>& samples,
+                                    RouteCanvas canvas) {
+    std::vector<PathRibbonRow> rows;
+    if (samples.size() < 2) return rows;
+    rows.reserve(samples.size() + 8);
+    constexpr double kReverseDot = -0.9999;
+    constexpr double kMiterLimit = 2.75; // Covers a 135-degree turn (2.613).
+    for (std::size_t i = 0; i < samples.size(); ++i) {
+        const Direction previous = i > 0
+            ? UnitDirection(samples[i - 1].position, samples[i].position)
+            : UnitDirection(samples[i].position, samples[i + 1].position);
+        const Direction next = i + 1 < samples.size()
+            ? UnitDirection(samples[i].position, samples[i + 1].position)
+            : previous;
+        const Direction prevNormal = Normal(previous);
+        const Direction nextNormal = Normal(next);
+
+        if (i == 0 || i + 1 == samples.size()) {
+            rows.push_back(MakeRow(samples[i], canvas,
+                                   i == 0 ? nextNormal : prevNormal,
+                                   1.0, i == 0));
+            continue;
+        }
+
+        const double alignment = Dot(previous, next);
+        if (alignment < kReverseDot) {
+            // A 180-degree U-turn cannot form a finite miter. End the
+            // preceding strip and start another at the identical junction,
+            // retaining the user-authored overlapping trajectory.
+            rows.push_back(MakeRow(samples[i], canvas, prevNormal, 1.0, false));
+            rows.push_back(MakeRow(samples[i], canvas, nextNormal, 1.0, true));
+            continue;
+        }
+
+        // Both sides of each joined corner use the same transformed normal.
+        // This eliminates the independent-quad cracks of DrawLineEx.
+        const Direction sum{prevNormal.x + nextNormal.x,
+                            prevNormal.y + nextNormal.y};
+        const double length = std::hypot(sum.x, sum.y);
+        const Direction bisector{sum.x / length, sum.y / length};
+        const double cosine = Dot(bisector, nextNormal);
+        const double miter = 1.0 / cosine;
+        if (!std::isfinite(miter) || miter > kMiterLimit) {
+            // Unexpected extremely acute geometry: bevel instead of a
+            // potentially unbounded spike; the intermediate rows still
+            // meet at the exact same path junction.
+            rows.push_back(MakeRow(samples[i], canvas, prevNormal, 1.0, false));
+            rows.push_back(MakeRow(samples[i], canvas, nextNormal, 1.0, false));
+        } else {
+            rows.push_back(MakeRow(samples[i], canvas, bisector, miter, false));
+        }
+    }
+    return rows;
+}
+
 } // namespace
 
 std::vector<PathRibbonRow> BuildScoredPathRibbon(
@@ -101,57 +156,45 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
             samples.push_back({point, time, halfWidth, opacity});
         }
     }
-    if (samples.size() < 2) return rows;
+    return MakeRows(samples, canvas);
+}
 
-    rows.reserve(samples.size() + 8);
-    constexpr double kReverseDot = -0.9999;
-    constexpr double kMiterLimit = 2.75; // Covers a 135-degree turn (2.613).
-    for (std::size_t i = 0; i < samples.size(); ++i) {
-        const Direction previous = i > 0
-            ? UnitDirection(samples[i - 1].position, samples[i].position)
-            : UnitDirection(samples[i].position, samples[i + 1].position);
-        const Direction next = i + 1 < samples.size()
-            ? UnitDirection(samples[i].position, samples[i + 1].position)
-            : previous;
-        const Direction prevNormal = Normal(previous);
-        const Direction nextNormal = Normal(next);
+// Gameplay-only sampling: authored exact times are the segment boundaries.
+// The renderer never rounds a song timestamp back onto the editing grid.
+std::vector<PathRibbonRow> BuildScoredPathRibbon(
+    const core::TimedRoute& route, double songSeconds,
+    RouteCanvas canvas, const Skin& skin) {
+    if (!route.Ready() || !std::isfinite(songSeconds) ||
+        !std::isfinite(canvas.step) || canvas.step <= 0.0f ||
+        !std::isfinite(skin.lookaheadMs) || skin.lookaheadMs <= 0.0f)
+        return {};
+    const double horizon = skin.lookaheadMs / 1000.0;
+    const auto spans = route.Window(songSeconds, songSeconds + horizon);
+    if (spans.empty()) return {};
 
-        if (i == 0 || i + 1 == samples.size()) {
-            rows.push_back(MakeRow(samples[i], canvas,
-                                   i == 0 ? nextNormal : prevNormal,
-                                   1.0, i == 0));
-            continue;
-        }
-
-        const double alignment = Dot(previous, next);
-        if (alignment < kReverseDot) {
-            // A 180-degree U-turn cannot form a finite miter. End the
-            // preceding strip and start another at the identical junction,
-            // retaining the user-authored overlapping trajectory.
-            rows.push_back(MakeRow(samples[i], canvas, prevNormal, 1.0, false));
-            rows.push_back(MakeRow(samples[i], canvas, nextNormal, 1.0, true));
-            continue;
-        }
-
-        // Both sides of each joined corner use the same transformed normal.
-        // This eliminates the independent-quad cracks of DrawLineEx.
-        const Direction sum{prevNormal.x + nextNormal.x,
-                            prevNormal.y + nextNormal.y};
-        const double length = std::hypot(sum.x, sum.y);
-        const Direction bisector{sum.x / length, sum.y / length};
-        const double cosine = Dot(bisector, nextNormal);
-        const double miter = 1.0 / cosine;
-        if (!std::isfinite(miter) || miter > kMiterLimit) {
-            // Unexpected extremely acute geometry: bevel instead of a
-            // potentially unbounded spike; the intermediate rows still
-            // meet at the exact same path junction.
-            rows.push_back(MakeRow(samples[i], canvas, prevNormal, 1.0, false));
-            rows.push_back(MakeRow(samples[i], canvas, nextNormal, 1.0, false));
-        } else {
-            rows.push_back(MakeRow(samples[i], canvas, bisector, miter, false));
+    std::vector<PathSample> samples;
+    samples.reserve(spans.size() * 2 + 33);
+    for (const auto& span : spans) {
+        const double duration = span.toSeconds - span.fromSeconds;
+        const int slices = std::max(1, static_cast<int>(
+            std::ceil(duration * kScoredPathSlices / horizon)));
+        for (int part = 0; part <= slices; ++part) {
+            const double fraction = static_cast<double>(part) / slices;
+            const double at = span.fromSeconds + duration * fraction;
+            if (!samples.empty() &&
+                at - samples.back().tick <= 1e-10) continue;
+            const core::GridPoint position{
+                span.from.x + (span.to.x - span.from.x) * fraction,
+                span.from.y + (span.to.y - span.from.y) * fraction};
+            const double ahead = at - songSeconds;
+            const float opacity = ScoredPathOpacity(
+                ahead, horizon, skin.fadePower) * skin.pathOpacity;
+            const float halfWidth = ScoredPathWidth(
+                ahead, horizon, skin.pathWidth, skin.fadePower) * 0.5f;
+            samples.push_back({position, at, halfWidth, opacity});
         }
     }
-    return rows;
+    return MakeRows(samples, canvas);
 }
 
 PathRibbonQuad MakePathRibbonQuad(

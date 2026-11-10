@@ -273,6 +273,39 @@ int main() {
                     "path outline and foreground both use front-facing winding");
     }
 
+
+    // The scored renderer uses the exact timestamp instead of the rounded
+    // authoring tick. It must share the same vertex at a 500 ms bend.
+    core::Chart offGrid;
+    offGrid.bpm = 130.0;
+    offGrid.start = {0, 0};
+    offGrid.firstBeat = 0;
+    offGrid.lengthBeats = 16;
+    offGrid.initialHeading = core::Heading::Right;
+    offGrid.turns = {{1, core::Heading::Up, 500}};
+    core::TimedRoute timed;
+    app::Skin timedSkin;
+    timedSkin.lookaheadMs = 800.0f;
+    const bool compiled = timed.Compile(offGrid, 0.0);
+    ok &= Check(compiled, "compile off-grid note for scored ribbon");
+    if (compiled) {
+        const auto timedRows = app::BuildScoredPathRibbon(
+            timed, 0.45, canvas, timedSkin);
+        const Vector2 target = canvas.Position(timed.PositionAt(0.5));
+        int corners = 0;
+        for (const auto& row : timedRows) {
+            if (!Near(row.tick, 0.5, 1e-8)) continue;
+            ++corners;
+            ok &= Check(Near(row.center.x, target.x) &&
+                        Near(row.center.y, target.y) && !row.startsRun,
+                        "scored route uses one joined vertex at exact 500ms");
+        }
+        ok &= Check(corners == 1 && !timedRows.empty() &&
+                    Near(timedRows.front().tick, 0.45) &&
+                    Near(timedRows.back().tick, 1.25),
+                    "time-based preview spans precisely 800ms");
+    }
+
     if (!ok) return 1;
     std::cout << "PATH_MESH_PASS joined=90,135 reverse=180 dense=24 continuous=1\n";
     return 0;

@@ -101,6 +101,14 @@ void DrawScoredPath(const core::Chart& chart, double beat,
     DrawRibbonLayer(rows, skin.trajectory, 1.0f);
 }
 
+void DrawScoredPath(const core::TimedRoute& route, double songSeconds,
+                    RouteCanvas canvas, const Skin& skin) {
+    const auto rows = BuildScoredPathRibbon(route, songSeconds, canvas, skin);
+    if (rows.size() < 2) return;
+    DrawRibbonLayer(rows, skin.outline, skin.outlineScale);
+    DrawRibbonLayer(rows, skin.trajectory, 1.0f);
+}
+
 } // namespace
 
 void DrawReverseCap(Vector2 point, float junctionRadius, core::Heading outgoing,
@@ -270,6 +278,58 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
         DrawCircleV(point, std::min(4.0f, canvas.step * chart.ticksPerBeat * 0.16f),
                     WithOpacity(editor ? Color{255, 225, 228, 255}
                                        : Color{255, 229, 230, 255}, opacity));
+    }
+}
+
+// PLAY/TEST use absolute song time; the musical grid is editor-only.
+Vector2 DrawTimedRouteTrajectory(const core::TimedRoute& route,
+                                 double songSeconds, RouteCanvas canvas,
+                                 const Skin& skin) {
+    if (!route.Ready()) return canvas.Position({});
+    DrawScoredPath(route, songSeconds, canvas, skin);
+    return canvas.Position(route.PositionAt(songSeconds));
+}
+
+void DrawTimedRouteJunctions(const core::TimedRoute& route,
+                             double songSeconds, RouteCanvas canvas,
+                             const Skin& skin) {
+    if (!route.Ready() || !std::isfinite(songSeconds) ||
+        !std::isfinite(skin.lookaheadMs) || skin.lookaheadMs <= 0.0f)
+        return;
+    const double horizon = skin.lookaheadMs / 1000.0;
+    const auto& turns = route.Turns();
+    const auto first = std::lower_bound(
+        turns.begin(), turns.end(), songSeconds,
+        [](const core::TimedTurn& event, double at) {
+            return event.songSeconds < at;
+        });
+    const auto last = std::lower_bound(
+        first, turns.end(), songSeconds + horizon,
+        [](const core::TimedTurn& event, double until) {
+            return event.songSeconds < until;
+        });
+    // Match ribbon painter's order: when the route revisits one coordinate,
+    // the nearest upcoming note is drawn last, never hidden by a later one.
+    for (auto turn = last; turn != first;) {
+        --turn;
+        const float proximity = ScoredPathOpacity(
+            turn->songSeconds - songSeconds, horizon, skin.fadePower);
+        const float opacity = proximity * skin.pathOpacity;
+        if (opacity <= 0.0005f) continue;
+        const Vector2 point = canvas.Position(turn->position);
+        const float radius = std::min(
+            skin.junctionRadius, canvas.step * route.TicksPerBeat() * 0.45f)
+            * ScoredTurnSize(proximity);
+        if (skin.junctionGlow)
+            DrawCircleV(point, radius * 1.45f,
+                        WithOpacity(skin.junction, opacity * 0.26f));
+        if (NeedsReverseCap(turn->incoming, turn->outgoing))
+            DrawReverseCap(point, radius, turn->outgoing,
+                           skin.junction, opacity, skin.junctionGlow,
+                           skin.reverseCapScale);
+        DrawCircleV(point, radius, WithOpacity(skin.junction, opacity));
+        DrawCircleV(point, radius * 0.35f,
+                    WithOpacity(skin.playerCore, opacity));
     }
 }
 

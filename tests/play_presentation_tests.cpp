@@ -33,7 +33,7 @@ int main() {
 
     const auto view = [&](double beat, bool paused = false) {
         return app::GameplayView{chart, judge, flash, title,
-            beat * 0.5, beat, paused, false, false, 1.0,
+            beat * 0.5, 0.0, paused, false, false, 1.0,
             "PLAYING", true, settings, skin};
     };
     const float step = app::StepForFixedSpeed(
@@ -60,10 +60,10 @@ int main() {
                 "long pause preserves exact camera anchor");
 
     auto beforeOutro = presentation.Prepare(view(3.0), true, false, 10.5);
-    presentation.Outro().Begin(chart, 3.0, 11.0);
+    presentation.Outro().Begin(chart, 1.5, 0.0, 11.0);
     auto duringOutro = presentation.Prepare(view(8.0), true, false, 11.5);
     ok &= Check(duringOutro.outro.active &&
-                Near(duringOutro.outro.frozenBeat, 3.0) &&
+                Near(duringOutro.outro.frozenSongSeconds, 1.5) &&
                 Near(duringOutro.cameraAnchor.x, beforeOutro.cameraAnchor.x),
                 "outro freezes current beat and preserves camera lag");
 

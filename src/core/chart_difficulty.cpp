@@ -1,4 +1,5 @@
 #include "core/chart_difficulty.h"
+#include "core/timed_route.h"
 
 #include <algorithm>
 #include <array>
@@ -40,11 +41,6 @@ int HeadingIndex(Heading h) {
         case Heading::UpLeft: return 7;
     }
     return 0;
-}
-Point Unit(Heading h) {
-    const double angle = (static_cast<double>(HeadingIndex(h)) - 2.0) *
-                         kPi / 4.0;
-    return {std::cos(angle), std::sin(angle)};
 }
 int Bits(unsigned m) {
     int bits = 0;
@@ -95,10 +91,12 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         std::abs(offsetSeconds) > 3600.0)
         return result;
 
+    // Reading complexity follows the same exact-time geometry as PLAY.
+    // Keep the rating's spatial scale in musical beats (not editor ticks).
+    TimedRoute route;
+    if (!route.Compile(chart, offsetSeconds)) return result;
     std::vector<Note> notes;
     notes.reserve(chart.turns.size());
-    Point position;
-    Heading preceding = chart.initialHeading;
     int lastTick = chart.firstBeat;
     std::int64_t lastTime = std::numeric_limits<std::int64_t>::min();
     const std::int64_t offsetMs =
@@ -112,17 +110,15 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         if (currentTime < -3600000 || currentTime > 86400000 ||
             currentTime <= lastTime)
             continue;
-        const Point direction = Unit(preceding);
-        const double distance = static_cast<double>(event.beat - lastTick) /
-                                chart.ticksPerBeat;
-        position.x += direction.x * distance;
-        position.y += direction.y * distance;
+        const GridPoint world = route.PositionAt(currentTime / 1000.0);
+        const Point position{
+            (world.x - chart.start.x) / chart.ticksPerBeat,
+            (world.y - chart.start.y) / chart.ticksPerBeat};
         const unsigned mask = HeadingArrowMask(event.direction);
         const int keys = Bits(mask);
         if (keys == 0) continue;
         notes.push_back({currentTime, position, event.direction, mask, keys});
         totalKeys += static_cast<std::size_t>(keys);
-        preceding = event.direction;
         lastTick = event.beat;
         lastTime = currentTime;
     }

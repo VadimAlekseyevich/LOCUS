@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/route.h"
-#include "core/route_view.h"
+#include "core/timed_route.h"
 #include "app/transition_easing.h"
 
 #include <algorithm>
@@ -10,12 +10,12 @@
 namespace locus::app {
 
 // Presentation-only post-judgement phase. The audio clock is NOT stopped;
-// only note input stops. The camera freezes at the last judged beat,
+// only note input stops. The camera freezes at the last judged song time,
 // preserving its velocity-derived trailing offset while the avatar exits.
 struct PlayOutroFrame {
     bool active = false;
     core::GridPoint frozenCamera{};
-    double frozenBeat = 0.0;
+    double frozenSongSeconds = 0.0;
     core::Heading outgoing = core::Heading::Right;
     float distancePx = 0.0f;
     float blackOpacity = 0.0f;
@@ -46,20 +46,18 @@ public:
         return paused_ ? pausedAt_ : now;
     }
 
-    void Begin(const core::Chart& chart, double beat, double now) {
-        if (active_ || chart.lengthBeats <= chart.firstBeat) return;
-        const double safe = std::clamp(beat,
-            static_cast<double>(chart.firstBeat),
-            static_cast<double>(chart.lengthBeats) - 0.000001);
-        anchor_ = core::RoutePositionAt(chart, safe);
-        anchorBeat_ = safe;
-        const int tick = static_cast<int>(std::floor(safe));
-        // A final note can score EARLY. Take the authored outgoing
-        // direction of the last turn, not the direction sampled just
-        // before the judgement timestamp reaches that turn.
-        const int exitTick = chart.turns.empty()
-            ? tick : chart.turns.back().beat;
-        outgoing_ = core::SampleRouteStep(chart, exitTick).heading;
+    void Begin(const core::Chart& chart, double songSeconds,
+               double offsetSeconds, double now) {
+        if (active_ || !std::isfinite(songSeconds)) return;
+        core::TimedRoute route;
+        if (!route.Compile(chart, offsetSeconds)) return;
+        anchorSongSeconds_ = std::clamp(songSeconds,
+            route.StartSeconds(), route.EndSeconds());
+        anchor_ = route.PositionAt(anchorSongSeconds_);
+        // A final note can score early: depart in the LAST authored
+        // direction, even before its exact timestamp reaches the avatar.
+        outgoing_ = chart.turns.empty()
+            ? chart.initialHeading : chart.turns.back().direction;
         start_ = now;
         active_ = true;
         resultsAt_ = -1.0;
@@ -80,7 +78,7 @@ public:
         if (active_) {
             result.active = true;
             result.frozenCamera = anchor_;
-            result.frozenBeat = anchorBeat_;
+            result.frozenSongSeconds = anchorSongSeconds_;
             result.outgoing = outgoing_;
             const double t = std::clamp(
                 (now - start_) / kPlayOutroSeconds, 0.0, 1.0);
@@ -104,7 +102,7 @@ private:
     double start_ = 0.0;
     double resultsAt_ = -1.0;
     core::GridPoint anchor_{};
-    double anchorBeat_ = 0.0;
+    double anchorSongSeconds_ = 0.0;
     core::Heading outgoing_ = core::Heading::Right;
 };
 

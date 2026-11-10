@@ -47,15 +47,18 @@ void PlayScreenActions::Update(const FrameInput& input, double now) {
                          {input.arrowPressed, input.arrowCapturedAt, input.arrowHeld});
     const bool audioFinished = custom
         ? context_.local.Finished() : context_.demo.Finished();
-    if (ChartReadyForResults(context_.judge, audioFinished))
-        context_.outro.Begin(context_.chart, Transport(now).beat, now);
+    if (ChartReadyForResults(context_.judge, audioFinished)) {
+        const auto transport = Transport(now);
+        context_.outro.Begin(context_.chart, transport.songSeconds,
+                             transport.offsetSeconds, now);
+    }
 }
 
 PlayTransportView PlayScreenActions::Transport(double now) const {
     if (!context_.customChart) {
         return {
             context_.demo.SongSeconds(now),
-            context_.demo.Beat(now),
+            0.0, // Demo song offset (not a snap-grid beat).
             context_.demo.Paused(),
             context_.demo.Finished(),
             1.0, context_.demo.Status()
@@ -71,7 +74,7 @@ PlayTransportView PlayScreenActions::Transport(double now) const {
         : paused ? "PAUSED  |  PRESS PAUSE KEY TO RESUME"
         : song < 0.0 ? "SILENT PREROLL  |  ARROWS TO TURN"
                      : "CUSTOM SONG  |  ARROWS TO TURN";
-    return {song, context_.local.BeatAtAudioSeconds(song), paused, finished,
+    return {song, context_.local.OffsetSeconds(), paused, finished,
             context_.local.Speed(), status};
 }
 

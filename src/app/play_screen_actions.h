@@ -15,7 +15,7 @@ class ChartPlayback;
 // a native window.
 struct PlayTransportView {
     double songSeconds = 0.0;
-    double beat = 0.0;
+    double offsetSeconds = 0.0;
     bool paused = false;
     bool finished = false;
     double practiceSpeed = 1.0;

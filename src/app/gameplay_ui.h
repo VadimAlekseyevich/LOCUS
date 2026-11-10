@@ -23,7 +23,7 @@ struct GameplayView {
     const locus::app::HitFlash& hitFlash;
     const std::string& title;
     double songSeconds;
-    double beat;
+    double offsetSeconds; // Song beat-zero offset, not a gameplay grid index.
     bool paused;
     bool completed;
     bool custom;
@@ -39,6 +39,7 @@ struct GameplayView {
     // future chart geometry). False keeps original center-camera fallback.
     bool hasCameraAnchor = false;
     core::GridPoint cameraAnchor{};
+    const core::TimedRoute* timedRoute = nullptr;
 };
 
 // The visible playfield is exactly one screen-height square, centred in
@@ -77,6 +78,14 @@ struct GameplayCamera {
                                  chart.ticksPerBeat, practiceRate)) {
         world = core::RoutePositionAt(chart, beat);
     }
+
+    GameplayCamera(const core::TimedRoute& route, double songSeconds,
+                   const locus::core::Chart& chart,
+                   const locus::app::Skin& skin,
+                   double practiceRate)
+        : world(route.PositionAt(songSeconds)),
+          step(StepForFixedSpeed(skin.baseSpeedPxPerSecond, chart.bpm,
+                                 chart.ticksPerBeat, practiceRate)) {}
 
     locus::app::RouteCanvas Canvas() const noexcept {
         return {kCenterX, kCenterY, step, world};

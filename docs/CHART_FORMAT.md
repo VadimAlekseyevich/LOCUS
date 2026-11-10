@@ -46,7 +46,9 @@ Every event sets the **absolute outgoing direction**, independent of the previou
 
 Each `timeMs` is a signed whole number between **-3,600,000 and 86,400,000**. Times must be strictly increasing, and two events must not project to the same musical tick. When music is loaded, notes outside playable audio time (except permitted negative-offset preroll) are rejected. Song duration determines the timeline length; there is **no editable length field**.
 
-BPM, offset and snapping affect the musical ruler or visual projection, not saved note timestamps. For example, at 250 BPM a beat lasts 240 ms; `snapDivision: 3` provides 80-ms placements on the ruler. Changing it later must not rewrite earlier note times.
+BPM and snapping define **only the editor's musical ruler and selectable snap points**. PLAY/TEST compiles a continuous route directly from the exact `timeMs` boundaries; no rounding of a note onto `ticksPerBeat` can move its on-screen corner or judgement. Distance between corners is proportional to the real time interval, so the user-selected screen speed remains constant. Editor tick positions remain a temporary authoring index, and the editor still rejects two notes that would project onto the same tick at its available resolution.
+
+BPM, offset and snapping affect the musical ruler or the authored timeline's coordinate system, not saved note timestamps. For example, at 250 BPM a beat lasts 240 ms; `snapDivision: 3` provides 80-ms placements on the ruler. Changing it later must not rewrite earlier note times.
 
 ## Song Set ownership
 

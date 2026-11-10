@@ -21,10 +21,19 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     // Both route and marker use the SAME camera transform. The follower
     // only uses the player's current position and is updated by
     // PlayPresentation, not during rendering. Freeze during the outro.
-    const double displayBeat = gameplay.outro.active
-        ? gameplay.outro.frozenBeat : gameplay.beat;
-    GameplayCamera camera(gameplay.chart, displayBeat, gameplay.skin,
-                          gameplay.practiceSpeed);
+    const double displaySeconds = gameplay.outro.active
+        ? gameplay.outro.frozenSongSeconds : gameplay.songSeconds;
+    // A normal PLAY frame borrows the immutable compiled route. The fallback
+    // is for separately rendered transition frames that have no controller.
+    core::TimedRoute transientRoute;
+    const core::TimedRoute* route = gameplay.timedRoute;
+    if (!route) {
+        if (transientRoute.Compile(gameplay.chart, gameplay.offsetSeconds))
+            route = &transientRoute;
+    }
+    if (!route) return;
+    GameplayCamera camera(*route, displaySeconds, gameplay.chart,
+                          gameplay.skin, gameplay.practiceSpeed);
     if (gameplay.hasCameraAnchor) camera.world = gameplay.cameraAnchor;
     const auto canvas = camera.Canvas();
 
@@ -40,12 +49,10 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
 
     // PLAY and editor TEST: the camera gently trails player motion,
     // including turns. No predictive aiming, past trail, grid or debug UI.
-    Vector2 marker = locus::app::DrawRouteTrajectory(
-        gameplay.chart, displayBeat, canvas,
-        locus::app::RouteRenderMode::Gameplay, gameplay.skin);
-    locus::app::DrawRouteJunctions(
-        gameplay.chart, displayBeat, canvas,
-        locus::app::RouteRenderMode::Gameplay, gameplay.skin);
+    Vector2 marker = locus::app::DrawTimedRouteTrajectory(
+        *route, displaySeconds, canvas, gameplay.skin);
+    locus::app::DrawTimedRouteJunctions(
+        *route, displaySeconds, canvas, gameplay.skin);
     if (gameplay.outro.active) {
         Vector2 direction{};
         constexpr float d = 0.70710678f;

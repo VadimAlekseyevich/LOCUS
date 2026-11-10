@@ -8,7 +8,7 @@ pre-release; incompatible changes are allowed but must be called out.
 
 | Owner | Responsible for | Must not own |
 | --- | --- | --- |
-| `src/core` | Chart timestamps, musical-grid editing, eight-way headings, route mathematics, judgement, difficulty and chart JSON | GPU, native dialogs, filesystem library policies |
+| `src/core` | Chart timestamps, musical-grid editing, exact-time `TimedRoute` index, eight-way headings, judgement, difficulty and chart JSON | GPU, native dialogs, filesystem library policies |
 | `ChartEditor` | Mutable authoring document, selection, revisioned undo/redo | Saved-file selection, playback device, render UI |
 | `SongLibrary` / `song_set_storage` | Installed Song Sets, authoritative shared BPM/offset, file transactions, recovery, cache/index | Gameplay scoring or editor keyboard state |
 | `ChartPlayback` / `GameSession` | Audio-time transport and per-arrow judgement | Screen rendering, camera, skin settings |
@@ -42,43 +42,26 @@ before the shared audio device; GPU textures before the window.
 
 ## Architectural work, ordered by impact
 
-### 1. Resolve exact timestamps versus snapped route geometry (critical)
+### 1–2. Exact-time gameplay geometry and indexed route (implemented)
 
-`TurnEvent.timeMs` is authoritative for scoring
-(`core/judgement.cpp`), but `TickAtTimeMs` maps it to an integer tick
-(`core/chart_json.cpp` and `app/song_timing.h`). All route positions and
-turn glyphs then use that *rounded tick* (`core/route.cpp` and renderers).
-For a 120 BPM chart with one tick per beat, the discrepancy can approach
-250 ms. A frame-perfect judgement can therefore disagree with a visually
-displayed turn. More particles, colors or camera movement cannot fix this.
+`core::TimedRoute` compiles exact `TurnEvent.timeMs` timestamps into
+cumulative run positions and explicit turn events. No gameplay corner is
+projected onto the nearest editor tick. `PositionAt` is logarithmic in
+the number of events and `Window` visits only visible runs. `PlayPresentation`
+compiles once per chart activation and lends the immutable route to camera,
+path mesh and junction renderer. The outro freezes the same song timestamp.
+The chart difficulty READ geometry also uses these exact positions.
 
-Design one immutable **timed route** in `core`:
-- canonical note boundaries use exact song timestamps;
-- each route run has a start/end timestamp, absolute heading and cumulative
-  position, without rounding into authoring ticks;
-- editor snapping is a *placement tool*, not the source of playback geometry;
-- camera, ribbon, turn markers and results all query the same timed route;
-- the core time representation is independent of raylib and practice rate.
+The world-space scale still uses ticks-per-beat as a *unit conversion*:
+the camera applies its inverse, so screen motion is based on real elapsed
+song seconds and is independent of snap resolution or BPM. Authoring
+`core::RoutePositionAt` and editor grid navigation intentionally remain
+tick-based; they are not a second scoring clock. Saved chart version 3
+already stores exact timestamps, so this refactor does not change files.
 
-Decide whether the new time-to-distance mapping changes route geometry for
-off-grid notes; test equal-spaced patterns and BPM/offset edits before
-replacing the old sampler. Keep judgement windows unchanged. This may
-intentionally change chart appearance; no silent format migration.
-
-### 2. Compile a route index for long charts (high)
-
-`SampleRouteStep` walks previous turns from the beginning. The gameplay
-frame currently requests route positions separately for presentation,
-camera/marker and the path; `BuildScoredPathRibbon` and
-`DrawRouteJunctions` each initialize their own route window from history.
-Window sampling reduced the cost per segment, but it is **not** O(visible
-events) per frame. Measure worst-case 65k-note play and editor scrubbing.
-
-Use a **revision-owned index** of event times, cumulative positions and
-headings. Resolve current playhead by binary search; iterate only events
-inside the visible time range. Gameplay owns an immutable compiled index;
-editor invalidates/rebuilds it on its existing document revision, not by
-`Chart*` address. Keep a direct slow sampler for correctness comparisons.
+Known limitation: the editor currently rejects two distinct timestamps
+whose snap-grid projections collide. Relaxing that requires a separate
+authoring model migration; it must not regress fast keyboard/snap placement.
 
 ### 3. Build one read-only preview snapshot per frame (high)
 
@@ -135,12 +118,12 @@ tests only for contracts or failures they can actually detect.
 
 ## Implementation order
 
-1. Specify and validate exact-time route geometry against current charts.
-2. Build the immutable timed route/index with editor revision invalidation.
-3. Build one per-frame preview/clock snapshot and migrate render consumers.
-4. Add visibility policy and density-aware glyphs on top of that snapshot.
+1. **Done:** compile exact-time gameplay geometry and indexed runs.
+2. Consolidate one per-frame preview/clock snapshot around the timed index.
+3. Add visibility policy and density-aware glyphs on top of that snapshot.
+4. Consider editor time-first authoring while preserving BPM/Snap ergonomics.
 5. Profile dense cases and verify real-device input, audio and clipping.
 
-The first three items are structural prerequisites for a trustworthy
+The exact-time route is now the structural foundation for a trustworthy
 high-difficulty readability system. Do not introduce a new plugin framework,
 screen hierarchy or premature general-purpose rendering engine.

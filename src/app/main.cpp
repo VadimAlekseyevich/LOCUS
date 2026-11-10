@@ -604,7 +604,7 @@ int main(int argc, char** argv) {
         const auto transportView = playActions.Transport(renderNow);
         const GameplayView gameplay = presentation.Prepare(
             {activeChart, judge, gameSession.Flash(), chartTitle,
-             transportView.songSeconds, transportView.beat,
+             transportView.songSeconds, transportView.offsetSeconds,
              transportView.paused, sessionCompleted, customChart,
              transportView.practiceSpeed, transportView.status,
              settings.hitFlash, settings, activeSkin},

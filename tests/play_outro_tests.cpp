@@ -18,11 +18,11 @@ int main() {
     core::Chart early = chart;
     early.turns = {{4, core::Heading::Left}};
     app::PlayOutroTransition earlyOutro;
-    earlyOutro.Begin(early, 3.95, 4.0);
+    earlyOutro.Begin(early, 1.975, 0.0, 4.0);
     ck(earlyOutro.Frame(4.0).outgoing == core::Heading::Left,
        "early final hit departs in authored outgoing direction");
     app::PlayOutroTransition outro;
-    outro.Begin(chart, 3.25, 5.0);
+    outro.Begin(chart, 1.625, 0.0, 5.0);
     const auto a = outro.Frame(5.0);
     const auto b = outro.Frame(5.30);
     const auto c = outro.Frame(5.80);
@@ -39,7 +39,7 @@ int main() {
        outro.Frame(6.50).resultBlackOpacity == 0.0f,
        "results fade in non-linearly from black");
     outro.Reset();
-    outro.Begin(chart, 3.25, 10.0);
+    outro.Begin(chart, 1.625, 0.0, 10.0);
     outro.Pause(10.25);
     ck(!outro.Done(20.0) && outro.Frame(20.0).distancePx ==
        outro.Frame(10.25).distancePx,

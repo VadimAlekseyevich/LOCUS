@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/route_renderer.h"
+#include "core/timed_route.h"
 
 #include <vector>
 
@@ -33,6 +34,12 @@ PathRibbonQuad MakePathRibbonQuad(
 // All route/clock calculations stay outside the renderer and are unmodified.
 std::vector<PathRibbonRow> BuildScoredPathRibbon(
     const core::Chart& chart, double fractionalTick,
+    RouteCanvas canvas, const Skin& skin);
+
+// PLAY/TEST takes the same exact song timestamp as the judgement clock.
+// Editor's beat/tick sampler above remains a placement-grid preview.
+std::vector<PathRibbonRow> BuildScoredPathRibbon(
+    const core::TimedRoute& route, double songSeconds,
     RouteCanvas canvas, const Skin& skin);
 
 } // namespace locus::app

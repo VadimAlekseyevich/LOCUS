@@ -11,6 +11,7 @@ include(cmake/dependencies.cmake)
 add_library(locus_core STATIC
     src/core/route.cpp
     src/core/route_view.cpp
+    src/core/timed_route.cpp
     src/core/judgement.cpp
     src/core/song_clock.cpp
     src/core/demo_audio.cpp
@@ -121,6 +122,12 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_route_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_route_tests PRIVATE locus_core)
     add_test(NAME locus_demo_route COMMAND locus_route_tests)
+
+    # PLAY uses exact song-time route boundaries, independent of editor ticks.
+    add_executable(locus_timed_route_tests tests/timed_route_tests.cpp)
+    target_compile_features(locus_timed_route_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_timed_route_tests PRIVATE locus_core)
+    add_test(NAME locus_exact_time_route COMMAND locus_timed_route_tests)
 
     add_executable(locus_route_view_tests tests/route_view_tests.cpp)
     target_compile_features(locus_route_view_tests PRIVATE cxx_std_17)

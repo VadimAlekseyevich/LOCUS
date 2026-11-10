@@ -1,6 +1,7 @@
 #pragma once
 #include "app/adaptive_camera.h"
 #include "app/gameplay_ui.h"
+#include "core/timed_route.h"
 #include "app/play_outro_transition.h"
 #include <string>
 
@@ -22,7 +23,9 @@ private:
     void ResetCamera() noexcept;
     PlayOutroTransition outro_;
     AdaptiveCameraFollower camera_;
-    double lastBeat_ = 0.0;
+    double lastVisualSeconds_ = 0.0;
+    core::TimedRoute route_;
+    bool routeReady_ = false;
     bool wasPlaying_ = false;
     std::string adjustmentNotice_;
     double adjustmentNoticeUntil_ = -1.0;
