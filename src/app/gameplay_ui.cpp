@@ -2,6 +2,8 @@
 #include "core/utf8.h"
 
 #include "app/visual_style.h"
+#include "app/screen_action_buttons.h"
+#include "app/ui_button.h"
 
 #include <algorithm>
 #include <cmath>
@@ -200,12 +202,12 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay) {
     DrawTextLabel(font, "NO FAIL  -  ROUTE UNCHANGED",
                   Vector2{570.0f, 367.0f}, 15.0f,
                   Color{158, 193, 204, 255});
-    DrawTextLabel(font, "ENTER / R  -  PLAY AGAIN",
-                  Vector2{110.0f, 409.0f}, 24.0f,
-                  Color{236, 219, 160, 255});
-    DrawTextLabel(font, "H  -  SONG LIBRARY    E  -  EDIT",
-                  Vector2{110.0f, 447.0f}, 22.0f,
-                  Color{187, 205, 220, 255});
+    DrawUiButton(font, kResultsReplayButton, "PLAY AGAIN",
+                 MenuButtonStyle({236, 219, 160, 255}));
+    DrawUiButton(font, kResultsLibraryButton, "SONG LIBRARY",
+                 MenuButtonStyle({130, 226, 215, 255}));
+    DrawUiButton(font, kResultsEditorButton, "EDIT CHART",
+                 MenuButtonStyle({183, 166, 243, 255}));
 }
 
 

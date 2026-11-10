@@ -61,6 +61,10 @@ constexpr Rectangle kSong{49, 115, 162, 37};
 constexpr Rectangle kPlay{220, 115, 157, 37};
 constexpr Rectangle kStop{386, 115, 115, 37};
 constexpr Rectangle kTest{510, 115, 102, 37};
+constexpr Rectangle kEditorFileSave{52, 505, 97, 28};
+constexpr Rectangle kEditorFileSaveAs{158, 505, 98, 28};
+constexpr Rectangle kEditorFileOpen{265, 505, 97, 28};
+constexpr Rectangle kEditorFileNew{371, 505, 97, 28};
 
 constexpr Rectangle kHeading{744, 201, 168, 40};
 constexpr Rectangle kLeftTurn{744, 271, 168, 37};

@@ -7,6 +7,7 @@
 #include "app/music_picker.h"
 #include "app/chart_editor_ui.h"
 #include "app/app_input.h"
+#include "app/screen_action_buttons.h"
 #include "app/app_runtime_policy.h"
 #include "app/play_screen_actions.h"
 #include "app/play_adjustments.h"
@@ -333,6 +334,14 @@ int main(int argc, char** argv) {
             input.chooseMusicPressed = false;
             input.editorTest = false;
         }
+        const bool editorModalClick = state.screen == Screen::Editor &&
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        const bool editorModalConfirm = editorModalClick &&
+            locus::app::MenuActionHit(locus::app::kEditorModalConfirmButton,
+                 GetMousePosition(), GetScreenWidth(), GetScreenHeight());
+        const bool editorModalCancel = editorModalClick &&
+            locus::app::MenuActionHit(locus::app::kEditorModalCancelButton,
+                 GetMousePosition(), GetScreenWidth(), GetScreenHeight());
         const Screen previousScreen = state.screen;
         if (previousScreen == Screen::Editor && editorSet.HasPending() &&
             !wasQuitConfirmation) {
@@ -340,17 +349,19 @@ int main(int argc, char** argv) {
                 // The native quit dialog takes priority over editor modals.
                 editorSet.CancelPending();
             } else {
-                const bool approve = IsKeyPressed(KEY_Y);
+                const bool approve = IsKeyPressed(KEY_Y) || editorModalConfirm;
                 const bool cancel = IsKeyPressed(KEY_N) ||
-                                    IsKeyPressed(KEY_ESCAPE);
+                                    IsKeyPressed(KEY_ESCAPE) || editorModalCancel;
                 input = FrameInput{}; // No actions beneath a modal confirmation.
                 editorSet.Confirm(approve, cancel);
             }
         }
         if (previousScreen == Screen::Editor && !wasQuitConfirmation) {
             const auto outcome = editorDiscard.Handle(
-                input, editor.Dirty(), IsKeyPressed(KEY_Y),
-                IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE));
+                input, editor.Dirty(),
+                IsKeyPressed(KEY_Y) || editorModalConfirm,
+                IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE) ||
+                    editorModalCancel);
             if (outcome == locus::app::EditorDiscardOutcome::ChangesKept)
                 editorStatus = "CHANGES KEPT - CTRL+S TO SAVE";
         }

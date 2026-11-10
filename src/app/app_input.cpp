@@ -3,6 +3,7 @@
 #include "app/native_close.h"
 #include "app/app_quit_dialog_layout.h"
 #include "app/play_modal_layout.h"
+#include "app/screen_action_buttons.h"
 #include "app/chart_editor_layout.h"
 #include "raylib.h"
 
@@ -147,10 +148,34 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
         else if (PlayButtonHit(kPlayLeaveButton, mouse, width, height))
             input.leaveRequested = true;
     }
-    if (state.screen == Screen::Editor && input.editor.mouseClick &&
-        CheckCollisionPointRec(input.editor.mouse,
-                               detail::kEditorBack)) {
-        input.backPressed = true;
+    if (state.screen == Screen::Editor && input.editor.mouseClick) {
+        const Vector2 mouse = input.editor.mouse;
+        const auto hit = [&](Rectangle r) {
+            return CheckCollisionPointRec(mouse, r);
+        };
+        if (hit(detail::kEditorBack)) input.backPressed = true;
+        else if (hit(detail::kEditorFileSave)) input.editorSave = true;
+        else if (hit(detail::kEditorFileSaveAs)) input.editorSaveAs = true;
+        else if (hit(detail::kEditorFileOpen)) input.editorOpen = true;
+        else if (hit(detail::kEditorFileNew)) input.editorNew = true;
+    }
+    if ((state.screen == Screen::Listen || state.screen == Screen::Results) &&
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        const Vector2 pointer = GetMousePosition();
+        const int width = GetScreenWidth(), height = GetScreenHeight();
+        const auto hit = [&](Rectangle r) {
+            return MenuActionHit(r, pointer, width, height);
+        };
+        if (state.screen == Screen::Listen) {
+            if (hit(kListenPauseButton)) input.pausePressed = true;
+            else if (hit(kListenReplayButton)) input.restartPressed = true;
+            else if (hit(kListenChooseButton)) input.chooseMusicPressed = true;
+            else if (hit(kListenHomeButton)) input.homePressed = true;
+        } else {
+            if (hit(kResultsReplayButton)) input.restartPressed = true;
+            else if (hit(kResultsLibraryButton)) input.homePressed = true;
+            else if (hit(kResultsEditorButton)) input.openEditorPressed = true;
+        }
     }
     return input;
 }

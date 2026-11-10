@@ -3,6 +3,7 @@
 #include "app/app_quit_dialog_layout.h"
 #include "app/play_modal_layout.h"
 #include "app/ui_button.h"
+#include "app/screen_action_buttons.h"
 #include "app/viewport.h"
 
 #include <algorithm>
@@ -92,14 +93,10 @@ static void DrawQuitConfirmation(Font font, const AppState& state,
         DrawTextLabel(font, "UNSAVED SKIN CHANGES WILL BE LOST",
                       {273.0f, 272.0f}, 17.0f,
                       Color{251, 188, 164, 255});
-    DrawRectangleRounded(kQuitConfirmButton, 0.16f, 5,
-                         Color{91, 50, 54, 255});
-    DrawRectangleRounded(kQuitCancelButton, 0.16f, 5,
-                         Color{38, 91, 82, 255});
-    DrawTextLabel(font, "Y  -  QUIT", {305.0f, 343.0f}, 23.0f,
-                  Color{251, 226, 217, 255});
-    DrawTextLabel(font, "N  -  STAY", {545.0f, 343.0f}, 23.0f,
-                  Color{216, 251, 237, 255});
+    DrawUiButton(font, kQuitConfirmButton, "Y / QUIT",
+                 MenuButtonStyle({241, 158, 156, 255}));
+    DrawUiButton(font, kQuitCancelButton, "N / STAY",
+                 MenuButtonStyle({130, 226, 215, 255}));
     DrawTextLabel(font, "ESC ALSO CANCELS", {394.0f, 394.0f}, 13.0f,
                   Color{170, 189, 205, 255});
 }
@@ -138,17 +135,20 @@ static void DrawLocalMusicScreen(Font font, const locus::app::LocalMusic& song,
                          : song.Playing() ? "PLAYING" : "READY";
     DrawTextLabel(font, status, Vector2{89.0f, 332.0f}, 23.0f,
                   Color{147, 226, 222, 255});
-    DrawTextLabel(font, "SPACE  PAUSE / RESUME     R / ENTER  REPLAY",
-                  Vector2{89.0f, 378.0f}, 19.0f,
-                  Color{237, 219, 163, 255});
-    DrawTextLabel(font, "O  CHOOSE ANOTHER SONG      H  HOME",
-                  Vector2{89.0f, 411.0f}, 19.0f,
-                  Color{210, 222, 233, 255});
+    DrawUiButton(font, kListenPauseButton,
+                 song.Paused() ? "RESUME" : "PAUSE",
+                 MenuButtonStyle({130, 226, 215, 255}));
+    DrawUiButton(font, kListenReplayButton, "REPLAY",
+                 MenuButtonStyle({183, 166, 243, 255}));
+    DrawUiButton(font, kListenChooseButton, "CHOOSE MUSIC",
+                 MenuButtonStyle({237, 219, 163, 255}));
+    DrawUiButton(font, kListenHomeButton, "HOME",
+                 MenuButtonStyle({177, 194, 217, 255}));
     DrawTextLabel(font,
                   musicError.empty()
                       ? "NO TURN CHART YET - SONG PREVIEW ONLY"
                       : musicError.c_str(),
-                  Vector2{89.0f, 446.0f}, 17.0f,
+                  Vector2{89.0f, 485.0f}, 17.0f,
                   musicError.empty() ? Color{173, 183, 207, 255}
                                      : Color{241, 150, 150, 255});
 }
@@ -283,20 +283,23 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                 DrawTextLabel(font, "WARNING: UNSAVED EDITS WILL BE LOST",
                               {195.0f, 281.0f}, 18.0f,
                               Color{239, 161, 146, 255});
-            DrawTextLabel(font, "Y  CONFIRM        N / ESC  CANCEL",
-                          {222.0f, 341.0f}, 21.0f,
-                          Color{221, 236, 234, 255});
+            DrawUiButton(font, kEditorModalConfirmButton, "Y / CONFIRM",
+                         MenuButtonStyle({241, 158, 156, 255}));
+            DrawUiButton(font, kEditorModalCancelButton, "N / CANCEL",
+                         MenuButtonStyle({130, 226, 215, 255}));
         }
         if (editorPending != EditorPending::None) {
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{10, 13, 21, 218});
             DrawTextLabel(font, "UNSAVED CHART CHANGES", {193.0f, 187.0f},
                           32.0f, Color{245, 216, 165, 255});
-            DrawTextLabel(font, "Y  DISCARD CHANGES", {245.0f, 268.0f},
-                          23.0f, Color{235, 156, 156, 255});
-            DrawTextLabel(font, "N  CANCEL AND KEEP EDITING", {206.0f, 315.0f},
-                          21.0f, Color{201, 226, 226, 255});
-            DrawTextLabel(font, "CTRL+S AFTER CANCEL TO SAVE", {218.0f, 364.0f},
-                          18.0f, Color{192, 203, 223, 255});
+            DrawTextLabel(font, "SAVE YOUR WORK BEFORE LEAVING",
+                          {275, 269}, 19, Color{235, 192, 164, 255});
+            DrawUiButton(font, kEditorModalConfirmButton, "Y / DISCARD",
+                         MenuButtonStyle({235, 156, 156, 255}));
+            DrawUiButton(font, kEditorModalCancelButton, "N / KEEP EDITING",
+                         MenuButtonStyle({130, 226, 215, 255}));
+            DrawTextLabel(font, "CANCEL TO RETURN AND SAVE THE CHART",
+                          {258, 399}, 15, Color{192, 203, 223, 255});
         }
     } else {
         const char* screen = ScreenName(state.screen);
