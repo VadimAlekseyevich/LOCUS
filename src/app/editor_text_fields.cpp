@@ -120,9 +120,6 @@ EditorUiAction HandleTextInput(core::ChartEditor& draft, EditorUiState& ui,
     EditorUiAction action;
     // Keep all editor shortcuts away from active text fields.
     if (ui.EditingText()) {
-        ui.pendingDirection = 0;
-        ui.pendingDirectionSeconds = 0.0f;
-        ui.directionKeysHandled = false;
         ui.heldBarDirection = 0;
         ui.heldBarSeconds = 0.0f;
         ui.barRepeatSeconds = 0.0f;

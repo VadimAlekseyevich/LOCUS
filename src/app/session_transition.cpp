@@ -17,9 +17,6 @@ void ApplySessionTransition(const SessionTransitionContext& context,
     if (next == Screen::Editor) {
         // Menu key presses may also be rebound gameplay directions. Re-arm
         // placement only after those held keys have been released.
-        context.editorUi.pendingDirection = 0;
-        context.editorUi.pendingDirectionSeconds = 0.0f;
-        context.editorUi.directionKeysHandled = true;
     }
     // The Results screen owns the unmapped song outro. Only explicit
     // navigation AWAY from Play stops the underlying audio immediately.

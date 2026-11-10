@@ -105,16 +105,10 @@ int main() {
                 title == "CUSTOM TEST" && judge.Counts().Resolved() == 0,
                 "Results replay resets score but preserves tested difficulty");
 
-    editorUi.pendingDirection = 5u;
-    editorUi.pendingDirectionSeconds = 0.06f;
-    editorUi.directionKeysHandled = false;
     app::ApplySessionTransition(context, Screen::Play, Screen::Editor,
                                 false, 13.0);
-    ok &= Check(editorUi.pendingDirection == 0 &&
-                editorUi.pendingDirectionSeconds == 0.0f &&
-                editorUi.directionKeysHandled && customChart &&
-                title == "CUSTOM TEST",
-                "returning to Editor clears pending input without losing chart");
+    ok &= Check(customChart && title == "CUSTOM TEST",
+                "returning to Editor retains chart without keyboard-note state");
 
     // Unselected Play from Home resets to the built-in demo and clears an old
     // TEST origin, without replacing the underlying chart reference.
