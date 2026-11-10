@@ -321,13 +321,22 @@ int main(int argc, char** argv) {
         
             persistSettings();
         }
-        // Escape closes the comparison picker without leaving Editor.
+        // Comparison popup owns ALL actions until it closes. Global
+        // file/Back shortcuts are decoded before EditorSetController sees
+        // the click, so suppress them here too. Otherwise clicking outside
+        // the popup could accidentally save, replace or leave the draft.
         if (state.screen == Screen::Editor &&
             editorUi.tab == locus::app::EditorTab::Route &&
-            editorUi.comparisonPickerOpen &&
-            (input.editor.escape || input.backPressed)) {
+            editorUi.comparisonPickerOpen) {
             input.backPressed = false;
             input.homePressed = false;
+            input.editorNew = false;
+            input.editorOpen = false;
+            input.editorSave = false;
+            input.editorSaveAs = false;
+            input.chooseMusicPressed = false;
+            input.editorTest = false;
+            input.requestedScreen.reset();
         }
         // Typing into a field cannot simultaneously leave the editor or
         // trigger a file dialog, shortcut, heading rotation, or Test Play.
