@@ -372,6 +372,11 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         DrawComparisonPreviews(font, *comparisons, previewSeconds,
                                EditorPreviewPixelsPerSecond(chart),
                                previewSkin);
+        // Live difficulty remains available without a verbose route header.
+        Label(font, TextFormat("DIFF %.1f", draft.Difficulty().overall),
+              281, 409, 12, Color{239, 202, 137, 255});
+        Label(font, TextFormat("%d x %d", chart.gridWidth, chart.gridHeight),
+              374, 409, 12, Color{172, 199, 218, 255});
         Label(font, IsGameDirectionKey(settings, KEY_Q) ||
                     IsGameDirectionKey(settings, KEY_E)
                ? "START HEADING (CLICK)" : "START HEADING Q/E 45",
