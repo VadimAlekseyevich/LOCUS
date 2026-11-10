@@ -1,51 +1,95 @@
 #pragma once
 
-#include "app/movement_speed.h"
 #include "core/route.h"
-#include "core/route_view.h"
 
 #include <algorithm>
 #include <cmath>
 
 namespace locus::app {
 
-// Experimental: one flag to restore the centered presentation, with no
-// chart format or judgement changes. The whole feature is one Git commit.
+// Experimental presentation-only follower. Switch to false to return to
+// the original fixed-center camera without changing saved files or scoring.
 inline constexpr bool kExperimentalAdaptiveCamera = true;
-
-// The camera looks a little AHEAD along the authored path, placing the
-// marker slightly BEHIND center to preserve forward reading room. This
-// remains deterministic at every song timestamp (no FPS-dependent easing).
-inline constexpr double kAdaptiveCameraLeadSeconds = 0.18;
+inline constexpr double kAdaptiveCameraCatchupSeconds = 0.18;
 inline constexpr double kAdaptiveCameraMaxOffsetPx = 72.0;
 
-// Return the world position projected onto the play square center.
-// Speed changes the camera's absolute movement speed linearly on straight
-// segments, and (until the safety limit) linearly increases the offset.
-// Practice speed changes the tick delta and px/tick inversely so identical
-// on-screen speeds have identical physical camera offsets.
-inline core::GridPoint AdaptiveCameraAnchor(const core::Chart& chart,
-                                            double beat, float pixelsPerTick,
-                                            double practiceRate = 1.0) {
-    const core::GridPoint marker = core::RoutePositionAt(chart, beat);
-    if (!kExperimentalAdaptiveCamera ||
-        !std::isfinite(beat) || !std::isfinite(pixelsPerTick) ||
-        pixelsPerTick <= 0.0f || !std::isfinite(practiceRate) ||
-        practiceRate <= 0.0 || !std::isfinite(chart.bpm) ||
-        chart.bpm <= 0.0 || chart.ticksPerBeat <= 0)
-        return marker;
+// Follows the CURRENT player position with a small, speed-proportional lag.
+// It never queries route headings, past/future notes, or upcoming turns.
+//
+// The closed-form exponential update treats each frame's measured player
+// movement as constant velocity. Thus steady motion gives almost identical
+// results at 60/120/240 FPS, including arbitrary viewport/practice scales.
+// Store the displacement in screen pixels, so changing px/tick doesn't make
+// an existing lag jump. The camera and the route use the same world transform.
+class AdaptiveCameraFollower {
+public:
+    void Reset() noexcept {
+        initialized_ = false;
+        lagX_ = lagY_ = 0.0;
+    }
 
-    const double leadTicks = kAdaptiveCameraLeadSeconds * practiceRate *
-        (chart.bpm * chart.ticksPerBeat / 60.0);
-    const core::GridPoint ahead = core::RoutePositionAt(chart, beat + leadTicks);
-    const double dx = (ahead.x - marker.x) * pixelsPerTick;
-    const double dy = (ahead.y - marker.y) * pixelsPerTick;
-    const double length = std::hypot(dx, dy);
-    if (!std::isfinite(length) || length <= 0.0) return marker;
-    const double fraction = length > kAdaptiveCameraMaxOffsetPx
-        ? kAdaptiveCameraMaxOffsetPx / length : 1.0;
-    return {marker.x + (ahead.x - marker.x) * fraction,
-            marker.y + (ahead.y - marker.y) * fraction};
-}
+    core::GridPoint Follow(core::GridPoint player, float pixelsPerUnit,
+                           double now, bool frozen = false) noexcept {
+        if (!kExperimentalAdaptiveCamera ||
+            !std::isfinite(player.x) || !std::isfinite(player.y) ||
+            !std::isfinite(pixelsPerUnit) || pixelsPerUnit <= 0.0f ||
+            !std::isfinite(now)) {
+            Reset();
+            return player;
+        }
+        if (!initialized_ || now < lastTime_) {
+            initialized_ = true;
+            lastTime_ = now;
+            lastPlayer_ = player;
+            lagX_ = lagY_ = 0.0;
+            return player;
+        }
+
+        // A paused transport or frozen outro preserves the exact picture.
+        // Reset the frame clock without consuming any player motion.
+        if (frozen) {
+            lastTime_ = now;
+            return Anchor(player, pixelsPerUnit);
+        }
+
+        const double dt = now - lastTime_;
+        if (dt > 0.0) {
+            const double decay = std::exp(-dt / kAdaptiveCameraCatchupSeconds);
+            const double velocityResponse = kAdaptiveCameraCatchupSeconds *
+                (-std::expm1(-dt / kAdaptiveCameraCatchupSeconds)) / dt;
+            const double dx = (player.x - lastPlayer_.x) * pixelsPerUnit;
+            const double dy = (player.y - lastPlayer_.y) * pixelsPerUnit;
+            lagX_ = lagX_ * decay + dx * velocityResponse;
+            lagY_ = lagY_ * decay + dy * velocityResponse;
+
+            // Keep the avatar comfortably inside the 540x540 play square
+            // even at the maximum user-configurable movement speed.
+            const double distance = std::hypot(lagX_, lagY_);
+            if (!std::isfinite(distance)) {
+                lagX_ = lagY_ = 0.0;
+            } else if (distance > kAdaptiveCameraMaxOffsetPx) {
+                const double scale = kAdaptiveCameraMaxOffsetPx / distance;
+                lagX_ *= scale;
+                lagY_ *= scale;
+            }
+        }
+        lastTime_ = now;
+        lastPlayer_ = player;
+        return Anchor(player, pixelsPerUnit);
+    }
+
+private:
+    core::GridPoint Anchor(core::GridPoint player,
+                           float pixelsPerUnit) const noexcept {
+        return {player.x - lagX_ / pixelsPerUnit,
+                player.y - lagY_ / pixelsPerUnit};
+    }
+
+    bool initialized_ = false;
+    double lastTime_ = 0.0;
+    core::GridPoint lastPlayer_{};
+    double lagX_ = 0.0;
+    double lagY_ = 0.0;
+};
 
 } // namespace locus::app

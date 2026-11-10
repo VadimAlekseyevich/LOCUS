@@ -11,6 +11,7 @@
 #include "app/play_screen_actions.h"
 #include "app/play_adjustments.h"
 #include "app/play_outro_transition.h"
+#include "app/adaptive_camera.h"
 #include "app/screen_fade_transition.h"
 #include "app/app_smoke_checks.h"
 #include "app/app_frame_renderer.h"
@@ -243,6 +244,9 @@ int main(int argc, char** argv) {
         state, musicError
     };
     locus::app::PlayOutroTransition playOutro;
+    locus::app::AdaptiveCameraFollower cameraFollower;
+    double cameraLastBeat = 0.0;
+    bool cameraWasPlaying = false;
     locus::app::PlayScreenActions playActions{
         {state, gameSession, judge, transport, chartPlayback,
          customChart, sessionCompleted, activeChart, playOutro}
@@ -579,6 +583,33 @@ int main(int argc, char** argv) {
         if (!state.quitConfirmation)
             visibleState.screen = fadeFrame.visibleScreen;
         const auto transportView = playActions.Transport(renderNow);
+        const auto outroFrame = playOutro.Frame(renderNow);
+        const double visualBeat = outroFrame.active
+            ? outroFrame.frozenBeat : transportView.beat;
+        // Feed the follower ONLY the live player's current world position.
+        // A song restart or navigation opens a fresh camera, while pause and
+        // outro preserve the last offset. Rendering remains read-only.
+        core::GridPoint cameraAnchor{};
+        const bool showGameplay = state.screen == Screen::Play;
+        if (showGameplay) {
+            if (!cameraWasPlaying ||
+                visualBeat < cameraLastBeat - 0.01)
+                cameraFollower.Reset();
+            cameraWasPlaying = true;
+            cameraLastBeat = visualBeat;
+            const float step = locus::app::StepForFixedSpeed(
+                activeSkin.baseSpeedPxPerSecond, activeChart.bpm,
+                activeChart.ticksPerBeat, transportView.practiceSpeed);
+            const core::GridPoint playerPosition =
+                core::RoutePositionAt(activeChart, visualBeat);
+            cameraAnchor = cameraFollower.Follow(
+                playerPosition, step, renderNow,
+                transportView.paused || outroFrame.active ||
+                state.quitConfirmation);
+        } else {
+            cameraFollower.Reset();
+            cameraWasPlaying = false;
+        }
         const GameplayView gameplay{activeChart, judge, gameSession.Flash(),
                                     chartTitle, transportView.songSeconds,
                                     transportView.beat, transportView.paused,
@@ -588,7 +619,7 @@ int main(int argc, char** argv) {
                                     settings.hitFlash, settings, activeSkin,
                                     adjustmentNoticeUntil,
                                     adjustmentNotice.c_str(),
-                                    playOutro.Frame(renderNow)};
+                                    outroFrame, showGameplay, cameraAnchor};
         const auto editorSetView = visibleState.screen == Screen::Editor
             ? editorSet.View() : locus::app::EditorSetView{};
         // Artwork lives at Song Set scope, independent of difficulty/BPM.

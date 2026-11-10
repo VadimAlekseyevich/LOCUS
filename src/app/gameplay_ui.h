@@ -1,7 +1,6 @@
 #pragma once
 
 #include "app/game_settings.h"
-#include "app/adaptive_camera.h"
 #include "app/hit_flash.h"
 #include "app/route_renderer.h"
 #include "app/play_outro_transition.h"
@@ -36,6 +35,10 @@ struct GameplayView {
     double adjustmentNoticeUntil = -1.0;
     const char* adjustmentNotice = "";
     PlayOutroFrame outro{};
+    // Computed from live player movement outside the renderer (never from
+    // future chart geometry). False keeps original center-camera fallback.
+    bool hasCameraAnchor = false;
+    core::GridPoint cameraAnchor{};
 };
 
 // The visible playfield is exactly one screen-height square, centred in
@@ -63,8 +66,7 @@ inline float GameplayRightSidebarWidth(int width, int height) noexcept {
 struct GameplayCamera {
     static constexpr float kCenterX = kVirtualWidth * 0.5f;
     static constexpr float kCenterY = kVirtualHeight * 0.5f;
-    // The anchor travels along the authored route; the player may be
-    // slightly behind screen center, but scoring uses unmodified song time.
+    // Camera translation is presentation-only; judgement uses song time.
     locus::core::GridPoint world{};
     float step = 1.0f;
 
@@ -73,7 +75,7 @@ struct GameplayCamera {
                    double practiceRate = 1.0)
         : step(StepForFixedSpeed(skin.baseSpeedPxPerSecond, chart.bpm,
                                  chart.ticksPerBeat, practiceRate)) {
-        world = AdaptiveCameraAnchor(chart, beat, step, practiceRate);
+        world = core::RoutePositionAt(chart, beat);
     }
 
     locus::app::RouteCanvas Canvas() const noexcept {
