@@ -3,6 +3,7 @@
 #include "core/chart_json.h"
 #include "core/chart_difficulty.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <limits>

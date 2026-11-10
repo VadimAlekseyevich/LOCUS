@@ -2,6 +2,7 @@
 #include "core/utf8.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <iterator>
 #include <limits>
@@ -193,6 +194,10 @@ void ChartEditor::MarkDirty() {
             [](const TurnEvent& event, int beat) { return event.beat < beat; });
         const auto end = std::upper_bound(begin, turns.end(), edit.lastTouchedBeat,
             [](int beat, const TurnEvent& event) { return beat < event.beat; });
+        // A reversible range must contain every changed note. If this
+        // invariant breaks, the beginning index may shift and Undo would
+        // otherwise replace a neighboring note.
+        assert(static_cast<std::size_t>(begin - turns.begin()) == edit.turnIndex);
         edit.afterTurns.assign(begin, end);
     }
 }
@@ -622,11 +627,16 @@ bool ChartEditor::ShiftTurns(int firstBeat, int lastBeat, int deltaBeats) {
         lastBeat >= chart_.route.lengthBeats || deltaBeats == 0) return false;
     std::vector<TurnEvent> updated = chart_.route.turns;
     bool moved = false;
+    int touchedMin = std::numeric_limits<int>::max();
+    int touchedMax = std::numeric_limits<int>::min();
     for (auto& event : updated) {
         if (event.beat < firstBeat || event.beat > lastBeat) continue;
         const long long destination = static_cast<long long>(event.beat) + deltaBeats;
         if (destination < chart_.route.firstBeat || destination >= chart_.route.lengthBeats) return false;
-        event.beat = static_cast<int>(destination);
+        const int nextBeat = static_cast<int>(destination);
+        touchedMin = std::min({touchedMin, event.beat, nextBeat});
+        touchedMax = std::max({touchedMax, event.beat, nextBeat});
+        event.beat = nextBeat;
         event.timeMs = static_cast<std::int64_t>(
             std::llround(AudioSecondsAtBeat(event.beat) * 1000.0));
         moved = true;
@@ -636,8 +646,9 @@ bool ChartEditor::ShiftTurns(int firstBeat, int lastBeat, int deltaBeats) {
               [](const TurnEvent& a, const TurnEvent& b) { return a.beat < b.beat; });
     for (std::size_t i = 1; i < updated.size(); ++i)
         if (updated[i - 1].beat == updated[i].beat) return false; // No collision.
-    SaveUndo(std::min(firstBeat, firstBeat + deltaBeats),
-             std::max(lastBeat, lastBeat + deltaBeats));
+    // Use the actual moved note bounds. Selection bounds may be huge
+    // relative to the edited notes and int addition could overflow.
+    SaveUndo(touchedMin, touchedMax);
     chart_.route.turns = std::move(updated);
     MarkDirty();
     return true;

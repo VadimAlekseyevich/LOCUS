@@ -468,7 +468,57 @@ int main() {
     ok &= Check(!exactJudge.NextEvent(),
                 "TEST beginning after the 583ms note correctly skips it");
 
+    // Many dense notes must NOT be copied into history when placing a
+    // single note. The old 64-snapshot implementation retained every
+    // note 64 times and made high-density editing progressively heavier.
+    LoadedChart large;
+    large.title = "dense";
+    large.audioPath = "song.mp3";
+    large.route.lengthBeats = 30000;
+    for (int i = 0; i < 10000; ++i)
+        large.route.turns.push_back(
+            {i * 2, Heading::Right, static_cast<std::int64_t>(i) * 1000});
+    ChartEditor dense;
+    dense.Load(large);
+    for (int i = 0; i < 40; ++i) {
+        ok &= Check(dense.SelectBeat(i * 2 + 1), "dense selection advances");
+        dense.PutTurn(Heading::Up);
+    }
+    ok &= Check(dense.Data().route.turns.size() == 10040 &&
+                dense.HistoryStoredTurns() == 40,
+                "40 single-note edits retain 40 notes, not 400000 note copies");
+    for (int i = 0; i < 40; ++i)
+        ok &= Check(dense.Undo(), "dense history can undo every changed note");
+    ok &= Check(dense.Data().route.turns.size() == 10000 &&
+                dense.HistoryStoredTurns() == 40 &&
+                dense.Data().route.turns.back().beat == 19998,
+                "dense undo restores all untouched notes without duplicating them");
+    for (int i = 0; i < 40; ++i)
+        ok &= Check(dense.Redo(), "dense history can redo every changed note");
+    ok &= Check(dense.Data().route.turns.size() == 10040 &&
+                dense.HistoryStoredTurns() == 40,
+                "redo reuses existing patches rather than copying charts");
+
+    const std::size_t beforeMetadata = dense.HistoryStoredTurns();
+    ok &= Check(dense.SetTitle("dense version two") &&
+                dense.HistoryStoredTurns() == beforeMetadata &&
+                dense.Undo() && dense.Data().title == "dense" &&
+                dense.Redo() && dense.Data().title == "dense version two",
+                "changing title adds no turn storage to Undo/Redo");
+
+    // A global timing edit legitimately changes the entire note lattice:
+    // unlike an isolated placement its history owns the full edited range.
+    ok &= Check(dense.SetSnapDivision(2) &&
+                dense.Data().route.ticksPerBeat == 2 &&
+                dense.HistoryStoredTurns() >= beforeMetadata + 20000 &&
+                dense.Undo() && dense.Data().route.ticksPerBeat == 1 &&
+                dense.Data().route.turns.size() == 10040 &&
+                dense.Data().route.turns.back().beat == 19998 &&
+                dense.Redo() && dense.Data().route.ticksPerBeat == 2 &&
+                dense.Data().route.turns.back().beat == 39996,
+                "changing note resolution is a single reversible whole-range edit");
+
     if (!ok) return 1;
-    std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 wrap=1\n";
+    std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 patches=1\n";
     return 0;
 }

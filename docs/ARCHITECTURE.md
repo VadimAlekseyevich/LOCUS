@@ -80,6 +80,9 @@ and reduce the number of unrelated reasons a file can change.
 
 ## Completed stabilization
 
+- **2026-11-10:** Chart editor Undo/Redo uses reversible note-range splices and lightweight metadata records instead of copying `LoadedChart` for every edit. Placing a note in a 10,000-note chart now retains only that changed note in the 64-entry history. Moving, pasting, shifting, mirroring and rotating remain one-step transactions; BPM, offset and tick-resolution remaps intentionally capture all affected notes. Existing in-memory editor API and chart file format are unchanged. Direct tests cover dense-note retention and full-range timing undo.
+
+
 - **2026-11-09:** PLAY uses a read-only expanding song/difficulty tree. Song Set metadata owns BPM, offset, art and menu preview; AUDIO provides exact manual timing input. TEST exits back to the same unsaved editor draft. Windows F11 uses a non-topmost borderless window for Alt+Tab. PNG/JPEG images are decoded before import, and skin profiles support recoverable deletion.
 
 - **2026-11-08:** Enabled VSync by default and removed the fixed 60-FPS presentation cap. Phone frames showed a horizontal screen-tearing boundary crossing moving path segments, especially vertical segments during horizontal camera movement. Rendering now requests display-synchronized swaps and uses 240 FPS only as a fallback ceiling. Timing and chart geometry remain clock-based; verify live on the target monitor because a GPU driver may override the swap interval.
