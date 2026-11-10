@@ -27,31 +27,17 @@ int main() {
                 options.Key(GameAction::Left) == KEY_D &&
                 options.vsync && options.fpsLimit == 240 && !options.showFps,
                 "defaults share DFJK direction bindings between game and chart editor");
-    // Gameplay input ordering (Up,Right,Down,Left) must resolve to the
-    // same absolute directions used to author notes in ROUTE.
-    ok &= Check(EditorDirectionMask({true, false, false, false}) == 4u &&
-                EditorDirectionMask({false, true, false, false}) == 8u &&
-                EditorDirectionMask({false, false, true, false}) == 2u &&
-                EditorDirectionMask({false, false, false, true}) == 1u &&
-                EditorDirectionMask({true, true, false, false}) == 12u &&
-                EditorDirectionMask({false, false, true, true}) == 3u,
-                "game directions and diagonal chords map consistently to editor pad");
-    ok &= Check(EditorDirectionShortcut(options, 5u) == "D+J" &&
-                EditorDirectionShortcut(options, 12u) == "J+K" &&
-                IsGameDirectionKey(options, KEY_D) &&
+    ok &= Check(IsGameDirectionKey(options, KEY_D) &&
                 !IsGameDirectionKey(options, KEY_LEFT),
-                "default editor labels use DFJK, arrows are free for navigation");
+                "direction bindings belong to scored gameplay only");
     ok &= Check(options.Rebind(GameAction::Left, KEY_A, error) &&
                 options.Rebind(GameAction::Up, KEY_W, error) &&
                 options.Rebind(GameAction::Right, KEY_D, error) &&
                 options.Key(GameAction::Up) == KEY_W,
                 "gameplay directions can use WASD or other keyboard keys");
-    ok &= Check(EditorDirectionShortcut(options, 12u) == "W+D" &&
-                EditorDirectionShortcut(options, 5u) == "A+W" &&
-                IsGameDirectionKey(options, KEY_W) &&
-                IsGameDirectionKey(options, KEY_D) &&
-                !IsGameDirectionKey(options, KEY_UP),
-                "rebound gameplay keys immediately update editor compass shortcuts");
+    ok &= Check(IsGameDirectionKey(options, KEY_W) &&
+                IsGameDirectionKey(options, KEY_D),
+                "rebound gameplay keys apply immediately");
     ok &= Check(!options.Rebind(GameAction::Left, KEY_W, error) &&
                 options.Key(GameAction::Left) == KEY_A,
                 "duplicate binding is rejected without changing old key");
@@ -77,9 +63,8 @@ int main() {
                 parsed.chordWindowMs == 120 &&
                 !parsed.vsync && parsed.fpsLimit == 144 && parsed.showFps,
                 "all audio, visuals, chords and custom keys survive JSON roundtrip");
-    ok &= Check(EditorDirectionShortcut(parsed, 12u) == "W+D" &&
-                EditorDirectionMask({true, true, false, false}) == 12u,
-                "persisted bindings drive the same editor chords after restarting");
+    ok &= Check(parsed.Key(GameAction::Up) == KEY_W,
+                "persisted gameplay direction keys survive restarting");
     GameSettings display = parsed;
     display.StepFpsLimit(1);
     ok &= Check(display.fpsLimit == 165 &&

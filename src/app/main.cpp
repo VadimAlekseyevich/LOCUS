@@ -505,8 +505,6 @@ int main(int argc, char** argv) {
                         editorFiles.NewDraft();
                     }
                 }
-                // A key used to navigate into Editor must not place a note.
-                editorUi.directionKeysHandled = true;
             }
         } else if (state.screen == Screen::Play) {
             const float nextSpeed = locus::app::AdjustBaseSpeed(

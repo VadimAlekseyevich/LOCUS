@@ -60,8 +60,6 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     // SET is a library-management tab: note keys, undo and the timeline
     // must not modify the current chart while managing its difficulties.
     if (ui.tab == EditorTab::Set) {
-        ui.pendingDirection = 0;
-        ui.directionKeysHandled = false;
         ui.draggingTimeline = false;
         if (input.mouseClick) {
             const EditorTab next = ClickedTab(input.mouse, ui.tab);
@@ -103,8 +101,6 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         const EditorTab nextTab = ClickedTab(mouse, ui.tab);
         if (nextTab != ui.tab) {
             ui.tab = nextTab;
-            ui.pendingDirection = 0;
-            ui.directionKeysHandled = false;
             return action;
         }
         const EditorField selected = editor_text::ClickedField(mouse, ui.tab);

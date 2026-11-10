@@ -21,12 +21,6 @@ struct EditorControls {
     float elapsedSeconds = 0.0f;
     bool movePrevious = false, moveNext = false;
     bool removeTurn = false;
-    // Reuse gameplay's configurable direction keys in ROUTE.
-    // Adjacent simultaneous keys form diagonals, using the game chord window.
-    unsigned directionKeysHeld = 0; // Left=1 Down=2 Up=4 Right=8
-    float directionChordWindowSeconds = 0.09f;
-    bool directionKeysSuppressed = false; // modifiers cancel an unfinished chord
-
     bool headingLeft = false, headingRight = false;
     bool mouseClick = false, mouseHeld = false, mouseReleased = false;
     bool shiftHeld = false;
@@ -75,9 +69,6 @@ struct EditorUiState {
     bool feedbackError = false;
     int rangeFirst = -1, rangeLast = -1; // Inclusive selected beats.
     bool draggingTimeline = false;
-    unsigned pendingDirection = 0;
-    float pendingDirectionSeconds = 0.0f;
-    bool directionKeysHandled = false; // one note per chord/hold
     int dragAnchorBeat = 0;
     double dragViewBeat = 0.0;
     int heldBarDirection = 0;
@@ -111,8 +102,7 @@ struct EditorUiAction {
 };
 
 Vector2 EditorVirtualMouse(Vector2 physicalMouse, int screenWidth, int screenHeight);
-EditorControls PollEditorControls(const GameSettings& settings,
-                                  const std::array<bool, 4>& gameplayHeld);
+EditorControls PollEditorControls(const GameSettings& settings);
 EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                                   const EditorControls& controls);
 void RenderChartEditor(Font font, const core::ChartEditor& draft,

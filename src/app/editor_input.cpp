@@ -14,8 +14,7 @@ Vector2 EditorVirtualMouse(Vector2 physical, int screenWidth, int screenHeight) 
                                   : Vector2{-1.0f, -1.0f};
 }
 
-EditorControls PollEditorControls(const GameSettings& settings,
-                                  const std::array<bool, 4>& gameplayHeld) {
+EditorControls PollEditorControls(const GameSettings& settings) {
     EditorControls input;
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
@@ -27,9 +26,8 @@ EditorControls PollEditorControls(const GameSettings& settings,
     input.redo = (control && IsKeyPressed(KEY_Y)) ||
                  (control && shift && IsKeyPressed(KEY_Z));
 
-    // A configured gameplay direction always wins over a bare editor shortcut.
-    // Modifier shortcuts can still use Left/Right or PgUp/PgDn deliberately,
-    // because modifiers suppress direction placement.
+    // Gameplay direction bindings never author notes in the editor.
+    // Editor shortcuts only navigate or manipulate existing patterns.
     const auto available = [&](int key) {
         return !IsGameDirectionKey(settings, key);
     };
@@ -57,12 +55,6 @@ EditorControls PollEditorControls(const GameSettings& settings,
            static_cast<int>(navigationHeld(KEY_LEFT) || navigationHeld(KEY_PAGE_UP)))
         : 0;
 
-    // The exact four game-direction key states are reused, not polled from a
-    // hard-coded DFJK set. Modifier-based chart actions never place notes.
-    input.directionKeysSuppressed = control || shift;
-    input.directionKeysHeld = input.directionKeysSuppressed
-        ? 0u : EditorDirectionMask(gameplayHeld);
-    input.directionChordWindowSeconds = settings.chordWindowMs / 1000.0f;
     input.elapsedSeconds = GetFrameTime();
 
     input.mirrorHorizontal = plain(KEY_I);
@@ -74,9 +66,8 @@ EditorControls PollEditorControls(const GameSettings& settings,
     input.zoomOut = (available(KEY_MINUS) && IsKeyPressed(KEY_MINUS)) ||
                     (available(KEY_KP_SUBTRACT) && IsKeyPressed(KEY_KP_SUBTRACT)) ||
                     (available(KEY_LEFT_BRACKET) && IsKeyPressed(KEY_LEFT_BRACKET));
-    // With the new DFJK default, vertical arrows adjust placement
-    // density while horizontal arrows move between timeline grid lines.
-    // Rebinding an arrow to gameplay suppresses this editor shortcut.
+    // Vertical arrows change snap density and horizontal arrows move the
+    // timeline cursor; only clicking compass buttons creates direction notes.
     input.snapMore = plain(KEY_PERIOD) || plain(KEY_UP);
     input.snapLess = plain(KEY_COMMA) || plain(KEY_DOWN);
     input.removeTurn = IsKeyPressed(KEY_BACKSPACE) ||

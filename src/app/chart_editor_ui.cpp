@@ -28,23 +28,10 @@ void Button(Font font, Rectangle rect, const char* text, Color tint, bool active
     DrawUiButton(font, rect, text, EditorButtonStyle(tint), active);
 }
 
-// The nine compass pads remain clickable, with a small key-label line.
-void DirectionButton(Font font, Rectangle rect, const char* name,
-                     const char* keys, Color tint, bool active = false) {
-    DrawUiButtonChrome(rect, EditorButtonStyle(tint), active);
-    const auto headingSize = MeasureTextEx(font, name, 13.0f, 1.0f);
-    // An arbitrary rebind can be longer than "J+K" (e.g. "LEFT+UP").
-    // Fit the actual shortcut inside the existing 52px button hitbox.
-    const float natural = MeasureTextEx(font, keys, 10.0f, 0.5f).x;
-    const float keyFont = natural > 0.0f
-        ? std::clamp(10.0f * (rect.width - 4.0f) / natural, 5.0f, 10.0f)
-        : 10.0f;
-    const auto keySize = MeasureTextEx(font, keys, keyFont, 0.5f);
-    Label(font, name, rect.x + (rect.width - headingSize.x) / 2.0f,
-          rect.y + 2.0f, 13.0f, Color{232, 238, 245, 255});
-    DrawTextEx(font, keys,
-               {rect.x + (rect.width - keySize.x) / 2.0f, rect.y + 20.0f},
-               keyFont, 0.5f, Color{196, 213, 235, 255});
+// The compass pad authors direction notes by clicking, never by keybinding.
+void DirectionButton(Font font, Rectangle rect, const char* count,
+                     Color tint, bool active = false) {
+    DrawUiButton(font, rect, count, EditorButtonStyle(tint), active);
 }
 
 const char* HeadingName(core::Heading heading) {
@@ -250,10 +237,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
            ui.tab == EditorTab::Field);
     Button(font, kEditorBack, "BACK", Color{247, 202, 145, 255});
 
-    // Transport and timeline persist across all editor tabs.
-    // Any editor shortcut rebound to a gameplay direction loses its
-    // keyboard action. Keep the buttons clickable but don't advertise
-    // a hotkey that now places a note instead.
+    // Transport and timeline persist across editor tabs.
+    // Direction placement is mouse-only, independent of game bindings.
     Button(font, kSong, IsGameDirectionKey(settings, KEY_O)
            ? "LOAD SONG" : "LOAD SONG  O", Color{97, 222, 193, 255});
     const bool running = previewPlaying && !previewPaused;
@@ -293,18 +278,6 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
               744, 250, 12, Color{216, 232, 239, 255});
         // Full-chart totals, including each diagonal's two cardinals.
         const auto pressCounts = DirectionPressCounts(chart);
-        // Same per-direction bindings as PLAY, including custom rebinds.
-        const std::string padKeys[9] = {
-            EditorDirectionShortcut(settings, 5u),
-            EditorDirectionShortcut(settings, 4u),
-            EditorDirectionShortcut(settings, 12u),
-            EditorDirectionShortcut(settings, 1u),
-            "BKSP",
-            EditorDirectionShortcut(settings, 8u),
-            EditorDirectionShortcut(settings, 3u),
-            EditorDirectionShortcut(settings, 2u),
-            EditorDirectionShortcut(settings, 10u)
-        };
         for (int row = 0; row < 3; ++row)
             for (int col = 0; col < 3; ++col) {
                 const auto heading = DirectionPadHeading(row, col);
@@ -313,7 +286,6 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                     : "DEL";
                 DirectionButton(font, DirectionPadBounds(row, col),
                                 label.c_str(),
-                                padKeys[row * 3 + col].c_str(),
                                 !heading ? Color{127, 140, 156, 255}
                                   : core::IsDiagonal(*heading)
                                     ? Color{186, 160, 235, 255}
@@ -321,7 +293,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                                 heading ? (turn && *heading == outgoing)
                                         : false); // DEL is always neutral, never selected
             }
-        Label(font, "GAME BINDS: 2=DIAGONAL", 744, 398, 11,
+        Label(font, "CLICK TO PLACE / DEL TO REMOVE", 744, 398, 11,
               Color{165, 198, 213, 255});
         Label(font, "PATTERN  /  DRAG RULER", 52, 188, 14,
               Color{193, 215, 226, 255});

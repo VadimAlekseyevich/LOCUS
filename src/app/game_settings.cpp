@@ -88,13 +88,6 @@ std::string KeyboardKeyName(int key) {
     }
 }
 
-unsigned EditorDirectionMask(const std::array<bool, 4>& gameplayHeld) noexcept {
-    return (gameplayHeld[static_cast<int>(GameAction::Left)] ? 1u : 0u) |
-           (gameplayHeld[static_cast<int>(GameAction::Down)] ? 2u : 0u) |
-           (gameplayHeld[static_cast<int>(GameAction::Up)] ? 4u : 0u) |
-           (gameplayHeld[static_cast<int>(GameAction::Right)] ? 8u : 0u);
-}
-
 bool IsGameDirectionKey(const GameSettings& settings, int key) noexcept {
     return key == settings.Key(GameAction::Left) ||
            key == settings.Key(GameAction::Down) ||
@@ -118,25 +111,6 @@ void GameSettings::StepFpsLimit(int direction) noexcept {
 
 std::string GameSettings::FpsLimitLabel() const {
     return fpsLimit == 0 ? "UNLIMITED" : std::to_string(fpsLimit) + " FPS";
-}
-
-std::string EditorDirectionShortcut(const GameSettings& settings, unsigned mask) {
-    // Same chord order as the visual compass pad; no hard-coded D/F/J/K.
-    switch (mask) {
-        case 1u: return KeyboardKeyName(settings.Key(GameAction::Left));
-        case 2u: return KeyboardKeyName(settings.Key(GameAction::Down));
-        case 4u: return KeyboardKeyName(settings.Key(GameAction::Up));
-        case 8u: return KeyboardKeyName(settings.Key(GameAction::Right));
-        case 5u: return EditorDirectionShortcut(settings, 1u) + "+" +
-                        EditorDirectionShortcut(settings, 4u); // up-left
-        case 12u: return EditorDirectionShortcut(settings, 4u) + "+" +
-                         EditorDirectionShortcut(settings, 8u); // up-right
-        case 3u: return EditorDirectionShortcut(settings, 1u) + "+" +
-                        EditorDirectionShortcut(settings, 2u); // down-left
-        case 10u: return EditorDirectionShortcut(settings, 2u) + "+" +
-                         EditorDirectionShortcut(settings, 8u); // down-right
-        default: return "";
-    }
 }
 
 bool GameSettings::Valid(std::string& error) const {

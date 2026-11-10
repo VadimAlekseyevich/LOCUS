@@ -544,145 +544,15 @@ int main() {
                 paddedUi.rangeFirst == 15 && paddedUi.rangeLast == 18,
                 "pasting aligns the first real note with the destination beat");
 
-    // ROUTE consumes exactly the same four direction bindings as PLAY.
-    // Here the gameplay keys are rebound to WASD; the editor must author
-    // the same diagonal as Up+Right rather than using hard-coded J+K.
-    GameSettings rebound;
-    std::string bindError;
-    ok &= Check(rebound.Rebind(GameAction::Left, KEY_A, bindError) &&
-                rebound.Rebind(GameAction::Up, KEY_W, bindError) &&
-                rebound.Rebind(GameAction::Right, KEY_D, bindError) &&
-                rebound.Rebind(GameAction::Down, KEY_S, bindError),
-                "all four gameplay direction bindings can be customized");
-    ChartEditor sharedKeys;
-    EditorUiState sharedUi;
-    EditorControls sharedChord;
-    sharedChord.directionKeysHeld =
-        EditorDirectionMask({true, true, false, false}); // W + D
-    sharedChord.directionChordWindowSeconds = rebound.chordWindowMs / 1000.0f;
-    sharedChord.elapsedSeconds = 0.016f;
-    const auto sharedApplied =
-        ApplyEditorControls(sharedKeys, sharedUi, sharedChord);
-    ok &= Check(sharedApplied.changedChart &&
-                sharedKeys.SelectedTurn() &&
-                SampleRouteStep(sharedKeys.Data().route, 0).heading ==
-                    Heading::UpRight &&
-                EditorDirectionShortcut(rebound, 12u) == "W+D",
-                "rebound gameplay W+D inserts an UpRight editor note and updates label");
-
-    // When Ctrl/Shift is introduced halfway through a chord, an unfinished
-    // direction must be canceled rather than inserting a stray note.
-    ChartEditor modified;
-    EditorUiState modifiedUi;
-    EditorControls singleDirection;
-    singleDirection.directionKeysHeld =
-        EditorDirectionMask({true, false, false, false}); // rebound W
-    singleDirection.directionChordWindowSeconds = 0.16f;
-    singleDirection.elapsedSeconds = 0.016f;
-    ApplyEditorControls(modified, modifiedUi, singleDirection);
-    EditorControls withModifier;
-    withModifier.directionKeysSuppressed = true;
-    ApplyEditorControls(modified, modifiedUi, withModifier);
-    ApplyEditorControls(modified, modifiedUi, singleDirection);
-    singleDirection.directionKeysHeld = 0;
-    ApplyEditorControls(modified, modifiedUi, singleDirection);
-    ok &= Check(!modified.SelectedTurn(),
-                "modifier navigation cancels unfinished gameplay-key placement");
-
-    // The editor's single-key grace window follows the gameplay option.
-    ChartEditor customChordTime;
-    EditorUiState chordTimeUi;
-    EditorControls longWindow;
-    longWindow.directionKeysHeld = EditorDirectionMask({true, false, false, false});
-    longWindow.directionChordWindowSeconds = 0.16f;
-    longWindow.elapsedSeconds = 0.03f;
-    for (int frame = 0; frame < 5; ++frame)
-        ApplyEditorControls(customChordTime, chordTimeUi, longWindow);
-    ok &= Check(!customChordTime.SelectedTurn(),
-                "160 ms game chord window also delays single editor key placement");
-    for (int frame = 0; frame < 2; ++frame)
-        ApplyEditorControls(customChordTime, chordTimeUi, longWindow);
-    ok &= Check(customChordTime.SelectedTurn() &&
-                SampleRouteStep(customChordTime.Data().route, 0).heading ==
-                    Heading::Up,
-                "single direction places once after configurable game chord window");
-
-    // Absolute compass masks represent game Left/Down/Up/Right regardless
-    // of which physical keys are bound in Settings.
-    // The adjacent pairs place diagonals without an unwanted cardinal note.
-    const struct { unsigned keys; Heading heading; } diagonals[] = {
-        {1u | 4u, Heading::UpLeft}, {4u | 8u, Heading::UpRight},
-        {1u | 2u, Heading::DownLeft}, {2u | 8u, Heading::DownRight}
-    };
-    for (const auto& pair : diagonals) {
-        ChartEditor c;
-        EditorUiState u;
-        EditorControls keys;
-        keys.directionKeysHeld = pair.keys;
-        keys.elapsedSeconds = 0.016f;
-        const auto placed = ApplyEditorControls(c, u, keys);
-        ok &= Check(placed.changedChart && c.SelectedTurn() &&
-                    SampleRouteStep(c.Data().route, 0).heading == pair.heading,
-                    "simultaneous directional keys author diagonal compass heading");
-        const auto beforeCount = c.Data().route.turns.size();
-        for (int frame = 0; frame < 20; ++frame)
-            ApplyEditorControls(c, u, keys);
-        keys.directionKeysHeld = 0;
-        ApplyEditorControls(c, u, keys);
-        ok &= Check(c.Data().route.turns.size() == beforeCount,
-                    "holding and releasing diagonal keys places one note");
-    }
-    {
-        ChartEditor c;
-        EditorUiState u;
-        EditorControls keys;
-        keys.directionKeysHeld = 4u; // J pressed first
-        keys.elapsedSeconds = 0.016f;
-        ApplyEditorControls(c, u, keys);
-        ok &= Check(!c.SelectedTurn(), "single J waits briefly for diagonal partner");
-        keys.directionKeysHeld = 4u | 8u; // K joins within the grace period
-        ApplyEditorControls(c, u, keys);
-        ok &= Check(c.SelectedTurn() &&
-                    SampleRouteStep(c.Data().route, 0).heading == Heading::UpRight,
-                    "closely staggered J+K places diagonal, not an initial up note");
-    }
-    {
-        ChartEditor c;
-        EditorUiState u;
-        EditorControls tap;
-        tap.directionKeysHeld = 2u; // F = down
-        tap.elapsedSeconds = 0.016f;
-        ApplyEditorControls(c, u, tap);
-        tap.directionKeysHeld = 0u;
-        const auto applied = ApplyEditorControls(c, u, tap);
-        ok &= Check(applied.changedChart && c.SelectedTurn() &&
-                    SampleRouteStep(c.Data().route, 0).heading == Heading::Down,
-                    "a quickly tapped F still places one down note on release");
-    }
-    for (const unsigned invalid : {1u | 8u, 2u | 4u, 15u}) {
-        ChartEditor c;
-        EditorUiState u;
-        EditorControls keys;
-        keys.directionKeysHeld = invalid;
-        const auto blocked = ApplyEditorControls(c, u, keys);
-        ok &= Check(!blocked.changedChart && !c.SelectedTurn(),
-                    "opposite or 3+ compass keys never create an ambiguous note");
-    }
-    for (const auto& cardinal : {std::pair<unsigned, Heading>{1u, Heading::Left},
-                                 {8u, Heading::Right}}) {
-        ChartEditor c;
-        c.RotateHeading45(-2); // Start upward so neither is opposite.
-        EditorUiState u;
-        EditorControls keys;
-        keys.directionKeysHeld = cardinal.first;
-        keys.elapsedSeconds = 0.05f;
-        ApplyEditorControls(c, u, keys);
-        ApplyEditorControls(c, u, keys);
-        ApplyEditorControls(c, u, keys);
-        ok &= Check(c.SelectedTurn() &&
-                    SampleRouteStep(c.Data().route, 0).heading == cardinal.second,
-                    "D and K single keys select their absolute compass headings");
-    }
+    // Keyboard timeline controls may never create a direction note.
+    ChartEditor keyboardOnly;
+    EditorUiState keyboardUi;
+    EditorControls navigationOnly;
+    navigationOnly.previousBeat = true;
+    navigationOnly.nextBeat = true;
+    ApplyEditorControls(keyboardOnly, keyboardUi, navigationOnly);
+    ok &= Check(keyboardOnly.Data().route.turns.empty(),
+                "keyboard navigation cannot create notes");
 
     // Eight-way compass on ROUTE authors actual diagonal route notes.
     ChartEditor compassUi;
@@ -722,16 +592,12 @@ int main() {
                 SampleRouteStep(reverseUi.Data().route, 0).heading == Heading::Left,
                 "direction pad authors a normal 180-degree note");
     reverseUi.SelectBeat(1);
-    EditorControls tapRight;
-    tapRight.directionKeysHeld = 8u; // K: opposite to current Left.
-    tapRight.elapsedSeconds = 0.05f;
-    ApplyEditorControls(reverseUi, reverseState, tapRight);
-    ApplyEditorControls(reverseUi, reverseState, tapRight);
-    const auto keyReverse = ApplyEditorControls(reverseUi, reverseState, tapRight);
+    const auto keyReverse = ApplyEditorControls(
+        reverseUi, reverseState, Click(882, 331));
     ok &= Check(keyReverse.changedChart && reverseUi.SelectedTurn() &&
                 reverseUi.SelectedTurn()->direction == Heading::Right &&
                 SampleRouteStep(reverseUi.Data().route, 1).heading == Heading::Right,
-                "game direction key can author the return trip without a new control");
+                "right compass button authors the return trip");
 
     // Placement subdivision controls are independent from zoom and BPM.
     ChartEditor snapChart;
