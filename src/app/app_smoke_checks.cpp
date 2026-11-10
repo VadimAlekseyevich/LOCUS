@@ -247,8 +247,15 @@ bool CheckSessionFlow() {
     FrameInput goHome;
     goHome.homePressed = true;
     UpdateState(state, goHome, false);
-    // Play returns to the selected song to resume its menu preview.
-    if (state.screen != Screen::SongSelect) return false;
+    // Exiting PLAY requires confirmation; this is not an instant Home key.
+    if (state.screen != Screen::Play || !state.levelExitConfirmation)
+        return false;
+    FrameInput confirmLeave;
+    confirmLeave.levelExitConfirmed = true;
+    UpdateState(state, confirmLeave, false);
+    // Confirmed leave returns to the selected song's menu preview.
+    if (state.screen != Screen::SongSelect || state.levelExitConfirmation)
+        return false;
     UpdateState(state, chooseDemo, false);
     if (state.screen != Screen::Play) return false;
     judge.Reset();
