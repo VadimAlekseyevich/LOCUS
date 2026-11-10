@@ -68,10 +68,11 @@ and reduce the number of unrelated reasons a file can change.
 2. Editor input and authoring operations now have separate modules;
    `chart_editor_actions.cpp` retains only screen dispatch and hitbox routing.
    Further isolate hitbox mapping only if new controls increase its coupling.
-3. `skin_menu.cpp` still combines personal profile UI, live preview,
-   color-picker interaction and text input; split it when extending skin
-   assets/palette editing. PATH/PLAYER controls already use one typed setting
-   catalog, and standard buttons share a rendering primitive across screens.
+3. SKIN screen now has separate rendering (`skin_menu_draw.cpp`),
+   interaction (`skin_menu.cpp`) and shared hitbox layout
+   (`skin_menu_layout.h`). When skin image assets arrive, move profile
+   actions and color-picker state into a dedicated controller rather than
+   reintroducing device input into rendering.
 4. `song_library.cpp` combines scanning, set identity, import/installation,
    mutation and removal; move storage operations behind focused interfaces
    and preserve lock ordering and data-durability tests.
@@ -80,6 +81,9 @@ and reduce the number of unrelated reasons a file can change.
    giant frame-state DTO.
 
 ## Completed stabilization
+
+- **2026-11-10:** Split SKIN rendering into `skin_menu_draw.cpp`, interactive controls into `skin_menu.cpp` and shared clickable geometry into `skin_menu_layout.h`. Color wheel and live route preview keep their exact existing drawing paths, while pointer hitboxes share the same coordinates. The renderer does not mutate skin state or read input. No disk-format changes.
+
 
 - **2026-11-10:** Skin PATH/PLAYER sliders and toggles are now defined in one typed setting catalog (`skin_controls.*`): display label, presentation order, concrete Skin member, slider/edit ranges and integer-ms precision. `skin_menu.cpp` uses it for labels, switches, and row counts, removing duplicated switch logic. Common `ui_button.h` owns button chrome and centered text for SKIN, Home/Settings and Editor, with separate style presets retaining the existing visuals. Persisted skin JSON and song/chart formats have not changed.
 

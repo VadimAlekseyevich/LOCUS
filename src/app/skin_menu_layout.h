@@ -39,15 +39,12 @@ inline void FlipToggle(Skin& skin, int page, int row) {
     FlipSkinToggle(skin, page, row);
 }
 
-
 inline Rectangle SliderHit(Rectangle rect) {
     return {rect.x - 7.0f, rect.y - 12.0f, rect.width + 14.0f, 30.0f};
 }
 
-
 constexpr float kWheelInner = 64.0f;
 constexpr float kWheelOuter = 84.0f;
 constexpr float kPi = 3.14159265358979323846f;
-
 
 } // namespace locus::app::skin_detail
