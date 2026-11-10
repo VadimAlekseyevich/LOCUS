@@ -26,6 +26,7 @@ struct GameSettings {
         KEY_SPACE, KEY_R, KEY_H
     }};
     float volume = 0.7f;
+    int chordWindowMs = 85;
     bool hitFlash = true;
     bool fullscreen = false;
     bool vsync = true;        // Prevent screen tearing; can be overridden by driver.

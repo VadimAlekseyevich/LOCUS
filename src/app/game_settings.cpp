@@ -148,6 +148,10 @@ bool GameSettings::Valid(std::string& error) const {
         error = "FPS limit must be one of the available display presets.";
         return false;
     }
+    if (chordWindowMs < 40 || chordWindowMs > 160) {
+        error = "Chord window must be 40..160 milliseconds.";
+        return false;
+    }
     for (int i = 0; i < kGameActionCount; ++i) {
         if (!AllowedKey(keys[i])) {
             error = std::string(ActionName(static_cast<GameAction>(i))) +
@@ -185,9 +189,10 @@ std::string SerializeGameSettings(const GameSettings& settings) {
     for (int i = 0; i < kGameActionCount; ++i)
         bindings[kJsonKeys[i]] = settings.keys[i];
     Json object = {
-        {"version", 3},
+        {"version", 2},
         {"volume", settings.volume},
         {"hitFlash", settings.hitFlash},
+        {"chordWindowMs", settings.chordWindowMs},
         {"fullscreen", settings.fullscreen},
         {"vsync", settings.vsync},
         {"fpsLimit", settings.fpsLimit},
@@ -204,13 +209,14 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
         if (!object.is_object() || !object.contains("version") ||
             !object["version"].is_number_integer() ||
             (object["version"].get<int>() != 1 &&
-             object["version"].get<int>() != 2 &&
-             object["version"].get<int>() != 3)) {
+             object["version"].get<int>() != 2)) {
             error = "Unsupported settings version.";
             return false;
         }
         GameSettings parsed;
         if (!object.contains("volume") || !object["volume"].is_number() ||
+            !object.contains("chordWindowMs") ||
+            !object["chordWindowMs"].is_number_integer() ||
             !object.contains("hitFlash") || !object["hitFlash"].is_boolean() ||
             !object.contains("fullscreen") || !object["fullscreen"].is_boolean() ||
             !object.contains("bindings") || !object["bindings"].is_object()) {
@@ -218,6 +224,7 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             return false;
         }
         parsed.volume = object["volume"].get<float>();
+        parsed.chordWindowMs = object["chordWindowMs"].get<int>();
         parsed.hitFlash = object["hitFlash"].get<bool>();
         parsed.fullscreen = object["fullscreen"].get<bool>();
         // Configs written before the DISPLAY page existed use the stable
