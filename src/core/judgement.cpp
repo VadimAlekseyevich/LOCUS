@@ -30,30 +30,29 @@ const char* DirectionName(Heading direction) noexcept {
 }
 
 void TurnJudge::Reset() noexcept {
-    nextEvent_ = 0;
     firstScoredEvent_ = 0;
-    resolvedArrows_ = 0u;
     counts_ = GradeCounts{};
     last_.reset();
     RecountScorable();
+    ResetArrowQueues();
 }
 
 void TurnJudge::ResetFromBeat(int firstScoredBeat) noexcept {
     Reset();
-    nextEvent_ = static_cast<std::size_t>(
+    firstScoredEvent_ = static_cast<std::size_t>(
         std::lower_bound(chart_.turns.begin(), chart_.turns.end(),
                          firstScoredBeat,
                          [](const TurnEvent& event, int beat) {
                              return event.beat < beat;
                          }) - chart_.turns.begin());
-    firstScoredEvent_ = nextEvent_;
     RecountScorable();
+    ResetArrowQueues();
 }
 
 void TurnJudge::ResetFromAudioSeconds(double audioSeconds) noexcept {
     Reset();
     if (!std::isfinite(audioSeconds)) return;
-    nextEvent_ = static_cast<std::size_t>(
+    firstScoredEvent_ = static_cast<std::size_t>(
         std::lower_bound(chart_.turns.begin(), chart_.turns.end(),
                          audioSeconds, [&](const TurnEvent& event, double seconds) {
                              const double time = event.timeMs == kNoTimeMs
@@ -62,25 +61,22 @@ void TurnJudge::ResetFromAudioSeconds(double audioSeconds) noexcept {
                                  : static_cast<double>(event.timeMs) / 1000.0;
                              return time < seconds - 1e-9;
                          }) - chart_.turns.begin());
-    firstScoredEvent_ = nextEvent_;
     RecountScorable();
-}
-
-const TurnEvent* TurnJudge::NextEvent() const noexcept {
-    return nextEvent_ < chart_.turns.size() ? &chart_.turns[nextEvent_] : nullptr;
+    ResetArrowQueues();
 }
 
 namespace {
-unsigned FirstArrow(unsigned mask) noexcept {
-    return mask & (~mask + 1u);
-}
+constexpr Heading kArrows[4] = {
+    Heading::Up, Heading::Right, Heading::Down, Heading::Left
+};
 
-Heading CardinalArrow(unsigned mask) noexcept {
-    switch (mask) {
-        case 1u: return Heading::Up;
-        case 2u: return Heading::Right;
-        case 4u: return Heading::Down;
-        default: return Heading::Left;
+int ArrowIndex(Heading arrow) noexcept {
+    switch (arrow) {
+        case Heading::Up: return 0;
+        case Heading::Right: return 1;
+        case Heading::Down: return 2;
+        case Heading::Left: return 3;
+        default: return -1;
     }
 }
 
@@ -101,81 +97,107 @@ void TurnJudge::RecountScorable() noexcept {
             ArrowCount(HeadingArrowMask(chart_.turns[i].direction)));
 }
 
+std::size_t TurnJudge::FindNextArrow(std::size_t from,
+                                           unsigned bit) const noexcept {
+    while (from < chart_.turns.size() &&
+           (HeadingArrowMask(chart_.turns[from].direction) & bit) == 0u)
+        ++from;
+    return from;
+}
+
+void TurnJudge::ResetArrowQueues() noexcept {
+    for (int i = 0; i < 4; ++i)
+        nextByArrow_[i] = FindNextArrow(firstScoredEvent_, 1u << i);
+}
+
+std::size_t TurnJudge::NextEventIndex() const noexcept {
+    return *std::min_element(nextByArrow_.begin(), nextByArrow_.end());
+}
+
+const TurnEvent* TurnJudge::NextEvent() const noexcept {
+    const auto index = NextEventIndex();
+    return index < chart_.turns.size() ? &chart_.turns[index] : nullptr;
+}
+
 void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
                         Heading arrow) noexcept {
-    const TurnEvent* event = NextEvent();
-    if (!event) return;
-    const unsigned pending = HeadingArrowMask(event->direction) & ~resolvedArrows_;
-    const unsigned bit = HeadingArrowMask(arrow);
-    if ((pending & bit) == 0u || IsDiagonal(arrow)) return;
-
-    last_ = Judgement{grade, event->beat, errorSeconds, wrongDirection, arrow};
-    resolvedArrows_ |= bit;
+    const int lane = ArrowIndex(arrow);
+    if (lane < 0) return;
+    const std::size_t at = nextByArrow_[lane];
+    if (at >= chart_.turns.size()) return;
+    last_ = Judgement{grade, chart_.turns[at].beat, errorSeconds,
+                      wrongDirection, arrow};
+    nextByArrow_[lane] = FindNextArrow(at + 1, 1u << lane);
     switch (grade) {
         case Grade::Perfect: ++counts_.perfect; break;
         case Grade::Good: ++counts_.good; break;
         case Grade::Bad: ++counts_.bad; break;
         case Grade::Miss: ++counts_.miss; break;
     }
-    if ((resolvedArrows_ & HeadingArrowMask(event->direction)) ==
-        HeadingArrowMask(event->direction)) {
-        ++nextEvent_;
-        resolvedArrows_ = 0u;
-    }
 }
 
 void TurnJudge::Advance(double songSeconds) noexcept {
     if (!std::isfinite(songSeconds)) return;
+    // Expire the oldest unresolved authored turn first. Each of its
+    // remaining arrow components receives its own Miss.
     while (const TurnEvent* event = NextEvent()) {
         const double expectedSeconds = event->timeMs == kNoTimeMs
             ? offsetSeconds_ + event->beat * 60.0 /
                 (chart_.bpm * chart_.ticksPerBeat)
             : static_cast<double>(event->timeMs) / 1000.0;
         if (songSeconds <= expectedSeconds + kBadWindowSeconds) break;
-        const unsigned remaining =
-            HeadingArrowMask(event->direction) & ~resolvedArrows_;
-        if (!remaining) break;
-        Resolve(Grade::Miss, 0.0, false, CardinalArrow(FirstArrow(remaining)));
+        const auto index = NextEventIndex();
+        for (int i = 0; i < 4; ++i)
+            if (nextByArrow_[i] == index)
+                Resolve(Grade::Miss, 0.0, false, kArrows[i]);
     }
 }
 
 void TurnJudge::FinishRemainingMisses() noexcept {
-    while (const TurnEvent* event = NextEvent()) {
-        const unsigned pending = HeadingArrowMask(event->direction) & ~resolvedArrows_;
-        if (!pending) break;
-        Resolve(Grade::Miss, 0.0, false, CardinalArrow(FirstArrow(pending)));
+    while (const auto index = NextEventIndex(); index < chart_.turns.size()) {
+        for (int i = 0; i < 4; ++i)
+            if (nextByArrow_[i] == index)
+                Resolve(Grade::Miss, 0.0, false, kArrows[i]);
     }
 }
 
 std::optional<Judgement> TurnJudge::PressHeading(Heading outgoing,
                                                  double songSeconds) {
-    if (!ValidHeading(outgoing) || IsDiagonal(outgoing) ||
-        !std::isfinite(songSeconds)) return std::nullopt;
+    const int lane = ArrowIndex(outgoing);
+    if (lane < 0 || !std::isfinite(songSeconds)) return std::nullopt;
     Advance(songSeconds);
-    const TurnEvent* next = NextEvent();
-    if (!next) return std::nullopt;
 
-    const double expectedSeconds = next->timeMs == kNoTimeMs
-        ? offsetSeconds_ + next->beat * 60.0 /
+    // First judge the next expected note on this particular key, which may
+    // belong to a LATER authored turn while another key has a pending half.
+    const std::size_t at = nextByArrow_[lane];
+    if (at < chart_.turns.size()) {
+        const TurnEvent& target = chart_.turns[at];
+        const double targetSeconds = target.timeMs == kNoTimeMs
+            ? offsetSeconds_ + target.beat * 60.0 /
+                (chart_.bpm * chart_.ticksPerBeat)
+            : static_cast<double>(target.timeMs) / 1000.0;
+        const double error = songSeconds - targetSeconds;
+        if (std::abs(error) <= kBadWindowSeconds) {
+            const double deviation = std::abs(error);
+            const Grade grade = deviation <= kPerfectWindowSeconds ? Grade::Perfect
+                : deviation <= kGoodWindowSeconds ? Grade::Good : Grade::Bad;
+            Resolve(grade, error, false, outgoing);
+            return last_;
+        }
+    }
+
+    // Preserve the old wrong-direction rule for cardinal targets, but never
+    // penalize a still-pending diagonal half for an unrelated key press.
+    const TurnEvent* oldest = NextEvent();
+    if (!oldest || IsDiagonal(oldest->direction) ||
+        oldest->direction == outgoing) return std::nullopt;
+    const double expectedSeconds = oldest->timeMs == kNoTimeMs
+        ? offsetSeconds_ + oldest->beat * 60.0 /
             (chart_.bpm * chart_.ticksPerBeat)
-        : static_cast<double>(next->timeMs) / 1000.0;
+        : static_cast<double>(oldest->timeMs) / 1000.0;
     const double error = songSeconds - expectedSeconds;
     if (std::abs(error) > kBadWindowSeconds) return std::nullopt;
-
-    const unsigned required = HeadingArrowMask(next->direction);
-    const unsigned input = HeadingArrowMask(outgoing);
-    const unsigned remaining = required & ~resolvedArrows_;
-    if (remaining & input) {
-        const double deviation = std::abs(error);
-        const Grade grade = deviation <= kPerfectWindowSeconds ? Grade::Perfect
-            : deviation <= kGoodWindowSeconds ? Grade::Good : Grade::Bad;
-        Resolve(grade, error, false, outgoing);
-        return last_;
-    }
-    // A duplicate component never scores twice. Other key presses during
-    // a diagonal do not destroy either legitimate component's hit window.
-    if (IsDiagonal(next->direction) || (required & input)) return std::nullopt;
-    Resolve(Grade::Miss, error, true, CardinalArrow(FirstArrow(remaining)));
+    Resolve(Grade::Miss, error, true, oldest->direction);
     return last_;
 }
 

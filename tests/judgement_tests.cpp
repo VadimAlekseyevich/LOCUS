@@ -324,6 +324,40 @@ int main() {
                 diagonalJudge.Counts().Resolved() == 3,
                 "song-end finalization does not double-count resolved halves");
 
+    // Pending halves must not block closely spaced notes on other arrows.
+    // The old single event cursor could drop a correct next note whenever
+    // the prior diagonal's other key remained unpressed.
+    Chart overlap;
+    overlap.turns = {
+        {2, Heading::UpRight, 1000},
+        {3, Heading::Up, 1100},
+        {4, Heading::Right, 1200}
+    };
+    TurnJudge concurrent(overlap);
+    ok &= Check(concurrent.ScorableCount() == 4 &&
+                Is(concurrent.PressHeading(Heading::Up, 1.0),
+                   Grade::Perfect, 2) &&
+                Is(concurrent.PressHeading(Heading::Up, 1.1),
+                   Grade::Perfect, 3) &&
+                concurrent.NextEvent() && concurrent.NextEvent()->beat == 2,
+                "later Up note scores while earlier diagonal Right remains pending");
+    ok &= Check(Is(concurrent.PressHeading(Heading::Right, 1.12),
+                   Grade::Good, 2) &&
+                Is(concurrent.PressHeading(Heading::Right, 1.2),
+                   Grade::Perfect, 4) &&
+                concurrent.Counts().perfect == 3 &&
+                concurrent.Counts().good == 1 &&
+                concurrent.AllScorableJudged(),
+                "independent direction queues accept overlapping note windows");
+    concurrent.Reset();
+    concurrent.PressHeading(Heading::Up, 1.0);
+    concurrent.PressHeading(Heading::Up, 1.1);
+    concurrent.Advance(1.181);
+    ok &= Check(concurrent.Counts().miss == 1 &&
+                concurrent.Counts().perfect == 2 &&
+                concurrent.NextEvent() && concurrent.NextEvent()->beat == 4,
+                "missed earlier diagonal component does not erase later Up hit");
+
     // A diagonal as the final event holds the Results transition until both
     // arrow notes have a grade, including a late miss for an unpressed half.
     Chart finalDiagonal;

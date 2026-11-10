@@ -2,6 +2,7 @@
 
 #include "core/route.h"
 
+#include <array>
 #include <cstddef>
 #include <optional>
 
@@ -47,12 +48,12 @@ struct GradeCounts {
 const char* GradeName(Grade grade) noexcept;
 const char* DirectionName(Heading heading) noexcept;
 
-// One judgement per *physical arrow*. An authored diagonal turn has two
-// independent notes at the same timestamp, each with its own timing grade;
-// their presses need not overlap or occur in any chord window. Wrong cardinal
-// directions remain Miss; unrelated keys during a diagonal are ignored and
-// its unpressed component eventually becomes Miss. Chart geometry never
-// depends on whether either note was hit.
+// One judgement per *physical arrow*. A diagonal supplies two notes with
+// identical target timestamps, independently graded, in four direction
+// queues. A pending diagonal half never blocks later notes of other arrows,
+// even when their timing windows overlap. Wrong input against a cardinal
+// target remains Miss; unrelated keys against diagonals are ignored.
+// The authored route and geometry remain independent of judgement.
 class TurnJudge {
 public:
     explicit TurnJudge(const Chart& chart) noexcept : chart_(chart) { Reset(); }
@@ -95,15 +96,18 @@ private:
     void Resolve(Grade grade, double errorSeconds, bool wrongDirection,
                  Heading arrow) noexcept;
     void RecountScorable() noexcept;
+    void ResetArrowQueues() noexcept;
+    std::size_t FindNextArrow(std::size_t from, unsigned bit) const noexcept;
+    std::size_t NextEventIndex() const noexcept;
 
     const Chart& chart_;
     double offsetSeconds_ = 0.0;
-    std::size_t nextEvent_ = 0;
     std::size_t firstScoredEvent_ = 0;
     std::size_t scorableCount_ = 0;
-    // Resolved physical-arrow mask of the current authored turn. The next
-    // turn is reached only after all required components are graded.
-    unsigned resolvedArrows_ = 0u;
+    // Four independent lane cursors, one for each physical arrow.
+    // A fully resolved authored turn disappears only when none of the
+    // queues still reference it.
+    std::array<std::size_t, 4> nextByArrow_{};
     GradeCounts counts_;
     std::optional<Judgement> last_;
 };
