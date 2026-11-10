@@ -132,6 +132,11 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_music_tests PRIVATE locus_core)
     add_test(NAME locus_demo_audio_clock COMMAND locus_music_tests)
 
+    add_executable(locus_playback_cursor_tests tests/playback_cursor_tests.cpp)
+    target_compile_features(locus_playback_cursor_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_playback_cursor_tests PRIVATE locus_core)
+    add_test(NAME locus_slow_playback_cursor COMMAND locus_playback_cursor_tests)
+
     add_executable(locus_music_file_tests tests/music_file_tests.cpp)
     target_compile_features(locus_music_file_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_music_file_tests PRIVATE locus_core)

@@ -61,14 +61,17 @@ PlayTransportView PlayScreenActions::Transport(double now) const {
             1.0, context_.demo.Status()
         };
     }
-    const double song = context_.local.AudioSeconds(now);
+    // The audio device exposes a stepped cursor at reduced pitch. The
+    // visual beat is interpolated for camera/marker rendering only; the
+    // judge still reads raw consumed-audio timestamps from ChartPlayback.
+    const double song = context_.local.VisualAudioSeconds(now);
     const bool finished = context_.local.Finished();
     const bool paused = context_.local.Paused();
     const char* status = finished ? "CHART FINISHED"
         : paused ? "PAUSED  |  SPACE RESUME"
         : song < 0.0 ? "SILENT PREROLL  |  ARROWS TO TURN"
                      : "CUSTOM SONG  |  ARROWS TO TURN";
-    return {song, context_.local.Beat(now), paused, finished,
+    return {song, context_.local.BeatAtAudioSeconds(song), paused, finished,
             context_.local.Speed(), status};
 }
 

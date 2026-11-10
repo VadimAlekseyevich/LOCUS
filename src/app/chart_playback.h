@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/local_music.h"
+#include "app/playback_cursor_smoother.h"
 #include "core/song_clock.h"
 
 namespace locus::app {
@@ -29,10 +30,17 @@ public:
     bool Finished() const noexcept { return finished_; }
     double AudioSeconds(double monotonicSeconds) const noexcept;
     double Beat(double monotonicSeconds) const noexcept;
+    // Smooth only the rendered position at slow practice rates. Judgement
+    // continues to use AudioSeconds() from the real played audio stream.
+    double VisualAudioSeconds(double monotonicSeconds) const noexcept;
+    double BeatAtAudioSeconds(double audioSeconds) const noexcept {
+        return (audioSeconds - offsetSeconds_) * bpm_ / 60.0;
+    }
 
 private:
     LocalMusic& audio_;
     core::SongClock clock_;
+    mutable PlaybackCursorSmoother visualCursor_;
     double bpm_ = 120.0;
     double speed_ = 1.0;
     double offsetSeconds_ = 0.0;

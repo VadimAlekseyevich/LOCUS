@@ -27,6 +27,7 @@ bool ChartPlayback::StartAtAudioSeconds(double audioSeconds, double monotonicSec
     if (!audio_.Ready() || !std::isfinite(audioSeconds) ||
         audioSeconds >= audio_.DurationSeconds()) return false;
     Stop();
+    visualCursor_.Reset();
     audio_.SetSpeed(speed_, monotonicSeconds);
     startAudioSeconds_ = audioSeconds;
     clock_.Start(monotonicSeconds);
@@ -53,6 +54,7 @@ void ChartPlayback::Resume(double monotonicSeconds) {
 }
 
 void ChartPlayback::Stop() {
+    visualCursor_.Reset();
     if (audioStarted_) audio_.Stop();
     clock_.Stop();
     audioStarted_ = false;
@@ -73,7 +75,18 @@ double ChartPlayback::AudioSeconds(double monotonicSeconds) const noexcept {
 }
 
 double ChartPlayback::Beat(double monotonicSeconds) const noexcept {
-    return (AudioSeconds(monotonicSeconds) - offsetSeconds_) * bpm_ / 60.0;
+    return BeatAtAudioSeconds(AudioSeconds(monotonicSeconds));
+}
+
+double ChartPlayback::VisualAudioSeconds(double monotonicSeconds) const noexcept {
+    const double source = AudioSeconds(monotonicSeconds);
+    // Normal speed and silent preroll already use a smooth monotonic clock.
+    // Only slowed audio reads the hardware stream's quantized cursor.
+    if (!playing_ || !audioStarted_ || finished_ || speed_ >= 0.999) {
+        visualCursor_.Reset();
+        return source;
+    }
+    return visualCursor_.Sample(source, monotonicSeconds, speed_, paused_);
 }
 
 void ChartPlayback::Update(double monotonicSeconds) {
