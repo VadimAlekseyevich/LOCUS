@@ -169,7 +169,7 @@ int main() {
                 detail::kAudioPreviewMs.y <= 390 &&
                 detail::kAudioPreviewMs.x + detail::kAudioPreviewMs.width > 168 &&
                 detail::kAudioPreviewMs.y + detail::kAudioPreviewMs.height > 390 &&
-                detail::ClickedSetAction({320, 280}) == EditorSetAction::None,
+                detail::ClickedSetAction({168, 280}) == EditorSetAction::None,
                 "Song preview lives in AUDIO and has no increment buttons");
     ok &= Check(detail::ClickedSetAction({85, 317}) ==
                     EditorSetAction::AttachBackground &&
