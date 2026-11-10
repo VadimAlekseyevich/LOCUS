@@ -128,8 +128,14 @@ int main() {
     // Previously saved untouched arrow defaults move to the DFJK preset,
     // but explicit arrow bindings stored by v2 remain customizable.
     GameSettings previousDefault;
-    previousDefault.keys = {{KEY_UP, KEY_RIGHT, KEY_DOWN, KEY_LEFT,
-                              KEY_SPACE, KEY_R, KEY_H}};
+    // Retain all newly added gameplay bindings. Assigning a seven-item
+    // aggregate to the expanded array zeroed the remaining keys, making
+    // the otherwise valid current-version fixture fail validation.
+    previousDefault.keys[static_cast<int>(GameAction::Up)] = KEY_UP;
+    previousDefault.keys[static_cast<int>(GameAction::Right)] = KEY_RIGHT;
+    previousDefault.keys[static_cast<int>(GameAction::Down)] = KEY_DOWN;
+    previousDefault.keys[static_cast<int>(GameAction::Left)] = KEY_LEFT;
+    previousDefault.keys[static_cast<int>(GameAction::Pause)] = KEY_SPACE;
     std::string oldConfig = SerializeGameSettings(previousDefault);
     const auto oldVersion = oldConfig.find("\"version\": 3");
     if (oldVersion != std::string::npos)
