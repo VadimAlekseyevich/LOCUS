@@ -421,6 +421,31 @@ int main() {
                     "editing a single chart invalidates only that chart cache");
     }
 
+    // Changing only shared BPM on disk must reuse all raw chart parses
+    // but recompute their derived ratings at the new authoritative timing.
+    const fs::path finalManifest =
+        easyInstalled.parent_path() / "set.locus.json";
+    SongSetManifest externalTiming;
+    if (LoadSongSetManifest(finalManifest, externalTiming, error) &&
+        externalTiming.bpm) {
+        const double savedBpm = *externalTiming.bpm;
+        externalTiming.bpm = savedBpm + 1.0;
+        ok &= Check(ReplaceSongSetManifest(finalManifest, externalTiming, error) &&
+                    library.Refresh(note) &&
+                    library.Songs()[0].bpm == savedBpm + 1.0 &&
+                    library.LastRefreshStats().parsedCharts == 0 &&
+                    library.LastRefreshStats().reusedCharts == chartTotal &&
+                    library.LastRefreshStats().calculatedDifficulties == chartTotal,
+                    "external shared BPM change invalidates each rating but not chart parses");
+        externalTiming.bpm = savedBpm;
+        ok &= Check(ReplaceSongSetManifest(finalManifest, externalTiming, error) &&
+                    library.Refresh(note) &&
+                    library.Songs()[0].bpm == savedBpm,
+                    "restoring shared BPM restores the cached library view");
+    } else {
+        ok &= Check(false, "external timing cache fixture has a valid Song Set");
+    }
+
     fs::remove_all(folder, ec);
     if (!ok) return 1;
     std::cout << "SONG_SET_PASS shared-audio=1 copies=1 backups=1 trash=1\n";

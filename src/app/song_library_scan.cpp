@@ -198,10 +198,6 @@ bool SongLibrary::Refresh(std::string& message) {
             // The cached difficulty belongs to a particular audio timing,
             // not just to the original JSON bytes. A changed manifest BPM
             // or offset may reproject every note of this Song Set.
-            const bool sameTiming = !song.managed ||
-                (difficulty.data.route.bpm == song.bpm &&
-                 static_cast<int>(std::llround(
-                     difficulty.data.offsetSeconds * 1000.0)) == song.offsetMs);
             // ApplySongTiming above has already overwritten the in-memory
             // values, so compare with the pre-scan cached version instead.
             const auto previousChart = previous.find(difficulty.file);
@@ -210,8 +206,7 @@ bool SongLibrary::Refresh(std::string& message) {
                  previousChart->second->data.route.bpm == song.bpm &&
                  static_cast<int>(std::llround(
                      previousChart->second->data.offsetSeconds * 1000.0)) == song.offsetMs);
-            if (!sameTiming || !oldTimingMatches ||
-                reusedFiles.count(difficulty.file) == 0) {
+            if (!oldTimingMatches || reusedFiles.count(difficulty.file) == 0) {
                 difficulty.difficulty = core::CalculateChartDifficulty(
                     difficulty.data.route, difficulty.data.offsetSeconds);
                 ++stats.calculatedDifficulties;

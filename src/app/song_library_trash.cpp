@@ -21,7 +21,9 @@ bool SongLibrary::TrashDifficulty(const fs::path& chart,
         error = "Difficulty is not in the library.";
         return false;
     }
-    const auto set = songs_[static_cast<std::size_t>(song)];
+    // Keep this as a reference: copying every parsed chart merely to
+    // inspect the set's metadata is expensive on large song libraries.
+    const auto& set = songs_[static_cast<std::size_t>(song)];
     if (!set.managed) {
         error = "Cannot delete unmanaged legacy chart through the library.";
         return false;

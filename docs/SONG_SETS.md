@@ -57,7 +57,13 @@ make an otherwise valid chart disappear. Unmanaged legacy folders remain
 read-only until a new managed Song Set is installed.
 
 The files on disk are authoritative. The library index is rebuilt at startup
-or on explicit rescan. Within each Song Set, difficulties are displayed in
+or on explicit rescan (also after imports/deletion). Unchanged chart files,
+identified by last-write time and file size, reuse their parsed data and
+difficulty rating rather than being rescored at every refresh. Changing the
+Song Set's shared BPM or offset invalidates those derived ratings; timestamp
+changes in an individual chart invalidate only that chart. A shared timing
+edit refuses to publish if difficulty files were externally changed or added
+after the last scan: refresh first. Within each Song Set, difficulties are displayed in
 ascending calculated V2 rating (easiest first), using title and filename only
 to break ties. A Song Set's technical ID stays independent of its
 visible title.

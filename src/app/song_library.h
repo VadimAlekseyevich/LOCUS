@@ -16,7 +16,7 @@ std::filesystem::path UserDataDirectory();
 
 struct LibraryChart {
     std::filesystem::path file;
-    core::LoadedChart data; // Parsed once per library refresh.
+    core::LoadedChart data; // Cached across unchanged library rescans.
     std::filesystem::path audioFile; // Actual revision for this difficulty.
     core::ChartDifficulty difficulty; // Reused while file and timing are unchanged.
     // Transient index fingerprint, not serialized with charts or Song Sets.
