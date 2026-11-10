@@ -2,6 +2,7 @@
 #include "app/song_set_storage.h"
 #include "app/chart_file.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
