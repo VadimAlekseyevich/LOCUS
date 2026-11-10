@@ -154,15 +154,15 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_quit_dialog_input_tests PRIVATE locus_core raylib)
     add_test(NAME locus_quit_dialog_input COMMAND locus_quit_dialog_input_tests)
 
-    # Editor input/hitboxes are pure while no window is created.
+    # Editor actions and hitboxes run headlessly; native polling is only linked.
     add_executable(locus_editor_ui_tests
         tests/editor_ui_tests.cpp
         src/app/chart_editor_ui.cpp
         src/app/chart_editor_actions.cpp
-    src/app/editor_timeline_actions.cpp
-    src/app/editor_pattern_actions.cpp
-    src/app/editor_text_fields.cpp
-    src/app/editor_input.cpp
+        src/app/editor_timeline_actions.cpp
+        src/app/editor_pattern_actions.cpp
+        src/app/editor_text_fields.cpp
+        src/app/editor_input.cpp
         src/app/game_settings.cpp
         src/app/route_renderer.cpp
         src/app/path_mesh.cpp
@@ -231,10 +231,10 @@ if(LOCUS_BUILD_TESTS)
         src/app/editor_session.cpp
         src/app/chart_editor_ui.cpp
         src/app/chart_editor_actions.cpp
-    src/app/editor_timeline_actions.cpp
-    src/app/editor_pattern_actions.cpp
-    src/app/editor_text_fields.cpp
-    src/app/editor_input.cpp
+        src/app/editor_timeline_actions.cpp
+        src/app/editor_pattern_actions.cpp
+        src/app/editor_text_fields.cpp
+        src/app/editor_input.cpp
         src/app/route_renderer.cpp
         src/app/path_mesh.cpp
         src/app/game_settings.cpp
