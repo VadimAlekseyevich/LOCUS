@@ -78,6 +78,7 @@ add_executable(locus
     src/app/menu_ui.cpp
     src/app/chart_editor_ui.cpp
     src/app/chart_editor_actions.cpp
+        src/app/editor_input.cpp
     src/app/route_renderer.cpp
     src/app/path_mesh.cpp
 )
@@ -155,6 +156,7 @@ if(LOCUS_BUILD_TESTS)
         tests/editor_ui_tests.cpp
         src/app/chart_editor_ui.cpp
         src/app/chart_editor_actions.cpp
+        src/app/editor_input.cpp
         src/app/game_settings.cpp
         src/app/route_renderer.cpp
         src/app/path_mesh.cpp
@@ -223,6 +225,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/editor_session.cpp
         src/app/chart_editor_ui.cpp
         src/app/chart_editor_actions.cpp
+        src/app/editor_input.cpp
         src/app/route_renderer.cpp
         src/app/path_mesh.cpp
         src/app/game_settings.cpp

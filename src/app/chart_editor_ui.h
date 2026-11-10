@@ -104,6 +104,9 @@ struct EditorUiAction {
     bool previewRestart = false;
     bool testPlay = false;
     bool changedChart = false;
+    // The pure editor returns clipboard text; the outer screen adapter
+    // decides when to publish it to the native OS clipboard.
+    std::string clipboardWrite;
     int speedIndex = -1;
 };
 

@@ -188,6 +188,13 @@ int main() {
                 detail::kRouteTimeValue.y +
                     detail::kRouteTimeValue.height > 409,
                 "clickable Route time uses fractional beat audio milliseconds");
+    EditorUiState timeCopyUi;
+    EditorControls timeCopyClick = Click(70, 409);
+    timeCopyClick.timelineViewBeat = 4.5;
+    const auto timeCopyAction = ApplyEditorControls(ruler, timeCopyUi, timeCopyClick);
+    ok &= Check(timeCopyAction.clipboardWrite == "2250" &&
+                timeCopyUi.feedback == "2250 MS COPIED",
+                "copy timestamp is a pure command without a native clipboard call");
     // FIELD has one integer square size, no editable start coordinates.
     ApplyEditorControls(chart, ui, Click(783, 89));
     ok &= Check(ui.tab == EditorTab::Field, "Field tab opens");

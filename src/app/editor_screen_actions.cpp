@@ -3,12 +3,15 @@
 #include "app/editor_file_actions.h"
 #include "app/editor_set_controller.h"
 #include "app/chart_editor_ui.h"
+#include "raylib.h"
 
 namespace locus::app {
 
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     const EditorUiAction uiAction = context_.session.ApplyControls(
         input.editor, now);
+    if (!uiAction.clipboardWrite.empty())
+        SetClipboardText(uiAction.clipboardWrite.c_str());
     // BPM/offset are Song Set properties. Confirm a field edit by updating
     // its one canonical manifest; never change only this difficulty's timing.
     // Field confirmation may change tabs in the same frame; Undo of a BPM
