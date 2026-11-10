@@ -13,6 +13,7 @@ enum class Screen {
 struct AppState {
     bool running = true;
     bool quitConfirmation = false;
+    bool levelExitConfirmation = false;
     int frames = 0;
     Screen screen = Screen::Home;
 };
@@ -33,6 +34,9 @@ struct NavigationInput {
     bool openSettingsPressed = false;
     bool openPlayPressed = false;
     bool chooseChartPressed = false;
+    bool leaveRequested = false;
+    bool levelExitConfirmed = false;
+    bool levelExitCanceled = false;
 };
 
 const char* ScreenName(Screen screen) noexcept;

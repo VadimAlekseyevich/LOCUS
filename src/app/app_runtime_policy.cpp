@@ -11,7 +11,9 @@ void UpdateState(AppState& state, const FrameInput& input, bool smokeWindow) {
         input.homePressed, input.backPressed,
         input.openEditorPressed, input.openSkinPressed,
         input.openSettingsPressed, input.openPlayPressed,
-        input.chooseChartPressed
+        input.chooseChartPressed,
+        input.leaveRequested, input.levelExitConfirmed,
+        input.levelExitCanceled
     }, smokeWindow);
 }
 

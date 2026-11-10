@@ -289,14 +289,18 @@ int main(int argc, char** argv) {
 
     while (state.running) {
         const bool wasQuitConfirmation = state.quitConfirmation;
+        const bool wasLevelExitConfirmation = state.levelExitConfirmation;
+        const bool wasAnyModal = wasQuitConfirmation || wasLevelExitConfirmation;
         FrameInput input = locus::app::PollFrameInput(
-            debugScreens, state, settings, MonotonicSeconds());
+            debugScreens, state, settings, MonotonicSeconds(),
+            state.screen == Screen::Play &&
+                (customChart ? chartPlayback.Paused() : transport.Paused()));
         const auto [repeatSpeed, repeatPreview] = adjustmentRepeater.Advance(
             input.baseSpeedHeld, input.previewTimeHeld, GetFrameTime());
         input.baseSpeedDelta += repeatSpeed;
         input.previewTimeDelta += repeatPreview;
         const MenuEvents menuEvents =
-            (wasQuitConfirmation || input.closeRequested) ? MenuEvents{} :
+            (wasAnyModal || input.closeRequested) ? MenuEvents{} :
             HandleMenuInput(state, input, library, libraryUi, settings,
                             settingsUi, draftSkin, skinUi);
         if (menuEvents.toggleFullscreen &&
@@ -353,7 +357,8 @@ int main(int argc, char** argv) {
         // TEST is a temporary view of the *same unsaved editor document*.
         // Returning through SongSelect previously reopened the last selected
         // saved difficulty, making the edited chart appear to vanish.
-        if (locus::app::EditorTestExitToEditor(
+        if (state.screen != Screen::Play &&
+            locus::app::EditorTestExitToEditor(
                 state.screen, playCameFromEditor,
                 input.backPressed, input.homePressed)) {
             input.requestedScreen = Screen::Editor;
@@ -368,8 +373,11 @@ int main(int argc, char** argv) {
                 persistSettings();
             }
         }
+        if (input.levelExitConfirmed && playCameFromEditor)
+            input.requestedScreen = Screen::Editor;
         UpdateState(state, input, smokeWindow);
-        if (state.quitConfirmation) input = FrameInput{}; // No actions beneath dialog.
+        if (state.quitConfirmation || state.levelExitConfirmation)
+            input = FrameInput{}; // Exclusive modal input.
         if (previousScreen != Screen::Skin && state.screen == Screen::Skin) {
             // PLAY can change global skin speed without visiting SKIN.
             // Entering the editor always previews the actual active skin,
@@ -396,16 +404,24 @@ int main(int argc, char** argv) {
         }
         double now = MonotonicSeconds();
         // Only the transport paused by the quit modal may be resumed.
-        locus::app::UpdateQuitMedia(
-            quitMedia, wasQuitConfirmation, state.quitConfirmation, state.screen,
-            customChart, now, gameSession, transport, chartPlayback, localSong);
+        const bool anyModal = state.quitConfirmation || state.levelExitConfirmation;
+        if (wasLevelExitConfirmation && !anyModal &&
+            state.screen != Screen::Play) {
+            // A confirmed leave is not a modal dismissal: do not resume
+            // audio from a level that we just left.
+            quitMedia.Reset();
+        } else {
+            locus::app::UpdateQuitMedia(
+                quitMedia, wasAnyModal, anyModal, state.screen,
+                customChart, now, gameSession, transport, chartPlayback, localSong);
+        }
         // Freeze visual outro and independent library preview whenever the
         // native confirmation blocks input; preserve easing progress.
-        if (!wasQuitConfirmation && state.quitConfirmation) {
+        if (!wasAnyModal && anyModal) {
             if (state.screen == Screen::SongSelect) menuMusic.Pause(now);
             if (state.screen == Screen::Play || state.screen == Screen::Results)
                 presentation.Pause(now);
-        } else if (wasQuitConfirmation && !state.quitConfirmation) {
+        } else if (wasAnyModal && !anyModal) {
             if (state.screen == Screen::SongSelect) menuMusic.Resume(now);
             if (state.screen == Screen::Play || state.screen == Screen::Results)
                 presentation.Resume(now);
@@ -415,7 +431,7 @@ int main(int argc, char** argv) {
         // Ignore that initial key-down; start editing on the next frame.
         if (state.screen == Screen::Editor &&
             previousScreen == Screen::Editor &&
-            !state.quitConfirmation &&
+            !state.quitConfirmation && !state.levelExitConfirmation &&
             editorDiscard.Pending() == EditorPending::None) {
             if (editorActions.Apply(input, now))
                 state.screen = Screen::Play;
@@ -581,7 +597,8 @@ int main(int argc, char** argv) {
              transportView.paused, sessionCompleted, customChart,
              transportView.practiceSpeed, transportView.status,
              settings.hitFlash, settings, activeSkin},
-            state.screen == Screen::Play, state.quitConfirmation, renderNow);
+            state.screen == Screen::Play,
+            state.quitConfirmation || state.levelExitConfirmation, renderNow);
         const auto editorSetView = visibleState.screen == Screen::Editor
             ? editorSet.View() : locus::app::EditorSetView{};
         // Artwork lives at Song Set scope, independent of difficulty/BPM.

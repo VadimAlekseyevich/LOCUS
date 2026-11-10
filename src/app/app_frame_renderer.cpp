@@ -1,6 +1,8 @@
 #include "app/app_frame_renderer.h"
 #include "core/utf8.h"
 #include "app/app_quit_dialog_layout.h"
+#include "app/play_modal_layout.h"
+#include "app/ui_button.h"
 #include "app/viewport.h"
 
 #include <algorithm>
@@ -221,17 +223,15 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                           Color{12, 14, 22, 204});
             DrawTextLabel(font, "PAUSED", Vector2{355.0f, 198.0f},
                           59.0f, Color{240, 246, 247, 255});
-            const std::string resume = locus::app::KeyboardKeyName(
-                gameplay.bindings.Key(locus::app::GameAction::Pause)) + "  -  RESUME";
-            DrawTextLabel(font, resume.c_str(),
-                          Vector2{325.0f, 287.0f}, 28.0f,
-                          Color{239, 219, 164, 255});
-            const std::string controls = locus::app::KeyboardKeyName(
-                gameplay.bindings.Key(locus::app::GameAction::Retry)) +
-                "  RETRY      " + locus::app::KeyboardKeyName(
-                gameplay.bindings.Key(locus::app::GameAction::Home)) + "  HOME";
-            DrawTextLabel(font, controls.c_str(),
-                          Vector2{277.0f, 335.0f}, 21.0f,
+            DrawUiButton(font, kPlayResumeButton, "RESUME",
+                         MenuButtonStyle({130, 226, 215, 255}));
+            DrawUiButton(font, kPlayRetryButton, "RETRY",
+                         MenuButtonStyle({183, 166, 243, 255}));
+            DrawUiButton(font, kPlayLeaveButton, "LEAVE",
+                         MenuButtonStyle({243, 157, 158, 255}));
+            const std::string hint = KeyboardKeyName(
+                gameplay.bindings.Key(GameAction::Pause)) + " PAUSE / RESUME";
+            DrawTextLabel(font, hint.c_str(), {355.0f, 365.0f}, 17.0f,
                           Color{204, 213, 232, 255});
         }
         if (gameplay.outro.blackOpacity > 0.0f)
@@ -317,6 +317,22 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         DrawTextLabel(font, "DEBUG: F1 Home   F2 Play   F3 Editor   F4 Results",
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 65)},
                       22.0f, Color{232, 213, 160, 255});
+    }
+    if (state.levelExitConfirmation) {
+        DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
+                      Color{9, 12, 23, 235});
+        DrawRectangleRounded({197, 158, 566, 244}, 0.09f, 8,
+                             Color{33, 40, 56, 255});
+        DrawTextLabel(font, "LEAVE THIS LEVEL?", {276, 184}, 34,
+                      Color{249, 217, 163, 255});
+        DrawTextLabel(font, "UNFINISHED RUN PROGRESS WILL BE LOST",
+                      {250, 254}, 20, Color{248, 180, 174, 255});
+        DrawUiButton(font, kLeaveLevelConfirmButton, "Y / LEAVE",
+                     MenuButtonStyle({242, 148, 153, 255}));
+        DrawUiButton(font, kLeaveLevelCancelButton, "N / STAY",
+                     MenuButtonStyle({130, 226, 215, 255}));
+        DrawTextLabel(font, "ESC ALSO CANCELS", {383, 386}, 14,
+                      Color{192, 207, 229, 255});
     }
     DrawQuitConfirmation(font, state, editor, editorUi, skinUi);
     EndMode2D();

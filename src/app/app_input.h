@@ -26,6 +26,9 @@ struct FrameInput {
     bool openSkinPressed = false;
     bool openSettingsPressed = false;
     bool backPressed = false;
+    bool leaveRequested = false;
+    bool levelExitConfirmed = false;
+    bool levelExitCanceled = false;
     bool editorSave = false;
     bool editorSaveAs = false;
     bool editorOpen = false;
@@ -49,6 +52,7 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
 // to input collection, not to the application lifecycle/composition root.
 FrameInput PollFrameInput(bool debugScreens, const AppState& state,
                           const GameSettings& settings,
-                          double eventTimeSeconds);
+                          double eventTimeSeconds,
+                          bool playPaused = false);
 
 } // namespace locus::app

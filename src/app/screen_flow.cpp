@@ -33,6 +33,25 @@ void UpdateScreenFlow(AppState& state, const NavigationInput& input,
     }
     if (input.closeRequested) {
         state.quitConfirmation = true;
+        state.levelExitConfirmation = false;
+        ++state.frames;
+        return;
+    }
+    if (state.levelExitConfirmation) {
+        if (input.levelExitConfirmed) {
+            state.levelExitConfirmation = false;
+            state.screen = input.requestedScreen.value_or(Screen::SongSelect);
+        } else if (input.levelExitCanceled) {
+            state.levelExitConfirmation = false;
+        }
+        ++state.frames;
+        return;
+    }
+    // Never leave an unfinished PLAY session on a single key or click.
+    // ESC pauses; leaving with H or the pause menu requires confirmation.
+    if (state.screen == Screen::Play &&
+        (input.homePressed || input.backPressed || input.leaveRequested)) {
+        state.levelExitConfirmation = true;
         ++state.frames;
         return;
     }

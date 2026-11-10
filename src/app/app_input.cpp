@@ -2,6 +2,7 @@
 
 #include "app/native_close.h"
 #include "app/app_quit_dialog_layout.h"
+#include "app/play_modal_layout.h"
 #include "app/chart_editor_layout.h"
 #include "raylib.h"
 
@@ -98,7 +99,7 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
 
 FrameInput PollFrameInput(bool debugScreens, const AppState& state,
                           const GameSettings& settings,
-                          double eventTimeSeconds) {
+                          double eventTimeSeconds, bool playPaused) {
     if (state.quitConfirmation) {
         // Repeated native X presses cannot bypass an already-open modal.
         ConsumeNativeCloseRequest();
@@ -117,8 +118,35 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
         }
         return input;
     }
+    if (state.levelExitConfirmation) {
+        ConsumeNativeCloseRequest(); // Modal owns all gameplay and input.
+        FrameInput input;
+        input.levelExitConfirmed = IsKeyPressed(KEY_Y);
+        input.levelExitCanceled = IsKeyPressed(KEY_N) ||
+                                  IsKeyPressed(KEY_ESCAPE);
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            const Vector2 mouse = GetMousePosition();
+            const int width = GetScreenWidth(), height = GetScreenHeight();
+            input.levelExitConfirmed |= PlayButtonHit(
+                kLeaveLevelConfirmButton, mouse, width, height);
+            input.levelExitCanceled |= PlayButtonHit(
+                kLeaveLevelCancelButton, mouse, width, height);
+        }
+        return input;
+    }
     FrameInput input = PollInput(debugScreens, state.screen,
                                  settings, eventTimeSeconds);
+    if (state.screen == Screen::Play && playPaused &&
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        const Vector2 mouse = GetMousePosition();
+        const int width = GetScreenWidth(), height = GetScreenHeight();
+        if (PlayButtonHit(kPlayResumeButton, mouse, width, height))
+            input.pausePressed = true;
+        else if (PlayButtonHit(kPlayRetryButton, mouse, width, height))
+            input.restartPressed = true;
+        else if (PlayButtonHit(kPlayLeaveButton, mouse, width, height))
+            input.leaveRequested = true;
+    }
     if (state.screen == Screen::Editor && input.editor.mouseClick &&
         CheckCollisionPointRec(input.editor.mouse,
                                detail::kEditorBack)) {
