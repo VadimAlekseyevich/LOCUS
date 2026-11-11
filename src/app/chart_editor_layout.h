@@ -112,29 +112,39 @@ constexpr Rectangle ComparePickerRow(int row) noexcept {
 constexpr Rectangle kComparePickerPrev{503, 420, 80, 20};
 constexpr Rectangle kComparePickerNext{638, 420, 84, 20};
 
-// All preview panes share one physical song-time scale. Primary stays large
-// even when there are four routes; references shrink instead of the editor.
+// ROUTE comparison is capped at three charts. Each pane is the same size,
+// including the one in focus, and never changes size/position on focus.
+// The editor's 960x540 viewport leaves 222px between controls and overview:
+// 3 x 222 + 2 x 8 = 682, exactly the available width.
 constexpr float kPreviewLeft = 52.0f;
 constexpr float kPreviewRight = 734.0f;
 constexpr float kPreviewTop = 239.0f;
-constexpr float kPreviewSide = 198.0f;
+constexpr float kPreviewSide = 222.0f;
 constexpr float kPreviewGap = 8.0f;
 inline Rectangle ComparisonPreviewBounds(int count, int index) noexcept {
-    const int visible = std::clamp(count, 1, 4);
-    const int followers = visible - 1;
-    const float secondary = followers == 0 ? 0.0f :
-        std::min(kPreviewSide,
-            (kPreviewRight - kPreviewLeft - kPreviewSide -
-             kPreviewGap * followers) / followers);
-    const float total = kPreviewSide + followers * (secondary + kPreviewGap);
-    const float x0 = kPreviewLeft +
+    const int visible = std::clamp(count, 1, 3);
+    if (index < 0 || index >= visible) return {};
+    const float total = visible * kPreviewSide +
+        (visible - 1) * kPreviewGap;
+    const float left = kPreviewLeft +
         (kPreviewRight - kPreviewLeft - total) * 0.5f;
-    if (index <= 0) return {x0, kPreviewTop, kPreviewSide, kPreviewSide};
-    if (index >= visible) return {};
-    return {x0 + kPreviewSide + kPreviewGap +
-        (index - 1) * (secondary + kPreviewGap),
-        kPreviewTop + (kPreviewSide - secondary) * 0.5f,
-        secondary, secondary};
+    return {left + index * (kPreviewSide + kPreviewGap),
+            kPreviewTop, kPreviewSide, kPreviewSide};
+}
+
+// Editor-only presentation controls, disjoint from the direction pad above
+// and the fixed whole-song timeline below.
+constexpr Rectangle kEditorSpeedMinus{842, 394, 39, 28};
+constexpr Rectangle kEditorSpeedPlus{889, 394, 39, 28};
+constexpr Rectangle kEditorPathMinus{842, 428, 39, 28};
+constexpr Rectangle kEditorPathPlus{889, 428, 39, 28};
+inline int EditorSpeedControlDelta(Vector2 point) noexcept {
+    return CheckCollisionPointRec(point, kEditorSpeedMinus) ? -1
+         : CheckCollisionPointRec(point, kEditorSpeedPlus) ? 1 : 0;
+}
+inline int EditorPathControlDelta(Vector2 point) noexcept {
+    return CheckCollisionPointRec(point, kEditorPathMinus) ? -1
+         : CheckCollisionPointRec(point, kEditorPathPlus) ? 1 : 0;
 }
 
 constexpr Rectangle kTitle{92, 205, 520, 38};
@@ -188,7 +198,7 @@ constexpr Rectangle kFieldHeadingNext{403, 235, 51, 47};
 
 // Absolute song milliseconds at the same fractional tick used by the route.
 // The displayed value and copied clipboard value share this calculation.
-constexpr Rectangle kRouteTimeValue{52, 440, 206, 23};
+constexpr Rectangle kRouteTimeValue{744, 258, 191, 16};
 inline long long RouteTimeMs(const core::ChartEditor& draft, double activeTick) {
     const auto& loaded = draft.Data();
     const double tick = ViewBeat(draft, activeTick);
