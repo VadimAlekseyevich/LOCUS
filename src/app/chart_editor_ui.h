@@ -64,6 +64,7 @@ struct EditorSetView {
     // Shared Song Set tempo marker, not per-difficulty note metadata.
     double bpm = 120.0;
     int offsetMs = 0;
+    std::vector<core::TempoMarker> tempoMap; // Shared by all difficulties.
     std::string title, artist, audioName, id;
     std::vector<std::string> difficulties;
     std::vector<EditorComparisonOption> comparisonOptions;
@@ -92,6 +93,11 @@ struct EditorUiState {
     }
     int setSelected = -1; // -1 follows the currently open difficulty.
     int setFirstVisible = 0;
+    int tempoEditingRow = -1;
+    bool tempoEditingBpm = false;
+    bool tempoReplaceOnType = false;
+    std::string tempoBuffer;
+    int tempoFirstVisible = 0;
     bool editingSetPreview = false;
     bool setPreviewReplaceOnType = false;
     std::string setPreviewBuffer;
@@ -102,7 +108,8 @@ struct EditorUiState {
     int comparisonPickerFirst = 0;
     int timelineZoomIndex = 3; // Default 36 px/beat; zoom changes view only.
     bool EditingText() const noexcept {
-        return active != EditorField::None || editingSetPreview;
+        return active != EditorField::None || editingSetPreview ||
+               tempoEditingRow >= 0;
     }
 };
 

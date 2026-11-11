@@ -2,6 +2,7 @@
 
 #include "app/chart_editor_layout.h"
 #include "app/editor_comparison.h"
+#include "app/editor_tempo_controls.h"
 #include "app/editor_file_actions.h"
 #include "app/image_asset_decode.h"
 #include "app/menu_ui.h"
@@ -140,6 +141,17 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         return;
     }
     if (ui.tab != EditorTab::Set && ui.tab != EditorTab::Audio) return;
+    if (ui.tab == EditorTab::Audio && !ui.editingSetPreview) {
+        const EditorSetView view = View();
+        const auto tempo = view.managed && !view.tempoMap.empty()
+            ? view.tempoMap
+            : core::EffectiveTempoMap(ctx_.editor.Data().route,
+                                       ctx_.editor.Data().offsetSeconds);
+        if (HandleTempoTable(ui, input, tempo, ctx_.editor,
+                             [&](const std::vector<core::TempoMarker>& markers) {
+                                 return ApplyTempoMap(markers);
+                             })) return;
+    }
     if (ui.editingSetPreview) {
         if (input.escape) {
             ui.editingSetPreview = false;

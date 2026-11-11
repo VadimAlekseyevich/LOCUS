@@ -1,4 +1,5 @@
 #include "app/editor_session.h"
+#include "core/tempo_map.h"
 
 #include "app/chart_playback.h"
 #include "app/game_session.h"
@@ -21,8 +22,9 @@ bool PrepareEditorTest(const core::LoadedChart& source, double audioSeconds,
         error = "SELECT A POSITION BEFORE SONG END";
         return false;
     }
-    const double exactBeat = (audioSeconds - checked.offsetSeconds) *
-        (checked.route.bpm * checked.route.ticksPerBeat) / 60.0;
+    const double exactBeat = core::TempoBeatAtSeconds(
+        checked.route, checked.offsetSeconds, audioSeconds) *
+        checked.route.ticksPerBeat;
     if (!std::isfinite(exactBeat)) {
         error = "SELECTED POSITION IS INVALID";
         return false;
@@ -88,9 +90,10 @@ void EditorSession::StartPreview(int beat, double now) {
         status_ = "PREVIEW FAILED: SELECTED BEAT / OFFSET IS AFTER SONG END";
         return;
     }
-    playback_.Configure(editor_.Data().route.bpm *
-                        editor_.Data().route.ticksPerBeat,
-                        editor_.Data().offsetSeconds);
+    playback_.Configure(editor_.Data().route.bpm,
+                        editor_.Data().offsetSeconds,
+                        editor_.Data().route.tempoMap,
+                        editor_.Data().route.ticksPerBeat);
     if (!playback_.StartAtAudioSeconds(songTime, now)) {
         status_ = "PREVIEW FAILED: COULD NOT START AUDIO";
         return;
@@ -122,9 +125,10 @@ bool EditorSession::BeginTest(EditorTestTarget target, double now,
     // Keep the Chart object identity: TurnJudge and GameSession borrow it.
     target.activeChart = std::move(plan.chart.route);
     target.title = std::move(plan.chart.title);
-    playback_.Configure(target.activeChart.bpm *
-                        target.activeChart.ticksPerBeat,
-                        plan.chart.offsetSeconds);
+    playback_.Configure(target.activeChart.bpm,
+                        plan.chart.offsetSeconds,
+                        target.activeChart.tempoMap,
+                        target.activeChart.ticksPerBeat);
     target.judge.SetOffsetSeconds(plan.chart.offsetSeconds);
     target.gameSession.SetTestOrigin(
         {plan.audioSeconds, plan.firstScoredBeat});

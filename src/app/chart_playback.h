@@ -3,6 +3,7 @@
 #include "app/local_music.h"
 #include "app/playback_cursor_smoother.h"
 #include "core/song_clock.h"
+#include "core/tempo_map.h"
 
 namespace locus::app {
 
@@ -13,7 +14,9 @@ class ChartPlayback {
 public:
     explicit ChartPlayback(LocalMusic& audio) noexcept : audio_(audio) {}
 
-    void Configure(double bpm, double offsetSeconds) noexcept;
+    void Configure(double bpm, double offsetSeconds,
+                   const std::vector<core::TempoMarker>& map = {},
+                   int ticksPerBeat = 1) noexcept;
     void Start(double monotonicSeconds);
     // Editor-only seek: no scoring and no separate Play screen.
     bool StartAtAudioSeconds(double audioSeconds, double monotonicSeconds);
@@ -34,6 +37,9 @@ public:
     // continues to use AudioSeconds() from the real played audio stream.
     double VisualAudioSeconds(double monotonicSeconds) const noexcept;
     double BeatAtAudioSeconds(double audioSeconds) const noexcept {
+        if (!tempoMap_.empty())
+            return core::TempoBeatAtMs(tempoMap_, audioSeconds * 1000.0) *
+                ticksPerBeat_;
         return (audioSeconds - offsetSeconds_) * bpm_ / 60.0;
     }
 
@@ -42,6 +48,8 @@ private:
     core::SongClock clock_;
     mutable PlaybackCursorSmoother visualCursor_;
     double bpm_ = 120.0;
+    std::vector<core::TempoMarker> tempoMap_;
+    int ticksPerBeat_ = 1;
     double speed_ = 1.0;
     double offsetSeconds_ = 0.0;
     double startAudioSeconds_ = 0.0;

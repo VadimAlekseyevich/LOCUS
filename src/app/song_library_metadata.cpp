@@ -58,13 +58,21 @@ bool SameSongSetFiles(const LibrarySong& song, std::string& error) {
 bool SongLibrary::SetSongTiming(int songIndex, double bpm, int offsetMs,
                                 const core::LoadedChart* currentDraft,
                                 std::string& error) {
+    return SetSongTempoMap(songIndex,
+        {{static_cast<std::int64_t>(offsetMs), bpm}}, currentDraft, error);
+}
+
+bool SongLibrary::SetSongTempoMap(
+    int songIndex, const std::vector<core::TempoMarker>& markers,
+    const core::LoadedChart* currentDraft, std::string& error) {
     if (songIndex < 0 || songIndex >= static_cast<int>(songs_.size()) ||
         !songs_[static_cast<std::size_t>(songIndex)].managed) {
-        error = "Choose a managed Song Set before changing BPM/offset.";
+        error = "Choose a managed Song Set before editing BPM markers.";
         return false;
     }
+    if (!core::ValidTempoMap(markers, error)) return false;
     auto& song = songs_[static_cast<std::size_t>(songIndex)];
-    if (song.bpm == bpm && song.offsetMs == offsetMs) {
+    if (song.tempoMap == markers) {
         error.clear();
         return true;
     }
@@ -72,37 +80,41 @@ bool SongLibrary::SetSongTiming(int songIndex, double bpm, int offsetMs,
     adjusted.reserve(song.charts.size());
     for (const auto& difficulty : song.charts) {
         core::LoadedChart candidate = difficulty.data;
-        if (!ApplySongTiming(candidate, bpm, offsetMs, error))
+        if (!ApplySongTiming(candidate, markers, error))
             return false;
         adjusted.push_back(std::move(candidate));
     }
     if (currentDraft) {
         core::LoadedChart candidate = *currentDraft;
-        if (!ApplySongTiming(candidate, bpm, offsetMs, error)) return false;
+        if (!ApplySongTiming(candidate, markers, error)) return false;
     }
     FolderWriteLock lock;
     if (!lock.Acquire(song.folder, error)) return false;
     if (!SameSongSetFiles(song, error)) return false;
-    SongSetManifest metadata;
-    const auto manifestFile = song.folder / L"set.locus.json";
-    if (!LoadSongSetManifest(manifestFile, metadata, error)) return false;
-    if (metadata.id != song.id ||
-        (metadata.bpm && *metadata.bpm != song.bpm) ||
-        (metadata.offsetMs && *metadata.offsetMs != song.offsetMs)) {
+
+    SongSetManifest manifest;
+    const auto file = song.folder / L"set.locus.json";
+    if (!LoadSongSetManifest(file, manifest, error)) return false;
+    const auto diskMap = !manifest.tempoMap.empty()
+        ? manifest.tempoMap
+        : std::vector<core::TempoMarker>{{song.offsetMs, song.bpm}};
+    if (manifest.id != song.id || diskMap != song.tempoMap) {
         error = "Song Set timing changed on disk; refresh the library.";
         return false;
     }
-    metadata.bpm = bpm;
-    metadata.offsetMs = offsetMs;
-    if (!ReplaceSongSetManifest(manifestFile, metadata, error)) return false;
-    song.bpm = bpm;
-    song.offsetMs = offsetMs;
+    manifest.bpm = markers.front().bpm;
+    manifest.offsetMs = static_cast<int>(markers.front().timeMs);
+    manifest.tempoMap = markers;
+    if (!ReplaceSongSetManifest(file, manifest, error)) return false;
+    song.tempoMap = markers;
+    song.bpm = markers.front().bpm;
+    song.offsetMs = static_cast<int>(markers.front().timeMs);
     for (std::size_t i = 0; i < adjusted.size(); ++i) {
         song.charts[i].data = std::move(adjusted[i]);
         song.charts[i].difficulty = core::CalculateChartDifficulty(
             song.charts[i].data.route, song.charts[i].data.offsetSeconds);
     }
-    SortChartDifficulties(song.charts); // Also keep order after shared timing edits.
+    SortChartDifficulties(song.charts);
     error.clear();
     return true;
 }

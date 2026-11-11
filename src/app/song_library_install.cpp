@@ -117,8 +117,7 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
                     return s.managed && s.folder == folder;
                 });
             if (other != songs_.end() &&
-                !ApplySongTiming(installed, other->bpm,
-                                 other->offsetMs, error)) return false;
+                !ApplySongTiming(installed, other->tempoMap, error)) return false;
         }
         const fs::path audio = folder / fs::u8path(metadata.audioFile);
         if (!InstallSharedSongAudio(source, audio, error)) return false;
@@ -236,8 +235,7 @@ bool SongLibrary::Import(const fs::path& sourceChart,
             if (!ApplySongTiming(source, *metadata.bpm,
                                  *metadata.offsetMs, error)) return false;
         } else if (existing != songs_.end()) {
-            if (!ApplySongTiming(source, existing->bpm,
-                                 existing->offsetMs, error)) return false;
+            if (!ApplySongTiming(source, existing->tempoMap, error)) return false;
         }
     }
     if (!SaveChartWithAudioPath(installedChart.wstring(),

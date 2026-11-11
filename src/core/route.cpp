@@ -1,4 +1,5 @@
 #include "core/route.h"
+#include "core/tempo_map.h"
 
 #include <algorithm>
 #include <cmath>
@@ -71,9 +72,8 @@ std::int64_t EventTimeMs(const Chart& chart, const TurnEvent& note,
     if (!std::isfinite(chart.bpm) || chart.bpm <= 0.0 ||
         chart.ticksPerBeat <= 0 || !std::isfinite(offsetSeconds))
         return 0;
-    const double ms = offsetSeconds * 1000.0 +
-        static_cast<double>(note.beat) * 60000.0 /
-            (chart.bpm * chart.ticksPerBeat);
+    const double ms = TempoSecondsAtTick(
+        chart, offsetSeconds, note.beat) * 1000.0;
     return std::isfinite(ms) ? static_cast<std::int64_t>(std::llround(ms)) : 0;
 }
 

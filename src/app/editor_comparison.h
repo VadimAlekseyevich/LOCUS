@@ -55,6 +55,7 @@ private:
         std::uintmax_t fileSize = 0;
         std::filesystem::file_time_type modified{};
         double bpm = 0.0, offsetSeconds = 0.0, duration = 0.0;
+        std::vector<core::TempoMarker> tempoMap;
         bool ready = false;
     };
     Cached active_;

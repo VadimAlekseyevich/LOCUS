@@ -158,6 +158,7 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             cached.fileSize != found->fileSize ||
             cached.modified != found->modified ||
             cached.bpm != found->chart->route.bpm ||
+            cached.tempoMap != found->chart->route.tempoMap ||
             cached.offsetSeconds != found->chart->offsetSeconds ||
             cached.duration != songDurationSeconds;
         if (changed) {
@@ -167,6 +168,7 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             cached.fileSize = found->fileSize;
             cached.modified = found->modified;
             cached.bpm = found->chart->route.bpm;
+            cached.tempoMap = found->chart->route.tempoMap;
             cached.offsetSeconds = found->chart->offsetSeconds;
             cached.duration = songDurationSeconds;
             // The Song Library holds parsed JSON without song length.

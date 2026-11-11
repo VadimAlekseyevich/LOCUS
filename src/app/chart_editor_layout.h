@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/chart_editor_ui.h"
+#include "core/tempo_map.h"
 
 #include <algorithm>
 #include <array>
@@ -136,10 +137,24 @@ inline Rectangle ComparisonPreviewBounds(int count, int index) noexcept {
         secondary, secondary};
 }
 
-constexpr Rectangle kTitle{92, 205, 768, 43};
+constexpr Rectangle kTitle{92, 205, 520, 38};
 constexpr Rectangle kBpm{92, 290, 350, 43};
 constexpr Rectangle kOffset{510, 290, 350, 43};
-constexpr Rectangle kAudioPreviewMs{92, 371, 768, 43};
+constexpr Rectangle kAudioPreviewMs{635, 205, 225, 38};
+// Shared timing table; no chart-specific BPM/offset editor widgets.
+constexpr Rectangle TempoOffsetCell(int row) noexcept {
+    return {104.0f, 284.0f + row * 30.0f, 233.0f, 27.0f};
+}
+constexpr Rectangle TempoBpmCell(int row) noexcept {
+    return {350.0f, 284.0f + row * 30.0f, 235.0f, 27.0f};
+}
+constexpr Rectangle TempoDeleteCell(int row) noexcept {
+    return {600.0f, 284.0f + row * 30.0f, 70.0f, 27.0f};
+}
+constexpr Rectangle kTempoAdd{694, 434, 166, 27};
+constexpr Rectangle kTempoPrev{694, 284, 76, 27};
+constexpr Rectangle kTempoNext{784, 284, 76, 27};
+constexpr Rectangle kTempoTable{92, 280, 580, 155};
 // Song Set management occupies its own tab without moving the timeline.
 constexpr Rectangle kSetOpenFolder{251, 270, 197, 27};
 constexpr Rectangle kSetBackground{52, 301, 190, 31};
@@ -177,8 +192,8 @@ constexpr Rectangle kRouteTimeValue{52, 440, 206, 23};
 inline long long RouteTimeMs(const core::ChartEditor& draft, double activeTick) {
     const auto& loaded = draft.Data();
     const double tick = ViewBeat(draft, activeTick);
-    const double seconds = loaded.offsetSeconds +
-        tick * 60.0 / (loaded.route.bpm * loaded.route.ticksPerBeat);
+    const double seconds = core::TempoSecondsAtTick(
+        loaded.route, loaded.offsetSeconds, tick);
     return static_cast<long long>(std::llround(seconds * 1000.0));
 }
 
@@ -205,8 +220,8 @@ inline int SongOverviewTick(const core::ChartEditor& draft,
                             double audioSeconds) noexcept {
     const auto& data = draft.Data();
     const auto& chart = data.route;
-    const double ticks = (audioSeconds - data.offsetSeconds) *
-        chart.bpm * chart.ticksPerBeat / 60.0;
+    const double ticks = core::TempoBeatAtSeconds(
+        chart, data.offsetSeconds, audioSeconds) * chart.ticksPerBeat;
     if (!std::isfinite(ticks)) return draft.SelectedBeat();
     const double bounded = std::clamp(ticks,
         static_cast<double>(chart.firstBeat),

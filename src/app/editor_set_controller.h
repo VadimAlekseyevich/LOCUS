@@ -52,7 +52,8 @@ public:
     EditorSetView View() const;
     void HandleControls(const EditorControls& input);
     void Request(EditorSetAction action);
-    bool SyncSongTiming(); // Called after BPM/offset edits in AUDIO.
+    bool SyncSongTiming(); // Called after chart timing undo/edits.
+    bool ApplyTempoMap(const std::vector<core::TempoMarker>& markers);
     bool HasPending() const noexcept { return pending_.has_value(); }
     const EditorSetRequest* Pending() const noexcept {
         return pending_ ? &*pending_ : nullptr;

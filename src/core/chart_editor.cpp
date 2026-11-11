@@ -1,4 +1,5 @@
 #include "core/chart_editor.h"
+#include "core/tempo_map.h"
 #include "core/utf8.h"
 
 #include <algorithm>
@@ -70,8 +71,8 @@ bool ChartEditor::ReflowSongRange() noexcept {
     if (songDurationSeconds_ <= 0.0) return true; // Temporary unbound draft.
     int first = 0, end = 0;
     std::string error;
-    if (!ComputeSongBeatRange(chart_.route.bpm * chart_.route.ticksPerBeat,
-                              chart_.offsetSeconds, songDurationSeconds_, first, end, error)) return false;
+    if (!TempoTickRange(chart_.route, chart_.offsetSeconds,
+                        songDurationSeconds_, first, end, error)) return false;
     if (!TurnRangeFits(first, end)) return false;
     chart_.route.firstBeat = first;
     chart_.route.lengthBeats = end;
@@ -121,6 +122,7 @@ ChartEditor::HistoryMetadata ChartEditor::CaptureMetadata() const {
     state.offsetSeconds = chart_.offsetSeconds;
     state.previewLeadBeats = chart_.previewLeadBeats;
     state.bpm = route.bpm;
+    state.tempoMap = route.tempoMap;
     state.ticksPerBeat = route.ticksPerBeat;
     state.snapDivision = route.snapDivision;
     state.gridWidth = route.gridWidth;
@@ -142,6 +144,7 @@ void ChartEditor::RestoreMetadata(const HistoryMetadata& state) {
     chart_.offsetSeconds = state.offsetSeconds;
     chart_.previewLeadBeats = state.previewLeadBeats;
     route.bpm = state.bpm;
+    route.tempoMap = state.tempoMap;
     route.ticksPerBeat = state.ticksPerBeat;
     route.snapDivision = state.snapDivision;
     route.gridWidth = state.gridWidth;
@@ -250,9 +253,7 @@ std::size_t ChartEditor::HistoryStoredTurns() const noexcept {
 }
 
 double ChartEditor::AudioSecondsAtBeat(int beat) const noexcept {
-    return chart_.offsetSeconds +
-           static_cast<double>(beat) * 60.0 /
-               (chart_.route.bpm * chart_.route.ticksPerBeat);
+    return TempoSecondsAtTick(chart_.route, chart_.offsetSeconds, beat);
 }
 
 bool ChartEditor::SetAudioPath(const std::string& relativePath) {
@@ -307,9 +308,10 @@ bool ChartEditor::SetSnapDivision(int division) {
     if (factor > 1) {
         if (HasSongDuration()) {
             std::string error;
-            if (!ComputeSongBeatRange(chart_.route.bpm * newTicks,
-                                      chart_.offsetSeconds, songDurationSeconds_,
-                                      first, end, error)) return false;
+            Chart projected = chart_.route;
+            projected.ticksPerBeat = newTicks;
+            if (!TempoTickRange(projected, chart_.offsetSeconds,
+                                songDurationSeconds_, first, end, error)) return false;
         } else {
             if (static_cast<long long>(first) * factor < -1000000 ||
                 static_cast<long long>(end) * factor > 1000000 ||
@@ -337,80 +339,87 @@ bool ChartEditor::SetSnapDivision(int division) {
     return true;
 }
 
+bool ChartEditor::SetTempoMap(const std::vector<TempoMarker>& markers) {
+    std::string error;
+    if (!ValidTempoMap(markers, error)) return false;
+    const auto existing = EffectiveTempoMap(
+        chart_.route, chart_.offsetSeconds);
+    if (existing == markers) return true;
+
+    // Absolute event times and the current audio position remain fixed.
+    // A tempo change only changes their positions on the musical grid.
+    const double selectedTime = AudioSecondsAtBeat(selectedBeat_);
+    std::vector<std::int64_t> times;
+    times.reserve(chart_.route.turns.size());
+    for (const auto& note : chart_.route.turns)
+        times.push_back(EventTimeMs(chart_.route, note,
+                                    chart_.offsetSeconds));
+
+    const int originalTicks = chart_.route.ticksPerBeat;
+    for (int multiplier = 1; multiplier <= 48 / originalTicks; ++multiplier) {
+        Chart adjusted = chart_.route;
+        adjusted.bpm = markers.front().bpm;
+        adjusted.tempoMap = markers;
+        adjusted.ticksPerBeat = originalTicks * multiplier;
+        const double newOffset = markers.front().timeMs / 1000.0;
+        int first = chart_.route.firstBeat, end = chart_.route.lengthBeats;
+        if (HasSongDuration()) {
+            if (!TempoTickRange(adjusted, newOffset, songDurationSeconds_,
+                                first, end, error)) continue;
+        } else if (multiplier > 1) {
+            first *= multiplier;
+            end *= multiplier;
+        }
+
+        std::vector<TurnEvent> remapped = chart_.route.turns;
+        bool fits = true;
+        int previous = first - 1;
+        for (std::size_t i = 0; i < remapped.size(); ++i) {
+            const int tick = TempoTickAtMs(adjusted, newOffset, times[i]);
+            if (tick <= previous || tick < first || tick >= end ||
+                tick < -1000000 || tick > 999999) {
+                fits = false;
+                break;
+            }
+            remapped[i].beat = tick;
+            remapped[i].timeMs = times[i];
+            previous = tick;
+        }
+        if (!fits) continue;
+        const int selected = std::clamp(
+            TempoTickAtMs(adjusted, newOffset,
+                static_cast<std::int64_t>(std::llround(selectedTime * 1000.0))),
+            first, end - 1);
+
+        SaveUndoAllTurns();
+        chart_.route.turns = std::move(remapped);
+        chart_.route.tempoMap = markers;
+        chart_.route.bpm = markers.front().bpm;
+        chart_.route.ticksPerBeat = adjusted.ticksPerBeat;
+        chart_.offsetSeconds = newOffset;
+        chart_.route.firstBeat = first;
+        chart_.route.lengthBeats = end;
+        selectedBeat_ = selected;
+        MarkDirty();
+        return true;
+    }
+    return false; // Invalid change cannot merge or delete existing notes.
+}
+
 bool ChartEditor::SetBpm(double bpm) {
     if (!std::isfinite(bpm) || bpm <= 0.0) return false;
-    if (bpm == chart_.route.bpm) return true;
-    int first = chart_.route.firstBeat, end = chart_.route.lengthBeats;
-    std::string error;
-    if (HasSongDuration() &&
-        !ComputeSongBeatRange(bpm * chart_.route.ticksPerBeat,
-                              chart_.offsetSeconds, songDurationSeconds_,
-                              first, end, error)) return false;
-
-    // BPM changes only the ruler and snap coordinates, never a note's
-    // absolute millisecond timestamp. Commit atomically after validation.
-    std::vector<TurnEvent> remapped = chart_.route.turns;
-    int prior = first - 1;
-    for (auto& note : remapped) {
-        const auto ms = EventTimeMs(chart_.route, note, chart_.offsetSeconds);
-        note.beat = TickAtTimeMs(bpm, chart_.route.ticksPerBeat,
-                                 chart_.offsetSeconds, ms);
-        if (note.beat <= prior || note.beat < first || note.beat >= end)
-            return false;
-        note.timeMs = ms;
-        prior = note.beat;
-    }
-    const std::int64_t selectedMs = static_cast<std::int64_t>(std::llround(
-        AudioSecondsAtBeat(selectedBeat_) * 1000.0));
-    SaveUndoAllTurns();
-    chart_.route.turns = std::move(remapped);
-    chart_.route.bpm = bpm;
-    chart_.route.firstBeat = first;
-    chart_.route.lengthBeats = end;
-    selectedBeat_ = std::clamp(
-        TickAtTimeMs(bpm, chart_.route.ticksPerBeat, chart_.offsetSeconds,
-                     selectedMs), first, end - 1);
-    MarkDirty();
-    return true;
+    auto changes = EffectiveTempoMap(chart_.route, chart_.offsetSeconds);
+    changes.front().bpm = bpm;
+    return SetTempoMap(changes);
 }
 
 bool ChartEditor::SetOffsetMs(double milliseconds) {
     if (!std::isfinite(milliseconds) ||
         std::abs(milliseconds) > 3600000.0 ||
         std::trunc(milliseconds) != milliseconds) return false;
-    const double offset = milliseconds / 1000.0;
-    if (offset == chart_.offsetSeconds) return true;
-    int first = chart_.route.firstBeat, end = chart_.route.lengthBeats;
-    std::string error;
-    if (HasSongDuration() &&
-        !ComputeSongBeatRange(chart_.route.bpm * chart_.route.ticksPerBeat,
-                              offset, songDurationSeconds_,
-                              first, end, error)) return false;
-
-    // Changing the grid origin must not move authored audio timestamps.
-    std::vector<TurnEvent> remapped = chart_.route.turns;
-    int prior = first - 1;
-    for (auto& note : remapped) {
-        const auto ms = EventTimeMs(chart_.route, note, chart_.offsetSeconds);
-        note.beat = TickAtTimeMs(chart_.route.bpm, chart_.route.ticksPerBeat,
-                                 offset, ms);
-        if (note.beat <= prior || note.beat < first || note.beat >= end)
-            return false;
-        note.timeMs = ms;
-        prior = note.beat;
-    }
-    const std::int64_t selectedMs = static_cast<std::int64_t>(std::llround(
-        AudioSecondsAtBeat(selectedBeat_) * 1000.0));
-    SaveUndoAllTurns();
-    chart_.route.turns = std::move(remapped);
-    chart_.offsetSeconds = offset;
-    chart_.route.firstBeat = first;
-    chart_.route.lengthBeats = end;
-    selectedBeat_ = std::clamp(
-        TickAtTimeMs(chart_.route.bpm, chart_.route.ticksPerBeat, offset,
-                     selectedMs), first, end - 1);
-    MarkDirty();
-    return true;
+    auto changes = EffectiveTempoMap(chart_.route, chart_.offsetSeconds);
+    changes.front().timeMs = static_cast<std::int64_t>(milliseconds);
+    return SetTempoMap(changes);
 }
 
 bool ChartEditor::SetTitle(const std::string& title) {

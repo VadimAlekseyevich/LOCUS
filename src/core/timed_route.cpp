@@ -1,4 +1,5 @@
 #include "core/timed_route.h"
+#include "core/tempo_map.h"
 
 #include <algorithm>
 #include <cmath>
@@ -43,8 +44,10 @@ bool TimedRoute::Compile(const Chart& chart, double offsetSeconds) {
     if (!std::isfinite(unitsPerSecond_) || unitsPerSecond_ <= 0.0)
         return false;
     const double secondsPerTick = 1.0 / unitsPerSecond_;
-    const double gridStart = offsetSeconds + chart.firstBeat * secondsPerTick;
-    const double gridEnd = offsetSeconds + chart.lengthBeats * secondsPerTick;
+    const double gridStart = TempoSecondsAtTick(chart, offsetSeconds,
+                                               chart.firstBeat);
+    const double gridEnd = TempoSecondsAtTick(chart, offsetSeconds,
+                                             chart.lengthBeats);
     if (!std::isfinite(gridStart) || !std::isfinite(gridEnd) ||
         gridEnd <= gridStart) return false;
 
@@ -55,7 +58,7 @@ bool TimedRoute::Compile(const Chart& chart, double offsetSeconds) {
             event.beat < chart.firstBeat ||
             event.beat >= chart.lengthBeats) return false;
         const double at = event.timeMs == kNoTimeMs
-            ? offsetSeconds + event.beat * secondsPerTick
+            ? TempoSecondsAtTick(chart, offsetSeconds, event.beat)
             : static_cast<double>(event.timeMs) / 1000.0;
         if (!std::isfinite(at) || at <= previousEvent) return false;
         previousEvent = at;
@@ -75,7 +78,7 @@ bool TimedRoute::Compile(const Chart& chart, double offsetSeconds) {
 
     for (const auto& event : chart.turns) {
         const double at = event.timeMs == kNoTimeMs
-            ? offsetSeconds + event.beat * secondsPerTick
+            ? TempoSecondsAtTick(chart, offsetSeconds, event.beat)
             : static_cast<double>(event.timeMs) / 1000.0;
         if (at > cursor) {
             runs_.push_back({cursor, at, position, heading});

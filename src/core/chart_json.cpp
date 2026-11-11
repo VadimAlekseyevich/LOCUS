@@ -1,4 +1,5 @@
 #include "core/chart_json.h"
+#include "core/tempo_map.h"
 #include "core/utf8.h"
 
 #include <nlohmann/json.hpp>
@@ -113,17 +114,19 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             return true;
         };
         const Json document = Json::parse(text.begin(), text.end(), checkDuplicates);
-        // No compatibility readers before release. Version 3 is the only format.
+        // V4 adds a per-song tempo map; V3 single-tempo charts remain importable.
         if (!document.is_object()) {
             error = "chart: expected an object";
             return false;
         }
         const bool hasTicks = document.contains("ticksPerBeat");
+        const bool hasTempo = document.contains("tempoMap");
         const bool hasSnap = document.contains("snapDivision");
         std::set<std::string> expected = {
             "formatVersion", "title", "audioPath", "bpm",
             "offsetMs", "grid", "start", "previewLeadBeats", "turns"
         };
+        if (hasTempo) expected.insert("tempoMap");
         if (hasTicks) expected.insert("ticksPerBeat");
         if (hasSnap) expected.insert("snapDivision");
         for (const auto& member : document.items())
@@ -137,9 +140,13 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 return false;
             }
         int version = 0;
-        if (!IntegerInRange(document["formatVersion"], 3, 3, version,
+        if (!IntegerInRange(document["formatVersion"], 3, 4, version,
                             "formatVersion", error)) {
-            error = "formatVersion: only version 3 with absolute headings is supported";
+            error = "formatVersion: expected version 3 or 4";
+            return false;
+        }
+        if (hasTempo != (version == 4)) {
+            error = "tempoMap: required exactly in chart formatVersion 4";
             return false;
         }
 
@@ -170,6 +177,33 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
         if (!IntegerInRange(document["offsetMs"], -3600000, 3600000,
                             offsetMs, "offsetMs", error)) return false;
         parsed.offsetSeconds = offsetMs / 1000.0;
+        if (hasTempo) {
+            const Json& changes = document["tempoMap"];
+            if (!changes.is_array() || changes.empty() || changes.size() > 256) {
+                error = "tempoMap: expected 1 to 256 entries";
+                return false;
+            }
+            for (std::size_t i = 0; i < changes.size(); ++i) {
+                const std::string where = "tempoMap[" + std::to_string(i) + "]";
+                if (!HasExactMembers(changes[i], {"timeMs", "bpm"}, where, error))
+                    return false;
+                if (!changes[i]["timeMs"].is_number_integer()) {
+                    error = where + ".timeMs: expected integer milliseconds";
+                    return false;
+                }
+                const std::int64_t time = changes[i]["timeMs"].get<std::int64_t>();
+                double tempo = 0.0;
+                if (!Number(changes[i]["bpm"], tempo, where + ".bpm",
+                            true, error)) return false;
+                parsed.route.tempoMap.push_back({time, tempo});
+            }
+            if (!ValidTempoMap(parsed.route.tempoMap, error)) return false;
+            if (parsed.route.tempoMap.front().timeMs != offsetMs ||
+                parsed.route.tempoMap.front().bpm != parsed.route.bpm) {
+                error = "tempoMap[0]: must match chart bpm and offsetMs";
+                return false;
+            }
+        }
 
         if (!HasExactMembers(document["grid"], {"width", "height"}, "grid", error))
             return false;
@@ -238,8 +272,8 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 return false;
             }
             previousMs = timeMs;
-            const int beat = TickAtTimeMs(parsed.route.bpm,
-                parsed.route.ticksPerBeat, parsed.offsetSeconds, timeMs);
+            const int beat = TempoTickAtMs(
+                parsed.route, parsed.offsetSeconds, timeMs);
             if (beat < -1000000 || beat > 999999) {
                 error = where + ".timeMs: outside tick range";
                 return false;
@@ -284,10 +318,16 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
     try {
         using Ordered = nlohmann::ordered_json;
         Ordered document = Ordered::object();
-        document["formatVersion"] = 3;
+        document["formatVersion"] = 4;
         document["title"] = chart.title;
         document["audioPath"] = chart.audioPath;
         document["bpm"] = chart.route.bpm;
+        const auto tempo = EffectiveTempoMap(chart.route, chart.offsetSeconds);
+        if (!ValidTempoMap(tempo, error)) return false;
+        document["tempoMap"] = Ordered::array();
+        for (const auto& marker : tempo)
+            document["tempoMap"].push_back({
+                {"timeMs", marker.timeMs}, {"bpm", marker.bpm}});
         if (chart.route.ticksPerBeat != 1)
             document["ticksPerBeat"] = chart.route.ticksPerBeat;
         if (chart.route.snapDivision != 1)
@@ -376,9 +416,10 @@ bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
         error = "ticksPerBeat/snapDivision: unsupported tick resolution";
         return false;
     }
-    if (!ComputeSongBeatRange(chart.route.bpm * chart.route.ticksPerBeat,
-                              chart.offsetSeconds, songDurationSeconds,
-                              first, end, error)) return false;
+    if (!chart.route.tempoMap.empty() &&
+        !ValidTempoMap(chart.route.tempoMap, error)) return false;
+    if (!TempoTickRange(chart.route, chart.offsetSeconds,
+                        songDurationSeconds, first, end, error)) return false;
     for (std::size_t i = 0; i < chart.route.turns.size(); ++i) {
         const auto& event = chart.route.turns[i];
         const double timestamp = static_cast<double>(

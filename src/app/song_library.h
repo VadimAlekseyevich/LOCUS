@@ -2,6 +2,7 @@
 
 #include "core/chart_json.h"
 #include "core/chart_difficulty.h"
+#include "core/tempo_map.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -36,6 +37,7 @@ struct LibrarySong {
     int previewStartMs = 0; // Song Set menu preview, independent of BPM/offset.
     double bpm = 120.0; // Authoritative Song Set tempo.
     int offsetMs = 0; // Shared beat-zero position.
+    std::vector<core::TempoMarker> tempoMap;
     std::filesystem::path backgroundImage; // Optional Song Set art (not chart timing).
 };
 
@@ -94,6 +96,10 @@ public:
     // Validates all difficulties before publishing Song Set timing.
     bool SetSongTiming(int songIndex, double bpm, int offsetMs,
                        const core::LoadedChart* currentDraft, std::string& error);
+    bool SetSongTempoMap(int songIndex,
+                         const std::vector<core::TempoMarker>& markers,
+                         const core::LoadedChart* currentDraft,
+                         std::string& error);
     // Empty source removes art; otherwise installs an independent library copy.
     bool SetBackgroundImage(int songIndex, const std::filesystem::path& source,
                             std::string& error);

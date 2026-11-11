@@ -1,4 +1,5 @@
 #include "app/song_set_storage.h"
+#include "core/tempo_map.h"
 #include "core/utf8.h"
 #include "app/image_asset_file.h"
 
@@ -119,7 +120,7 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
     const auto data = nlohmann::json::parse(file, nullptr, false);
     if (data.is_discarded() || !data.is_object() ||
         !data.contains("formatVersion") || !data["formatVersion"].is_number_integer() ||
-        data["formatVersion"] != 1) {
+        (data["formatVersion"] != 1 && data["formatVersion"] != 2)) {
         error = "Invalid Song Set metadata version or JSON.";
         return false;
     }
@@ -176,6 +177,35 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
             return false;
         }
     }
+    if (data["formatVersion"] == 2) {
+        if (!data.contains("tempoMap") || !data["tempoMap"].is_array() ||
+            data["tempoMap"].empty() || data["tempoMap"].size() > 256) {
+            error = "Song Set tempoMap must contain 1 to 256 markers.";
+            return false;
+        }
+        for (const auto& item : data["tempoMap"]) {
+            if (!item.is_object() || item.size() != 2 ||
+                !item.contains("timeMs") || !item.contains("bpm") ||
+                !item["timeMs"].is_number_integer() ||
+                !item["bpm"].is_number()) {
+                error = "Song Set tempoMap entry must contain timeMs and bpm.";
+                return false;
+            }
+            loaded.tempoMap.push_back({item["timeMs"].get<std::int64_t>(),
+                                       item["bpm"].get<double>()});
+        }
+        if (!core::ValidTempoMap(loaded.tempoMap, error)) return false;
+        if (loaded.bpm && (loaded.tempoMap.front().bpm != *loaded.bpm ||
+                           loaded.tempoMap.front().timeMs != *loaded.offsetMs)) {
+            error = "Song Set tempoMap first row disagrees with bpm/offsetMs.";
+            return false;
+        }
+        loaded.bpm = loaded.tempoMap.front().bpm;
+        loaded.offsetMs = static_cast<int>(loaded.tempoMap.front().timeMs);
+    } else if (loaded.bpm) {
+        loaded.tempoMap = {{*loaded.offsetMs, *loaded.bpm}};
+    }
+
     if (data.contains("backgroundFile")) {
         if (!data["backgroundFile"].is_string()) {
             error = "Song Set backgroundFile must be a string.";
@@ -208,10 +238,19 @@ bool WriteNewSongSetManifest(const fs::path& path,
         (manifest.bpm && (!std::isfinite(*manifest.bpm) ||
                           *manifest.bpm <= 0.0 ||
                           *manifest.offsetMs < -3600000 ||
-                          *manifest.offsetMs > 3600000))) {
+                          *manifest.offsetMs > 3600000)) ||
+        (!manifest.tempoMap.empty() &&
+         (manifest.tempoMap.front().bpm != manifest.bpm.value_or(-1.0) ||
+          manifest.tempoMap.front().timeMs != manifest.offsetMs.value_or(-1)))) {
         error = "Invalid new Song Set metadata.";
         return false;
     }
+    const std::vector<core::TempoMarker> tempo =
+        manifest.tempoMap.empty()
+            ? std::vector<core::TempoMarker>{{manifest.offsetMs.value_or(0),
+                                               manifest.bpm.value_or(120.0)}}
+            : manifest.tempoMap;
+    if (!core::ValidTempoMap(tempo, error)) return false;
     std::error_code ec;
     if (fs::exists(path, ec)) {
         error = "Song Set metadata already exists.";
@@ -219,15 +258,18 @@ bool WriteNewSongSetManifest(const fs::path& path,
     }
     const fs::path stage = path.wstring() + UniqueSuffix();
     nlohmann::json data = {
-        {"formatVersion", 1}, {"setId", manifest.id}, {"title", manifest.title},
+        {"formatVersion", 2}, {"setId", manifest.id}, {"title", manifest.title},
         {"artist", manifest.artist}, {"audioFile", manifest.audioFile},
         {"previewStartMs", manifest.previewStartMs},
         {"backgroundFile", manifest.backgroundFile}
     };
-    if (manifest.bpm) {
-        data["bpm"] = *manifest.bpm;
-        data["offsetMs"] = *manifest.offsetMs;
-    }
+    data["bpm"] = tempo.front().bpm;
+    data["offsetMs"] = tempo.front().timeMs;
+    data["tempoMap"] = nlohmann::json::array();
+    for (const auto& marker : tempo)
+        data["tempoMap"].push_back({
+            {"timeMs", marker.timeMs}, {"bpm", marker.bpm}});
+
     {
         std::ofstream out(stage, std::ios::binary | std::ios::trunc);
         if (!out) { error = "Cannot stage Song Set metadata."; return false; }
@@ -263,25 +305,37 @@ bool ReplaceSongSetManifest(const fs::path& path,
         (manifest.bpm && (!std::isfinite(*manifest.bpm) ||
                           *manifest.bpm <= 0.0 ||
                           *manifest.offsetMs < -3600000 ||
-                          *manifest.offsetMs > 3600000))) {
+                          *manifest.offsetMs > 3600000)) ||
+        (!manifest.tempoMap.empty() &&
+         (manifest.tempoMap.front().bpm != manifest.bpm.value_or(-1.0) ||
+          manifest.tempoMap.front().timeMs != manifest.offsetMs.value_or(-1)))) {
         error = "Invalid Song Set metadata."; return false;
     }
+    const std::vector<core::TempoMarker> tempo =
+        manifest.tempoMap.empty()
+            ? std::vector<core::TempoMarker>{{manifest.offsetMs.value_or(0),
+                                               manifest.bpm.value_or(120.0)}}
+            : manifest.tempoMap;
+    if (!core::ValidTempoMap(tempo, error)) return false;
     std::error_code ec;
     if (!fs::is_regular_file(path, ec) || ec) {
         error = "Song Set manifest is missing."; return false;
     }
     const fs::path stage = path.wstring() + UniqueSuffix();
     nlohmann::json data = {
-        {"formatVersion", 1}, {"setId", manifest.id},
+        {"formatVersion", 2}, {"setId", manifest.id},
         {"title", manifest.title}, {"artist", manifest.artist},
         {"audioFile", manifest.audioFile},
         {"previewStartMs", manifest.previewStartMs},
         {"backgroundFile", manifest.backgroundFile}
     };
-    if (manifest.bpm) {
-        data["bpm"] = *manifest.bpm;
-        data["offsetMs"] = *manifest.offsetMs;
-    }
+    data["bpm"] = tempo.front().bpm;
+    data["offsetMs"] = tempo.front().timeMs;
+    data["tempoMap"] = nlohmann::json::array();
+    for (const auto& marker : tempo)
+        data["tempoMap"].push_back({
+            {"timeMs", marker.timeMs}, {"bpm", marker.bpm}});
+
     {
         std::ofstream out(stage, std::ios::binary | std::ios::trunc);
         if (!out) { error = "Cannot stage Song Set metadata."; return false; }

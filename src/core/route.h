@@ -52,10 +52,25 @@ struct TurnEvent {
 constexpr int kMinGridSize = 2;
 constexpr int kMaxGridSize = 16;
 
+// Song-wide absolute timeline. The first marker is beat zero; each next
+// marker changes BPM at its exact millisecond without resetting beat phase.
+// Earlier time uses the first BPM, later time uses the final BPM.
+struct TempoMarker {
+    std::int64_t timeMs = 0;
+    double bpm = 120.0;
+};
+inline bool operator==(const TempoMarker& a, const TempoMarker& b) noexcept {
+    return a.timeMs == b.timeMs && a.bpm == b.bpm;
+}
+inline bool operator!=(const TempoMarker& a, const TempoMarker& b) noexcept {
+    return !(a == b);
+}
+
 struct Chart {
     double bpm = 120.0; // musical BPM, NEVER multiplied when changing the grid
     // All turn indices, firstBeat and lengthBeats are in integer ticks.
     // 1 tick = 1/ticksPerBeat musical beat; old charts use 1.
+    std::vector<TempoMarker> tempoMap; // Empty = legacy single BPM at offsetMs.
     int ticksPerBeat = 1;
     int snapDivision = 1; // editor lines/placement per musical beat
     int gridWidth = 8;

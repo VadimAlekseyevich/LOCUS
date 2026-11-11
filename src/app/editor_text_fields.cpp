@@ -33,8 +33,7 @@ static Rectangle FieldBounds(EditorField field) {
 
 EditorField ClickedField(Vector2 mouse, EditorTab tab) {
     if (tab == EditorTab::Audio) {
-        for (const auto field : {EditorField::Title, EditorField::Bpm,
-                                  EditorField::OffsetMs}) {
+        for (const auto field : {EditorField::Title}) {
             if (Hit(FieldBounds(field), mouse)) return field;
         }
     }

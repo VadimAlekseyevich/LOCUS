@@ -5,10 +5,14 @@
 
 namespace locus::app {
 
-void ChartPlayback::Configure(double bpm, double offsetSeconds) noexcept {
+void ChartPlayback::Configure(
+    double bpm, double offsetSeconds,
+    const std::vector<core::TempoMarker>& map, int ticksPerBeat) noexcept {
     Stop();
-    bpm_ = bpm;
+    bpm_ = bpm * (map.empty() ? 1 : ticksPerBeat);
     offsetSeconds_ = offsetSeconds;
+    tempoMap_ = map;
+    ticksPerBeat_ = ticksPerBeat;
 }
 
 void ChartPlayback::SetSpeed(double fraction, double monotonicSeconds) {

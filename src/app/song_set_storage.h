@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/tempo_map.h"
+
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -14,7 +16,8 @@ struct SongSetManifest {
     std::string audioFile;
     int previewStartMs = 0; // Song menu playback only; not chart timing.
     std::optional<double> bpm; // Authoritative Song Set tempo.
-    std::optional<int> offsetMs; // Authoritative Song Set chart zero (ms).
+    std::optional<int> offsetMs; // First marker, legacy song zero.
+    std::vector<core::TempoMarker> tempoMap; // Authoritative shared timing.
     std::string backgroundFile; // Optional flat PNG/JPEG filename.
 };
 inline constexpr int kMaxSongPreviewStartMs = 3600000;

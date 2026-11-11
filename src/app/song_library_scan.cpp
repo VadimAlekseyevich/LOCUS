@@ -185,9 +185,12 @@ bool SongLibrary::Refresh(std::string& message) {
                 song.offsetMs = timing.offsetMs.value_or(
                     static_cast<int>(std::llround(
                         first->data.offsetSeconds * 1000.0)));
+                song.tempoMap = !timing.tempoMap.empty()
+                    ? timing.tempoMap
+                    : std::vector<core::TempoMarker>{{song.offsetMs, song.bpm}};
                 for (auto& difficulty : song.charts) {
-                    if (!ApplySongTiming(difficulty.data, song.bpm,
-                                         song.offsetMs, problem)) {
+                    if (!ApplySongTiming(difficulty.data, song.tempoMap,
+                                         problem)) {
                         message = "Song Set " + song.title + ": " + problem;
                         return false;
                     }
@@ -203,9 +206,10 @@ bool SongLibrary::Refresh(std::string& message) {
             const auto previousChart = previous.find(difficulty.file);
             const bool oldTimingMatches = !song.managed ||
                 (previousChart != previous.end() &&
-                 previousChart->second->data.route.bpm == song.bpm &&
-                 static_cast<int>(std::llround(
-                     previousChart->second->data.offsetSeconds * 1000.0)) == song.offsetMs);
+                 core::EffectiveTempoMap(
+                     previousChart->second->data.route,
+                     previousChart->second->data.offsetSeconds) ==
+                     song.tempoMap);
             // Old in-memory indices may contain the zero-rating result
             // produced by the former audio-duration-dependent calculator.
             // Re-evaluate just those entries on Refresh, while preserving

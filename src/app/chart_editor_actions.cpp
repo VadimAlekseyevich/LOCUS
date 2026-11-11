@@ -41,7 +41,12 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
     // Song Set preview time belongs to the Set controller, not the chart.
     // Suppress route/transport shortcuts; the Set controller consumes text.
-    if (ui.editingSetPreview) return action;
+    if (ui.editingSetPreview || ui.tempoEditingRow >= 0) return action;
+    if (ui.tab == EditorTab::Audio && input.mouseClick &&
+        (Hit(kTempoTable, input.mouse) ||
+         Hit(kTempoAdd, input.mouse) ||
+         Hit(kTempoPrev, input.mouse) ||
+         Hit(kTempoNext, input.mouse))) return action;
 
     if (ui.EditingText())
         return editor_text::HandleTextInput(draft, ui, input);

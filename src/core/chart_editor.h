@@ -52,6 +52,8 @@ public:
     bool SetSnapDivision(int division);
     bool ChangeBpm(int delta); // No arbitrary upper BPM cap.
     bool SetBpm(double bpm);
+    // Atomically reproject every note's tick without touching its timeMs.
+    bool SetTempoMap(const std::vector<TempoMarker>& markers);
     bool ChangeOffsetMs(int deltaMs); // signed milliseconds
     bool SetOffsetMs(double milliseconds);
     // Grid width and height are authored gameplay geometry, not time signature.
@@ -93,6 +95,7 @@ private:
         std::string title, audioPath;
         double offsetSeconds = 0.0, previewLeadBeats = 4.0;
         double bpm = 120.0;
+        std::vector<TempoMarker> tempoMap;
         int ticksPerBeat = 1, snapDivision = 1;
         int gridWidth = 8, gridHeight = 8;
         Cell start{};

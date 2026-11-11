@@ -1,4 +1,5 @@
 #include "app/chart_editor_ui.h"
+#include "core/tempo_map.h"
 #include "app/editor_comparison.h"
 #include "core/utf8.h"
 #include "app/chart_editor_layout.h"
@@ -272,11 +273,6 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     }
 }
 
-struct TempoMarker {
-    double songSeconds;
-    double bpm;
-};
-
 void DrawSongOverview(Font font, const core::ChartEditor& draft,
                       const EditorSetView& set, double songSeconds) {
     const Rectangle bounds = kSongOverview;
@@ -302,20 +298,23 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
     // This is the pack's shared tempo/beat-zero anchor, not a chart note.
     // Additional tempo events can later be supplied through this collection,
     // without changing full-song navigation or the note ruler.
-    const std::array<TempoMarker, 1> tempoMarkers{{
-        {set.managed ? set.offsetMs / 1000.0 : draft.Data().offsetSeconds,
-         set.managed ? set.bpm : draft.Data().route.bpm}
-    }};
+    const auto tempoMarkers = set.managed && !set.tempoMap.empty()
+        ? set.tempoMap
+        : core::EffectiveTempoMap(draft.Data().route, draft.Data().offsetSeconds);
+    float previousTextRight = -1000.0f;
     for (const auto& marker : tempoMarkers) {
-        const float x = SongOverviewX(marker.songSeconds, duration);
+        const float x = SongOverviewX(marker.timeMs / 1000.0, duration);
         DrawLineEx({x, bounds.y + 5.0f}, {x, bounds.y + 31.0f},
                    2.0f, Color{128, 223, 210, 255});
-        const char* name = TextFormat("BPM %g", marker.bpm);
-        const float width = MeasureTextEx(font, name, 12.0f, 1.0f).x;
-        const float labelX = std::clamp(x + 5.0f, bounds.x + 7.0f,
+        const char* name = TextFormat("%g BPM", marker.bpm);
+        const float width = MeasureTextEx(font, name, 11.0f, 1.0f).x;
+        const float labelX = std::clamp(x + 4.0f, bounds.x + 7.0f,
             std::max(bounds.x + 7.0f, right - width - 6.0f));
-        Label(font, name, labelX, bounds.y + 3.0f, 12.0f,
-              Color{172, 233, 219, 255});
+        if (labelX > previousTextRight + 6.0f) {
+            Label(font, name, labelX, bounds.y + 3.0f, 11.0f,
+                  Color{172, 233, 219, 255});
+            previousTextRight = labelX + width;
+        }
     }
 
     // Song-time cursor is distinct from the anchored, moving upper ruler.
@@ -436,24 +435,19 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                                         : false); // DEL is always neutral, never selected
             }
     } else if (ui.tab == EditorTab::Audio) {
-        Label(font, "SONG TIMING", 92, 169, 20,
-              Color{182, 218, 235, 255});
-        DrawTextField(font, kTitle, "DIFFICULTY NAME (TYPE)", draft.Data().title,
+        DrawTextField(font, kTitle, "DIFFICULTY", draft.Data().title,
                       EditorField::Title, ui);
+        // Managed sets use the manifest's tempo, not the currently open
+        // chart's cached BPM metadata. A draft uses its own tempo map.
+        const auto changes = set.managed && !set.tempoMap.empty()
+            ? set.tempoMap
+            : core::EffectiveTempoMap(chart, draft.Data().offsetSeconds);
         const auto& rating = draft.Difficulty();
-        Label(font, TextFormat("DIFFICULTY %.1f  SPEED %.1f  RHYTHM %.1f  KEYS %.1f  READ %.1f  STAMINA %.1f",
-              rating.overall, rating.speed, rating.rhythm,
-              rating.coordination, rating.reading, rating.stamina),
+        Label(font, TextFormat("DIFF %.1f", rating.overall),
               92, 252, 12, Color{239, 202, 137, 255});
-        char bpm[40]{}, offset[40]{};
-        std::snprintf(bpm, sizeof(bpm), "%.3f", chart.bpm);
-        std::snprintf(offset, sizeof(offset), "%.0f",
-                      draft.Data().offsetSeconds * 1000.0);
-        DrawTextField(font, kBpm, "SONG BPM (SHARED)", bpm, EditorField::Bpm, ui);
-        DrawTextField(font, kOffset, "SONG OFFSET MS (SHARED)",
-                      offset, EditorField::OffsetMs, ui);
-        Label(font, "SONG PREVIEW START (MS)",
-              92, 348, 16, Color{172, 199, 218, 255});
+        Label(font, "SONG PREVIEW (MS)", kAudioPreviewMs.x,
+              kAudioPreviewMs.y - 22.0f, 15,
+              Color{172, 199, 218, 255});
         DrawRectangleRounded(kAudioPreviewMs, 0.14f, 5,
                              ui.editingSetPreview ? Color{47, 68, 78, 255}
                                                   : Color{35, 43, 56, 255});
@@ -461,19 +455,65 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                                     ui.editingSetPreview ? 2.0f : 1.0f,
                                     ui.editingSetPreview ? Color{129, 235, 214, 255}
                                                          : Color{91, 114, 139, 255});
-        const std::string value = ui.editingSetPreview
+        const std::string preview = ui.editingSetPreview
             ? ui.setPreviewBuffer
             : (set.managed ? std::to_string(set.previewStartMs)
-                           : "SAVE SONG FIRST (CTRL+S)");
-        Label(font, value.c_str(), 104, 381, 19,
-              set.managed ? Color{225, 235, 241, 255}
-                          : Color{159, 181, 201, 255});
-        if (ui.editingSetPreview) {
-            const float width = MeasureTextEx(font, value.c_str(), 19, 1).x;
-            const float x = std::min(844.0f, 105.0f + width);
-            DrawLineEx({x, 380}, {x, 404}, 1.6f,
-                       Color{186, 251, 235, 255});
+                           : "SAVE SONG FIRST");
+        Label(font, preview.c_str(),
+              kAudioPreviewMs.x + 10.0f, kAudioPreviewMs.y + 9.0f, 16,
+              Color{225, 235, 241, 255});
+
+        Label(font, "OFFSET (MS)", 104, 267, 13,
+              Color{184, 215, 231, 255});
+        Label(font, "BPM", 350, 267, 13, Color{184, 215, 231, 255});
+        const int count = static_cast<int>(changes.size());
+        const int first = std::clamp(ui.tempoFirstVisible, 0,
+                                     std::max(0, count - 5));
+        for (int row = 0; row < 5; ++row) {
+            const int index = first + row;
+            if (index >= count) break;
+            const auto& marker = changes[static_cast<std::size_t>(index)];
+            const auto field = [&](Rectangle rect, const std::string& value,
+                                   bool active) {
+                DrawRectangleRounded(rect, 0.12f, 5,
+                    active ? Color{47, 73, 77, 255}
+                           : Color{35, 43, 56, 255});
+                DrawRectangleRoundedLinesEx(rect, 0.12f, 5,
+                    active ? 1.8f : 1.0f,
+                    active ? Color{118, 226, 206, 255}
+                           : Color{95, 123, 151, 255});
+                Label(font, value.c_str(), rect.x + 9, rect.y + 6, 14,
+                      Color{222, 237, 237, 255});
+            };
+            char bpm[48]{};
+            std::snprintf(bpm, sizeof(bpm), "%g", marker.bpm);
+            const bool editingMs = ui.tempoEditingRow == index &&
+                                   !ui.tempoEditingBpm;
+            const bool editingBpm = ui.tempoEditingRow == index &&
+                                    ui.tempoEditingBpm;
+            field(TempoOffsetCell(row),
+                editingMs ? ui.tempoBuffer : std::to_string(marker.timeMs),
+                editingMs);
+            field(TempoBpmCell(row),
+                editingBpm ? ui.tempoBuffer : std::string(bpm),
+                editingBpm);
+            if (index > 0) {
+                CompactButton(font, TempoDeleteCell(row), "DEL",
+                              Color{221, 160, 159, 255});
+            } else {
+                Label(font, "START", TempoDeleteCell(row).x + 7,
+                      TempoDeleteCell(row).y + 8, 11,
+                      Color{157, 190, 210, 255});
+            }
         }
+        CompactButton(font, kTempoPrev, "PREV",
+                      Color{130, 169, 207, 255});
+        CompactButton(font, kTempoNext, "NEXT",
+                      Color{130, 169, 207, 255});
+        CompactButton(font, kTempoAdd, "ADD BPM MARKER",
+                      Color{119, 223, 194, 255});
+        Label(font, TextFormat("%d / %d", count ? first + 1 : 0, count),
+              695, 318, 12, Color{177, 203, 221, 255});
     } else if (ui.tab == EditorTab::Set) {
         const Color heading{186, 219, 231, 255};
         const Color ordinary{211, 226, 236, 255};
