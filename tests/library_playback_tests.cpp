@@ -25,10 +25,10 @@ int main() {
     bool ok = true;
     app::LibraryChart difficulty;
     difficulty.file = L"song/easy.locus.json";
-    difficulty.audioFile = L"song/.locus-versions/0123456789abcdef/song.wav";
+    difficulty.audioFile = L"song/song.wav";
     difficulty.data.route = core::MakeDemoChart();
     difficulty.data.title = "Selected difficulty";
-    difficulty.data.audioPath = ".locus-versions/0123456789abcdef/song.wav";
+    difficulty.data.audioPath = "song.wav";
 
     core::LoadedChart prepared;
     prepared.title = "UNCHANGED";
@@ -61,7 +61,7 @@ int main() {
                     difficulty, difficulty.audioFile.wstring(), false) &&
                 !app::RequiresLibraryAudioLoad(
                     difficulty, difficulty.audioFile.wstring(), true),
-                "decoded audio reuse is keyed to the selected difficulty revision");
+                "decoded audio reuse is keyed to the selected Song Set audio");
 
     // The CTest runner deliberately does not create a physical audio device.
     // Decode failure must preserve previous game/editor session state.
