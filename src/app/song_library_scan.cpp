@@ -2,7 +2,6 @@
 #include "app/song_library_internal.h"
 #include "app/chart_file.h"
 #include "app/chart_file_fingerprint.h"
-#include "app/audio_revision.h"
 #include "app/song_set_storage.h"
 #include "app/song_timing.h"
 #include <algorithm>
@@ -121,13 +120,13 @@ bool SongLibrary::Refresh(std::string& message) {
         }
         indexed.audioFile = audioFile;
 
-        // Managed Song Sets are grouped by their folder, not by incidental
-        // audio-revision paths. Existing legacy folders remain untouched.
         const fs::path manifestPath = path.parent_path() / L"set.locus.json";
         const bool managed = fs::exists(manifestPath, ec);
         if (ec) { ++skipped; ec.clear(); continue; }
+        // Only manifests of the current managed Song Set format are indexed.
+        if (!managed) { ++skipped; continue; }
         SongSetManifest metadata;
-        if (managed) {
+        {
             const auto manifest = manifestCache.find(manifestPath);
             if (manifest == manifestCache.end()) {
                 std::string problem;
@@ -147,24 +146,21 @@ bool SongLibrary::Refresh(std::string& message) {
                 continue;
             }
         }
-        const fs::path logicalAudio = managed
-            ? path.parent_path() : LogicalSongAudioPath(audioFile);
+        const fs::path logicalAudio = path.parent_path();
         const auto found = byAudio.find(logicalAudio);
         std::size_t index = 0;
         if (found == byAudio.end()) {
             index = next.size();
             byAudio.emplace(logicalAudio, index);
-            const std::string title = managed
-                ? (metadata.artist.empty() ? metadata.title
-                    : metadata.artist + " - " + metadata.title)
-                : SongDisplayTitle(logicalAudio);
+            const std::string title = metadata.artist.empty() ? metadata.title
+                : metadata.artist + " - " + metadata.title;
             next.push_back({audioFile, title, {}});
-            next.back().id = managed ? metadata.id : HashText(logicalAudio);
-            next.back().artist = managed ? metadata.artist : "";
+            next.back().id = metadata.id;
+            next.back().artist = metadata.artist;
             next.back().folder = path.parent_path();
-            next.back().managed = managed;
-            next.back().previewStartMs = managed ? metadata.previewStartMs : 0;
-            next.back().backgroundImage = managed && !metadata.backgroundFile.empty()
+            next.back().managed = true;
+            next.back().previewStartMs = metadata.previewStartMs;
+            next.back().backgroundImage = !metadata.backgroundFile.empty()
                 ? path.parent_path() / fs::u8path(metadata.backgroundFile) : fs::path{};
         } else {
             index = found->second;
@@ -181,20 +177,10 @@ bool SongLibrary::Refresh(std::string& message) {
                 message = "Song Set timing could not be read: " + problem;
                 return false;
             }
-            // For older sets, choose a stable source chart by filename.
-            // Existing chart files and their absolute timestamps are intact.
-            const auto first = std::min_element(song.charts.begin(),
-                song.charts.end(), [](const LibraryChart& a, const LibraryChart& b) {
-                    return a.file < b.file;
-                });
-            if (first != song.charts.end()) {
-                song.bpm = timing.bpm.value_or(first->data.route.bpm);
-                song.offsetMs = timing.offsetMs.value_or(
-                    static_cast<int>(std::llround(
-                        first->data.offsetSeconds * 1000.0)));
-                song.tempoMap = !timing.tempoMap.empty()
-                    ? timing.tempoMap
-                    : std::vector<core::TempoMarker>{{song.offsetMs, song.bpm}};
+            song.bpm = *timing.bpm;
+            song.offsetMs = *timing.offsetMs;
+            song.tempoMap = timing.tempoMap;
+            {
                 for (auto& difficulty : song.charts) {
                     if (!ApplySongTiming(difficulty.data, song.tempoMap,
                                          problem)) {
@@ -211,12 +197,10 @@ bool SongLibrary::Refresh(std::string& message) {
             // ApplySongTiming above has already overwritten the in-memory
             // values, so compare with the pre-scan cached version instead.
             const auto previousChart = previous.find(difficulty.file);
-            const bool oldTimingMatches = !song.managed ||
-                (previousChart != previous.end() &&
-                 core::EffectiveTempoMap(
-                     previousChart->second->data.route,
-                     previousChart->second->data.offsetSeconds) ==
-                     song.tempoMap);
+            const bool oldTimingMatches = previousChart != previous.end() &&
+                core::EffectiveTempoMap(
+                    previousChart->second->data.route,
+                    previousChart->second->data.offsetSeconds) == song.tempoMap;
             // Old in-memory indices may contain the zero-rating result
             // produced by the former audio-duration-dependent calculator.
             // Re-evaluate just those entries on Refresh, while preserving
