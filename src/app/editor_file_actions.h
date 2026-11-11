@@ -87,7 +87,8 @@ private:
     std::map<std::filesystem::path, ParkedDocument> parked_;
     std::filesystem::path pendingClose_;
 
-    bool SaveParked(const std::filesystem::path& file, double& now);
+    bool SaveParked(const std::filesystem::path& file, double& now,
+                    std::filesystem::path* updatedFile = nullptr);
     void DiscardParked() noexcept;
 
 };
