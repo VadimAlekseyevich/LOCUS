@@ -19,6 +19,16 @@
 #include <utility>
 
 namespace locus::app {
+namespace {
+// A pattern is an editor-wide transfer buffer, not part of the document.
+// Opening another difficulty must clear its selection and transient widgets,
+// but not discard the pattern copied from the previous difficulty.
+void ResetDocumentUi(EditorUiState& ui) {
+    auto clipboard = std::move(ui.clipboard);
+    ui = EditorUiState{};
+    ui.clipboard = std::move(clipboard);
+}
+} // namespace
 
 void EditorFileActions::NewDraft() {
     newDifficultySet_.clear();
@@ -26,7 +36,7 @@ void EditorFileActions::NewDraft() {
     context_.music.Shutdown();
     context_.loadedAudioPath.clear();
     context_.editor.NewDraft();
-    context_.ui = EditorUiState{};
+    ResetDocumentUi(context_.ui);
     context_.chartPath.clear();
     context_.audioPath.clear();
     context_.previewStartBeat = 0;
@@ -51,7 +61,7 @@ bool EditorFileActions::OpenFromLibrary(const std::wstring& chartFile,
         return false;
     newDifficultySet_.clear();
     context_.loadedAudioPath = context_.audioPath;
-    context_.ui = EditorUiState{};
+    ResetDocumentUi(context_.ui);
     context_.previewStartBeat = context_.editor.SelectedBeat();
     context_.status = "LIBRARY CHART READY - EDIT AND CTRL+S";
     return true;
@@ -82,7 +92,7 @@ void EditorFileActions::Open(double& now, std::string& error) {
         return;
     }
     newDifficultySet_.clear();
-    context_.ui = EditorUiState{};
+    ResetDocumentUi(context_.ui);
     context_.previewStartBeat = 0;
     context_.loadedAudioPath = context_.audioPath;
     context_.status = "CHART LOADED - SPACE PREVIEW / T TEST";
@@ -158,7 +168,7 @@ bool EditorFileActions::NewDifficultyFromLibrary(
     context_.preview.Stop();
     context_.music.SwapWith(replacement);
     context_.editor = std::move(draft);
-    context_.ui = EditorUiState{};
+    ResetDocumentUi(context_.ui);
     context_.chartPath.clear();
     context_.audioPath = audioFile;
     context_.loadedAudioPath = audioFile;
