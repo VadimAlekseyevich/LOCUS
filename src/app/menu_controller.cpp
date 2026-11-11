@@ -85,12 +85,14 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         }
     }
     if (state.screen == Screen::Settings && settingsUi.calibrationOpen) {
-        // Exclusive metronome: no gameplay, menu shortcuts or key rebinding
-        // while measuring taps. ESC cancels rather than leaving Settings.
-        input.backPressed = false;
-        input.homePressed = false;
-        input.requestedScreen.reset();
-        input.fullscreenPressed = false;
+        // An active gameplay direction key may ALSO be a menu shortcut
+        // (for instance K is used in both default contexts). Suppress all
+        // global actions while measuring, preserving only its captured tap.
+        const auto directionPressed = input.arrowPressed;
+        const auto directionAt = input.arrowCapturedAt;
+        const bool nativeClose = input.closeRequested;
+        input = FrameInput{};
+        input.closeRequested = nativeClose; // OS close still shows quit dialog.
         const auto hit = [&](Rectangle rect) {
             return mouseClick && validMouse &&
                 CheckCollisionPointRec(mouse, rect);
@@ -118,11 +120,11 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             // The physical event timestamp is captured in PollInput before
             // menu processing, so click/hit timing is not frame-delay biased.
             for (int direction = 0; direction < 4; ++direction) {
-                if (!input.arrowPressed[static_cast<std::size_t>(direction)])
+                if (!directionPressed[static_cast<std::size_t>(direction)])
                     continue;
                 events.calibrationTap = true;
                 events.calibrationTapAt =
-                    input.arrowCapturedAt[static_cast<std::size_t>(direction)];
+                    directionAt[static_cast<std::size_t>(direction)];
                 break;
             }
         }
