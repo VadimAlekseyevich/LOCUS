@@ -1,4 +1,5 @@
 #include "app/editor_comparison.h"
+#include "app/editor_file_actions.h"
 #include "app/chart_editor_layout.h"
 
 #include <algorithm>
@@ -126,7 +127,8 @@ void EditorComparisonCache::Reset() noexcept {
 EditorComparisonFrame EditorComparisonCache::Prepare(
     const core::ChartEditor& draft, const EditorUiState& ui,
     const EditorSetView& set, double songDurationSeconds,
-    double songSeconds, float lookaheadMs) {
+    double songSeconds, float lookaheadMs,
+    const EditorFileActions* workspace) {
     EditorComparisonFrame frame;
     // The editor can reset its history to revision 0 on Open or New. Use
     // monotonic RouteRevision instead of revision or a borrowed Chart* key.
@@ -141,7 +143,7 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
     PrepareRoutePreview(active_.route, songSeconds, lookaheadMs,
                         previewFrames_[0]);
     frame.panes[0] = {active_.ready ? &active_.route : nullptr,
-                      draft.Data().title, true, &previewFrames_[0]};
+                      draft.Data().title, true, &previewFrames_[0], draft.Dirty()};
     frame.count = 1;
 
     if (!set.managed || !std::isfinite(songDurationSeconds) ||
@@ -160,28 +162,34 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             found - set.comparisonOptions.begin());
         if (foundIndex == set.current) continue;
 
+        const core::ChartEditor* parked = workspace
+            ? workspace->ParkedEditor(file) : nullptr;
+        const core::LoadedChart* source = parked
+            ? &parked->Data() : found->chart;
+        const std::uint64_t revision = parked ? parked->RouteRevision() : 0;
         auto& cached = reference_[static_cast<std::size_t>(slot)];
         const bool changed = !cached.ready || cached.file != found->file ||
-            cached.source != found->chart ||
+            cached.source != source || cached.draftRevision != revision ||
             cached.fileSize != found->fileSize ||
             cached.modified != found->modified ||
-            cached.bpm != found->chart->route.bpm ||
-            cached.tempoMap != found->chart->route.tempoMap ||
-            cached.offsetSeconds != found->chart->offsetSeconds ||
+            cached.bpm != source->route.bpm ||
+            cached.tempoMap != source->route.tempoMap ||
+            cached.offsetSeconds != source->offsetSeconds ||
             cached.duration != songDurationSeconds;
         if (changed) {
             cached.ready = false;
             cached.file = found->file;
-            cached.source = found->chart;
+            cached.source = source;
+            cached.draftRevision = revision;
             cached.fileSize = found->fileSize;
             cached.modified = found->modified;
-            cached.bpm = found->chart->route.bpm;
-            cached.tempoMap = found->chart->route.tempoMap;
-            cached.offsetSeconds = found->chart->offsetSeconds;
+            cached.bpm = source->route.bpm;
+            cached.tempoMap = source->route.tempoMap;
+            cached.offsetSeconds = source->offsetSeconds;
             cached.duration = songDurationSeconds;
             // The Song Library holds parsed JSON without song length.
             // Prepare only this read-only copy; never modify library cache.
-            core::LoadedChart prepared = *found->chart;
+            core::LoadedChart prepared = *source;
             std::string error;
             if (core::PrepareChartForSong(prepared, songDurationSeconds, error))
                 cached.ready = cached.route.Compile(
@@ -191,7 +199,8 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
         auto& paneFrame = previewFrames_[static_cast<std::size_t>(frame.count)];
         PrepareRoutePreview(cached.route, songSeconds, lookaheadMs, paneFrame);
         frame.panes[static_cast<std::size_t>(frame.count++)] = {
-            &cached.route, found->title, false, &paneFrame};
+            &cached.route, source->title, false, &paneFrame,
+            parked && parked->Dirty()};
         ++slot;
     }
     return frame;
