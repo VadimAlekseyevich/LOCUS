@@ -620,12 +620,10 @@ int main(int argc, char** argv) {
                 const auto action = locus::app::ChooseEditorEntry(
                     previousScreen, state.screen, playCameFromEditor,
                     customChart, !playedChartPath.empty());
-                if (action != locus::app::EditorEntryAction::KeepLoaded &&
-                    editorFiles.AnyDirty()) {
-                    // A TEST launch temporarily leaves Editor without
-                    // confirming a discard. The user can subsequently visit
-                    // other PLAY screens. Never erase those unsaved drafts
-                    // when returning to EDIT through another route.
+                if (editorFiles.AnyDirty()) {
+                    // A TEST launch may be followed by another PLAY or a
+                    // library visit. Even an entry classified KeepLoaded
+                    // must restore the ORIGINAL audio before resuming edits.
                     std::string restoreError;
                     if (editorFiles.RestoreWorkspaceAudio(restoreError))
                         editorStatus = "UNSAVED EDITOR WORKSPACE RESTORED";
