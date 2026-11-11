@@ -34,14 +34,14 @@ continue the accumulated beat count and their tempo lasts until the next row
 (or the end of the song). Earlier time uses the first BPM. All difficulties
 share the map, and all authored note timestamps stay in song milliseconds.
 If a new map merges notes on the editor tick grid, the change is rejected.
-Old v1 manifests and v3 single-tempo charts can still be imported.
+Only manifest v2 and chart v4 are supported.
 
 Each Song Set also stores **previewStartMs** (default 0), independent of
 BPM/offset. In **EDIT → AUDIO**, enter an exact whole-millisecond position
 (0..3,600,000), or Ctrl+V to paste a value copied by clicking the TIME display on ROUTE. Enter saves,
 Esc cancels, and no increment/decrement buttons are used. PLAY only reads it.
 A separate menu audio decoder fades the old song out before the newly
-selected song fades in. Legacy entries preview from zero.
+selected song fades in. Song Set previews start from their own saved position.
 
 In EDIT, open a chart belonging to a **managed Song Set**, switch to SET
 and choose **ADD BG** (or **REPLACE BG**) to attach a PNG or JPEG.
@@ -53,11 +53,10 @@ center-cropped at the edges, never stretched. A dark overlay keeps routes and
 labels legible; artwork never changes BPM, note timestamps or scores.
 
 The optional `backgroundFile` manifest key stores a safe flat filename.
-Missing keys remain valid for old Song Sets. Portable `.locuspack` archives
+Portable `.locuspack` archives
 include referenced backgrounds and validate their type, extension, size
 (maximum 24 MiB) and path before publishing. Bad/missing artwork must not
-make an otherwise valid chart disappear. Unmanaged legacy folders remain
-read-only until a new managed Song Set is installed.
+make an otherwise valid chart disappear. Folders without a current Song Set manifest are ignored by the song library.
 
 The files on disk are authoritative. The library index is rebuilt at startup
 or on explicit rescan (also after imports/deletion). Unchanged chart files,
@@ -139,8 +138,7 @@ Back up **%LOCALAPPDATA%\LOCUS** before changing chart/storage formats.
 ## Pre-release compatibility
 
 Before the first public release, **backwards compatibility is not promised**.
-Chart JSON v1/v2 and long heading names are deliberately unsupported.
-Charts are saved in v4 with an explicit tempo map; v3 short-heading charts remain readable.
+Only chart v4, Song Set manifest v2 and skin v2 are supported; older formats are rejected.
 
 ## Remaining limitations
 
