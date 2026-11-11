@@ -32,10 +32,10 @@ void Write(const fs::path& file, const std::string& data) {
 bool WriteChart(const fs::path& file, const std::string& name) {
     const std::string json =
         "{"
-        "\"formatVersion\":3,"
+        "\"formatVersion\":4,"
         "\"title\":\"" + name + "\","
         "\"audioPath\":\"song.wav\","
-        "\"bpm\":120,\"offsetMs\":0,"
+        "\"bpm\":120,\"offsetMs\":0,\"tempoMap\":[{\"timeMs\":0,\"bpm\":120}],"
         "\"ticksPerBeat\":1,\"snapDivision\":1,"
         "\"grid\":{\"width\":8,\"height\":8},"
         "\"start\":{\"x\":3,\"y\":3,\"heading\":\"r\"},"
@@ -113,7 +113,7 @@ int main() {
     const auto originalChartBytes = Read(easyInstalled);
     ok &= Check(metadata.previewStartMs == 0 &&
                 library.Songs()[0].previewStartMs == 0,
-                "old/new Song Sets default preview start to time zero");
+                "new Song Sets default preview start to time zero");
     ok &= Check(library.SetPreviewStartMs(0, 12500, error) &&
                 library.Songs()[0].previewStartMs == 12500 &&
                 LoadSongSetManifest(
@@ -123,7 +123,7 @@ int main() {
                 Read(easyInstalled) == originalChartBytes,
                 "preview timestamp is atomic and does not rewrite chart timing");
     // A song's BPM/offset are single manifest properties. All difficulties
-    // are reprojected in memory by exact note timestamps, and raw old chart
+    // are reprojected in memory by exact note timestamps, and raw installed chart
     // files remain byte-for-byte unchanged (recoverable if migration fails).
     ok &= Check(library.SetSongTiming(0, 150.0, 175, nullptr, error) &&
                 library.Songs()[0].bpm == 150.0 &&
@@ -157,7 +157,7 @@ int main() {
     // Invalid preview metadata is rejected without modifying output object.
     const fs::path badPreviewFile = folder / "bad-preview.json";
     Write(badPreviewFile,
-          R"({"formatVersion":1,"setId":"one","title":"Test",)"
+          R"({"formatVersion":2,"setId":"one","title":"Test",)"
           R"("artist":"","audioFile":"song.wav","previewStartMs":-1})");
     SongSetManifest sentinel = metadata;
     ok &= Check(!LoadSongSetManifest(badPreviewFile, sentinel, error) &&
@@ -168,7 +168,7 @@ int main() {
     // A hostile or malformed package manifest cannot use a chart JSON as
     // its alleged shared audio file.
     const fs::path invalidMetadata = folder / "unsafe-set.json";
-    Write(invalidMetadata, R"({"formatVersion":1,"setId":"test",)"
+    Write(invalidMetadata, R"({"formatVersion":2,"setId":"test",)"
         R"("title":"Hostile","artist":"","audioFile":"set.locus.json"})");
     SongSetManifest invalidSet;
     ok &= Check(!LoadSongSetManifest(invalidMetadata, invalidSet, error),
@@ -241,7 +241,7 @@ int main() {
                 "invalid image leaves existing artwork unchanged");
     const fs::path forgedManifest = folder / "unsafe-art.json";
     Write(forgedManifest,
-          R"({"formatVersion":1,"setId":"one","title":"Test",)"
+          R"({"formatVersion":2,"setId":"one","title":"Test",)"
           R"("artist":"","audioFile":"song.wav","backgroundFile":"../secret.png"})");
     SongSetManifest safe = metadata;
     ok &= Check(!LoadSongSetManifest(forgedManifest, safe, error) &&
@@ -369,7 +369,7 @@ int main() {
                 "restore complete Song Set with all shared content");
 
     // Restart preserves a managed Song Set; deletion/restore did not rewrite
-    // the audio or require any old legacy revision directories.
+    // the audio or require any audio revision directories.
     SongLibrary restarted(root);
     ok &= Check(restarted.Refresh(note) && restarted.ChartCount() == 4 &&
                 restarted.Songs().size() == 1 && restarted.Songs()[0].managed &&
