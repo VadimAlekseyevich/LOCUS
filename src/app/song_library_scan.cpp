@@ -197,10 +197,8 @@ bool SongLibrary::Refresh(std::string& message) {
                 core::EffectiveTempoMap(
                     previousChart->second->data.route,
                     previousChart->second->data.offsetSeconds) == song.tempoMap;
-            // Old in-memory indices may contain the zero-rating result
-            // produced by the former audio-duration-dependent calculator.
-            // Re-evaluate just those entries on Refresh, while preserving
-            // the fast path for valid unchanged files and song timing.
+            // Refresh invalid or stale difficulty cache entries without
+            // recomputing scores for identical note data.
             const bool invalidCachedRating = !difficulty.data.route.turns.empty() &&
                 (difficulty.difficulty.notes != difficulty.data.route.turns.size() ||
                  !std::isfinite(difficulty.difficulty.overall) ||
