@@ -205,6 +205,7 @@ int main(int argc, char** argv) {
     locus::app::LocalMusic localSong;
     locus::app::ChartPlayback chartPlayback(localSong);
     locus::app::GameSession gameSession(activeChart, judge, transport, chartPlayback);
+    gameSession.SetGlobalOffsetMs(settings.globalOffsetMs);
     bool customChart = false;
     bool sessionCompleted = false;
     std::wstring editorChartPath;
@@ -256,6 +257,9 @@ int main(int argc, char** argv) {
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
+    // Dedicated calibration stream. It does not touch scoring transports,
+    // chart data or the player's existing audio decoder.
+    locus::app::DemoTransport calibrationTransport;
     locus::app::MenuMusicPreview menuMusic;
     menuMusic.Initialize(demo);
     locus::app::ImageAssetTexture songBackground;
@@ -311,6 +315,33 @@ int main(int argc, char** argv) {
             (wasAnyModal || input.closeRequested) ? MenuEvents{} :
             HandleMenuInput(state, input, library, libraryUi, settings,
                             settingsUi, draftSkin, skinUi);
+        if (menuEvents.calibrationStop) calibrationTransport.Shutdown();
+        if (menuEvents.calibrationStart) {
+            locus::core::Chart clickGuide = demo;
+            clickGuide.bpm = locus::app::GlobalOffsetCalibrator::kBpm;
+            clickGuide.lengthBeats =
+                locus::app::GlobalOffsetCalibrator::kTotalQuarterBeats;
+            calibrationTransport.Shutdown();
+            if (!calibrationTransport.Initialize(clickGuide)) {
+                settingsUi.calibrationOpen = false;
+                settingsUi.notice = "METRONOME COULD NOT START: CHECK AUDIO DEVICE";
+                settingsUi.noticeError = true;
+            } else {
+                const double startNow = MonotonicSeconds();
+                calibrationTransport.SetVolume(settings.volume);
+                calibrationTransport.Start(startNow);
+                settingsUi.calibration.Start();
+                settingsUi.calibrationExpired = false;
+            }
+        }
+        if (menuEvents.calibrationTap && settingsUi.calibrationOpen &&
+            calibrationTransport.Playing()) {
+            const double tappedAt = MonotonicSeconds();
+            settingsUi.calibration.Tap(
+                calibrationTransport.SongSeconds(tappedAt));
+            if (settingsUi.calibration.Complete())
+                calibrationTransport.Stop();
+        }
         if (menuEvents.toggleFullscreen &&
             !locus::app::SetBorderlessDesktop(settings.fullscreen)) {
             settings.fullscreen = !settings.fullscreen;
@@ -323,6 +354,8 @@ int main(int argc, char** argv) {
         if (menuEvents.saveSettings) {
             transport.SetVolume(settings.volume);
             localSong.SetVolume(settings.volume);
+            calibrationTransport.SetVolume(settings.volume);
+            gameSession.SetGlobalOffsetMs(settings.globalOffsetMs);
         
             persistSettings();
         }
@@ -480,6 +513,13 @@ int main(int argc, char** argv) {
         if (input.levelExitConfirmed && playCameFromEditor)
             input.requestedScreen = Screen::Editor;
         UpdateState(state, input, smokeWindow);
+        // The metronome is owned by the settings overlay. Never let it
+        // survive navigation, an OS quit confirmation or app shutdown.
+        if (settingsUi.calibrationOpen &&
+            (state.screen != Screen::Settings || state.quitConfirmation)) {
+            settingsUi.calibrationOpen = false;
+            calibrationTransport.Shutdown();
+        }
         if (previousScreen == Screen::Editor && state.screen == Screen::Home) {
             // Back/Home occurs only after the dirty workspace prompt has
             // been approved or there are no changes. Free all parked drafts,
@@ -514,6 +554,12 @@ int main(int argc, char** argv) {
             break;
         }
         double now = MonotonicSeconds();
+        if (settingsUi.calibrationOpen && calibrationTransport.Playing()) {
+            calibrationTransport.Update(now);
+            if (!calibrationTransport.Playing() &&
+                !settingsUi.calibration.Complete())
+                settingsUi.calibrationExpired = true;
+        }
         // Only the transport paused by the quit modal may be resumed.
         const bool anyModal = state.quitConfirmation || state.levelExitConfirmation;
         if (wasLevelExitConfirmation && !anyModal &&
