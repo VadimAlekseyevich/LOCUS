@@ -83,7 +83,6 @@ add_executable(locus
     src/app/library_browser.cpp
     src/app/library_file_actions.cpp
     src/app/library_launch_actions.cpp
-    src/app/audio_revision.cpp
     src/app/game_settings.cpp
     src/app/skin.cpp
     src/app/skin_profile_actions.cpp
@@ -257,7 +256,6 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_playback.cpp
             ${LOCUS_SONG_LIBRARY_SOURCES}
         src/app/song_archive.cpp
-        src/app/audio_revision.cpp
         src/app/song_set_storage.cpp
 )
     target_compile_features(locus_editor_file_actions_tests PRIVATE cxx_std_17)
@@ -467,7 +465,6 @@ if(LOCUS_BUILD_TESTS)
         src/app/game_settings.cpp
             ${LOCUS_SONG_LIBRARY_SOURCES}
         src/app/song_archive.cpp
-        src/app/audio_revision.cpp
         src/app/chart_file.cpp
         src/app/chart_save.cpp
         src/app/local_file_io.cpp
@@ -482,7 +479,6 @@ if(LOCUS_BUILD_TESTS)
         tests/song_library_tests.cpp
             ${LOCUS_SONG_LIBRARY_SOURCES}
         src/app/song_archive.cpp
-        src/app/audio_revision.cpp
         src/app/chart_file.cpp
         src/app/chart_save.cpp
         src/app/local_file_io.cpp
