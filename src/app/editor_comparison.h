@@ -28,7 +28,8 @@ struct EditorComparisonFrame {
 };
 
 // Pure selection policy. Paths identify difficulties across library reorders;
-// current unsaved draft is always the first (and only editable) pane.
+// The focused draft occupies the first pane; other open panes can hold
+// independent unsaved drafts that become editable when focused.
 bool ToggleEditorComparison(EditorUiState& ui, const EditorSetView& set,
                             int optionIndex);
 bool HasEditorComparison(const EditorUiState& ui,
@@ -42,9 +43,9 @@ void HandleEditorComparisonControls(EditorUiState& ui,
                                     const EditorSetView& set,
                                     const EditorControls& input);
 
-// Owns compiled routes for one editable chart and up to three read-only
-// difficulties. A playback frame supplies ONE song timestamp to all routes.
-// No second audio stream, judgement queue or editable ChartEditor exists.
+// Owns compiled routes for the focused draft and up to three other panes.
+// Other drafts may be dirty in their separate EditorFileActions workspace;
+// each pane uses the SAME one-song timestamp and audio stream.
 class EditorComparisonCache {
 public:
     EditorComparisonFrame Prepare(const core::ChartEditor& draft,
