@@ -336,9 +336,10 @@ int main(int argc, char** argv) {
         }
         if (menuEvents.calibrationTap && settingsUi.calibrationOpen &&
             calibrationTransport.Playing()) {
-            const double tappedAt = MonotonicSeconds();
-            settingsUi.calibration.Tap(
-                calibrationTransport.SongSeconds(tappedAt));
+            // Use the captured physical key-down timestamp, not the later
+            // UI handler's time; both clocks share MonotonicSeconds().
+            settingsUi.calibration.Tap(calibrationTransport.SongSeconds(
+                menuEvents.calibrationTapAt));
             if (settingsUi.calibration.Complete())
                 calibrationTransport.Stop();
         }
