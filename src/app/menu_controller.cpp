@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <stdexcept>
 
 namespace locus::app {
 
@@ -83,6 +84,90 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             return events;
         }
     }
+    if (state.screen == Screen::Settings && settingsUi.calibrationOpen) {
+        // Exclusive metronome: no gameplay, menu shortcuts or key rebinding
+        // while measuring taps. ESC cancels rather than leaving Settings.
+        input.backPressed = false;
+        input.homePressed = false;
+        input.requestedScreen.reset();
+        input.fullscreenPressed = false;
+        const auto hit = [&](Rectangle rect) {
+            return mouseClick && validMouse &&
+                CheckCollisionPointRec(mouse, rect);
+        };
+        if (IsKeyPressed(KEY_ESCAPE) ||
+            hit(SettingsCalibrationCancelButton())) {
+            settingsUi.calibrationOpen = false;
+            events.calibrationStop = true;
+        } else if (hit(SettingsCalibrationRetryButton())) {
+            settingsUi.calibration.Start();
+            settingsUi.calibrationExpired = false;
+            events.calibrationStart = true;
+        } else if (settingsUi.calibration.Reliable() &&
+                   hit(SettingsCalibrationApplyButton())) {
+            settings.globalOffsetMs = settingsUi.calibration.SuggestedMs();
+            settingsUi.calibrationOpen = false;
+            events.calibrationStop = true;
+            events.saveSettings = true;
+            settingsUi.notice = "GLOBAL OFFSET CALIBRATED: " +
+                std::to_string(settings.globalOffsetMs) + " MS";
+            settingsUi.noticeError = false;
+        } else if (!settingsUi.calibration.Complete() &&
+                   !settingsUi.calibrationExpired &&
+                   IsKeyPressed(KEY_SPACE)) {
+            events.calibrationTap = true;
+        }
+        return events;
+    }
+
+    if (state.screen == Screen::Settings && settingsUi.editingGlobalOffset) {
+        // Manual milliseconds field consumes Enter/ESC and the text queue.
+        input.backPressed = false;
+        input.homePressed = false;
+        input.requestedScreen.reset();
+        input.fullscreenPressed = false;
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            settingsUi.editingGlobalOffset = false;
+            settingsUi.notice = "OFFSET EDIT CANCELED";
+            settingsUi.noticeError = false;
+        } else if (IsKeyPressed(KEY_ENTER) ||
+                   IsKeyPressed(KEY_KP_ENTER)) {
+            try {
+                std::size_t read = 0;
+                const int value = std::stoi(settingsUi.globalOffsetBuffer,
+                                            &read);
+                if (read != settingsUi.globalOffsetBuffer.size() ||
+                    value < -GameSettings::kGlobalOffsetLimitMs ||
+                    value > GameSettings::kGlobalOffsetLimitMs)
+                    throw std::out_of_range("offset outside limits");
+                settings.globalOffsetMs = value;
+                settingsUi.editingGlobalOffset = false;
+                settingsUi.notice = "GLOBAL OFFSET: " +
+                    std::to_string(value) + " MS";
+                settingsUi.noticeError = false;
+                events.saveSettings = true;
+            } catch (const std::exception&) {
+                settingsUi.notice = "ENTER -1000 .. +1000 MS / ESC CANCEL";
+                settingsUi.noticeError = true;
+            }
+        } else if (IsKeyPressed(KEY_BACKSPACE)) {
+            if (!settingsUi.globalOffsetBuffer.empty())
+                settingsUi.globalOffsetBuffer.pop_back();
+        } else {
+            int codepoint = 0;
+            while ((codepoint = GetCharPressed()) != 0) {
+                const char symbol = static_cast<char>(codepoint);
+                if (settingsUi.globalOffsetBuffer.size() >= 6) continue;
+                if (symbol >= '0' && symbol <= '9')
+                    settingsUi.globalOffsetBuffer.push_back(symbol);
+                else if ((symbol == '-' || symbol == '+') &&
+                         settingsUi.globalOffsetBuffer.empty())
+                    settingsUi.globalOffsetBuffer.push_back(symbol);
+            }
+        }
+        return events;
+    }
+
     if (state.screen == Screen::Settings && settingsUi.capturing >= 0) {
         // Exclusive capture: neither the newly pressed key nor its modifier
         // combination may activate another menu or navigation command.
@@ -239,6 +324,21 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         }
 
         if (settingsUi.page == SettingsPage::Game) {
+            if (hit(SettingsOffsetField())) {
+                settingsUi.editingGlobalOffset = true;
+                settingsUi.globalOffsetBuffer =
+                    std::to_string(settings.globalOffsetMs);
+                settingsUi.notice = "TYPE OFFSET MS, ENTER SAVE, ESC CANCEL";
+                settingsUi.noticeError = false;
+                return events;
+            }
+            if (hit(SettingsCalibrateButton())) {
+                settingsUi.calibrationOpen = true;
+                settingsUi.calibrationExpired = false;
+                settingsUi.calibration.Start();
+                events.calibrationStart = true;
+                return events;
+            }
             const auto changeVolume = [&](int delta) {
                 const int current = static_cast<int>(
                     std::lround(settings.volume * 10.0f));
