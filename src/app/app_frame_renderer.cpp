@@ -77,7 +77,7 @@ static void DrawQuitConfirmation(Font font, const AppState& state,
     // The outer application does not terminate until a second explicit
     // action. Reassure users about unsaved edits before they choose.
     DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{7, 11, 19, 220});
-    const bool canSave = state.screen == Screen::Editor && anyEditorDirty;
+    const bool canSave = anyEditorDirty;
     const Rectangle card{177.0f, 146.0f, 606.0f,
                          canSave ? 302.0f : 264.0f};
     DrawRectangleRounded(card, 0.085f, 10, Color{34, 42, 59, 255});
@@ -87,8 +87,8 @@ static void DrawQuitConfirmation(Font font, const AppState& state,
                   Color{246, 233, 211, 255});
     DrawTextLabel(font, "This will close the game.", {307.0f, 236.0f},
                   21.0f, Color{216, 227, 234, 255});
-    if (state.screen == Screen::Editor &&
-        (anyEditorDirty || editor.Dirty() || editorUi.EditingText()))
+    if (anyEditorDirty || (state.screen == Screen::Editor &&
+        (editor.Dirty() || editorUi.EditingText())))
         DrawTextLabel(font, "UNSAVED CHART CHANGES WILL BE LOST",
                       {266.0f, 272.0f}, 17.0f,
                       Color{251, 188, 164, 255});
