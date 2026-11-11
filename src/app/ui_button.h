@@ -1,6 +1,10 @@
 #pragma once
 
 #include "raylib.h"
+#include "app/ui_theme.h"
+#include "app/ui_motion.h"
+
+#include <algorithm>
 
 namespace locus::app {
 
@@ -58,6 +62,91 @@ inline void DrawUiButton(Font font, Rectangle rect, const char* caption,
                {rect.x + (rect.width - measured.x) * 0.5f,
                 rect.y + (rect.height - measured.y) * 0.5f},
                style.fontSize, style.fontSpacing, style.text);
+}
+
+
+enum class UiButtonVariant { Rose, Blue, Neutral, Quiet, Danger };
+
+// New semantic styles reuse the existing UiButtonStyle and chrome renderer.
+// Legacy Menu/Skin/Editor styles stay untouched until each screen is approved.
+inline UiButtonStyle ApprovedButtonStyle(
+    UiButtonVariant variant,
+    const UiTheme& theme = ApprovedUiTheme()) noexcept {
+    UiButtonStyle style{};
+    style.fontSize = theme.fontSize;
+    style.fontSpacing = 1.0f;
+    style.roundness = 0.25f; // Overridden using actual pixel radius at draw.
+    style.segments = 12;
+    style.strokeWidth = 1.0f;
+    style.selectedStrokeWidth = 1.0f;
+    style.text = theme.foreground;
+    style.fill = theme.surface;
+    style.selectedFill = theme.raised;
+    style.stroke = theme.divider;
+    style.selectedStroke = theme.softBlue;
+    switch (variant) {
+        case UiButtonVariant::Rose:
+            style.fill = theme.rose;
+            style.selectedFill = UiMix(theme.rose, theme.foreground, 0.17f);
+            style.stroke = theme.rose;
+            style.selectedStroke = style.selectedFill;
+            style.text = theme.onAccent;
+            break;
+        case UiButtonVariant::Blue:
+            style.fill = theme.softBlue;
+            style.selectedFill = UiMix(theme.softBlue, theme.foreground, 0.22f);
+            style.stroke = theme.softBlue;
+            style.selectedStroke = style.selectedFill;
+            style.text = theme.onAccent;
+            break;
+        case UiButtonVariant::Neutral:
+            break;
+        case UiButtonVariant::Quiet:
+            style.fill = UiOpacity(theme.surface, 0.0f);
+            style.selectedFill = theme.surface;
+            break;
+        case UiButtonVariant::Danger:
+            style.fill = theme.surface;
+            style.selectedFill = UiMix(theme.surface, theme.danger, 0.18f);
+            style.stroke = theme.danger;
+            style.selectedStroke = theme.danger;
+            break;
+    }
+    return style;
+}
+
+// Visual-only animation. The label may move at most 1 pixel; the actual
+// layout/hit rectangle NEVER changes, including under hover or press.
+inline void DrawUiThemedButton(
+    Font font, Rectangle bounds, const char* caption,
+    UiButtonVariant variant, UiInteraction state = {},
+    UiMotionFrame animation = {},
+    const UiTheme& theme = ApprovedUiTheme()) {
+    auto style = ApprovedButtonStyle(variant, theme);
+    const float interaction = std::max(animation.hover, animation.selected);
+    style.fill = UiMix(style.fill, style.selectedFill, interaction);
+    style.stroke = UiMix(style.stroke, style.selectedStroke, interaction);
+    style.roundness = UiRoundness(bounds, theme.buttonRadiusPx);
+    if (state.disabled) {
+        style.fill = UiOpacity(style.fill, 0.45f);
+        style.stroke = UiOpacity(style.stroke, 0.35f);
+        style.text = UiOpacity(style.text, 0.45f);
+    }
+    DrawUiButtonChrome(bounds, style, false);
+    if (!state.disabled && animation.focus > 0.0f) {
+        const Rectangle ring{bounds.x - 3.0f, bounds.y - 3.0f,
+                             bounds.width + 6.0f, bounds.height + 6.0f};
+        DrawRectangleRoundedLinesEx(ring,
+            UiRoundness(ring, theme.buttonRadiusPx + 3.0f), 12, 1.5f,
+            UiOpacity(theme.rose, animation.focus));
+    }
+    const Vector2 measured = MeasureTextEx(
+        font, caption, style.fontSize, style.fontSpacing);
+    DrawTextEx(font, caption,
+        {bounds.x + (bounds.width - measured.x) * 0.5f,
+         bounds.y + (bounds.height - measured.y) * 0.5f +
+              (state.disabled ? 0.0f : animation.press)},
+        style.fontSize, style.fontSpacing, style.text);
 }
 
 } // namespace locus::app
