@@ -249,13 +249,15 @@ int main() {
         clickDifficulty.mouseClick = true;
         clickDifficulty.mouse = {548.0f, 252.0f}; // Hard difficulty row
         managedSet.HandleControls(clickDifficulty);
-        ok &= Check(managedSet.HasPending() &&
-                    managedSet.Pending()->chart == installedHard &&
-                    managedSet.Pending()->discardsDraft && editor.Dirty(),
-                    "single SET difficulty click requests safe Open");
-        managedSet.Confirm(false, true);
-        ok &= Check(!managedSet.HasPending() && editor.Dirty(),
-                    "canceling direct switch leaves unsaved chart intact");
+        ok &= Check(!managedSet.HasPending() && editor.Dirty() &&
+                    activePath == installedEasy.wstring() &&
+                    status.find("SET FAILED: ") == 0,
+                    "SET focus refuses to replace dirty draft without loaded audio");
+        // No side effect or hidden draft should be created by that failure.
+        ok &= Check(managedFiles.AnyDirty() &&
+                    !managedFiles.ParkedEditor(installedEasy) &&
+                    !managedFiles.ParkedEditor(installedHard),
+                    "failed comparison focus never parks or destroys editors");
 
         // The controller (not just the pure helper) must commit AUDIO
         // table edits to the actual Song Set manifest and all difficulties.
@@ -305,6 +307,13 @@ int main() {
         ok &= Check(ui.comparisonFiles.size() == 1 &&
                     ui.comparisonFiles.front() == installedHard,
                     "real comparison picker selects sibling chart by click");
+        // Clean reference panes can close immediately; only a dirty parked
+        // chart needs the Save / Discard / Cancel modal.
+        ok &= Check(managedFiles.RequestCloseComparison(installedHard) &&
+                    ui.comparisonFiles.empty() &&
+                    managedFiles.PendingClose().empty() &&
+                    editor.Dirty(),
+                    "closing a clean reference never affects focused dirty draft");
 
         // A rejected shared tempo update after user Undo must restore the
         // same action via Redo, not accidentally undo an earlier note edit.
