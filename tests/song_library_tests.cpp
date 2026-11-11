@@ -91,7 +91,7 @@ int main() {
     fs::create_directories(occupied / ".locus-versions", ec);
     Write(occupied / "old-data.txt", "must survive");
     fs::path deniedResult;
-    core::LoadedChart fresh;
+    locus::core::LoadedChart fresh;
     std::wstring freshAudio;
     const bool preparedFresh = OpenChartWithAudioPath(
         easy.wstring(), fresh, freshAudio, error);
