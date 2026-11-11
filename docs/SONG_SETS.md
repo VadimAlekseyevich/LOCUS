@@ -52,7 +52,7 @@ ratio preserved: the image fills the physical window and any excess is
 center-cropped at the edges, never stretched. A dark overlay keeps routes and
 labels legible; artwork never changes BPM, note timestamps or scores.
 
-The optional `backgroundFile` manifest key stores a safe flat filename.
+The `backgroundFile` manifest field stores a safe flat filename or an empty string.
 Portable `.locuspack` archives
 include referenced backgrounds and validate their type, extension, size
 (maximum 24 MiB) and path before publishing. Bad/missing artwork must not
@@ -60,9 +60,9 @@ make an otherwise valid chart disappear. Folders without a current Song Set mani
 
 The files on disk are authoritative. The library index is rebuilt at startup
 or on explicit rescan (also after imports/deletion). Unchanged chart files,
-identified by last-write time and file size, reuse their parsed data and
-difficulty rating rather than being rescored at every refresh. Changing the
-Song Set's shared BPM or offset invalidates those derived ratings; timestamp
+identified by last-write time, size and content fingerprint, reuse parsed
+data and difficulty results. Changing the Song Set's BPM or offset refreshes
+musical-grid projections but does not change difficulty for unchanged note timestamps; timestamp
 changes in an individual chart invalidate only that chart. A shared timing
 edit refuses to publish if difficulty files were externally changed or added
 after the last scan: refresh first. Within each Song Set, difficulties are displayed in
