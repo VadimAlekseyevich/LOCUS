@@ -425,12 +425,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         DrawComparisonPreviews(font, *comparisons, previewSeconds,
             settings.editorPreviewSpeed /
                 static_cast<float>(std::max(0.1, playbackSpeed)), editorSkin);
-        Label(font, TextFormat("SPD %.0f", settings.editorPreviewSpeed),
-              745, 403, 12, Color{174, 222, 226, 255});
+        Label(font, TextFormat("SPD %.0f PX/S", settings.editorPreviewSpeed),
+              745, 403, 11, Color{174, 222, 226, 255});
         CompactButton(font, kEditorSpeedMinus, "-", Color{134, 176, 212, 255});
         CompactButton(font, kEditorSpeedPlus, "+", Color{134, 212, 180, 255});
-        Label(font, TextFormat("PATH %.0f", settings.editorPreviewLengthMs),
-              745, 437, 12, Color{174, 222, 226, 255});
+        Label(font, TextFormat("PATH %.0f MS", settings.editorPreviewLengthMs),
+              745, 437, 11, Color{174, 222, 226, 255});
         CompactButton(font, kEditorPathMinus, "-", Color{134, 176, 212, 255});
         CompactButton(font, kEditorPathPlus, "+", Color{134, 212, 180, 255});
         // Place the rating within the focused pane, not beneath the newly
