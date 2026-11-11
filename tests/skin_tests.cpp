@@ -81,62 +81,35 @@ int main() {
           std::string(SkinColorLabel(9)) == "FIELD BORDER" &&
           SkinColor(original, 9).g == 207,
           "square border is available as tenth editable RGBA colour");
-    auto withoutCap = nlohmann::json::parse(json);
-    withoutCap["path"].erase("reverseCapScale");
-    Skin olderProfile;
-    check(ParseSkin(withoutCap.dump(), olderProfile, error) &&
-          olderProfile.reverseCapScale == kDefaultReverseCapScale &&
-          kDefaultReverseCapScale == 3.2f,
-          "preexisting skin JSON adopts the doubled default cap size");
-    auto withoutCamera = nlohmann::json::parse(json);
-    withoutCamera["player"].erase("cameraLagMs");
-    Skin previousSkin;
-    check(ParseSkin(withoutCamera.dump(), previousSkin, error) &&
-          previousSkin.cameraLagMs == 180.0f,
-          "existing profiles inherit original camera lag");
-    auto invalidCamera = nlohmann::json::parse(json);
-    invalidCamera["player"]["cameraLagMs"] = -2.0;
-    Skin unchangedCamera;
-    unchangedCamera.name = "Before";
-    check(!ParseSkin(invalidCamera.dump(), unchangedCamera, error) &&
-          unchangedCamera.name == "Before",
-          "invalid camera lag cannot corrupt existing skin");
-    auto newFile = nlohmann::json::parse(json);
-    check(newFile["path"].contains("lookaheadMs") &&
-          !newFile["path"].contains("lookaheadBeats") &&
-          newFile["path"]["lookaheadMs"] == 1150.0f,
-          "new skin saves only millisecond preview duration");
+    // Missing current-format fields and unsupported old versions reject
+    // atomically; no hidden migration or silent defaulting is performed.
+    auto missingCap = nlohmann::json::parse(json);
+    missingCap["path"].erase("reverseCapScale");
+    Skin unchanged;
+    unchanged.name = "Keep";
+    check(!ParseSkin(missingCap.dump(), unchanged, error) &&
+          unchanged.name == "Keep",
+          "missing current skin field is rejected atomically");
+    auto missingCamera = nlohmann::json::parse(json);
+    missingCamera["player"].erase("cameraLagMs");
+    check(!ParseSkin(missingCamera.dump(), unchanged, error) &&
+          unchanged.name == "Keep",
+          "missing camera field is rejected");
+    auto missingBorder = nlohmann::json::parse(json);
+    missingBorder["colors"].erase("fieldBorder");
+    check(!ParseSkin(missingBorder.dump(), unchanged, error) &&
+          unchanged.name == "Keep",
+          "missing current color is rejected");
     auto oldFile = nlohmann::json::parse(json);
     oldFile["version"] = 1;
-    oldFile["path"].erase("lookaheadMs");
-    oldFile["path"]["lookaheadBeats"] = 4.0f;
-    oldFile["player"].erase("speedPxPerSecond");
-    oldFile["player"]["cameraStep"] = 70.0;
-    oldFile["colors"].erase("fieldBorder");
-    Skin migrated;
-    check(ParseSkin(oldFile.dump(), migrated, error) &&
-          migrated.lookaheadMs == 800.0f &&
-          migrated.fieldBorder.r == Skin{}.fieldBorder.r &&
-          migrated.fieldBorder.a == 255 &&
-          std::abs(migrated.baseSpeedPxPerSecond -
-                   70.0f * kDefaultBaseSpeed / 51.0f) < 0.001f,
-          "v1 skin zoom migrates to fixed speed and frame colour");
-    oldFile["colors"]["fieldBorder"] = nlohmann::json::array({256, 0, 0, 255});
-    Skin unmodified;
-    unmodified.name = "Keep";
-    check(!ParseSkin(oldFile.dump(), unmodified, error) &&
-          unmodified.name == "Keep",
-          "invalid border channel rejected atomically");
-    auto invalidLegacy = oldFile;
-    invalidLegacy["colors"]["fieldBorder"] = nlohmann::json::array({255,255,255,255});
-    invalidLegacy["player"]["cameraStep"] = 251;
-    Skin legacyGuard;
-    check(!ParseSkin(invalidLegacy.dump(), legacyGuard, error),
-          "reject invalid legacy zoom without mutation");
-    Skin sentinel;
-    sentinel.name = "Unchanged";
-    check(!ParseSkin("{\"version\":1}", sentinel, error) &&
-          sentinel.name == "Unchanged", "incomplete JSON is atomic");
+    check(!ParseSkin(oldFile.dump(), unchanged, error) &&
+          unchanged.name == "Keep",
+          "old skin version is unsupported");
+    auto invalidCamera = nlohmann::json::parse(json);
+    invalidCamera["player"]["cameraLagMs"] = -2.0;
+    check(!ParseSkin(invalidCamera.dump(), unchanged, error) &&
+          unchanged.name == "Keep",
+          "invalid camera lag cannot corrupt existing skin");
     auto brokenCap = nlohmann::json::parse(json);
     brokenCap["path"]["reverseCapScale"] = 13.0;
     Skin intact;
