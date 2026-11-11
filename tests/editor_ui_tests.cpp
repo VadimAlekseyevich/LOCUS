@@ -81,8 +81,8 @@ int main() {
                 chart.Data().route.start.x == 3 &&
                 chart.Data().route.start.y == 3,
                 "editor opens with 8x8 square view and automatic route origin");
-    // Preview magnification is global SKIN speed; editor grid metadata no
-    // longer changes on-screen distance or playback time.
+    // ROUTE preview has independent speed/lookahead controls; chart grid
+    // metadata never changes the visible geometry or playback time.
     // These strips must remain spatially separate from toolbar and footer.
     ok &= Check(detail::kTimelineY == 115.0f &&
                 detail::kTimelineY + detail::kTimelineHeight <=
@@ -100,12 +100,14 @@ int main() {
                     < 0.001,
                 "top note ruler and bottom song overview have independent geometry");
 
-    const auto referenceSquare = detail::ComparisonPreviewBounds(4, 0);
-    ok &= Check(referenceSquare.width >= 197.0f &&
-                referenceSquare.height >= 197.0f &&
+    const auto referenceSquare = detail::ComparisonPreviewBounds(3, 0);
+    ok &= Check(referenceSquare.width == 222.0f &&
+                referenceSquare.height == 222.0f &&
                 referenceSquare.y >= detail::kTimelineY +
-                    detail::kTimelineHeight,
-                "four-way preview remains large and below the top note ruler");
+                    detail::kTimelineHeight &&
+                referenceSquare.y + referenceSquare.height <
+                    detail::kSongOverview.y,
+                "three enlarged preview panes fit between toolbar and overview");
 
     // Audio settings are no longer stacked on top of the route grid.
     ApplyEditorControls(chart, ui, Click(612, 89));
@@ -313,19 +315,36 @@ int main() {
                 !unusedTransport.previewRestart,
                 "ROUTE has TEST but no obsolete PLAY/RESTART/SONG toolbar");
 
-    for (int n = 1; n <= 4; ++n) {
-        const auto mainPane = detail::ComparisonPreviewBounds(n, 0);
-        ok &= Check(mainPane.width >= 197.0f && mainPane.height >= 197.0f &&
-                    mainPane.x >= 50.0f && mainPane.x + mainPane.width <= 735.0f,
-                    "editable route retains large square for all pane counts");
+    for (int n = 1; n <= 3; ++n) {
+        const auto firstPane = detail::ComparisonPreviewBounds(n, 0);
+        ok &= Check(firstPane.width == 222.0f &&
+                    firstPane.height == 222.0f &&
+                    firstPane.x >= 52.0f &&
+                    firstPane.x + firstPane.width <= 734.0f,
+                    "editor panes are enlarged and equal-sized");
         for (int i = 1; i < n; ++i) {
+            const auto previous = detail::ComparisonPreviewBounds(n, i - 1);
             const auto pane = detail::ComparisonPreviewBounds(n, i);
-            ok &= Check(pane.width > 120.0f &&
-                        pane.x >= mainPane.x + mainPane.width &&
-                        pane.x + pane.width <= 734.01f,
-                        "comparison preview squares fit with unchanged compass pad");
+            ok &= Check(pane.width == firstPane.width &&
+                        pane.height == firstPane.height &&
+                        pane.x >= previous.x + previous.width + 7.9f &&
+                        pane.x + pane.width <= 734.0f &&
+                        pane.y + pane.height < detail::kSongOverview.y,
+                        "up to three equal previews fit without overlaying overview");
         }
     }
+    ok &= Check(detail::ComparisonPreviewBounds(4, 3).width == 0.0f &&
+                detail::EditorSpeedControlDelta({861, 405}) == -1 &&
+                detail::EditorSpeedControlDelta({909, 405}) == 1 &&
+                detail::EditorPathControlDelta({861, 438}) == -1 &&
+                detail::EditorPathControlDelta({909, 438}) == 1 &&
+                detail::EditorPathControlDelta({861, 405}) == 0 &&
+                detail::kEditorSpeedMinus.y > 
+                    detail::DirectionPadBounds(2, 0).y +
+                    detail::DirectionPadBounds(2, 0).height &&
+                detail::kEditorPathPlus.y + detail::kEditorPathPlus.height <
+                    detail::kSongOverview.y,
+                "separate editor controls do not overlap pad or song overview");
 
     // At x = 50 + 860/3, the selected beat stays under the fixed playhead.
     constexpr float cursor = 50.0f + 860.0f / 3.0f;
