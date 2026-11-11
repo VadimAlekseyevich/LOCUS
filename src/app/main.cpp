@@ -615,7 +615,11 @@ int main(int argc, char** argv) {
                     // confirming a discard. The user can subsequently visit
                     // other PLAY screens. Never erase those unsaved drafts
                     // when returning to EDIT through another route.
-                    editorStatus = "UNSAVED EDITOR WORKSPACE RESTORED - SAVE OR CLOSE DRAFTS";
+                    std::string restoreError;
+                    if (editorFiles.RestoreWorkspaceAudio(restoreError))
+                        editorStatus = "UNSAVED EDITOR WORKSPACE RESTORED";
+                    else
+                        editorStatus = "EDITOR AUDIO RESTORE FAILED: " + restoreError;
                 } else if (action == locus::app::EditorEntryAction::NewDraft) {
                     editorFiles.NewDraft();
                 } else if (action ==
