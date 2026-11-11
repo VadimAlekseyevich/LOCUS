@@ -7,6 +7,7 @@
 #include "app/local_music.h"
 #include "app/menu_ui.h"
 #include "app/song_library.h"
+#include "app/song_set_storage.h"
 #include "core/chart_editor.h"
 
 #include <filesystem>
