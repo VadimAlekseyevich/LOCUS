@@ -17,6 +17,7 @@
 #include <string>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 namespace locus::app {
 namespace {
@@ -305,6 +306,178 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
     context_.status = "SAVED IN SONG LIBRARY - CTRL+S UPDATE / CTRL+SHIFT+S COPY";
     now = pickers_.now();
     return true;
+}
+
+
+void EditorFileActions::DiscardParked() noexcept {
+    parked_.clear();
+    pendingClose_.clear();
+}
+
+const core::ChartEditor* EditorFileActions::ParkedEditor(
+    const std::filesystem::path& file) const {
+    const auto it = parked_.find(file);
+    return it == parked_.end() ? nullptr : &it->second.editor;
+}
+
+bool EditorFileActions::AnyDirty() const noexcept {
+    if (context_.editor.Dirty()) return true;
+    for (const auto& entry : parked_)
+        if (entry.second.editor.Dirty()) return true;
+    return false;
+}
+
+bool EditorFileActions::FocusChart(const std::filesystem::path& file,
+                                   std::string& error) {
+    namespace fs = std::filesystem;
+    const fs::path current(context_.chartPath);
+    if (file.empty() || current.empty()) {
+        error = "Save the new difficulty before switching focus.";
+        return false;
+    }
+    if (current == file) { error.clear(); return true; }
+
+    // Comparison editing shares exactly one decoder and one Song Set.
+    int fromSong = -1, fromChart = -1, toSong = -1, toChart = -1;
+    if (!context_.library.FindChart(current, fromSong, fromChart) ||
+        !context_.library.FindChart(file, toSong, toChart) ||
+        fromSong < 0 || fromSong != toSong) {
+        error = "Comparison editing requires difficulties in one installed Song Set.";
+        return false;
+    }
+
+    auto references = context_.ui.comparisonFiles;
+    references.erase(std::remove(references.begin(), references.end(), file),
+                     references.end());
+    if (std::find(references.begin(), references.end(), current) ==
+        references.end()) {
+        if (references.size() >= 3) {
+            error = "MAX FOUR OPEN CHARTS - CLOSE A REFERENCE FIRST";
+            return false;
+        }
+        references.push_back(current);
+    }
+
+    // Never abandon a dirty editor until the target has been fully validated.
+    ParkedDocument target;
+    const auto existing = parked_.find(file);
+    if (existing == parked_.end()) {
+        const auto& canonical = context_.library.Songs()[
+            static_cast<std::size_t>(toSong)].charts[
+            static_cast<std::size_t>(toChart)].data;
+        context_.preview.Stop();
+        if (!LoadDraftFromDisk(file.wstring(), target.editor, context_.music,
+                               target.chartPath, target.audioPath, error,
+                               &canonical))
+            return false;
+        target.loadedAudioPath = target.audioPath;
+        target.previewBeat = target.editor.SelectedBeat();
+    } else {
+        context_.preview.Stop();
+        target = std::move(existing->second);
+        parked_.erase(existing);
+    }
+
+    ParkedDocument old;
+    old.editor = std::move(context_.editor);
+    old.ui = std::move(context_.ui);
+    old.chartPath = std::move(context_.chartPath);
+    old.audioPath = std::move(context_.audioPath);
+    old.loadedAudioPath = std::move(context_.loadedAudioPath);
+    old.previewBeat = context_.previewStartBeat;
+    old.newDifficultySet = std::move(newDifficultySet_);
+
+    // Clipboard and comparison membership are workspace-level values.
+    auto clipboard = std::move(old.ui.clipboard);
+    parked_.insert_or_assign(current, std::move(old));
+    context_.editor = std::move(target.editor);
+    context_.ui = std::move(target.ui);
+    context_.chartPath = std::move(target.chartPath);
+    context_.audioPath = std::move(target.audioPath);
+    context_.loadedAudioPath = std::move(target.loadedAudioPath);
+    context_.previewStartBeat = target.previewBeat;
+    newDifficultySet_ = std::move(target.newDifficultySet);
+    context_.ui.clipboard = std::move(clipboard);
+    context_.ui.comparisonFiles = std::move(references);
+    context_.ui.comparisonPickerOpen = false;
+    context_.ui.tab = EditorTab::Route;
+    context_.status = "FOCUS: " + context_.editor.Data().title +
+        (context_.editor.Dirty() ? " (UNSAVED)" : "") +
+        " - CTRL+S SAVES THIS CHART";
+    error.clear();
+    return true;
+}
+
+bool EditorFileActions::RequestCloseComparison(
+    const std::filesystem::path& file) {
+    const auto found = std::find(context_.ui.comparisonFiles.begin(),
+        context_.ui.comparisonFiles.end(), file);
+    if (found == context_.ui.comparisonFiles.end() || !pendingClose_.empty())
+        return false;
+    const auto parked = parked_.find(file);
+    if (parked != parked_.end() && parked->second.editor.Dirty()) {
+        pendingClose_ = file;
+        return false;
+    }
+    parked_.erase(file);
+    context_.ui.comparisonFiles.erase(found);
+    return true;
+}
+
+bool EditorFileActions::SaveParked(const std::filesystem::path& file,
+                                   double& now, std::filesystem::path* updatedFile) {
+    const std::filesystem::path original(context_.chartPath);
+    std::string error;
+    if (!FocusChart(file, error)) {
+        context_.status = "SAVE FAILED: " + error;
+        return false;
+    }
+    const bool saved = Save(false, now);
+    const std::filesystem::path savedPath(context_.chartPath);
+    std::string restoreError;
+    if (!FocusChart(original, restoreError)) {
+        context_.status = "FOCUS RESTORE FAILED: " + restoreError;
+        return false;
+    }
+    if (updatedFile) *updatedFile = savedPath;
+    return saved;
+}
+
+bool EditorFileActions::ResolveClose(bool save, bool discard, double& now) {
+    if (pendingClose_.empty()) return false;
+    const auto file = pendingClose_;
+    if (!save && !discard) {
+        pendingClose_.clear();
+        return true;
+    }
+    std::filesystem::path savedPath = file;
+    if (save && !SaveParked(file, now, &savedPath))
+        return false; // Leave dialog open if writing to disk failed.
+    const auto removeReference = [&](const std::filesystem::path& candidate) {
+        auto& references = context_.ui.comparisonFiles;
+        references.erase(std::remove(references.begin(), references.end(),
+                                     candidate), references.end());
+        parked_.erase(candidate);
+    };
+    removeReference(file);
+    removeReference(savedPath);
+    pendingClose_.clear();
+    context_.ui.comparisonPickerOpen = false;
+    context_.status = save ? "CHART SAVED AND CLOSED"
+                           : "CHART CLOSED WITHOUT SAVING";
+    return true;
+}
+
+bool EditorFileActions::SaveAll(double& now) {
+    // Ordinary Ctrl+S writes ONLY the focused document. Batch save is used
+    // solely when the user explicitly chooses Save in a leave/quit dialog.
+    if (context_.editor.Dirty() && !Save(false, now)) return false;
+    std::vector<std::filesystem::path> dirty;
+    for (const auto& entry : parked_)
+        if (entry.second.editor.Dirty()) dirty.push_back(entry.first);
+    for (const auto& file : dirty)
+        if (parked_.count(file) && !SaveParked(file, now)) return false;
+    return !AnyDirty();
 }
 
 } // namespace locus::app
