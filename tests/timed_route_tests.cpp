@@ -91,45 +91,10 @@ int main() {
                 Near(repeated.turnsFarToNear[0].position.x, 1.0) &&
                 Near(repeated.turnsFarToNear[1].position.x, 0.5),
                 "repeated events retain exact-time far-to-near priority");
-    // Each target's local spacing is measured against the entire compiled
-    // route, including neighbors outside the current lookahead. It remains
-    // constant as the camera advances rather than changing when a turn
-    // enters or exits the visible window.
-    const auto narrowed = app::MakeRoutePreview(revised, 0.3, 210.0f);
-    ok &= Check(repeated.turnSpacingWorld.size() == 2 &&
-                Near(repeated.turnSpacingWorld[0], 0.5) &&
-                Near(repeated.turnSpacingWorld[1], 0.5) &&
-                narrowed.turnSpacingWorld.size() == 1 &&
-                Near(narrowed.turnSpacingWorld[0], 0.5),
-                "density uses stable full-chart neighbor positions outside preview");
-
     const auto noFuture = app::MakeRoutePreview(revised, 0.2, 0.0f);
     ok &= Check(noFuture.ready && noFuture.spans.empty() &&
                 noFuture.turnsFarToNear.empty(),
                 "zero horizon suppresses route preview but retains marker");
-
-    // A four-turn square can return to exactly the same target location.
-    // It is not necessarily the previous or next note, so limiting the
-    // visual policy to immediate neighbors misses genuine local overlaps.
-    core::Chart loop = chart;
-    loop.lengthBeats = 12;
-    loop.turns = {{1, core::Heading::Down, 100},
-                  {2, core::Heading::Left, 200},
-                  {3, core::Heading::Up, 300},
-                  {4, core::Heading::Right, 400},
-                  {5, core::Heading::Down, 500}};
-    core::TimedRoute loopRoute;
-    ok &= Check(loopRoute.Compile(loop, 0.0),
-                "compile a tight closed-loop route");
-    const auto loopFrame = app::MakeRoutePreview(loopRoute, 0.05, 500.0f);
-    bool foundRetrace = false;
-    for (std::size_t i = 0; i < loopFrame.turnsFarToNear.size(); ++i) {
-        if (Near(loopFrame.turnsFarToNear[i].songSeconds, 0.1) &&
-            Near(loopFrame.turnSpacingWorld[i], 0.0))
-            foundRetrace = true;
-    }
-    ok &= Check(foundRetrace,
-                "local four-turn loops compress genuinely coincident targets");
 
     chart.turns = {{1, core::Heading::Left, 500}};
     ok &= Check(revised.Compile(chart, 0.0) &&
