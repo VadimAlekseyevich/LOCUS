@@ -242,7 +242,9 @@ int main() {
     const fs::path forgedManifest = folder / "unsafe-art.json";
     Write(forgedManifest,
           R"({"formatVersion":2,"setId":"one","title":"Test",)"
-          R"("artist":"","audioFile":"song.wav","backgroundFile":"../secret.png"})");
+          R"("artist":"","audioFile":"song.wav","previewStartMs":0,)"
+          R"("bpm":120,"offsetMs":0,"tempoMap":[{"timeMs":0,"bpm":120}],)"
+          R"("backgroundFile":"../secret.png"})");
     SongSetManifest safe = metadata;
     ok &= Check(!LoadSongSetManifest(forgedManifest, safe, error) &&
                 safe.backgroundFile == metadata.backgroundFile,
