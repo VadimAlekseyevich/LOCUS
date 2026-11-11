@@ -18,6 +18,7 @@
 #include "raylib.h"
 
 #include <string>
+#include <filesystem>
 
 namespace locus::app {
 
@@ -50,6 +51,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::app::EditorSetView& editorSetView,
                  const locus::app::EditorComparisonFrame& comparisons,
                  const locus::app::EditorSetRequest* editorSetPending,
+                 const std::filesystem::path& editorClosePending,
+                 bool anyEditorDirty,
                  const std::string& musicError, double now,
                   const locus::app::SongLibrary& library,
                   const locus::app::SongSelectUi& libraryUi,
