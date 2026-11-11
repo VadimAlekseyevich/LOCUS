@@ -31,12 +31,17 @@ bool PlanEditorComparisonFocus(const EditorUiState& ui,
             static_cast<int>(targetRef - candidate.references.begin()),
             currentSlot);
     }
+    const bool alreadyVisible = targetRef != candidate.references.end();
     candidate.references.insert(candidate.references.begin() + currentSlot,
                                 active);
-    const auto chosen = std::find(candidate.references.begin(),
-                                  candidate.references.end(), target);
-    if (chosen == candidate.references.end()) return false;
-    candidate.references.erase(chosen);
+    if (alreadyVisible) {
+        const auto chosen = std::find(candidate.references.begin(),
+                                      candidate.references.end(), target);
+        if (chosen == candidate.references.end()) return false;
+        candidate.references.erase(chosen);
+    }
+    // An unseen target is not a reference yet: it becomes the focused
+    // fourth/third/etc pane after the existing visual slots.
     result = std::move(candidate);
     return true;
 }
