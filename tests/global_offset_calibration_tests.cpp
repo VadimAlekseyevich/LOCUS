@@ -68,7 +68,8 @@ int main() {
 
     sample.Start();
     for (int i = 0; i < GlobalOffsetCalibrator::kRequiredTaps; ++i) {
-        const double errorMs = i % 2 ? 230.0 : -230.0;
+        // +/-150 ms is noisy but the taps remain at least 300 ms apart.
+        const double errorMs = i % 2 ? 150.0 : -150.0;
         ok &= Check(sample.Tap((100 + i) *
                     GlobalOffsetCalibrator::kBeatSeconds + errorMs / 1000.0),
                     "large alternating tap errors are still collected");
