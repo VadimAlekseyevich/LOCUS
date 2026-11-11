@@ -433,8 +433,9 @@ int main(int argc, char** argv) {
         // documents before confirming quit; Y quits without saving, N stays.
         if (wasQuitConfirmation && editorFiles.AnyDirty() &&
             (IsKeyPressed(KEY_S) ||
-             (editorModalClick && locus::app::MenuActionHit(
-                  locus::app::kEditorQuitSaveButton, GetMousePosition(),
+             (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+              locus::app::EditorQuitSavePointerHit(
+                  state.screen, GetMousePosition(),
                   GetScreenWidth(), GetScreenHeight())))) {
             const bool skinHasEdits = state.screen == Screen::Skin &&
                 (skinUi.dirty || skinUi.editingName ||
