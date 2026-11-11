@@ -70,6 +70,7 @@ EditorSetView EditorSetController::View() const {
     view.previewStartMs = set->previewStartMs;
     view.bpm = set->bpm;
     view.offsetMs = set->offsetMs;
+    view.tempoMap = set->tempoMap;
     view.hasBackground = !set->backgroundImage.empty();
     view.backgroundPath = set->backgroundImage;
     for (std::size_t i = 0; i < set->charts.size(); ++i) {
@@ -98,29 +99,74 @@ EditorSetView EditorSetController::View() const {
     return view;
 }
 
-bool EditorSetController::SyncSongTiming() {
-    const fs::path folder = ctx_.files.ActiveSetFolder();
-    const auto& all = ctx_.library.Songs();
-    const auto it = std::find_if(all.begin(), all.end(),
+bool EditorSetController::ApplyTempoMap(
+    const std::vector<core::TempoMarker>& markers) {
+    std::string error;
+    if (!core::ValidTempoMap(markers, error)) {
+        Notice(error, true);
+        return false;
+    }
+    // Validate an isolated draft BEFORE touching the shared manifest:
+    // no note timestamps or current editor history may be destroyed.
+    core::ChartEditor validation;
+    validation.Load(ctx_.editor.Data());
+    if (ctx_.editor.HasSongDuration() &&
+        !validation.SetSongDuration(ctx_.editor.SongDurationSeconds())) {
+        Notice("INVALID AUDIO DURATION", true);
+        return false;
+    }
+    if (!validation.SetTempoMap(markers)) {
+        Notice("BPM CHANGE WOULD MERGE OR STRAND NOTES", true);
+        return false;
+    }
+    const auto& songs = ctx_.library.Songs();
+    const auto folder = ctx_.files.ActiveSetFolder();
+    const auto it = std::find_if(songs.begin(), songs.end(),
         [&](const LibrarySong& song) {
             return song.managed && song.folder == folder;
         });
-    if (it == all.end()) return true; // Uninstalled draft stays local.
-    const auto& data = ctx_.editor.Data();
-    const double bpm = data.route.bpm;
-    const int offsetMs = static_cast<int>(std::llround(
-        data.offsetSeconds * 1000.0));
-    if (it->bpm == bpm && it->offsetMs == offsetMs) return true;
-    const int index = static_cast<int>(std::distance(all.begin(), it));
+    if (it != songs.end()) {
+        const int index = static_cast<int>(it - songs.begin());
+        if (!ctx_.library.SetSongTempoMap(index, markers,
+                                          &ctx_.editor.Data(), error)) {
+            Notice(error, true);
+            return false;
+        }
+    }
+    const int oldTicks = ctx_.editor.Data().route.ticksPerBeat;
+    if (!ctx_.editor.SetTempoMap(markers)) {
+        Notice("UNEXPECTED EDITOR TEMPO PROJECTION FAILURE", true);
+        return false;
+    }
+    if (ctx_.editor.Data().route.ticksPerBeat != oldTicks)
+        ctx_.ui.rangeFirst = ctx_.ui.rangeLast = -1;
+    ctx_.ui.draggingTimeline = false;
+    Notice(it != songs.end() ? "TEMPO MAP UPDATED FOR SONG SET"
+                             : "DRAFT TEMPO MAP UPDATED");
+    return true;
+}
+
+bool EditorSetController::SyncSongTiming() {
+    const auto folder = ctx_.files.ActiveSetFolder();
+    const auto& songs = ctx_.library.Songs();
+    const auto it = std::find_if(songs.begin(), songs.end(),
+        [&](const LibrarySong& song) {
+            return song.managed && song.folder == folder;
+        });
+    if (it == songs.end()) return true;
+    const auto tempo = core::EffectiveTempoMap(
+        ctx_.editor.Data().route, ctx_.editor.Data().offsetSeconds);
+    if (tempo == it->tempoMap) return true;
     std::string error;
-    if (!ctx_.library.SetSongTiming(index, bpm, offsetMs, &data, error)) {
-        // Revert just the last timing edit, not the user's other unsaved notes.
+    if (!ctx_.library.SetSongTempoMap(
+            static_cast<int>(it - songs.begin()), tempo,
+            &ctx_.editor.Data(), error)) {
         ctx_.editor.Undo();
         Notice(error, true);
         return false;
     }
-    ctx_.ui.setSelected = -1; // Recomputed ratings may reorder difficulties.
-    Notice("SONG BPM / OFFSET UPDATED FOR EVERY DIFFICULTY");
+    ctx_.ui.setSelected = -1;
+    Notice("SONG SET TEMPO MAP UPDATED");
     return true;
 }
 
