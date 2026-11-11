@@ -82,15 +82,29 @@ double ChartPlayback::Beat(double monotonicSeconds) const noexcept {
     return BeatAtAudioSeconds(AudioSeconds(monotonicSeconds));
 }
 
-double ChartPlayback::VisualAudioSeconds(double monotonicSeconds) const noexcept {
-    const double source = AudioSeconds(monotonicSeconds);
-    // Normal speed and silent preroll already use a smooth monotonic clock.
-    // Only slowed audio reads the hardware stream's quantized cursor.
+ChartClockFrame ChartPlayback::Snapshot(double monotonicSeconds) const noexcept {
+    ChartClockFrame frame;
+    frame.judgeSeconds = AudioSeconds(monotonicSeconds);
+    frame.visualSeconds = frame.judgeSeconds;
+    frame.practiceRate = speed_;
+    frame.playing = playing_;
+    frame.paused = paused_;
+    frame.finished = finished_;
+
+    // Sample the consumed audio cursor ONCE. A second independent query
+    // could cross a decoder-buffer boundary between judge and presentation.
+    // Never feed interpolation back to gameplay scoring.
     if (!playing_ || !audioStarted_ || finished_ || speed_ >= 0.999) {
         visualCursor_.Reset();
-        return source;
+    } else {
+        frame.visualSeconds = visualCursor_.Sample(
+            frame.judgeSeconds, monotonicSeconds, speed_, paused_);
     }
-    return visualCursor_.Sample(source, monotonicSeconds, speed_, paused_);
+    return frame;
+}
+
+double ChartPlayback::VisualAudioSeconds(double monotonicSeconds) const noexcept {
+    return Snapshot(monotonicSeconds).visualSeconds;
 }
 
 void ChartPlayback::Update(double monotonicSeconds) {

@@ -7,6 +7,17 @@
 
 namespace locus::app {
 
+// The authoritative time and presentation time are sampled once from the
+// same transport. Judgement of key presses still uses their captured times.
+struct ChartClockFrame {
+    double judgeSeconds = 0.0;
+    double visualSeconds = 0.0;
+    double practiceRate = 1.0;
+    bool playing = false;
+    bool paused = false;
+    bool finished = false;
+};
+
 // A chart uses audio time as its beat/judgement domain. Negative beat-zero
 // offsets start a silent visual preroll before the song stream is started.
 // No rendered frame count or input changes this clock.
@@ -36,6 +47,7 @@ public:
     // Smooth only the rendered position at slow practice rates. Judgement
     // continues to use AudioSeconds() from the real played audio stream.
     double VisualAudioSeconds(double monotonicSeconds) const noexcept;
+    ChartClockFrame Snapshot(double monotonicSeconds) const noexcept;
     double BeatAtAudioSeconds(double audioSeconds) const noexcept {
         if (!tempoMap_.empty())
             return core::TempoBeatAtMs(tempoMap_, audioSeconds * 1000.0) *

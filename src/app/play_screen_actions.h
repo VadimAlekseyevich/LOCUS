@@ -14,12 +14,14 @@ class ChartPlayback;
 // GameplayView. The controller never draws, changes chart files, or touches
 // a native window.
 struct PlayTransportView {
+    // Rendering only. The judge always uses timestamped physical key events.
     double songSeconds = 0.0;
     double offsetSeconds = 0.0;
     bool paused = false;
     bool finished = false;
     double practiceSpeed = 1.0;
     const char* status = "";
+    double judgeSongSeconds = 0.0;
 };
 
 double PracticeRateForIndex(int index) noexcept;

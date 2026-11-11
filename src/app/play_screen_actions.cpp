@@ -56,26 +56,28 @@ void PlayScreenActions::Update(const FrameInput& input, double now) {
 
 PlayTransportView PlayScreenActions::Transport(double now) const {
     if (!context_.customChart) {
+        const double song = context_.demo.SongSeconds(now);
         return {
-            context_.demo.SongSeconds(now),
+            song,
             0.0, // Demo song offset (not a snap-grid beat).
             context_.demo.Paused(),
             context_.demo.Finished(),
-            1.0, context_.demo.Status()
+            1.0, context_.demo.Status(), song
         };
     }
     // The audio device exposes a stepped cursor at reduced pitch. The
     // visual beat is interpolated for camera/marker rendering only; the
     // judge still reads raw consumed-audio timestamps from ChartPlayback.
-    const double song = context_.local.VisualAudioSeconds(now);
-    const bool finished = context_.local.Finished();
-    const bool paused = context_.local.Paused();
+    const ChartClockFrame clock = context_.local.Snapshot(now);
+    const double song = clock.visualSeconds;
+    const bool finished = clock.finished;
+    const bool paused = clock.paused;
     const char* status = finished ? "CHART FINISHED"
         : paused ? "PAUSED  |  PRESS PAUSE KEY TO RESUME"
         : song < 0.0 ? "SILENT PREROLL  |  ARROWS TO TURN"
                      : "CUSTOM SONG  |  ARROWS TO TURN";
     return {song, context_.local.OffsetSeconds(), paused, finished,
-            context_.local.Speed(), status};
+            clock.practiceRate, status, clock.judgeSeconds};
 }
 
 } // namespace locus::app

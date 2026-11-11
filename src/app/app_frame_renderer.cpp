@@ -249,16 +249,17 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         // One visual song-time snapshot for every preview pane AND ruler.
         // At slow playback, do not let the timeline use an unsmoothed tick
         // while the compared routes use the interpolated audio cursor.
-        const double songSeconds = editorTransport.Playing()
-            ? editorTransport.VisualAudioSeconds(now)
+        const ChartClockFrame clock = editorTransport.Snapshot(now);
+        const double songSeconds = clock.playing
+            ? clock.visualSeconds
             : editor.AudioSecondsAtBeat(editor.SelectedBeat());
-        const double selectedBeat = editorTransport.Playing()
+        const double selectedBeat = clock.playing
             ? editorTransport.BeatAtAudioSeconds(songSeconds)
             : static_cast<double>(editor.SelectedBeat());
         locus::app::RenderChartEditor(font, editor, editorUi,
                                      localSong.DisplayName(), localSong.Ready(),
-                                     editorTransport.Playing(), editorTransport.Paused(),
-                                     selectedBeat, editorTransport.Speed(),
+                                     clock.playing, clock.paused,
+                                     selectedBeat, clock.practiceRate,
                                      gameplay.bindings, gameplay.skin,
                                      editorSetView, &comparisons, songSeconds);
         // Editor and preview statuses must not be painted over file buttons.

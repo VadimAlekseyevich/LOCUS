@@ -71,6 +71,18 @@ int main() {
     app::DemoTransport demo;
     app::LocalMusic song;
     app::ChartPlayback playback(song);
+    const auto initialClock = playback.Snapshot(2.0);
+    ok &= Check(!initialClock.playing && !initialClock.paused &&
+                !initialClock.finished &&
+                initialClock.judgeSeconds == initialClock.visualSeconds &&
+                initialClock.practiceRate == 1.0,
+                "stopped audio exposes one coherent judge/visual clock sample");
+    playback.SetSpeed(0.5, 2.0);
+    const auto slowerClock = playback.Snapshot(2.1);
+    ok &= Check(!slowerClock.playing && slowerClock.practiceRate == 0.5 &&
+                slowerClock.judgeSeconds == slowerClock.visualSeconds,
+                "stopped slow transport has no phantom visual smoothing");
+    playback.SetSpeed(1.0, 2.2);
     app::GameSession session(activeChart, judge, demo, playback);
     std::wstring loadedAudioPath = L"old-audio.wav";
     std::string chartTitle = "OLD CHART";
