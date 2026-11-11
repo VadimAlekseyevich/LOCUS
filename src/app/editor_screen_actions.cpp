@@ -7,6 +7,8 @@
 #include "core/tempo_map.h"
 #include "raylib.h"
 
+#include <algorithm>
+
 namespace locus::app {
 
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
@@ -18,10 +20,13 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
         input.editor.mouseClick && !context_.ui.comparisonPickerOpen) {
         const int count = 1 +
             static_cast<int>(context_.ui.comparisonFiles.size());
-        for (int i = 1; i < count; ++i)
-            previewFocusClick |= detail::Hit(
-                detail::ComparisonPreviewBounds(count, i),
-                input.editor.mouse);
+        const int focusedSlot = std::clamp(
+            context_.ui.comparisonFocusedSlot, 0, count - 1);
+        for (int i = 0; i < count; ++i)
+            if (i != focusedSlot)
+                previewFocusClick |= detail::Hit(
+                    detail::ComparisonPreviewBounds(count, i),
+                    input.editor.mouse);
     }
     const bool compareInteraction =
         context_.ui.tab == EditorTab::Route &&
