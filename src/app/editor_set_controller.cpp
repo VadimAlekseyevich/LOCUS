@@ -130,7 +130,8 @@ bool EditorSetController::ApplyTempoMap(
         [&](const LibrarySong& song) {
             return song.managed && song.folder == folder;
         });
-    if (it != songs.end()) {
+    const bool managed = it != songs.end();
+    if (managed) {
         const int index = static_cast<int>(it - songs.begin());
         if (!ctx_.library.SetSongTempoMap(index, markers,
                                           &ctx_.editor.Data(), error)) {
@@ -147,8 +148,8 @@ bool EditorSetController::ApplyTempoMap(
         ctx_.ui.rangeFirst = ctx_.ui.rangeLast = -1;
     ctx_.ui.draggingTimeline = false;
     ctx_.files.DropCleanParked();
-    Notice(it != songs.end() ? "TEMPO MAP UPDATED FOR SONG SET"
-                             : "DRAFT TEMPO MAP UPDATED");
+    Notice(managed ? "TEMPO MAP UPDATED FOR SONG SET"
+                   : "DRAFT TEMPO MAP UPDATED");
     return true;
 }
 
