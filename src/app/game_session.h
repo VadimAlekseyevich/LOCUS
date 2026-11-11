@@ -46,8 +46,9 @@ public:
         globalOffsetMs_ = milliseconds;
     }
     int GlobalOffsetMs() const noexcept { return globalOffsetMs_; }
-    double CalibratedTime(double songSeconds) const noexcept {
-        return CalibratedSongSeconds(songSeconds, globalOffsetMs_);
+    double CalibratedTime(double songSeconds,
+                          double rate = 1.0) const noexcept {
+        return CalibratedSongSeconds(songSeconds, globalOffsetMs_, rate);
     }
     void Update(bool customChart, double now, const ArrowInput& arrows);
     const HitFlash& Flash() const noexcept { return hitFlash_; }
