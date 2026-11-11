@@ -341,6 +341,30 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
 }
 
 
+bool EditorFileActions::RestoreWorkspaceAudio(std::string& error) {
+    if (context_.audioPath.empty()) {
+        error = "Editor has no associated song audio.";
+        return false;
+    }
+    if (context_.music.Ready() &&
+        context_.audioPath == context_.loadedAudioPath) {
+        error.clear();
+        return true;
+    }
+    LocalMusic replacement;
+    replacement.SetVolume(context_.music.Volume());
+    replacement.SetSpeed(context_.music.Speed(), 0.0);
+    if (!replacement.LoadFromFile(context_.audioPath)) {
+        error = replacement.Error();
+        return false;
+    }
+    context_.preview.Stop();
+    context_.music.SwapWith(replacement);
+    context_.loadedAudioPath = context_.audioPath;
+    error.clear();
+    return true;
+}
+
 void EditorFileActions::DiscardParked() noexcept {
     parked_.clear();
     pendingClose_.clear();
@@ -394,20 +418,21 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
         references.push_back(current);
     }
 
+    const auto& set = context_.library.Songs()[
+        static_cast<std::size_t>(toSong)];
+    std::error_code ec;
+    if (!context_.music.Ready() || context_.audioPath.empty() ||
+        context_.audioPath != context_.loadedAudioPath ||
+        !fs::equivalent(fs::path(context_.audioPath), set.audioFile, ec) ||
+        ec) {
+        error = "Comparison charts must use the already loaded Song Set audio.";
+        return false;
+    }
+
     // Never abandon a dirty editor until the target has been fully validated.
     ParkedDocument target;
     const auto existing = parked_.find(file);
     if (existing == parked_.end()) {
-        const auto& set = context_.library.Songs()[
-            static_cast<std::size_t>(toSong)];
-        std::error_code ec;
-        if (!context_.music.Ready() || context_.audioPath.empty() ||
-            context_.audioPath != context_.loadedAudioPath ||
-            !fs::equivalent(fs::path(context_.audioPath), set.audioFile, ec) ||
-            ec) {
-            error = "Comparison charts must use the already loaded Song Set audio.";
-            return false;
-        }
         // The library has parsed and validated every difficulty. Preparing
         // the target against the already decoded duration avoids loading the
         // SAME MP3 on every focus click or restarting the audio device.
