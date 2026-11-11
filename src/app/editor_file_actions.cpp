@@ -483,12 +483,14 @@ bool EditorFileActions::SaveParked(const std::filesystem::path& file,
         return false;
     }
     const bool saved = Save(false, now);
+    const std::string saveStatus = context_.status;
     const std::filesystem::path savedPath(context_.chartPath);
     std::string restoreError;
     if (!FocusChart(original, restoreError)) {
         context_.status = "FOCUS RESTORE FAILED: " + restoreError;
         return false;
     }
+    if (!saved) context_.status = saveStatus;
     if (updatedFile) *updatedFile = savedPath;
     return saved;
 }
