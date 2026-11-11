@@ -52,6 +52,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <filesystem>
 #include <iostream>
@@ -753,12 +754,16 @@ int main(int argc, char** argv) {
             editorClock.playing = audioFrame.playing;
             editorClock.paused = audioFrame.paused;
             editorClock.practiceRate = audioFrame.practiceRate;
+            const bool preservedFocusTime =
+                std::isfinite(editorUi.focusSongSeconds);
             editorClock.songSeconds = audioFrame.playing
                 ? audioFrame.visualSeconds
-                : editor.AudioSecondsAtBeat(editor.SelectedBeat());
-            // Multiple difficulties may use different ticksPerBeat but
-            // always share one song-second cursor and tempo map.
-            editorClock.tick = audioFrame.playing
+                : preservedFocusTime ? editorUi.focusSongSeconds
+                    : editor.AudioSecondsAtBeat(editor.SelectedBeat());
+            // A focus click never seeks. Keep the exact shared millisecond
+            // even while stopped; the newly focused chart's authored cursor
+            // is only a nearest-tick projection for note editing.
+            editorClock.tick = audioFrame.playing || preservedFocusTime
                 ? locus::core::TempoBeatAtSeconds(
                     editor.Data().route, editor.Data().offsetSeconds,
                     editorClock.songSeconds) * editor.Data().route.ticksPerBeat
