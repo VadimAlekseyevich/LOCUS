@@ -16,6 +16,8 @@ Double-click **`build_and_run.bat`** in the repository folder. It checks for Git
 
 A local log folder is created under `.locus-runs/` (Git-ignored). Logs are not uploaded. CI runs the same production CMake build and tests on Windows.
 
+The audio offset is stored as an optional `globalOffsetMs` integer in the current `settings.json` v3; existing key bindings and saved charts are preserved. No chart, skin or Song Set file format changes.
+
 ## Gameplay
 
 The world is infinite. During PLAY, an experimental camera **slightly lags behind the moving player** instead of anticipating the route: the player appears ahead of center as the camera catches up. The lag scales with movement speed (up to a safe limit), and turns are smoothed without reading future notes. The **red forward route moves with the camera**. Only the part inside the centered square is visible. In landscape the square's side equals the **window height**; a thin white frame can be recolored in SKIN. No gameplay grid or text is drawn on the left.
@@ -28,7 +30,9 @@ To the right, the game shows **Accuracy** and counts for Perfect, Good, Bad and 
 | Diagonal | Two adjacent directions together (for example J+K) |
 | Pause / retry / Home | **Esc / R / H** |
 
-Gameplay direction bindings are configurable in SETTINGS; editor note placement uses only the clickable direction pad. During PLAY (including editor TEST), a fresh press of any bound direction during a long unmapped intro skips the music forward to the first note minus the smallest whole number of **4/4 measures lasting at least one second**. The triggering press is not scored; near-note presses and normal music with no long intro are unaffected.
+Gameplay direction bindings are configurable in SETTINGS. **SETTINGS → GAME → GLOBAL AUDIO OFFSET** accepts a signed integer in milliseconds (−1000 to +1000), or use **CALIBRATE** to start a synthesized 120-BPM metronome: listen for the high accent every four beats and tap **Space** on each accent. Two accents are warm-up; eight valid taps produce a median-based suggested delay, with noisy attempts rejected. Choose **APPLY** to save the suggestion, **RETRY** to measure again, or **CANCEL** to keep your current value. **Positive offset (+200 ms)** means the output is heard 200 ms later than the raw song clock; **negative offset (−200 ms)** means it is heard earlier. The global correction moves both scored input/judgement and gameplay visuals to the same perceived audio time in PLAY and TEST, including the built-in demo. It does **not** change chart `timeMs`, song offset, tempo markers, editor clock, or audio playback speed. Calibration measures audio-output delay **plus the player's tap tendency**; repeat a few times for consistency and preferably use wired headphones.
+
+Editor note placement uses only the clickable direction pad. During PLAY (including editor TEST), a fresh press of any bound direction during a long unmapped intro skips the music forward to the first note minus the smallest whole number of **4/4 measures lasting at least one second**. The triggering press is not scored; near-note presses and normal music with no long intro are unaffected.
 
 ## Screens and editor
 
