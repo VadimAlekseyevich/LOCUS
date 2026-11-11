@@ -10,12 +10,14 @@
 #include <string>
 
 namespace locus::app {
+class EditorFileActions;
 
 struct EditorComparisonPane {
     const core::TimedRoute* route = nullptr; // Frame-local borrow, never persists.
     std::string title;
     bool editable = false;
     const RoutePreviewFrame* preview = nullptr; // Frame-only borrow.
+    bool dirty = false; // Unsaved parked drafts remain visible when not focused.
 };
 
 struct EditorComparisonFrame {
@@ -50,7 +52,8 @@ public:
                                   const EditorSetView& set,
                                   double songDurationSeconds,
                                   double songSeconds = 0.0,
-                                  float lookaheadMs = 800.0f);
+                                  float lookaheadMs = 800.0f,
+                                  const EditorFileActions* workspace = nullptr);
     void Reset() noexcept;
 
 private:
@@ -58,6 +61,7 @@ private:
         core::TimedRoute route;
         std::filesystem::path file;
         const core::LoadedChart* source = nullptr;
+        std::uint64_t draftRevision = 0;
         std::uintmax_t fileSize = 0;
         std::filesystem::file_time_type modified{};
         double bpm = 0.0, offsetSeconds = 0.0, duration = 0.0;
