@@ -129,44 +129,8 @@ void EditorSetController::HandleControls(const EditorControls& input) {
     const Vector2 mouse = input.mouse;
     const bool clicked = input.mouseClick;
     if (ui.tab == EditorTab::Route) {
-        const EditorSetView view = View();
-        ReconcileEditorComparisons(ui, view);
-        if (ui.active != EditorField::None) return;
-        if (input.escape && ui.comparisonPickerOpen) {
-            ui.comparisonPickerOpen = false;
-            return;
-        }
-        if (!clicked) return;
-        if (detail::Hit(detail::kCompareToggle, mouse)) {
-            const bool hasChoices =
-                !view.comparisonOptions.empty() &&
-                (view.current < 0 || view.comparisonOptions.size() > 1);
-            if (view.managed && hasChoices)
-                ui.comparisonPickerOpen = !ui.comparisonPickerOpen;
-            ui.comparisonPickerFirst = 0;
-            return;
-        }
-        if (!ui.comparisonPickerOpen) return;
-        const int count = static_cast<int>(view.comparisonOptions.size());
-        if (detail::Hit(detail::kComparePickerPrev, mouse)) {
-            ui.comparisonPickerFirst = std::max(0, ui.comparisonPickerFirst - 5);
-            return;
-        }
-        if (detail::Hit(detail::kComparePickerNext, mouse)) {
-            ui.comparisonPickerFirst = std::min(
-                std::max(0, count - 5), ui.comparisonPickerFirst + 5);
-            return;
-        }
-        for (int row = 0; row < 5; ++row) {
-            const int option = ui.comparisonPickerFirst + row;
-            if (option >= count) break;
-            if (!detail::Hit(detail::ComparePickerRow(row), mouse)) continue;
-            if (!ToggleEditorComparison(ui, view, option))
-                ui.feedback = "MAX 4 ROUTES / ACTIVE CHART IS ALREADY SHOWN";
-            return;
-        }
-        if (!detail::Hit(detail::kComparePopup, mouse))
-            ui.comparisonPickerOpen = false;
+        if (ui.active == EditorField::None)
+            HandleEditorComparisonControls(ui, View(), input);
         return;
     }
     if (ui.tab != EditorTab::Set && ui.tab != EditorTab::Audio) return;
