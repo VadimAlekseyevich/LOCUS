@@ -11,8 +11,12 @@ namespace locus::app {
 // arrives AFTER the game transport's reported time. Shift presentation
 // and judgement together; never write this into chart/song timestamps.
 inline double CalibratedSongSeconds(double rawSongSeconds,
-                                    int globalOffsetMs) noexcept {
-    return rawSongSeconds - static_cast<double>(globalOffsetMs) / 1000.0;
+                                    int globalOffsetMs,
+                                    double playbackRate = 1.0) noexcept {
+    // The setting is wall-clock output latency. At 50% playback, 200 ms
+    // of actual output delay corresponds to 100 ms of SONG time.
+    return rawSongSeconds -
+        static_cast<double>(globalOffsetMs) / 1000.0 * playbackRate;
 }
 
 // Headless timing model. The actual accented 120-BPM click track is the
