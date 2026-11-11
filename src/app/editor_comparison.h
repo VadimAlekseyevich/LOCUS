@@ -27,9 +27,21 @@ struct EditorComparisonFrame {
     int count = 0;
 };
 
+// Visual pane order stays fixed when editing focus moves. comparisonFiles
+// stores every visible file except the focused one, in left-to-right order.
+// The focused document is inserted at comparisonFocusedSlot.
+constexpr int ComparisonDisplaySlotForReference(int referenceIndex,
+                                                 int focusedSlot) noexcept {
+    return referenceIndex < focusedSlot ? referenceIndex : referenceIndex + 1;
+}
+constexpr int ComparisonReferenceIndexForSlot(int displaySlot,
+                                               int focusedSlot) noexcept {
+    return displaySlot == focusedSlot ? -1
+         : displaySlot < focusedSlot ? displaySlot : displaySlot - 1;
+}
+
 // Pure selection policy. Paths identify difficulties across library reorders;
-// The focused draft occupies the first pane; other open panes can hold
-// independent unsaved drafts that become editable when focused.
+// any pane may be focused without moving the chart in its visual slot.
 bool ToggleEditorComparison(EditorUiState& ui, const EditorSetView& set,
                             int optionIndex);
 bool HasEditorComparison(const EditorUiState& ui,
