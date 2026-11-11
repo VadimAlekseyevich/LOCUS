@@ -13,9 +13,19 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     // Process the picker BEFORE the editor: the former implementation
     // passed its click through generic editor actions first, and a popup
     // often never opened. A picker interaction consumes the whole frame.
+    bool previewFocusClick = false;
+    if (context_.ui.tab == EditorTab::Route &&
+        input.editor.mouseClick && !context_.ui.comparisonPickerOpen) {
+        const int count = 1 +
+            static_cast<int>(context_.ui.comparisonFiles.size());
+        for (int i = 1; i < count; ++i)
+            previewFocusClick |= detail::Hit(
+                detail::ComparisonPreviewBounds(count, i),
+                input.editor.mouse);
+    }
     const bool compareInteraction =
         context_.ui.tab == EditorTab::Route &&
-        (context_.ui.comparisonPickerOpen ||
+        (context_.ui.comparisonPickerOpen || previewFocusClick ||
          (input.editor.mouseClick &&
           detail::Hit(detail::kCompareToggle, input.editor.mouse)));
     if (compareInteraction) {
