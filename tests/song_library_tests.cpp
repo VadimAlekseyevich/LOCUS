@@ -1,6 +1,7 @@
 #include "app/song_library.h"
 #include "app/song_set_storage.h"
 #include "app/chart_file.h"
+#include "app/song_library_internal.h"
 
 #include <algorithm>
 #include <chrono>
@@ -70,6 +71,27 @@ int main() {
     std::string note, error;
     ok &= Check(library.Refresh(note) && library.Songs().empty(),
                 "empty library can be indexed");
+
+    // Removing old-format loading must not allow a new import to silently
+    // adopt an existing legacy folder or overwrite its contents.
+    const fs::path occupied = root /
+        (detail::FilenamePart(audio.stem().u8string()) + "-" +
+         detail::HashText(fs::canonical(audio)));
+    fs::create_directories(occupied / ".locus-versions", ec);
+    Write(occupied / "old-data.txt", "must survive");
+    fs::path deniedResult;
+    core::LoadedChart fresh;
+    std::wstring freshAudio;
+    const bool preparedFresh = OpenChartWithAudioPath(
+        easy.wstring(), fresh, freshAudio, error);
+    const bool rejectsAdoption = preparedFresh &&
+        !library.Import(easy, deniedResult, error) &&
+        !library.CreateDifficulty(audio, fresh, deniedResult, error) &&
+        Read(occupied / "old-data.txt") == "must survive" &&
+        !fs::exists(occupied / "set.locus.json");
+    ok &= Check(rejectsAdoption,
+                "current-only import never annexes an occupied manifestless folder");
+    fs::remove_all(occupied, ec);
 
     fs::path easyInstalled, hardInstalled;
     const bool importedEasy = library.Import(easy, easyInstalled, error);
