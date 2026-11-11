@@ -519,6 +519,11 @@ bool EditorFileActions::ResolveClose(bool save, bool discard, double& now) {
 }
 
 bool EditorFileActions::SaveAll(double& now) {
+    if (context_.ui.EditingText()) {
+        context_.status =
+            "SAVE FAILED: CANCEL DIALOG AND CONFIRM THE TEXT FIELD FIRST";
+        return false;
+    }
     // Ordinary Ctrl+S writes ONLY the focused document. Batch save is used
     // solely when the user explicitly chooses Save in a leave/quit dialog.
     if (context_.editor.Dirty() && !Save(false, now)) return false;
