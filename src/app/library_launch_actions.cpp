@@ -16,6 +16,10 @@ bool LaunchLibrarySelection(const LibraryLaunchContext& ctx,
         case LibraryLaunchKind::None:
             return false;
         case LibraryLaunchKind::NewDifficulty:
+            if (ctx.editorFiles.AnyDirty()) {
+                ctx.ui.notice = "UNSAVED EDITOR CHARTS: RETURN TO EDITOR, SAVE OR DISCARD FIRST";
+                return false;
+            }
             if (intent.folder.empty()) {
                 ctx.ui.notice = "SELECT AN INSTALLED SONG FIRST";
             } else if (ctx.editorFiles.NewDifficultyFromLibrary(
@@ -29,6 +33,10 @@ bool LaunchLibrarySelection(const LibraryLaunchContext& ctx,
             ctx.app.screen = Screen::Editor;
             return false;
         case LibraryLaunchKind::EditChart:
+            if (ctx.editorFiles.AnyDirty()) {
+                ctx.ui.notice = "UNSAVED EDITOR CHARTS: RETURN TO EDITOR, SAVE OR DISCARD FIRST";
+                return false;
+            }
             if (ctx.editorFiles.OpenFromLibrary(intent.chart.wstring(),
                                                 ctx.error))
                 ctx.app.screen = Screen::Editor;
