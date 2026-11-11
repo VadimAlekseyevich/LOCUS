@@ -36,6 +36,7 @@ void EditorFileActions::NewDraft() {
     context_.music.Shutdown();
     context_.loadedAudioPath.clear();
     context_.editor.NewDraft();
+    DiscardParked();
     ResetDocumentUi(context_.ui);
     context_.chartPath.clear();
     context_.audioPath.clear();
@@ -59,6 +60,7 @@ bool EditorFileActions::OpenFromLibrary(const std::wstring& chartFile,
             chartFile, context_.editor, context_.music,
             context_.chartPath, context_.audioPath, error, canonical))
         return false;
+    DiscardParked();
     newDifficultySet_.clear();
     context_.loadedAudioPath = context_.audioPath;
     ResetDocumentUi(context_.ui);
@@ -91,6 +93,7 @@ void EditorFileActions::Open(double& now, std::string& error) {
         context_.status = "OPEN FAILED: " + error;
         return;
     }
+    DiscardParked();
     newDifficultySet_.clear();
     ResetDocumentUi(context_.ui);
     context_.previewStartBeat = 0;
@@ -168,6 +171,7 @@ bool EditorFileActions::NewDifficultyFromLibrary(
     context_.preview.Stop();
     context_.music.SwapWith(replacement);
     context_.editor = std::move(draft);
+    DiscardParked();
     ResetDocumentUi(context_.ui);
     context_.chartPath.clear();
     context_.audioPath = audioFile;
@@ -193,18 +197,18 @@ std::filesystem::path EditorFileActions::ActiveSetFolder() const {
     return {};
 }
 
-void EditorFileActions::Save(bool saveAs, double& now) {
+bool EditorFileActions::Save(bool saveAs, double& now) {
     if (context_.preview.Playing())
         context_.preview.Pause(now);
     if (!context_.music.Ready() || context_.audioPath.empty()) {
         context_.status = "SAVE FAILED: ATTACH AUDIO FIRST";
-        return;
+        return false;
     }
     std::string error;
     core::LoadedChart checked = context_.editor.Data();
     if (!core::PrepareChartForSong(checked, context_.music.DurationSeconds(), error)) {
         context_.status = "SAVE FAILED: " + error;
-        return;
+        return false;
     }
     const std::filesystem::path current(context_.chartPath);
     int songIndex = -1, chartIndex = -1;
@@ -219,7 +223,7 @@ void EditorFileActions::Save(bool saveAs, double& now) {
         if (!libraryLock.Acquire(context_.library.Root(), error) ||
             !setLock.Acquire(current.parent_path(), error)) {
             context_.status = "SAVE FAILED: " + error;
-            return;
+            return false;
         }
         destination = current;
         const auto& stored = context_.library.Songs()[
@@ -230,7 +234,7 @@ void EditorFileActions::Save(bool saveAs, double& now) {
             destination = RenamedChartFilePath(current, checked.title, ec);
             if (ec || destination.empty()) {
                 context_.status = "SAVE FAILED: CANNOT ALLOCATE CHART FILENAME";
-                return;
+                return false;
             }
         }
         const bool moved = destination != current;
@@ -238,7 +242,7 @@ void EditorFileActions::Save(bool saveAs, double& now) {
             std::filesystem::rename(current, destination, ec);
             if (ec) {
                 context_.status = "SAVE FAILED: CANNOT RENAME CHART: " + ec.message();
-                return;
+                return false;
             }
         }
         std::wstring savedPath = destination.wstring();
@@ -252,13 +256,13 @@ void EditorFileActions::Save(bool saveAs, double& now) {
                                        rollback.message() + ")";
             }
             context_.status = "SAVE FAILED: " + error;
-            return;
+            return false;
         }
         context_.chartPath = savedPath;
         std::string notice;
         if (!context_.library.Refresh(notice)) {
             context_.status = "SAVED (LIBRARY REFRESH FAILED: " + notice + ")";
-            return;
+            return false;
         }
     } else {
         const std::filesystem::path target = !newDifficultySet_.empty()
@@ -268,7 +272,7 @@ void EditorFileActions::Save(bool saveAs, double& now) {
                 std::filesystem::path(context_.audioPath), checked,
                 destination, error, target)) {
             context_.status = "SAVE FAILED: " + error;
-            return;
+            return false;
         }
         core::LoadedChart reopened;
         std::wstring installedAudio;
@@ -277,7 +281,7 @@ void EditorFileActions::Save(bool saveAs, double& now) {
             !core::PrepareChartForSong(reopened,
                                        context_.music.DurationSeconds(), error)) {
             context_.status = "LIBRARY SAVE OK, REOPEN FAILED: " + error;
-            return;
+            return false;
         }
         context_.editor.ApplySavedChart(std::move(reopened));
         context_.chartPath = destination.wstring();
@@ -300,6 +304,7 @@ void EditorFileActions::Save(bool saveAs, double& now) {
         std::to_string(context_.library.ChartCount()) + " CHARTS";
     context_.status = "SAVED IN SONG LIBRARY - CTRL+S UPDATE / CTRL+SHIFT+S COPY";
     now = pickers_.now();
+    return true;
 }
 
 } // namespace locus::app
