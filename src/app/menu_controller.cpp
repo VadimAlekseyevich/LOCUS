@@ -113,9 +113,18 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                 std::to_string(settings.globalOffsetMs) + " MS";
             settingsUi.noticeError = false;
         } else if (!settingsUi.calibration.Complete() &&
-                   !settingsUi.calibrationExpired &&
-                   IsKeyPressed(KEY_SPACE)) {
-            events.calibrationTap = true;
+                   !settingsUi.calibrationExpired) {
+            // Only the currently configured gameplay D/F/J/K equivalents.
+            // The physical event timestamp is captured in PollInput before
+            // menu processing, so click/hit timing is not frame-delay biased.
+            for (int direction = 0; direction < 4; ++direction) {
+                if (!input.arrowPressed[static_cast<std::size_t>(direction)])
+                    continue;
+                events.calibrationTap = true;
+                events.calibrationTapAt =
+                    input.arrowCapturedAt[static_cast<std::size_t>(direction)];
+                break;
+            }
         }
         return events;
     }
