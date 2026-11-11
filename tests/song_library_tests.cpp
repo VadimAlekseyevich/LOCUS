@@ -256,7 +256,7 @@ int main() {
     ok &= Check(library.SetSongTempoMap(0, multiTempo, nullptr, error) &&
                 library.Songs()[0].tempoMap == multiTempo &&
                 library.Songs()[0].charts[0].data.route.tempoMap == multiTempo &&
-                Read(easyInstalled) == originalChartBytes,
+                Read(easyInstalled) == beforeArtworkBytes,
                 "multi-BPM map persists in Song Set without rewriting notes");
 
     // Portable .locuspack is a real ZIP file containing manifest, shared
