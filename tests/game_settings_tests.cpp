@@ -99,22 +99,12 @@ int main() {
     display.fpsLimit = 1000;
     ok &= Check(!display.Valid(error),
                 "unsupported FPS limit is rejected");
-    std::string legacyDisplay = serialized;
-    const auto removeField = [&](std::string field) {
-        const auto start = legacyDisplay.find("  \"" + field + "\":");
-        if (start != std::string::npos) {
-            const auto end = legacyDisplay.find('\n', start);
-            legacyDisplay.erase(start, end - start + 1);
-        }
-    };
-    removeField("vsync");
-    removeField("fpsLimit");
-    removeField("showFps");
-    GameSettings restoredLegacy;
-    ok &= Check(ParseGameSettings(legacyDisplay, restoredLegacy, error) &&
-                restoredLegacy.vsync && restoredLegacy.fpsLimit == 240 &&
-                !restoredLegacy.showFps,
-                "settings created before DISPLAY options adopt safe defaults");
+    auto missingDisplay = nlohmann::json::parse(serialized);
+    missingDisplay.erase("fpsLimit");
+    GameSettings missingGuard = parsed;
+    ok &= Check(!ParseGameSettings(missingDisplay.dump(), missingGuard, error) &&
+                missingGuard.fpsLimit == 144,
+                "current settings require every display field");
     auto invalidDisplay = nlohmann::json::parse(serialized);
     invalidDisplay["vsync"] = "yes";
     GameSettings unmodified = parsed;
@@ -126,36 +116,23 @@ int main() {
     ok &= Check(!ParseGameSettings(invalidDisplay.dump(), unmodified, error) &&
                 !unmodified.vsync && unmodified.fpsLimit == 144,
                 "unsupported frame caps are rejected atomically");
-    // Previously saved untouched arrow defaults move to the DFJK preset,
-    // but explicit arrow bindings stored by v2 remain customizable.
     GameSettings previousDefault;
-    // Retain all newly added gameplay bindings. Assigning a seven-item
-    // aggregate to the expanded array zeroed the remaining keys, making
-    // the otherwise valid current-version fixture fail validation.
     previousDefault.keys[static_cast<int>(GameAction::Up)] = KEY_UP;
     previousDefault.keys[static_cast<int>(GameAction::Right)] = KEY_RIGHT;
     previousDefault.keys[static_cast<int>(GameAction::Down)] = KEY_DOWN;
     previousDefault.keys[static_cast<int>(GameAction::Left)] = KEY_LEFT;
-    previousDefault.keys[static_cast<int>(GameAction::Pause)] = KEY_SPACE;
-    std::string oldConfig = SerializeGameSettings(previousDefault);
-    const auto oldVersion = oldConfig.find("\"version\": 3");
-    if (oldVersion != std::string::npos)
-        oldConfig.replace(oldVersion, sizeof("\"version\": 3") - 1,
-                          "\"version\": 1");
-    GameSettings migrated;
-    ok &= Check(ParseGameSettings(oldConfig, migrated, error) &&
-                migrated.Key(GameAction::Up) == KEY_J &&
-                migrated.Key(GameAction::Right) == KEY_K &&
-                migrated.Key(GameAction::Down) == KEY_F &&
-                migrated.Key(GameAction::Left) == KEY_D &&
-                migrated.Key(GameAction::Pause) == KEY_ESCAPE,
-                "legacy default arrows and Space-to-pause migrate to Esc");
     GameSettings deliberateArrows;
     ok &= Check(ParseGameSettings(SerializeGameSettings(previousDefault),
                                   deliberateArrows, error) &&
                 deliberateArrows.Key(GameAction::Up) == KEY_UP &&
                 deliberateArrows.Key(GameAction::Left) == KEY_LEFT,
-                "explicit arrow bindings in current settings version are preserved");
+                "current settings preserve remapped arrow bindings");
+    auto outdated = nlohmann::json::parse(serialized);
+    outdated["version"] = 2;
+    GameSettings outdatedGuard = parsed;
+    ok &= Check(!ParseGameSettings(outdated.dump(), outdatedGuard, error) &&
+                outdatedGuard.fpsLimit == 144,
+                "old settings versions are rejected without mutation");
 
     GameSettings unchanged = parsed;
     const std::string corrupt =
