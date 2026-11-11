@@ -71,6 +71,17 @@ int main() {
     std::string note, error;
     ok &= Check(library.Refresh(note) && library.Songs().empty(),
                 "empty library can be indexed");
+    // A current-format chart stored outside a managed Song Set is not
+    // library content. Do not parse or hash orphaned/pre-release folders.
+    const fs::path orphan = root / "unmanaged";
+    fs::create_directories(orphan, ec);
+    Write(orphan / "song.wav", firstBytes);
+    WriteChart(orphan / "orphan.locus.json", "Orphan");
+    ok &= Check(library.Refresh(note) && library.Songs().empty() &&
+                library.LastRefreshStats().parsedCharts == 0 &&
+                library.LastRefreshStats().reusedCharts == 0,
+                "manifestless charts are ignored before expensive parsing");
+    fs::remove_all(orphan, ec);
 
     // Removing old-format loading must not allow a new import to silently
     // adopt an existing legacy folder or overwrite its contents.
