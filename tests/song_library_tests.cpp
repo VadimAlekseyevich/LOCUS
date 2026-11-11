@@ -251,7 +251,7 @@ int main() {
 
     // An additional BPM segment is shared by all difficulties and must
     // survive portable package export without touching authored note times.
-    const std::vector<core::TempoMarker> multiTempo{
+    const std::vector<locus::core::TempoMarker> multiTempo{
         {175, 150.0}, {30000, 180.0}};
     ok &= Check(library.SetSongTempoMap(0, multiTempo, nullptr, error) &&
                 library.Songs()[0].tempoMap == multiTempo &&
