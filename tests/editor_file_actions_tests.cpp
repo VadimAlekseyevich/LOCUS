@@ -131,6 +131,17 @@ int main() {
                 previewMs == 3600000,
                 "preview field accepts exact whole milliseconds and rejects invalid values");
 
+    // The clipboard belongs to the editor workspace, not the active
+    // difficulty. Opening a fresh draft retains the copied note pattern.
+    editor.SelectBeat(3);
+    editor.PutTurn(core::Heading::UpRight);
+    ui.clipboard = editor.CopyTurns(3, 3);
+    ui.rangeFirst = 3;
+    ui.rangeLast = 3;
+    ui.comparisonFiles.emplace_back("old-reference.locus.json");
+    ok &= Check(ui.clipboard.notes.size() == 1 &&
+                ui.clipboard.notes.front().direction == core::Heading::UpRight,
+                "copy captures source difficulty before replacing the draft");
     // The global dirty-document guard approves this action BEFORE calling
     // NewDraft(). The operation itself must fully detach the old song.
     failed.NewDraft();
@@ -138,8 +149,17 @@ int main() {
                 !song.Ready() && chartPath.empty() && audioPath.empty() &&
                 loadedAudioPath.empty() && previewBeat == 0 &&
                 status == "NEW CHART - CLICK LOAD SONG" &&
-                ui.tab == app::EditorTab::Route,
-                "New Draft resets files, preview and editor UI together");
+                ui.tab == app::EditorTab::Route &&
+                ui.rangeFirst == -1 && ui.rangeLast == -1 &&
+                ui.comparisonFiles.empty() &&
+                ui.clipboard.notes.size() == 1 &&
+                ui.clipboard.notes.front().direction == core::Heading::UpRight,
+                "new draft resets UI and files but retains copied pattern");
+    ok &= Check(editor.SelectBeat(5) &&
+                editor.PasteTurns(5, ui.clipboard) &&
+                editor.Data().route.turns.size() == 1 &&
+                editor.Data().route.turns[0].direction == core::Heading::UpRight,
+                "copied note can be pasted into the next chart draft");
 
     // Loading a library chart is also non-destructive on failure, and never
     // invokes a native picker (the library already has the chart path).
