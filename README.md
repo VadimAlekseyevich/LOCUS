@@ -1,5 +1,7 @@
 # LOCUS
 
+**Original game and source code by [VadimAlekseyevich](https://github.com/VadimAlekseyevich/LOCUS).**
+
 A Windows rhythm game with a built-in chart editor. Read the moving route and press the outgoing direction in time with your song; missed notes change your grade, never the authored route.
 
 ## Run
@@ -52,6 +54,16 @@ Chart JSON uses **formatVersion 4** only, absolute heading codes `u/r/d/l/ru/rd/
 SKIN now has **PATH, PLAYER, COLORS and MY SKINS** tabs. COLORS uses a hue wheel, a saturation/brightness square and an exact `#RRGGBB` / `#RRGGBBAA` field instead of four RGBA sliders; the live gameplay preview stays visible while changing colors. MY SKINS scans `%LOCALAPPDATA%\\LOCUS\\Skins\\Profiles`; **OPEN FOLDER** opens that directory in Explorer; choose **ACTIVATE** to apply a saved profile, **STORE** to create another named profile, **REFRESH** to rescan, **DELETE** to remove the selected profile with confirmation, or **UNDO** to restore the most recent deletion from `Skins\\Trash`. The active look remains in `Skins\\active.locus-skin.json`. **LOAD** imports an external JSON into the draft, **SAVE** applies changes, and **SAVE AS** exports a JSON. Switching profiles refuses to discard unsaved edits. SKIN → PLAYER also provides **CAMERA LAG (MS)** (180 by default; 0 disables the effect; slider 0–500, exact entry up to 1500), saved separately in every skin. SKIN also edits path effects, marker size, **fixed cardinal movement speed** (20–2000 logical pixels/s; default 135), HUD visibility and ten RGBA colors including the square border. Speed is independent of BPM, chart grid size, practice playback rate and heading: diagonal movement is normalized to the same distance per tick as straight movement. The ROUTE editor shows continuous exact-time preview routes without grid lines or dots. All ROUTE panes use separate editor-only movement speed and path-length settings; these do not change the gameplay SKIN. Grid metadata does not scale the preview. The snap ruler remains editable. During PLAY, **[ / ]** or **numpad − / +** adjust the speed by 10 pixels/s and save it for future charts. The [skin sample](examples/default.locus-skin.json) is independent of charts.
 
 **Esc means Back** in Editor and menus, **Pause/Menu** in PLAY. After **EDITOR → TEST**, leaving the level returns directly to the **same unsaved editor draft**; TEST never auto-saves. Normal PLAY requires confirmation before leaving for Song Library. Windows F11 uses a non-topmost borderless desktop window so Alt+Tab can switch applications. Closing an unsaved comparison chart or leaving Editor prompts **S/Save**, **Y/Discard**, or **N/Esc/Cancel**. Saving on exit writes all open changed charts; a failed write does not close any remaining unsaved draft. New unsaved difficulties must be saved once before they can be parked in a comparison pane. **Esc on Home**, EXIT, the window X and Alt+F4 open a quit confirmation; **Y** quits and **N/Esc** cancels.
+
+## License and creator permissions
+
+LOCUS's original game and source code are **source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE)**. You may study, modify, build and share LOCUS for noncommercial purposes, but **you may not sell or commercially use the game, its code or modified builds without separate written permission**. This is *not* an OSI-approved open-source license because commercial software use is restricted.
+
+**Original authorship must be preserved.** When distributing a copy or fork of LOCUS, include the license and the `Required Notice:` from [LICENSE](LICENSE), identifying **VadimAlekseyevich as the original LOCUS creator**. Do not present your fork as the original work of someone else.
+
+There is a specific exception for community creators: **monetized videos, streams and original user-authored chart files are allowed**, including ads, sponsors, donations and paid chart downloads. These activities must credit **"LOCUS — original game by VadimAlekseyevich"** and link to this repository in a video/stream description, credits, or chart listing/README. See the [Community Content Permission](COMMUNITY_CONTENT_PERMISSION.md) for exact terms, including restrictions on selling or bundling the game itself.
+
+Your chart and media rights remain yours; any music, artwork or other third-party material still requires permission from its rights holder. External dependencies retain their own licenses.
 
 ## Project
 
