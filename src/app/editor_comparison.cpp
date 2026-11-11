@@ -40,8 +40,8 @@ bool PlanEditorComparisonFocus(const EditorUiState& ui,
         if (chosen == candidate.references.end()) return false;
         candidate.references.erase(chosen);
     }
-    // An unseen target is not a reference yet: it becomes the focused
-    // fourth/third/etc pane after the existing visual slots.
+    // An unseen target becomes the focused final pane after the existing
+    // visual slots, provided the three-chart limit is not exceeded.
     result = std::move(candidate);
     return true;
 }
