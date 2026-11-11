@@ -11,7 +11,7 @@ pre-release; incompatible changes are allowed but must be called out.
 | `src/core` | Chart timestamps, musical-grid editing, exact-time `TimedRoute` index, eight-way headings, judgement, difficulty and chart JSON | GPU, native dialogs, filesystem library policies |
 | `ChartEditor` | Mutable authoring document, selection, revisioned undo/redo | Saved-file selection, playback device, render UI |
 | `EditorComparisonCache` | One revision-cached editable `TimedRoute`, up to three file-identity-cached reference routes; read-only render frame | Audio transport, modifying other charts, Song Set ownership |
-| `SongLibrary` / `song_set_storage` | Installed Song Sets, authoritative shared BPM/offset, file transactions, recovery, cache/index | Gameplay scoring or editor keyboard state |
+| `SongLibrary` / `song_set_storage` | Installed Song Sets, authoritative shared tempo map, file transactions, recovery, cache/index | Gameplay scoring or editor keyboard state |
 | `ChartPlayback` / `GameSession` | Audio-time transport and per-arrow judgement | Screen rendering, camera, skin settings |
 | `PlayPresentation` | Presentation-only camera lag, outro and adjustment notice | Authoritative song time or note results |
 | `path_mesh` / `route_renderer` / `gameplay_ui` | Project sampled route into a clipped square, draw ribbons, turn targets and marker | Loading files or changing gameplay state |
@@ -27,9 +27,10 @@ base speed and PREVIEW TIME (MS); neither opening a reference nor navigating
 its picker edits notes. The upper editor note ruler uses BPM/snap ticks and
 its own zoom. The bottom whole-song overview is an independent audio-seconds
 projection over `ChartEditor::SongDurationSeconds()`, supporting fast
-seek without note mutation. Its initial tempo marker reads the canonical
-Song Set BPM and offset (fallback: the current draft), rather than an
-individual chart's notes. No multi-BPM format change is implied. SET opens a difficulty on a single click, retaining
+seek without note mutation. All BPM markers read the canonical Song Set
+tempo map (fallback: the current draft), rather than individual chart notes.
+The tempo map is integrated into a continuous beat phase in
+`core/tempo_map.h`; notes keep their exact song `timeMs` when a segment changes. SET opens a difficulty on a single click, retaining
 the unsaved-change confirmation when the active draft would be discarded.
 TEST borrows a prepared draft without writing it. Library: disk → validated
 Song Set index → explicit chart/audio activation. Audio streams are unloaded
@@ -69,8 +70,8 @@ The world-space scale still uses ticks-per-beat as a *unit conversion*:
 the camera applies its inverse, so screen motion is based on real elapsed
 song seconds and is independent of snap resolution or BPM. Authoring
 `core::RoutePositionAt` and editor grid navigation intentionally remain
-tick-based; they are not a second scoring clock. Saved chart version 3
-already stores exact timestamps, so this refactor does not change files.
+tick-based; they are not a second scoring clock. Saved chart version 4 stores exact timestamps plus an explicit tempo map;
+Song Set manifest v2 is authoritative for every difficulty.
 
 Known limitation: the editor currently rejects two distinct timestamps
 whose snap-grid projections collide. Relaxing that requires a separate

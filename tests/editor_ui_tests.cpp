@@ -230,6 +230,36 @@ int main() {
     ok &= Check(chart.SetSongDuration(10.0) &&
                 chart.Data().route.lengthBeats > 0,
                 "loading audio derives timeline length");
+    // Map UI: select the song position, add a segment, edit its BPM,
+    // reject a conflicting offset, and delete it without modifying notes.
+    ui.tab = EditorTab::Audio;
+    chart.SelectBeat(20);
+    const auto beforeAdd = currentTempo();
+    HandleTempoTable(ui, Click(740, 447), beforeAdd, chart, applyTempo);
+    ok &= Check(currentTempo().size() == 2 &&
+                currentTempo()[1].bpm == currentTempo()[0].bpm,
+                "AUDIO add marker uses selected audio position and prior BPM");
+    HandleTempoTable(ui, Click(400, 327), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Type("255.5"), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, enter, currentTempo(), chart, applyTempo);
+    ok &= Check(currentTempo().size() == 2 &&
+                currentTempo()[1].bpm == 255.5,
+                "second BPM table row commits a tempo change");
+    HandleTempoTable(ui, Click(145, 327), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Type("-175"), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, enter, currentTempo(), chart, applyTempo);
+    ok &= Check(ui.tempoEditingRow == 1 &&
+                currentTempo()[1].timeMs != currentTempo()[0].timeMs,
+                "tempo table rejects duplicate millisecond offsets");
+    EditorControls cancelTempo;
+    cancelTempo.escape = true;
+    HandleTempoTable(ui, cancelTempo, currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(635, 327), currentTempo(), chart, applyTempo);
+    ok &= Check(currentTempo().size() == 1 &&
+                !ui.EditingText(),
+                "AUDIO delete removes only the chosen later BPM marker");
+    ui.tab = EditorTab::Field;
+
     // Multiple BPM segments preserve absolute note times, including undo.
     const double initialBpm = chart.Data().route.bpm;
     const auto segmentTime = static_cast<std::int64_t>(2500);

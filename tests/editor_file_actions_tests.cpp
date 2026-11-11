@@ -236,6 +236,42 @@ int main() {
         ok &= Check(!managedSet.HasPending() && editor.Dirty(),
                     "canceling direct switch leaves unsaved chart intact");
 
+        // The controller (not just the pure helper) must commit AUDIO
+        // table edits to the actual Song Set manifest and all difficulties.
+        ui.tab = app::EditorTab::Audio;
+        ok &= Check(editor.SetSongDuration(10.0), "tempo edit has audio duration");
+        app::EditorControls tempoClick;
+        tempoClick.mouseClick = true;
+        tempoClick.mouse = {410.0f, 298.0f};
+        managedSet.HandleControls(tempoClick);
+        ok &= Check(ui.tempoEditingRow == 0 && ui.tempoEditingBpm,
+                    "managed AUDIO BPM cell enters editing");
+        app::EditorControls tempoTyping;
+        tempoTyping.typedUtf8 = "170.5";
+        managedSet.HandleControls(tempoTyping);
+        app::EditorControls tempoEnter;
+        tempoEnter.enter = true;
+        managedSet.HandleControls(tempoEnter);
+        const auto& firstTempo = managedLibrary.Songs()[0].tempoMap;
+        ok &= Check(ui.tempoEditingRow == -1 &&
+                    firstTempo.size() == 1 && firstTempo[0].bpm == 170.5 &&
+                    editor.Data().route.bpm == 170.5,
+                    "editing BPM updates whole pack and current draft");
+        editor.SelectBeat(4);
+        tempoClick.mouse = {730.0f, 447.0f};
+        managedSet.HandleControls(tempoClick);
+        const auto& twoTempo = managedLibrary.Songs()[0].tempoMap;
+        ok &= Check(twoTempo.size() == 2 &&
+                    twoTempo[1].timeMs > twoTempo[0].timeMs &&
+                    twoTempo[1].bpm == 170.5,
+                    "ADD creates pack-wide BPM marker at selected timestamp");
+        app::SongSetManifest storedTempo;
+        ok &= Check(app::LoadSongSetManifest(
+                         installedEasy.parent_path() / "set.locus.json",
+                         storedTempo, managedError) &&
+                    storedTempo.tempoMap == twoTempo,
+                    "AUDIO BPM table writes every marker to disk");
+
         ui.tab = app::EditorTab::Route;
         app::EditorControls clickCompare;
         clickCompare.mouseClick = true;

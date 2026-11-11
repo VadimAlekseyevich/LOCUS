@@ -15,7 +15,7 @@ also store one optional **shared background image** (PNG/JPEG).
       Songs/
         song-<technical-id>/
           .locus-lock                   OS writer-lock placeholder
-          set.locus.json                setId/title/artist/audioFile/bpm/offsetMs/previewStartMs/backgroundFile
+          set.locus.json                setId/title/artist/audioFile/tempoMap/previewStartMs/backgroundFile
           song.mp3                      SHARED, never silently replaced
           background-<id>.png           optional, shared by all difficulties
           Easy.locus.json               difficulty name/turns/absolute note timestamps
@@ -27,11 +27,14 @@ also store one optional **shared background image** (PNG/JPEG).
           origin.json                   original relative path
           payload                       deleted chart or whole Song Set
 
-Each managed Song Set owns **one BPM and one signed offsetMs** in its
-manifest. EDIT → AUDIO changes them for every difficulty; all note timestamps
-remain in absolute song milliseconds. If the new timing would collapse nearby
-notes, the change is rejected. Older Song Sets without shared timing derive
-their values from the first stable chart filename without rewriting its file.
+Each managed Song Set owns **one shared ordered tempo map**, saved in manifest
+version 2. EDIT → AUDIO has a BPM/OFFSET (MS) table; each row changes tempo at
+that absolute song time. The first marker defines beat zero, later markers
+continue the accumulated beat count and their tempo lasts until the next row
+(or the end of the song). Earlier time uses the first BPM. All difficulties
+share the map, and all authored note timestamps stay in song milliseconds.
+If a new map merges notes on the editor tick grid, the change is rejected.
+Old v1 manifests and v3 single-tempo charts can still be imported.
 
 Each Song Set also stores **previewStartMs** (default 0), independent of
 BPM/offset. In **EDIT → AUDIO**, enter an exact whole-millisecond position
@@ -137,7 +140,7 @@ Back up **%LOCALAPPDATA%\LOCUS** before changing chart/storage formats.
 
 Before the first public release, **backwards compatibility is not promised**.
 Chart JSON v1/v2 and long heading names are deliberately unsupported.
-Only version 3 with short absolute heading codes is accepted.
+Charts are saved in v4 with an explicit tempo map; v3 short-heading charts remain readable.
 
 ## Remaining limitations
 
