@@ -154,6 +154,10 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_chart_json_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_chart_json_tests PRIVATE locus_core)
     add_test(NAME locus_chart_json_compatibility COMMAND locus_chart_json_tests)
+    add_executable(locus_tempo_map_tests tests/tempo_map_tests.cpp)
+    target_compile_features(locus_tempo_map_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_tempo_map_tests PRIVATE locus_core)
+    add_test(NAME locus_song_tempo_map COMMAND locus_tempo_map_tests)
     # Keep the shipped example checked by the same parser as real files.
     set_tests_properties(locus_chart_json_compatibility PROPERTIES
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")

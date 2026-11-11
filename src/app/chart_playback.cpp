@@ -9,7 +9,7 @@ void ChartPlayback::Configure(
     double bpm, double offsetSeconds,
     const std::vector<core::TempoMarker>& map, int ticksPerBeat) noexcept {
     Stop();
-    bpm_ = bpm * (map.empty() ? 1 : ticksPerBeat);
+    bpm_ = bpm * ticksPerBeat;
     offsetSeconds_ = offsetSeconds;
     tempoMap_ = map;
     ticksPerBeat_ = ticksPerBeat;

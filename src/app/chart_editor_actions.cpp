@@ -109,7 +109,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return action;
     }
 
-    if (input.snapMore || input.snapLess) {
+    if ((ui.tab == EditorTab::Route || ui.tab == EditorTab::Field) &&
+        (input.snapMore || input.snapLess)) {
         editor_timeline::ChangeSnap(draft, ui, input.snapMore ? 1 : -1, action);
         return action;
     }
@@ -139,8 +140,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             return action;
         }
 
-        if (Hit(kSnapLess, mouse)) { editor_timeline::ChangeSnap(draft, ui, -1, action); return action; }
-        if (Hit(kSnapMore, mouse)) { editor_timeline::ChangeSnap(draft, ui, 1, action); return action; }
+        if (ui.tab != EditorTab::Audio && Hit(kSnapLess, mouse)) { editor_timeline::ChangeSnap(draft, ui, -1, action); return action; }
+        if (ui.tab != EditorTab::Audio && Hit(kSnapMore, mouse)) { editor_timeline::ChangeSnap(draft, ui, 1, action); return action; }
         if (ui.tab != EditorTab::Route && Hit(kSong, mouse))
             action.chooseAudio = true;
         else if (ui.tab != EditorTab::Route && Hit(kPlay, mouse))
@@ -149,9 +150,9 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             action.previewRestart = true;
         else if (Hit(ui.tab == EditorTab::Route ? kRouteTest : kTest, mouse))
             action.testPlay = true;
-        else if (Hit(kZoomOut, mouse))
+        else if (ui.tab != EditorTab::Audio && Hit(kZoomOut, mouse))
             ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
-        else if (Hit(kZoomIn, mouse))
+        else if (ui.tab != EditorTab::Audio && Hit(kZoomIn, mouse))
             ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
         else if (ui.tab == EditorTab::Route && Hit(kCopyTurns, mouse)) commands.copy = true;
         else if (ui.tab == EditorTab::Route && Hit(kPasteTurns, mouse)) commands.paste = true;

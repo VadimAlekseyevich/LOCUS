@@ -249,6 +249,16 @@ int main() {
                 "manifest rejects path traversal without modifying output");
     fs::remove(forgedManifest, ec);
 
+    // An additional BPM segment is shared by all difficulties and must
+    // survive portable package export without touching authored note times.
+    const std::vector<core::TempoMarker> multiTempo{
+        {175, 150.0}, {30000, 180.0}};
+    ok &= Check(library.SetSongTempoMap(0, multiTempo, nullptr, error) &&
+                library.Songs()[0].tempoMap == multiTempo &&
+                library.Songs()[0].charts[0].data.route.tempoMap == multiTempo &&
+                Read(easyInstalled) == originalChartBytes,
+                "multi-BPM map persists in Song Set without rewriting notes");
+
     // Portable .locuspack is a real ZIP file containing manifest, shared
     // audio and two independent chart JSONs. Import into a fresh library
     // must not depend on the original source path or existing installation.
@@ -268,6 +278,7 @@ int main() {
                 copiedLibrary.ChartCount() == 4 &&
                 fs::exists(importedFolder / "set.locus.json") &&
                 copiedLibrary.Songs()[0].previewStartMs == 12500 &&
+                copiedLibrary.Songs()[0].tempoMap == multiTempo &&
                 fs::exists(copiedLibrary.Songs()[0].backgroundImage) &&
                 Read(copiedLibrary.Songs()[0].backgroundImage) == Read(sourceCover) &&
                 Read(importedFolder / "song.wav") == firstBytes,
@@ -443,6 +454,7 @@ int main() {
         externalTiming.bpm) {
         const double savedBpm = *externalTiming.bpm;
         externalTiming.bpm = savedBpm + 1.0;
+        externalTiming.tempoMap.front().bpm = *externalTiming.bpm;
         ok &= Check(ReplaceSongSetManifest(finalManifest, externalTiming, error) &&
                     library.Refresh(note) &&
                     library.Songs()[0].bpm == savedBpm + 1.0 &&
@@ -451,6 +463,7 @@ int main() {
                     library.LastRefreshStats().calculatedDifficulties == chartTotal,
                     "external shared BPM change invalidates each rating but not chart parses");
         externalTiming.bpm = savedBpm;
+        externalTiming.tempoMap.front().bpm = savedBpm;
         ok &= Check(ReplaceSongSetManifest(finalManifest, externalTiming, error) &&
                     library.Refresh(note) &&
                     library.Songs()[0].bpm == savedBpm,

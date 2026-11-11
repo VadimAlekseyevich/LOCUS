@@ -69,10 +69,11 @@ int main() {
                  "JSON heading drives geometry without relative rotation");
     std::string encoded;
     ok &= Expect(SerializeChartJson(parsed, encoded, error) &&
-                 encoded.find("\"formatVersion\": 3") != std::string::npos &&
+                 encoded.find("\"formatVersion\": 4") != std::string::npos &&
+                  encoded.find("\"tempoMap\"") != std::string::npos &&
                  encoded.find("\"heading\": \"ru\"") != std::string::npos &&
                  encoded.find("\"turn\"") == std::string::npos,
-                 "writer emits only version 3 absolute headings");
+                 "writer emits version 4 with an explicit single-BPM map");
     LoadedChart again;
     ok &= Expect(ParseChartJson(encoded, again, error) &&
                  again.route.turns.size() == 3 &&

@@ -1,6 +1,7 @@
 #include "app/chart_editor_ui.h"
 #include "core/utf8.h"
 #include "app/chart_editor_layout.h"
+#include "app/editor_tempo_controls.h"
 #include "app/visual_style.h"
 #include "app/viewport.h"
 
@@ -109,22 +110,36 @@ int main() {
     // Audio settings are no longer stacked on top of the route grid.
     ApplyEditorControls(chart, ui, Click(612, 89));
     ok &= Check(ui.tab == EditorTab::Audio, "Audio tab opens");
-    ApplyEditorControls(chart, ui, Click(145, 312));
-    ok &= Check(ui.EditingText() && ui.active == EditorField::Bpm,
-                "Audio BPM field accepts mouse focus");
-    ApplyEditorControls(chart, ui, Type("400,5"));
+    // BPM/offset editing is owned by the shared tempo table, not
+    // the old single-difficulty numeric text fields.
+    const auto noOldField = ApplyEditorControls(chart, ui, Click(145, 312));
+    ok &= Check(ui.active == EditorField::None &&
+                !noOldField.changedChart,
+                "retired standalone BPM field cannot be opened");
+
+    auto applyTempo = [&](const std::vector<TempoMarker>& map) {
+        return chart.SetTempoMap(map);
+    };
+    const auto currentTempo = [&]() {
+        return EffectiveTempoMap(chart.Data().route, chart.Data().offsetSeconds);
+    };
     EditorControls enter;
     enter.enter = true;
-    const auto committed = ApplyEditorControls(chart, ui, enter);
-    ok &= Check(committed.changedChart && !ui.EditingText() &&
-                    std::abs(chart.Data().route.bpm - 400.5) < 1e-9,
-                "Audio BPM accepts fast decimal values");
+    HandleTempoTable(ui, Click(400, 298), currentTempo(), chart, applyTempo);
+    ok &= Check(ui.tempoEditingRow == 0 && ui.tempoEditingBpm,
+                "AUDIO tempo table opens BPM cell");
+    HandleTempoTable(ui, Type("400,5"), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, enter, currentTempo(), chart, applyTempo);
+    ok &= Check(!ui.EditingText() &&
+                std::abs(chart.Data().route.bpm - 400.5) < 1e-9,
+                "tempo table accepts decimal BPM");
 
-    ApplyEditorControls(chart, ui, Click(600, 310));
-    ApplyEditorControls(chart, ui, Type("-175"));
-    ApplyEditorControls(chart, ui, enter);
-    ok &= Check(std::abs(chart.Data().offsetSeconds + 0.175) < 1e-10,
-                "negative whole-millisecond offset entered directly");
+    HandleTempoTable(ui, Click(145, 298), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Type("-175"), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, enter, currentTempo(), chart, applyTempo);
+    ok &= Check(std::abs(chart.Data().offsetSeconds + 0.175) < 1e-10 &&
+                currentTempo().size() == 1,
+                "first tempo marker defines shared signed offset and initial BPM");
 
     ApplyEditorControls(chart, ui, Click(145, 226));
     ApplyEditorControls(chart, ui, Type("My rhythm chart"));
@@ -163,10 +178,10 @@ int main() {
                 detail::ClickedSetAction({370, 416}) ==
                     EditorSetAction::Restore,
                 "Song Set action buttons have distinct hitboxes");
-    ok &= Check(detail::kAudioPreviewMs.x <= 168 &&
-                detail::kAudioPreviewMs.y <= 390 &&
-                detail::kAudioPreviewMs.x + detail::kAudioPreviewMs.width > 168 &&
-                detail::kAudioPreviewMs.y + detail::kAudioPreviewMs.height > 390 &&
+    ok &= Check(detail::kAudioPreviewMs.x <= 650 &&
+                detail::kAudioPreviewMs.y <= 220 &&
+                detail::kAudioPreviewMs.x + detail::kAudioPreviewMs.width > 650 &&
+                detail::kAudioPreviewMs.y + detail::kAudioPreviewMs.height > 220 &&
                 detail::ClickedSetAction({168, 280}) == EditorSetAction::None,
                 "Song preview lives in AUDIO and has no increment buttons");
     ok &= Check(detail::ClickedSetAction({85, 317}) ==
@@ -215,6 +230,18 @@ int main() {
     ok &= Check(chart.SetSongDuration(10.0) &&
                 chart.Data().route.lengthBeats > 0,
                 "loading audio derives timeline length");
+    // Multiple BPM segments preserve absolute note times, including undo.
+    const double initialBpm = chart.Data().route.bpm;
+    const auto segmentTime = static_cast<std::int64_t>(2500);
+    const auto active = currentTempo();
+    std::vector<TempoMarker> two = active;
+    two.push_back({segmentTime, 200.0});
+    ok &= Check(chart.SetTempoMap(two) &&
+                currentTempo().size() == 2 &&
+                chart.Data().route.bpm == initialBpm &&
+                chart.Undo() && currentTempo().size() == 1,
+                "adding a tempo change is undoable without resetting song zero");
+
 
     // Transport is shared by all tabs.
     const auto song = ApplyEditorControls(chart, ui, Click(113, 519));

@@ -262,7 +262,7 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
 
     // These controls affect the authored ruler only; their hitboxes stay
     // outside both timelines. SET does not mutate grid/snap settings.
-    if (ui.tab != EditorTab::Set) {
+    if (ui.tab == EditorTab::Route || ui.tab == EditorTab::Field) {
         CompactButton(font, kSnapLess, "SNAP -", Color{128, 221, 202, 255});
         CompactButton(font, kSnapMore, "SNAP +", Color{128, 221, 202, 255});
         CompactButton(font, kZoomOut, "ZOOM -", Color{125, 167, 205, 255});
