@@ -205,8 +205,8 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     if (!SaveChartWithAudioPath(installedChart.wstring(),
                                 destinationAudio.wstring(), source, error, true))
         return false;
-    // Metadata is published last. Interrupted imports still leave a valid
-    // independently readable chart and never damage older difficulties.
+    // Metadata is published last so interrupted imports do not expose
+    // incomplete new Song Sets.
     if (!existingSet &&
         !WriteNewSongSetManifest(manifestPath, metadata, error)) return false;
     std::string notice;
