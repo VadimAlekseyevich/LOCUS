@@ -29,8 +29,10 @@ int main() {
                 std::string(ActionName(GameAction::Pause)) == "PAUSE / MENU" &&
                 options.Shortcut(ShortcutAction::EditorSave).key == KEY_S &&
                 options.Shortcut(ShortcutAction::EditorSave).ctrl &&
-                options.vsync && options.fpsLimit == 240 && !options.showFps,
-                "default play pause is ESC and editor actions are configurable");
+                options.vsync && options.fpsLimit == 240 && !options.showFps &&
+                options.editorPreviewSpeed == 135.0f &&
+                options.editorPreviewLengthMs == 800.0f,
+                "default editor presentation is independent of gameplay settings");
     ok &= Check(IsGameDirectionKey(options, KEY_D) &&
                 !IsGameDirectionKey(options, KEY_LEFT),
                 "direction bindings belong to scored gameplay only");
@@ -68,6 +70,8 @@ int main() {
     options.vsync = false;
     options.fpsLimit = 144;
     options.showFps = true;
+    options.editorPreviewSpeed = 480.0f;
+    options.editorPreviewLengthMs = 1700.0f;
     const std::string serialized = SerializeGameSettings(options);
     GameSettings parsed;
     ok &= Check(ParseGameSettings(serialized, parsed, error) &&
@@ -78,10 +82,49 @@ int main() {
                 parsed.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&
                 parsed.Shortcut(ShortcutAction::EditorSave).ctrl &&
                 !parsed.Shortcut(ShortcutAction::EditorSave).shift &&
-                !parsed.vsync && parsed.fpsLimit == 144 && parsed.showFps,
-                "all audio, visuals, play keys and editor shortcuts survive JSON");
+                !parsed.vsync && parsed.fpsLimit == 144 && parsed.showFps &&
+                parsed.editorPreviewSpeed == 480.0f &&
+                parsed.editorPreviewLengthMs == 1700.0f,
+                "editor preview settings and gameplay bindings survive JSON");
     ok &= Check(parsed.Key(GameAction::Up) == KEY_W,
                 "persisted gameplay direction keys survive restarting");
+    // Editor-only view controls must not change any gameplay, audio-speed
+    // or skin parameters, and their increment buttons clamp safely.
+    GameSettings editorView = parsed;
+    ok &= Check(editorView.StepEditorPreviewSpeed(1) &&
+                editorView.editorPreviewSpeed == 505.0f &&
+                editorView.StepEditorPreviewLength(-1) &&
+                editorView.editorPreviewLengthMs == 1600.0f &&
+                editorView.Key(GameAction::Pause) == parsed.Key(GameAction::Pause),
+                "editor preview controls change only their own preferences");
+    editorView.editorPreviewSpeed = GameSettings::kEditorSpeedMax;
+    editorView.editorPreviewLengthMs = GameSettings::kEditorLengthMinMs;
+    ok &= Check(!editorView.StepEditorPreviewSpeed(1) &&
+                !editorView.StepEditorPreviewLength(-1) &&
+                editorView.Valid(error),
+                "editor preview controls clamp safely at their limits");
+    editorView.editorPreviewLengthMs = 99999.0f;
+    ok &= Check(!editorView.Valid(error),
+                "out-of-range editor preview values are rejected");
+
+    // Old v3 settings are still the same current format: adding an optional
+    // editor-only preference must not reset a user's custom keyboard binds.
+    auto existingV3 = nlohmann::json::parse(serialized);
+    existingV3.erase("editorPreviewSpeed");
+    existingV3.erase("editorPreviewLengthMs");
+    GameSettings preserved;
+    ok &= Check(ParseGameSettings(existingV3.dump(), preserved, error) &&
+                preserved.editorPreviewSpeed == 135.0f &&
+                preserved.editorPreviewLengthMs == 800.0f &&
+                preserved.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&
+                preserved.Key(GameAction::Up) == KEY_W,
+                "v3 key bindings survive addition of optional editor view controls");
+    existingV3["editorPreviewSpeed"] = "fast";
+    GameSettings untouched = parsed;
+    ok &= Check(!ParseGameSettings(existingV3.dump(), untouched, error) &&
+                untouched.editorPreviewSpeed == 480.0f,
+                "invalid editor preference cannot partially overwrite settings");
+
     GameSettings display = parsed;
     display.StepFpsLimit(1);
     ok &= Check(display.fpsLimit == 165 &&
@@ -157,7 +200,9 @@ int main() {
                 onDisk.Key(GameAction::Up) == KEY_W &&
                 !onDisk.hitFlash &&
                 !onDisk.vsync && onDisk.fpsLimit == 144 && onDisk.showFps &&
-                onDisk.Shortcut(ShortcutAction::EditorSave).key == KEY_B,
+                onDisk.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&
+                onDisk.editorPreviewSpeed == 480.0f &&
+                onDisk.editorPreviewLengthMs == 1700.0f,
                 "settings persist across application restart");
     options.volume = 0.9f;
     ok &= Check(SaveGameSettings(file, options, error) &&
