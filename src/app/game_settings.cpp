@@ -149,6 +149,26 @@ std::string GameSettings::FpsLimitLabel() const {
     return fpsLimit == 0 ? "UNLIMITED" : std::to_string(fpsLimit) + " FPS";
 }
 
+bool GameSettings::StepEditorPreviewSpeed(int direction) noexcept {
+    if (direction == 0) return false;
+    const float next = std::clamp(
+        editorPreviewSpeed + (direction > 0 ? 25.0f : -25.0f),
+        kEditorSpeedMin, kEditorSpeedMax);
+    if (next == editorPreviewSpeed) return false;
+    editorPreviewSpeed = next;
+    return true;
+}
+
+bool GameSettings::StepEditorPreviewLength(int direction) noexcept {
+    if (direction == 0) return false;
+    const float next = std::clamp(
+        editorPreviewLengthMs + (direction > 0 ? 100.0f : -100.0f),
+        kEditorLengthMinMs, kEditorLengthMaxMs);
+    if (next == editorPreviewLengthMs) return false;
+    editorPreviewLengthMs = next;
+    return true;
+}
+
 bool GameSettings::Valid(std::string& error) const {
     if (!std::isfinite(volume) || volume < 0.0f || volume > 1.0f) {
         error = "Music volume must be between 0 and 100 percent.";
@@ -156,6 +176,15 @@ bool GameSettings::Valid(std::string& error) const {
     }
     if (!ValidFpsLimit(fpsLimit)) {
         error = "FPS limit must be one of the available display presets.";
+        return false;
+    }
+    if (!std::isfinite(editorPreviewSpeed) ||
+        editorPreviewSpeed < kEditorSpeedMin ||
+        editorPreviewSpeed > kEditorSpeedMax ||
+        !std::isfinite(editorPreviewLengthMs) ||
+        editorPreviewLengthMs < kEditorLengthMinMs ||
+        editorPreviewLengthMs > kEditorLengthMaxMs) {
+        error = "Editor preview speed or path length is outside allowed limits.";
         return false;
     }
     for (int i = 0; i < kGameActionCount; ++i) {
@@ -242,6 +271,8 @@ std::string SerializeGameSettings(const GameSettings& settings) {
         {"vsync", settings.vsync},
         {"fpsLimit", settings.fpsLimit},
         {"showFps", settings.showFps},
+        {"editorPreviewSpeed", settings.editorPreviewSpeed},
+        {"editorPreviewLengthMs", settings.editorPreviewLengthMs},
         {"bindings", std::move(bindings)},
         {"shortcuts", std::move(shortcuts)}
     };
@@ -285,6 +316,19 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
         parsed.vsync = object["vsync"].get<bool>();
         parsed.fpsLimit = object["fpsLimit"].get<int>();
         parsed.showFps = object["showFps"].get<bool>();
+        // Existing v3 settings files have no editor-only controls yet.
+        // Preserve every existing binding and default just these new values.
+        for (const char* key : {"editorPreviewSpeed", "editorPreviewLengthMs"}) {
+            if (object.contains(key) && !object[key].is_number()) {
+                error = std::string("Invalid editor preview setting: ") + key;
+                return false;
+            }
+        }
+        if (object.contains("editorPreviewSpeed"))
+            parsed.editorPreviewSpeed = object["editorPreviewSpeed"].get<float>();
+        if (object.contains("editorPreviewLengthMs"))
+            parsed.editorPreviewLengthMs =
+                object["editorPreviewLengthMs"].get<float>();
         for (int i = 0; i < kGameActionCount; ++i) {
             const auto& bindings = object["bindings"];
             if (!bindings.contains(kJsonKeys[i]) ||
