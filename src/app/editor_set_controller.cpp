@@ -211,11 +211,16 @@ void EditorSetController::HandleControls(const EditorControls& input) {
             // the newly focused ChartEditor and its independent history.
             if (!ui.comparisonPickerOpen) {
                 const int count = 1 + static_cast<int>(ui.comparisonFiles.size());
-                for (int i = 1; i < count; ++i) {
-                    if (!detail::Hit(detail::ComparisonPreviewBounds(count, i),
+                const int focusedSlot = std::clamp(ui.comparisonFocusedSlot, 0,
+                                                    count - 1);
+                for (int i = 0; i < count; ++i) {
+                    if (i == focusedSlot ||
+                        !detail::Hit(detail::ComparisonPreviewBounds(count, i),
                                      input.mouse)) continue;
+                    const int refIndex = ComparisonReferenceIndexForSlot(
+                        i, focusedSlot);
                     const fs::path chosen = ui.comparisonFiles[
-                        static_cast<std::size_t>(i - 1)];
+                        static_cast<std::size_t>(refIndex)];
                     std::string problem;
                     if (!ctx_.files.FocusChart(chosen, problem))
                         Notice(problem, true);
