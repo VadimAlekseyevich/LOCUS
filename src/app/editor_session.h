@@ -2,6 +2,7 @@
 
 #include "app/chart_editor_ui.h"
 #include "core/chart_json.h"
+#include "core/tempo_map.h"
 
 #include <string>
 
@@ -52,6 +53,10 @@ public:
     // Tempo-table commits invalidate the configured playback beat clock.
     // Stop rather than letting the old and new BPM rulers diverge mid-song.
     void StopPreviewForTempoChange();
+    std::vector<core::TempoMarker> TempoMap() const {
+        return core::EffectiveTempoMap(editor_.Data().route,
+                                       editor_.Data().offsetSeconds);
+    }
 
 private:
     void StartPreview(int beat, double now);

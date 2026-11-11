@@ -37,11 +37,9 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     if (context_.ui.tab == EditorTab::Route ||
         context_.ui.tab == EditorTab::Set ||
         context_.ui.tab == EditorTab::Audio) {
-        const auto beforeTempo = core::EffectiveTempoMap(
-            context_.editor.Data().route, context_.editor.Data().offsetSeconds);
+        const auto beforeTempo = context_.session.TempoMap();
         context_.sets.HandleControls(input.editor);
-        if (core::EffectiveTempoMap(context_.editor.Data().route,
-                                    context_.editor.Data().offsetSeconds) != beforeTempo)
+        if (context_.session.TempoMap() != beforeTempo)
             context_.session.StopPreviewForTempoChange();
         if (context_.clock) now = context_.clock();
     }
