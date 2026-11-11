@@ -170,6 +170,7 @@ bool EditorSession::BeginTest(EditorTestTarget target, double now,
 void EditorSession::StopPreviewForTempoChange() {
     if (!playback_.Playing() && !playback_.Finished()) return;
     playback_.Stop();
+    ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
     previewBeat_ = editor_.SelectedBeat();
     status_ = "PREVIEW STOPPED - TEMPO MAP CHANGED";
 }
