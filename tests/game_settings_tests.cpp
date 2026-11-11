@@ -30,6 +30,7 @@ int main() {
                 options.Shortcut(ShortcutAction::EditorSave).key == KEY_S &&
                 options.Shortcut(ShortcutAction::EditorSave).ctrl &&
                 options.vsync && options.fpsLimit == 240 && !options.showFps &&
+                options.globalOffsetMs == 0 &&
                 options.editorPreviewSpeed == 135.0f &&
                 options.editorPreviewLengthMs == 800.0f,
                 "default editor presentation is independent of gameplay settings");
@@ -70,6 +71,7 @@ int main() {
     options.vsync = false;
     options.fpsLimit = 144;
     options.showFps = true;
+    options.globalOffsetMs = 200;
     options.editorPreviewSpeed = 480.0f;
     options.editorPreviewLengthMs = 1700.0f;
     const std::string serialized = SerializeGameSettings(options);
@@ -83,6 +85,7 @@ int main() {
                 parsed.Shortcut(ShortcutAction::EditorSave).ctrl &&
                 !parsed.Shortcut(ShortcutAction::EditorSave).shift &&
                 !parsed.vsync && parsed.fpsLimit == 144 && parsed.showFps &&
+                parsed.globalOffsetMs == 200 &&
                 parsed.editorPreviewSpeed == 480.0f &&
                 parsed.editorPreviewLengthMs == 1700.0f,
                 "editor preview settings and gameplay bindings survive JSON");
@@ -110,10 +113,12 @@ int main() {
     // Old v3 settings are still the same current format: adding an optional
     // editor-only preference must not reset a user's custom keyboard binds.
     auto existingV3 = nlohmann::json::parse(serialized);
+    existingV3.erase("globalOffsetMs");
     existingV3.erase("editorPreviewSpeed");
     existingV3.erase("editorPreviewLengthMs");
     GameSettings preserved;
     ok &= Check(ParseGameSettings(existingV3.dump(), preserved, error) &&
+                preserved.globalOffsetMs == 0 &&
                 preserved.editorPreviewSpeed == 135.0f &&
                 preserved.editorPreviewLengthMs == 800.0f &&
                 preserved.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&
@@ -125,6 +130,21 @@ int main() {
                 untouched.editorPreviewSpeed == 480.0f,
                 "invalid editor preference cannot partially overwrite settings");
 
+    auto invalidOffset = nlohmann::json::parse(serialized);
+    invalidOffset["globalOffsetMs"] = 1001;
+    GameSettings offsetUnchanged = parsed;
+    ok &= Check(!ParseGameSettings(invalidOffset.dump(), offsetUnchanged, error) &&
+                offsetUnchanged.globalOffsetMs == 200,
+                "out-of-range global offset rejects settings atomically");
+    invalidOffset["globalOffsetMs"] = "late";
+    ok &= Check(!ParseGameSettings(invalidOffset.dump(), offsetUnchanged, error) &&
+                offsetUnchanged.globalOffsetMs == 200,
+                "global offset must be signed integer milliseconds");
+    invalidOffset["globalOffsetMs"] = -350;
+    GameSettings negativeOffset;
+    ok &= Check(ParseGameSettings(invalidOffset.dump(), negativeOffset, error) &&
+                negativeOffset.globalOffsetMs == -350,
+                "negative offsets can compensate early audio");
     GameSettings display = parsed;
     display.StepFpsLimit(1);
     ok &= Check(display.fpsLimit == 165 &&
@@ -201,6 +221,7 @@ int main() {
                 !onDisk.hitFlash &&
                 !onDisk.vsync && onDisk.fpsLimit == 144 && onDisk.showFps &&
                 onDisk.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&
+                onDisk.globalOffsetMs == 200 &&
                 onDisk.editorPreviewSpeed == 480.0f &&
                 onDisk.editorPreviewLengthMs == 1700.0f,
                 "settings persist across application restart");
