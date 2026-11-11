@@ -409,7 +409,7 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
 
     EditorComparisonFocusOrder order;
     if (!PlanEditorComparisonFocus(context_.ui, current, file, order)) {
-        error = "MAX FOUR OPEN CHARTS - CLOSE A REFERENCE FIRST";
+        error = "MAX THREE OPEN CHARTS - CLOSE A REFERENCE FIRST";
         return false;
     }
 
