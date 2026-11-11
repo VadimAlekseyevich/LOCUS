@@ -180,10 +180,10 @@ int main() {
     const auto writeDifficulty = [&](const char* file, const char* title) {
         const std::string json =
             std::string("{") +
-            "\"formatVersion\":3," +
+            "\"formatVersion\":4," +
             "\"title\":\"" + title + "\"," +
             "\"audioPath\":\"song.wav\"," +
-            "\"bpm\":120,\"offsetMs\":0," +
+            "\"bpm\":120,\"offsetMs\":0,\"tempoMap\":[{\"timeMs\":0,\"bpm\":120}]," +
             "\"ticksPerBeat\":1,\"snapDivision\":1," +
             "\"grid\":{\"width\":8,\"height\":8}," +
             "\"start\":{\"x\":3,\"y\":3,\"heading\":\"r\"}," +
