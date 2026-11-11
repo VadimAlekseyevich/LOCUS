@@ -8,6 +8,39 @@
 
 namespace locus::app {
 
+bool PlanEditorComparisonFocus(const EditorUiState& ui,
+                               const std::filesystem::path& active,
+                               const std::filesystem::path& target,
+                               EditorComparisonFocusOrder& result) {
+    if (active.empty() || target.empty() || active == target ||
+        ui.comparisonFiles.size() > 3 ||
+        std::find(ui.comparisonFiles.begin(), ui.comparisonFiles.end(),
+                  active) != ui.comparisonFiles.end()) return false;
+
+    EditorComparisonFocusOrder candidate;
+    candidate.references = ui.comparisonFiles;
+    const int currentSlot = std::clamp(ui.comparisonFocusedSlot, 0,
+                          static_cast<int>(candidate.references.size()));
+    const auto targetRef = std::find(candidate.references.begin(),
+                                     candidate.references.end(), target);
+    if (targetRef == candidate.references.end()) {
+        if (candidate.references.size() >= 3) return false;
+        candidate.focusedSlot = static_cast<int>(candidate.references.size()) + 1;
+    } else {
+        candidate.focusedSlot = ComparisonDisplaySlotForReference(
+            static_cast<int>(targetRef - candidate.references.begin()),
+            currentSlot);
+    }
+    candidate.references.insert(candidate.references.begin() + currentSlot,
+                                active);
+    const auto chosen = std::find(candidate.references.begin(),
+                                  candidate.references.end(), target);
+    if (chosen == candidate.references.end()) return false;
+    candidate.references.erase(chosen);
+    result = std::move(candidate);
+    return true;
+}
+
 bool HasEditorComparison(const EditorUiState& ui,
                          const std::filesystem::path& file) noexcept {
     return !file.empty() && std::find(ui.comparisonFiles.begin(),
