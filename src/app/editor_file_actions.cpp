@@ -423,6 +423,15 @@ void EditorFileActions::DropCleanParked() noexcept {
     }
 }
 
+void EditorFileActions::ForgetChart(
+    const std::filesystem::path& file) noexcept {
+    parked_.erase(file);
+    auto& comparisons = context_.ui.comparisonFiles;
+    comparisons.erase(std::remove(comparisons.begin(), comparisons.end(),
+                                  file), comparisons.end());
+    if (pendingClose_ == file) pendingClose_.clear();
+}
+
 bool EditorFileActions::RequestCloseComparison(
     const std::filesystem::path& file) {
     const auto found = std::find(context_.ui.comparisonFiles.begin(),
