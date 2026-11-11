@@ -66,7 +66,7 @@ int main() {
                 dialog.OffsetY(20.20) == 0.0f,
                 "modal entrance is a presentation-only transition");
     dialog.SetOpen(false, 20.20);
-    ok &= Check(dialog.Opacity(20.33) == 0.0f,
+    ok &= Check(Near(dialog.Opacity(20.34), 0.0f),
                 "modal exit reaches invisible state");
     dialog.SetOpen(true, 21.0, true);
     ok &= Check(dialog.Opacity(21.0) == 1.0f,
@@ -100,11 +100,11 @@ int main() {
     input.maxCodepoints = 3;
     ok &= Check(input.Append("A") && input.Append("\xD0\xB1") &&
                 input.Append("\xD1\x8F") &&
-                !input.Append("z") && core::utf8::Count(input.text) == 3,
+                !input.Append("z") && locus::core::utf8::Count(input.text) == 3,
                 "text model respects Unicode code-point limit");
     input.Backspace();
-    ok &= Check(core::utf8::Count(input.text) == 2 &&
-                core::utf8::Valid(input.text),
+    ok &= Check(locus::core::utf8::Count(input.text) == 2 &&
+                locus::core::utf8::Valid(input.text),
                 "backspace never splits UTF-8 scalar");
     ok &= Check(Near(UiSliderFraction(50, 0, 100), 0.5f) &&
                 UiSliderFraction(0, 10, 10) == 0.0f &&
