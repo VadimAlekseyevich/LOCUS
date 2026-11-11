@@ -22,7 +22,7 @@ struct EditorComparisonPane {
 };
 
 struct EditorComparisonFrame {
-    std::array<EditorComparisonPane, 4> panes{};
+    std::array<EditorComparisonPane, 3> panes{};
     // Aggregate counts for the entire active difficulty, cached by revision.
     std::array<int, 8> directionPressCounts{};
     int count = 0;
@@ -68,7 +68,7 @@ void HandleEditorComparisonControls(EditorUiState& ui,
                                     const EditorSetView& set,
                                     const EditorControls& input);
 
-// Owns compiled routes for the focused draft and up to three other panes.
+// Owns compiled routes for the focused draft and up to two other panes.
 // Other drafts may be dirty in their separate EditorFileActions workspace;
 // each pane uses the SAME one-song timestamp and audio stream.
 class EditorComparisonCache {
@@ -98,9 +98,9 @@ private:
     Cached active_;
     std::uint64_t activeRevision_ = ~std::uint64_t{0};
     std::array<int, 8> activeDirectionPressCounts_{};
-    std::array<Cached, 3> reference_{};
+    std::array<Cached, 2> reference_{};
     // Reused for every render frame; all panes use the same songSeconds.
-    std::array<RoutePreviewFrame, 4> previewFrames_{};
+    std::array<RoutePreviewFrame, 3> previewFrames_{};
 };
 
 } // namespace locus::app
