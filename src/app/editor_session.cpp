@@ -42,8 +42,14 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
     const int beforeBeat = editor_.SelectedBeat();
     const int beforeTicks = editor_.Data().route.ticksPerBeat;
     EditorControls controls = input;
+    // The shared transport may have been configured by another difficulty
+    // with a different tick resolution. Project its SONG SECONDS into the
+    // currently focused chart's own grid instead of calling playback_.Beat().
     controls.timelineViewBeat = playback_.Playing()
-        ? playback_.Beat(now) : static_cast<double>(beforeBeat);
+        ? core::TempoBeatAtSeconds(editor_.Data().route,
+            editor_.Data().offsetSeconds, playback_.AudioSeconds(now)) *
+            editor_.Data().route.ticksPerBeat
+        : static_cast<double>(beforeBeat);
     const EditorUiAction action = ApplyEditorControls(editor_, ui_, controls);
 
     if (editor_.Data().route.ticksPerBeat != beforeTicks) {
@@ -152,7 +158,9 @@ void EditorSession::UpdatePreview(double now) {
     if (playback_.Finished()) {
         status_ = "PREVIEW FINISHED - SELECT BEAT OR R TO RESTART";
     } else if (!playback_.Paused()) {
-        const double beatNow = playback_.Beat(now);
+        const double beatNow = core::TempoBeatAtSeconds(
+            editor_.Data().route, editor_.Data().offsetSeconds,
+            playback_.AudioSeconds(now)) * editor_.Data().route.ticksPerBeat;
         const int lastBeat = editor_.Data().route.lengthBeats - 1;
         if (beatNow >= editor_.Data().route.lengthBeats) {
             playback_.Stop();
