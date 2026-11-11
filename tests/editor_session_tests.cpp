@@ -1,6 +1,7 @@
 #include "app/editor_session.h"
 #include "app/editor_screen_actions.h"
 #include "app/chart_playback.h"
+#include "app/chart_editor_layout.h"
 #include "app/demo_transport.h"
 #include "app/game_session.h"
 #include "app/local_music.h"
@@ -114,6 +115,18 @@ int main() {
     ok &= Check(editor.SelectedBeat() == 15 &&
                 std::isnan(ui.focusSongSeconds),
                 "explicit cursor navigation releases focus anchor normally");
+    // Clicking an already-selected beat must also release the carried exact
+    // cursor (otherwise the time would appear stuck between ticks).
+    editor.SelectBeat(14);
+    ui.focusSongSeconds = 7.125;
+    app::EditorControls rulerClick;
+    rulerClick.mouseClick = true;
+    rulerClick.mouse = {app::detail::kPlayheadX,
+                        app::detail::kTimelineY + 10.0f};
+    session.ApplyControls(rulerClick, 5.2);
+    ok &= Check(editor.SelectedBeat() == 14 &&
+                std::isnan(ui.focusSongSeconds),
+                "manual ruler click resumes normal snapped-time navigation");
     // Editor file actions have a pure priority policy, testable without UI.
     app::FrameInput command{};
     app::EditorUiAction action{};
