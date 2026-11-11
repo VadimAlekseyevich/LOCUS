@@ -433,10 +433,17 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
         DrawRectangleRounded(panel, 0.05f, 8, Color{26, 30, 42, 255});
         DrawRectangleRoundedLinesEx(panel, 0.05f, 8, 2.0f, kMint);
         Label(font, "GLOBAL OFFSET CALIBRATION", 208, 133, 25, kMint);
-        Label(font, "LISTEN TO THE METRONOME AT 120 BPM", 208, 184, 17, kText);
-        Label(font, "TAP SPACE ON THE HIGH ACCENT (EVERY 4 BEATS)",
-              208, 213, 15, kMuted);
-        Label(font, "FIRST TWO ACCENTS ARE WARM-UP", 208, 240, 15, kMuted);
+        Label(font, "METRONOME AT 100 BPM  /  EVERY CLICK COUNTS",
+              208, 184, 16, kText);
+        const std::string directions =
+            KeyboardKeyName(settings.Key(GameAction::Up)) + " / " +
+            KeyboardKeyName(settings.Key(GameAction::Right)) + " / " +
+            KeyboardKeyName(settings.Key(GameAction::Down)) + " / " +
+            KeyboardKeyName(settings.Key(GameAction::Left));
+        Label(font, "TAP ANY BOUND DIRECTION: " + directions,
+              208, 213, 14, kMuted);
+        Label(font, "START ON ANY BEAT  /  TAP ON EVERY CLICK",
+              208, 240, 15, kMuted);
 
         if (ui.calibration.Complete() && ui.calibration.Reliable()) {
             Label(font, TextFormat("SUGGESTED OFFSET: %+d MS",
@@ -454,7 +461,7 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
                   ui.calibration.Count(),
                   GlobalOffsetCalibrator::kRequiredTaps),
                   299, 298, 23, kGold);
-            Label(font, "PRESS SPACE ONLY WHEN YOU HEAR A HIGH CLICK",
+            Label(font, "KEEP TAPPING EVERY BEAT UNTIL THE COUNT IS FULL",
                   214, 334, 14, kMuted);
         }
         Button(font, SettingsCalibrationRetryButton(), "RETRY", kViolet);
