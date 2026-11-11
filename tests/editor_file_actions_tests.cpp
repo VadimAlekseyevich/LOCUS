@@ -186,6 +186,7 @@ int main() {
             "\"ticksPerBeat\":1,\"snapDivision\":1," +
             "\"grid\":{\"width\":8,\"height\":8}," +
             "\"start\":{\"x\":3,\"y\":3,\"heading\":\"r\"}," +
+            "\"previewLeadBeats\":4," +
             "\"turns\":[{\"timeMs\":1000,\"heading\":\"u\"}]}";
         std::ofstream(source / file, std::ios::binary) << json;
     };
@@ -200,6 +201,7 @@ int main() {
                               installedEasy, managedError) &&
         managedLibrary.Import(source / "Hard.locus.json",
                               installedHard, managedError);
+    if (!setup) std::cerr << "EDITOR_FIXTURE_SETUP_ERROR " << managedError << '\\n';
     ok &= Check(setup && managedLibrary.ChartCount() == 2,
                 "managed two-chart fixture is ready");
     if (setup) {
