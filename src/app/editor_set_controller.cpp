@@ -380,7 +380,8 @@ void EditorSetController::Request(EditorSetAction action) {
         ((affectsCurrent && ctx_.editor.Dirty()) ||
          (parked && parked->Dirty()));
     request.discardsDraft = deletesUnsaved ||
-        (ctx_.files.AnyDirty() && ReplacesDraft(action));
+        (ctx_.files.AnyDirty() &&
+         (ReplacesDraft(action) || affectsCurrent));
     if (EditorSetNeedsConfirmation(request)) {
         pending_ = std::move(request);
         return;
@@ -495,9 +496,15 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
                 if (updated && !updated->charts.empty()) {
                     const auto candidate = updated->charts.front().file;
                     if (!ctx_.files.OpenFromLibrary(candidate.wstring(), error)) {
-                        Notice("DELETED; OPEN ANOTHER DIFFICULTY: " + error, true);
+                        // The deleted file cannot remain the active draft.
+                        ctx_.files.NewDraft();
+                        ctx_.ui.tab = EditorTab::Set;
+                        Notice("DELETED; REOPEN NEXT DIFFICULTY: " + error, true);
                         return false;
                     }
+                    ctx_.ui.tab = EditorTab::Set;
+                } else {
+                    ctx_.files.NewDraft();
                     ctx_.ui.tab = EditorTab::Set;
                 }
             }
