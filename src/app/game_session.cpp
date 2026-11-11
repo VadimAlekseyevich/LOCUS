@@ -14,7 +14,8 @@ void GameSession::Start(bool customChart, double now) {
     judge_.Reset();
     if (customChart) {
         if (testOrigin_) {
-            judge_.ResetFromAudioSeconds(testOrigin_->audioSeconds);
+            judge_.ResetFromAudioSeconds(
+                CalibratedTime(testOrigin_->audioSeconds));
             local_.StartAtAudioSeconds(testOrigin_->audioSeconds, now);
         } else {
             local_.Start(now);
@@ -74,7 +75,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 hitFlash_.Reset();
                 if (customChart) local_.Update(now);
                 else demo_.Update(now);
-                judge_.Advance(*target);
+                judge_.Advance(CalibratedTime(*target));
                 return;
             }
         }
@@ -97,7 +98,8 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                         (customChart ? local_.Speed() : 1.0)
                 : (customChart ? local_.AudioSeconds(capturedAt)
                                : demo_.SongSeconds(capturedAt));
-            const auto judgement = judge_.PressHeading(directions[i], timestamp);
+            const auto judgement = judge_.PressHeading(
+                directions[i], CalibratedTime(timestamp));
             if (judgement && !judgement->wrongDirection &&
                 judgement->grade != core::Grade::Miss)
                 hitFlash_.Trigger(judgement->grade, now);
@@ -114,11 +116,12 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 audioEndedAt_ = now;
                 audioEndSongSeconds_ = songTime;
             }
-            judge_.Advance(audioEndSongSeconds_ +
-                           std::max(0.0, now - audioEndedAt_) *
-                               (customChart ? local_.Speed() : 1.0));
+            judge_.Advance(CalibratedTime(
+                audioEndSongSeconds_ +
+                std::max(0.0, now - audioEndedAt_) *
+                    (customChart ? local_.Speed() : 1.0)));
         } else {
-            judge_.Advance(songTime);
+            judge_.Advance(CalibratedTime(songTime));
         }
     }
 }
