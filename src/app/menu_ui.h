@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/game_settings.h"
+#include "app/global_offset_calibrator.h"
 #include "app/song_library.h"
 #include "raylib.h"
 
@@ -42,6 +43,11 @@ struct SettingsUi {
     int bindingGroup = 0; // 0=PLAY, 1=MENUS/LISTEN, 2=EDITOR.
     int firstBinding = 0; // Scroll within the selected group.
     int capturing = -1; // Global index: 0..gameplay + shortcut actions.
+    bool editingGlobalOffset = false;
+    std::string globalOffsetBuffer;
+    bool calibrationOpen = false;
+    bool calibrationExpired = false;
+    GlobalOffsetCalibrator calibration;
     std::string notice;
     bool noticeError = false;
 };
@@ -72,6 +78,11 @@ Rectangle SettingsVsyncButton();
 Rectangle SettingsFpsMinus();
 Rectangle SettingsFpsPlus();
 Rectangle SettingsShowFpsButton();
+Rectangle SettingsOffsetField();
+Rectangle SettingsCalibrateButton();
+Rectangle SettingsCalibrationApplyButton();
+Rectangle SettingsCalibrationRetryButton();
+Rectangle SettingsCalibrationCancelButton();
 Rectangle SettingsVolumeMinus();
 Rectangle SettingsVolumePlus();
 Rectangle SettingsFlashButton();
