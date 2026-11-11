@@ -56,7 +56,8 @@ void PlayScreenActions::Update(const FrameInput& input, double now) {
 
 PlayTransportView PlayScreenActions::Transport(double now) const {
     if (!context_.customChart) {
-        const double song = context_.demo.SongSeconds(now);
+        const double raw = context_.demo.SongSeconds(now);
+        const double song = context_.game.CalibratedTime(raw);
         return {
             song,
             0.0, // Demo song offset (not a snap-grid beat).
@@ -69,7 +70,7 @@ PlayTransportView PlayScreenActions::Transport(double now) const {
     // visual beat is interpolated for camera/marker rendering only; the
     // judge still reads raw consumed-audio timestamps from ChartPlayback.
     const ChartClockFrame clock = context_.local.Snapshot(now);
-    const double song = clock.visualSeconds;
+    const double song = context_.game.CalibratedTime(clock.visualSeconds);
     const bool finished = clock.finished;
     const bool paused = clock.paused;
     const char* status = finished ? "CHART FINISHED"
@@ -77,7 +78,8 @@ PlayTransportView PlayScreenActions::Transport(double now) const {
         : song < 0.0 ? "SILENT PREROLL  |  ARROWS TO TURN"
                      : "CUSTOM SONG  |  ARROWS TO TURN";
     return {song, context_.local.OffsetSeconds(), paused, finished,
-            clock.practiceRate, status, clock.judgeSeconds};
+            clock.practiceRate, status,
+            context_.game.CalibratedTime(clock.judgeSeconds)};
 }
 
 } // namespace locus::app
