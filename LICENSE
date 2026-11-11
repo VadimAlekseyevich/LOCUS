@@ -1,5 +1,9 @@
 Required Notice: LOCUS — original game and source code by VadimAlekseyevich; Copyright (c) 2026 VadimAlekseyevich (https://github.com/VadimAlekseyevich/LOCUS).
 
+Software/content scope clarification (informational; not an amendment to PolyForm): This license covers LOCUS software and original project material only to the extent that the LOCUS licensor holds the necessary rights. It does not grant any license to songs, sound recordings, artwork, beatmaps or other material uploaded by third parties. Copyrights in independently authored charts and third-party music remain with their respective owners. The game author's additional permission for monetized gameplay videos, streams and independently authored charts is in COMMUNITY_CONTENT_PERMISSION.md and does not license third-party music.
+
+The README describes a planned user-hosted chart-pack service (including audio) and a notice-and-takedown policy. These plans are not an active hosting service, do not create an automatic legal safe harbor, and do not modify the license below. Any actual hosted service will need separately published, implemented user-upload terms, a copyright reporting contact and procedures appropriate to its jurisdiction before launch.
+
 # PolyForm Noncommercial License 1.0.0
 
 <https://polyformproject.org/licenses/noncommercial/1.0.0>
