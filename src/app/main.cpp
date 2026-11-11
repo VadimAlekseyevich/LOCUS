@@ -436,13 +436,23 @@ int main(int argc, char** argv) {
              (editorModalClick && locus::app::MenuActionHit(
                   locus::app::kEditorQuitSaveButton, GetMousePosition(),
                   GetScreenWidth(), GetScreenHeight())))) {
-            double saveNow = MonotonicSeconds();
-            if (editorFiles.SaveAll(saveNow)) {
-                input.quitConfirmed = true;
-                input.quitCanceled = false;
-            } else {
+            const bool skinHasEdits = state.screen == Screen::Skin &&
+                (skinUi.dirty || skinUi.editingName ||
+                 skinUi.editingNumberRow >= 0 || skinUi.editingHex);
+            if (skinHasEdits) {
+                // "Save charts and quit" must not erase an unrelated unsaved
+                // skin. Cancel the quit modal and save the skin explicitly.
                 input.quitConfirmed = false;
                 input.quitCanceled = false;
+            } else {
+                double saveNow = MonotonicSeconds();
+                if (editorFiles.SaveAll(saveNow)) {
+                    input.quitConfirmed = true;
+                    input.quitCanceled = false;
+                } else {
+                    input.quitConfirmed = false;
+                    input.quitCanceled = false;
+                }
             }
         }
         // TEST is a temporary view of the *same unsaved editor document*.
