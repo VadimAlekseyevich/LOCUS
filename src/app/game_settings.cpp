@@ -254,9 +254,7 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
         const auto object = nlohmann::json::parse(text.begin(), text.end());
         if (!object.is_object() || !object.contains("version") ||
             !object["version"].is_number_integer() ||
-            (object["version"].get<int>() != 1 &&
-             object["version"].get<int>() != 2 &&
-             object["version"].get<int>() != 3)) {
+            object["version"].get<int>() != 3) {
             error = "Unsupported settings version.";
             return false;
         }
@@ -271,10 +269,11 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
         parsed.volume = object["volume"].get<float>();
         parsed.hitFlash = object["hitFlash"].get<bool>();
         parsed.fullscreen = object["fullscreen"].get<bool>();
-        // Configs written before the DISPLAY page existed use the stable
-        // tearing-free defaults, without modifying their key bindings.
         for (const char* key : {"vsync", "fpsLimit", "showFps"}) {
-            if (!object.contains(key)) continue;
+            if (!object.contains(key)) {
+                error = std::string("Missing display setting: ") + key;
+                return false;
+            }
             const auto& value = object[key];
             const bool validType = std::string_view(key) == "fpsLimit"
                 ? value.is_number_integer() : value.is_boolean();
@@ -283,15 +282,10 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
                 return false;
             }
         }
-        if (object.contains("vsync"))
-            parsed.vsync = object["vsync"].get<bool>();
-        if (object.contains("fpsLimit"))
-            parsed.fpsLimit = object["fpsLimit"].get<int>();
-        if (object.contains("showFps"))
-            parsed.showFps = object["showFps"].get<bool>();
-        const int version = object["version"].get<int>();
-        const int expectedGameBindings = version < 3 ? 7 : kGameActionCount;
-        for (int i = 0; i < expectedGameBindings; ++i) {
+        parsed.vsync = object["vsync"].get<bool>();
+        parsed.fpsLimit = object["fpsLimit"].get<int>();
+        parsed.showFps = object["showFps"].get<bool>();
+        for (int i = 0; i < kGameActionCount; ++i) {
             const auto& bindings = object["bindings"];
             if (!bindings.contains(kJsonKeys[i]) ||
                 !bindings[kJsonKeys[i]].is_number_integer()) {
@@ -300,9 +294,7 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             }
             parsed.keys[i] = bindings[kJsonKeys[i]].get<int>();
         }
-        // Legacy settings may contain extra, now-removed editor heading
-        // shortcuts. They are ignored; initial heading is set in FIELD.
-        if (version == 3) {
+        {
             if (!object.contains("shortcuts") ||
                 !object["shortcuts"].is_object()) {
                 error = "Settings JSON is missing shortcut bindings.";
@@ -330,22 +322,6 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             }
         }
         if (!parsed.Valid(error)) return false;
-        // Old v1 files commonly contain the prior default arrow bindings.
-        // Migrate only that exact untouched directional preset; customized
-        // old layouts remain untouched. V2 supports intentionally remapping
-        // back to arrows without any automatic migration on next launch.
-        if (version < 3 && parsed.Key(GameAction::Pause) == KEY_SPACE)
-            parsed.keys[static_cast<int>(GameAction::Pause)] = KEY_ESCAPE;
-        if (version == 1 &&
-            parsed.Key(GameAction::Up) == KEY_UP &&
-            parsed.Key(GameAction::Right) == KEY_RIGHT &&
-            parsed.Key(GameAction::Down) == KEY_DOWN &&
-            parsed.Key(GameAction::Left) == KEY_LEFT) {
-            parsed.keys[static_cast<int>(GameAction::Up)] = KEY_J;
-            parsed.keys[static_cast<int>(GameAction::Right)] = KEY_K;
-            parsed.keys[static_cast<int>(GameAction::Down)] = KEY_F;
-            parsed.keys[static_cast<int>(GameAction::Left)] = KEY_D;
-        }
         result = parsed;
         error.clear();
         return true;
