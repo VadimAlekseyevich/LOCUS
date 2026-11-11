@@ -70,7 +70,8 @@ PlayTransportView PlayScreenActions::Transport(double now) const {
     // visual beat is interpolated for camera/marker rendering only; the
     // judge still reads raw consumed-audio timestamps from ChartPlayback.
     const ChartClockFrame clock = context_.local.Snapshot(now);
-    const double song = context_.game.CalibratedTime(clock.visualSeconds);
+    const double song = context_.game.CalibratedTime(
+        clock.visualSeconds, clock.practiceRate);
     const bool finished = clock.finished;
     const bool paused = clock.paused;
     const char* status = finished ? "CHART FINISHED"
@@ -79,7 +80,8 @@ PlayTransportView PlayScreenActions::Transport(double now) const {
                      : "CUSTOM SONG  |  ARROWS TO TURN";
     return {song, context_.local.OffsetSeconds(), paused, finished,
             clock.practiceRate, status,
-            context_.game.CalibratedTime(clock.judgeSeconds)};
+            context_.game.CalibratedTime(
+                clock.judgeSeconds, clock.practiceRate)};
 }
 
 } // namespace locus::app
