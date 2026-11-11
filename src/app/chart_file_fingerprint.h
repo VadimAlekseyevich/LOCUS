@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/chart_file.h"
+
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -9,10 +11,13 @@ namespace locus::app {
 
 // Lightweight NON-cryptographic content fingerprint for detecting accidental
 // external chart edits that preserve file size and last-write timestamp.
-// Reading at most 1 MiB per chart (the chart loader's maximum) is cheaper
+// Reading at most 8 MiB per chart (the chart loader's maximum) is cheaper
 // than parsing JSON and recalculating the difficulty of every difficulty.
 inline bool ChartFileFingerprint(const std::filesystem::path& path,
                                  std::uint64_t& result) {
+    std::error_code ec;
+    const auto size = std::filesystem::file_size(path, ec);
+    if (ec || size > kMaxChartFileBytes) return false;
     std::ifstream file(path, std::ios::binary);
     if (!file) return false;
 

@@ -4,6 +4,7 @@
 #include "core/demo_audio.h"
 
 #include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -36,7 +37,7 @@ int main() {
     if (errorCode) return 1;
 
     const fs::path audio = audioDirectory / "sample.wav";
-    const auto wav = locus::core::MakeDemoClickWav(120.0, 8);
+    const auto wav = locus::core::MakeDemoClickWav(120.0, 64); // 32-second song
     {
         std::ofstream file(audio, std::ios::binary);
         file.write(reinterpret_cast<const char*>(wav.data()),
@@ -92,6 +93,34 @@ int main() {
         reopened.offsetSeconds == -0.125 &&
         fs::equivalent(fs::path(songAgain), audio);
 
+    // A dense but valid chart must not be writable and then impossible to
+    // reload just because its pretty-printed JSON exceeds the old 1 MiB cap.
+    locus::core::LoadedChart dense;
+    dense.title = "Dense file round-trip";
+    dense.route.bpm = 2000.0;
+    dense.route.ticksPerBeat = 48;
+    dense.route.lengthBeats = 52000;
+    dense.route.start = {3, 3};
+    for (int i = 1; i <= 20000; ++i)
+        dense.route.turns.push_back({
+            static_cast<int>(std::llround(i * 1.6)),
+            locus::core::Heading::Up, i});
+    const fs::path densePath = root / "dense.locus.json";
+    const bool denseSaved = locus::app::SaveChartWithAudioPath(
+        densePath.wstring(), audio.wstring(), dense, message);
+    std::error_code sizeError;
+    const auto denseBytes = fs::file_size(densePath, sizeError);
+    locus::core::LoadedChart denseReopened;
+    std::wstring denseAudio;
+    const bool denseRoundTrip = denseSaved && !sizeError &&
+        denseBytes > 1024U * 1024U &&
+        denseBytes <= locus::app::kMaxChartFileBytes &&
+        locus::app::OpenChartWithAudioPath(
+            densePath.wstring(), denseReopened, denseAudio, message) &&
+        denseReopened.route.turns.size() == 20000 &&
+        locus::core::PrepareChartForSong(denseReopened, 32.0, message) &&
+        fs::equivalent(fs::path(denseAudio), audio);
+
     // An impossible save location must not modify the original JSON.
     const fs::path sibling = fs::temp_directory_path() / ("locus-sibling-" + unique);
     fs::create_directories(sibling, errorCode);
@@ -105,17 +134,19 @@ int main() {
     const bool blocked = !locus::core::ValidChartAudioPath("../another-song.wav");
     fs::remove_all(root, errorCode);
     fs::remove_all(sibling, errorCode);
-    if (!correct || !blocked || !roundTrip || !refusedOutside || !existedAfterError) {
+    if (!correct || !blocked || !roundTrip || !denseRoundTrip ||
+        !refusedOutside || !existedAfterError) {
         std::cerr << "CHART_FILE_FAIL " << message
                   << " opened=" << opened << " correct=" << correct
                   << " saved=" << savedOnce << " reloaded=" << reloaded
                   << " roundTrip=" << roundTrip
+                  << " denseRoundTrip=" << denseRoundTrip
                   << " refusedOutside=" << refusedOutside
                   << " existedAfterError=" << existedAfterError
                   << " blocked=" << blocked << '\n';
         return 1;
     }
-    std::cout << "CHART_FILE_PASS relative_audio=1 turns=3 save_reopen=1\n";
+    std::cout << "CHART_FILE_PASS relative_audio=1 turns=3 save_reopen=1 dense_json=1\n";
 #else
     std::cout << "CHART_FILE_PASS Windows filesystem test skipped\n";
 #endif

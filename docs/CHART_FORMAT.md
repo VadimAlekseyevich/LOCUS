@@ -1,6 +1,6 @@
 # LOCUS — Chart Format
 
-LOCUS saves UTF-8 JSON with **formatVersion 4** (single-BPM v3 files also import). Note times are absolute whole milliseconds from the start of the referenced audio file, and do not change when BPM or editor snap density changes.
+LOCUS saves UTF-8 JSON with **formatVersion 4** (single-BPM v3 files also import). Note times are absolute whole milliseconds from the start of the referenced audio file, and do not change when BPM or editor snap density changes. The supported JSON file size is **8 MiB**, sufficient for the parser's maximum **65,536 events** even with indented serialization.
 
 ## Example
 

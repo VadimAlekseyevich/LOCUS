@@ -59,7 +59,7 @@ bool OpenChartWithAudioPath(const std::wstring& chartFile,
                             std::string& error) {
 #ifdef _WIN32
     std::vector<std::uint8_t> bytes;
-    if (!ReadLocalFileBytes(chartFile, bytes, error, 1024U * 1024U)) {
+    if (!ReadLocalFileBytes(chartFile, bytes, error, kMaxChartFileBytes)) {
         error = "Chart file: " + error;
         return false;
     }

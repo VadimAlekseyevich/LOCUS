@@ -2,9 +2,14 @@
 
 #include "core/chart_json.h"
 
+#include <cstddef>
 #include <string>
 
 namespace locus::app {
+
+// Large enough to round-trip the parser's full 65,536-note chart limit,
+// including indented JSON. Used consistently by load/save/cache checking.
+inline constexpr std::size_t kMaxChartFileBytes = 8U * 1024U * 1024U;
 
 // Open UTF-8 chart JSON from a Unicode Windows path, resolve its normalized
 // chart-relative local song path, reject symlinks/junctions that escape the

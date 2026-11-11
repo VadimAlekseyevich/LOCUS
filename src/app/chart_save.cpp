@@ -70,6 +70,10 @@ bool SaveChartWithAudioPath(const std::wstring& chartFile,
 
     std::string encoded;
     if (!core::SerializeChartJson(withPath, encoded, error)) return false;
+    if (encoded.size() > kMaxChartFileBytes) {
+        error = "Chart JSON exceeds the supported 8 MiB file limit.";
+        return false;
+    }
     FolderWriteLock folderLock;
     if (!folderLockAlreadyHeld && !folderLock.Acquire(folder, error))
         return false;
