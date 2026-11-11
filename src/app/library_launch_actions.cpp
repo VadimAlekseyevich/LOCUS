@@ -18,7 +18,6 @@ bool LaunchLibrarySelection(const LibraryLaunchContext& ctx,
         case LibraryLaunchKind::NewDifficulty:
             if (intent.folder.empty()) {
                 ctx.ui.notice = "SELECT AN INSTALLED SONG FIRST";
-
             } else if (ctx.editorFiles.NewDifficultyFromLibrary(
                     intent.audio.wstring(), intent.folder.wstring(), ctx.error)) {
                 ctx.app.screen = Screen::Editor;
