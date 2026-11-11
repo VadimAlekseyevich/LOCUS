@@ -26,6 +26,7 @@ struct MenuEvents {
     bool calibrationStart = false;
     bool calibrationStop = false;
     bool calibrationTap = false;
+    double calibrationTapAt = 0.0; // Original monotonic keydown timestamp.
     int previewStartDeltaMs = 0; // Song Set's menu-only listening origin.
     bool toggleFullscreen = false;
     bool applyDisplaySettings = false;
