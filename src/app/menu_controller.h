@@ -23,6 +23,9 @@ struct MenuEvents {
     bool trashSongSet = false;
     bool restoreDeleted = false;
     bool saveSettings = false;
+    bool calibrationStart = false;
+    bool calibrationStop = false;
+    bool calibrationTap = false;
     int previewStartDeltaMs = 0; // Song Set's menu-only listening origin.
     bool toggleFullscreen = false;
     bool applyDisplaySettings = false;
