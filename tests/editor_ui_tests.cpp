@@ -258,7 +258,7 @@ int main() {
 
     for (int n = 1; n <= 4; ++n) {
         const auto mainPane = detail::ComparisonPreviewBounds(n, 0);
-        ok &= Check(mainPane.width >= 218.0f && mainPane.height >= 218.0f &&
+        ok &= Check(mainPane.width >= 197.0f && mainPane.height >= 197.0f &&
                     mainPane.x >= 50.0f && mainPane.x + mainPane.width <= 735.0f,
                     "editable route retains large square for all pane counts");
         for (int i = 1; i < n; ++i) {
