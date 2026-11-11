@@ -114,19 +114,16 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             return true;
         };
         const Json document = Json::parse(text.begin(), text.end(), checkDuplicates);
-        // V4 adds a per-song tempo map; V3 single-tempo charts remain importable.
         if (!document.is_object()) {
             error = "chart: expected an object";
             return false;
         }
         const bool hasTicks = document.contains("ticksPerBeat");
-        const bool hasTempo = document.contains("tempoMap");
         const bool hasSnap = document.contains("snapDivision");
         std::set<std::string> expected = {
             "formatVersion", "title", "audioPath", "bpm",
-            "offsetMs", "grid", "start", "previewLeadBeats", "turns"
+            "offsetMs", "tempoMap", "grid", "start", "previewLeadBeats", "turns"
         };
-        if (hasTempo) expected.insert("tempoMap");
         if (hasTicks) expected.insert("ticksPerBeat");
         if (hasSnap) expected.insert("snapDivision");
         for (const auto& member : document.items())
@@ -140,13 +137,9 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 return false;
             }
         int version = 0;
-        if (!IntegerInRange(document["formatVersion"], 3, 4, version,
+        if (!IntegerInRange(document["formatVersion"], 4, 4, version,
                             "formatVersion", error)) {
-            error = "formatVersion: expected version 3 or 4";
-            return false;
-        }
-        if (hasTempo != (version == 4)) {
-            error = "tempoMap: required exactly in chart formatVersion 4";
+            error = "formatVersion: expected version 4";
             return false;
         }
 
@@ -177,7 +170,7 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
         if (!IntegerInRange(document["offsetMs"], -3600000, 3600000,
                             offsetMs, "offsetMs", error)) return false;
         parsed.offsetSeconds = offsetMs / 1000.0;
-        if (hasTempo) {
+        {
             const Json& changes = document["tempoMap"];
             if (!changes.is_array() || changes.empty() || changes.size() > 256) {
                 error = "tempoMap: expected 1 to 256 entries";
@@ -332,7 +325,7 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
             document["ticksPerBeat"] = chart.route.ticksPerBeat;
         if (chart.route.snapDivision != 1)
             document["snapDivision"] = chart.route.snapDivision;
-        // V3 uses ONLY integer absolute milliseconds for song time and
+        // Use only integer absolute milliseconds for song time and
         // offset; the authoring-grid resolution is separate metadata.
         document["offsetMs"] = static_cast<std::int64_t>(
             std::llround(chart.offsetSeconds * 1000.0));
