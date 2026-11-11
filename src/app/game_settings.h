@@ -64,6 +64,11 @@ struct GameSettings {
         {KEY_I}, {KEY_I, false, true},
         {KEY_EQUAL}, {KEY_MINUS}, {KEY_PERIOD}, {KEY_COMMA}
     }};
+    // Global audio output latency, not a chart/song offset. Positive means
+    // the audible click arrives late: judge and graphics lag the raw clock.
+    // Signed milliseconds, manual entry or metronome calibration.
+    int globalOffsetMs = 0;
+    static constexpr int kGlobalOffsetLimitMs = 1000;
     float volume = 0.7f;
     bool hitFlash = true;
     bool fullscreen = false;
