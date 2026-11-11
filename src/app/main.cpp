@@ -45,6 +45,7 @@
 #include "app/quit_media.h"
 #include "app/editor_discard_guard.h"
 #include "app/editor_save_modal_layout.h"
+#include "app/chart_editor_layout.h"
 #include "core/tempo_map.h"
 
 #include "raylib.h"
@@ -542,6 +543,24 @@ int main(int argc, char** argv) {
             previousScreen == Screen::Editor &&
             !state.quitConfirmation && !state.levelExitConfirmation &&
             editorDiscard.Pending() == EditorPending::None) {
+            // Independent editor preview controls live beside the compass.
+            // They are presentation settings, never chart edits or SKIN
+            // changes. Consume the click before note/pattern handlers.
+            if (editorUi.tab == locus::app::EditorTab::Route &&
+                input.editor.mouseClick && !editorUi.comparisonPickerOpen &&
+                !editorSet.HasPending() && editorFiles.PendingClose().empty()) {
+                const int speedDelta = locus::app::detail::
+                    EditorSpeedControlDelta(input.editor.mouse);
+                const int lengthDelta = locus::app::detail::
+                    EditorPathControlDelta(input.editor.mouse);
+                if (speedDelta || lengthDelta) {
+                    const bool changed = speedDelta
+                        ? settings.StepEditorPreviewSpeed(speedDelta)
+                        : settings.StepEditorPreviewLength(lengthDelta);
+                    if (changed) persistSettings();
+                    input.editor.mouseClick = false;
+                }
+            }
             if (editorActions.Apply(input, now))
                 state.screen = Screen::Play;
         }
@@ -755,7 +774,7 @@ int main(int argc, char** argv) {
         const auto comparisonFrame = visibleState.screen == Screen::Editor
             ? editorComparison.Prepare(
                 editor, editorUi, editorSetView, localSong.DurationSeconds(),
-                editorClock.songSeconds, activeSkin.lookaheadMs,
+                editorClock.songSeconds, settings.editorPreviewLengthMs,
                 [&editorFiles](const std::filesystem::path& path) {
                     return editorFiles.ParkedEditor(path);
                 })
