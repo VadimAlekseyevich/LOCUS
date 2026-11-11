@@ -2,7 +2,6 @@
 #include "app/song_library_internal.h"
 #include "app/chart_file.h"
 #include "app/chart_filename.h"
-#include "app/audio_revision.h"
 #include "app/song_set_storage.h"
 #include "app/song_timing.h"
 #include <algorithm>
@@ -38,10 +37,6 @@ bool SongLibrary::DuplicateDifficulty(const fs::path& original,
         return false;
     }
     const auto& set = songs_[static_cast<std::size_t>(song)];
-    if (!set.managed) {
-        error = "Legacy folders must be reimported as a managed Song Set.";
-        return false;
-    }
     const auto& selected = set.charts[static_cast<std::size_t>(index)];
     core::LoadedChart copy = selected.data;
     copy.title += " Copy";
@@ -93,12 +88,6 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
                 error = "The selected folder has no managed Song Set.";
                 return false;
             }
-            // Make previously installed v1/v2 folders read-only: there can
-            // be several different audio revisions in the old layout.
-            if (fs::exists(folder / L".locus-versions", ec)) {
-                error = "This legacy library folder cannot accept new difficulties.";
-                return false;
-            }
             metadata.id = HashText(source) + HashText(folder);
             metadata.title = SongDisplayTitle(source);
             metadata.artist.clear();
@@ -106,19 +95,12 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
             metadata.bpm = chart.route.bpm;
             metadata.offsetMs = static_cast<int>(std::llround(
                 chart.offsetSeconds * 1000.0));
+            metadata.tempoMap = chart.route.tempoMap.empty()
+                ? std::vector<core::TempoMarker>{{*metadata.offsetMs, *metadata.bpm}}
+                : chart.route.tempoMap;
         }
         core::LoadedChart installed = chart;
-        if (metadata.bpm) {
-            if (!ApplySongTiming(installed, *metadata.bpm,
-                                 *metadata.offsetMs, error)) return false;
-        } else {
-            const auto other = std::find_if(songs_.begin(), songs_.end(),
-                [&](const LibrarySong& s) {
-                    return s.managed && s.folder == folder;
-                });
-            if (other != songs_.end() &&
-                !ApplySongTiming(installed, other->tempoMap, error)) return false;
-        }
+        if (!ApplySongTiming(installed, metadata.tempoMap, error)) return false;
         const fs::path audio = folder / fs::u8path(metadata.audioFile);
         if (!InstallSharedSongAudio(source, audio, error)) return false;
 
@@ -191,59 +173,41 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     const fs::path manifestPath = folder / L"set.locus.json";
     const bool existingSet = fs::exists(manifestPath, ec);
     if (ec) { error = "Cannot inspect Song Set metadata."; return false; }
-    // An older installed library (which may contain multiple audio versions)
-    // must stay readable and must never be silently converted to one audio.
-    const bool legacy = !existingSet &&
-        fs::exists(folder / L".locus-versions", ec);
-    if (ec) { error = "Cannot inspect legacy audio versions."; return false; }
-
     fs::path destinationAudio;
     SongSetManifest metadata;
-    if (legacy) {
-        if (!InstallAudioRevision(sourceAudio, folder, destinationAudio, error))
-            return false;
+    if (existingSet) {
+        if (!LoadSongSetManifest(manifestPath, metadata, error)) return false;
     } else {
-        if (existingSet) {
-            if (!LoadSongSetManifest(manifestPath, metadata, error)) return false;
-        } else {
-            metadata.id = HashText(sourceAudio) + HashText(folder);
-            metadata.title = SongDisplayTitle(sourceAudio);
-            metadata.artist.clear();
-            metadata.audioFile = sourceAudio.filename().u8string();
-            metadata.bpm = source.route.bpm;
-            metadata.offsetMs = static_cast<int>(std::llround(
-                source.offsetSeconds * 1000.0));
-        }
-        if (metadata.audioFile != sourceAudio.filename().u8string()) {
-            error = "Existing Song Set uses a different audio filename. "
-                    "Import as a new set rather than changing other difficulties.";
-            return false;
-        }
-        destinationAudio = folder / fs::u8path(metadata.audioFile);
-        if (!InstallSharedSongAudio(sourceAudio, destinationAudio, error))
-            return false;
+        metadata.id = HashText(sourceAudio) + HashText(folder);
+        metadata.title = SongDisplayTitle(sourceAudio);
+        metadata.artist.clear();
+        metadata.audioFile = sourceAudio.filename().u8string();
+        metadata.bpm = source.route.bpm;
+        metadata.offsetMs = static_cast<int>(std::llround(
+            source.offsetSeconds * 1000.0));
+        metadata.tempoMap = source.route.tempoMap.empty()
+            ? std::vector<core::TempoMarker>{{*metadata.offsetMs, *metadata.bpm}}
+            : source.route.tempoMap;
     }
+    if (metadata.audioFile != sourceAudio.filename().u8string()) {
+        error = "Existing Song Set uses a different audio filename. "
+                "Import as a new set rather than changing other difficulties.";
+        return false;
+    }
+    destinationAudio = folder / fs::u8path(metadata.audioFile);
+    if (!InstallSharedSongAudio(sourceAudio, destinationAudio, error)) return false;
 
     // File identity is based on its source path, not a mutable difficulty name.
     const std::string difficulty = FilenamePart(actualChart.stem().u8string());
     installedChart = folder /
         (difficulty + "-" + HashText(actualChart) + ".locus.json");
-    if (!legacy && existingSet) {
-        const auto existing = std::find_if(songs_.begin(), songs_.end(),
-            [&](const LibrarySong& s) { return s.managed && s.folder == folder; });
-        if (metadata.bpm) {
-            if (!ApplySongTiming(source, *metadata.bpm,
-                                 *metadata.offsetMs, error)) return false;
-        } else if (existing != songs_.end()) {
-            if (!ApplySongTiming(source, existing->tempoMap, error)) return false;
-        }
-    }
+    if (!ApplySongTiming(source, metadata.tempoMap, error)) return false;
     if (!SaveChartWithAudioPath(installedChart.wstring(),
                                 destinationAudio.wstring(), source, error, true))
         return false;
     // Metadata is published last. Interrupted imports still leave a valid
     // independently readable chart and never damage older difficulties.
-    if (!legacy && !existingSet &&
+    if (!existingSet &&
         !WriteNewSongSetManifest(manifestPath, metadata, error)) return false;
     std::string notice;
     if (!Refresh(notice)) { error = notice; return false; }
