@@ -1,5 +1,4 @@
 #include "app/editor_comparison.h"
-#include "app/editor_file_actions.h"
 #include "app/chart_editor_layout.h"
 
 #include <algorithm>
@@ -128,7 +127,8 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
     const core::ChartEditor& draft, const EditorUiState& ui,
     const EditorSetView& set, double songDurationSeconds,
     double songSeconds, float lookaheadMs,
-    const EditorFileActions* workspace) {
+    std::function<const core::ChartEditor*(
+        const std::filesystem::path&)> parkedDraft) {
     EditorComparisonFrame frame;
     // The editor can reset its history to revision 0 on Open or New. Use
     // monotonic RouteRevision instead of revision or a borrowed Chart* key.
@@ -162,8 +162,8 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             found - set.comparisonOptions.begin());
         if (foundIndex == set.current) continue;
 
-        const core::ChartEditor* parked = workspace
-            ? workspace->ParkedEditor(file) : nullptr;
+        const core::ChartEditor* parked = parkedDraft
+            ? parkedDraft(file) : nullptr;
         const core::LoadedChart* source = parked
             ? &parked->Data() : found->chart;
         const std::uint64_t revision = parked ? parked->RouteRevision() : 0;
