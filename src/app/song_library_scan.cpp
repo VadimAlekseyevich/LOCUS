@@ -169,25 +169,21 @@ bool SongLibrary::Refresh(std::string& message) {
     }
     if (scanned >= 8192) ++skipped;
     for (auto& song : next) {
-        if (song.managed) {
-            SongSetManifest timing;
-            std::string problem;
-            if (!LoadSongSetManifest(song.folder / L"set.locus.json",
-                                     timing, problem)) {
-                message = "Song Set timing could not be read: " + problem;
+        SongSetManifest timing;
+        std::string problem;
+        if (!LoadSongSetManifest(song.folder / L"set.locus.json",
+                                 timing, problem)) {
+            message = "Song Set timing could not be read: " + problem;
+            return false;
+        }
+        song.bpm = *timing.bpm;
+        song.offsetMs = *timing.offsetMs;
+        song.tempoMap = timing.tempoMap;
+        for (auto& difficulty : song.charts) {
+            if (!ApplySongTiming(difficulty.data, song.tempoMap,
+                                 problem)) {
+                message = "Song Set " + song.title + ": " + problem;
                 return false;
-            }
-            song.bpm = *timing.bpm;
-            song.offsetMs = *timing.offsetMs;
-            song.tempoMap = timing.tempoMap;
-            {
-                for (auto& difficulty : song.charts) {
-                    if (!ApplySongTiming(difficulty.data, song.tempoMap,
-                                         problem)) {
-                        message = "Song Set " + song.title + ": " + problem;
-                        return false;
-                    }
-                }
             }
         }
         for (auto& difficulty : song.charts) {
