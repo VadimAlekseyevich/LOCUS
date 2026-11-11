@@ -291,10 +291,19 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                 DrawTextLabel(font, "WARNING: UNSAVED EDITS WILL BE LOST",
                               {195.0f, 281.0f}, 18.0f,
                               Color{239, 161, 146, 255});
-            DrawUiButton(font, kEditorModalConfirmButton, "Y / CONFIRM",
-                         MenuButtonStyle({241, 158, 156, 255}));
-            DrawUiButton(font, kEditorModalCancelButton, "N / CANCEL",
-                         MenuButtonStyle({130, 226, 215, 255}));
+            if (editorSetPending->discardsDraft) {
+                DrawUiButton(font, kEditorSaveDraftButton, "S / SAVE FIRST",
+                             MenuButtonStyle({130, 226, 215, 255}));
+                DrawUiButton(font, kEditorDiscardDraftButton, "Y / DISCARD",
+                             MenuButtonStyle({235, 156, 156, 255}));
+                DrawUiButton(font, kEditorCancelDraftButton, "N / CANCEL",
+                             MenuButtonStyle({155, 178, 216, 255}));
+            } else {
+                DrawUiButton(font, kEditorModalConfirmButton, "Y / CONFIRM",
+                             MenuButtonStyle({241, 158, 156, 255}));
+                DrawUiButton(font, kEditorModalCancelButton, "N / CANCEL",
+                             MenuButtonStyle({130, 226, 215, 255}));
+            }
         }
         if (editorPending != EditorPending::None ||
             !editorClosePending.empty()) {
