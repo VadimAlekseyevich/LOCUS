@@ -11,9 +11,9 @@ guarantee that a pattern is sight-readable. The displayed **V2** label makes
 the current formula explicit.
 
 The calculator in `core/chart_difficulty.{h,cpp}` uses absolute note
-timestamps, directions, BPM for modest rhythmic accents, and route geometry.
-It neither loads audio nor depends on the current skin, practice speed, key
-bindings or player performance. The editor recalculates after chart changes;
+timestamps, directions, and route geometry measured in time-based reference units.
+It neither loads audio nor depends on BPM/tempo maps, editor grid positions,
+the current skin, practice speed, key bindings or player performance. The editor recalculates after chart changes;
 the song library computes ratings during a rescan.
 
 ## What contributes
@@ -22,7 +22,7 @@ the song library computes ratings during a rescan.
    chart-wide physical-key density**. Long or consistently dense streams now
    weigh substantially more than in v1. Diagonal notes count as one note but
    two key presses.
-2. **RHYTHM** — irregular adjacent intervals, unusual placements and very
+2. **RHYTHM** — irregular adjacent intervals, varying real-time spacing and very
    short gaps. Its density multiplier has no upper ceiling; a steady triplet
    pattern is not as irregular as unpredictable alternating intervals.
 3. **KEYS** — simultaneous diagonal input, rapid changes in key masks,
@@ -75,8 +75,8 @@ real players, and should be judged by comparing chart examples in-game.
 ## Guarantees and limitations
 
 - Whole-chart rotation or mirroring leaves every component unchanged.
-- Changing tick subdivision without changing notes or musical timestamps
-  leaves the rating unchanged.
+- Changing BPM, tempo map, or tick subdivision without changing absolute note
+  times and directions leaves the entire rating unchanged.
 - Shifting note times together with the offset leaves the rating unchanged.
 - The calculation never changes chart timing, headings, scoring or JSON.
 - Blank charts report zero; invalid chart parameters return no useful rating.
