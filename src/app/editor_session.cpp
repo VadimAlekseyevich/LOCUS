@@ -2,12 +2,14 @@
 #include "core/tempo_map.h"
 
 #include "app/chart_playback.h"
+#include "app/chart_editor_layout.h"
 #include "app/game_session.h"
 #include "app/local_music.h"
 #include "core/judgement.h"
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <utility>
 
 namespace locus::app {
@@ -45,9 +47,11 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
     // The shared transport may have been configured by another difficulty
     // with a different tick resolution. Project its SONG SECONDS into the
     // currently focused chart's own grid instead of calling playback_.Beat().
-    controls.timelineViewBeat = playback_.Playing()
+    const double songSeconds = playback_.Playing()
+        ? playback_.AudioSeconds(now) : ui_.focusSongSeconds;
+    controls.timelineViewBeat = std::isfinite(songSeconds)
         ? core::TempoBeatAtSeconds(editor_.Data().route,
-            editor_.Data().offsetSeconds, playback_.AudioSeconds(now)) *
+            editor_.Data().offsetSeconds, songSeconds) *
             editor_.Data().route.ticksPerBeat
         : static_cast<double>(beforeBeat);
     const EditorUiAction action = ApplyEditorControls(editor_, ui_, controls);
@@ -68,6 +72,13 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
         status_ = "PREVIEW SPEED CHANGED - AUDIO PITCH WILL ALSO CHANGE";
     }
     const bool selectionChanged = editor_.SelectedBeat() != beforeBeat;
+    // Explicit navigation/seek ends the temporary exact-time focus anchor.
+    // Otherwise pressing Copy or editing an already-selected note would
+    // spuriously jump the stopped viewport to a rounded chart tick.
+    if (selectionChanged ||
+        (input.mouseClick && detail::Hit(detail::kSongOverview, input.mouse)) ||
+        (ui_.draggingSongOverview && (input.mouseHeld || input.mouseReleased)))
+        ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
     if (selectionChanged) previewBeat_ = editor_.SelectedBeat();
     if ((action.changedChart || selectionChanged) &&
         (playback_.Playing() || playback_.Finished())) {
@@ -90,7 +101,11 @@ void EditorSession::StartPreview(int beat, double now) {
         return;
     }
     // Preserve negative-time visual preroll for positive song offsets.
-    const double songTime = editor_.AudioSecondsAtBeat(beat);
+    // Space immediately after changing difficulty starts from the precise
+    // shared cursor, not its rounded projection onto a different tick grid.
+    const double songTime = std::isfinite(ui_.focusSongSeconds) &&
+                            beat == editor_.SelectedBeat()
+        ? ui_.focusSongSeconds : editor_.AudioSecondsAtBeat(beat);
     if (!std::isfinite(songTime) ||
         songTime >= music_.DurationSeconds()) {
         status_ = "PREVIEW FAILED: SELECTED BEAT / OFFSET IS AFTER SONG END";
@@ -104,6 +119,7 @@ void EditorSession::StartPreview(int beat, double now) {
         status_ = "PREVIEW FAILED: COULD NOT START AUDIO";
         return;
     }
+    ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
     previewBeat_ = beat;
     status_ = "PREVIEW FROM BEAT " + std::to_string(beat) +
               " / SONG " + std::to_string(songTime) +
@@ -115,7 +131,9 @@ bool EditorSession::BeginTest(EditorTestTarget target, double now,
     // Use the exact paused/current audio position, not the rounded UI tick.
     const double position = playback_.Playing()
         ? playback_.AudioSeconds(now)
-        : editor_.AudioSecondsAtBeat(editor_.SelectedBeat());
+        : std::isfinite(ui_.focusSongSeconds)
+            ? ui_.focusSongSeconds
+            : editor_.AudioSecondsAtBeat(editor_.SelectedBeat());
     playback_.Stop();
     if (audioPath_.empty() || !music_.Ready()) {
         status_ = "TEST NEEDS AUDIO - CLICK LOAD SONG";
@@ -158,6 +176,7 @@ void EditorSession::UpdatePreview(double now) {
     if (playback_.Finished()) {
         status_ = "PREVIEW FINISHED - SELECT BEAT OR R TO RESTART";
     } else if (!playback_.Paused()) {
+        ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
         const double beatNow = core::TempoBeatAtSeconds(
             editor_.Data().route, editor_.Data().offsetSeconds,
             playback_.AudioSeconds(now)) * editor_.Data().route.ticksPerBeat;
