@@ -196,15 +196,15 @@ int main() {
     ChartEditor ruler;
     ok &= Check(detail::RouteTimeMs(ruler, 4.0) == 2000 &&
                 detail::RouteTimeMs(ruler, 4.5) == 2250 &&
-                detail::kRouteTimeValue.x <= 70 &&
-                detail::kRouteTimeValue.y <= 451 &&
+                detail::kRouteTimeValue.x <= 770 &&
+                detail::kRouteTimeValue.y <= 267 &&
                 detail::kRouteTimeValue.x +
-                    detail::kRouteTimeValue.width > 70 &&
+                    detail::kRouteTimeValue.width > 770 &&
                 detail::kRouteTimeValue.y +
-                    detail::kRouteTimeValue.height > 451,
+                    detail::kRouteTimeValue.height > 267,
                 "clickable Route time uses fractional beat audio milliseconds");
     EditorUiState timeCopyUi;
-    EditorControls timeCopyClick = Click(70, 451);
+    EditorControls timeCopyClick = Click(770, 267);
     timeCopyClick.timelineViewBeat = 4.5;
     const auto timeCopyAction = ApplyEditorControls(ruler, timeCopyUi, timeCopyClick);
     ok &= Check(timeCopyAction.clipboardWrite == "2250" &&
