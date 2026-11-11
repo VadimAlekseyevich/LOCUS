@@ -1,6 +1,6 @@
 # LOCUS — Chart Format
 
-LOCUS saves UTF-8 JSON with **formatVersion 4** (single-BPM v3 files also import). Note times are absolute whole milliseconds from the start of the referenced audio file, and do not change when BPM or editor snap density changes. The supported JSON file size is **8 MiB**, sufficient for the parser's maximum **65,536 events** even with indented serialization.
+LOCUS saves UTF-8 JSON with **formatVersion 4**. Note times are absolute whole milliseconds from the start of the referenced audio file, and do not change when BPM or editor snap density changes. The supported JSON file size is **8 MiB**, sufficient for the parser's maximum **65,536 events** even with indented serialization.
 
 ## Example
 
@@ -33,10 +33,10 @@ The [working sample](../examples/first-song.locus.json) contains nine turns; sup
 
 | Field | Rules |
 | --- | --- |
-| `formatVersion` | **4** on save (v3 remains readable; earlier versions are rejected) |
+| `formatVersion` | **4** on save and load; older versions are rejected |
 | `title` | Valid UTF-8, no control characters, at most 1024 bytes; the editor allows 100 Unicode characters |
 | `audioPath` | Nonempty local path **relative to the chart folder**, with forward slashes only |
-| `bpm` | Finite positive musical beats per minute; standalone compatibility value, overridden by a managed Song Set manifest |
+| `bpm` | Finite positive musical beats per minute; first tempo marker value, overridden by a managed Song Set manifest |
 | `offsetMs` | Signed **integer**, from -3,600,000 to 3,600,000, matching the first tempo marker |
 | `tempoMap[]` | Required in v4. Ordered list of 1–256 `{timeMs,bpm}` markers. The first offset equals `offsetMs` and defines beat zero, and its BPM equals `bpm`. Subsequent markers change the shared BPM at their exact timestamp without resetting beat phase |
 | `ticksPerBeat` | Optional integer 1–48, default 1 |
@@ -63,6 +63,6 @@ Installed difficulties in one Song Set share a single audio file beside `set.loc
 
 The audio reference must stay inside the chart folder or a subfolder after canonical path resolution. Absolute paths, drive/URL prefixes, backslashes, empty segments, `.`, `..` and unsafe path characters are rejected. Saving charts to a folder that does not contain their referenced audio is rejected. File writes use a temporary file and an on-volume replacement. Overwrites create a previous-version backup in `.locus-history/`. A managed Set's audio is never silently replaced on import.
 
-Unknown fields, duplicate keys, unsupported versions, invalid timestamps and malformed colors/data are not silently ignored. V3/V4 absolute-heading charts are supported; v1/v2 and long heading strings are rejected. V4 adds the required tempo map.
+Unknown fields, duplicate keys, unsupported versions, invalid timestamps and malformed colors/data are not silently ignored. Only v4 absolute-heading charts with a required tempo map are supported. Older versions and long heading strings are rejected.
 
 For gameplay rules and scoring see [GDD](GDD.md).
