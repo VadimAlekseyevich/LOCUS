@@ -132,8 +132,13 @@ for a transactional filesystem or a cryptographic authenticity check.
 
 The Windows CI and headless domain tests are valuable, but cannot establish
 actual motion readability, acoustic sync or screen-tearing behavior.
-Benchmark update/preview time and allocations on representative dense charts,
-then verify the camera and visual glyphs on a real display. Add regression
+The optional headless `locus_route_preview_bench` executable profiles
+1,024/60,000 event charts at 4/20 NPS with one/four simultaneous preview
+panes and reports wall-clock compile time plus per-frame snapshot time. Windows
+CI runs all four cases and uploads the output. This gives repeatable CPU-side
+numbers, **not GPU frame rate or input latency**. Verify the camera and glyph
+legibility on a real Windows display before introducing visual crossings
+masks or a supplementary action queue. Add regression
 tests only for contracts or failures they can actually detect.
 
 ## Implementation order

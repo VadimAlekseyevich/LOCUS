@@ -2,6 +2,7 @@
 
 #include "app/visual_style.h"
 #include "app/path_mesh.h"
+#include "app/turn_readability.h"
 
 #include "rlgl.h"
 #include "app/reverse_cap.h"
@@ -292,28 +293,47 @@ Vector2 DrawTimedRouteTrajectory(const RoutePreviewFrame& preview,
 void DrawTimedRouteJunctions(const RoutePreviewFrame& preview,
                              RouteCanvas canvas, const Skin& skin) {
     if (!preview.ready || preview.horizonSeconds <= 0.0) return;
-    // Same-coordinate turns retain their chronological priority: draw the
-    // nearest upcoming event LAST, after every farther one.
-    for (const auto& turn : preview.turnsFarToNear) {
+    // Keep layer priority unchanged: overlapping imminent targets draw last.
+    for (std::size_t i = 0; i < preview.turnsFarToNear.size(); ++i) {
+        const auto& turn = preview.turnsFarToNear[i];
         const float proximity = ScoredPathOpacity(
             turn.songSeconds - preview.songSeconds,
             preview.horizonSeconds, skin.fadePower);
         const float opacity = proximity * skin.pathOpacity;
         if (opacity <= 0.0005f) continue;
         const Vector2 point = canvas.Position(turn.position);
-        const float radius = std::min(
+        const float baseRadius = std::min(
             skin.junctionRadius, canvas.step * preview.ticksPerBeat * 0.45f)
             * ScoredTurnSize(proximity);
+        const float spacing = i < preview.turnSpacingWorld.size()
+            ? preview.turnSpacingWorld[i] * canvas.step
+            : std::numeric_limits<float>::infinity();
+        const DenseTurnGlyph glyph = LayoutDenseTurn(
+            baseRadius, spacing, skin.reverseCapScale);
+        const float radius = glyph.radius;
         if (skin.junctionGlow)
             DrawCircleV(point, radius * 1.45f,
                         WithOpacity(skin.junction, opacity * 0.26f));
         if (NeedsReverseCap(turn.incoming, turn.outgoing))
             DrawReverseCap(point, radius, turn.outgoing,
                            skin.junction, opacity, skin.junctionGlow,
-                           skin.reverseCapScale);
+                           glyph.reverseCapScale);
         DrawCircleV(point, radius, WithOpacity(skin.junction, opacity));
         DrawCircleV(point, radius * 0.35f,
                     WithOpacity(skin.playerCore, opacity));
+
+        // Only for crowded targets closest in time: a tiny heading needle
+        // disambiguates intersections without printing key labels on top of
+        // the chart or changing the actual trajectory.
+        if (glyph.showHeading &&
+            preview.turnsFarToNear.size() - i <= 4) {
+            const auto direction = OutgoingVector(turn.outgoing);
+            const Vector2 endpoint{
+                point.x + direction.x * radius,
+                point.y + direction.y * radius};
+            DrawLineEx(point, endpoint, std::clamp(radius * 0.32f, 1.0f, 2.2f),
+                       WithOpacity(skin.playerCore, opacity));
+        }
     }
 }
 

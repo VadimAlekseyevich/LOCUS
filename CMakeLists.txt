@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.25)
 project(LOCUS VERSION 0.1.0 LANGUAGES C CXX)
 
 option(LOCUS_BUILD_TESTS "Build and register core tests with CTest" OFF)
+option(LOCUS_BUILD_BENCHMARKS "Build optional headless route preview profiler" OFF)
 
 # Pinned raylib and JSON dependencies.
 include(cmake/dependencies.cmake)
@@ -115,6 +116,13 @@ if(MSVC)
 else()
     target_compile_options(locus_core PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(locus PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+if(LOCUS_BUILD_BENCHMARKS)
+    add_executable(locus_route_preview_bench
+        benchmarks/route_preview_bench.cpp)
+    target_compile_features(locus_route_preview_bench PRIVATE cxx_std_17)
+    target_link_libraries(locus_route_preview_bench PRIVATE locus_core)
 endif()
 
 if(LOCUS_BUILD_TESTS)

@@ -91,6 +91,18 @@ int main() {
                 Near(repeated.turnsFarToNear[0].position.x, 1.0) &&
                 Near(repeated.turnsFarToNear[1].position.x, 0.5),
                 "repeated events retain exact-time far-to-near priority");
+    // Each target's local spacing is measured against the entire compiled
+    // route, including neighbors outside the current lookahead. It remains
+    // constant as the camera advances rather than changing when a turn
+    // enters or exits the visible window.
+    const auto narrowed = app::MakeRoutePreview(revised, 0.3, 210.0f);
+    ok &= Check(repeated.turnSpacingWorld.size() == 2 &&
+                Near(repeated.turnSpacingWorld[0], 0.5) &&
+                Near(repeated.turnSpacingWorld[1], 0.5) &&
+                narrowed.turnSpacingWorld.size() == 1 &&
+                Near(narrowed.turnSpacingWorld[0], 0.5),
+                "density uses stable full-chart neighbor positions outside preview");
+
     const auto noFuture = app::MakeRoutePreview(revised, 0.2, 0.0f);
     ok &= Check(noFuture.ready && noFuture.spans.empty() &&
                 noFuture.turnsFarToNear.empty(),

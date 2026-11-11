@@ -7,6 +7,7 @@ on:
       - "cmake/**"
       - "src/**"
       - "tests/**"
+      - "benchmarks/**"
       - "build_and_run.bat"
       - ".github/workflows/windows_ci.yml"
   pull_request:
@@ -15,6 +16,7 @@ on:
       - "cmake/**"
       - "src/**"
       - "tests/**"
+      - "benchmarks/**"
       - "build_and_run.bat"
       - ".github/workflows/windows_ci.yml"
   workflow_dispatch:
@@ -40,7 +42,7 @@ jobs:
 
       - name: Configure pinned dependencies and test targets
         run: |
-          cmake -S . -B build/windows -G "Visual Studio 17 2022" -A x64 -DLOCUS_BUILD_TESTS=ON
+          cmake -S . -B build/windows -G "Visual Studio 17 2022" -A x64 -DLOCUS_BUILD_TESTS=ON -DLOCUS_BUILD_BENCHMARKS=ON
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build application and tests (Release)
@@ -56,6 +58,16 @@ jobs:
           $testOutput = Get-Content build/windows/ctest-output.txt -Raw
           if ($testOutput -notmatch "100% tests passed") {
             throw "CTest did not confirm all tests passed"
+          }
+
+      - name: Profile compiled route snapshots without GPU
+        run: |
+          & "build/windows/Release/locus_route_preview_bench.exe" |
+            Tee-Object -FilePath build/windows/preview-benchmark.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $report = Get-Content build/windows/preview-benchmark.txt -Raw
+          if (($report | Select-String "PREVIEW_BENCH" -AllMatches).Matches.Count -ne 4) {
+            throw "Expected one reported timing per headless route scenario"
           }
 
       - name: Run headless production and dependency diagnostics
@@ -133,5 +145,6 @@ jobs:
             build/windows/Release/locus.exe
             build/windows/ctest-output.txt
             build/windows/ctest.xml
+            build/windows/preview-benchmark.txt
             build/windows/diagnostics.txt
             build_and_run.bat
