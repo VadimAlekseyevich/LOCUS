@@ -170,6 +170,11 @@ bool GameSettings::StepEditorPreviewLength(int direction) noexcept {
 }
 
 bool GameSettings::Valid(std::string& error) const {
+    if (globalOffsetMs < -kGlobalOffsetLimitMs ||
+        globalOffsetMs > kGlobalOffsetLimitMs) {
+        error = "Global audio offset must be between -1000 and +1000 ms.";
+        return false;
+    }
     if (!std::isfinite(volume) || volume < 0.0f || volume > 1.0f) {
         error = "Music volume must be between 0 and 100 percent.";
         return false;
@@ -265,6 +270,7 @@ std::string SerializeGameSettings(const GameSettings& settings) {
     }
     Json object = {
         {"version", 3},
+        {"globalOffsetMs", settings.globalOffsetMs},
         {"volume", settings.volume},
         {"hitFlash", settings.hitFlash},
         {"fullscreen", settings.fullscreen},
@@ -296,6 +302,15 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             !object.contains("bindings") || !object["bindings"].is_object()) {
             error = "Settings JSON is missing required fields or contains wrong types.";
             return false;
+        }
+        // Keep older v3 settings and custom key bindings valid; the global
+        // offset is an optional additive preference, not a format reset.
+        if (object.contains("globalOffsetMs")) {
+            if (!object["globalOffsetMs"].is_number_integer()) {
+                error = "Global audio offset must be an integer number of ms.";
+                return false;
+            }
+            parsed.globalOffsetMs = object["globalOffsetMs"].get<int>();
         }
         parsed.volume = object["volume"].get<float>();
         parsed.hitFlash = object["hitFlash"].get<bool>();
