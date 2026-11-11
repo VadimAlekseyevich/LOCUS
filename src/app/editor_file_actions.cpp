@@ -362,16 +362,33 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
     ParkedDocument target;
     const auto existing = parked_.find(file);
     if (existing == parked_.end()) {
-        const auto& canonical = context_.library.Songs()[
-            static_cast<std::size_t>(toSong)].charts[
-            static_cast<std::size_t>(toChart)].data;
-        context_.preview.Stop();
-        if (!LoadDraftFromDisk(file.wstring(), target.editor, context_.music,
-                               target.chartPath, target.audioPath, error,
-                               &canonical))
+        const auto& set = context_.library.Songs()[
+            static_cast<std::size_t>(toSong)];
+        std::error_code ec;
+        if (!context_.music.Ready() || context_.audioPath.empty() ||
+            !fs::equivalent(fs::path(context_.audioPath), set.audioFile, ec) ||
+            ec) {
+            error = "Comparison charts must use the already loaded Song Set audio.";
             return false;
-        target.loadedAudioPath = target.audioPath;
+        }
+        // The library has parsed and validated every difficulty. Preparing
+        // the target against the already decoded duration avoids loading the
+        // SAME MP3 on every focus click or restarting the audio device.
+        core::LoadedChart candidate = set.charts[
+            static_cast<std::size_t>(toChart)].data;
+        if (!core::PrepareChartForSong(candidate,
+                                       context_.music.DurationSeconds(), error))
+            return false;
+        target.editor.Load(candidate);
+        if (!target.editor.SetSongDuration(context_.music.DurationSeconds())) {
+            error = "Comparison chart timeline exceeds the shared audio.";
+            return false;
+        }
+        target.chartPath = file.wstring();
+        target.audioPath = context_.audioPath;
+        target.loadedAudioPath = context_.loadedAudioPath;
         target.previewBeat = target.editor.SelectedBeat();
+        context_.preview.Stop();
     } else {
         context_.preview.Stop();
         target = std::move(existing->second);
