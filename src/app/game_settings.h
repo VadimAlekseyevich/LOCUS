@@ -70,6 +70,17 @@ struct GameSettings {
     bool vsync = true;        // Prevent screen tearing; can be overridden by driver.
     int fpsLimit = 240;       // Safety ceiling when VSync is unsupported.
     bool showFps = false;     // Small diagnostic overlay on all screens.
+    // ROUTE-only visualization. Never writes to SKIN, PLAY or chart files.
+    // Optional in settings v3 so existing user key bindings remain intact.
+    float editorPreviewSpeed = 135.0f; // Logical px/s, independent of gameplay.
+    float editorPreviewLengthMs = 800.0f; // Visible future path in song ms.
+    static constexpr float kEditorSpeedMin = 20.0f;
+    static constexpr float kEditorSpeedMax = 2000.0f;
+    static constexpr float kEditorLengthMinMs = 50.0f;
+    static constexpr float kEditorLengthMaxMs = 10000.0f;
+    bool StepEditorPreviewSpeed(int direction) noexcept;
+    bool StepEditorPreviewLength(int direction) noexcept;
+
 
     // 0 = unlimited; rate caps do not speed up gameplay/audio clocks.
     static constexpr std::array<int, 8> kFpsPresets{{
