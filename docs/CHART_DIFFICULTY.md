@@ -2,9 +2,7 @@
 
 LOCUS estimates intrinsic chart difficulty on an **uncapped, nonnegative scale**.
 There is no maximum score of 10 (or any other fixed ceiling), and none of the
-six component ratings saturates at a fixed maximum. Scores from v1 are **not
-comparable** with v2; ratings are derived on demand and are not stored in
-chart files.
+six component ratings saturates at a fixed maximum. Ratings are derived on demand and are not stored in chart files.
 
 This is still a heuristic, **not** a calibrated player skill prediction or a
 guarantee that a pattern is sight-readable. The displayed **V2** label makes
@@ -19,8 +17,8 @@ the song library computes ratings during a rescan.
 ## What contributes
 
 1. **SPEED** — rolling 1.8-second note and physical-key rates, plus **active
-   chart-wide physical-key density**. Long or consistently dense streams now
-   weigh substantially more than in v1. Diagonal notes count as one note but
+   chart-wide physical-key density**. Long or consistently dense streams
+   contribute to total difficulty. Diagonal notes count as one note but
    two key presses.
 2. **RHYTHM** — irregular adjacent intervals, varying real-time spacing and very
    short gaps. Its density multiplier has no upper ceiling; a steady triplet
