@@ -166,6 +166,88 @@ int main() {
                 !app::EditorSetNeedsConfirmation({
                     app::EditorSetAction::Export, {}, {}, false}),
                 "destructive and dirty-draft actions require confirmation");
+    // Actual controller wiring: a managed Song Set must open a chart from
+    // one row click (with unsaved confirmation), and COMPARE+ must respond
+    // through the same native pointer path, not only a pure helper.
+    const auto fixture = std::filesystem::temp_directory_path() /
+        ("locus-editor-set-click-" + std::to_string(
+            std::chrono::steady_clock::now().time_since_epoch().count()));
+    const auto source = fixture / "source";
+    std::filesystem::create_directories(source);
+    { std::ofstream(source / "song.wav", std::ios::binary) <<
+          "RIFF-song-set-test-audio-v1"; }
+    const auto writeDifficulty = [&](const char* file, const char* title) {
+        const std::string json =
+            std::string("{") +
+            "\"formatVersion\":3," +
+            "\"title\":\"" + title + "\"," +
+            "\"audioPath\":\"song.wav\"," +
+            "\"bpm\":120,\"offsetMs\":0," +
+            "\"ticksPerBeat\":1,\"snapDivision\":1," +
+            "\"grid\":{\"width\":8,\"height\":8}," +
+            "\"start\":{\"x\":3,\"y\":3,\"heading\":\"r\"}," +
+            "\"turns\":[{\"timeMs\":1000,\"heading\":\"u\"}]}";
+        std::ofstream(source / file, std::ios::binary) << json;
+    };
+    writeDifficulty("Easy.locus.json", "Easy");
+    writeDifficulty("Hard.locus.json", "Hard");
+    app::SongLibrary managedLibrary(fixture / "Songs");
+    std::string managedNote, managedError;
+    std::filesystem::path installedEasy, installedHard;
+    const bool setup =
+        managedLibrary.Refresh(managedNote) &&
+        managedLibrary.Import(source / "Easy.locus.json",
+                              installedEasy, managedError) &&
+        managedLibrary.Import(source / "Hard.locus.json",
+                              installedHard, managedError);
+    ok &= Check(setup && managedLibrary.ChartCount() == 2,
+                "managed two-chart fixture is ready");
+    if (setup) {
+        std::wstring activePath = installedEasy.wstring();
+        ui.tab = app::EditorTab::Set;
+        const app::EditorFileContext managedContext{
+            editor, ui, song, playback, activePath, audioPath,
+            loadedAudioPath, previewBeat, status, managedLibrary,
+            libraryUi, menuStatus};
+        app::EditorFileActions managedFiles{
+            managedContext,
+            {CanceledChart, MissingAudio, CanceledSave, mockedNow}};
+        app::EditorSetController managedSet{
+            {managedLibrary, managedFiles, editor, ui, activePath,
+             status, libraryUi, menuStatus},
+            {CanceledChart, CanceledSave}};
+        const auto view = managedSet.View();
+        ok &= Check(view.managed && view.difficulties.size() == 2 &&
+                    view.current == 0,
+                    "active Song Set is available on SET and ROUTE");
+        app::EditorControls clickDifficulty;
+        clickDifficulty.mouseClick = true;
+        clickDifficulty.mouse = {548.0f, 252.0f}; // Hard difficulty row
+        managedSet.HandleControls(clickDifficulty);
+        ok &= Check(managedSet.HasPending() &&
+                    managedSet.Pending()->chart == installedHard &&
+                    managedSet.Pending()->discardsDraft && editor.Dirty(),
+                    "single SET difficulty click requests safe Open");
+        managedSet.Confirm(false, true);
+        ok &= Check(!managedSet.HasPending() && editor.Dirty(),
+                    "canceling direct switch leaves unsaved chart intact");
+
+        ui.tab = app::EditorTab::Route;
+        app::EditorControls clickCompare;
+        clickCompare.mouseClick = true;
+        clickCompare.mouse = {664.0f, 164.0f};
+        managedSet.HandleControls(clickCompare);
+        ok &= Check(ui.comparisonPickerOpen,
+                    "real managed Song Set COMPARE+ opens on first click");
+        clickCompare.mouse = {548.0f, 252.0f};
+        managedSet.HandleControls(clickCompare);
+        ok &= Check(ui.comparisonFiles.size() == 1 &&
+                    ui.comparisonFiles.front() == installedHard,
+                    "real comparison picker selects sibling chart by click");
+    }
+    std::error_code fixtureError;
+    std::filesystem::remove_all(fixture, fixtureError);
+
     if (!ok) return 1;
     std::cout << "EDITOR_FILE_ACTIONS_PASS cancel=1 open=1 attach=1 save=1 new=1\n";
     return 0;
