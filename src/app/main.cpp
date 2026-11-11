@@ -620,7 +620,16 @@ int main(int argc, char** argv) {
         AppState visibleState = state;
         if (!state.quitConfirmation)
             visibleState.screen = fadeFrame.visibleScreen;
-        const auto transportView = playActions.Transport(renderNow);
+        // Do not sample the scored audio stream during ordinary editing or
+        // menus: the editor is about to sample that SAME transport once for
+        // its synchronized preview and ruler.
+        const bool showGameplay = state.screen == Screen::Play ||
+            state.screen == Screen::Results ||
+            visibleState.screen == Screen::Play ||
+            visibleState.screen == Screen::Results;
+        const auto transportView = showGameplay
+            ? playActions.Transport(renderNow)
+            : locus::app::PlayTransportView{};
         const GameplayView gameplay = presentation.Prepare(
             {activeChart, judge, gameSession.Flash(), chartTitle,
              transportView.songSeconds, transportView.offsetSeconds,
