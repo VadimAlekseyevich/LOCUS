@@ -336,6 +336,10 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
         return false;
     }
     if (current == file) { error.clear(); return true; }
+    if (context_.ui.EditingText()) {
+        error = "Confirm or cancel the current text field before switching charts.";
+        return false;
+    }
 
     // Comparison editing shares exactly one decoder and one Song Set.
     int fromSong = -1, fromChart = -1, toSong = -1, toChart = -1;
@@ -388,9 +392,7 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
         target.audioPath = context_.audioPath;
         target.loadedAudioPath = context_.loadedAudioPath;
         target.previewBeat = target.editor.SelectedBeat();
-        context_.preview.Stop();
     } else {
-        context_.preview.Stop();
         target = std::move(existing->second);
         parked_.erase(existing);
     }
