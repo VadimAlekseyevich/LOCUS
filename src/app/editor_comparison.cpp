@@ -13,7 +13,7 @@ bool PlanEditorComparisonFocus(const EditorUiState& ui,
                                const std::filesystem::path& target,
                                EditorComparisonFocusOrder& result) {
     if (active.empty() || target.empty() || active == target ||
-        ui.comparisonFiles.size() > 3 ||
+        ui.comparisonFiles.size() > 2 ||
         std::find(ui.comparisonFiles.begin(), ui.comparisonFiles.end(),
                   active) != ui.comparisonFiles.end()) return false;
 
@@ -24,7 +24,7 @@ bool PlanEditorComparisonFocus(const EditorUiState& ui,
     const auto targetRef = std::find(candidate.references.begin(),
                                      candidate.references.end(), target);
     if (targetRef == candidate.references.end()) {
-        if (candidate.references.size() >= 3) return false;
+        if (candidate.references.size() >= 2) return false;
         candidate.focusedSlot = static_cast<int>(candidate.references.size()) + 1;
     } else {
         candidate.focusedSlot = ComparisonDisplaySlotForReference(
@@ -72,7 +72,7 @@ bool ToggleEditorComparison(EditorUiState& ui, const EditorSetView& set,
         ui.comparisonFiles.erase(selected);
         return true;
     }
-    if (ui.comparisonFiles.size() >= 3) return false;
+    if (ui.comparisonFiles.size() >= 2) return false;
     ui.comparisonFiles.push_back(option.file);
     return true;
 }
@@ -101,7 +101,7 @@ void ReconcileEditorComparisons(EditorUiState& ui,
             found - set.comparisonOptions.begin() == set.current ||
             std::find(valid.begin(), valid.end(), file) != valid.end())
             continue;
-        if (valid.size() == 3) break;
+        if (valid.size() == 2) break;
         if (static_cast<int>(i) < oldFocus) ++focusedSlot;
         valid.push_back(file);
     }
@@ -208,7 +208,7 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             if (found == set.comparisonOptions.end() ||
                 static_cast<int>(found - set.comparisonOptions.begin()) ==
                     set.current ||
-                visible.size() >= 3) continue;
+                visible.size() >= 2) continue;
             if (static_cast<int>(i) < oldFocus) ++focusedSlot;
             visible.push_back(&*found);
         }
