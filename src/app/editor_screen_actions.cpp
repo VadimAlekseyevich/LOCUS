@@ -32,6 +32,20 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
         context_.sets.HandleControls(input.editor);
         return false;
     }
+    // SET row focus clicks are exclusive too. A simultaneous Ctrl+S must
+    // never accidentally write whichever chart was clicked in that frame.
+    if (context_.ui.tab == EditorTab::Set && input.editor.mouseClick) {
+        const EditorSetView set = context_.sets.View();
+        for (int row = 0; row < 5; ++row) {
+            const int index = set.firstVisible + row;
+            if (index >= static_cast<int>(set.difficulties.size())) break;
+            if (detail::Hit(detail::SetDifficultyRow(row),
+                            input.editor.mouse)) {
+                context_.sets.HandleControls(input.editor);
+                return false;
+            }
+        }
+    }
     const auto beforeTempo = context_.session.TempoMap();
     const EditorUiAction uiAction = context_.session.ApplyControls(
         input.editor, now);
