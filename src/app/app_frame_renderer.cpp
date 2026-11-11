@@ -78,6 +78,9 @@ static void DrawQuitConfirmation(Font font, const AppState& state,
     // action. Reassure users about unsaved edits before they choose.
     DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{7, 11, 19, 220});
     const bool canSave = anyEditorDirty;
+    const bool dirtySkin = state.screen == Screen::Skin &&
+        (skinUi.dirty || skinUi.editingName ||
+         skinUi.editingNumberRow >= 0 || skinUi.editingHex);
     const Rectangle card{177.0f, 146.0f, 606.0f,
                          canSave ? 302.0f : 264.0f};
     DrawRectangleRounded(card, 0.085f, 10, Color{34, 42, 59, 255});
@@ -88,12 +91,13 @@ static void DrawQuitConfirmation(Font font, const AppState& state,
     DrawTextLabel(font, "This will close the game.", {307.0f, 236.0f},
                   21.0f, Color{216, 227, 234, 255});
     if (anyEditorDirty || (state.screen == Screen::Editor &&
-        (editor.Dirty() || editorUi.EditingText())))
-        DrawTextLabel(font, "UNSAVED CHART CHANGES WILL BE LOST",
-                      {266.0f, 272.0f}, 17.0f,
+        (editor.Dirty() || editorUi.EditingText()))) {
+        DrawTextLabel(font, dirtySkin
+                          ? "UNSAVED CHART AND SKIN CHANGES WILL BE LOST"
+                          : "UNSAVED CHART CHANGES WILL BE LOST",
+                      {dirtySkin ? 224.0f : 266.0f, 272.0f}, 17.0f,
                       Color{251, 188, 164, 255});
-    else if (state.screen == Screen::Skin &&
-             (skinUi.dirty || skinUi.editingName || skinUi.editingNumberRow >= 0))
+    } else if (dirtySkin)
         DrawTextLabel(font, "UNSAVED SKIN CHANGES WILL BE LOST",
                       {273.0f, 272.0f}, 17.0f,
                       Color{251, 188, 164, 255});
@@ -101,9 +105,13 @@ static void DrawQuitConfirmation(Font font, const AppState& state,
                  MenuButtonStyle({241, 158, 156, 255}));
     DrawUiButton(font, kQuitCancelButton, "N / STAY",
                  MenuButtonStyle({130, 226, 215, 255}));
-    if (canSave)
-        DrawUiButton(font, kEditorQuitSaveButton, "S / SAVE ALL + QUIT",
+    if (canSave && !dirtySkin)
+        DrawUiButton(font, kEditorQuitSaveButton, "S / SAVE CHARTS + QUIT",
                      MenuButtonStyle({130, 226, 215, 255}));
+    else if (canSave && dirtySkin)
+        DrawTextLabel(font, "CANCEL QUIT AND SAVE THE SKIN FIRST",
+                      {304.0f, 396.0f}, 15.0f,
+                      Color{252, 195, 165, 255});
     else
         DrawTextLabel(font, "ESC ALSO CANCELS", {394.0f, 394.0f}, 13.0f,
                       Color{170, 189, 205, 255});
