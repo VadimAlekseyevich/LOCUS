@@ -2,6 +2,7 @@
 
 #include "app/hit_flash.h"
 #include "app/skin.h"
+#include "app/route_preview.h"
 #include "core/route.h"
 #include "core/timed_route.h"
 #include "core/route_view.h"
@@ -44,6 +45,12 @@ Vector2 DrawRouteTrajectory(const core::Chart& chart, double fractionalBeat,
 void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
                         RouteCanvas canvas, RouteRenderMode mode,
                         const Skin& skin = Skin{});
+
+// PLAY/TEST and comparison panes consume one prepared route window.
+Vector2 DrawTimedRouteTrajectory(const RoutePreviewFrame& preview,
+                                 RouteCanvas canvas, const Skin& skin = Skin{});
+void DrawTimedRouteJunctions(const RoutePreviewFrame& preview,
+                             RouteCanvas canvas, const Skin& skin = Skin{});
 
 // Scored gameplay draws directly from a compiled exact-time route.
 // Render-only: never writes to the chart or judgement queues.

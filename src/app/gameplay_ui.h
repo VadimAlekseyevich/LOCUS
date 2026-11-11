@@ -40,6 +40,9 @@ struct GameplayView {
     bool hasCameraAnchor = false;
     core::GridPoint cameraAnchor{};
     const core::TimedRoute* timedRoute = nullptr;
+    // Frame-only borrow from PlayPresentation. The next Prepare may overwrite
+    // this object; RenderFrame must not retain the pointer.
+    const RoutePreviewFrame* routePreview = nullptr;
 };
 
 // The visible playfield is exactly one screen-height square, centred in
@@ -86,6 +89,9 @@ struct GameplayCamera {
         : world(route.PositionAt(songSeconds)),
           step(StepForFixedSpeed(skin.baseSpeedPxPerSecond, chart.bpm,
                                  chart.ticksPerBeat, practiceRate)) {}
+
+    GameplayCamera(core::GridPoint marker, float pixelsPerUnit)
+        : world(marker), step(pixelsPerUnit) {}
 
     locus::app::RouteCanvas Canvas() const noexcept {
         return {kCenterX, kCenterY, step, world};

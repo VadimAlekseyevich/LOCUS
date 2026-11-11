@@ -92,6 +92,21 @@ int main() {
     ok &= Check(!fasterRibbon.empty() &&
                 Near(fasterRibbon.back().tick, 4.45),
                 "same 800 ms horizon spans twice as many beats at double BPM");
+    core::TimedRoute compiled;
+    ok &= Check(compiled.Compile(chart, 0.0),
+                "compile timed route for shared preview");
+    const auto compiledFrame = app::MakeRoutePreview(compiled, 1.25, 800.0f);
+    const auto preparedRibbon = app::BuildScoredPathRibbon(
+        compiledFrame, canvas, defaults);
+    const auto compatibilityRibbon = app::BuildScoredPathRibbon(
+        compiled, 1.25, canvas, defaults);
+    ok &= Check(preparedRibbon.size() == compatibilityRibbon.size() &&
+                !preparedRibbon.empty() &&
+                Near(preparedRibbon.front().center.x,
+                     compatibilityRibbon.front().center.x) &&
+                Near(preparedRibbon.back().tick,
+                     compatibilityRibbon.back().tick),
+                "preselected preview equals standalone ribbon rendering");
     const float near = app::ScoredPathOpacity(0.0, 1.6, defaults.fadePower);
     const float far = app::ScoredPathOpacity(1.55, 1.6, defaults.fadePower);
     ok &= Check(Near(app::ScoredTurnSize(near), 1.0) &&

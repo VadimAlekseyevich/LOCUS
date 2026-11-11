@@ -162,14 +162,13 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
 // Gameplay-only sampling: authored exact times are the segment boundaries.
 // The renderer never rounds a song timestamp back onto the editing grid.
 std::vector<PathRibbonRow> BuildScoredPathRibbon(
-    const core::TimedRoute& route, double songSeconds,
+    const RoutePreviewFrame& preview,
     RouteCanvas canvas, const Skin& skin) {
-    if (!route.Ready() || !std::isfinite(songSeconds) ||
-        !std::isfinite(canvas.step) || canvas.step <= 0.0f ||
-        !std::isfinite(skin.lookaheadMs) || skin.lookaheadMs <= 0.0f)
+    if (!preview.ready || !std::isfinite(canvas.step) ||
+        canvas.step <= 0.0f || preview.horizonSeconds <= 0.0)
         return {};
-    const double horizon = skin.lookaheadMs / 1000.0;
-    const auto spans = route.Window(songSeconds, songSeconds + horizon);
+    const double horizon = preview.horizonSeconds;
+    const auto& spans = preview.spans;
     if (spans.empty()) return {};
 
     std::vector<PathSample> samples;
@@ -186,7 +185,7 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
             const core::GridPoint position{
                 span.from.x + (span.to.x - span.from.x) * fraction,
                 span.from.y + (span.to.y - span.from.y) * fraction};
-            const double ahead = at - songSeconds;
+            const double ahead = at - preview.songSeconds;
             const float opacity = ScoredPathOpacity(
                 ahead, horizon, skin.fadePower) * skin.pathOpacity;
             const float halfWidth = ScoredPathWidth(
@@ -195,6 +194,13 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
         }
     }
     return MakeRows(samples, canvas);
+}
+
+std::vector<PathRibbonRow> BuildScoredPathRibbon(
+    const core::TimedRoute& route, double songSeconds,
+    RouteCanvas canvas, const Skin& skin) {
+    return BuildScoredPathRibbon(
+        MakeRoutePreview(route, songSeconds, skin.lookaheadMs), canvas, skin);
 }
 
 PathRibbonQuad MakePathRibbonQuad(

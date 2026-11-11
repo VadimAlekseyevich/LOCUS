@@ -32,8 +32,16 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
             route = &transientRoute;
     }
     if (!route) return;
-    GameplayCamera camera(*route, displaySeconds, gameplay.chart,
-                          gameplay.skin, gameplay.practiceSpeed);
+    RoutePreviewFrame standalone;
+    if (!gameplay.routePreview)
+        PrepareRoutePreview(*route, displaySeconds, gameplay.skin.lookaheadMs,
+                            standalone);
+    const RoutePreviewFrame& preview = gameplay.routePreview
+        ? *gameplay.routePreview : standalone;
+    const float step = StepForFixedSpeed(
+        gameplay.skin.baseSpeedPxPerSecond, gameplay.chart.bpm,
+        gameplay.chart.ticksPerBeat, gameplay.practiceSpeed);
+    GameplayCamera camera(preview.marker, step);
     if (gameplay.hasCameraAnchor) camera.world = gameplay.cameraAnchor;
     const auto canvas = camera.Canvas();
 
@@ -50,9 +58,9 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
     // PLAY and editor TEST: the camera gently trails player motion,
     // including turns. No predictive aiming, past trail, grid or debug UI.
     Vector2 marker = locus::app::DrawTimedRouteTrajectory(
-        *route, displaySeconds, canvas, gameplay.skin);
+        preview, canvas, gameplay.skin);
     locus::app::DrawTimedRouteJunctions(
-        *route, displaySeconds, canvas, gameplay.skin);
+        preview, canvas, gameplay.skin);
     if (gameplay.outro.active) {
         Vector2 direction{};
         constexpr float d = 0.70710678f;

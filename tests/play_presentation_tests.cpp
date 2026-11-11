@@ -44,6 +44,10 @@ int main() {
 
     presentation.EnterPlay();
     auto first = presentation.Prepare(view(0.0), true, false, 0.0);
+    ok &= Check(first.routePreview && first.routePreview->ready &&
+                Near(first.routePreview->songSeconds, 0.0) &&
+                Near(first.routePreview->marker.x, player(0.0).x),
+                "camera and ribbon share a prepared song-time snapshot");
     auto moving = presentation.Prepare(view(2.0), true, false, 1.0);
     ok &= Check(first.hasCameraAnchor &&
                 Near(first.cameraAnchor.x, player(0.0).x) &&

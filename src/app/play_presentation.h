@@ -25,6 +25,7 @@ private:
     AdaptiveCameraFollower camera_;
     double lastVisualSeconds_ = 0.0;
     core::TimedRoute route_;
+    RoutePreviewFrame preview_;
     bool routeReady_ = false;
     bool wasPlaying_ = false;
     std::string adjustmentNotice_;

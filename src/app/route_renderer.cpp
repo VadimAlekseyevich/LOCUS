@@ -101,9 +101,9 @@ void DrawScoredPath(const core::Chart& chart, double beat,
     DrawRibbonLayer(rows, skin.trajectory, 1.0f);
 }
 
-void DrawScoredPath(const core::TimedRoute& route, double songSeconds,
+void DrawScoredPath(const RoutePreviewFrame& preview,
                     RouteCanvas canvas, const Skin& skin) {
-    const auto rows = BuildScoredPathRibbon(route, songSeconds, canvas, skin);
+    const auto rows = BuildScoredPathRibbon(preview, canvas, skin);
     if (rows.size() < 2) return;
     DrawRibbonLayer(rows, skin.outline, skin.outlineScale);
     DrawRibbonLayer(rows, skin.trajectory, 1.0f);
@@ -282,55 +282,55 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
 }
 
 // PLAY/TEST use absolute song time; the musical grid is editor-only.
-Vector2 DrawTimedRouteTrajectory(const core::TimedRoute& route,
-                                 double songSeconds, RouteCanvas canvas,
-                                 const Skin& skin) {
-    if (!route.Ready()) return canvas.Position({});
-    DrawScoredPath(route, songSeconds, canvas, skin);
-    return canvas.Position(route.PositionAt(songSeconds));
+Vector2 DrawTimedRouteTrajectory(const RoutePreviewFrame& preview,
+                                 RouteCanvas canvas, const Skin& skin) {
+    if (!preview.ready) return canvas.Position({});
+    DrawScoredPath(preview, canvas, skin);
+    return canvas.Position(preview.marker);
 }
 
-void DrawTimedRouteJunctions(const core::TimedRoute& route,
-                             double songSeconds, RouteCanvas canvas,
-                             const Skin& skin) {
-    if (!route.Ready() || !std::isfinite(songSeconds) ||
-        !std::isfinite(skin.lookaheadMs) || skin.lookaheadMs <= 0.0f)
-        return;
-    const double horizon = skin.lookaheadMs / 1000.0;
-    const auto& turns = route.Turns();
-    const auto first = std::lower_bound(
-        turns.begin(), turns.end(), songSeconds,
-        [](const core::TimedTurn& event, double at) {
-            return event.songSeconds < at;
-        });
-    const auto last = std::lower_bound(
-        first, turns.end(), songSeconds + horizon,
-        [](const core::TimedTurn& event, double until) {
-            return event.songSeconds < until;
-        });
-    // Match ribbon painter's order: when the route revisits one coordinate,
-    // the nearest upcoming note is drawn last, never hidden by a later one.
-    for (auto turn = last; turn != first;) {
-        --turn;
+void DrawTimedRouteJunctions(const RoutePreviewFrame& preview,
+                             RouteCanvas canvas, const Skin& skin) {
+    if (!preview.ready || preview.horizonSeconds <= 0.0) return;
+    // Same-coordinate turns retain their chronological priority: draw the
+    // nearest upcoming event LAST, after every farther one.
+    for (const auto& turn : preview.turnsFarToNear) {
         const float proximity = ScoredPathOpacity(
-            turn->songSeconds - songSeconds, horizon, skin.fadePower);
+            turn.songSeconds - preview.songSeconds,
+            preview.horizonSeconds, skin.fadePower);
         const float opacity = proximity * skin.pathOpacity;
         if (opacity <= 0.0005f) continue;
-        const Vector2 point = canvas.Position(turn->position);
+        const Vector2 point = canvas.Position(turn.position);
         const float radius = std::min(
-            skin.junctionRadius, canvas.step * route.TicksPerBeat() * 0.45f)
+            skin.junctionRadius, canvas.step * preview.ticksPerBeat * 0.45f)
             * ScoredTurnSize(proximity);
         if (skin.junctionGlow)
             DrawCircleV(point, radius * 1.45f,
                         WithOpacity(skin.junction, opacity * 0.26f));
-        if (NeedsReverseCap(turn->incoming, turn->outgoing))
-            DrawReverseCap(point, radius, turn->outgoing,
+        if (NeedsReverseCap(turn.incoming, turn.outgoing))
+            DrawReverseCap(point, radius, turn.outgoing,
                            skin.junction, opacity, skin.junctionGlow,
                            skin.reverseCapScale);
         DrawCircleV(point, radius, WithOpacity(skin.junction, opacity));
         DrawCircleV(point, radius * 0.35f,
                     WithOpacity(skin.playerCore, opacity));
     }
+}
+
+// Retain stable SKIN/standalone rendering APIs. The actual PLAY and editor
+// callsites use one prepared frame for BOTH primitives.
+Vector2 DrawTimedRouteTrajectory(const core::TimedRoute& route,
+                                 double songSeconds, RouteCanvas canvas,
+                                 const Skin& skin) {
+    return DrawTimedRouteTrajectory(
+        MakeRoutePreview(route, songSeconds, skin.lookaheadMs), canvas, skin);
+}
+
+void DrawTimedRouteJunctions(const core::TimedRoute& route,
+                             double songSeconds, RouteCanvas canvas,
+                             const Skin& skin) {
+    DrawTimedRouteJunctions(
+        MakeRoutePreview(route, songSeconds, skin.lookaheadMs), canvas, skin);
 }
 
 void DrawPlayerHitFlash(Vector2 marker, float markerRadius, HitFlashFrame flash,

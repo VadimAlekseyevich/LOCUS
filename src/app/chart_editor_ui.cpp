@@ -100,6 +100,8 @@ void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
         DrawRectangleRoundedLinesEx(bounds, 0.05f, 5,
                                     pane.editable ? 2.0f : 1.0f, accent);
         if (pane.route && pane.route->Ready()) {
+            const RoutePreviewFrame preview = MakeRoutePreview(
+                *pane.route, songSeconds, skin.lookaheadMs);
             // One visual px/s scale across every pane, regardless of BPM,
             // authoring snap/grid, note density or panel dimensions.
             const float step = pixelsPerSongSecond /
@@ -107,14 +109,14 @@ void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
             const RouteCanvas canvas{
                 bounds.x + bounds.width * 0.5f,
                 bounds.y + bounds.height * 0.5f,
-                step, pane.route->PositionAt(songSeconds)};
+                step, preview.marker};
             // Scissor coordinates are physical pixels, not virtual UI units.
             const auto clip = ViewportTransform::Menu(
                 GetScreenWidth(), GetScreenHeight()).Scissor(bounds);
             BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
             const Vector2 marker = DrawTimedRouteTrajectory(
-                *pane.route, songSeconds, canvas, skin);
-            DrawTimedRouteJunctions(*pane.route, songSeconds, canvas, skin);
+                preview, canvas, skin);
+            DrawTimedRouteJunctions(preview, canvas, skin);
             const float radius = std::min(10.0f, bounds.width * 0.04f);
             DrawCircleV(marker, radius * 1.65f,
                         Color{112, 219, 216, 48});

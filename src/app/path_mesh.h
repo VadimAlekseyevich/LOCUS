@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/route_renderer.h"
+#include "app/route_preview.h"
 #include "core/timed_route.h"
 
 #include <vector>
@@ -35,6 +36,10 @@ PathRibbonQuad MakePathRibbonQuad(
 std::vector<PathRibbonRow> BuildScoredPathRibbon(
     const core::Chart& chart, double fractionalTick,
     RouteCanvas canvas, const Skin& skin);
+
+// Consume one preselected route window shared with turn rendering.
+std::vector<PathRibbonRow> BuildScoredPathRibbon(
+    const RoutePreviewFrame& preview, RouteCanvas canvas, const Skin& skin);
 
 // PLAY/TEST takes the same exact song timestamp as the judgement clock.
 // Editor's beat/tick sampler above remains a placement-grid preview.

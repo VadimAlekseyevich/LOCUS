@@ -12,6 +12,7 @@ void PlayPresentation::ResetCamera() noexcept {
 void PlayPresentation::EnterPlay() noexcept {
     outro_.Reset();
     routeReady_ = false; // Chart may have changed under the stable address.
+    preview_ = RoutePreviewFrame{};
     ResetCamera();
 }
 void PlayPresentation::ShowAdjustment(std::string message, double now) {
@@ -45,9 +46,10 @@ GameplayView PlayPresentation::Prepare(GameplayView view, bool playing,
     const float step = StepForFixedSpeed(
         view.skin.baseSpeedPxPerSecond, view.chart.bpm,
         view.chart.ticksPerBeat, view.practiceSpeed);
-    const core::GridPoint player = route_.PositionAt(visualSeconds);
+    PrepareRoutePreview(route_, visualSeconds, view.skin.lookaheadMs, preview_);
+    view.routePreview = &preview_;
     view.cameraAnchor = camera_.Follow(
-        player, step, now,
+        preview_.marker, step, now,
         view.paused || view.outro.active || quitConfirmation,
         view.skin.cameraLagMs);
     view.hasCameraAnchor = true;

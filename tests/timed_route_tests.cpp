@@ -1,5 +1,6 @@
 #include "core/timed_route.h"
 #include "app/movement_speed.h"
+#include "app/route_preview.h"
 
 #include <cmath>
 #include <iostream>
@@ -41,6 +42,13 @@ int main() {
                 Near(after.x, expectedTickPosition) &&
                 Near(after.y, -0.001 * 130.0 / 60.0),
                 "turn happens at exact timeMs, never the rounded editor tick");
+    const auto snapshot = app::MakeRoutePreview(route, 0.49, 20.0f);
+    ok &= Check(snapshot.ready &&
+                Near(snapshot.marker.x, route.PositionAt(0.49).x) &&
+                snapshot.spans.size() == 2 &&
+                snapshot.turnsFarToNear.size() == 1 &&
+                Near(snapshot.turnsFarToNear[0].songSeconds, 0.5),
+                "one preview snapshot shares marker, exact spans and note window");
     const auto spans = route.Window(0.49, 0.51);
     ok &= Check(spans.size() == 2 &&
                 Near(spans.front().toSeconds, 0.5) &&
@@ -73,6 +81,18 @@ int main() {
                 Near(revised.Turns()[1].position.x, 1.0) &&
                 revised.Window(0.0, 0.6).size() == 3,
                 "repeated same-direction hits remain distinct route events");
+
+    const auto repeated = app::MakeRoutePreview(revised, 0.2, 500.0f);
+    ok &= Check(repeated.turnsFarToNear.size() == 2 &&
+                Near(repeated.turnsFarToNear[0].songSeconds, 0.5) &&
+                Near(repeated.turnsFarToNear[1].songSeconds, 0.25) &&
+                Near(repeated.turnsFarToNear[0].position.x, 1.0) &&
+                Near(repeated.turnsFarToNear[1].position.x, 0.5),
+                "repeated events retain exact-time far-to-near priority");
+    const auto noFuture = app::MakeRoutePreview(revised, 0.2, 0.0f);
+    ok &= Check(noFuture.ready && noFuture.spans.empty() &&
+                noFuture.turnsFarToNear.empty(),
+                "zero horizon suppresses route preview but retains marker");
 
     chart.turns = {{1, core::Heading::Left, 500}};
     ok &= Check(revised.Compile(chart, 0.0) &&
