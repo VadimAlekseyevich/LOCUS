@@ -26,6 +26,10 @@ bool ToggleEditorComparison(EditorUiState& ui, const EditorSetView& set,
     const auto selected = std::find(ui.comparisonFiles.begin(),
         ui.comparisonFiles.end(), option.file);
     if (selected != ui.comparisonFiles.end()) {
+        const int removedIndex = static_cast<int>(
+            selected - ui.comparisonFiles.begin());
+        if (removedIndex < ui.comparisonFocusedSlot)
+            --ui.comparisonFocusedSlot;
         ui.comparisonFiles.erase(selected);
         return true;
     }
@@ -38,12 +42,17 @@ void ReconcileEditorComparisons(EditorUiState& ui,
                                 const EditorSetView& set) {
     if (!set.managed) {
         ui.comparisonFiles.clear();
+        ui.comparisonFocusedSlot = 0;
         ui.comparisonPickerOpen = false;
         ui.comparisonPickerFirst = 0;
         return;
     }
     std::vector<std::filesystem::path> valid;
-    for (const auto& file : ui.comparisonFiles) {
+    const int oldFocus = std::clamp(ui.comparisonFocusedSlot, 0,
+                                   static_cast<int>(ui.comparisonFiles.size()));
+    int focusedSlot = 0;
+    for (std::size_t i = 0; i < ui.comparisonFiles.size(); ++i) {
+        const auto& file = ui.comparisonFiles[i];
         const auto found = std::find_if(set.comparisonOptions.begin(),
             set.comparisonOptions.end(),
             [&](const EditorComparisonOption& option) {
@@ -54,9 +63,11 @@ void ReconcileEditorComparisons(EditorUiState& ui,
             std::find(valid.begin(), valid.end(), file) != valid.end())
             continue;
         if (valid.size() == 3) break;
+        if (static_cast<int>(i) < oldFocus) ++focusedSlot;
         valid.push_back(file);
     }
     ui.comparisonFiles = std::move(valid);
+    ui.comparisonFocusedSlot = focusedSlot;
     ui.comparisonPickerFirst = std::clamp(ui.comparisonPickerFirst, 0,
         std::max(0, static_cast<int>(set.comparisonOptions.size()) - 5));
 }
