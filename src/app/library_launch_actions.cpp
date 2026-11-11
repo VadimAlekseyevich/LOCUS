@@ -17,7 +17,8 @@ bool LaunchLibrarySelection(const LibraryLaunchContext& ctx,
             return false;
         case LibraryLaunchKind::NewDifficulty:
             if (ctx.editorFiles.AnyDirty()) {
-                ctx.ui.notice = "UNSAVED EDITOR CHARTS: RETURN TO EDITOR, SAVE OR DISCARD FIRST";
+                ctx.ui.notice = "UNSAVED CHARTS RESTORED IN EDITOR; SAVE OR DISCARD FIRST";
+                ctx.app.screen = Screen::Editor;
                 return false;
             }
             if (intent.folder.empty()) {
@@ -34,7 +35,8 @@ bool LaunchLibrarySelection(const LibraryLaunchContext& ctx,
             return false;
         case LibraryLaunchKind::EditChart:
             if (ctx.editorFiles.AnyDirty()) {
-                ctx.ui.notice = "UNSAVED EDITOR CHARTS: RETURN TO EDITOR, SAVE OR DISCARD FIRST";
+                ctx.ui.notice = "UNSAVED CHARTS RESTORED IN EDITOR; SAVE OR DISCARD FIRST";
+                ctx.app.screen = Screen::Editor;
                 return false;
             }
             if (ctx.editorFiles.OpenFromLibrary(intent.chart.wstring(),
