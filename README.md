@@ -24,7 +24,7 @@ To the right, the game shows **Accuracy** and counts for Perfect, Good, Bad and 
 | --- | --- |
 | Left / Down / Up / Right | **D / F / J / K** |
 | Diagonal | Two adjacent directions together (for example J+K) |
-| Pause / retry / Home | **Space / R / H** |
+| Pause / retry / Home | **Esc / R / H** |
 
 Gameplay direction bindings are configurable in SETTINGS; editor note placement uses only the clickable direction pad. During PLAY (including editor TEST), a fresh press of any bound direction during a long unmapped intro skips the music forward to the first note minus the smallest whole number of **4/4 measures lasting at least one second**. The triggering press is not scored; near-note presses and normal music with no long intro are unaffected.
 
