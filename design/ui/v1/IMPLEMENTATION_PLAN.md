@@ -1,4 +1,13 @@
-# UI migration plan — approved direction, implementation pending
+# Menu/UI migration plan — approved direction, implementation pending
+
+## Scope: menus only (hard boundary)
+
+The approved soft blue/rose theme and **all new hover, press, focus, modal and screen UI animations** are for application **menus and editors only**: Home, Song Library, Settings (including calibrator), SKIN configuration, editor SET/ROUTE/FIELD controls, Listen and post-game Results, plus dialogs outside active gameplay.
+
+**No new animations during PLAY**, including the playfield, character/avatar, chart path, turns, hit indicators, accuracy HUD, pause overlay or input feedback. Do not hook `UiMotionState`, `UiDialogMotion` or animated menu widgets into `Screen::Play`, `GameSession`, `PlayPresentation`, `gameplay_ui`, `route_renderer` or `path_mesh`. This UI project does not authorize any gameplay rendering or camera changes.
+
+Existing gameplay/camera movement, scoring effects and PLAY→Results outro remain exactly as they are; they are **outside this redesign**. Existing navigation fade is also left unchanged until explicitly approved. A menu preview is not permission to alter gameplay.
+
 
 ## Current state
 
@@ -12,7 +21,7 @@
 1. Semantic `UiTheme` colors/spacing/radius/typography tokens, independent of user-configurable gameplay SKIN.
 2. One family of Button, IconButton, Toggle, TextInput, Slider, Tabs, Panel, Dialog, ScrollList, Toast and keyboard focus/hover/press/disabled states. Keep hit testing and drawing in sync; never move hitboxes to match animation.
 3. Shared text measurement and clipping for UTF-8 labels; preserve Windows font fallback until an approved appropriately licensed font is provided.
-4. A presentation-only `UiMotion` API for state transition progress (opacity, small translation, color, scale). Stable monotonic clock; animation must never change gameplay scoring, input timestamps, selection, saved chart data or audio.
+4. A **menu-only** presentation API (`UiMotionState`/`UiDialogMotion`) for control states and dialogs. Stable monotonic clock; animation must never run during PLAY or change gameplay scoring, input timestamps, selection, saved chart data or audio.
 
 ## Motion targets — proposals for approval, not implemented yet
 
@@ -25,7 +34,7 @@
 | Modal open/close | 170/130 ms | quiet fade and ≤ 6 px movement |
 | Notices | about 170 ms | fade in/out; critical messages remain readable |
 
-All durations are wall-clock rather than frame-count based. Honor reduced-motion settings, support keyboard access and don't hide controls behind hover-only effects. Never animate critical scoring cues with UI motion.
+These are **menu animation** durations only, measured in wall-clock time rather than frames. Honor reduced-motion settings, support keyboard access and don't hide controls behind hover-only effects. There are **no gameplay animation targets** in this plan.
 
 ## Migration order (one approved mockup → one C++ integration)
 
@@ -35,12 +44,12 @@ All durations are wall-clock rather than frame-count based. Honor reduced-motion
 4. Settings: controls, display, input rebinding, global-offset manual field and metronome calibrator.
 5. SKIN screen: profiles, color wheel and sliders; keep gameplay skin separate from app theme.
 6. Editor shell: SET/ROUTE/FIELD and up to three comparison panes, saving, timeline navigation, test play and modals.
-7. Listen, Results and shared dialogs. Gameplay playfield geometry and rhythm readability are **not** subject to automatic visual redesign.
+7. Listen, Results and menu dialogs. **PLAY and its pause/HUD overlays are explicitly excluded**: no new transitions, micro-interactions or gameplay effects.
 
 ## Quality gates
 
 - Review each screen as a code-rendered prototype before merging any related UI code.
 - Check 960×540, small/larger windows, 16:9 and non-16:9; mouse alignment, focus indicators, disabled/error/confirmation states.
 - Verify Escape and quit confirmations, modified keyboard binds, paused Play, editor unsaved work, Ctrl+S, Song Set import and offset calibration.
-- Observe live UI motion on Windows hardware. Keep music clock and scoring independent of UI transitions.
+- Observe **menu-only** UI motion on Windows hardware. Keep PLAY unmodified; menu input never takes precedence over gameplay input.
 - Do not add generic components speculatively; extract when a common need is demonstrated.
