@@ -71,6 +71,10 @@ EditorSetView EditorSetController::View() const {
     view.backgroundPath = set->backgroundImage;
     for (std::size_t i = 0; i < set->charts.size(); ++i) {
         view.difficulties.push_back(set->charts[i].data.title);
+        view.comparisonOptions.push_back({
+            set->charts[i].file, set->charts[i].data.title,
+            &set->charts[i].data, set->charts[i].indexedFileSize,
+            set->charts[i].indexedWriteTime});
         if (!ctx_.chartPath.empty() &&
             set->charts[i].file == fs::path(ctx_.chartPath))
             view.current = static_cast<int>(i);
