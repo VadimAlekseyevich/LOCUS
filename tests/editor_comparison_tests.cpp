@@ -105,6 +105,28 @@ int main() {
                 visualOrder(stable, activeFile) == initialOrder,
                 "fifth chart cannot change or shuffle four occupied slots");
 
+    EditorUiState expanded;
+    expanded.comparisonFiles = {view.comparisonOptions[1].file};
+    EditorComparisonFocusOrder appended;
+    ok &= Check(PlanEditorComparisonFocus(
+                    expanded, view.comparisonOptions[0].file,
+                    view.comparisonOptions[2].file, appended) &&
+                appended.focusedSlot == 2 &&
+                appended.references.size() == 2 &&
+                appended.references[0] == view.comparisonOptions[0].file &&
+                appended.references[1] == view.comparisonOptions[1].file,
+                "SET opens previously unseen chart at end without moving existing panes");
+    expanded.comparisonFiles = appended.references;
+    expanded.comparisonFocusedSlot = appended.focusedSlot;
+    EditorComparisonFocusOrder returnToFirst;
+    ok &= Check(PlanEditorComparisonFocus(
+                    expanded, view.comparisonOptions[2].file,
+                    view.comparisonOptions[0].file, returnToFirst) &&
+                returnToFirst.focusedSlot == 0 &&
+                returnToFirst.references[0] == view.comparisonOptions[1].file &&
+                returnToFirst.references[1] == view.comparisonOptions[2].file,
+                "returning focus to first pane preserves newly added chart order");
+
     EditorUiState renderUi;
     renderUi.comparisonFiles = {
         view.comparisonOptions[0].file, view.comparisonOptions[1].file,
