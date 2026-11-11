@@ -294,7 +294,7 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
         context_.chartPath = savedPath;
         std::string notice;
         if (!context_.library.Refresh(notice)) {
-            context_.status = "SAVED (LIBRARY REFRESH FAILED: " + notice + ")";
+            context_.status = "SAVE FAILED: CHART WRITTEN BUT LIBRARY REFRESH FAILED: " + notice + ")";
             return false;
         }
     } else {
@@ -313,7 +313,7 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
                                      reopened, installedAudio, error) ||
             !core::PrepareChartForSong(reopened,
                                        context_.music.DurationSeconds(), error)) {
-            context_.status = "LIBRARY SAVE OK, REOPEN FAILED: " + error;
+            context_.status = "SAVE FAILED: CHART WRITTEN BUT REOPEN FAILED: " + error;
             return false;
         }
         context_.editor.ApplySavedChart(std::move(reopened));
