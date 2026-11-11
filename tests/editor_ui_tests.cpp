@@ -668,7 +668,7 @@ int main() {
     snapChart.PutTurn(Heading::Left);
     const auto originalTime = snapChart.Data().route.turns.front().timeMs;
     const auto half = ApplyEditorControls(snapChart, snapUi, Click(865, 180));
-    const auto third = ApplyEditorControls(snapChart, snapUi, Click(614, 430));
+    const auto third = ApplyEditorControls(snapChart, snapUi, Click(865, 180));
     ok &= Check(half.changedChart && third.changedChart &&
                 snapChart.Data().route.snapDivision == 3 &&
                 snapChart.Data().route.ticksPerBeat == 6 &&
