@@ -32,6 +32,9 @@ public:
     // Actual song timestamp for a selected beat and its signed offset.
     double AudioSecondsAtBeat(int beat) const noexcept;
     bool Dirty() const noexcept { return dirty_; }
+    // New difficulty created from shared Song Set metadata: the document is
+    // unsaved, but template initialization must not appear in Undo history.
+    void BeginUnsavedDocument() noexcept;
     // Monotonic presentation cache key, including document reloads, undo,
     // save replacement and audio-duration reflow (not cursor navigation).
     std::uint64_t RouteRevision() const noexcept { return routeRevision_; }

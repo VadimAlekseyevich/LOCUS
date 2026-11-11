@@ -83,8 +83,18 @@ int main() {
     ok &= Check(configured && actual == tempo &&
                 newDifficulty.HasSongDuration() &&
                 newDifficulty.Data().audioPath == "song.wav" &&
-                newDifficulty.Data().title == "New Difficulty",
+                newDifficulty.Data().title == "New Difficulty" &&
+                newDifficulty.Dirty() && !newDifficulty.CanUndo(),
                 "new difficulty inherits every Song Set tempo marker");
+    // Undo must affect only real mapping edits, not the initial shared BPM
+    // metadata. Returning to an unsaved baseline must remain dirty.
+    newDifficulty.SetOutgoingHeading(locus::core::Heading::Up);
+    ok &= Check(newDifficulty.CanUndo() && newDifficulty.Undo() &&
+                newDifficulty.Dirty() && !newDifficulty.CanUndo() &&
+                locus::core::EffectiveTempoMap(
+                    newDifficulty.Data().route,
+                    newDifficulty.Data().offsetSeconds) == tempo,
+                "new difficulty Undo cannot discard inherited Song Set timing");
     const auto originalTempo = actual;
     const bool rejected = PrepareNewDifficultyDraft(
         newDifficulty, 12.0, "../escape.wav", tempo, error);

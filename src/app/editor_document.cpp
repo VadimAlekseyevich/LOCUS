@@ -27,6 +27,7 @@ bool PrepareNewDifficultyDraft(
         error = "Cannot prepare a difficulty with this Song Set's audio and tempo map.";
         return false;
     }
+    prepared.BeginUnsavedDocument();
     result = std::move(prepared);
     error.clear();
     return true;

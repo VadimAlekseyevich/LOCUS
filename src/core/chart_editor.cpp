@@ -102,6 +102,14 @@ void ChartEditor::MarkSaved() noexcept {
     dirty_ = false;
 }
 
+void ChartEditor::BeginUnsavedDocument() noexcept {
+    // Keep current chart/tempo metadata, but don't let Ctrl+Z revert the
+    // Song Set template (or silently make an unsaved new chart clean).
+    ResetHistory();
+    savedRevision_ = std::numeric_limits<std::uint64_t>::max();
+    dirty_ = true;
+}
+
 void ChartEditor::ApplySavedChart(LoadedChart saved) {
     // Save-to-disk has already validated/reopened the file. Replacing only the
     // serialized snapshot avoids Load() resetting the user's current beat
