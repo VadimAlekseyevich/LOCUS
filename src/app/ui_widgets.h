@@ -34,10 +34,14 @@ inline void DrawUiLabel(Font font, const char* caption, Vector2 position,
 
 inline void DrawUiToggle(Rectangle bounds, bool checked,
                          UiInteraction state = {},
-                         UiMotionFrame animation = {},
+                         UiMotionFrame animation = {0, 0, 0, -1},
                          const UiTheme& theme = ApprovedUiTheme()) {
-    const float t = state.disabled ? (checked ? 1.0f : 0.0f)
-                                  : animation.selected;
+    // Callers may supply an animated 0..1 value; without a motion state
+    // the toggle must still display its actual checked value.
+    const float t = animation.selected < 0.0f
+        ? (checked ? 1.0f : 0.0f)
+        : (state.disabled ? (checked ? 1.0f : 0.0f)
+                          : animation.selected);
     const Color active = UiMix(theme.raised, theme.softBlue, t);
     const Color base = state.disabled ? UiOpacity(active, 0.45f) : active;
     DrawRectangleRounded(bounds, 1.0f, 14, base);
