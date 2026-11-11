@@ -178,6 +178,7 @@ void EditorSession::UpdatePreview(double now) {
     if (!playback_.Playing()) return;
     playback_.Update(now);
     if (playback_.Finished()) {
+        ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
         status_ = "PREVIEW FINISHED - SELECT BEAT OR R TO RESTART";
     } else if (!playback_.Paused()) {
         ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
