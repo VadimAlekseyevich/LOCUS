@@ -1,4 +1,5 @@
 #include "app/app_quit_dialog_layout.h"
+#include "app/editor_save_modal_layout.h"
 
 #include <iostream>
 
@@ -53,6 +54,16 @@ int main() {
                     {361.0f, 356.0f}, 0, 540) ==
                     QuitDialogChoice::None,
                 "invalid window dimensions cannot activate a button");
+    // Save-all on native Quit works from other screens, where PLAY uses a
+    // different camera transform from menus. A 960x540 click inside the
+    // SAVE CHARTS rectangle must never be confused with Quit/Stay.
+    ok &= Check(EditorQuitSavePointerHit(Screen::Editor, {480, 407}, 960, 540) &&
+                EditorQuitSavePointerHit(Screen::Home, {960, 814}, 1920, 1080) &&
+                EditorQuitSavePointerHit(Screen::Play, {960, 814}, 1920, 1080),
+                "save-charts hitbox matches menu and gameplay viewports");
+    ok &= Check(!EditorQuitSavePointerHit(Screen::Home, {600, 356}, 960, 540) &&
+                !EditorQuitSavePointerHit(Screen::Home, {480, 407}, 0, 540),
+                "quit save pointer cannot overlap Stay or invalid geometry");
     if (!ok) return 1;
     std::cout << "QUIT_POINTER_PASS viewport=1 portrait=1 modal=1\n";
     return 0;
