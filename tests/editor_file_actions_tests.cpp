@@ -201,7 +201,7 @@ int main() {
                               installedEasy, managedError) &&
         managedLibrary.Import(source / "Hard.locus.json",
                               installedHard, managedError);
-    if (!setup) std::cerr << "EDITOR_FIXTURE_SETUP_ERROR " << managedError << '\\n';
+    if (!setup) std::cerr << "EDITOR_FIXTURE_SETUP_ERROR " << managedError << '\n';
     ok &= Check(setup && managedLibrary.ChartCount() == 2,
                 "managed two-chart fixture is ready");
     if (setup) {
