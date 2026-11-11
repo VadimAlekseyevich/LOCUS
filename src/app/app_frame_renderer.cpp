@@ -324,6 +324,12 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                          MenuButtonStyle({155, 178, 216, 255}));
             DrawTextLabel(font, "FAILED SAVES KEEP ALL UNSAVED DRAFTS OPEN",
                           {249, 399}, 14, Color{192, 203, 223, 255});
+            if (editorStatus.find("SAVE FAILED") != std::string::npos ||
+                editorStatus.find("FOCUS RESTORE FAILED") != std::string::npos) {
+                const std::string notice = core::utf8::Truncate(editorStatus, 95);
+                DrawTextLabel(font, notice.c_str(), {145, 431}, 12,
+                              Color{250, 165, 152, 255});
+            }
         }
     } else {
         const char* screen = ScreenName(state.screen);
@@ -363,6 +369,12 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     }
     DrawQuitConfirmation(font, state, editor, editorUi, skinUi,
                          anyEditorDirty);
+    if (state.quitConfirmation && anyEditorDirty &&
+        editorStatus.find("SAVE FAILED") != std::string::npos) {
+        const std::string notice = core::utf8::Truncate(editorStatus, 80);
+        DrawTextLabel(font, notice.c_str(), {198, 437}, 11,
+                      Color{250, 165, 152, 255});
+    }
     EndMode2D();
     if (settings.showFps) {
         // Screen-pixel overlay, separate from the gameplay camera.
