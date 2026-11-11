@@ -56,6 +56,8 @@ public:
     bool FocusChart(const std::filesystem::path& file, std::string& error);
     const core::ChartEditor* ParkedEditor(const std::filesystem::path& file) const;
     bool AnyDirty() const noexcept;
+    bool HasDirtyParked() const noexcept;
+    void DropCleanParked() noexcept;
     bool RequestCloseComparison(const std::filesystem::path& file);
     const std::filesystem::path& PendingClose() const noexcept { return pendingClose_; }
     bool ResolveClose(bool save, bool discard, double& now);
