@@ -379,9 +379,19 @@ int main(int argc, char** argv) {
                 // The native quit dialog takes priority over editor modals.
                 editorSet.CancelPending();
             } else {
-                const bool approve = IsKeyPressed(KEY_Y) || editorModalConfirm;
+                const auto* pendingSet = editorSet.Pending();
+                const bool dirty = pendingSet && pendingSet->discardsDraft;
+                const bool save = dirty &&
+                    (IsKeyPressed(KEY_S) || saveDraftClick);
+                bool approve = IsKeyPressed(KEY_Y) ||
+                    (dirty ? discardDraftClick : editorModalConfirm);
                 const bool cancel = IsKeyPressed(KEY_N) ||
-                                    IsKeyPressed(KEY_ESCAPE) || editorModalCancel;
+                    IsKeyPressed(KEY_ESCAPE) ||
+                    (dirty ? cancelDraftClick : editorModalCancel);
+                if (save) {
+                    double saveNow = MonotonicSeconds();
+                    approve = editorFiles.SaveAll(saveNow);
+                }
                 input = FrameInput{}; // No actions beneath a modal confirmation.
                 editorSet.Confirm(approve, cancel);
             }
