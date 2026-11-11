@@ -408,6 +408,21 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
     return true;
 }
 
+bool EditorFileActions::HasDirtyParked() const noexcept {
+    for (const auto& entry : parked_)
+        if (entry.second.editor.Dirty()) return true;
+    return false;
+}
+
+void EditorFileActions::DropCleanParked() noexcept {
+    // A Song Set BPM/offset change invalidates the grid projections in
+    // cached drafts. Unsaved parked editors must be handled before publish.
+    for (auto it = parked_.begin(); it != parked_.end();) {
+        if (!it->second.editor.Dirty()) it = parked_.erase(it);
+        else ++it;
+    }
+}
+
 bool EditorFileActions::RequestCloseComparison(
     const std::filesystem::path& file) {
     const auto found = std::find(context_.ui.comparisonFiles.begin(),
