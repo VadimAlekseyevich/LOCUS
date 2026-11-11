@@ -506,6 +506,14 @@ if(LOCUS_BUILD_TESTS)
     add_test(NAME locus_global_audio_offset_calibration
              COMMAND locus_global_offset_calibration_tests)
 
+    # New UI foundation is pure presentation/model code, no window required.
+    add_executable(locus_ui_foundation_tests tests/ui_foundation_tests.cpp)
+    target_compile_features(locus_ui_foundation_tests PRIVATE cxx_std_17)
+    target_include_directories(locus_ui_foundation_tests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(locus_ui_foundation_tests PRIVATE raylib)
+    add_test(NAME locus_ui_foundation COMMAND locus_ui_foundation_tests)
+
     # Skin Load/Save/Save As/Reset must not publish an invalid draft,
     # and canceled native profile dialogs must preserve active appearance.
     add_executable(locus_skin_profile_actions_tests
