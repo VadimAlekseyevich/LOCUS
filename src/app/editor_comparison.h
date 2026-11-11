@@ -40,6 +40,18 @@ constexpr int ComparisonReferenceIndexForSlot(int displaySlot,
          : displaySlot < focusedSlot ? displaySlot : displaySlot - 1;
 }
 
+// Pure, transactional focus-order plan, shared by the editor and tests.
+// References exclude the active file. An unseen file is appended at the end;
+// an already visible file keeps exactly its current visual slot.
+struct EditorComparisonFocusOrder {
+    std::vector<std::filesystem::path> references;
+    int focusedSlot = 0;
+};
+bool PlanEditorComparisonFocus(const EditorUiState& ui,
+                               const std::filesystem::path& active,
+                               const std::filesystem::path& target,
+                               EditorComparisonFocusOrder& result);
+
 // Pure selection policy. Paths identify difficulties across library reorders;
 // any pane may be focused without moving the chart in its visual slot.
 bool ToggleEditorComparison(EditorUiState& ui, const EditorSetView& set,
