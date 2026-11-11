@@ -3,9 +3,11 @@
 #include "app/chart_editor_ui.h"
 #include "app/route_preview.h"
 #include "core/timed_route.h"
+#include "core/tempo_map.h"
 
 #include <array>
 #include <cstdint>
+#include <cmath>
 #include <filesystem>
 #include <functional>
 #include <string>
@@ -27,6 +29,23 @@ struct EditorComparisonFrame {
     std::array<int, 8> directionPressCounts{};
     int count = 0;
 };
+
+// The workspace uses absolute song time, never the tick index from a
+// different difficulty. This cursor projection changes no chart data and
+// works with different tick resolutions and tempo-marker positions.
+inline int EditorFocusTickAtSeconds(const core::ChartEditor& editor,
+                                   double songSeconds) noexcept {
+    const auto& data = editor.Data();
+    const auto& route = data.route;
+    if (!std::isfinite(songSeconds) || route.ticksPerBeat <= 0 ||
+        route.lengthBeats <= route.firstBeat) return editor.SelectedBeat();
+    const double tick = core::TempoBeatAtSeconds(
+        route, data.offsetSeconds, songSeconds) * route.ticksPerBeat;
+    if (!std::isfinite(tick)) return editor.SelectedBeat();
+    return static_cast<int>(std::llround(std::clamp(tick,
+        static_cast<double>(route.firstBeat),
+        static_cast<double>(route.lengthBeats - 1))));
+}
 
 // Visual pane order stays fixed when editing focus moves. comparisonFiles
 // stores every visible file except the focused one, in left-to-right order.
