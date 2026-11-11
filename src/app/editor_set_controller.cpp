@@ -29,8 +29,8 @@ const LibrarySong* FindSet(const SongLibrary& library, const fs::path& folder) {
 }
 
 bool ReplacesDraft(EditorSetAction action) {
-    return action == EditorSetAction::Open ||
-           action == EditorSetAction::NewDifficulty ||
+    // Open only switches focus and parks the current draft.
+    return action == EditorSetAction::NewDifficulty ||
            action == EditorSetAction::Duplicate ||
            action == EditorSetAction::DeleteSongSet;
 }
