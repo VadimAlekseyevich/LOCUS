@@ -89,7 +89,7 @@ void DrawTextField(Font font, Rectangle rect, const char* label,
 void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
                             double songSeconds, float pixelsPerSongSecond,
                             const Skin& skin) {
-    const int count = std::clamp(comparison.count, 1, 4);
+    const int count = std::clamp(comparison.count, 1, 3);
     for (int index = 0; index < count; ++index) {
         const auto& pane = comparison.panes[static_cast<std::size_t>(index)];
         const Rectangle bounds = ComparisonPreviewBounds(count, index);
@@ -133,7 +133,7 @@ void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
         }
         // Draw a short identifier rather than prose across the playing field.
         const int maxCharacters = std::max(6, static_cast<int>(
-            (bounds.width - 12.0f) / 7.6f));
+            (bounds.width - (pane.editable ? 95.0f : 12.0f)) / 7.6f));
         const std::string title = (pane.editable
             ? (pane.dirty ? "EDIT* " : "EDIT ")
             : (pane.dirty ? "VIEW* " : "VIEW ")) +
@@ -416,16 +416,32 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             fallback.directionPressCounts = DirectionPressCounts(chart);
             comparisons = &fallback;
         }
-        // ROUTE previews are deliberately the same speed and lookahead
-        // configuration as PLAY; the deprecated grid size no longer
-        // controls the visible geometry. Account for slow playback so
-        // effective screen px/s stays constant just like gameplay.
+        // ROUTE presentation is intentionally independent of PLAY's SKIN.
+        // Reuse the same trajectory styling, overriding only the editor's
+        // chosen speed and lookahead duration. Practice slowdown still uses
+        // one shared song-time clock for every comparison pane.
+        Skin editorSkin = skin;
+        editorSkin.lookaheadMs = settings.editorPreviewLengthMs;
         DrawComparisonPreviews(font, *comparisons, previewSeconds,
-            skin.baseSpeedPxPerSecond /
-                static_cast<float>(std::max(0.1, playbackSpeed)), skin);
-        // Live difficulty remains available without a verbose route header.
+            settings.editorPreviewSpeed /
+                static_cast<float>(std::max(0.1, playbackSpeed)), editorSkin);
+        Label(font, TextFormat("SPD %.0f", settings.editorPreviewSpeed),
+              745, 403, 12, Color{174, 222, 226, 255});
+        CompactButton(font, kEditorSpeedMinus, "-", Color{134, 176, 212, 255});
+        CompactButton(font, kEditorSpeedPlus, "+", Color{134, 212, 180, 255});
+        Label(font, TextFormat("PATH %.0f", settings.editorPreviewLengthMs),
+              745, 437, 12, Color{174, 222, 226, 255});
+        CompactButton(font, kEditorPathMinus, "-", Color{134, 176, 212, 255});
+        CompactButton(font, kEditorPathPlus, "+", Color{134, 212, 180, 255});
+        // Place the rating within the focused pane, not beneath the newly
+        // enlarged previews where it would overlap the route drawing.
+        const int focused = std::clamp(ui.comparisonFocusedSlot, 0,
+                                       comparisons->count - 1);
+        const Rectangle focusedBounds = ComparisonPreviewBounds(
+            comparisons->count, focused);
         Label(font, TextFormat("DIFF %.1f", draft.Difficulty().overall),
-              281, 444, 12, Color{239, 202, 137, 255});
+              focusedBounds.x + focusedBounds.width - 82,
+              focusedBounds.y + 6, 11, Color{239, 202, 137, 255});
         // Starting direction is owned by FIELD, not duplicated here.
         const auto* turn = draft.SelectedTurn();
         const auto incoming = core::IncomingHeadingAt(chart, draft.SelectedBeat());
