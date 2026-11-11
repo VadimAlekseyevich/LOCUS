@@ -62,22 +62,26 @@ inline void PrepareRoutePreview(const core::TimedRoute& route,
         --it;
         out.turnsFarToNear.push_back(*it);
 
-        // At most three prior and next events: O(visible notes), even in a
-        // 65k-event song. Compare positions, including identical coordinates
-        // on U-turns and retraces, without measuring invisible future runs.
+        // Nearby loopbacks can revisit a target four or eight notes later.
+        // Compare eight neighbors on either side in a 1.2s local pattern.
+        // O(visible notes), not quadratic in the full chart length.
         const auto index = static_cast<std::size_t>(it - turns.begin());
-        const auto beginIndex = index > 3 ? index - 3 : 0;
-        const auto endIndex = std::min(turns.size(), index + 4);
-        double nearest = std::numeric_limits<double>::infinity();
+        const auto beginIndex = index > 8 ? index - 8 : 0;
+        const auto endIndex = std::min(turns.size(), index + 9);
+        double distanceSquared = std::numeric_limits<double>::infinity();
         for (auto neighbor = beginIndex; neighbor < endIndex; ++neighbor) {
             if (neighbor == index ||
                 std::abs(turns[neighbor].songSeconds - it->songSeconds) > 1.2)
                 continue;
-            nearest = std::min(nearest, std::hypot(
-                turns[neighbor].position.x - it->position.x,
-                turns[neighbor].position.y - it->position.y));
+            const double dx =
+                turns[neighbor].position.x - it->position.x;
+            const double dy =
+                turns[neighbor].position.y - it->position.y;
+            distanceSquared = std::min(distanceSquared, dx * dx + dy * dy);
+            if (distanceSquared == 0.0) break;
         }
-        out.turnSpacingWorld.push_back(static_cast<float>(nearest));
+        out.turnSpacingWorld.push_back(
+            static_cast<float>(std::sqrt(distanceSquared)));
     }
 }
 

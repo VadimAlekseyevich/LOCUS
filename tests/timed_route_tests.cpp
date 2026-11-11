@@ -108,6 +108,29 @@ int main() {
                 noFuture.turnsFarToNear.empty(),
                 "zero horizon suppresses route preview but retains marker");
 
+    // A four-turn square can return to exactly the same target location.
+    // It is not necessarily the previous or next note, so limiting the
+    // visual policy to immediate neighbors misses genuine local overlaps.
+    core::Chart loop = chart;
+    loop.lengthBeats = 12;
+    loop.turns = {{1, core::Heading::Down, 100},
+                  {2, core::Heading::Left, 200},
+                  {3, core::Heading::Up, 300},
+                  {4, core::Heading::Right, 400},
+                  {5, core::Heading::Down, 500}};
+    core::TimedRoute loopRoute;
+    ok &= Check(loopRoute.Compile(loop, 0.0),
+                "compile a tight closed-loop route");
+    const auto loopFrame = app::MakeRoutePreview(loopRoute, 0.05, 500.0f);
+    bool foundRetrace = false;
+    for (std::size_t i = 0; i < loopFrame.turnsFarToNear.size(); ++i) {
+        if (Near(loopFrame.turnsFarToNear[i].songSeconds, 0.1) &&
+            Near(loopFrame.turnSpacingWorld[i], 0.0))
+            foundRetrace = true;
+    }
+    ok &= Check(foundRetrace,
+                "local four-turn loops compress genuinely coincident targets");
+
     chart.turns = {{1, core::Heading::Left, 500}};
     ok &= Check(revised.Compile(chart, 0.0) &&
                 Near(revised.PositionAt(0.5).x, 1.0) &&
