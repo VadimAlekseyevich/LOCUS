@@ -75,8 +75,12 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
     // Explicit navigation/seek ends the temporary exact-time focus anchor.
     // Otherwise pressing Copy or editing an already-selected note would
     // spuriously jump the stopped viewport to a rounded chart tick.
+    const Rectangle noteRuler{detail::kTimelineX, detail::kTimelineY,
+                              detail::kTimelineWidth, detail::kTimelineHeight};
     if (selectionChanged ||
-        (input.mouseClick && detail::Hit(detail::kSongOverview, input.mouse)) ||
+        (input.mouseClick &&
+         (detail::Hit(detail::kSongOverview, input.mouse) ||
+          detail::Hit(noteRuler, input.mouse))) ||
         (ui_.draggingSongOverview && (input.mouseHeld || input.mouseReleased)))
         ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
     if (selectionChanged) previewBeat_ = editor_.SelectedBeat();
