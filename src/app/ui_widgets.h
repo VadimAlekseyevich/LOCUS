@@ -13,9 +13,12 @@
 
 namespace locus::app {
 
-// Shared drawing primitives deliberately contain no input polling or
-// persistence. A screen controller updates models; the same layout
-// rectangles are passed to drawing and UiPointerHit / UiFocusChain.
+// APPLICATION MENU / EDITOR CONTROLS ONLY; NEVER ANIMATED GAMEPLAY.
+// Do not use these primitives in Screen::Play, its HUD or pause overlay,
+// gameplay route rendering, avatar/camera or hit/judgement feedback.
+// These drawing primitives contain no input polling or persistence.
+// A menu/editor controller updates models; identical layout rectangles
+// are passed to drawing and UiPointerHit / UiFocusChain.
 
 inline void DrawUiPanel(Rectangle bounds, bool elevated = false,
                         const UiTheme& theme = ApprovedUiTheme()) {
