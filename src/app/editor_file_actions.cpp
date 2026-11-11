@@ -111,6 +111,21 @@ void EditorFileActions::AttachAudio(double& now) {
             context_.status = "SONG PICKER FAILED: " + picked.error;
         return;
     }
+    const auto setFolder = ActiveSetFolder();
+    if (!setFolder.empty()) {
+        std::error_code ec;
+        const auto song = std::find_if(context_.library.Songs().begin(),
+            context_.library.Songs().end(), [&](const LibrarySong& current) {
+                return current.folder == setFolder;
+            });
+        if (song != context_.library.Songs().end() &&
+            (!std::filesystem::equivalent(
+                std::filesystem::path(picked.path), song->audioFile, ec) || ec)) {
+            context_.status =
+                "SONG NOT CHANGED: INSTALLED SETS USE ONE SHARED AUDIO FILE";
+            return;
+        }
+    }
 
     // This operation must preserve the previous document if decoding or
     // timeline validation fails. Prepare everything in temporary objects.
@@ -223,6 +238,17 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
     // authoring file on every save, or an implicit second library import.
     const bool installed = !current.empty() &&
         context_.library.FindChart(current, songIndex, chartIndex);
+    if (installed) {
+        std::error_code ec;
+        const auto& song = context_.library.Songs()[
+            static_cast<std::size_t>(songIndex)];
+        if (!std::filesystem::equivalent(
+                std::filesystem::path(context_.audioPath),
+                song.audioFile, ec) || ec) {
+            context_.status = "SAVE FAILED: SONG SET USES A DIFFERENT SHARED AUDIO";
+            return false;
+        }
+    }
     std::filesystem::path destination;
     if (installed && !saveAs) {
         // Hold both locks through the rename and atomic save.
