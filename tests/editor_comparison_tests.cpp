@@ -283,6 +283,6 @@ int main() {
                 cache.Prepare(editor, ui, view, 10.0).count == 1,
                 "unmanaged set drops inactive comparisons safely");
 
-    if (ok) std::cout << "EDITOR_COMPARE_PASS exact_time=1 panes=3 dirty_previews=1\\n";
+    if (ok) std::cout << "EDITOR_COMPARE_PASS exact_time=1 panes=3 dirty_previews=1\n";
     return ok ? 0 : 1;
 }
