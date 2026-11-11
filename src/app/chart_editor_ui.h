@@ -113,7 +113,10 @@ struct EditorUiState {
     }
 };
 
+enum class EditorHistoryOperation { None, Undo, Redo };
+
 struct EditorUiAction {
+    EditorHistoryOperation historyOperation = EditorHistoryOperation::None;
     bool chooseAudio = false;
     bool previewToggle = false;
     bool previewRestart = false;

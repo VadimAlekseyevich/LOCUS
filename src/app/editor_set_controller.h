@@ -52,7 +52,10 @@ public:
     EditorSetView View() const;
     void HandleControls(const EditorControls& input);
     void Request(EditorSetAction action);
-    bool SyncSongTiming(); // Called after chart timing undo/edits.
+    // Persist a chart's tempo edit; if publication fails, reverse only the
+    // operation that caused it (Undo must be reversed by Redo, not Undo).
+    bool SyncSongTiming(EditorHistoryOperation operation =
+                            EditorHistoryOperation::None);
     bool ApplyTempoMap(const std::vector<core::TempoMarker>& markers);
     bool HasPending() const noexcept { return pending_.has_value(); }
     const EditorSetRequest* Pending() const noexcept {

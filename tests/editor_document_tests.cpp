@@ -1,6 +1,7 @@
 #include "app/editor_document.h"
 #include "app/local_music.h"
 #include "core/chart_editor.h"
+#include "core/tempo_map.h"
 
 #include <chrono>
 #include <filesystem>
@@ -69,6 +70,29 @@ int main() {
                 chartPath == L"original.locus.json" &&
                 editor.Data().title == "Existing unsaved draft",
                 "unattached audio rejects saving without modifying the draft");
+
+    // New difficulties must inherit all tempo markers before any notes are
+    // authored. A failure must not discard the previously edited document.
+    const std::vector<locus::core::TempoMarker> tempo{
+        {125, 150.0}, {1500, 225.0}, {2800, 90.0}};
+    locus::core::ChartEditor newDifficulty;
+    const bool configured = PrepareNewDifficultyDraft(
+        newDifficulty, 12.0, "song.wav", tempo, error);
+    const auto actual = locus::core::EffectiveTempoMap(
+        newDifficulty.Data().route, newDifficulty.Data().offsetSeconds);
+    ok &= Check(configured && actual == tempo &&
+                newDifficulty.HasSongDuration() &&
+                newDifficulty.Data().audioPath == "song.wav" &&
+                newDifficulty.Data().title == "New Difficulty",
+                "new difficulty inherits every Song Set tempo marker");
+    const auto originalTempo = actual;
+    const bool rejected = PrepareNewDifficultyDraft(
+        newDifficulty, 12.0, "../escape.wav", tempo, error);
+    ok &= Check(!rejected && !error.empty() &&
+                locus::core::EffectiveTempoMap(
+                    newDifficulty.Data().route,
+                    newDifficulty.Data().offsetSeconds) == originalTempo,
+                "invalid new difficulty creation preserves active document");
 
     fs::remove_all(root, ec);
     if (!ok) return 1;

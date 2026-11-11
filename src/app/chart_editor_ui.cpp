@@ -229,10 +229,17 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                              : Color{81, 126, 135, 220});
     }
 
-    // Only authored notes belong to this ruler, never the full-song overview.
-    for (const auto& event : chart.turns) {
-        if (event.beat < first) continue;
-        if (event.beat > last) break;
+    // The authored chart can contain 65k notes, but only a few fit in the
+    // zoomed ruler. Find the visible range in O(log N), not by scanning every
+    // previous event on each rendered frame.
+    const auto firstVisible = std::lower_bound(
+        chart.turns.begin(), chart.turns.end(), first,
+        [](const core::TurnEvent& event, int tick) {
+            return event.beat < tick;
+        });
+    for (auto it = firstVisible;
+         it != chart.turns.end() && it->beat <= last; ++it) {
+        const auto& event = *it;
         const float x = kPlayheadX +
                         static_cast<float>((static_cast<double>(event.beat) - anchor) * pixels);
         if (x < kTimelineX + 8.0f || x > kTimelineX + kTimelineWidth - 8.0f)
@@ -396,6 +403,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             if (one.Compile(draft.Data().route, draft.Data().offsetSeconds))
                 fallback.panes[0] = {&one, draft.Data().title, true};
             fallback.count = 1;
+            fallback.directionPressCounts = DirectionPressCounts(chart);
             comparisons = &fallback;
         }
         // ROUTE previews are deliberately the same speed and lookahead
@@ -418,7 +426,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                               turn ? core::DirectionName(turn->direction) : "STRAIGHT"),
               744, 244, 12, Color{216, 232, 239, 255});
         // Full-chart totals, including each diagonal's two cardinals.
-        const auto pressCounts = DirectionPressCounts(chart);
+        const auto& pressCounts = comparisons->directionPressCounts;
         for (int row = 0; row < 3; ++row)
             for (int col = 0; col < 3; ++col) {
                 const auto heading = DirectionPadHeading(row, col);

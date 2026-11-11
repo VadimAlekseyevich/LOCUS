@@ -44,7 +44,7 @@ The [working sample](../examples/first-song.locus.json) contains nine turns; sup
 | `grid.width`, `grid.height` | Integers 2–16; retained as stored chart metadata. ROUTE preview sizing no longer depends on them |
 | `start.x`, `start.y` | Zero-based internal initial position, within grid dimensions; automatically chosen by the editor |
 | `start.heading` | `u`, `r`, `d`, `l`, `ru`, `rd`, `ld` or `lu` |
-| `previewLeadBeats` | Optional finite positive chart metadata; ROUTE/PLAY preview length is controlled by global SKIN PREVIEW TIME (MS) |
+| `previewLeadBeats` | Required finite positive chart metadata retained by the current serializer; ROUTE/PLAY actually use global SKIN PREVIEW TIME (MS) |
 | `turns[]` | Ordered array of at most 65,536 events with `timeMs` and absolute `heading` |
 
 Every event sets the **absolute outgoing direction**, independent of the previous heading: `u` (up), `r` (right), `d` (down), `l` (left), `ru` (right-up), `rd` (right-down), `ld` (left-down), `lu` (left-up). Unchanged travel needs no new event. An opposite heading is a 180° reversal; its junction gets a semicircular reverse cap without extra JSON fields. **FLIP H** swaps left/right components; **FLIP V** swaps up/down components of notes in the selected pattern without moving their timestamps. Movement is continuous on an unbounded plane; SKIN speed and preview duration determine on-screen spacing and visible future, not the stored grid dimensions.

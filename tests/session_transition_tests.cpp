@@ -44,6 +44,16 @@ int main() {
     intro.turns.front().timeMs = 1000;
     ok &= Check(!app::IntroSkipDestination(intro, 0.0, 0.2),
                 "no skip if the lead-in cannot fit before song zero");
+    // Across a BPM change, the skipped interval is a whole number of
+    // musical measures, not a fixed number of seconds at the first BPM.
+    intro.bpm = 120.0;
+    intro.tempoMap = {{0, 120.0}, {8000, 240.0}};
+    intro.turns = {{1, core::Heading::Up, 8500}};
+    const auto variableTempo = app::IntroSkipDestination(intro, 0.0, 0.5);
+    ok &= Check(variableTempo &&
+                std::abs(*variableTempo - 7.0) < 1e-6,
+                "intro skip integrates tempo changes while preserving a whole measure");
+    intro.tempoMap.clear();
     intro.turns.clear();
     ok &= Check(!app::IntroSkipDestination(intro, 0.0, 0.0),
                 "no notes means no intro skip");

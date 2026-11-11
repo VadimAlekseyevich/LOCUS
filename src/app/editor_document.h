@@ -2,11 +2,23 @@
 
 #include "app/music_picker.h"
 
+#include "core/route.h"
+
 #include <string>
+#include <vector>
 
 namespace locus::core { class ChartEditor; struct LoadedChart; }
 namespace locus::app {
 class LocalMusic;
+
+// Construct the entire new-difficulty authoring document before replacing
+// the current draft. The Song Set's complete tempo map, not just its first
+// BPM/offset, determines snapping immediately. No audio device is touched.
+bool PrepareNewDifficultyDraft(core::ChartEditor& result,
+                               double songDurationSeconds,
+                               const std::string& audioFilename,
+                               const std::vector<core::TempoMarker>& tempoMap,
+                               std::string& error);
 
 // Open a draft only after its chart, audio decoder and editor timeline all
 // validate. On failure, preserve the entire existing document and song.

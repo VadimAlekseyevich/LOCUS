@@ -118,6 +118,7 @@ void HandleEditorComparisonControls(EditorUiState& ui,
 void EditorComparisonCache::Reset() noexcept {
     active_ = Cached{};
     activeRevision_ = ~std::uint64_t{0};
+    activeDirectionPressCounts_ = {};
     reference_ = {};
 }
 
@@ -131,7 +132,10 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
         activeRevision_ = draft.RouteRevision();
         active_.ready = active_.route.Compile(
             draft.Data().route, draft.Data().offsetSeconds);
+        activeDirectionPressCounts_ =
+            detail::DirectionPressCounts(draft.Data().route);
     }
+    frame.directionPressCounts = activeDirectionPressCounts_;
     frame.panes[0] = {active_.ready ? &active_.route : nullptr,
                       draft.Data().title, true};
     frame.count = 1;

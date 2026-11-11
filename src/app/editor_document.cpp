@@ -13,6 +13,25 @@
 
 namespace locus::app {
 
+bool PrepareNewDifficultyDraft(
+    core::ChartEditor& result, double songDurationSeconds,
+    const std::string& audioFilename,
+    const std::vector<core::TempoMarker>& tempoMap, std::string& error) {
+    core::ChartEditor prepared;
+    // Validate fully before replacing result, including an invalid audio
+    // filename or a tempo map that cannot fit in the editor tick domain.
+    if (!prepared.SetAudioPath(audioFilename) ||
+        (!tempoMap.empty() && !prepared.SetTempoMap(tempoMap)) ||
+        !prepared.SetSongDuration(songDurationSeconds) ||
+        !prepared.SetTitle("New Difficulty")) {
+        error = "Cannot prepare a difficulty with this Song Set's audio and tempo map.";
+        return false;
+    }
+    result = std::move(prepared);
+    error.clear();
+    return true;
+}
+
 // Editor document lifecycle is independent of screen transitions and scoring.
 // M-04: reuse the same validation and local-music stream as external chart
 // playback. Saving/opening never silently changes the active Play session.

@@ -146,7 +146,7 @@ bool EditorSetController::ApplyTempoMap(
     return true;
 }
 
-bool EditorSetController::SyncSongTiming() {
+bool EditorSetController::SyncSongTiming(EditorHistoryOperation operation) {
     const auto folder = ctx_.files.ActiveSetFolder();
     const auto& songs = ctx_.library.Songs();
     const auto it = std::find_if(songs.begin(), songs.end(),
@@ -161,8 +161,13 @@ bool EditorSetController::SyncSongTiming() {
     if (!ctx_.library.SetSongTempoMap(
             static_cast<int>(it - songs.begin()), tempo,
             &ctx_.editor.Data(), error)) {
-        ctx_.editor.Undo();
-        Notice(error, true);
+        // A failed publish must leave the editor exactly as it was before
+        // this action. Calling Undo() after the user's Undo would instead
+        // roll back an unrelated older edit and corrupt the working state.
+        const bool restored = operation == EditorHistoryOperation::Undo
+            ? ctx_.editor.Redo() : ctx_.editor.Undo();
+        Notice(restored ? error : error + " (EDITOR HISTORY RESTORE FAILED)",
+               true);
         return false;
     }
     ctx_.ui.setSelected = -1;

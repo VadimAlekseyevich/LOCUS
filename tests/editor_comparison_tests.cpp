@@ -97,7 +97,8 @@ int main() {
 
     EditorComparisonCache cache;
     const auto four = cache.Prepare(editor, ui, view, 10.0);
-    ok &= Check(four.count == 4 &&
+    ok &= Check(four.directionPressCounts == std::array<int, 8>{} &&
+                four.count == 4 &&
                 four.panes[0].editable &&
                 four.panes[1].route && four.panes[2].route &&
                 four.panes[3].route &&
@@ -123,12 +124,15 @@ int main() {
     const auto changed = cache.Prepare(editor, ui, view, 10.0);
     ok &= Check(editor.Dirty() && changed.panes[0].route &&
                 changed.panes[0].route->Turns().size() == 1 &&
+                changed.directionPressCounts[static_cast<int>(Heading::Left)] == 1 &&
                 changed.panes[1].route == four.panes[1].route,
                 "live draft rebuild does not mutate or reload read-only references");
     ok &= Check(editor.Undo() &&
                 cache.Prepare(editor, ui, view, 10.0)
-                    .panes[0].route->Turns().empty(),
-                "undo immediately updates the active preview");
+                    .panes[0].route->Turns().empty() &&
+                cache.Prepare(editor, ui, view, 10.0)
+                    .directionPressCounts == std::array<int, 8>{},
+                "undo invalidates both route and direction-count caches");
 
     first.route.turns[0] = {2, Heading::Up, 1000};
     ++view.comparisonOptions[1].fileSize;

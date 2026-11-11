@@ -22,6 +22,7 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
         context_.sets.HandleControls(input.editor);
         return false;
     }
+    const auto beforeTempo = context_.session.TempoMap();
     const EditorUiAction uiAction = context_.session.ApplyControls(
         input.editor, now);
     if (!uiAction.clipboardWrite.empty())
@@ -30,8 +31,9 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     // its one canonical manifest; never change only this difficulty's timing.
     // Field confirmation may change tabs in the same frame; Undo of a BPM
     // change can also occur on ROUTE. Compare canonical timing on any edit.
-    if (uiAction.changedChart)
-        context_.sets.SyncSongTiming();
+    if (uiAction.changedChart &&
+        context_.session.TempoMap() != beforeTempo)
+        context_.sets.SyncSongTiming(uiAction.historyOperation);
     // ROUTE owns comparison selection; SET owns library tools; AUDIO has
     // the editable Song Set preview start. Selection never edits chart data.
     if (context_.ui.tab == EditorTab::Route ||

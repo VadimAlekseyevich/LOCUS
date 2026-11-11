@@ -17,6 +17,9 @@ void ApplyHistoryAction(core::ChartEditor& draft, EditorUiState& ui,
     const int beforeTicks = draft.Data().route.ticksPerBeat;
     const bool changed = undo ? draft.Undo() : draft.Redo();
     action.changedChart = changed;
+    if (changed)
+        action.historyOperation = undo ? EditorHistoryOperation::Undo
+                                       : EditorHistoryOperation::Redo;
     ui.feedback = changed
         ? (undo ? "UNDO APPLIED" : "REDO APPLIED")
         : (undo ? "NOTHING TO UNDO" : "NOTHING TO REDO");

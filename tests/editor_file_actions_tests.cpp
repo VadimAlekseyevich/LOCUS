@@ -285,6 +285,25 @@ int main() {
         ok &= Check(ui.comparisonFiles.size() == 1 &&
                     ui.comparisonFiles.front() == installedHard,
                     "real comparison picker selects sibling chart by click");
+
+        // A rejected shared tempo update after user Undo must restore the
+        // same action via Redo, not accidentally undo an earlier note edit.
+        editor.NewDraft();
+        editor.SetSongDuration(10.0);
+        ok &= Check(editor.SetBpm(150.0) &&
+                    managedLibrary.SetSongTempoMap(
+                        0, {{0, 150.0}}, nullptr, managedError),
+                    "create a shared tempo history for rollback regression");
+        {
+            std::ofstream changed(installedEasy, std::ios::app);
+            changed << ' '; // invalidate the library's size/mtime cache
+        }
+        ok &= Check(editor.Undo() &&
+                    editor.Data().route.bpm == 120.0 &&
+                    !managedSet.SyncSongTiming(app::EditorHistoryOperation::Undo) &&
+                    editor.Data().route.bpm == 150.0 &&
+                    !editor.CanRedo(),
+                    "failed tempo publication reverses user Undo via Redo");
     }
     std::error_code fixtureError;
     std::filesystem::remove_all(fixture, fixtureError);

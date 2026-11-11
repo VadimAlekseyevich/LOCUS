@@ -18,6 +18,8 @@ struct EditorComparisonPane {
 
 struct EditorComparisonFrame {
     std::array<EditorComparisonPane, 4> panes{};
+    // Aggregate counts for the entire active difficulty, cached by revision.
+    std::array<int, 8> directionPressCounts{};
     int count = 0;
 };
 
@@ -60,6 +62,7 @@ private:
     };
     Cached active_;
     std::uint64_t activeRevision_ = ~std::uint64_t{0};
+    std::array<int, 8> activeDirectionPressCounts_{};
     std::array<Cached, 3> reference_{};
 };
 

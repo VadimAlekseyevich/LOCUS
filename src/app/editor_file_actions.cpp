@@ -138,25 +138,23 @@ bool EditorFileActions::NewDifficultyFromLibrary(
         error = replacement.Error();
         return false;
     }
-    core::ChartEditor draft;
-    if (!draft.SetSongDuration(replacement.DurationSeconds()) ||
-        !draft.SetAudioPath(std::filesystem::path(audioFile).filename().u8string())) {
-        error = "Cannot prepare a draft for the selected audio.";
-        return false;
-    }
-    draft.SetTitle("New Difficulty");
     const auto shared = std::find_if(context_.library.Songs().begin(),
-        context_.library.Songs().end(), [&](const LibrarySong& song) {
-            return song.managed &&
-                   song.folder == std::filesystem::path(setFolder);
+        context_.library.Songs().end(), [&](const LibrarySong& candidate) {
+            return candidate.managed &&
+                   candidate.folder == std::filesystem::path(setFolder);
         });
+    std::vector<core::TempoMarker> timing;
     if (shared != context_.library.Songs().end()) {
-        if (!draft.SetBpm(shared->bpm) ||
-            !draft.SetOffsetMs(shared->offsetMs)) {
-            error = "Cannot prepare a new difficulty with shared Song Set timing.";
-            return false;
-        }
+        timing = shared->tempoMap.empty()
+            ? std::vector<core::TempoMarker>{{shared->offsetMs, shared->bpm}}
+            : shared->tempoMap;
     }
+    core::ChartEditor draft;
+    if (!PrepareNewDifficultyDraft(
+            draft, replacement.DurationSeconds(),
+            std::filesystem::path(audioFile).filename().u8string(),
+            timing, error))
+        return false;
     context_.preview.Stop();
     context_.music.SwapWith(replacement);
     context_.editor = std::move(draft);

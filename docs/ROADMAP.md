@@ -25,7 +25,10 @@ See [GDD](GDD.md), [architecture audit](ARCHITECTURE.md) and
 - [x] **2b. Song Set artwork.** Optional shared PNG/JPEG backgrounds per
   managed song, aspect-preserving cover crop, safe ZIP transport and a reusable
   image-resource layer for later skins and UI sprites.
-- [ ] **2c. Power-loss and filesystem validation.** Test denied writes, full
+- [x] **2c. Shared song tempo maps.** Chart v4 and Song Set manifest v2
+  store absolute-millisecond BPM markers. The editor has a song-wide table
+  and preserves note timestamps when the beat ruler is reprojected.
+- [ ] **2d. Power-loss and filesystem validation.** Test denied writes, full
   disks, interrupted imports and recovery on physical Windows; add conservative
   cleanup only when safe.
 - [ ] **3. Full scenario regression tests.** Chart create/edit/undo/save/
@@ -52,6 +55,6 @@ clean-worktree checks and the actual BAT launcher.
 
 ## Possible later features
 
-Tempo maps, hold notes, waveform editing, automatic BPM detection,
+Hold notes, waveform editing, automatic BPM detection,
 pitch-preserving practice speed and online services are not part of
-foundation stabilization. Scope each separately after the stable baseline.
+foundation stabilization. The shared song tempo map is already implemented. Scope each separately after the stable baseline.
