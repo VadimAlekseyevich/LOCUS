@@ -24,7 +24,12 @@ Editor: authoring input → `ChartEditor` revision → one compiled editable rou
 optional Song Set references are compiled read-only by `EditorComparisonCache`.
 All one-to-four panes consume the editor's single audio-time cursor, SKIN
 base speed and PREVIEW TIME (MS); neither opening a reference nor navigating
-its picker edits notes. SET opens a difficulty on a single click, retaining
+its picker edits notes. The upper editor note ruler uses BPM/snap ticks and
+its own zoom. The bottom whole-song overview is an independent audio-seconds
+projection over `ChartEditor::SongDurationSeconds()`, supporting fast
+seek without note mutation. Its initial tempo marker reads the canonical
+Song Set BPM and offset (fallback: the current draft), rather than an
+individual chart's notes. No multi-BPM format change is implied. SET opens a difficulty on a single click, retaining
 the unsaved-change confirmation when the active draft would be discarded.
 TEST borrows a prepared draft without writing it. Library: disk → validated
 Song Set index → explicit chart/audio activation. Audio streams are unloaded

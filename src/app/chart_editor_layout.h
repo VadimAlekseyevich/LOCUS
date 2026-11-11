@@ -10,8 +10,11 @@ namespace locus::app::detail {
 constexpr float kVirtualWidth = 960.0f, kVirtualHeight = 540.0f;
 constexpr float kGridCenterX = 448.0f, kGridCenterY = 282.0f;
 constexpr float kGridMaxSpan = 240.0f;
-constexpr float kTimelineX = 50.0f, kTimelineY = 447.0f;
-constexpr float kTimelineWidth = 860.0f, kTimelineHeight = 52.0f;
+// Zoomable, note-bearing ruler sits beneath the editor tabs.
+// The separate full-song overview is always mapped to actual audio seconds.
+constexpr float kTimelineX = 50.0f, kTimelineY = 115.0f;
+constexpr float kTimelineWidth = 860.0f, kTimelineHeight = 43.0f;
+constexpr Rectangle kSongOverview{52.0f, 466.0f, 856.0f, 35.0f};
 // Fixed playhead at one third of the ruler; the fractional-beat ruler moves.
 constexpr float kPlayheadX = kTimelineX + kTimelineWidth / 3.0f;
 constexpr float kZoomPixelsPerBeat[7] = {12, 18, 26, 36, 52, 76, 104};
@@ -21,10 +24,10 @@ constexpr float kDragEdgeZone = 48.0f;
 constexpr float kBarRepeatDelay = 0.23f;
 constexpr float kBarRepeatInterval = 0.075f;
 constexpr float kBarRepeatFastInterval = 0.04f;
-constexpr Rectangle kZoomOut{807, 416, 34, 27};
-constexpr Rectangle kZoomIn{863, 416, 34, 27};
-constexpr Rectangle kSnapLess{511, 416, 64, 27};
-constexpr Rectangle kSnapMore{583, 416, 64, 27};
+constexpr Rectangle kZoomOut{744, 202, 78, 30};
+constexpr Rectangle kZoomIn{830, 202, 78, 30};
+constexpr Rectangle kSnapLess{744, 166, 78, 30};
+constexpr Rectangle kSnapMore{830, 166, 78, 30};
 constexpr int kSnapDivisions[9] = {1, 2, 3, 4, 6, 8, 12, 16, 24};
 
 inline float PixelsPerBeat(const EditorUiState& ui) {
@@ -55,10 +58,11 @@ constexpr Rectangle kTabAudio{539, 73, 132, 35};
 constexpr Rectangle kTabField{681, 73, 132, 35};
 constexpr Rectangle kEditorBack{823, 73, 126, 35}; // Obvious exit from editor to Home.
 
-constexpr Rectangle kSong{49, 115, 162, 37};
-constexpr Rectangle kPlay{220, 115, 157, 37};
-constexpr Rectangle kStop{386, 115, 115, 37};
-constexpr Rectangle kTest{510, 115, 102, 37};
+// Non-ROUTE transport sits below the overview rather than obscuring the ruler.
+constexpr Rectangle kSong{52, 505, 103, 28};
+constexpr Rectangle kPlay{164, 505, 98, 28};
+constexpr Rectangle kStop{271, 505, 111, 28};
+constexpr Rectangle kTest{391, 505, 103, 28};
 // Eight directions around DEL (center); positioned above the timeline.
 constexpr Rectangle DirectionPadBounds(int row, int col) noexcept {
     return {744.0f + col * 56.0f, 275.0f + row * 39.0f, 52.0f, 35.0f};
@@ -89,30 +93,30 @@ inline std::array<int, 8> DirectionPressCounts(const core::Chart& chart) noexcep
 }
 
 // Same click geometry is used by the pure controls and renderer.
-constexpr Rectangle kRouteTest{52, 115, 120, 30};
-constexpr Rectangle kCopyTurns{184, 115, 100, 30};
-constexpr Rectangle kPasteTurns{294, 115, 100, 30};
-constexpr Rectangle kCutTurns{404, 115, 92, 30};
-constexpr Rectangle kUndoEdit{506, 115, 108, 30};
-constexpr Rectangle kRedoEdit{624, 115, 110, 30};
-constexpr Rectangle kMirrorHorizontal{52, 152, 127, 30};
-constexpr Rectangle kMirrorVertical{190, 152, 127, 30};
-constexpr Rectangle kRotateCounterclockwise{328, 152, 127, 30};
-constexpr Rectangle kRotateClockwise{466, 152, 127, 30};
-constexpr Rectangle kCompareToggle{604, 152, 130, 30};
-constexpr Rectangle kComparePopup{489, 191, 245, 207};
+constexpr Rectangle kRouteTest{52, 166, 120, 30};
+constexpr Rectangle kCopyTurns{184, 166, 100, 30};
+constexpr Rectangle kPasteTurns{294, 166, 100, 30};
+constexpr Rectangle kCutTurns{404, 166, 92, 30};
+constexpr Rectangle kUndoEdit{506, 166, 108, 30};
+constexpr Rectangle kRedoEdit{624, 166, 110, 30};
+constexpr Rectangle kMirrorHorizontal{52, 202, 127, 30};
+constexpr Rectangle kMirrorVertical{190, 202, 127, 30};
+constexpr Rectangle kRotateCounterclockwise{328, 202, 127, 30};
+constexpr Rectangle kRotateClockwise{466, 202, 127, 30};
+constexpr Rectangle kCompareToggle{604, 202, 130, 30};
+constexpr Rectangle kComparePopup{489, 240, 245, 207};
 constexpr Rectangle ComparePickerRow(int row) noexcept {
-    return {499.0f, 215.0f + row * 29.0f, 225.0f, 25.0f};
+    return {499.0f, 264.0f + row * 29.0f, 225.0f, 25.0f};
 }
-constexpr Rectangle kComparePickerPrev{503, 373, 80, 20};
-constexpr Rectangle kComparePickerNext{638, 373, 84, 20};
+constexpr Rectangle kComparePickerPrev{503, 420, 80, 20};
+constexpr Rectangle kComparePickerNext{638, 420, 84, 20};
 
 // All preview panes share one physical song-time scale. Primary stays large
 // even when there are four routes; references shrink instead of the editor.
 constexpr float kPreviewLeft = 52.0f;
 constexpr float kPreviewRight = 734.0f;
-constexpr float kPreviewTop = 184.0f;
-constexpr float kPreviewSide = 219.0f;
+constexpr float kPreviewTop = 239.0f;
+constexpr float kPreviewSide = 198.0f;
 constexpr float kPreviewGap = 8.0f;
 inline Rectangle ComparisonPreviewBounds(int count, int index) noexcept {
     const int visible = std::clamp(count, 1, 4);
@@ -169,7 +173,7 @@ constexpr Rectangle kFieldHeadingNext{403, 235, 51, 47};
 
 // Absolute song milliseconds at the same fractional tick used by the route.
 // The displayed value and copied clipboard value share this calculation.
-constexpr Rectangle kRouteTimeValue{52, 400, 206, 22};
+constexpr Rectangle kRouteTimeValue{52, 440, 206, 23};
 inline long long RouteTimeMs(const core::ChartEditor& draft, double activeTick) {
     const auto& loaded = draft.Data();
     const double tick = ViewBeat(draft, activeTick);
@@ -179,6 +183,36 @@ inline long long RouteTimeMs(const core::ChartEditor& draft, double activeTick) 
 }
 
 constexpr double kSpeeds[5] = {1.0, 0.75, 0.5, 0.25, 0.1};
+
+// Conversion helpers for the fixed, song-wide timeline. This scale never
+// depends on note zoom, BPM, snap subdivision or the active difficulty.
+inline float SongOverviewX(double audioSeconds, double durationSeconds) noexcept {
+    if (!std::isfinite(durationSeconds) || durationSeconds <= 0.0)
+        return kSongOverview.x;
+    const double progress = std::clamp(audioSeconds / durationSeconds, 0.0, 1.0);
+    return kSongOverview.x +
+        static_cast<float>(progress * kSongOverview.width);
+}
+inline double SongOverviewSeconds(float x, double durationSeconds) noexcept {
+    if (!std::isfinite(durationSeconds) || durationSeconds <= 0.0)
+        return 0.0;
+    const double progress = std::clamp(
+        static_cast<double>(x - kSongOverview.x) / kSongOverview.width,
+        0.0, 1.0);
+    return progress * durationSeconds;
+}
+inline int SongOverviewTick(const core::ChartEditor& draft,
+                            double audioSeconds) noexcept {
+    const auto& data = draft.Data();
+    const auto& chart = data.route;
+    const double ticks = (audioSeconds - data.offsetSeconds) *
+        chart.bpm * chart.ticksPerBeat / 60.0;
+    if (!std::isfinite(ticks)) return draft.SelectedBeat();
+    const double bounded = std::clamp(ticks,
+        static_cast<double>(chart.firstBeat),
+        static_cast<double>(chart.lengthBeats - 1));
+    return SnapTick(bounded, chart);
+}
 
 inline Rectangle RouteSpeedBounds(int index) {
     return {52.0f + index * 102.0f, 505.0f, 94.0f, 28.0f};

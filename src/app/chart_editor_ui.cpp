@@ -8,6 +8,7 @@
 #include "app/ui_button.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -171,9 +172,11 @@ void DrawComparisonPicker(Font font, const EditorUiState& ui,
     CompactButton(font, kComparePickerNext, "NEXT", Color{148, 163, 193, 255});
     Label(font, TextFormat("%d / %d",
         std::min(count, ui.comparisonPickerFirst + 5), count),
-        586, 366, 12.0f, Color{183, 202, 216, 255});
+        586, 424, 12.0f, Color{183, 202, 216, 255});
 }
 
+// Zoomable, note-bearing ruler. Its pixel scale never controls the
+// full-song overview or the compiled song-time route.
 void DrawTimeline(Font font, const core::ChartEditor& draft,
                   const EditorUiState& ui, double previewBeat) {
     const auto& chart = draft.Data().route;
@@ -182,24 +185,13 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     const float pixels = PixelsPerTick(ui, chart);
     const int ticks = chart.ticksPerBeat;
     const int snapStep = ticks / chart.snapDivision;
-
-    if (ui.HasRange())
-        Label(font, TextFormat("RANGE %.3f-%.3f",
-                               static_cast<double>(ui.rangeFirst) / ticks,
-                               static_cast<double>(ui.rangeLast) / ticks),
-              50, 432, 11, Color{239, 207, 131, 255});
-    Label(font, TextFormat("GRID 1/%d", chart.snapDivision), 367, 432, 11,
-          Color{164, 188, 208, 255});
-    CompactButton(font, kSnapLess, "LESS", Color{128, 221, 202, 255});
-    CompactButton(font, kSnapMore, "MORE", Color{128, 221, 202, 255});
-    CompactButton(font, kZoomOut, "-", Color{125, 167, 205, 255});
-    CompactButton(font, kZoomIn, "+", Color{125, 167, 205, 255});
-
     const Rectangle strip{kTimelineX, kTimelineY, kTimelineWidth, kTimelineHeight};
+    const float lineY = kTimelineY + 25.0f;
+
     DrawRectangleRounded(strip, 0.15f, 5, Color{34, 44, 59, 255});
     DrawRectangleRec({kTimelineX + 2.0f, kTimelineY + 2.0f,
                       kPlayheadX - kTimelineX - 2.0f, kTimelineHeight - 4.0f},
-                     Color{41, 62, 70, 255}); // Past the fixed cursor.
+                     Color{41, 62, 70, 255});
     if (ui.tab == EditorTab::Route && ui.HasRange()) {
         const float a = kPlayheadX +
             static_cast<float>((ui.rangeFirst - snapStep * 0.5 - anchor) * pixels);
@@ -207,18 +199,14 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
             static_cast<float>((ui.rangeLast + snapStep * 0.5 - anchor) * pixels);
         const float x1 = std::max(a, kTimelineX + 2.0f);
         const float x2 = std::min(b, kTimelineX + kTimelineWidth - 2.0f);
-        if (x2 > x1) {
+        if (x2 > x1)
             DrawRectangleRec({x1, kTimelineY + 2.0f, x2 - x1,
-                              kTimelineHeight - 4.0f},
-                             Color{187, 160, 231, 96});
-        }
+                              kTimelineHeight - 4.0f}, Color{187, 160, 231, 96});
     }
-    DrawLineEx({kTimelineX + 4.0f, 477.0f},
-               {kTimelineX + kTimelineWidth - 4.0f, 477.0f},
+    DrawLineEx({kTimelineX + 4.0f, lineY},
+               {kTimelineX + kTimelineWidth - 4.0f, lineY},
                2.0f, Color{98, 125, 150, 255});
 
-    // Visible beat ticks are projected from a continuous (possibly fractional)
-    // beat. The ruler slides every frame; it never jumps at 15 -> 16.
     const int first = std::max(chart.firstBeat, static_cast<int>(std::floor(
         anchor + (kTimelineX - kPlayheadX) / pixels)) - 1);
     const int last = std::min(chart.lengthBeats - 1,
@@ -232,15 +220,15 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
             continue;
         const bool bar = tick % (4 * ticks) == 0;
         const bool major = tick % ticks == 0;
-        DrawLineEx({x, bar ? 462.0f : major ? 468.0f : 474.0f},
-                   {x, 486.0f}, bar ? 2.5f : major ? 1.5f : 1.0f,
+        DrawLineEx({x, kTimelineY + (bar ? 11.0f : major ? 17.0f : 23.0f)},
+                   {x, kTimelineY + 34.0f},
+                   bar ? 2.5f : major ? 1.5f : 1.0f,
                    bar ? Color{199, 220, 234, 255}
                      : major ? Color{113, 141, 163, 255}
                              : Color{81, 126, 135, 220});
     }
 
-    // Draw absolute compass directions: cardinal=teal, diagonal=violet.
-    // Iterate authored turns (already sorted), stopping after the view.
+    // Only authored notes belong to this ruler, never the full-song overview.
     for (const auto& event : chart.turns) {
         if (event.beat < first) continue;
         if (event.beat > last) break;
@@ -255,25 +243,93 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                                    : std::min(spacing - 3.0f, 32.0f);
         const Color tint = diagonal ? Color{175, 155, 236, 255}
                                     : Color{111, 214, 202, 255};
-        DrawRectangleRec({x - width * 0.5f, 483.0f, width, 13.0f}, tint);
+        DrawRectangleRec({x - width * 0.5f, kTimelineY + 29.0f, width, 12.0f}, tint);
         if (!narrow) {
             constexpr const char* names[] = {
                 "U", "R", "D", "L", "UR", "DR", "DL", "UL"
             };
             const char* label = names[static_cast<int>(event.direction)];
-            const float textWidth = MeasureTextEx(font, label, 11, 1).x;
-            Label(font, label, x - textWidth * 0.5f, 482.0f, 11,
+            const float textWidth = MeasureTextEx(font, label, 10, 1).x;
+            Label(font, label, x - textWidth * 0.5f, kTimelineY + 29.0f, 10,
                   Color{18, 26, 36, 255});
         }
     }
-
-    // Last, draw the stationary playhead *over* the moving ruler/events.
-    DrawRectangleRec({kPlayheadX - 4.0f, kTimelineY + 1.0f,
-                      8.0f, kTimelineHeight - 2.0f},
+    DrawRectangleRec({kPlayheadX - 3.0f, kTimelineY + 1.0f,
+                      6.0f, kTimelineHeight - 2.0f},
                      Color{241, 206, 118, 255});
-    DrawCircleV({kPlayheadX, 477.0f}, 6.0f,
-                Color{253, 246, 215, 255});
+    DrawCircleV({kPlayheadX, lineY}, 5.0f, Color{253, 246, 215, 255});
+
+    // These controls affect the authored ruler only; their hitboxes stay
+    // outside both timelines. SET does not mutate grid/snap settings.
+    if (ui.tab != EditorTab::Set) {
+        CompactButton(font, kSnapLess, "SNAP -", Color{128, 221, 202, 255});
+        CompactButton(font, kSnapMore, "SNAP +", Color{128, 221, 202, 255});
+        CompactButton(font, kZoomOut, "ZOOM -", Color{125, 167, 205, 255});
+        CompactButton(font, kZoomIn, "ZOOM +", Color{125, 167, 205, 255});
+        Label(font, TextFormat("1/%d", chart.snapDivision),
+              kTimelineX + 9.0f, kTimelineY + 3.0f, 11.0f,
+              Color{164, 188, 208, 255});
+    }
 }
+
+struct TempoMarker {
+    double songSeconds;
+    double bpm;
+};
+
+void DrawSongOverview(Font font, const core::ChartEditor& draft,
+                      const EditorSetView& set, double songSeconds) {
+    const Rectangle bounds = kSongOverview;
+    DrawRectangleRounded(bounds, 0.14f, 5, Color{34, 44, 59, 255});
+    const double duration = draft.SongDurationSeconds();
+    if (!std::isfinite(duration) || duration <= 0.0) {
+        Label(font, "NO AUDIO", bounds.x + 9.0f, bounds.y + 8.0f,
+              12.0f, Color{136, 158, 178, 255});
+        return;
+    }
+
+    const float right = bounds.x + bounds.width;
+    const float cursor = SongOverviewX(songSeconds, duration);
+    const float lineY = bounds.y + 25.0f;
+    if (cursor > bounds.x + 2.0f) {
+        DrawRectangleRec({bounds.x + 2.0f, lineY - 2.0f,
+                          cursor - bounds.x - 2.0f, 5.0f},
+                         Color{45, 94, 97, 255});
+    }
+    DrawLineEx({bounds.x + 3.0f, lineY}, {right - 3.0f, lineY},
+               1.5f, Color{104, 134, 154, 255});
+
+    // This is the pack's shared tempo/beat-zero anchor, not a chart note.
+    // Additional tempo events can later be supplied through this collection,
+    // without changing full-song navigation or the note ruler.
+    const std::array<TempoMarker, 1> tempoMarkers{{
+        {set.managed ? set.offsetMs / 1000.0 : draft.Data().offsetSeconds,
+         set.managed ? set.bpm : draft.Data().route.bpm}
+    }};
+    for (const auto& marker : tempoMarkers) {
+        const float x = SongOverviewX(marker.songSeconds, duration);
+        DrawLineEx({x, bounds.y + 5.0f}, {x, bounds.y + 31.0f},
+                   2.0f, Color{128, 223, 210, 255});
+        const char* name = TextFormat("BPM %g", marker.bpm);
+        const float width = MeasureTextEx(font, name, 12.0f, 1.0f).x;
+        const float labelX = std::clamp(x + 5.0f, bounds.x + 7.0f,
+            std::max(bounds.x + 7.0f, right - width - 6.0f));
+        Label(font, name, labelX, bounds.y + 3.0f, 12.0f,
+              Color{172, 233, 219, 255});
+    }
+
+    // Song-time cursor is distinct from the anchored, moving upper ruler.
+    DrawRectangleRec({cursor - 2.0f, bounds.y + 2.0f,
+                      4.0f, bounds.height - 4.0f},
+                     Color{241, 206, 118, 255});
+    DrawCircleV({cursor, lineY}, 4.0f, Color{255, 244, 209, 255});
+    const int total = static_cast<int>(std::ceil(duration));
+    const char* end = TextFormat("%d:%02d", total / 60, total % 60);
+    const float timeWidth = MeasureTextEx(font, end, 11.0f, 1.0f).x;
+    Label(font, end, right - timeWidth - 7.0f, bounds.y + 3.0f, 11.0f,
+          Color{170, 191, 211, 255});
+}
+
 } // namespace
 
 void RenderChartEditor(Font font, const core::ChartEditor& draft,
@@ -311,7 +367,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Button(font, kStop, "RESTART", Color{211, 178, 137, 255});
         Button(font, kTest, "TEST", Color{188, 176, 232, 255});
         Label(font, hasAudio ? Truncate(songName, 26).c_str() : "NO AUDIO",
-              626, 127, 15,
+              544, 513, 12,
               hasAudio ? Color{178, 227, 222, 255}
                        : Color{242, 181, 164, 255});
     }
@@ -352,7 +408,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                 static_cast<float>(std::max(0.1, playbackSpeed)), skin);
         // Live difficulty remains available without a verbose route header.
         Label(font, TextFormat("DIFF %.1f", draft.Difficulty().overall),
-              281, 409, 12, Color{239, 202, 137, 255});
+              281, 444, 12, Color{239, 202, 137, 255});
         // Starting direction is owned by FIELD, not duplicated here.
         const auto* turn = draft.SelectedTurn();
         const auto incoming = core::IncomingHeadingAt(chart, draft.SelectedBeat());
@@ -487,6 +543,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     }
 
     DrawTimeline(font, draft, ui, previewBeat);
+    DrawSongOverview(font, draft, set, previewSeconds);
     if (routeTab) {
         // Practice speed now lives below the ruler, not beside TEST.
         const char* speeds[5] = {"100%", "75%", "50%", "25%", "10%"};

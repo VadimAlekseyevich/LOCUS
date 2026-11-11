@@ -220,7 +220,9 @@ int main() {
             {CanceledChart, CanceledSave}};
         const auto view = managedSet.View();
         ok &= Check(view.managed && view.difficulties.size() == 2 &&
-                    view.current == 0,
+                    view.current == 0 &&
+                    view.bpm == managedLibrary.Songs()[0].bpm &&
+                    view.offsetMs == managedLibrary.Songs()[0].offsetMs,
                     "active Song Set is available on SET and ROUTE");
         app::EditorControls clickDifficulty;
         clickDifficulty.mouseClick = true;
@@ -237,11 +239,11 @@ int main() {
         ui.tab = app::EditorTab::Route;
         app::EditorControls clickCompare;
         clickCompare.mouseClick = true;
-        clickCompare.mouse = {664.0f, 164.0f};
+        clickCompare.mouse = {664.0f, 216.0f};
         managedSet.HandleControls(clickCompare);
         ok &= Check(ui.comparisonPickerOpen,
                     "real managed Song Set COMPARE+ opens on first click");
-        clickCompare.mouse = {548.0f, 252.0f};
+        clickCompare.mouse = {548.0f, 307.0f};
         managedSet.HandleControls(clickCompare);
         ok &= Check(ui.comparisonFiles.size() == 1 &&
                     ui.comparisonFiles.front() == installedHard,

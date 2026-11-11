@@ -36,6 +36,17 @@ void ChangeSnap(core::ChartEditor& draft, EditorUiState& ui,
     ui.feedbackError = false;
 }
 
+void SeekSongOverview(core::ChartEditor& draft, EditorUiState& ui,
+                      float mouseX) {
+    if (!draft.HasSongDuration()) return;
+    const double songSeconds = SongOverviewSeconds(
+        mouseX, draft.SongDurationSeconds());
+    const int tick = SongOverviewTick(draft, songSeconds);
+    ui.rangeFirst = ui.rangeLast = -1;
+    ui.draggingTimeline = false;
+    draft.SelectBeat(tick);
+}
+
 void BeginSelection(core::ChartEditor& draft, EditorUiState& ui,
                     const EditorControls& input) {
     const Vector2 mouse = input.mouse;

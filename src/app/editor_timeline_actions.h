@@ -8,6 +8,10 @@ void ChangeSnap(core::ChartEditor& draft, EditorUiState& ui,
                 int direction, EditorUiAction& action);
 void BeginSelection(core::ChartEditor& draft, EditorUiState& ui,
                     const EditorControls& input);
+// Fixed full-song timeline: navigate by audio duration, then focus the closest
+// snap tick. It does not write notes, BPM, or Song Set metadata.
+void SeekSongOverview(core::ChartEditor& draft, EditorUiState& ui,
+                      float mouseX);
 void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,
                       const EditorControls& input);
 void ApplyWheel(core::ChartEditor& draft, float wheel);

@@ -25,6 +25,7 @@ public:
     void Load(const LoadedChart& source);
     bool SetSongDuration(double seconds);
     bool HasSongDuration() const noexcept { return songDurationSeconds_ > 0.0; }
+    double SongDurationSeconds() const noexcept { return songDurationSeconds_; }
 
     const LoadedChart& Data() const noexcept { return chart_; }
     int SelectedBeat() const noexcept { return selectedBeat_; }

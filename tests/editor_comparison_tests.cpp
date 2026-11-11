@@ -54,14 +54,14 @@ int main() {
     EditorUiState popup;
     EditorControls open;
     open.mouseClick = true;
-    open.mouse = {665.0f, 165.0f};
+    open.mouse = {665.0f, 216.0f};
     HandleEditorComparisonControls(popup, view, open);
     ok &= Check(popup.comparisonPickerOpen &&
                 popup.comparisonFiles.empty(),
                 "COMPARE+ click opens Song Set picker");
     EditorControls choose;
     choose.mouseClick = true;
-    choose.mouse = {555.0f, 251.0f}; // second difficulty row
+    choose.mouse = {555.0f, 307.0f}; // second difficulty row
     HandleEditorComparisonControls(popup, view, choose);
     ok &= Check(popup.comparisonPickerOpen &&
                 popup.comparisonFiles.size() == 1 &&

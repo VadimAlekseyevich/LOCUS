@@ -67,6 +67,8 @@ EditorSetView EditorSetController::View() const {
     view.id = set->id;
     view.newDifficultyDraft = ctx_.chartPath.empty();
     view.previewStartMs = set->previewStartMs;
+    view.bpm = set->bpm;
+    view.offsetMs = set->offsetMs;
     view.hasBackground = !set->backgroundImage.empty();
     view.backgroundPath = set->backgroundImage;
     for (std::size_t i = 0; i < set->charts.size(); ++i) {

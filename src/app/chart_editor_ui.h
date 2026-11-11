@@ -61,6 +61,9 @@ struct EditorSetView {
     bool hasBackground = false;
     std::filesystem::path backgroundPath;
     int previewStartMs = 0;
+    // Shared Song Set tempo marker, not per-difficulty note metadata.
+    double bpm = 120.0;
+    int offsetMs = 0;
     std::string title, artist, audioName, id;
     std::vector<std::string> difficulties;
     std::vector<EditorComparisonOption> comparisonOptions;
@@ -77,6 +80,7 @@ struct EditorUiState {
     bool feedbackError = false;
     int rangeFirst = -1, rangeLast = -1; // Inclusive selected beats.
     bool draggingTimeline = false;
+    bool draggingSongOverview = false; // Seek only; never selects/edits notes.
     int dragAnchorBeat = 0;
     double dragViewBeat = 0.0;
     int heldBarDirection = 0;

@@ -55,6 +55,21 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
          (input.mouseClick && Hit(kCompareToggle, input.mouse))))
         return action;
 
+    // The fixed, whole-song strip owns pointer dragging on every editor tab.
+    // A seek only moves the editor cursor; it never authors or selects notes.
+    if (ui.draggingSongOverview) {
+        if (input.mouseHeld || input.mouseReleased)
+            editor_timeline::SeekSongOverview(draft, ui, input.mouse.x);
+        if (input.mouseReleased || !input.mouseHeld)
+            ui.draggingSongOverview = false;
+        return action;
+    }
+    if (input.mouseClick && Hit(kSongOverview, input.mouse)) {
+        ui.draggingSongOverview = input.mouseHeld;
+        editor_timeline::SeekSongOverview(draft, ui, input.mouse.x);
+        return action;
+    }
+
     // The current Route time readout, not individual timeline beats, copies
     // a single exact audio timestamp as whole milliseconds.
     if (ui.tab == EditorTab::Route && input.mouseClick &&
