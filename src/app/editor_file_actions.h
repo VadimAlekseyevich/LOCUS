@@ -63,6 +63,7 @@ public:
     const std::filesystem::path& PendingClose() const noexcept { return pendingClose_; }
     bool ResolveClose(bool save, bool discard, double& now);
     bool SaveAll(double& now);
+    bool RestoreWorkspaceAudio(std::string& error);
 
 
     // Managed set of the current installed chart, or a new unsaved difficulty.
