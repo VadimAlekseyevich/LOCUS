@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/chart_playback.h"
+#include "app/global_offset_calibrator.h"
 #include "app/hit_flash.h"
 #include "app/demo_transport.h"
 #include "core/judgement.h"
@@ -41,6 +42,13 @@ public:
     void Stop(bool customChart);
     void TogglePause(bool customChart, double now);
     void SetPracticeSpeed(bool customChart, double speed, double now);
+    void SetGlobalOffsetMs(int milliseconds) noexcept {
+        globalOffsetMs_ = milliseconds;
+    }
+    int GlobalOffsetMs() const noexcept { return globalOffsetMs_; }
+    double CalibratedTime(double songSeconds) const noexcept {
+        return CalibratedSongSeconds(songSeconds, globalOffsetMs_);
+    }
     void Update(bool customChart, double now, const ArrowInput& arrows);
     const HitFlash& Flash() const noexcept { return hitFlash_; }
 
@@ -51,6 +59,7 @@ private:
     ChartPlayback& local_;
     std::optional<EditorTestOrigin> testOrigin_;
     HitFlash hitFlash_;
+    int globalOffsetMs_ = 0;
 
     // Audio is allowed to end before the last note's late 180ms window.
     // In that case, scoring continues for a brief SILENT tail using the
