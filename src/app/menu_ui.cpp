@@ -74,6 +74,11 @@ int SettingsBindingIndex(const SettingsUi& ui, int visibleRow) noexcept {
 }
 Rectangle SettingsGameTab() { return {71, 158, 170, 31}; }
 Rectangle SettingsDisplayTab() { return {251, 158, 190, 31}; }
+Rectangle SettingsOffsetField() { return {78, 391, 135, 40}; }
+Rectangle SettingsCalibrateButton() { return {230, 391, 188, 40}; }
+Rectangle SettingsCalibrationApplyButton() { return {273, 387, 171, 44}; }
+Rectangle SettingsCalibrationRetryButton() { return {454, 387, 145, 44}; }
+Rectangle SettingsCalibrationCancelButton() { return {609, 387, 137, 44}; }
 Rectangle SettingsVolumeMinus() { return {300, 230, 43, 35}; }
 Rectangle SettingsVolumePlus() { return {354, 230, 43, 35}; }
 Rectangle SettingsFlashButton() { return {297, 303, 100, 35}; }
@@ -354,10 +359,15 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
                kGold, settings.hitFlash);
         DrawLine(72, 347, 441, 347, edge);
 
-        Label(font, "CONTROLS / REMAPPABLE SHORTCUTS", 73, 367, 16, kMuted);
-        Label(font, "PLAY: ESC PAUSES / RESUMES", 73, 397, 16, kText);
-        Label(font, "LEAVING PLAY REQUIRES CONFIRMATION", 73, 431, 13, kMuted);
-        Label(font, "EDITOR NOTES: CLICK THE COMPASS", 73, 451, 12, kMuted);
+        Label(font, "GLOBAL AUDIO OFFSET  /  MS", 73, 362, 16, kMuted);
+        Button(font, SettingsOffsetField(),
+               ui.editingGlobalOffset ? ui.globalOffsetBuffer + "_"
+               : (settings.globalOffsetMs > 0 ? "+" : "") +
+                    std::to_string(settings.globalOffsetMs) + " MS",
+               kMint, ui.editingGlobalOffset);
+        Button(font, SettingsCalibrateButton(), "CALIBRATE", kGold);
+        Label(font, "+ = SOUND IS LATE  /  - = SOUND IS EARLY",
+              73, 444, 12, kMuted);
     } else {
         Label(font, "VERTICAL SYNC", 73, 214, 16, kMuted);
         Button(font, SettingsVsyncButton(), settings.vsync ? "ON" : "OFF",
@@ -414,6 +424,42 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
           ui.noticeError ? Color{243, 142, 145, 255} : kGold);
     Label(font, "ESC CANCEL / RIGHT-CLICK CANCELS BIND",
           492, 495, 12, kMuted);
+
+    // Exclusive calibration overlay. The music is synthesized locally and
+    // the samples are scored against its raw (unshifted) audio-time clock.
+    if (ui.calibrationOpen) {
+        DrawRectangle(0, 0, 960, 540, Color{8, 12, 23, 246});
+        const Rectangle panel{164, 104, 632, 357};
+        DrawRectangleRounded(panel, 0.05f, 8, Color{26, 30, 42, 255});
+        DrawRectangleRoundedLinesEx(panel, 0.05f, 8, 2.0f, kMint);
+        Label(font, "GLOBAL OFFSET CALIBRATION", 208, 133, 25, kMint);
+        Label(font, "LISTEN TO THE METRONOME AT 120 BPM", 208, 184, 17, kText);
+        Label(font, "TAP SPACE ON THE HIGH ACCENT (EVERY 4 BEATS)",
+              208, 213, 15, kMuted);
+        Label(font, "FIRST TWO ACCENTS ARE WARM-UP", 208, 240, 15, kMuted);
+
+        if (ui.calibration.Complete() && ui.calibration.Reliable()) {
+            Label(font, TextFormat("SUGGESTED OFFSET: %+d MS",
+                  ui.calibration.SuggestedMs()), 230, 292, 27, kGold);
+            Label(font, TextFormat("TAP VARIATION: %d MS",
+                  ui.calibration.JitterMs()), 280, 335, 15, kMuted);
+            Button(font, SettingsCalibrationApplyButton(), "APPLY", kMint);
+        } else if (ui.calibration.Complete() || ui.calibrationExpired) {
+            Label(font, "INCONSISTENT / NOT ENOUGH TAPS",
+                  228, 296, 21, kGold);
+            Label(font, "RETRY IN A QUIET ROOM WITH HEADPHONES",
+                  243, 335, 14, kMuted);
+        } else {
+            Label(font, TextFormat("VALID ACCENTS  %d / %d",
+                  ui.calibration.Count(),
+                  GlobalOffsetCalibrator::kRequiredTaps),
+                  299, 298, 23, kGold);
+            Label(font, "PRESS SPACE ONLY WHEN YOU HEAR A HIGH CLICK",
+                  214, 334, 14, kMuted);
+        }
+        Button(font, SettingsCalibrationRetryButton(), "RETRY", kViolet);
+        Button(font, SettingsCalibrationCancelButton(), "CANCEL", kMuted);
+    }
 }
 
 } // namespace locus::app
