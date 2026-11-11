@@ -97,6 +97,23 @@ int main() {
                 "idle update cannot make preview position invalid");
     session.UpdatePreview(4.5);
     ok &= Check(!playback.Playing(), "editor transport stays stopped on idle tick");
+
+    // After clicking an adjacent comparison pane, no audio is running.
+    // Idle frames must retain the precise shared cursor despite the target
+    // chart's nearest authoring tick having slightly different song time.
+    ok &= Check(editor.SetSongDuration(16.0) &&
+                editor.SelectBeat(14), "prepare stopped editor at nonzero time");
+    ui.focusSongSeconds = 7.125;
+    session.ApplyControls({}, 5.0);
+    ok &= Check(std::abs(ui.focusSongSeconds - 7.125) < 1e-9 &&
+                editor.SelectedBeat() == 14 && !playback.Playing(),
+                "idle editor keeps exact song-time focus anchor after switching");
+    app::EditorControls stepAfterFocus;
+    stepAfterFocus.nextBeat = true;
+    session.ApplyControls(stepAfterFocus, 5.1);
+    ok &= Check(editor.SelectedBeat() == 15 &&
+                std::isnan(ui.focusSongSeconds),
+                "explicit cursor navigation releases focus anchor normally");
     // Editor file actions have a pure priority policy, testable without UI.
     app::FrameInput command{};
     app::EditorUiAction action{};
