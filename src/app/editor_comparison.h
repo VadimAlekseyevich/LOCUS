@@ -7,10 +7,10 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <string>
 
 namespace locus::app {
-class EditorFileActions;
 
 struct EditorComparisonPane {
     const core::TimedRoute* route = nullptr; // Frame-local borrow, never persists.
@@ -53,7 +53,8 @@ public:
                                   double songDurationSeconds,
                                   double songSeconds = 0.0,
                                   float lookaheadMs = 800.0f,
-                                  const EditorFileActions* workspace = nullptr);
+                                  std::function<const core::ChartEditor*(
+                                      const std::filesystem::path&)> parkedDraft = {});
     void Reset() noexcept;
 
 private:
