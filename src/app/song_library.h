@@ -34,7 +34,7 @@ struct LibrarySong {
     std::string id;             // Stable identity from Song Set metadata.
     std::string artist;         // Optional display metadata.
     std::filesystem::path folder; // Parent of all managed chart files.
-    bool managed = false;       // False for legacy installed v1/v2 libraries.
+    bool managed = false;       // True after a valid current Song Set manifest is indexed.
     int previewStartMs = 0; // Song Set menu preview, independent of BPM/offset.
     double bpm = 120.0; // Authoritative Song Set tempo.
     int offsetMs = 0; // Shared beat-zero position.
@@ -59,7 +59,7 @@ public:
     explicit SongLibrary(std::filesystem::path root) : root_(std::move(root)) {}
 
     bool Refresh(std::string& message);
-    // Import stages immutable audio, then atomically saves the chart JSON.
+    // Import stages shared Song Set audio, then atomically saves the chart JSON.
     // Repeat imports update a difficulty without modifying any other chart's
     // audio; multiple revisions still appear under one logical song.
     bool Import(const std::filesystem::path& sourceChart,
