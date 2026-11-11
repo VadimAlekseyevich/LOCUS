@@ -7,9 +7,7 @@
 
 namespace locus::app {
 
-// Experimental presentation-only follower. Switch to false to return to
-// the original fixed-center camera without changing saved files or scoring.
-inline constexpr bool kExperimentalAdaptiveCamera = true;
+// Presentation-only follower; SKIN cameraLagMs=0 disables lag at runtime.
 inline constexpr double kAdaptiveCameraMaxOffsetPx = 72.0;
 
 // Follows the CURRENT player position with a small, speed-proportional lag.
@@ -30,8 +28,7 @@ public:
     core::GridPoint Follow(core::GridPoint player, float pixelsPerUnit,
                            double now, bool frozen = false,
                            double cameraLagMs = 180.0) noexcept {
-        if (!kExperimentalAdaptiveCamera ||
-            !std::isfinite(cameraLagMs) || cameraLagMs <= 0.0 ||
+        if (!std::isfinite(cameraLagMs) || cameraLagMs <= 0.0 ||
             !std::isfinite(player.x) || !std::isfinite(player.y) ||
             !std::isfinite(pixelsPerUnit) || pixelsPerUnit <= 0.0f ||
             !std::isfinite(now)) {

@@ -1,4 +1,5 @@
 #pragma once
+#include "core/timed_route.h"
 #include <algorithm>
 #include <cmath>
 
@@ -25,6 +26,20 @@ inline float StepForFixedSpeed(float speed, double bpm, int ticksPerBeat,
         practiceRate <= 0.0) return 0.0f;
     const double step = static_cast<double>(speed) * 60.0 /
                         (bpm * ticksPerBeat * practiceRate);
+    return std::isfinite(step) ? static_cast<float>(step) : 0.0f;
+}
+
+// Runtime geometry belongs to the compiled exact-time route. Read its
+// distance-per-song-second directly instead of duplicating BPM/tick math.
+inline float StepForTimedRoute(float speed, const core::TimedRoute& route,
+                               double practiceRate = 1.0) noexcept {
+    if (!std::isfinite(speed) || speed <= 0.0f ||
+        !route.Ready() || !std::isfinite(route.UnitsPerSecond()) ||
+        route.UnitsPerSecond() <= 0.0 ||
+        !std::isfinite(practiceRate) || practiceRate <= 0.0)
+        return 0.0f;
+    const double step = static_cast<double>(speed) /
+                        (route.UnitsPerSecond() * practiceRate);
     return std::isfinite(step) ? static_cast<float>(step) : 0.0f;
 }
 

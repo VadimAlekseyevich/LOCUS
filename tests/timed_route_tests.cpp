@@ -57,8 +57,10 @@ int main() {
                 spans.back().heading == core::Heading::Up,
                 "preview segments share exact-time corner coordinates");
 
-    const float step = app::StepForFixedSpeed(135.0f, 130.0, 1);
-    const float practiceStep = app::StepForFixedSpeed(135.0f, 130.0, 1, 0.5);
+    const float step = app::StepForTimedRoute(135.0f, route);
+    ok &= Check(Near(step, app::StepForFixedSpeed(135.0f, 130.0, 1), 1e-5),
+                "timed route owns the runtime px/unit conversion");
+    const float practiceStep = app::StepForTimedRoute(135.0f, route, 0.5);
     ok &= Check(Near(corner.x * step, 67.5, 1e-5) &&
                 Near(corner.x * practiceStep, 135.0, 1e-5),
                 "screen distance follows song seconds and fixed practice px/s");

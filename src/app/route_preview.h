@@ -36,7 +36,7 @@ inline void PrepareRoutePreview(const core::TimedRoute& route,
     if (!out.ready || !std::isfinite(lookaheadMs) ||
         lookaheadMs <= 0.0f) return;
     out.horizonSeconds = static_cast<double>(lookaheadMs) / 1000.0;
-    out.spans = route.Window(songSeconds, songSeconds + out.horizonSeconds);
+    route.Window(songSeconds, songSeconds + out.horizonSeconds, out.spans);
     const auto& turns = route.Turns();
     const auto first = std::lower_bound(
         turns.begin(), turns.end(), songSeconds,

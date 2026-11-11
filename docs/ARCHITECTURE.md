@@ -77,29 +77,31 @@ Known limitation: the editor currently rejects two distinct timestamps
 whose snap-grid projections collide. Relaxing that requires a separate
 authoring model migration; it must not regress fast keyboard/snap placement.
 
-### 3. Build one read-only preview snapshot per frame (high)
+### 3. One read-only route snapshot per frame (implemented)
 
-At present the ribbon, turn targets, player marker and follower each do
-part of the same sampling work independently. Introduce a pure
-`RoutePreviewFrame` assembled from the timed route and one clock snapshot.
-It contains the visible segments, ordered authored events, nearest-event
-priorities, marker position and clipping/proximity data. `path_mesh` and
-`route_renderer` consume that frame without querying chart history or
-reimplementing event windows.
+`RoutePreviewFrame` prepares the marker, exact-time spans and the upcoming
+turn window once per PLAY frame and once per comparison pane. The route
+ribbon, junctions and camera consume the same source geometry. Marker order
+is far-to-near, even when two authored notes occupy the same coordinate.
+`TimedRoute::Window` supports caller-owned reusable buffers to avoid repeated
+per-frame allocations in gameplay. Standalone/SKIN rendering retains its
+convenience overloads.
 
-That becomes the correct place for density-aware marker sizing, crossings,
-reversal symbols and a compact next-action view. It must not change scoring,
-authoring data or silently drop dense events.
+Future work: on top of this frame implement density-aware marker sizing,
+crossing visibility, compact reverse symbols and a next-action view. The
+snapshot must not change scoring or silently drop dense events.
 
-### 4. Make the clock split explicit (medium-high)
+### 4. One raw/visual transport snapshot (implemented foundation)
 
-`ChartPlayback::AudioSeconds` follows the actual audio cursor for slow
-practice; `VisualAudioSeconds` smooths it. This is intentional, but both
-are queried at multiple points during frame update/render. Produce one
-`PlayClockFrame` containing **judge time**, **visual time**, practice rate
-and pause/seek generation. Define a bounded presentation/judgement drift
-contract and reset smoothing on discontinuities. The same visual timestamp
-must feed camera, ribbon, turn markers and outgoing outro.
+`ChartPlayback::Snapshot` samples the authoritative audio cursor once
+and exposes `judgeSeconds`, smoothed `visualSeconds`, practice rate and
+transport flags. PLAY and editor rendering consume that frame; per-key
+judgement still uses its own captured physical event time. The same visual
+timestamp feeds camera, ribbon and turn markers.
+
+Further work: document and measure a bounded visual/judgement drift contract
+on real Windows audio hardware and make seek/restart generation explicit
+if the existing smoother resets prove insufficient.
 
 ### 5. Consolidate state by lifecycle, not file length (medium)
 
@@ -109,9 +111,8 @@ already have owners. Avoid replacing it with a huge mutable
 `Application` object. Extract a coordinator only when a new feature needs
 a narrower lifetime or makes two screen policies disagree.
 
-The runtime camera has a skin-controlled lag but retains the hardwired
-`kExperimentalAdaptiveCamera` flag. Remove the build-time flag after device
-validation, leaving one user-visible runtime policy.
+Camera lag has one runtime control: SKIN camera lag = 0 restores fixed
+centering. No build-time experimental switch is needed.
 
 ### 6. Persistence/cache correctness at the boundaries (medium)
 
@@ -133,8 +134,8 @@ tests only for contracts or failures they can actually detect.
 ## Implementation order
 
 1. **Done:** compile exact-time gameplay geometry and indexed runs.
-2. Consolidate one per-frame preview/clock snapshot around the timed index.
-3. Add visibility policy and density-aware glyphs on top of that snapshot.
+2. **Done:** consolidate per-frame route and transport snapshots.
+3. Add visibility policy and density-aware glyphs on top of the snapshot.
 4. Consider editor time-first authoring while preserving BPM/Snap ergonomics.
 5. Profile dense cases and verify real-device input, audio and clipping.
 

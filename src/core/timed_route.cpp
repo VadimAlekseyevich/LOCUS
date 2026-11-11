@@ -121,12 +121,18 @@ GridPoint TimedRoute::PositionAt(double songSeconds) const noexcept {
 std::vector<TimedRouteSpan> TimedRoute::Window(double startSeconds,
                                                double endSeconds) const {
     std::vector<TimedRouteSpan> visible;
+    Window(startSeconds, endSeconds, visible);
+}
+
+void TimedRoute::Window(double startSeconds, double endSeconds,
+                        std::vector<TimedRouteSpan>& visible) const {
+    visible.clear();
     if (!ready_ || !std::isfinite(startSeconds) ||
         !std::isfinite(endSeconds) || endSeconds <= startSeconds)
-        return visible;
+        return;
     const double first = std::max(startSeconds, startSeconds_);
     const double last = std::min(endSeconds, endSeconds_);
-    if (last <= first) return visible;
+    if (last <= first) return;
 
     auto after = std::upper_bound(runs_.begin(), runs_.end(),
         first, [](double time, const Run& run) {

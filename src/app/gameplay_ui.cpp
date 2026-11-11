@@ -38,9 +38,8 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
                             standalone);
     const RoutePreviewFrame& preview = gameplay.routePreview
         ? *gameplay.routePreview : standalone;
-    const float step = StepForFixedSpeed(
-        gameplay.skin.baseSpeedPxPerSecond, gameplay.chart.bpm,
-        gameplay.chart.ticksPerBeat, gameplay.practiceSpeed);
+    const float step = StepForTimedRoute(
+        gameplay.skin.baseSpeedPxPerSecond, *route, gameplay.practiceSpeed);
     GameplayCamera camera(preview.marker, step);
     if (gameplay.hasCameraAnchor) camera.world = gameplay.cameraAnchor;
     const auto canvas = camera.Canvas();

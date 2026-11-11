@@ -92,14 +92,14 @@ int main() {
     ok &= Check(!fasterRibbon.empty() &&
                 Near(fasterRibbon.back().tick, 4.45),
                 "same 800 ms horizon spans twice as many beats at double BPM");
-    core::TimedRoute compiled;
-    ok &= Check(compiled.Compile(chart, 0.0),
+    core::TimedRoute compiledRoute;
+    ok &= Check(compiledRoute.Compile(chart, 0.0),
                 "compile timed route for shared preview");
-    const auto compiledFrame = app::MakeRoutePreview(compiled, 1.25, 800.0f);
+    const auto compiledFrame = app::MakeRoutePreview(compiledRoute, 1.25, 800.0f);
     const auto preparedRibbon = app::BuildScoredPathRibbon(
         compiledFrame, canvas, defaults);
     const auto compatibilityRibbon = app::BuildScoredPathRibbon(
-        compiled, 1.25, canvas, defaults);
+        compiledRoute, 1.25, canvas, defaults);
     ok &= Check(preparedRibbon.size() == compatibilityRibbon.size() &&
                 !preparedRibbon.empty() &&
                 Near(preparedRibbon.front().center.x,

@@ -42,6 +42,9 @@ public:
     // authored event boundary, including repeated same-direction notes.
     std::vector<TimedRouteSpan> Window(double startSeconds,
                                        double endSeconds) const;
+    // Reusable caller-owned window for per-frame preview allocations.
+    void Window(double startSeconds, double endSeconds,
+                std::vector<TimedRouteSpan>& out) const;
     const std::vector<TimedTurn>& Turns() const noexcept { return turns_; }
 
 private:
