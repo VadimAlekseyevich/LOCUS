@@ -69,6 +69,25 @@ bool SongLibrary::Refresh(std::string& message) {
             ec.clear();
             continue;
         }
+        const fs::path manifestPath = path.parent_path() / L"set.locus.json";
+        // Unsupported folders are not part of the active library.
+        // Check the manifest before expensive chart I/O or fingerprints.
+        const bool managed = fs::exists(manifestPath, ec);
+        if (ec || !managed) { ++skipped; ec.clear(); continue; }
+        SongSetManifest metadata;
+        {
+            const auto manifest = manifestCache.find(manifestPath);
+            if (manifest == manifestCache.end()) {
+                std::string problem;
+                if (!LoadSongSetManifest(manifestPath, metadata, problem)) {
+                    ++skipped;
+                    continue;
+                }
+                manifestCache.emplace(manifestPath, metadata);
+            } else {
+                metadata = manifest->second;
+            }
+        }
         // A filesystem metadata probe is only a cache hint. If the probe
         // fails, still try parsing the chart normally instead of losing it.
         const auto timestamp = current.last_write_time(ec);
@@ -120,31 +139,12 @@ bool SongLibrary::Refresh(std::string& message) {
         }
         indexed.audioFile = audioFile;
 
-        const fs::path manifestPath = path.parent_path() / L"set.locus.json";
-        const bool managed = fs::exists(manifestPath, ec);
-        if (ec) { ++skipped; ec.clear(); continue; }
-        // Only manifests of the current managed Song Set format are indexed.
-        if (!managed) { ++skipped; continue; }
-        SongSetManifest metadata;
-        {
-            const auto manifest = manifestCache.find(manifestPath);
-            if (manifest == manifestCache.end()) {
-                std::string problem;
-                if (!LoadSongSetManifest(manifestPath, metadata, problem)) {
-                    ++skipped;
-                    continue;
-                }
-                manifestCache.emplace(manifestPath, metadata);
-            } else {
-                metadata = manifest->second;
-            }
-            const fs::path expected = path.parent_path() /
-                fs::u8path(metadata.audioFile);
-            if (!fs::equivalent(expected, audioFile, ec) || ec) {
-                ++skipped;
-                ec.clear();
-                continue;
-            }
+        const fs::path expected = path.parent_path() /
+            fs::u8path(metadata.audioFile);
+        if (!fs::equivalent(expected, audioFile, ec) || ec) {
+            ++skipped;
+            ec.clear();
+            continue;
         }
         const fs::path logicalAudio = path.parent_path();
         const auto found = byAudio.find(logicalAudio);
