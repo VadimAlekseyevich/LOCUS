@@ -140,14 +140,15 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
         error = "Song Set metadata has missing or invalid fields.";
         return false;
     }
-    if (data.contains("previewStartMs")) {
-        if (!data["previewStartMs"].is_number_integer()) {
-            error = "Song Set preview position must be an integer."; return false;
-        }
-        try { loaded.previewStartMs = data["previewStartMs"].get<int>(); }
-        catch (const std::exception&) {
-            error = "Song Set preview position is out of range."; return false;
-        }
+    if (!data.contains("previewStartMs") ||
+        !data["previewStartMs"].is_number_integer()) {
+        error = "Song Set preview position must be an integer.";
+        return false;
+    }
+    try { loaded.previewStartMs = data["previewStartMs"].get<int>(); }
+    catch (const std::exception&) {
+        error = "Song Set preview position is out of range.";
+        return false;
     }
     if (loaded.previewStartMs < 0 ||
         loaded.previewStartMs > kMaxSongPreviewStartMs) {
@@ -193,17 +194,16 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
         return false;
     }
 
-    if (data.contains("backgroundFile")) {
-        if (!data["backgroundFile"].is_string()) {
-            error = "Song Set backgroundFile must be a string.";
-            return false;
-        }
-        loaded.backgroundFile = data["backgroundFile"].get<std::string>();
-        if (!loaded.backgroundFile.empty() &&
-            !SafeImageFilename(loaded.backgroundFile)) {
-            error = "Song Set backgroundFile must be a safe PNG/JPEG filename.";
-            return false;
-        }
+    if (!data.contains("backgroundFile") ||
+        !data["backgroundFile"].is_string()) {
+        error = "Song Set backgroundFile must be a string.";
+        return false;
+    }
+    loaded.backgroundFile = data["backgroundFile"].get<std::string>();
+    if (!loaded.backgroundFile.empty() &&
+        !SafeImageFilename(loaded.backgroundFile)) {
+        error = "Song Set backgroundFile must be a safe PNG/JPEG filename.";
+        return false;
     }
     manifest = std::move(loaded);
     error.clear();
