@@ -18,6 +18,26 @@
 namespace locus::app {
 namespace fs = std::filesystem;
 using namespace detail;
+namespace {
+// A newly created Song Set must never annex an existing pre-release
+// folder or recovery files. The lock placeholder is the only permitted
+// entry in a fresh directory after FolderWriteLock::Acquire.
+bool EnsureFreshSongSetFolder(const fs::path& folder, std::string& error) {
+    std::error_code ec;
+    for (fs::directory_iterator it(folder, ec), end; !ec && it != end;
+         it.increment(ec)) {
+        if (it->path().filename() == L".locus-lock") continue;
+        error = "Song Set folder already contains data but has no current manifest; "
+                "existing files were not modified.";
+        return false;
+    }
+    if (ec) {
+        error = "Cannot inspect existing Song Set folder: " + ec.message();
+        return false;
+    }
+    return true;
+}
+} // namespace
 bool SongLibrary::ImportIntoSet(const fs::path& sourceChart,
                                  const fs::path& targetSet,
                                  fs::path& installedChart,
@@ -89,6 +109,7 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
                 error = "The selected folder has no managed Song Set.";
                 return false;
             }
+            if (!EnsureFreshSongSetFolder(folder, error)) return false;
             metadata.id = HashText(source) + HashText(folder);
             metadata.title = SongDisplayTitle(source);
             metadata.artist.clear();
@@ -179,6 +200,7 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     if (existingSet) {
         if (!LoadSongSetManifest(manifestPath, metadata, error)) return false;
     } else {
+        if (!EnsureFreshSongSetFolder(folder, error)) return false;
         metadata.id = HashText(sourceAudio) + HashText(folder);
         metadata.title = SongDisplayTitle(sourceAudio);
         metadata.artist.clear();
