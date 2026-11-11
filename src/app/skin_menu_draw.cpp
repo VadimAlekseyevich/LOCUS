@@ -197,12 +197,11 @@ void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
         const Color tint = SkinColorFromHsv({
             (startHue + endHue) * 0.5f, 1.0f, 1.0f
         });
-        // DrawRing's positive angle runs counterclockwise on screen,
-        // while our HSV pointer angle increases clockwise. Its API also
-        // requires endAngle > startAngle, so reverse the hue endpoints.
+        // raylib DrawRing and the pointer both use cos(angle) for x
+        // and sin(angle) for y. Draw the same increasing hue interval.
         DrawRing(center, kWheelInner, kWheelOuter,
-                 SkinRingAngleForHue(endHue),
-                 SkinRingAngleForHue(startHue), 2, tint);
+                 SkinRingAngleForHue(startHue),
+                 SkinRingAngleForHue(endHue), 2, tint);
     }
     const Vector2 marker{
         center.x + 74.0f * std::cos(hsv.h * 2.0f * kPi),
