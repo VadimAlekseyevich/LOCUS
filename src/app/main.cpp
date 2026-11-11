@@ -724,7 +724,10 @@ int main(int argc, char** argv) {
         const auto comparisonFrame = visibleState.screen == Screen::Editor
             ? editorComparison.Prepare(
                 editor, editorUi, editorSetView, localSong.DurationSeconds(),
-                editorClock.songSeconds, activeSkin.lookaheadMs, &editorFiles)
+                editorClock.songSeconds, activeSkin.lookaheadMs,
+                [&editorFiles](const std::filesystem::path& path) {
+                    return editorFiles.ParkedEditor(path);
+                })
             : locus::app::EditorComparisonFrame{};
         // Artwork lives at Song Set scope, independent of difficulty/BPM.
         // Cached GPU resources change only when the selected image changes.
