@@ -108,6 +108,11 @@ struct EditorUiState {
     bool comparisonPickerOpen = false;
     int comparisonPickerFirst = 0;
     int timelineZoomIndex = 3; // Default 36 px/beat; zoom changes view only.
+    // Exact song-time anchor set by cross-difficulty focus. Each chart's
+    // authoring cursor is projected to its own tick grid, but an idle
+    // preview/ruler must stay at the SAME millisecond, not jump to a
+    // rounded tick. Cleared on explicit navigation.
+    double focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
     bool EditingText() const noexcept {
         return active != EditorField::None || editingSetPreview ||
                tempoEditingRow >= 0;
