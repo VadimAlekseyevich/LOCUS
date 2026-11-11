@@ -445,6 +445,50 @@ int main() {
                     "editing a single chart invalidates only that chart cache");
     }
 
+    // A writer may preserve both file size and last-write timestamp (e.g.
+    // an external editor restoring metadata). Compare actual bytes before
+    // reusing a cached chart or publishing Song Set-wide BPM changes.
+    const auto fingerprintItem = std::find_if(
+        library.Songs()[0].charts.begin(), library.Songs()[0].charts.end(),
+        [&](const LibraryChart& item) { return item.file == denseInstalled; });
+    if (fingerprintItem == library.Songs()[0].charts.end()) {
+        ok &= Check(false, "find cached chart for same-size/same-mtime edit");
+    } else {
+        const auto oldTimestamp = fingerprintItem->indexedWriteTime;
+        const std::string original = Read(denseInstalled);
+        std::string altered = original;
+        const auto name = altered.find("Renamed Externally");
+        if (name == std::string::npos) {
+            ok &= Check(false, "find title bytes for fingerprint regression");
+        } else {
+            altered[name] = 'r'; // Same length; valid but different title.
+            Write(denseInstalled, altered);
+            ec.clear();
+            fs::last_write_time(denseInstalled, oldTimestamp, ec);
+            const double bpm = library.Songs()[0].bpm;
+            const int offset = library.Songs()[0].offsetMs;
+            const bool rejected = !ec &&
+                !library.SetSongTiming(0, bpm + 0.001, offset,
+                                       nullptr, error) &&
+                error.find("changed on disk") != std::string::npos;
+            const bool refreshed = library.Refresh(note);
+            const auto changed = std::find_if(
+                library.Songs()[0].charts.begin(),
+                library.Songs()[0].charts.end(),
+                [&](const LibraryChart& item) {
+                    return item.file == denseInstalled;
+                });
+            ok &= Check(rejected && refreshed &&
+                        changed != library.Songs()[0].charts.end() &&
+                        changed->data.title.find("renamed Externally") !=
+                            std::string::npos &&
+                        library.LastRefreshStats().parsedCharts == 1 &&
+                        library.LastRefreshStats().reusedCharts == chartTotal - 1 &&
+                        library.LastRefreshStats().calculatedDifficulties == 1,
+                        "same-size/same-time edited chart cannot poison cache or tempo writes");
+        }
+    }
+
     // Changing only shared BPM on disk must reuse all raw chart parses
     // but recompute their derived ratings at the new authoritative timing.
     const fs::path finalManifest =

@@ -114,14 +114,19 @@ a narrower lifetime or makes two screen policies disagree.
 Camera lag has one runtime control: SKIN camera lag = 0 restores fixed
 centering. No build-time experimental switch is needed.
 
-### 6. Persistence/cache correctness at the boundaries (medium)
+### 6. Persistence/cache correctness at the boundaries (partly implemented)
 
-`SongLibrary::Refresh` reuses chart parses by file size + write time.
-This is a reasonable optimization, **not** content identity; externally
-replaced same-size/same-time files can appear unchanged. Use a stronger
-fingerprint or explicitly invalidate the cache on known writes; keep
-rechecks under the Song Set write lock. Continue physical Windows fault
-testing for permissions, interrupted replacement and disk-full recovery.
+`SongLibrary::Refresh` now reuses parses only when size, write timestamp
+**and a full-file noncryptographic content fingerprint** match. Song Set
+tempo publication verifies the same bytes under its writer lock, so an
+external same-size/same-timestamp edit cannot silently reuse stale notes.
+Reading chart bytes at refresh has an I/O cost; the JSON parse and
+difficulty calculation still remain cached. Verify refresh performance
+on large libraries rather than assuming this optimization is free.
+
+Continue physical Windows fault testing for permissions, interrupted
+replacement and disk-full recovery. A file fingerprint is not a substitute
+for a transactional filesystem or a cryptographic authenticity check.
 
 ### 7. Keep build/QA proportional (medium)
 

@@ -1,6 +1,7 @@
 #include "app/song_library.h"
 #include "app/song_library_internal.h"
 #include "app/song_set_storage.h"
+#include "app/chart_file_fingerprint.h"
 #include "app/song_timing.h"
 #include "app/image_asset_file.h"
 #include <algorithm>
@@ -36,6 +37,10 @@ bool SameSongSetFiles(const LibrarySong& song, std::string& error) {
         if (ec || size != chart.indexedFileSize) return stale();
         const auto time = fs::last_write_time(chart.file, ec);
         if (ec || time != chart.indexedWriteTime) return stale();
+        std::uint64_t fingerprint = 0;
+        if (!ChartFileFingerprint(chart.file, fingerprint) ||
+            fingerprint != chart.indexedContentFingerprint)
+            return stale();
     }
 
     // A new difficulty could have been added while our in-memory catalog

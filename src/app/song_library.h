@@ -23,6 +23,7 @@ struct LibraryChart {
     // Transient index fingerprint, not serialized with charts or Song Sets.
     std::uintmax_t indexedFileSize = 0;
     std::filesystem::file_time_type indexedWriteTime{};
+    std::uint64_t indexedContentFingerprint = 0;
     bool indexedFingerprintValid = false;
 };
 

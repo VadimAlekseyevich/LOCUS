@@ -1,6 +1,7 @@
 #include "app/song_library.h"
 #include "app/song_library_internal.h"
 #include "app/chart_file.h"
+#include "app/chart_file_fingerprint.h"
 #include "app/audio_revision.h"
 #include "app/song_set_storage.h"
 #include "app/song_timing.h"
@@ -32,8 +33,9 @@ bool SongLibrary::Refresh(std::string& message) {
     }
 
     // Keep the last published index untouched until this scan fully succeeds.
-    // File identity is checked by both last-write timestamp and byte length;
-    // Song Set timing is resolved separately from its authoritative manifest.
+    // File reuse requires size, timestamp AND a content fingerprint, so an
+    // external same-size / same-mtime edit cannot silently reuse stale notes.
+    // Song Set timing remains authoritative in the manifest.
     std::map<fs::path, const LibraryChart*> previous;
     for (const auto& song : songs_)
         for (const auto& chart : song.charts)
@@ -74,15 +76,19 @@ bool SongLibrary::Refresh(std::string& message) {
         const bool hasTimestamp = !ec;
         ec.clear();
         const auto bytes = current.file_size(ec);
-        const bool hasFingerprint = hasTimestamp && !ec;
+        const bool hasMetadata = hasTimestamp && !ec;
         ec.clear();
+        std::uint64_t contentFingerprint = 0;
+        const bool hasFingerprint = hasMetadata &&
+            ChartFileFingerprint(path, contentFingerprint);
 
         LibraryChart indexed;
         const auto old = previous.find(path);
         const bool reuse = hasFingerprint && old != previous.end() &&
             old->second->indexedFingerprintValid &&
             old->second->indexedWriteTime == timestamp &&
-            old->second->indexedFileSize == bytes;
+            old->second->indexedFileSize == bytes &&
+            old->second->indexedContentFingerprint == contentFingerprint;
         if (reuse) {
             indexed = *old->second;
             reusedFiles.insert(path);
@@ -104,6 +110,7 @@ bool SongLibrary::Refresh(std::string& message) {
         if (hasFingerprint) {
             indexed.indexedWriteTime = timestamp;
             indexed.indexedFileSize = bytes;
+            indexed.indexedContentFingerprint = contentFingerprint;
         }
         const fs::path audioFile = fs::canonical(indexed.audioFile, ec);
         if (ec || !Inside(root, audioFile)) {
