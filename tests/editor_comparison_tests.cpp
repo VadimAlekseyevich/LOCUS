@@ -1,8 +1,10 @@
 #include "app/editor_comparison.h"
 #include "core/chart_editor.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 using namespace locus::app;
 using namespace locus::core;
@@ -48,6 +50,107 @@ int main() {
         {"/songs/set/hard.json", "HARD", &third},
         {"/songs/set/extra.json", "EXTRA", &fourth}
     };
+
+    // Visual order is independent of edit focus. Selecting a different
+    // difficulty cannot move it into the large first pane.
+    EditorUiState stable;
+    stable.comparisonFiles = {
+        view.comparisonOptions[1].file,
+        view.comparisonOptions[2].file,
+        view.comparisonOptions[3].file
+    };
+    std::filesystem::path activeFile = view.comparisonOptions[0].file;
+    const std::vector<std::filesystem::path> initialOrder = {
+        view.comparisonOptions[0].file, view.comparisonOptions[1].file,
+        view.comparisonOptions[2].file, view.comparisonOptions[3].file
+    };
+    const auto visualOrder = [](const EditorUiState& state,
+                                const std::filesystem::path& active) {
+        auto files = state.comparisonFiles;
+        const auto slot = std::clamp(state.comparisonFocusedSlot, 0,
+                                    static_cast<int>(files.size()));
+        files.insert(files.begin() + slot, active);
+        return files;
+    };
+    for (int target : {2, 1, 3, 0}) {
+        EditorComparisonFocusOrder plan;
+        const auto file = view.comparisonOptions[
+            static_cast<std::size_t>(target)].file;
+        ok &= Check(PlanEditorComparisonFocus(stable, activeFile, file, plan),
+                    "visible difficulty can take focus");
+        stable.comparisonFiles = std::move(plan.references);
+        stable.comparisonFocusedSlot = plan.focusedSlot;
+        activeFile = file;
+        ok &= Check(visualOrder(stable, activeFile) == initialOrder &&
+                    stable.comparisonFocusedSlot == target,
+                    "repeated focus changes keep all four physical pane slots");
+        for (int slot = 0; slot < 4; ++slot) {
+            const int ref = ComparisonReferenceIndexForSlot(
+                slot, stable.comparisonFocusedSlot);
+            ok &= Check(ref == -1
+                        ? slot == stable.comparisonFocusedSlot
+                        : ComparisonDisplaySlotForReference(
+                              ref, stable.comparisonFocusedSlot) == slot,
+                        "focus hit-test mapping follows stable pane order");
+        }
+    }
+    EditorComparisonFocusOrder rejected;
+    stable.comparisonFocusedSlot = 1;
+    activeFile = view.comparisonOptions[1].file;
+    stable.comparisonFiles = {view.comparisonOptions[0].file,
+                               view.comparisonOptions[2].file,
+                               view.comparisonOptions[3].file};
+    ok &= Check(!PlanEditorComparisonFocus(stable, activeFile,
+                     view.comparisonOptions[4].file, rejected) &&
+                visualOrder(stable, activeFile) == initialOrder,
+                "fifth chart cannot change or shuffle four occupied slots");
+
+    EditorUiState renderUi;
+    renderUi.comparisonFiles = {
+        view.comparisonOptions[0].file, view.comparisonOptions[1].file,
+        view.comparisonOptions[3].file};
+    renderUi.comparisonFocusedSlot = 2;
+    EditorSetView renderView = view;
+    renderView.current = 2;
+    ChartEditor renderDraft;
+    renderDraft.Load(second);
+    ok &= Check(renderDraft.SetSongDuration(10.0),
+                "prepare differently focused chart for pane placement");
+    EditorComparisonCache orderedCache;
+    const auto ordered = orderedCache.Prepare(
+        renderDraft, renderUi, renderView, 10.0, 0.75);
+    ok &= Check(ordered.count == 4 &&
+                ordered.panes[0].title == "CURRENT SAVED" &&
+                ordered.panes[1].title == "EASY" &&
+                ordered.panes[2].title == "NORMAL" &&
+                ordered.panes[2].editable &&
+                ordered.panes[3].title == "HARD" &&
+                !ordered.panes[0].editable,
+                "focused chart renders in original third slot, not the first");
+
+    // Removing an earlier pane compacts only the gap. The focused chart
+    // remains at its new relative position without moving past other panes.
+    EditorSetView removedView = view;
+    removedView.current = 2;
+    removedView.comparisonOptions.erase(
+        removedView.comparisonOptions.begin()); // delete first pane
+    removedView.current = 1;
+    ReconcileEditorComparisons(renderUi, removedView);
+    ok &= Check(renderUi.comparisonFocusedSlot == 1 &&
+                renderUi.comparisonFiles.size() == 2 &&
+                renderUi.comparisonFiles[0] == view.comparisonOptions[1].file,
+                "reconcile compacts removed pane before focused slot");
+    EditorUiState toggled = stable;
+    EditorSetView toggleView = view;
+    toggleView.current = 1;
+    ok &= Check(ToggleEditorComparison(toggled, toggleView, 0) &&
+                toggled.comparisonFocusedSlot == 0 &&
+                visualOrder(toggled, activeFile) ==
+                    std::vector<std::filesystem::path>({
+                        view.comparisonOptions[1].file,
+                        view.comparisonOptions[2].file,
+                        view.comparisonOptions[3].file}),
+                "closing a pane before focus preserves order of survivors");
 
     // Clicking COMPARE+ must be routed to the popup BEFORE pure editor
     // actions. Its rows change comparison selection, not the draft.
