@@ -65,6 +65,35 @@ There is a specific exception for community creators: **monetized videos, stream
 
 Your chart and media rights remain yours; any music, artwork or other third-party material still requires permission from its rights holder. External dependencies retain their own licenses.
 
+## Community chart packs with music — future hosting policy
+
+**Design decision:** LOCUS is intended to let community members publish and download **complete playable chart packs, including the music**, in the manner familiar from osu!. A chart-only distribution requirement is **not** the plan. The present local Song Set/import/editor features are not an online hosting service; the rules below are the **policy to implement before a public upload/download service launches**, not a claim that takedowns or legal compliance are already operational.
+
+### Separate rights and responsibilities
+
+- **LOCUS software:** The game's source code and original assets are governed by [LICENSE](LICENSE), including the required credit to **VadimAlekseyevich** and the restriction on commercial software use. This license is **not** a license to any artist's music.
+- **Community uploads:** Users will be the ones choosing, creating and submitting chart packs. Packs may contain authored chart data, audio recordings, music compositions, artwork and other files; each can have different rights holders. **The uploader must own the relevant rights or hold permissions/legal grounds for the actual storage, public distribution and use of everything uploaded**, including a full recording. Naming an artist or giving credit is not a substitute for permission. Uploading a commercial recording without permission can still infringe copyright even when LOCUS is free.
+- **Chart authorship:** Mappers retain their rights in independently authored charts. The separate [Community Content Permission](COMMUNITY_CONTENT_PERMISSION.md) permits monetization of original charts and gameplay media **with LOCUS author credit**, but cannot authorize redistribution of someone else's music or artwork. Selling a chart does not automatically permit selling its bundled MP3.
+- **Hosting permission:** The future online upload terms must explicitly grant the LOCUS service the limited permissions required to store, process, display and distribute submitted packs, without assigning ownership of users' original creations to LOCUS. These terms must not pretend to sublicense music rights the uploader does not have.
+- **Featured / ranked status:** These are gameplay/community quality classifications, **not certifications of music licensing**. A ranked pack can still be reported and removed. The operator must not knowingly retain infringing material just because it is popular, ranked or manually reviewed.
+- **No commercial exploitation of disputed uploads:** The intended model is not to sell, advertise against, or charge for access to unlicensed user-uploaded recordings. Any donations or other project funding do **not** make copyright infringement lawful or guarantee a liability exemption. Directly supplying infringing uploads as the operator is not made safe by calling them community content.
+
+### Copyright reports and appeals — policy to activate before hosting
+
+When the service launches, its published Terms of Service and copyright policy should establish the following real workflow:
+
+1. Provide a **public, working contact/form** for copyright and other intellectual-property complaints. An actionable report should identify the copyrighted work(s), the precise pack/file/URL, enough information to locate it, the complainant's contact details, an authorized physical/electronic signature where required, and statements of good-faith belief and accuracy/authority as required by applicable law. Offer a route for incomplete reports to be supplemented.
+2. Record the complaint and **promptly remove or disable public access** to material after a valid notice, actual knowledge or sufficiently clear indications of infringement, as applicable. A removal can cover the audio or the full downloadable pack, depending on the claimed rights and the law; do not silently restore complained-of audio from mirrors. Preserve only such records as are justified by law and operational need.
+3. Inform the uploader of the action and reason when legally appropriate; permit a **genuine counter-notice/appeal for mistakes or authorized uses**, forward legally sufficient counter-notices as required, and follow the applicable reinstatement process. Under the US DMCA, a compliant counter-notice generally leads to reinstatement after **10–14 business days** unless the claimant reports an appropriate court action; do not replace this with an arbitrary automatic timer.
+4. Adopt, announce and **reasonably enforce a repeat-infringer policy**, including suspension or termination of upload/service accounts in appropriate circumstances. Keep moderation decisions, notices and repeat-infringer records; detect and address materially identical reuploads without falsely promising universal automated copyright detection.
+5. Provide understandable appeal and moderation procedures; prevent knowingly false claims or retaliation from becoming an unchecked removal tool, while still responding quickly to legitimate notices.
+
+**Pre-launch legal/operational requirements:** Confirm who operates the hosting service, where it is established and whom it serves. If seeking the US DMCA section 512 hosting safe harbor, **appoint and publish a designated agent with usable contact details and register that agent with the US Copyright Office**; implement the notification, counter-notice and repeat-infringer processes and the other section 512 requirements, rather than just copying their wording. For services covered by EU rules, assess the [Digital Services Act](https://eur-lex.europa.eu/eli/reg/2022/2065/oj) notice-and-action, transparency, statements-of-reasons and applicable complaints obligations, plus any platform-specific music copyright licensing requirements. Obtain professional jurisdiction-specific review before accepting public packs.
+
+**Status as of this documentation:** No designated DMCA agent or active copyright reporting inbox is represented by this repository text. No GitHub issue tracker, personal email address or placeholder is being advertised as a registered copyright agent. An actual service must publish its real contact and terms **before accepting uploads**. No notice, license disclaimer, lack of profit or user-upload checkbox by itself makes LOCUS immune to claims.
+
+**Reference model:** [osu! copyright policy](https://osu.ppy.sh/legal/en/Copyright), [osu! user-upload terms](https://osu.ppy.sh/legal/en/Terms), [US Copyright Office section 512 guide](https://www.copyright.gov/512/) and [DMCA agent directory](https://www.copyright.gov/dmca-directory/). LOCUS intends to adopt comparable practical protections, **not** to claim that osu! policy automatically applies to LOCUS.
+
 ## Project
 
 - [Game design](docs/GDD.md)
