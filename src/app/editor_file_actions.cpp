@@ -199,6 +199,12 @@ std::filesystem::path EditorFileActions::ActiveSetFolder() const {
 }
 
 bool EditorFileActions::Save(bool saveAs, double& now) {
+    // LISTEN and library PLAY share this decoder. Never validate or save an
+    // old editor document against a different song's duration after TEST.
+    if (context_.audioPath != context_.loadedAudioPath) {
+        context_.status = "SAVE FAILED: REOPEN THIS CHART TO RESTORE ITS AUDIO";
+        return false;
+    }
     if (context_.preview.Playing())
         context_.preview.Pause(now);
     if (!context_.music.Ready() || context_.audioPath.empty()) {
@@ -370,6 +376,7 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
             static_cast<std::size_t>(toSong)];
         std::error_code ec;
         if (!context_.music.Ready() || context_.audioPath.empty() ||
+            context_.audioPath != context_.loadedAudioPath ||
             !fs::equivalent(fs::path(context_.audioPath), set.audioFile, ec) ||
             ec) {
             error = "Comparison charts must use the already loaded Song Set audio.";
