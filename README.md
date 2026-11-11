@@ -4,6 +4,8 @@
 
 A Windows rhythm game with a built-in chart editor. Read the moving route and press the outgoing direction in time with your song; missed notes change your grade, never the authored route.
 
+UI redesign reference: [approved LOCUS visual direction and migration plan](design/ui/v1/README.md). This is a design-only reference; the current in-game UI is not yet migrated.
+
 ## Run
 
 Double-click **`build_and_run.bat`** in the repository folder. It checks for Git, CMake 3.25+ and Visual Studio 2022 C++ Build Tools, offers to install missing tools, builds the game and launches it. It pulls Git updates with fast-forward only and does not overwrite local changes.
