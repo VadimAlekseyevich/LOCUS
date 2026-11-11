@@ -146,63 +146,31 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
             error = "Unsupported skin version.";
             return false;
         }
-        const int version = object.at("version").get<int>();
-        if (version != 1 && version != 2) {
+        if (object.at("version").get<int>() != 2) {
             error = "Unsupported skin version.";
             return false;
         }
         Skin parsed;
-        // Strictly require all version-1 fields; never partially apply bad data.
+        Skin parsed;
         parsed.name = object.at("name").get<std::string>();
         const auto& path = object.at("path");
-        if (path.contains("lookaheadMs")) {
-            parsed.lookaheadMs = path.at("lookaheadMs").get<float>();
-        } else if (path.contains("lookaheadBeats")) {
-            // A saved global skin has no specific song BPM. Keep its other
-            // settings and use the new 800 ms default instead of guessing.
-            const float oldBeats = path.at("lookaheadBeats").get<float>();
-            if (!InRange(oldBeats, 0.25f, 64.0f)) {
-                error = "Legacy preview beats is out of range.";
-                return false;
-            }
-        } else {
-            error = "Missing preview time.";
-            return false;
-        }
+        parsed.lookaheadMs = path.at("lookaheadMs").get<float>();
         parsed.pathWidth = path.at("width").get<float>();
         parsed.outlineScale = path.at("outlineScale").get<float>();
         parsed.fadePower = path.at("fadePower").get<float>();
         parsed.pathOpacity = path.at("opacity").get<float>();
         parsed.junctionRadius = path.at("junctionRadius").get<float>();
         parsed.junctionGlow = path.at("junctionGlow").get<bool>();
-        // A profile written before this setting existed uses the new default.
-        if (path.contains("reverseCapScale"))
-            parsed.reverseCapScale = path.at("reverseCapScale").get<float>();
+        parsed.reverseCapScale = path.at("reverseCapScale").get<float>();
         const auto& player = object.at("player");
         parsed.playerRadius = player.at("radius").get<float>();
-        if (version == 1) {
-            // Legacy zoom implied speed on 8x8 at 120 BPM.
-            const float legacy = player.at("cameraStep").get<float>();
-            if (!InRange(legacy, 10.0f, 250.0f)) {
-                error = "Legacy camera zoom is out of range.";
-                return false;
-            }
-            parsed.baseSpeedPxPerSecond = legacy * (kDefaultBaseSpeed / 51.0f);
-        } else {
-            parsed.baseSpeedPxPerSecond = player.at("speedPxPerSecond").get<float>();
-        }
-        // Existing saved skins preserve the original follower setting.
-        if (player.contains("cameraLagMs"))
-            parsed.cameraLagMs = player.at("cameraLagMs").get<float>();
+        parsed.baseSpeedPxPerSecond = player.at("speedPxPerSecond").get<float>();
+        parsed.cameraLagMs = player.at("cameraLagMs").get<float>();
         parsed.playerGlow = player.at("glow").get<bool>();
         parsed.hitFlashScale = player.at("hitFlashScale").get<float>();
         parsed.showHud = object.at("hud").at("visible").get<bool>();
         const auto& colors = object.at("colors");
         for (int i = 0; i < kSkinColorCount; ++i) {
-            // Older skin files did not know about square playfield borders.
-            // Keep them usable and assign the new white default on load.
-            if (i == kSkinColorCount - 1 && !colors.contains(kColorKeys[i]))
-                continue;
             if (!DecodeColor(colors.at(kColorKeys[i]), SkinColor(parsed, i))) {
                 error = std::string("Invalid RGBA color: ") + kColorKeys[i];
                 return false;
