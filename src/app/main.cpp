@@ -44,6 +44,7 @@
 #include "app/session_transition.h"
 #include "app/quit_media.h"
 #include "app/editor_discard_guard.h"
+#include "app/editor_save_modal_layout.h"
 
 #include "raylib.h"
 
@@ -230,6 +231,7 @@ int main(int argc, char** argv) {
          locus::app::ChooseSongBackgroundFile}
     };
     locus::app::EditorComparisonCache editorComparison;
+    std::wstring comparisonCacheChartPath;
     locus::app::EditorScreenActions editorActions{
         {editorSession, editorFiles, editorSet, editorUi,
          {activeChart, chartTitle, judge, gameSession, customChart},
@@ -361,6 +363,15 @@ int main(int argc, char** argv) {
         const bool editorModalCancel = editorModalClick &&
             locus::app::MenuActionHit(locus::app::kEditorModalCancelButton,
                  GetMousePosition(), GetScreenWidth(), GetScreenHeight());
+        const bool saveDraftClick = editorModalClick &&
+            locus::app::MenuActionHit(locus::app::kEditorSaveDraftButton,
+                GetMousePosition(), GetScreenWidth(), GetScreenHeight());
+        const bool discardDraftClick = editorModalClick &&
+            locus::app::MenuActionHit(locus::app::kEditorDiscardDraftButton,
+                GetMousePosition(), GetScreenWidth(), GetScreenHeight());
+        const bool cancelDraftClick = editorModalClick &&
+            locus::app::MenuActionHit(locus::app::kEditorCancelDraftButton,
+                GetMousePosition(), GetScreenWidth(), GetScreenHeight());
         const Screen previousScreen = state.screen;
         if (previousScreen == Screen::Editor && editorSet.HasPending() &&
             !wasQuitConfirmation) {
@@ -375,14 +386,54 @@ int main(int argc, char** argv) {
                 editorSet.Confirm(approve, cancel);
             }
         }
+        // Inactive comparison panes own real dirty drafts. Closing one
+        // requires an explicit Save, Discard, or Cancel before any other
+        // editor action is allowed through.
+        if (previousScreen == Screen::Editor && !wasQuitConfirmation &&
+            !editorFiles.PendingClose().empty() && !input.closeRequested) {
+            const bool save = IsKeyPressed(KEY_S) || saveDraftClick;
+            const bool discard = IsKeyPressed(KEY_Y) || discardDraftClick;
+            const bool cancel = IsKeyPressed(KEY_N) ||
+                                IsKeyPressed(KEY_ESCAPE) || cancelDraftClick;
+            input = FrameInput{};
+            if (save || discard || cancel) {
+                double saveNow = MonotonicSeconds();
+                editorFiles.ResolveClose(save, discard, saveNow);
+            }
+        }
         if (previousScreen == Screen::Editor && !wasQuitConfirmation) {
+            bool approvedBySaving = false;
+            if (editorDiscard.Pending() != EditorPending::None &&
+                (IsKeyPressed(KEY_S) || saveDraftClick) &&
+                editorFiles.PendingClose().empty()) {
+                double saveNow = MonotonicSeconds();
+                approvedBySaving = editorFiles.SaveAll(saveNow);
+                if (!approvedBySaving) input = FrameInput{};
+            }
             const auto outcome = editorDiscard.Handle(
-                input, editor.Dirty(),
-                IsKeyPressed(KEY_Y) || editorModalConfirm,
+                input, editorFiles.AnyDirty(),
+                approvedBySaving || IsKeyPressed(KEY_Y) || discardDraftClick,
                 IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE) ||
-                    editorModalCancel);
+                    cancelDraftClick);
             if (outcome == locus::app::EditorDiscardOutcome::ChangesKept)
                 editorStatus = "CHANGES KEPT - CTRL+S TO SAVE";
+        }
+        // Native window close has its own modal. S saves ALL dirty editor
+        // documents before confirming quit; Y quits without saving, N stays.
+        if (wasQuitConfirmation && state.screen == Screen::Editor &&
+            editorFiles.AnyDirty() &&
+            (IsKeyPressed(KEY_S) ||
+             (editorModalClick && locus::app::MenuActionHit(
+                  locus::app::kEditorQuitSaveButton, GetMousePosition(),
+                  GetScreenWidth(), GetScreenHeight())))) {
+            double saveNow = MonotonicSeconds();
+            if (editorFiles.SaveAll(saveNow)) {
+                input.quitConfirmed = true;
+                input.quitCanceled = false;
+            } else {
+                input.quitConfirmed = false;
+                input.quitCanceled = false;
+            }
         }
         // TEST is a temporary view of the *same unsaved editor document*.
         // Returning through SongSelect previously reopened the last selected
@@ -655,10 +706,15 @@ int main(int argc, char** argv) {
         }
         const auto editorSetView = visibleState.screen == Screen::Editor
             ? editorSet.View() : locus::app::EditorSetView{};
+        if (visibleState.screen == Screen::Editor &&
+            editorChartPath != comparisonCacheChartPath) {
+            editorComparison.Reset();
+            comparisonCacheChartPath = editorChartPath;
+        }
         const auto comparisonFrame = visibleState.screen == Screen::Editor
             ? editorComparison.Prepare(
                 editor, editorUi, editorSetView, localSong.DurationSeconds(),
-                editorClock.songSeconds, activeSkin.lookaheadMs)
+                editorClock.songSeconds, activeSkin.lookaheadMs, &editorFiles)
             : locus::app::EditorComparisonFrame{};
         // Artwork lives at Song Set scope, independent of difficulty/BPM.
         // Cached GPU resources change only when the selected image changes.
@@ -688,6 +744,7 @@ int main(int argc, char** argv) {
                     gameplay, localSong, editor, editorUi, editorClock,
                     editorStatus, editorDiscard.Pending(),
                     editorSetView, comparisonFrame, editorSet.Pending(),
+                    editorFiles.PendingClose(), editorFiles.AnyDirty(),
                     musicError, renderNow,
                     library, libraryUi, settings, settingsUi,
                     draftSkin, skinUi, menuStatus,
