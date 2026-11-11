@@ -112,8 +112,6 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     Point position{};
     Heading preceding = chart.initialHeading;
     std::int64_t lastTime = std::numeric_limits<std::int64_t>::min();
-    const std::int64_t offsetMs =
-        static_cast<std::int64_t>(std::llround(offsetSeconds * 1000.0));
     std::size_t totalKeys = 0;
     for (const auto& event : chart.turns) {
         if (!ValidHeading(event.direction) || event.beat < lastTick)
@@ -126,8 +124,10 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         // Equivalent to the time-indexed gameplay trajectory, but invariant
         // under translation and independent of chart length or audio data.
         if (lastTime != std::numeric_limits<std::int64_t>::min()) {
+            // Constant visual-reference units per real second. Neither the
+            // authored grid nor any BPM segment affects path readability.
             const double distance = static_cast<double>(currentTime - lastTime)
-                * chart.bpm / 60000.0;
+                / 500.0;
             const Point unit = Unit(preceding);
             position.x += unit.x * distance;
             position.y += unit.y * distance;
@@ -164,20 +164,14 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         const double urgency = 1.0 + 0.8 * std::clamp(
             (0.40 - dt) / 0.40, 0.0, 1.0);
 
-        // Rhythmic surprise: logarithmic interval change, plus slight
-        // emphasis on off-quarter-beat placements. A steady triplet stream
-        // should remain relatively readable; BPM is never a raw multiplier.
+        // Rhythmic surprise depends only on real gaps between key events.
+        // Grid labels and BPM markers cannot make unchanged input harder.
         double variation = 0.0;
         if (previousInterval > 0.0 && dt <= 2.0 && previousInterval <= 2.0)
             variation = std::min(2.0, std::abs(
                 std::log2(dt / previousInterval)));
-        const double beat = static_cast<double>(cur.timeMs - offsetMs) *
-                            chart.bpm / 60000.0;
-        const double quarterDistance = std::abs(beat * 4.0 - std::round(beat * 4.0));
-        const double offbeat = std::min(quarterDistance * 2.0, 1.0);
         cur.rhythm = std::min(2.5,
-            variation * 0.85 + offbeat * 0.13 +
-            (dt < 0.22 ? 0.23 : 0.0));
+            variation * 0.85 + (dt < 0.22 ? 0.23 : 0.0));
         previousInterval = dt;
 
         const int changed = Bits(cur.mask ^ prev.mask);
