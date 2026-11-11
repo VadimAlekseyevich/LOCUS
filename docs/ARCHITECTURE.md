@@ -10,7 +10,7 @@ pre-release; incompatible changes are allowed but must be called out.
 | --- | --- | --- |
 | `src/core` | Chart timestamps, musical-grid editing, exact-time `TimedRoute` index, eight-way headings, judgement, difficulty and chart JSON | GPU, native dialogs, filesystem library policies |
 | `ChartEditor` | Mutable authoring document, selection, revisioned undo/redo | Saved-file selection, playback device, render UI |
-| `EditorComparisonCache` | One revision-cached editable `TimedRoute`, up to three file-identity-cached reference routes; read-only render frame | Audio transport, modifying other charts, Song Set ownership |
+| `EditorComparisonCache` | Revision-cached routes for one focused draft and up to three parked/library difficulties; frame-local read-only render snapshot | Audio transport, chart mutations, persistence |
 | `SongLibrary` / `song_set_storage` | Installed Song Sets, authoritative shared tempo map, file transactions, recovery, cache/index | Gameplay scoring or editor keyboard state |
 | `ChartPlayback` / `GameSession` | Audio-time transport and per-arrow judgement | Screen rendering, camera, skin settings |
 | `PlayPresentation` | Presentation-only camera lag, outro and adjustment notice | Authoritative song time or note results |
@@ -21,7 +21,7 @@ pre-release; incompatible changes are allowed but must be called out.
 Play: physical input → `GameSession`/`TurnJudge` → read-only
 `GameplayView` prepared by `PlayPresentation` → route/marker rendering.
 Editor: authoring input → `ChartEditor` revision → one compiled editable route;
-optional Song Set references are compiled read-only by `EditorComparisonCache`.
+other open Song Set documents retain their own editor histories under `EditorFileActions`, while `EditorComparisonCache` compiles their read-only render previews.
 All one-to-four panes consume the editor's single audio-time cursor, SKIN
 base speed and PREVIEW TIME (MS); neither opening a reference nor navigating
 its picker edits notes. The upper editor note ruler uses BPM/snap ticks and
