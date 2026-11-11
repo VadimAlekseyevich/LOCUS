@@ -374,10 +374,12 @@ void EditorSetController::Request(EditorSetAction action) {
     }
     const bool affectsCurrent = request.action == EditorSetAction::DeleteDifficulty &&
                                 request.chart == fs::path(ctx_.chartPath);
-    request.discardsDraft = ctx_.files.AnyDirty() &&
-        (ReplacesDraft(action) || affectsCurrent ||
-         action == EditorSetAction::DeleteDifficulty ||
-         action == EditorSetAction::DeleteSongSet);
+    const auto* parked = ctx_.files.ParkedEditor(request.chart);
+    const bool deletesUnsaved = action == EditorSetAction::DeleteDifficulty &&
+        ((affectsCurrent && ctx_.editor.Dirty()) ||
+         (parked && parked->Dirty()));
+    request.discardsDraft = deletesUnsaved ||
+        (ctx_.files.AnyDirty() && ReplacesDraft(action));
     if (EditorSetNeedsConfirmation(request)) {
         pending_ = std::move(request);
         return;
@@ -456,15 +458,9 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
             return true;
         }
         case EditorSetAction::Open: {
-            // Opening another difficulty in this set should not silently
-            // discard selected reference panes from the comparison workspace.
-            const auto comparisons = ctx_.ui.comparisonFiles;
-            if (!ctx_.files.OpenFromLibrary(request.chart.wstring(), error)) break;
-            ctx_.ui.comparisonFiles = comparisons;
-            ReconcileEditorComparisons(ctx_.ui, View());
-            ctx_.ui.tab = EditorTab::Set;
+            if (!ctx_.files.FocusChart(request.chart, error)) break;
             ctx_.ui.setSelected = -1;
-            Notice("DIFFICULTY OPENED");
+            Notice("DIFFICULTY FOCUSED - CTRL+S SAVES ONLY THIS CHART");
             return true;
         }
         case EditorSetAction::NewDifficulty: {
@@ -492,6 +488,7 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
         case EditorSetAction::DeleteDifficulty: {
             const bool active = request.chart == fs::path(ctx_.chartPath);
             if (!ctx_.library.TrashDifficulty(request.chart, error)) break;
+            ctx_.files.ForgetChart(request.chart);
             if (active) {
                 const auto* updated = FindSet(ctx_.library, folder);
                 if (updated && !updated->charts.empty()) {
