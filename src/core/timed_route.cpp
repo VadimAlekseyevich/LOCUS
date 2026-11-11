@@ -122,6 +122,7 @@ std::vector<TimedRouteSpan> TimedRoute::Window(double startSeconds,
                                                double endSeconds) const {
     std::vector<TimedRouteSpan> visible;
     Window(startSeconds, endSeconds, visible);
+    return visible;
 }
 
 void TimedRoute::Window(double startSeconds, double endSeconds,
@@ -146,7 +147,6 @@ void TimedRoute::Window(double startSeconds, double endSeconds,
         visible.push_back({from, to, PointOn(*run, from),
                            PointOn(*run, to), run->heading});
     }
-    return visible;
 }
 
 } // namespace locus::core
