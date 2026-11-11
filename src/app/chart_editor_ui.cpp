@@ -134,7 +134,9 @@ void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
         // Draw a short identifier rather than prose across the playing field.
         const int maxCharacters = std::max(6, static_cast<int>(
             (bounds.width - 12.0f) / 7.6f));
-        const std::string title = (pane.editable ? "EDIT " : "VIEW ") +
+        const std::string title = (pane.editable
+            ? (pane.dirty ? "EDIT* " : "EDIT ")
+            : (pane.dirty ? "VIEW* " : "VIEW ")) +
             Truncate(pane.title, static_cast<std::size_t>(maxCharacters - 5));
         Label(font, title.c_str(), bounds.x + 5.0f, bounds.y + 5.0f,
               bounds.width < 155.0f ? 10.0f : 12.0f, accent);
