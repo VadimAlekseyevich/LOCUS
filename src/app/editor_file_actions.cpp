@@ -516,8 +516,12 @@ void EditorFileActions::ForgetChart(
     const std::filesystem::path& file) noexcept {
     parked_.erase(file);
     auto& comparisons = context_.ui.comparisonFiles;
-    comparisons.erase(std::remove(comparisons.begin(), comparisons.end(),
-                                  file), comparisons.end());
+    const auto found = std::find(comparisons.begin(), comparisons.end(), file);
+    if (found != comparisons.end()) {
+        if (found - comparisons.begin() < context_.ui.comparisonFocusedSlot)
+            --context_.ui.comparisonFocusedSlot;
+        comparisons.erase(found);
+    }
     if (pendingClose_ == file) pendingClose_.clear();
 }
 
@@ -533,6 +537,9 @@ bool EditorFileActions::RequestCloseComparison(
         return false;
     }
     parked_.erase(file);
+    if (found - context_.ui.comparisonFiles.begin() <
+        context_.ui.comparisonFocusedSlot)
+        --context_.ui.comparisonFocusedSlot;
     context_.ui.comparisonFiles.erase(found);
     return true;
 }
@@ -570,8 +577,13 @@ bool EditorFileActions::ResolveClose(bool save, bool discard, double& now) {
         return false; // Leave dialog open if writing to disk failed.
     const auto removeReference = [&](const std::filesystem::path& candidate) {
         auto& references = context_.ui.comparisonFiles;
-        references.erase(std::remove(references.begin(), references.end(),
-                                     candidate), references.end());
+        const auto found = std::find(references.begin(), references.end(),
+                                     candidate);
+        if (found != references.end()) {
+            if (found - references.begin() < context_.ui.comparisonFocusedSlot)
+                --context_.ui.comparisonFocusedSlot;
+            references.erase(found);
+        }
         parked_.erase(candidate);
     };
     removeReference(file);
