@@ -1,8 +1,10 @@
 #pragma once
 
 #include "app/music_picker.h"
+#include "app/chart_editor_ui.h"
 
 #include <filesystem>
+#include <map>
 #include <string>
 
 namespace locus::core { class ChartEditor; }
@@ -47,7 +49,18 @@ public:
     void NewDraft();
     void Open(double& now, std::string& error);
     void AttachAudio(double& now);
-    void Save(bool saveAs, double& now);
+    bool Save(bool saveAs, double& now);
+
+    // Same-song comparison panes can become editable without losing the
+    // active draft. Every visited difficulty owns an independent Undo stack.
+    bool FocusChart(const std::filesystem::path& file, std::string& error);
+    const core::ChartEditor* ParkedEditor(const std::filesystem::path& file) const;
+    bool AnyDirty() const noexcept;
+    bool RequestCloseComparison(const std::filesystem::path& file);
+    const std::filesystem::path& PendingClose() const noexcept { return pendingClose_; }
+    bool ResolveClose(bool save, bool discard, double& now);
+    bool SaveAll(double& now);
+
 
     // Managed set of the current installed chart, or a new unsaved difficulty.
     // Empty for an unrelated external chart / an unattached new song.
@@ -65,6 +78,18 @@ private:
     EditorFileContext context_;
     EditorFilePickers pickers_;
     std::wstring newDifficultySet_; // Empty means create/find a set from attached audio.
+    struct ParkedDocument {
+        core::ChartEditor editor;
+        EditorUiState ui;
+        std::wstring chartPath, audioPath, loadedAudioPath, newDifficultySet;
+        int previewBeat = 0;
+    };
+    std::map<std::filesystem::path, ParkedDocument> parked_;
+    std::filesystem::path pendingClose_;
+
+    bool SaveParked(const std::filesystem::path& file, double& now);
+    void DiscardParked() noexcept;
+
 };
 
 } // namespace locus::app
