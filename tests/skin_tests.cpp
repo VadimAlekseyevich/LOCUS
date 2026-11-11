@@ -17,27 +17,39 @@ int main() {
         if (!pass) std::cerr << "SKIN_FAIL " << what << '\n';
         ok &= pass;
     };
-    // The hue painted under each cardinal point MUST match the color
-    // selected by clicking that exact point (raylib uses sin/cos angles).
+    // Exercise raylib's ACTUAL DrawRing geometry: x=cos(angle),
+    // y=sin(angle). The previous regression test used the same wrong
+    // coordinate swap as the renderer and could never catch its bug.
     const Vector2 center{429.0f, 315.0f};
-    for (int sector = 0; sector < 12; ++sector) {
-        const float h = (sector + 0.5f) / 12.0f;
+    for (int sector = 0; sector < 120; ++sector) {
+        const float start = sector / 120.0f;
+        const float end = (sector + 1.0f) / 120.0f;
+        const float h = (start + end) * 0.5f;
+        const float startAngle = SkinRingAngleForHue(start);
+        const float endAngle = SkinRingAngleForHue(end);
+        check(endAngle > startAngle,
+              "DrawRing receives increasing angular bounds");
         const float raylibAngle = SkinRingAngleForHue(h) *
                                   kSkinHuePi / 180.0f;
         const Vector2 point{
-            center.x + std::sin(raylibAngle) * 74.0f,
-            center.y + std::cos(raylibAngle) * 74.0f
+            center.x + std::cos(raylibAngle) * 74.0f,
+            center.y + std::sin(raylibAngle) * 74.0f
         };
         const float pickedHue = SkinHueFromPointer(point, center);
         check(std::abs(pickedHue - h) < 0.00001f,
-              "wheel picker selects exactly the hue painted at its location");
+              "wheel picker selects the hue under a real DrawRing sector");
         const Color painted = SkinColorFromHsv({h, 1.0f, 1.0f});
         const Color selected = SkinColorFromHsv({pickedHue, 1.0f, 1.0f});
         check(std::abs(static_cast<int>(painted.r) - selected.r) <= 1 &&
               std::abs(static_cast<int>(painted.g) - selected.g) <= 1 &&
               std::abs(static_cast<int>(painted.b) - selected.b) <= 1,
-              "wheel displayed RGB and actual selection agree across all hues");
+              "drawn wheel color and pointer-selected RGB match");
     }
+    check(std::abs(SkinHueFromPointer({503, 315}, center)) < 0.00001f &&
+          std::abs(SkinHueFromPointer({429, 389}, center) - 0.25f) < 0.00001f &&
+          std::abs(SkinHueFromPointer({355, 315}, center) - 0.5f) < 0.00001f &&
+          std::abs(SkinHueFromPointer({429, 241}, center) - 0.75f) < 0.00001f,
+          "right/bottom/left/top hue locations are red/lime/cyan/purple");
     Skin original;
     original.name = "Blue practice";
     original.lookaheadMs = 1150.0f;
