@@ -467,6 +467,13 @@ int main(int argc, char** argv) {
         if (input.levelExitConfirmed && playCameFromEditor)
             input.requestedScreen = Screen::Editor;
         UpdateState(state, input, smokeWindow);
+        if (previousScreen == Screen::Editor && state.screen == Screen::Home) {
+            // Back/Home occurs only after the dirty workspace prompt has
+            // been approved or there are no changes. Free all parked drafts,
+            // histories and the shared editor decoder instead of presenting
+            // already-discarded changes at the next quit confirmation.
+            editorFiles.NewDraft();
+        }
         if (state.quitConfirmation || state.levelExitConfirmation)
             input = FrameInput{}; // Exclusive modal input.
         if (previousScreen != Screen::Skin && state.screen == Screen::Skin) {
