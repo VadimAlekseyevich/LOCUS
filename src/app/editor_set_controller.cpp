@@ -101,6 +101,11 @@ EditorSetView EditorSetController::View() const {
 
 bool EditorSetController::ApplyTempoMap(
     const std::vector<core::TempoMarker>& markers) {
+    if (ctx_.files.HasDirtyParked()) {
+        Notice("SAVE OR CLOSE UNSAVED COMPARISON CHARTS BEFORE CHANGING BPM",
+               true);
+        return false;
+    }
     std::string error;
     if (!core::ValidTempoMap(markers, error)) {
         Notice(error, true);
@@ -141,6 +146,7 @@ bool EditorSetController::ApplyTempoMap(
     if (ctx_.editor.Data().route.ticksPerBeat != oldTicks)
         ctx_.ui.rangeFirst = ctx_.ui.rangeLast = -1;
     ctx_.ui.draggingTimeline = false;
+    ctx_.files.DropCleanParked();
     Notice(it != songs.end() ? "TEMPO MAP UPDATED FOR SONG SET"
                              : "DRAFT TEMPO MAP UPDATED");
     return true;
@@ -157,6 +163,14 @@ bool EditorSetController::SyncSongTiming(EditorHistoryOperation operation) {
     const auto tempo = core::EffectiveTempoMap(
         ctx_.editor.Data().route, ctx_.editor.Data().offsetSeconds);
     if (tempo == it->tempoMap) return true;
+    if (ctx_.files.HasDirtyParked()) {
+        const bool restored = operation == EditorHistoryOperation::Undo
+            ? ctx_.editor.Redo() : ctx_.editor.Undo();
+        Notice(restored
+            ? "SAVE OR CLOSE UNSAVED COMPARISON CHARTS BEFORE CHANGING BPM"
+            : "UNSAVED COMPARISON CHART BLOCKED BPM (UNDO FAILED)", true);
+        return false;
+    }
     std::string error;
     if (!ctx_.library.SetSongTempoMap(
             static_cast<int>(it - songs.begin()), tempo,
@@ -171,6 +185,7 @@ bool EditorSetController::SyncSongTiming(EditorHistoryOperation operation) {
         return false;
     }
     ctx_.ui.setSelected = -1;
+    ctx_.files.DropCleanParked();
     Notice("SONG SET TEMPO MAP UPDATED");
     return true;
 }
@@ -359,8 +374,10 @@ void EditorSetController::Request(EditorSetAction action) {
     }
     const bool affectsCurrent = request.action == EditorSetAction::DeleteDifficulty &&
                                 request.chart == fs::path(ctx_.chartPath);
-    request.discardsDraft = ctx_.editor.Dirty() &&
-        (ReplacesDraft(action) || affectsCurrent);
+    request.discardsDraft = ctx_.files.AnyDirty() &&
+        (ReplacesDraft(action) || affectsCurrent ||
+         action == EditorSetAction::DeleteDifficulty ||
+         action == EditorSetAction::DeleteSongSet);
     if (EditorSetNeedsConfirmation(request)) {
         pending_ = std::move(request);
         return;
