@@ -120,7 +120,7 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
     const auto data = nlohmann::json::parse(file, nullptr, false);
     if (data.is_discarded() || !data.is_object() ||
         !data.contains("formatVersion") || !data["formatVersion"].is_number_integer() ||
-        (data["formatVersion"] != 1 && data["formatVersion"] != 2)) {
+        data["formatVersion"] != 2) {
         error = "Invalid Song Set metadata version or JSON.";
         return false;
     }
@@ -153,57 +153,44 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
         loaded.previewStartMs > kMaxSongPreviewStartMs) {
         error = "Song Set preview position is out of range."; return false;
     }
-    // Existing Song Sets may lack timing fields; the library derives one
-    // canonical value without touching older chart files.
-    if (data.contains("bpm") != data.contains("offsetMs")) {
-        error = "Song Set BPM and offset must be specified together.";
+    // Current Song Set manifests always own one canonical song-wide map.
+    if (!data.contains("bpm") || !data.contains("offsetMs") ||
+        !data["bpm"].is_number() || !data["offsetMs"].is_number_integer()) {
+        error = "Song Set BPM and offset are required with valid types.";
         return false;
     }
-    if (data.contains("bpm")) {
-        if (!data["bpm"].is_number() || !data["offsetMs"].is_number_integer()) {
-            error = "Song Set BPM and offset have incorrect types.";
-            return false;
-        }
-        try {
-            loaded.bpm = data["bpm"].get<double>();
-            loaded.offsetMs = data["offsetMs"].get<int>();
-        } catch (const std::exception&) {
-            error = "Song Set BPM/offset are out of range.";
-            return false;
-        }
-        if (!std::isfinite(*loaded.bpm) || *loaded.bpm <= 0.0 ||
-            *loaded.offsetMs < -3600000 || *loaded.offsetMs > 3600000) {
-            error = "Song Set BPM/offset are invalid.";
-            return false;
-        }
+    try {
+        loaded.bpm = data["bpm"].get<double>();
+        loaded.offsetMs = data["offsetMs"].get<int>();
+    } catch (const std::exception&) {
+        error = "Song Set BPM/offset are out of range.";
+        return false;
     }
-    if (data["formatVersion"] == 2) {
-        if (!data.contains("tempoMap") || !data["tempoMap"].is_array() ||
-            data["tempoMap"].empty() || data["tempoMap"].size() > 256) {
-            error = "Song Set tempoMap must contain 1 to 256 markers.";
+    if (!std::isfinite(*loaded.bpm) || *loaded.bpm <= 0.0 ||
+        *loaded.offsetMs < -3600000 || *loaded.offsetMs > 3600000) {
+        error = "Song Set BPM/offset are invalid.";
+        return false;
+    }
+    if (!data.contains("tempoMap") || !data["tempoMap"].is_array() ||
+        data["tempoMap"].empty() || data["tempoMap"].size() > 256) {
+        error = "Song Set tempoMap must contain 1 to 256 markers.";
+        return false;
+    }
+    for (const auto& item : data["tempoMap"]) {
+        if (!item.is_object() || item.size() != 2 ||
+            !item.contains("timeMs") || !item.contains("bpm") ||
+            !item["timeMs"].is_number_integer() || !item["bpm"].is_number()) {
+            error = "Song Set tempoMap entry must contain timeMs and bpm.";
             return false;
         }
-        for (const auto& item : data["tempoMap"]) {
-            if (!item.is_object() || item.size() != 2 ||
-                !item.contains("timeMs") || !item.contains("bpm") ||
-                !item["timeMs"].is_number_integer() ||
-                !item["bpm"].is_number()) {
-                error = "Song Set tempoMap entry must contain timeMs and bpm.";
-                return false;
-            }
-            loaded.tempoMap.push_back({item["timeMs"].get<std::int64_t>(),
-                                       item["bpm"].get<double>()});
-        }
-        if (!core::ValidTempoMap(loaded.tempoMap, error)) return false;
-        if (loaded.bpm && (loaded.tempoMap.front().bpm != *loaded.bpm ||
-                           loaded.tempoMap.front().timeMs != *loaded.offsetMs)) {
-            error = "Song Set tempoMap first row disagrees with bpm/offsetMs.";
-            return false;
-        }
-        loaded.bpm = loaded.tempoMap.front().bpm;
-        loaded.offsetMs = static_cast<int>(loaded.tempoMap.front().timeMs);
-    } else if (loaded.bpm) {
-        loaded.tempoMap = {{*loaded.offsetMs, *loaded.bpm}};
+        loaded.tempoMap.push_back({item["timeMs"].get<std::int64_t>(),
+                                   item["bpm"].get<double>()});
+    }
+    if (!core::ValidTempoMap(loaded.tempoMap, error)) return false;
+    if (loaded.tempoMap.front().bpm != *loaded.bpm ||
+        loaded.tempoMap.front().timeMs != *loaded.offsetMs) {
+        error = "Song Set tempoMap first row disagrees with bpm/offsetMs.";
+        return false;
     }
 
     if (data.contains("backgroundFile")) {
