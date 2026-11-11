@@ -16,7 +16,7 @@ struct SongSetManifest {
     std::string audioFile;
     int previewStartMs = 0; // Song menu playback only; not chart timing.
     std::optional<double> bpm; // Authoritative Song Set tempo.
-    std::optional<int> offsetMs; // First marker, legacy song zero.
+    std::optional<int> offsetMs; // First tempo-map marker.
     std::vector<core::TempoMarker> tempoMap; // Authoritative shared timing.
     std::string backgroundFile; // Optional flat PNG/JPEG filename.
 };
