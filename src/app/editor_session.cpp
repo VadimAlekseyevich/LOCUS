@@ -139,6 +139,13 @@ bool EditorSession::BeginTest(EditorTestTarget target, double now,
     return true;
 }
 
+void EditorSession::StopPreviewForTempoChange() {
+    if (!playback_.Playing() && !playback_.Finished()) return;
+    playback_.Stop();
+    previewBeat_ = editor_.SelectedBeat();
+    status_ = "PREVIEW STOPPED - TEMPO MAP CHANGED";
+}
+
 void EditorSession::UpdatePreview(double now) {
     if (!playback_.Playing()) return;
     playback_.Update(now);

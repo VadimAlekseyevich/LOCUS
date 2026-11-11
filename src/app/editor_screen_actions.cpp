@@ -4,6 +4,7 @@
 #include "app/editor_set_controller.h"
 #include "app/chart_editor_ui.h"
 #include "app/chart_editor_layout.h"
+#include "core/tempo_map.h"
 #include "raylib.h"
 
 namespace locus::app {
@@ -36,7 +37,12 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     if (context_.ui.tab == EditorTab::Route ||
         context_.ui.tab == EditorTab::Set ||
         context_.ui.tab == EditorTab::Audio) {
+        const auto beforeTempo = core::EffectiveTempoMap(
+            context_.editor.Data().route, context_.editor.Data().offsetSeconds);
         context_.sets.HandleControls(input.editor);
+        if (core::EffectiveTempoMap(context_.editor.Data().route,
+                                    context_.editor.Data().offsetSeconds) != beforeTempo)
+            context_.session.StopPreviewForTempoChange();
         if (context_.clock) now = context_.clock();
     }
 

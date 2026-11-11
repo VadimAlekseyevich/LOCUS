@@ -49,6 +49,9 @@ public:
     EditorUiAction ApplyControls(const EditorControls& input, double now);
     bool BeginTest(EditorTestTarget target, double now, std::string& error);
     void UpdatePreview(double now);
+    // Tempo-table commits invalidate the configured playback beat clock.
+    // Stop rather than letting the old and new BPM rulers diverge mid-song.
+    void StopPreviewForTempoChange();
 
 private:
     void StartPreview(int beat, double now);
