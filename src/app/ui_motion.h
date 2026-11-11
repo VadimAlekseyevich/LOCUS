@@ -7,8 +7,11 @@
 
 namespace locus::app {
 
-// UI animation uses monotonic wall-clock time, never FPS or song time.
-// The host passes explicit states and now; scoring/input remain unchanged.
+// MENU / EDITOR CHROME ONLY. Never attach this animation API to Screen::Play,
+// gameplay HUD, pause overlay, scoring visuals, path/marker/camera, or
+// PlayPresentation/GameSession. Existing gameplay effects stay unchanged.
+// Motion uses monotonic wall-clock time; hitboxes and input are never animated.
+// Menu controllers supply interaction state; this header never polls input.
 struct UiMotionDurations {
     double hoverSeconds = 0.130;
     double pressSeconds = 0.080;
