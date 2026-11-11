@@ -37,6 +37,22 @@ int main() {
         ok &= Check(Near(TempoBeatAtMs(map, TempoMsAtBeat(map, beat)), beat),
                     "beat to song milliseconds is invertible on both sides of markers");
     }
+    // A single audio cursor belongs to the SONG, never to the tick grid of
+    // whichever compared difficulty originally started preview playback.
+    Chart coarse, fine;
+    coarse.bpm = fine.bpm = map.front().bpm;
+    coarse.tempoMap = fine.tempoMap = map;
+    coarse.ticksPerBeat = 12;
+    fine.ticksPerBeat = 24;
+    for (double songSeconds : {0.0, 1.25, 20.25, 29.75, 40.25, 51.0}) {
+        const double coarseTick = TempoBeatAtSeconds(coarse, 0.25,
+            songSeconds) * coarse.ticksPerBeat;
+        const double fineTick = TempoBeatAtSeconds(fine, 0.25,
+            songSeconds) * fine.ticksPerBeat;
+        ok &= Check(Near(coarseTick / 12.0, fineTick / 24.0),
+                    "shared audio time projects to each difficulty's own tick grid");
+    }
+
     auto invalid = map;
     invalid[1].timeMs = 250;
     ok &= Check(!ValidTempoMap(invalid, error),
