@@ -100,9 +100,11 @@ int main() {
                 "top note ruler and bottom song overview have independent geometry");
 
     const auto referenceSquare = detail::ComparisonPreviewBounds(4, 0);
-    ok &= Check(referenceSquare.width >= 218.0f &&
-                referenceSquare.height >= 218.0f,
-                "comparison keeps editable preview large at four panes");
+    ok &= Check(referenceSquare.width >= 197.0f &&
+                referenceSquare.height >= 197.0f &&
+                referenceSquare.y >= detail::kTimelineY +
+                    detail::kTimelineHeight,
+                "four-way preview remains large and below the top note ruler");
 
     // Audio settings are no longer stacked on top of the route grid.
     ApplyEditorControls(chart, ui, Click(612, 89));
