@@ -15,11 +15,12 @@ bool Expect(bool ok, const char* name) {
 }
 std::string Sample() {
     return R"({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "title": "Absolute Directions",
         "audioPath": "audio/song.mp3",
         "bpm": 120,
         "offsetMs": 250,
+        "tempoMap": [{"timeMs": 250, "bpm": 120}],
         "ticksPerBeat": 1,
         "snapDivision": 1,
         "grid": {"width": 8, "height": 8},
@@ -51,7 +52,7 @@ int main() {
     LoadedChart parsed;
     std::string error;
     ok &= Expect(ParseChartJson(source, parsed, error),
-                 "strict version 3 absolute compass JSON parses");
+                 "strict version 4 absolute compass JSON parses");
     ok &= Expect(parsed.route.turns.size() == 3 &&
         parsed.route.turns[0].direction == Heading::Up &&
         parsed.route.turns[1].direction == Heading::UpRight &&
@@ -109,10 +110,10 @@ int main() {
                          "\"") != std::string::npos;
         ok &= Expect(roundTrip, "all eight short compass values round-trip");
     }
-    ok &= Expect(Reject(source, "\"formatVersion\": 3",
-                       "\"formatVersion\": 2", "formatVersion") &&
-                 Reject(source, "\"formatVersion\": 3",
-                       "\"formatVersion\": 1", "formatVersion"),
+    ok &= Expect(Reject(source, "\"formatVersion\": 4",
+                       "\"formatVersion\": 3", "formatVersion") &&
+                 Reject(source, "\"formatVersion\": 4",
+                       "\"formatVersion\": 2", "formatVersion"),
                  "no pre-release backwards compatibility for old chart schemas");
     ok &= Expect(Reject(source, "\"heading\": \"ru\"",
                        "\"turn\": \"left45\"", "turn") &&
@@ -150,6 +151,6 @@ int main() {
                  ValidChartAudioPath("audio/song.mp3"),
                  "only normalized relative audio references are accepted");
     if (!ok) return 1;
-    std::cout << "CHART_JSON_PASS format=3 headings=absolute old_format=rejected\n";
+    std::cout << "CHART_JSON_PASS format=4 headings=absolute old_format=rejected\n";
     return 0;
 }
