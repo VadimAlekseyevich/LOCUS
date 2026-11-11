@@ -45,6 +45,7 @@
 #include "app/quit_media.h"
 #include "app/editor_discard_guard.h"
 #include "app/editor_save_modal_layout.h"
+#include "core/tempo_map.h"
 
 #include "raylib.h"
 
@@ -716,8 +717,12 @@ int main(int argc, char** argv) {
             editorClock.songSeconds = audioFrame.playing
                 ? audioFrame.visualSeconds
                 : editor.AudioSecondsAtBeat(editor.SelectedBeat());
+            // Multiple difficulties may use different ticksPerBeat but
+            // always share one song-second cursor and tempo map.
             editorClock.tick = audioFrame.playing
-                ? chartPlayback.BeatAtAudioSeconds(editorClock.songSeconds)
+                ? locus::core::TempoBeatAtSeconds(
+                    editor.Data().route, editor.Data().offsetSeconds,
+                    editorClock.songSeconds) * editor.Data().route.ticksPerBeat
                 : static_cast<double>(editor.SelectedBeat());
         }
         const auto editorSetView = visibleState.screen == Screen::Editor
