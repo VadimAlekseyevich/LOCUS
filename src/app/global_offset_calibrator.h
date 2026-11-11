@@ -19,41 +19,45 @@ inline double CalibratedSongSeconds(double rawSongSeconds,
         static_cast<double>(globalOffsetMs) / 1000.0 * playbackRate;
 }
 
-// Headless timing model. The actual accented 120-BPM click track is the
-// existing MakeDemoClickWav/DemoTransport (accent every fourth quarter note).
-// The first two strong beats are warm-up, then SPACE taps measure audible
-// latency against the transport's unmodified song clock.
+// Headless timing model. A 100-BPM click sounds on EVERY quarter beat.
+// Accept any freshly pressed bound gameplay direction key. Users can begin
+// tapping on any beat: no countdown, warm-up or strong-beat requirement.
+// All measurements use the raw (not already calibrated) song clock.
 class GlobalOffsetCalibrator {
 public:
-    static constexpr int kRequiredTaps = 8;
-    static constexpr double kBpm = 120.0;
-    static constexpr double kStrongBeatSeconds = 2.0;
-    static constexpr int kWarmupStrongBeats = 2;
-    static constexpr int kTotalQuarterBeats = 56;
+    static constexpr int kRequiredTaps = 18;
+    static constexpr double kBpm = 100.0;
+    static constexpr double kBeatSeconds = 60.0 / kBpm;
+    // Nearly two minutes of synthesized metronome for starting at any point.
+    static constexpr int kTotalQuarterBeats = 192;
 
     void Start() noexcept {
         errors_.fill(0.0);
         count_ = 0;
-        lastStrongBeat_ = -1;
+        lastBeat_ = -1;
+        lastAcceptedSeconds_ = -1000.0;
         complete_ = false;
         reliable_ = false;
         suggestedMs_ = 0;
         jitterMs_ = 0;
     }
 
-    // A tap contributes once per downbeat, within +/-350 ms. No automatic
-    // nearest ordinary click: the player must tap the ACCENT (every 4th beat).
+    // Compare every tap to the closest 100-BPM beat. Ignore extra presses
+    // within the same beat and very rapid repeats/key combinations; do not
+    // reset progress for skipped beats or a late start.
     bool Tap(double songSeconds) noexcept {
-        if (complete_ || !std::isfinite(songSeconds)) return false;
-        const auto strong = static_cast<int>(
-            std::llround(songSeconds / kStrongBeatSeconds));
-        if (strong < kWarmupStrongBeats ||
-            strong >= kTotalQuarterBeats / 4 ||
-            strong <= lastStrongBeat_) return false;
-        const double ms = (songSeconds -
-                           strong * kStrongBeatSeconds) * 1000.0;
-        if (std::abs(ms) > 350.0) return false;
-        lastStrongBeat_ = strong;
+        if (complete_ || !std::isfinite(songSeconds) || songSeconds < 0.0 ||
+            songSeconds < lastAcceptedSeconds_ + 0.25) return false;
+        const auto beat = static_cast<int>(
+            std::llround(songSeconds / kBeatSeconds));
+        if (beat < 0 || beat >= kTotalQuarterBeats || beat <= lastBeat_)
+            return false;
+        const double ms = (songSeconds - beat * kBeatSeconds) * 1000.0;
+        // At 100 BPM a half-beat is 300ms. A wider window would attribute
+        // a press to the wrong click; >300ms latency needs manual entry.
+        if (std::abs(ms) > 280.0) return false;
+        lastBeat_ = beat;
+        lastAcceptedSeconds_ = songSeconds;
         errors_[static_cast<std::size_t>(count_++)] = ms;
         if (count_ == kRequiredTaps) Finish();
         return true;
@@ -82,7 +86,7 @@ private:
             distances[static_cast<std::size_t>(i)] =
                 std::abs(errors_[static_cast<std::size_t>(i)] - baseline);
         const double mad = Median(distances, count_);
-        const double tolerance = std::max(65.0, mad * 2.5);
+        const double tolerance = std::max(55.0, mad * 2.5);
         std::array<double, kRequiredTaps> inliers{};
         int kept = 0;
         for (int i = 0; i < count_; ++i) {
@@ -90,7 +94,7 @@ private:
                 inliers[static_cast<std::size_t>(kept++)] =
                     errors_[static_cast<std::size_t>(i)];
         }
-        if (kept < 6) return;
+        if (kept < 13) return;
         const double location = Median(inliers, kept);
         distances.fill(0.0);
         for (int i = 0; i < kept; ++i)
@@ -98,7 +102,7 @@ private:
                 std::abs(inliers[static_cast<std::size_t>(i)] - location);
         jitterMs_ = static_cast<int>(
             std::lround(Median(distances, kept)));
-        if (jitterMs_ > 70) return;
+        if (jitterMs_ > 60) return;
         suggestedMs_ = std::clamp(
             static_cast<int>(std::lround(location)), -1000, 1000);
         reliable_ = true;
@@ -106,7 +110,8 @@ private:
 
     std::array<double, kRequiredTaps> errors_{};
     int count_ = 0;
-    int lastStrongBeat_ = -1;
+    int lastBeat_ = -1;
+    double lastAcceptedSeconds_ = -1000.0;
     int suggestedMs_ = 0;
     int jitterMs_ = 0;
     bool complete_ = false;
