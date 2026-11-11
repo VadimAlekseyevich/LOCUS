@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <utility>
+#include <vector>
 
 namespace locus::app {
 
@@ -151,68 +152,78 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             detail::DirectionPressCounts(draft.Data().route);
     }
     frame.directionPressCounts = activeDirectionPressCounts_;
-    PrepareRoutePreview(active_.route, songSeconds, lookaheadMs,
-                        previewFrames_[0]);
-    frame.panes[0] = {active_.ready ? &active_.route : nullptr,
-                      draft.Data().title, true, &previewFrames_[0], draft.Dirty()};
-    frame.count = 1;
+    // Build the visual slots from file identities, not from which chart is
+    // currently being edited. A click only moves the EDIT marker, never a pane.
+    std::vector<const EditorComparisonOption*> visible;
+    int focusedSlot = 0;
+    if (set.managed && std::isfinite(songDurationSeconds) &&
+        songDurationSeconds > 0.0) {
+        const int oldFocus = std::clamp(ui.comparisonFocusedSlot, 0,
+                                       static_cast<int>(ui.comparisonFiles.size()));
+        for (std::size_t i = 0; i < ui.comparisonFiles.size(); ++i) {
+            const auto& file = ui.comparisonFiles[i];
+            const auto found = std::find_if(set.comparisonOptions.begin(),
+                set.comparisonOptions.end(),
+                [&](const EditorComparisonOption& option) {
+                    return option.file == file && option.chart;
+                });
+            if (found == set.comparisonOptions.end() ||
+                static_cast<int>(found - set.comparisonOptions.begin()) ==
+                    set.current ||
+                visible.size() >= 3) continue;
+            if (static_cast<int>(i) < oldFocus) ++focusedSlot;
+            visible.push_back(&*found);
+        }
+    }
+    frame.count = 1 + static_cast<int>(visible.size());
+    auto& activePreview = previewFrames_[static_cast<std::size_t>(focusedSlot)];
+    PrepareRoutePreview(active_.route, songSeconds, lookaheadMs, activePreview);
+    frame.panes[static_cast<std::size_t>(focusedSlot)] = {
+        active_.ready ? &active_.route : nullptr,
+        draft.Data().title, true, &activePreview, draft.Dirty()};
 
-    if (!set.managed || !std::isfinite(songDurationSeconds) ||
-        songDurationSeconds <= 0.0) return frame;
-
-    int slot = 0;
-    for (const auto& file : ui.comparisonFiles) {
-        if (slot >= 3) break;
-        const auto found = std::find_if(set.comparisonOptions.begin(),
-            set.comparisonOptions.end(),
-            [&](const EditorComparisonOption& option) {
-                return option.file == file && option.chart;
-            });
-        if (found == set.comparisonOptions.end()) continue;
-        const int foundIndex = static_cast<int>(
-            found - set.comparisonOptions.begin());
-        if (foundIndex == set.current) continue;
-
+    for (int i = 0; i < static_cast<int>(visible.size()); ++i) {
+        const auto& option = *visible[static_cast<std::size_t>(i)];
+        const auto& file = option.file;
         const core::ChartEditor* parked = parkedDraft
             ? parkedDraft(file) : nullptr;
         const core::LoadedChart* source = parked
-            ? &parked->Data() : found->chart;
+            ? &parked->Data() : option.chart;
         const std::uint64_t revision = parked ? parked->RouteRevision() : 0;
-        auto& cached = reference_[static_cast<std::size_t>(slot)];
-        const bool changed = !cached.ready || cached.file != found->file ||
+        auto& cached = reference_[static_cast<std::size_t>(i)];
+        const bool changed = !cached.ready || cached.file != file ||
             cached.source != source || cached.draftRevision != revision ||
-            cached.fileSize != found->fileSize ||
-            cached.modified != found->modified ||
+            cached.fileSize != option.fileSize ||
+            cached.modified != option.modified ||
             cached.bpm != source->route.bpm ||
             cached.tempoMap != source->route.tempoMap ||
             cached.offsetSeconds != source->offsetSeconds ||
             cached.duration != songDurationSeconds;
         if (changed) {
             cached.ready = false;
-            cached.file = found->file;
+            cached.file = file;
             cached.source = source;
             cached.draftRevision = revision;
-            cached.fileSize = found->fileSize;
-            cached.modified = found->modified;
+            cached.fileSize = option.fileSize;
+            cached.modified = option.modified;
             cached.bpm = source->route.bpm;
             cached.tempoMap = source->route.tempoMap;
             cached.offsetSeconds = source->offsetSeconds;
             cached.duration = songDurationSeconds;
-            // The Song Library holds parsed JSON without song length.
-            // Prepare only this read-only copy; never modify library cache.
+            // Compile only a copy of library data or parked editor data.
             core::LoadedChart prepared = *source;
             std::string error;
             if (core::PrepareChartForSong(prepared, songDurationSeconds, error))
                 cached.ready = cached.route.Compile(
                     prepared.route, prepared.offsetSeconds);
         }
-        if (!cached.ready) continue;
-        auto& paneFrame = previewFrames_[static_cast<std::size_t>(frame.count)];
-        PrepareRoutePreview(cached.route, songSeconds, lookaheadMs, paneFrame);
-        frame.panes[static_cast<std::size_t>(frame.count++)] = {
-            &cached.route, source->title, false, &paneFrame,
-            parked && parked->Dirty()};
-        ++slot;
+        const int paneSlot = ComparisonDisplaySlotForReference(i, focusedSlot);
+        auto& paneFrame = previewFrames_[static_cast<std::size_t>(paneSlot)];
+        if (cached.ready)
+            PrepareRoutePreview(cached.route, songSeconds, lookaheadMs, paneFrame);
+        frame.panes[static_cast<std::size_t>(paneSlot)] = {
+            cached.ready ? &cached.route : nullptr, source->title, false,
+            cached.ready ? &paneFrame : nullptr, parked && parked->Dirty()};
     }
     return frame;
 }
