@@ -55,8 +55,7 @@ void RunScenario(int notes, int notesPerSecond, int panes) {
             locus::app::PrepareRoutePreview(
                 route, songSeconds, 800.0f, preview);
             checksum += preview.spans.size() +
-                preview.turnsFarToNear.size() +
-                preview.turnSpacingWorld.size();
+                preview.turnsFarToNear.size();
         }
     }
     const auto end = Clock::now();
