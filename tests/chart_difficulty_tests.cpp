@@ -185,6 +185,20 @@ int main() {
     ok &= Check(SameDimensions(reference, CalculateChartDifficulty(reticked)),
                 "increasing snap resolution alone cannot change difficulty");
 
+    // A BPM map is editor notation. Identical song-time inputs and headings
+    // must produce identical rating dimensions, even with tempo changes.
+    Chart slowerGrid = transformed;
+    slowerGrid.bpm = 60.0;
+    ok &= Check(SameDimensions(reference,
+                               CalculateChartDifficulty(slowerGrid)),
+                "changing only BPM does not change any difficulty component");
+    Chart variableGrid = transformed;
+    variableGrid.bpm = 180.0;
+    variableGrid.tempoMap = {{0, 180.0}, {7200, 73.0}, {11000, 260.0}};
+    ok &= Check(SameDimensions(reference,
+                               CalculateChartDifficulty(variableGrid)),
+                "changing tempo map without note timestamps is rating-invariant");
+
     Chart shifted = transformed;
     for (auto& e : shifted.turns) e.timeMs += 10000;
     ok &= Check(SameDimensions(reference,
