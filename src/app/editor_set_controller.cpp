@@ -187,8 +187,44 @@ void EditorSetController::HandleControls(const EditorControls& input) {
     const Vector2 mouse = input.mouse;
     const bool clicked = input.mouseClick;
     if (ui.tab == EditorTab::Route) {
-        if (ui.active == EditorField::None)
-            HandleEditorComparisonControls(ui, View(), input);
+        if (ui.active != EditorField::None) return;
+        if (input.mouseClick) {
+            const EditorSetView view = View();
+            // A preview click changes focus; this frame must not also edit
+            // the old chart. The top ruler and controls subsequently use
+            // the newly focused ChartEditor and its independent history.
+            if (!ui.comparisonPickerOpen) {
+                const int count = 1 + static_cast<int>(ui.comparisonFiles.size());
+                for (int i = 1; i < count; ++i) {
+                    if (!detail::Hit(detail::ComparisonPreviewBounds(count, i),
+                                     input.mouse)) continue;
+                    const fs::path chosen = ui.comparisonFiles[
+                        static_cast<std::size_t>(i - 1)];
+                    std::string problem;
+                    if (!ctx_.files.FocusChart(chosen, problem))
+                        Notice(problem, true);
+                    return;
+                }
+            } else {
+                for (int row = 0; row < 5; ++row) {
+                    if (!detail::Hit(detail::ComparePickerRow(row),
+                                     input.mouse)) continue;
+                    const int index = ui.comparisonPickerFirst + row;
+                    if (index < 0 ||
+                        index >= static_cast<int>(view.comparisonOptions.size()))
+                        break;
+                    const fs::path file = view.comparisonOptions[
+                        static_cast<std::size_t>(index)].file;
+                    if (HasEditorComparison(ui, file)) {
+                        ctx_.files.RequestCloseComparison(file);
+                        ui.comparisonPickerOpen = false;
+                        return;
+                    }
+                    break;
+                }
+            }
+        }
+        HandleEditorComparisonControls(ui, View(), input);
         return;
     }
     if (ui.tab != EditorTab::Set && ui.tab != EditorTab::Audio) return;
@@ -275,11 +311,15 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         if (index >= count) break;
         if (CheckCollisionPointRec(mouse, detail::SetDifficultyRow(row))) {
             ctx_.ui.setSelected = index;
-            // Clicking a difficulty opens it immediately. Keep the existing
-            // unsaved-change confirmation; no separate OPEN button or double
-            // click is required.
-            if (index != view.current)
-                Request(EditorSetAction::Open);
+            // A row click changes focus within this shared Song Set.
+            // Dirty drafts remain parked and are not discarded.
+            if (index != view.current) {
+                std::string problem;
+                const fs::path file = view.comparisonOptions[
+                    static_cast<std::size_t>(index)].file;
+                if (!ctx_.files.FocusChart(file, problem))
+                    Notice(problem, true);
+            }
             return;
         }
     }
