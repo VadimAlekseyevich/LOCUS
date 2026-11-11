@@ -156,7 +156,7 @@ void HandleEditorComparisonControls(EditorUiState& ui,
         if (index >= count) break;
         if (!detail::Hit(detail::ComparePickerRow(row), mouse)) continue;
         if (!ToggleEditorComparison(ui, set, index)) {
-            ui.feedback = "MAX FOUR ROUTES / ACTIVE CHART IS ALREADY SHOWN";
+            ui.feedback = "MAX THREE ROUTES / ACTIVE CHART IS ALREADY SHOWN";
             ui.feedbackError = true;
         }
         return;
