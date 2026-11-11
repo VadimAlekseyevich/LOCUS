@@ -407,27 +407,11 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
         return false;
     }
 
-    auto references = context_.ui.comparisonFiles;
-    const int oldFocus = std::clamp(context_.ui.comparisonFocusedSlot, 0,
-                                   static_cast<int>(references.size()));
-    const auto targetReference = std::find(references.begin(), references.end(),
-                                           file);
-    // If the target was already visible, its slot is fixed. When opening a
-    // new difficulty via SET, append a new pane instead of reshuffling the
-    // existing ones; a fifth pane is never permitted.
-    const int targetSlot = targetReference == references.end()
-        ? static_cast<int>(references.size()) + 1
-        : ComparisonDisplaySlotForReference(
-              static_cast<int>(targetReference - references.begin()), oldFocus);
-    if (targetReference == references.end() && references.size() >= 3) {
+    EditorComparisonFocusOrder order;
+    if (!PlanEditorComparisonFocus(context_.ui, current, file, order)) {
         error = "MAX FOUR OPEN CHARTS - CLOSE A REFERENCE FIRST";
         return false;
     }
-    // Temporarily expand to the full left-to-right order, replacing only
-    // the focused identity. The other files retain their physical positions.
-    references.insert(references.begin() + oldFocus, current);
-    const auto replacing = std::find(references.begin(), references.end(), file);
-    if (replacing != references.end()) references.erase(replacing);
 
     const auto& set = context_.library.Songs()[
         static_cast<std::size_t>(toSong)];
@@ -486,8 +470,8 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
     context_.previewStartBeat = target.previewBeat;
     newDifficultySet_ = std::move(target.newDifficultySet);
     context_.ui.clipboard = std::move(clipboard);
-    context_.ui.comparisonFiles = std::move(references);
-    context_.ui.comparisonFocusedSlot = targetSlot;
+    context_.ui.comparisonFiles = std::move(order.references);
+    context_.ui.comparisonFocusedSlot = order.focusedSlot;
     context_.ui.comparisonPickerOpen = false;
     context_.ui.tab = EditorTab::Route;
     context_.status = "FOCUS: " + context_.editor.Data().title +
