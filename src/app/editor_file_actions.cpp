@@ -14,6 +14,7 @@
 #include "core/chart_json.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <string>
 #include <system_error>
@@ -398,6 +399,16 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
         return false;
     }
 
+    // Switching edit focus is NOT a seek. Sample the one shared song-time
+    // cursor before swapping documents; neither a parked cursor nor a
+    // freshly loaded chart's default beat may reset the viewport to zero.
+    const double songSeconds = context_.preview.Playing()
+        ? context_.preview.AudioSeconds(pickers_.now())
+        : std::isfinite(context_.ui.focusSongSeconds)
+            ? context_.ui.focusSongSeconds
+            : context_.editor.AudioSecondsAtBeat(context_.editor.SelectedBeat());
+    const int timelineZoom = context_.ui.timelineZoomIndex;
+
     // Comparison editing shares exactly one decoder and one Song Set.
     int fromSong = -1, fromChart = -1, toSong = -1, toChart = -1;
     if (!context_.library.FindChart(current, fromSong, fromChart) ||
@@ -450,6 +461,13 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
         parked_.erase(existing);
     }
 
+    // Select the corresponding song time in the destination tick grid
+    // (which may have a different resolution). Retain the exact timestamp
+    // separately for the idle ruler, overview and time display.
+    const int targetTick = EditorFocusTickAtSeconds(target.editor, songSeconds);
+    target.editor.SelectBeat(targetTick);
+    target.previewBeat = targetTick;
+
     ParkedDocument old;
     old.editor = std::move(context_.editor);
     old.ui = std::move(context_.ui);
@@ -464,6 +482,10 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
     parked_.insert_or_assign(current, std::move(old));
     context_.editor = std::move(target.editor);
     context_.ui = std::move(target.ui);
+    context_.ui.focusSongSeconds = songSeconds;
+    context_.ui.timelineZoomIndex = timelineZoom;
+    context_.ui.draggingTimeline = false;
+    context_.ui.draggingSongOverview = false;
     context_.chartPath = std::move(target.chartPath);
     context_.audioPath = std::move(target.audioPath);
     context_.loadedAudioPath = std::move(target.loadedAudioPath);
