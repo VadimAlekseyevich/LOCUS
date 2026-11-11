@@ -120,11 +120,13 @@ void EditorComparisonCache::Reset() noexcept {
     activeRevision_ = ~std::uint64_t{0};
     activeDirectionPressCounts_ = {};
     reference_ = {};
+    previewFrames_ = {};
 }
 
 EditorComparisonFrame EditorComparisonCache::Prepare(
     const core::ChartEditor& draft, const EditorUiState& ui,
-    const EditorSetView& set, double songDurationSeconds) {
+    const EditorSetView& set, double songDurationSeconds,
+    double songSeconds, float lookaheadMs) {
     EditorComparisonFrame frame;
     // The editor can reset its history to revision 0 on Open or New. Use
     // monotonic RouteRevision instead of revision or a borrowed Chart* key.
@@ -136,8 +138,10 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             detail::DirectionPressCounts(draft.Data().route);
     }
     frame.directionPressCounts = activeDirectionPressCounts_;
+    PrepareRoutePreview(active_.route, songSeconds, lookaheadMs,
+                        previewFrames_[0]);
     frame.panes[0] = {active_.ready ? &active_.route : nullptr,
-                      draft.Data().title, true};
+                      draft.Data().title, true, &previewFrames_[0]};
     frame.count = 1;
 
     if (!set.managed || !std::isfinite(songDurationSeconds) ||
@@ -184,8 +188,10 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
                     prepared.route, prepared.offsetSeconds);
         }
         if (!cached.ready) continue;
+        auto& paneFrame = previewFrames_[static_cast<std::size_t>(frame.count)];
+        PrepareRoutePreview(cached.route, songSeconds, lookaheadMs, paneFrame);
         frame.panes[static_cast<std::size_t>(frame.count++)] = {
-            &cached.route, found->title, false};
+            &cached.route, found->title, false, &paneFrame};
         ++slot;
     }
     return frame;

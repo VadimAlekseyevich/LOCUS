@@ -100,8 +100,14 @@ void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
         DrawRectangleRoundedLinesEx(bounds, 0.05f, 5,
                                     pane.editable ? 2.0f : 1.0f, accent);
         if (pane.route && pane.route->Ready()) {
-            const RoutePreviewFrame preview = MakeRoutePreview(
-                *pane.route, songSeconds, skin.lookaheadMs);
+            // The cache prepares snapshots before rendering. The local
+            // fallback is only for standalone editor preview callers.
+            RoutePreviewFrame fallback;
+            if (!pane.preview)
+                PrepareRoutePreview(*pane.route, songSeconds,
+                                    skin.lookaheadMs, fallback);
+            const RoutePreviewFrame& preview = pane.preview
+                ? *pane.preview : fallback;
             // One visual px/s scale across every pane, regardless of BPM,
             // authoring snap/grid, note density or panel dimensions.
             const float step = pixelsPerSongSecond /

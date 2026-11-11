@@ -159,7 +159,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::app::LocalMusic& localSong,
                  const locus::core::ChartEditor& editor,
                  const locus::app::EditorUiState& editorUi,
-                 const locus::app::ChartPlayback& editorTransport,
+                 const EditorRenderClock& editorClock,
                  const std::string& editorStatus, EditorPending editorPending,
                  const locus::app::EditorSetView& editorSetView,
                  const locus::app::EditorComparisonFrame& comparisons,
@@ -246,22 +246,16 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                           Color{5, 6, 11, static_cast<unsigned char>(
                               std::lround(gameplay.outro.resultBlackOpacity * 255.0f))});
     } else if (state.screen == Screen::Editor) {
-        // One visual song-time snapshot for every preview pane AND ruler.
-        // At slow playback, do not let the timeline use an unsmoothed tick
-        // while the compared routes use the interpolated audio cursor.
-        const ChartClockFrame clock = editorTransport.Snapshot(now);
-        const double songSeconds = clock.playing
-            ? clock.visualSeconds
-            : editor.AudioSecondsAtBeat(editor.SelectedBeat());
-        const double selectedBeat = clock.playing
-            ? editorTransport.BeatAtAudioSeconds(songSeconds)
-            : static_cast<double>(editor.SelectedBeat());
+        // Display-only: time was sampled once BEFORE the frame, together
+        // with the comparison pane snapshots. Rendering cannot resample
+        // the decoder between the ruler and the route.
         locus::app::RenderChartEditor(font, editor, editorUi,
                                      localSong.DisplayName(), localSong.Ready(),
-                                     clock.playing, clock.paused,
-                                     selectedBeat, clock.practiceRate,
+                                     editorClock.playing, editorClock.paused,
+                                     editorClock.tick, editorClock.practiceRate,
                                      gameplay.bindings, gameplay.skin,
-                                     editorSetView, &comparisons, songSeconds);
+                                     editorSetView, &comparisons,
+                                     editorClock.songSeconds);
         // Editor and preview statuses must not be painted over file buttons.
         // Keep status for workflows, but not as an overlay in the action row.
         if (editorSetPending && editorPending == EditorPending::None) {

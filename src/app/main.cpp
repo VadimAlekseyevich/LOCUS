@@ -629,11 +629,27 @@ int main(int argc, char** argv) {
              settings.hitFlash, settings, activeSkin},
             state.screen == Screen::Play,
             state.quitConfirmation || state.levelExitConfirmation, renderNow);
+        // The editor and COMPARE pane routes all see the same one clock
+        // snapshot; no transport sampling happens inside drawing methods.
+        locus::app::EditorRenderClock editorClock;
+        if (visibleState.screen == Screen::Editor) {
+            const auto audioFrame = chartPlayback.Snapshot(renderNow);
+            editorClock.playing = audioFrame.playing;
+            editorClock.paused = audioFrame.paused;
+            editorClock.practiceRate = audioFrame.practiceRate;
+            editorClock.songSeconds = audioFrame.playing
+                ? audioFrame.visualSeconds
+                : editor.AudioSecondsAtBeat(editor.SelectedBeat());
+            editorClock.tick = audioFrame.playing
+                ? chartPlayback.BeatAtAudioSeconds(editorClock.songSeconds)
+                : static_cast<double>(editor.SelectedBeat());
+        }
         const auto editorSetView = visibleState.screen == Screen::Editor
             ? editorSet.View() : locus::app::EditorSetView{};
         const auto comparisonFrame = visibleState.screen == Screen::Editor
-            ? editorComparison.Prepare(editor, editorUi, editorSetView,
-                                       localSong.DurationSeconds())
+            ? editorComparison.Prepare(
+                editor, editorUi, editorSetView, localSong.DurationSeconds(),
+                editorClock.songSeconds, activeSkin.lookaheadMs)
             : locus::app::EditorComparisonFrame{};
         // Artwork lives at Song Set scope, independent of difficulty/BPM.
         // Cached GPU resources change only when the selected image changes.
@@ -660,7 +676,7 @@ int main(int argc, char** argv) {
             }
         }
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
-                    gameplay, localSong, editor, editorUi, chartPlayback,
+                    gameplay, localSong, editor, editorUi, editorClock,
                     editorStatus, editorDiscard.Pending(),
                     editorSetView, comparisonFrame, editorSet.Pending(),
                     musicError, renderNow,

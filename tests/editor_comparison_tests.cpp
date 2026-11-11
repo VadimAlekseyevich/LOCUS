@@ -96,15 +96,25 @@ int main() {
                 "one editable route, three optional read-only slots, never dirties draft");
 
     EditorComparisonCache cache;
-    const auto four = cache.Prepare(editor, ui, view, 10.0);
+    const auto four = cache.Prepare(editor, ui, view, 10.0, 0.75, 1200.0f);
     ok &= Check(four.directionPressCounts == std::array<int, 8>{} &&
                 four.count == 4 &&
                 four.panes[0].editable &&
                 four.panes[1].route && four.panes[2].route &&
                 four.panes[3].route &&
                 !four.panes[1].editable && !four.panes[3].editable &&
-                four.panes[0].route->Ready(),
+                four.panes[0].route->Ready() &&
+                four.panes[0].preview && four.panes[0].preview->ready,
                 "four indexed previews share one active draft and one song duration");
+    for (int i = 0; i < four.count; ++i) {
+        const auto& pane = four.panes[static_cast<std::size_t>(i)];
+        ok &= Check(pane.preview && pane.preview->ready &&
+                    Near(pane.preview->songSeconds, 0.75) &&
+                    Near(pane.preview->horizonSeconds, 1.2) &&
+                    Near(pane.preview->marker.x,
+                         pane.route->PositionAt(0.75).x),
+                    "each comparison pane shares one exact-time route snapshot");
+    }
 
     // All windows query the SAME time, never a per-chart snapped beat.
     // At 750ms reference 1 has turned up, reference 2 just turns down.

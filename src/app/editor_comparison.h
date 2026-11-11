@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/chart_editor_ui.h"
+#include "app/route_preview.h"
 #include "core/timed_route.h"
 
 #include <array>
@@ -14,6 +15,7 @@ struct EditorComparisonPane {
     const core::TimedRoute* route = nullptr; // Frame-local borrow, never persists.
     std::string title;
     bool editable = false;
+    const RoutePreviewFrame* preview = nullptr; // Frame-only borrow.
 };
 
 struct EditorComparisonFrame {
@@ -46,7 +48,9 @@ public:
     EditorComparisonFrame Prepare(const core::ChartEditor& draft,
                                   const EditorUiState& ui,
                                   const EditorSetView& set,
-                                  double songDurationSeconds);
+                                  double songDurationSeconds,
+                                  double songSeconds = 0.0,
+                                  float lookaheadMs = 800.0f);
     void Reset() noexcept;
 
 private:
@@ -64,6 +68,8 @@ private:
     std::uint64_t activeRevision_ = ~std::uint64_t{0};
     std::array<int, 8> activeDirectionPressCounts_{};
     std::array<Cached, 3> reference_{};
+    // Reused for every render frame; all panes use the same songSeconds.
+    std::array<RoutePreviewFrame, 4> previewFrames_{};
 };
 
 } // namespace locus::app

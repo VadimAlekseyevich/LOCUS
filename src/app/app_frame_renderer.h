@@ -28,6 +28,16 @@ struct UiFont {
 };
 UiFont LoadUiFont();
 
+// One editor transport state used by all comparison panes, song-time
+// readout and beat ruler. Prepared before entering the renderer.
+struct EditorRenderClock {
+    double songSeconds = 0.0;
+    double tick = 0.0;
+    double practiceRate = 1.0;
+    bool playing = false;
+    bool paused = false;
+};
+
 // Purely presentational frame: no app state, song library or editor mutation.
 void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::core::Chart& demo,
@@ -35,7 +45,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::app::LocalMusic& localSong,
                  const locus::core::ChartEditor& editor,
                  const locus::app::EditorUiState& editorUi,
-                 const locus::app::ChartPlayback& editorTransport,
+                 const EditorRenderClock& editorClock,
                  const std::string& editorStatus, EditorPending editorPending,
                  const locus::app::EditorSetView& editorSetView,
                  const locus::app::EditorComparisonFrame& comparisons,
