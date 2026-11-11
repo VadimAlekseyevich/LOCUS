@@ -93,7 +93,7 @@ int main() {
                 ui.comparisonFiles.size() == 3 &&
                 editor.RouteRevision() == revision &&
                 !editor.Dirty(),
-                "one editable route, three optional read-only slots, never dirties draft");
+                "one focused route and three optional comparison slots");
 
     EditorComparisonCache cache;
     const auto four = cache.Prepare(editor, ui, view, 10.0, 0.75, 1200.0f);
@@ -150,6 +150,31 @@ int main() {
     ok &= Check(Near(revised.panes[1].route->Turns()[0].songSeconds, 1.0),
                 "library file revision invalidates only changed reference");
 
+    // An inactive pane can now hold an unsaved, independently undoable
+    // editor. Its compiled preview must use this live draft rather than the
+    // library's saved chart and must rebuild when the draft changes.
+    ChartEditor parked;
+    LoadedChart draftSource = first;
+    parked.Load(draftSource);
+    ok &= Check(parked.SetSongDuration(10.0) &&
+                parked.SelectBeat(3), "prepare parked comparison draft");
+    parked.PutTurn(Heading::DownLeft);
+    const auto lookup = [&](const std::filesystem::path& path)
+        -> const ChartEditor* {
+        return path == view.comparisonOptions[1].file ? &parked : nullptr;
+    };
+    const auto unsaved = cache.Prepare(editor, ui, view, 10.0, 0.75,
+                                      800.0f, lookup);
+    ok &= Check(parked.Dirty() && !unsaved.panes[1].editable &&
+                unsaved.panes[1].dirty &&
+                unsaved.panes[1].route->Turns().size() == 2 &&
+                Near(unsaved.panes[1].preview->songSeconds, 0.75),
+                "parked dirty route appears in synchronized comparison preview");
+    ok &= Check(parked.Undo() &&
+                cache.Prepare(editor, ui, view, 10.0, 0.75, 800.0f, lookup)
+                    .panes[1].route->Turns().size() == 1,
+                "background chart undo invalidates only its own preview");
+
     ok &= Check(ToggleEditorComparison(ui, view, 2) &&
                 ui.comparisonFiles.size() == 2 &&
                 cache.Prepare(editor, ui, view, 10.0).count == 3,
@@ -164,6 +189,6 @@ int main() {
                 "comparison selection resets when Song Set disappears");
     ok &= Check(cache.Prepare(editor, ui, view, 10.0).count == 1,
                 "no Song Set means single editable chart");
-    if (ok) std::cout << "EDITOR_COMPARE_PASS exact_time=1 panes=4 readonly=1\n";
+    if (ok) std::cout << "EDITOR_COMPARE_PASS exact_time=1 panes=4 dirty_previews=1\n";
     return ok ? 0 : 1;
 }
