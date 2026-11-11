@@ -103,7 +103,7 @@ struct EditorUiState {
     std::string setPreviewBuffer;
     // Reference charts are identities, not song-library indices: rating
     // recalculation can reorder the library without changing the selection.
-    std::vector<std::filesystem::path> comparisonFiles; // At most 3; visual order excluding the active chart.
+    std::vector<std::filesystem::path> comparisonFiles; // At most 2; visual order excluding the active chart.
     int comparisonFocusedSlot = 0; // Stable physical pane index of focused chart, [0..comparisonFiles.size()].
     bool comparisonPickerOpen = false;
     int comparisonPickerFirst = 0;
