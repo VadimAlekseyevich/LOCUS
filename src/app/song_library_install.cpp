@@ -14,6 +14,7 @@
 #include <string>
 #include <system_error>
 #include <utility>
+#include <vector>
 namespace locus::app {
 namespace fs = std::filesystem;
 using namespace detail;
