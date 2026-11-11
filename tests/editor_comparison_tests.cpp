@@ -51,6 +51,32 @@ int main() {
         {"/songs/set/extra.json", "EXTRA", &fourth}
     };
 
+    // Regression: FocusChart must translate the CURRENT SONG TIMESTAMP,
+    // not restore the destination's initial/parked selectedBeat (usually 0).
+    // Two charts may have entirely different tick resolutions.
+    ChartEditor coarse, fine;
+    ok &= Check(coarse.SetSongDuration(16.0) &&
+                fine.SetSongDuration(16.0) &&
+                fine.SetSnapDivision(8),
+                "prepare two difficulties with different tick resolutions");
+    const double focusSeconds = 7.125; // Deliberately between coarse ticks.
+    const int coarseTick = EditorFocusTickAtSeconds(coarse, focusSeconds);
+    const int fineTick = EditorFocusTickAtSeconds(fine, focusSeconds);
+    ok &= Check(coarseTick == 14 && fineTick == 114 &&
+                Near(fine.AudioSecondsAtBeat(fineTick), focusSeconds) &&
+                !Near(coarse.AudioSecondsAtBeat(coarseTick), focusSeconds),
+                "focus projects absolute song seconds into each chart grid");
+    ok &= Check(fine.SelectBeat(fineTick) &&
+                EditorFocusTickAtSeconds(coarse,
+                    fine.AudioSecondsAtBeat(fine.SelectedBeat())) == 14 &&
+                EditorFocusTickAtSeconds(fine, focusSeconds) == fineTick,
+                "switching focus back and forth never jumps to chart start");
+    ok &= Check(EditorFocusTickAtSeconds(coarse, -50.0) ==
+                    coarse.Data().route.firstBeat &&
+                EditorFocusTickAtSeconds(fine, 900.0) ==
+                    fine.Data().route.lengthBeats - 1,
+                "focus projections clamp safely to each chart's song range");
+
     // Exactly three visual slots: clicking a pane changes the EDIT flag,
     // never the chart ordering or the fixed dimensions of the panes.
     EditorUiState stable;
