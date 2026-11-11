@@ -151,7 +151,6 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
             return false;
         }
         Skin parsed;
-        Skin parsed;
         parsed.name = object.at("name").get<std::string>();
         const auto& path = object.at("path");
         parsed.lookaheadMs = path.at("lookaheadMs").get<float>();
