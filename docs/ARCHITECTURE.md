@@ -87,9 +87,9 @@ is far-to-near, even when two authored notes occupy the same coordinate.
 per-frame allocations in gameplay. Standalone/SKIN rendering retains its
 convenience overloads.
 
-Future work: on top of this frame implement density-aware marker sizing,
-crossing visibility, compact reverse symbols and a next-action view. The
-snapshot must not change scoring or silently drop dense events.
+Any future changes to marker sizing, route symbols, directional hints or
+other visible gameplay elements require explicit design approval. SKIN remains
+the owner of marker sizes. Rendering must not change scoring or drop events.
 
 ### 4. One raw/visual transport snapshot (implemented foundation)
 
@@ -145,7 +145,7 @@ tests only for contracts or failures they can actually detect.
 
 1. **Done:** compile exact-time gameplay geometry and indexed runs.
 2. **Done:** consolidate per-frame route and transport snapshots.
-3. Add visibility policy and density-aware glyphs on top of the snapshot.
+3. Validate dense-pattern readability on actual displays before proposing visual changes; keep rendering appearance under explicit design review.
 4. Consider editor time-first authoring while preserving BPM/Snap ergonomics.
 5. Profile dense cases and verify real-device input, audio and clipping.
 
