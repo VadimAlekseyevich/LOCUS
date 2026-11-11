@@ -30,7 +30,7 @@ int main() {
     namespace fs = std::filesystem;
     const auto unique = std::to_string(std::chrono::steady_clock::now()
                                       .time_since_epoch().count());
-    const fs::path root = fs::temp_directory_path() / ("locus-v3-" + unique);
+    const fs::path root = fs::temp_directory_path() / ("locus-v4-" + unique);
     const fs::path audioDirectory = root / "audio";
     std::error_code errorCode;
     fs::create_directories(audioDirectory, errorCode);
@@ -47,9 +47,10 @@ int main() {
     const fs::path chartFile = root / "sample.locus.json";
     {
         std::ofstream file(chartFile, std::ios::binary);
-        file << R"({"formatVersion":3,"title":"Test File",
+        file << R"({"formatVersion":4,"title":"Test File",
                      "audioPath":"audio/sample.wav",
                      "bpm":120,"offsetMs":250,
+                     "tempoMap":[{"timeMs":250,"bpm":120}],
                      "grid":{"width":4,"height":4},
                      "start":{"x":0,"y":2,"heading":"l"},
                      "previewLeadBeats":3.5,
