@@ -1,6 +1,7 @@
 #include "app/app_frame_renderer.h"
 #include "core/utf8.h"
 #include "app/app_quit_dialog_layout.h"
+#include "app/editor_save_modal_layout.h"
 #include "app/play_modal_layout.h"
 #include "app/ui_button.h"
 #include "app/screen_action_buttons.h"
@@ -70,12 +71,15 @@ static void DrawTextLabel(Font font, const char* message, Vector2 position,
 static void DrawQuitConfirmation(Font font, const AppState& state,
                           const locus::core::ChartEditor& editor,
                           const locus::app::EditorUiState& editorUi,
-                          const locus::app::SkinUi& skinUi) {
+                          const locus::app::SkinUi& skinUi,
+                          bool anyEditorDirty) {
     if (!state.quitConfirmation) return;
     // The outer application does not terminate until a second explicit
     // action. Reassure users about unsaved edits before they choose.
     DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{7, 11, 19, 220});
-    const Rectangle card{177.0f, 146.0f, 606.0f, 264.0f};
+    const bool canSave = state.screen == Screen::Editor && anyEditorDirty;
+    const Rectangle card{177.0f, 146.0f, 606.0f,
+                         canSave ? 302.0f : 264.0f};
     DrawRectangleRounded(card, 0.085f, 10, Color{34, 42, 59, 255});
     DrawRectangleRoundedLinesEx(card, 0.085f, 10, 2.0f,
                                 Color{214, 183, 127, 255});
@@ -84,7 +88,7 @@ static void DrawQuitConfirmation(Font font, const AppState& state,
     DrawTextLabel(font, "This will close the game.", {307.0f, 236.0f},
                   21.0f, Color{216, 227, 234, 255});
     if (state.screen == Screen::Editor &&
-        (editor.Dirty() || editorUi.EditingText()))
+        (anyEditorDirty || editor.Dirty() || editorUi.EditingText()))
         DrawTextLabel(font, "UNSAVED CHART CHANGES WILL BE LOST",
                       {266.0f, 272.0f}, 17.0f,
                       Color{251, 188, 164, 255});
@@ -97,8 +101,12 @@ static void DrawQuitConfirmation(Font font, const AppState& state,
                  MenuButtonStyle({241, 158, 156, 255}));
     DrawUiButton(font, kQuitCancelButton, "N / STAY",
                  MenuButtonStyle({130, 226, 215, 255}));
-    DrawTextLabel(font, "ESC ALSO CANCELS", {394.0f, 394.0f}, 13.0f,
-                  Color{170, 189, 205, 255});
+    if (canSave)
+        DrawUiButton(font, kEditorQuitSaveButton, "S / SAVE ALL + QUIT",
+                     MenuButtonStyle({130, 226, 215, 255}));
+    else
+        DrawTextLabel(font, "ESC ALSO CANCELS", {394.0f, 394.0f}, 13.0f,
+                      Color{170, 189, 205, 255});
 }
 
 static void DrawHomeScreen(Font font, const locus::app::SongLibrary& library,
@@ -164,6 +172,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::app::EditorSetView& editorSetView,
                  const locus::app::EditorComparisonFrame& comparisons,
                  const locus::app::EditorSetRequest* editorSetPending,
+                 const std::filesystem::path& editorClosePending,
+                 bool anyEditorDirty,
                  const std::string& musicError, double now,
                   const locus::app::SongLibrary& library,
                   const locus::app::SongSelectUi& libraryUi,
@@ -286,18 +296,25 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
             DrawUiButton(font, kEditorModalCancelButton, "N / CANCEL",
                          MenuButtonStyle({130, 226, 215, 255}));
         }
-        if (editorPending != EditorPending::None) {
-            DrawRectangle(0, 0, kWindowWidth, kWindowHeight, Color{10, 13, 21, 218});
+        if (editorPending != EditorPending::None ||
+            !editorClosePending.empty()) {
+            const bool closingPane = !editorClosePending.empty();
+            DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
+                          Color{10, 13, 21, 218});
             DrawTextLabel(font, "UNSAVED CHART CHANGES", {193.0f, 187.0f},
                           32.0f, Color{245, 216, 165, 255});
-            DrawTextLabel(font, "SAVE YOUR WORK BEFORE LEAVING",
-                          {275, 269}, 19, Color{235, 192, 164, 255});
-            DrawUiButton(font, kEditorModalConfirmButton, "Y / DISCARD",
-                         MenuButtonStyle({235, 156, 156, 255}));
-            DrawUiButton(font, kEditorModalCancelButton, "N / KEEP EDITING",
+            DrawTextLabel(font, closingPane
+                          ? "SAVE BEFORE CLOSING THIS CHART?"
+                          : "SAVE CHANGED CHARTS BEFORE LEAVING?",
+                          {235, 269}, 18, Color{235, 192, 164, 255});
+            DrawUiButton(font, kEditorSaveDraftButton, "S / SAVE",
                          MenuButtonStyle({130, 226, 215, 255}));
-            DrawTextLabel(font, "CANCEL TO RETURN AND SAVE THE CHART",
-                          {258, 399}, 15, Color{192, 203, 223, 255});
+            DrawUiButton(font, kEditorDiscardDraftButton, "Y / DISCARD",
+                         MenuButtonStyle({235, 156, 156, 255}));
+            DrawUiButton(font, kEditorCancelDraftButton, "N / CANCEL",
+                         MenuButtonStyle({155, 178, 216, 255}));
+            DrawTextLabel(font, "FAILED SAVES KEEP ALL UNSAVED DRAFTS OPEN",
+                          {249, 399}, 14, Color{192, 203, 223, 255});
         }
     } else {
         const char* screen = ScreenName(state.screen);
@@ -335,7 +352,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         DrawTextLabel(font, "ESC ALSO CANCELS", {383, 386}, 14,
                       Color{192, 207, 229, 255});
     }
-    DrawQuitConfirmation(font, state, editor, editorUi, skinUi);
+    DrawQuitConfirmation(font, state, editor, editorUi, skinUi,
+                         anyEditorDirty);
     EndMode2D();
     if (settings.showFps) {
         // Screen-pixel overlay, separate from the gameplay camera.
