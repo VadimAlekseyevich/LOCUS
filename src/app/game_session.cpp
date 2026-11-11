@@ -15,7 +15,7 @@ void GameSession::Start(bool customChart, double now) {
     if (customChart) {
         if (testOrigin_) {
             judge_.ResetFromAudioSeconds(
-                CalibratedTime(testOrigin_->audioSeconds));
+                CalibratedTime(testOrigin_->audioSeconds, local_.Speed()));
             local_.StartAtAudioSeconds(testOrigin_->audioSeconds, now);
         } else {
             local_.Start(now);
@@ -75,7 +75,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 hitFlash_.Reset();
                 if (customChart) local_.Update(now);
                 else demo_.Update(now);
-                judge_.Advance(CalibratedTime(*target));
+                judge_.Advance(CalibratedTime(*target, customChart ? local_.Speed() : 1.0));
                 return;
             }
         }
@@ -99,7 +99,8 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 : (customChart ? local_.AudioSeconds(capturedAt)
                                : demo_.SongSeconds(capturedAt));
             const auto judgement = judge_.PressHeading(
-                directions[i], CalibratedTime(timestamp));
+                directions[i], CalibratedTime(timestamp,
+                    customChart ? local_.Speed() : 1.0));
             if (judgement && !judgement->wrongDirection &&
                 judgement->grade != core::Grade::Miss)
                 hitFlash_.Trigger(judgement->grade, now);
@@ -119,9 +120,11 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
             judge_.Advance(CalibratedTime(
                 audioEndSongSeconds_ +
                 std::max(0.0, now - audioEndedAt_) *
-                    (customChart ? local_.Speed() : 1.0)));
+                    (customChart ? local_.Speed() : 1.0),
+                customChart ? local_.Speed() : 1.0));
         } else {
-            judge_.Advance(CalibratedTime(songTime));
+            judge_.Advance(CalibratedTime(
+                songTime, customChart ? local_.Speed() : 1.0));
         }
     }
 }
