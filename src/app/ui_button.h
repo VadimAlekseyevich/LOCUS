@@ -104,7 +104,10 @@ inline UiButtonStyle ApprovedButtonStyle(
             break;
         case UiButtonVariant::Quiet:
             style.fill = UiOpacity(theme.surface, 0.0f);
-            style.selectedFill = theme.surface;
+            style.selectedFill = UiOpacity(theme.surface, 0.0f);
+            style.stroke = UiOpacity(theme.divider, 0.0f);
+            style.selectedStroke = style.stroke;
+            style.text = theme.secondaryText;
             break;
         case UiButtonVariant::Danger:
             style.fill = theme.surface;
@@ -122,8 +125,10 @@ inline void DrawUiThemedButton(
     Font font, Rectangle bounds, const char* caption,
     UiButtonVariant variant, UiInteraction state = {},
     UiMotionFrame animation = {},
-    const UiTheme& theme = ApprovedUiTheme()) {
+    const UiTheme& theme = ApprovedUiTheme(),
+    float fontSizeOverride = 0.0f) {
     auto style = ApprovedButtonStyle(variant, theme);
+    if (fontSizeOverride > 0.0f) style.fontSize = fontSizeOverride;
     const float interaction = std::max(animation.hover, animation.selected);
     style.fill = UiMix(style.fill, style.selectedFill, interaction);
     style.stroke = UiMix(style.stroke, style.selectedStroke, interaction);

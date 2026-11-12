@@ -37,6 +37,7 @@ struct MenuEvents {
 MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                             const SongLibrary& library, SongSelectUi& libraryUi,
                             GameSettings& settings, SettingsUi& settingsUi,
-                            Skin& draftSkin, SkinUi& skinUi);
+                            Skin& draftSkin, SkinUi& skinUi,
+                            HomeMenuUi& homeUi);
 
 } // namespace locus::app

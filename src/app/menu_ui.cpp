@@ -2,6 +2,7 @@
 #include "core/chart_difficulty.h"
 #include "core/utf8.h"
 #include "app/ui_button.h"
+#include "app/ui_widgets.h"
 
 #include <algorithm>
 #include <cmath>
@@ -37,9 +38,6 @@ void Header(Font font, const char* section) {
 
 } // namespace
 
-Rectangle HomeMenuButton(int index) {
-    return {82.0f, 174.0f + 67.0f * index, 290.0f, 55.0f};
-}
 Rectangle LibrarySongRow(int row) {
     return {498.0f, 171.0f + 35.0f * row, 408.0f, 32.0f};
 }
@@ -182,26 +180,35 @@ const LibraryChart* SongSelectUi::Selected(const SongLibrary& songs) const {
     return &charts[static_cast<std::size_t>(selectedChart)];
 }
 
-void DrawMainMenu(Font font, const SongLibrary& library,
-                  const std::string& status) {
-    Header(font, "FOLLOW THE RHYTHM");
-    const char* names[] = {"PLAY", "EDIT", "SKIN", "SETTINGS", "EXIT"};
-    const Color colors[] = {kMint, kViolet, kGold,
-                            Color{147, 195, 240, 255},
-                            Color{241, 162, 165, 255}};
-    for (int i = 0; i < 5; ++i)
-        Button(font, HomeMenuButton(i), names[i], colors[i]);
+void DrawMainMenu(Font font, const std::string& status,
+                  const HomeMenuUi& ui, const HomeBrandAssets& brand,
+                  double now) {
+    const auto& theme = ApprovedUiTheme();
+    brand.Draw(font);
 
-    Label(font, "YOUR MUSIC. YOUR ROUTES.", 456, 181, 25, kText);
-    Label(font, "SONG LIBRARY", 457, 248, 17, kMuted);
-    Label(font, std::to_string(library.Songs().size()) + " SONGS  /  " +
-          std::to_string(library.ChartCount()) + " CHARTS", 456, 276, 22, kMint);
-    Label(font, "SONGS STAY INSTALLED BETWEEN SESSIONS", 456, 316, 14, kMuted);
-    Label(font, "PLAY TO BROWSE MUSIC AND DIFFICULTIES", 456, 343, 14, kMuted);
-    Label(font, "EDIT OPENS THE EXISTING CHART EDITOR", 456, 370, 14, kMuted);
-    Label(font, "P PLAY  E EDIT  K SKIN  S SETTINGS", 456, 413, 14, kMuted);
-    Label(font, "ESC / EXIT  -  CONFIRM QUIT", 456, 442, 15, kGold);
-    if (!status.empty()) Label(font, Clip(status, 96), 83, 514, 13, kGold);
+    const char* labels[] = {"PLAY", "EDITOR", "SKINS", "SETTINGS", "EXIT"};
+    constexpr UiButtonVariant variants[] = {
+        UiButtonVariant::Rose, UiButtonVariant::Blue,
+        UiButtonVariant::Neutral, UiButtonVariant::Neutral,
+        UiButtonVariant::Quiet
+    };
+    for (int i = 0; i < kHomeMenuActionCount; ++i) {
+        const Rectangle bounds = HomeMenuButton(i);
+        UiInteraction state{};
+        state.focused = ui.focus.Focused() == i;
+        DrawUiThemedButton(font, bounds, labels[i], variants[i],
+                           state, ui.motion[static_cast<std::size_t>(i)].Frame(now),
+                           theme, i == 4 ? 14.0f : 18.0f);
+    }
+
+    // The approved Home composition intentionally has no stats/shortcut
+    // clutter. Actual failure notices remain accessible.
+    if (status.find("FAILED") != std::string::npos ||
+        status.find("NOT SAVED") != std::string::npos ||
+        status.find("UNAVAILABLE") != std::string::npos) {
+        DrawUiToast(font, {77.0f, 465.0f, 700.0f, 42.0f},
+                    status.c_str(), true, 1.0f, theme);
+    }
 }
 
 void DrawSongSelectMenu(Font font, const SongLibrary& library,

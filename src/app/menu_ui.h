@@ -1,6 +1,8 @@
 #pragma once
 
 #include "app/game_settings.h"
+#include "app/home_menu.h"
+#include "app/home_brand_assets.h"
 #include "app/global_offset_calibrator.h"
 #include "app/song_library.h"
 #include "raylib.h"
@@ -57,7 +59,6 @@ int SettingsBindingIndex(const SettingsUi& ui, int visibleRow) noexcept;
 
 // These layout helpers are shared by drawing and hit-testing. Coordinates
 // are in the same virtual 960x540 space as the existing editor.
-Rectangle HomeMenuButton(int index);
 Rectangle LibrarySongRow(int row);
 Rectangle LibraryChartRow(int row);
 // Flat visible rows contain the complete song list and child charts of only
@@ -89,8 +90,9 @@ Rectangle SettingsFlashButton();
 Rectangle SettingsFullscreenButton();
 Rectangle MenuBackButton();
 
-void DrawMainMenu(Font font, const SongLibrary& library,
-                  const std::string& status);
+void DrawMainMenu(Font font, const std::string& status,
+                  const HomeMenuUi& ui, const HomeBrandAssets& brand,
+                  double now);
 void DrawSongSelectMenu(Font font, const SongLibrary& library,
                         const SongSelectUi& ui);
 void DrawSettingsMenu(Font font, const GameSettings& settings,

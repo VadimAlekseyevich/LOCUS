@@ -17,13 +17,43 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                            locus::app::GameSettings& settings,
                            locus::app::SettingsUi& settingsUi,
                            locus::app::Skin& draftSkin,
-                           locus::app::SkinUi& skinUi) {
+                           locus::app::SkinUi& skinUi,
+                           HomeMenuUi& homeUi) {
     MenuEvents events;
     const bool mouseClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     const auto transform = locus::app::ViewportTransform::Menu(
         GetScreenWidth(), GetScreenHeight());
     const bool validMouse = transform.scale > 0.0f;
     const Vector2 mouse = transform.ToVirtual(GetMousePosition());
+
+    if (state.screen != Screen::Home && homeUi.active)
+        homeUi.Reset();
+    if (state.screen == Screen::Home) {
+        HomeMenuInput homeInput{};
+        homeInput.pointer = mouse;
+        homeInput.pointerValid = validMouse;
+        homeInput.pointerDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        homeInput.pointerPressed = mouseClick;
+        homeInput.tabPressed = IsKeyPressed(KEY_TAB);
+        homeInput.backwards = IsKeyDown(KEY_LEFT_SHIFT) ||
+                              IsKeyDown(KEY_RIGHT_SHIFT);
+        homeInput.keyboardActivate = IsKeyPressed(KEY_ENTER) ||
+            IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE);
+        const int action = homeUi.Update(homeInput, GetTime());
+        // Enter without focused navigation keeps the existing Play shortcut.
+        // With a focused button Enter/Space belongs to that button.
+        if (homeInput.keyboardActivate && homeUi.focus.Focused() >= 0)
+            input.startPressed = false;
+        switch (action) {
+            case 0: input.requestedScreen = Screen::SongSelect; break;
+            case 1: input.requestedScreen = Screen::Editor; break;
+            case 2: input.requestedScreen = Screen::Skin; break;
+            case 3: input.requestedScreen = Screen::Settings; break;
+            case 4: input.closeRequested = true; break;
+            default: break;
+        }
+        return events;
+    }
 
     if (state.screen == Screen::Skin) {
         if (!skinUi.pendingDeleteProfile.empty()) {
@@ -253,19 +283,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         return CheckCollisionPointRec(mouse, area);
     };
 
-    if (state.screen == Screen::Home) {
-        for (int i = 0; i < 5; ++i) {
-            if (!hit(locus::app::HomeMenuButton(i))) continue;
-            switch (i) {
-                case 0: input.requestedScreen = Screen::SongSelect; break;
-                case 1: input.requestedScreen = Screen::Editor; break;
-                case 2: input.requestedScreen = Screen::Skin; break;
-                case 3: input.requestedScreen = Screen::Settings; break;
-                case 4: input.closeRequested = true; break;
-            }
-            return events;
-        }
-    } else if (state.screen == Screen::SongSelect) {
+    if (state.screen == Screen::SongSelect) {
         if (hit(locus::app::MenuBackButton())) input.backPressed = true;
         if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
         if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;

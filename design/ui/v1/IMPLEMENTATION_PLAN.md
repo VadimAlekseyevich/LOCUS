@@ -1,4 +1,4 @@
-# Menu/UI migration plan — foundation implemented, screen migration pending
+# Menu/UI migration plan — foundation and Home implemented
 
 ## Scope: menus only (hard boundary)
 
@@ -13,7 +13,7 @@ Existing gameplay/camera movement, scoring effects and PLAY→Results outro rema
 
 - `src/app/ui_button.h` implements shared chrome, the three existing button styles and new semantic variants. `ui_theme.h`, `ui_motion.h`, `ui_focus.h`, `ui_widgets.h`, and `ui_text.h` form the menu/editor-only foundation. **Evolve these, do not add an unrelated widget framework.**
 - `src/app/transition_easing.h` provides smoothstep/ease; `src/app/screen_fade_transition.h` provides 65 ms exit + 95 ms entrance; `src/app/play_outro_transition.h` handles the separate in-game result transition.
-- `menu_ui.cpp`, `chart_editor_ui.cpp`, `skin_menu.cpp` and `app_frame_renderer.cpp` still contain locally hardcoded colors, borders and text styles. Centralize those without moving business logic.
+- Home now uses the approved brand, theme, shared buttons, focus and motion. Song Library, Settings, editor and SKIN still have hardcoded legacy screen-specific styles. Centralize those without moving business logic.
 - `viewport.h` keeps UI coordinates in a 960 × 540 virtual canvas; continue sharing layout rectangles between renderer and input for proper window scaling.
 
 ## Common UI foundation
@@ -23,7 +23,7 @@ Existing gameplay/camera movement, scoring effects and PLAY→Results outro rema
 3. Shared text measurement and clipping for UTF-8 labels (**implemented for new themed buttons, text inputs, list rows and notices**); preserve Windows font fallback until an approved appropriately licensed font is provided.
 4. A **menu-only** presentation API (`UiMotionState`/`UiDialogMotion`) for control states and dialogs. Stable monotonic clock; animation must never run during PLAY or change gameplay scoring, input timestamps, selection, saved chart data or audio.
 
-## Motion targets — proposals for approval, not implemented yet
+## Motion targets — Home hover/press/focus implemented; others pending
 
 | Interaction | Initial target | Presentation |
 | --- | ---: | --- |
@@ -36,12 +36,12 @@ Existing gameplay/camera movement, scoring effects and PLAY→Results outro rema
 
 These are **menu animation** durations only, measured in wall-clock time rather than frames. Honor reduced-motion settings, support keyboard access and don't hide controls behind hover-only effects. There are **no gameplay animation targets** in this plan.
 
-The primitives and their headless checks are committed. They are not yet wired into individual menu screens; **do not claim the visual redesign is complete**.
+Home is wired to the approved C++ layout, real keyboard/mouse actions, and the source SVG brand rasterized into bundled PNGs. UI primitives are used only on Home so far; **do not claim other screens are redesigned**.
 
 ## Migration order (one approved mockup → one C++ integration)
 
 1. Shared theme + primitives + motion scaffolding; behavior must remain unchanged.
-2. Main menu/Home: approved centered layout and brand; fully functional Play, Editor, Skins, Settings, Exit.
+2. Main menu/Home: **implemented** centered layout, SVG-derived brand, Play, Editor, Skins, Settings, Exit, Tab/Shift+Tab/Enter/Space, pointer hover/press and focus ring.
 3. Song library: nested charts, import/export, selection, restore/delete, error/empty states.
 4. Settings: controls, display, input rebinding, global-offset manual field and metronome calibrator.
 5. SKIN screen: profiles, color wheel and sliders; keep gameplay skin separate from app theme.

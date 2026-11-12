@@ -117,9 +117,10 @@ static void DrawQuitConfirmation(Font font, const AppState& state,
                       Color{170, 189, 205, 255});
 }
 
-static void DrawHomeScreen(Font font, const locus::app::SongLibrary& library,
-                    const std::string& message) {
-    locus::app::DrawMainMenu(font, library, message);
+static void DrawHomeScreen(Font font, const std::string& message,
+                           const HomeMenuUi& homeUi,
+                           const HomeBrandAssets& homeBrand, double now) {
+    DrawMainMenu(font, message, homeUi, homeBrand, now);
 }
 
 static void DrawLocalMusicScreen(Font font, const locus::app::LocalMusic& song,
@@ -184,6 +185,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  bool anyEditorDirty,
                  const std::string& musicError, double now,
                   const locus::app::SongLibrary& library,
+                  const HomeMenuUi& homeUi,
+                  const HomeBrandAssets& homeBrand,
                   const locus::app::SongSelectUi& libraryUi,
                   const locus::app::GameSettings& settings,
                   const locus::app::SettingsUi& settingsUi,
@@ -194,7 +197,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   const ImageAssetTexture* background) {
     BeginDrawing();
     ClearBackground(state.screen == Screen::Play
-                        ? gameplay.skin.background : kBackground);
+                        ? gameplay.skin.background
+                        : state.screen == Screen::Home
+                            ? ApprovedUiTheme().background : kBackground);
     // Draw in physical pixels before the virtual UI camera: cover fills any
     // aspect ratio without distortion and crops the excess at the edges.
     if (background && background->Ready() &&
@@ -220,13 +225,13 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     BeginMode2D(camera);
 
     // No wordmark or global help text during scoring: only field + hits.
-    if (state.screen != Screen::Play) {
+    if (state.screen != Screen::Play && state.screen != Screen::Home) {
         DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
                       Color{223, 225, 238, 255});
     }
 
     if (state.screen == Screen::Home) {
-        DrawHomeScreen(font, library, menuStatus);
+        DrawHomeScreen(font, menuStatus, homeUi, homeBrand, now);
     } else if (state.screen == Screen::SongSelect) {
         locus::app::DrawSongSelectMenu(font, library, libraryUi);
     } else if (state.screen == Screen::Skin) {

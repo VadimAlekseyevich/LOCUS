@@ -139,6 +139,9 @@ int main(int argc, char** argv) {
         return 1;
     }
     UiFont uiFont = LoadUiFont();
+    locus::app::HomeBrandAssets homeBrand;
+    homeBrand.Load();
+    locus::app::HomeMenuUi homeUi;
     std::cout << "LOCUS_WINDOW_OPEN\n";
 
     const auto userData = locus::app::UserDataDirectory();
@@ -314,7 +317,7 @@ int main(int argc, char** argv) {
         const MenuEvents menuEvents =
             (wasAnyModal || input.closeRequested) ? MenuEvents{} :
             HandleMenuInput(state, input, library, libraryUi, settings,
-                            settingsUi, draftSkin, skinUi);
+                            settingsUi, draftSkin, skinUi, homeUi);
         if (menuEvents.calibrationStop) calibrationTransport.Shutdown();
         if (menuEvents.calibrationStart) {
             locus::core::Chart clickGuide = demo;
@@ -861,7 +864,7 @@ int main(int argc, char** argv) {
                     editorSetView, comparisonFrame, editorSet.Pending(),
                     editorFiles.PendingClose(), editorFiles.AnyDirty(),
                     musicError, renderNow,
-                    library, libraryUi, settings, settingsUi,
+                    library, homeUi, homeBrand, libraryUi, settings, settingsUi,
                     draftSkin, skinUi, menuStatus,
                     state.quitConfirmation ? 0.0f : fadeFrame.opacity,
                     &songBackground);
@@ -872,6 +875,7 @@ int main(int argc, char** argv) {
     chartPlayback.Stop();
     menuMusic.Shutdown();
     songBackground.Shutdown(); // GPU texture before CloseWindow.
+    homeBrand.Unload();
     localSong.Shutdown();
     transport.Shutdown();
     audioDevice.Shutdown();

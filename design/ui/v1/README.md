@@ -1,6 +1,6 @@
 # LOCUS — approved UI reference (v1)
 
-This folder is the **approved design reference**, not C++ gameplay code. Theme, widget, text-fit, focus and motion foundations exist in `src/app/ui_*.h`, but the current application screens have **not yet migrated** to the new visual treatment.
+This folder is the **approved design reference**, not C++ gameplay code. Theme, widget, text-fit, focus and motion foundations exist in `src/app/ui_*.h`. **Home is integrated in C++**; Library, Settings, SKIN, Editor and other screens are not yet migrated.
 
 ## Locked direction
 
@@ -17,6 +17,7 @@ This folder is the **approved design reference**, not C++ gameplay code. Theme, 
 - `wordmark.svg`: full `locus.` mark.
 - `monogram.svg`: short `LO` mark.
 - `app-icon.svg`: circle-backed, geometrically centered `LO`; transparent outside circle.
+- `../../assets/ui/wordmark.png` and `../../assets/ui/app-icon.png` (repository-root `assets/ui/`): rasterizations of the approved SVG outlines, bundled next to the Windows executable via CMake for Home and runtime window icon.
 - `tokens.json`: shared palette and initial style/motion tokens.
 - `IMPLEMENTATION_PLAN.md`: migration architecture, animation rules and review stages.
 

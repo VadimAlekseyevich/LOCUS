@@ -3,6 +3,7 @@
 #include "app/ui_motion.h"
 #include "app/ui_theme.h"
 #include "app/ui_widgets.h"
+#include "app/home_menu.h"
 
 #include <cmath>
 #include <iostream>
@@ -106,6 +107,37 @@ int main() {
                 UiFitText("short", 60.0f, monospaceWidth) == "short" &&
                 UiFitText("abcdef", 20.0f, monospaceWidth).empty(),
                 "menu text fits actual glyph width and preserves UTF-8");
+    // Home interactions use exactly the rectangles rendered at 960x540.
+    HomeMenuUi home;
+    HomeMenuInput homeInput{};
+    homeInput.tabPressed = true;
+    ok &= Check(home.Update(homeInput, 3.0) == -1 &&
+                home.focus.Focused() == 0,
+                "Home Tab starts with Play");
+    homeInput.backwards = true;
+    ok &= Check(home.Update(homeInput, 3.2) == -1 &&
+                home.focus.Focused() == 4,
+                "Home Shift+Tab reaches quiet Exit");
+    homeInput.tabPressed = false;
+    homeInput.backwards = false;
+    homeInput.keyboardActivate = true;
+    ok &= Check(home.Update(homeInput, 3.3) == 4,
+                "Home Enter/Space activates focused Exit");
+    homeInput.keyboardActivate = false;
+    homeInput.pointerValid = true;
+    homeInput.pointerPressed = true;
+    homeInput.pointer = {HomeMenuButton(2).x + 8.0f,
+                         HomeMenuButton(2).y + 9.0f};
+    ok &= Check(home.Update(homeInput, 3.4) == 2 &&
+                Near(home.motion[2].Frame(3.6).hover, 1.0f) &&
+                HomeMenuButton(0).y == HomeMenuButton(3).y &&
+                HomeMenuButton(4).y > HomeMenuButton(0).y,
+                "Home click and menu-only hover share stable geometry");
+    home.Reset();
+    ok &= Check(!home.active && home.focus.Focused() == -1 &&
+                Near(home.motion[2].Frame(4.0).hover, 0.0f),
+                "Home focus/motion do not persist into other screens");
+
     UiTextBuffer input;
     input.maxCodepoints = 3;
     ok &= Check(input.Append("A") && input.Append("\xD0\xB1") &&
