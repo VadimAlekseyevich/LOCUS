@@ -1,6 +1,7 @@
 #include "app/library_browser.h"
 #include "app/library_file_actions.h"
 #include "app/library_launch_actions.h"
+#include "app/song_set_storage.h"
 
 #include <chrono>
 #include <filesystem>
@@ -152,9 +153,19 @@ int main() {
     // cached index; refresh must preserve selection by file after reordering.
     const fs::path earlier = installed / "other-album";
     fs::create_directories(earlier, ec);
+    SongSetManifest earlierSet;
+    earlierSet.id = "external-bonus-set";
+    earlierSet.title = "aa-song";
+    earlierSet.audioFile = "aa-song.wav";
+    earlierSet.bpm = 120.0;
+    earlierSet.offsetMs = 0;
+    earlierSet.tempoMap = {{0, 120.0}};
+    std::string manifestError;
     ok &= Check(!ec && WriteAudio(earlier / "aa-song.wav") &&
-                WriteChart(earlier / "bonus.locus.json", "Bonus", "aa-song.wav"),
-                "add on-disk song externally");
+                WriteChart(earlier / "bonus.locus.json", "Bonus", "aa-song.wav") &&
+                WriteNewSongSetManifest(earlier / "set.locus.json",
+                                        earlierSet, manifestError),
+                "add valid managed Song Set on disk externally");
     ok &= Check(RefreshLibraryBrowser(library, ui, menuStatus) &&
                 library.Songs().size() == 2 && ui.selectedSong == 2 &&
                 ui.Selected(library) && ui.Selected(library)->file == selectedFile &&

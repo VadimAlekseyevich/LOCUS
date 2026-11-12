@@ -1,5 +1,6 @@
 #include "app/chart_file.h"
 #include "app/song_set_storage.h"
+#include "app/path_containment.h"
 
 #include <filesystem>
 #include <string>
@@ -13,27 +14,6 @@
 #endif
 
 namespace locus::app {
-namespace {
-
-bool IsDescendant(const std::filesystem::path& root,
-                  const std::filesystem::path& file) {
-    auto parent = root.begin();
-    auto child = file.begin();
-    for (; parent != root.end(); ++parent, ++child) {
-        if (child == file.end()) return false;
-#ifdef _WIN32
-        const std::wstring a = parent->wstring();
-        const std::wstring b = child->wstring();
-        if (_wcsicmp(a.c_str(), b.c_str()) != 0) return false;
-#else
-        if (*parent != *child) return false;
-#endif
-    }
-    return child != file.end();
-}
-
-} // namespace
-
 bool SaveChartWithAudioPath(const std::wstring& chartFile,
                             const std::wstring& audioFile,
                             const core::LoadedChart& draft,
@@ -57,7 +37,7 @@ bool SaveChartWithAudioPath(const std::wstring& chartFile,
         error = "Choose an existing WAV/MP3 song before saving.";
         return false;
     }
-    if (!IsDescendant(folder, song)) {
+    if (!IsPathWithinDirectory(folder, song)) {
         error = "Save the chart in the song's folder or a parent folder.";
         return false;
     }

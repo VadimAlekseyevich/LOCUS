@@ -1,4 +1,5 @@
 #include "app/song_library_internal.h"
+#include "app/path_containment.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -15,16 +16,7 @@ namespace locus::app {
 namespace detail {
 namespace fs = std::filesystem;
 bool Inside(const fs::path& root, const fs::path& file) {
-    auto a = root.begin(), b = file.begin();
-    for (; a != root.end(); ++a, ++b) {
-        if (b == file.end()) return false;
-#ifdef _WIN32
-        if (_wcsicmp(a->c_str(), b->c_str()) != 0) return false;
-#else
-        if (*a != *b) return false;
-#endif
-    }
-    return b != file.end();
+    return IsPathWithinDirectory(root, file);
 }
 
 std::uint64_t PathHash(const fs::path& path) {

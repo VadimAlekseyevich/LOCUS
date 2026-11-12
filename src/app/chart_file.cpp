@@ -1,6 +1,7 @@
 #include "app/chart_file.h"
 
 #include "app/local_file_io.h"
+#include "app/path_containment.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -30,26 +31,6 @@ bool Utf8ToWide(const std::string& utf8, std::wstring& wide) {
 }
 #endif
 
-bool IsInsideDirectory(const std::filesystem::path& root,
-                       const std::filesystem::path& file) {
-    auto dirPart = root.begin();
-    auto filePart = file.begin();
-    for (; dirPart != root.end(); ++dirPart, ++filePart) {
-        if (filePart == file.end()) return false;
-#ifdef _WIN32
-        const std::wstring directoryComponent = dirPart->wstring();
-        const std::wstring fileComponent = filePart->wstring();
-        if (directoryComponent.size() != fileComponent.size()) return false;
-        for (std::size_t i = 0; i < directoryComponent.size(); ++i) {
-            if (std::towlower(directoryComponent[i]) !=
-                std::towlower(fileComponent[i])) return false;
-        }
-#else
-        if (*dirPart != *filePart) return false;
-#endif
-    }
-    return filePart != file.end(); // Exactly the directory itself is not audio.
-}
 
 } // namespace
 
@@ -88,7 +69,7 @@ bool OpenChartWithAudioPath(const std::wstring& chartFile,
         error = "audioPath: referenced song does not exist or cannot be accessed";
         return false;
     }
-    if (!IsInsideDirectory(root, resolved)) {
+    if (!IsPathWithinDirectory(root, resolved)) {
         error = "audioPath: resolved file escapes the chart folder";
         return false;
     }
