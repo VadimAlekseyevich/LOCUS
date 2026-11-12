@@ -96,6 +96,16 @@ int main() {
     ok &= Check(focus.Focused() == -1 && !focus.Activate().has_value(),
                 "focus clears when its element becomes disabled");
 
+    // Measurement is injected so Unicode clipping is verified headlessly.
+    const auto monospaceWidth = [](const std::string& value) {
+        return static_cast<float>(locus::core::utf8::Count(value) * 10);
+    };
+    ok &= Check(UiFitText(u8"абвгд", 40.0f, monospaceWidth) == u8"а..." &&
+                UiFitText(u8"абвгд", 40.0f, monospaceWidth,
+                          UiTextOverflow::EllipsisAtStart) == u8"...д" &&
+                UiFitText("short", 60.0f, monospaceWidth) == "short" &&
+                UiFitText("abcdef", 20.0f, monospaceWidth).empty(),
+                "menu text fits actual glyph width and preserves UTF-8");
     UiTextBuffer input;
     input.maxCodepoints = 3;
     ok &= Check(input.Append("A") && input.Append("\xD0\xB1") &&

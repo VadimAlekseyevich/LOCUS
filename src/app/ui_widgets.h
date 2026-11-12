@@ -88,10 +88,12 @@ inline void DrawUiTextField(
                                   : focused ? theme.softBlue
                                             : theme.divider);
     const bool empty = value.empty();
-    const std::string displayed = empty ? placeholder
-        : core::utf8::Truncate(value,
-             static_cast<std::size_t>(std::max(1.0f, bounds.width / 11.0f)));
     const float size = theme.fontSize;
+    const std::string displayed = UiFitText(
+        font, empty ? std::string_view(placeholder ? placeholder : "") : value,
+        std::max(0.0f, bounds.width - 28.0f), size, 1.0f,
+        focused && !empty ? UiTextOverflow::EllipsisAtStart
+                          : UiTextOverflow::EllipsisAtEnd);
     DrawTextEx(font, displayed.c_str(),
         {bounds.x + 14.0f, bounds.y + (bounds.height - size) * 0.5f - 1.0f},
         size, 1.0f,
@@ -192,7 +194,10 @@ inline void DrawUiListRow(Font font, Rectangle bounds,
         DrawRectangleRoundedLinesEx(bounds,
             UiRoundness(bounds, theme.buttonRadiusPx * 0.7f),
             10, 1.0f, theme.rose);
-    DrawTextEx(font, text,
+    const std::string label = UiFitText(
+        font, text ? text : "", std::max(0.0f, bounds.width - 28.0f),
+        theme.fontSize);
+    DrawTextEx(font, label.c_str(),
         {bounds.x + 14.0f,
          bounds.y + (bounds.height - theme.fontSize) * 0.5f - 1.0f},
         theme.fontSize, 1.0f,
@@ -211,7 +216,10 @@ inline void DrawUiToast(Font font, Rectangle bounds,
     DrawRectangleRoundedLinesEx(bounds,
         UiRoundness(bounds, theme.buttonRadiusPx), 10, 1.0f,
         UiOpacity(error ? theme.danger : theme.divider, opacity));
-    DrawTextEx(font, message, {bounds.x + 16.0f, bounds.y + 12.0f},
+    const std::string label = UiFitText(
+        font, message ? message : "", std::max(0.0f, bounds.width - 32.0f),
+        theme.smallFontSize);
+    DrawTextEx(font, label.c_str(), {bounds.x + 16.0f, bounds.y + 12.0f},
                theme.smallFontSize, 1.0f,
                UiOpacity(error ? theme.danger : theme.foreground, opacity));
 }

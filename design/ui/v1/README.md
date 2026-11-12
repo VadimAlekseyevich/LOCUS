@@ -1,6 +1,6 @@
 # LOCUS — approved UI reference (v1)
 
-This folder is a **design artifact**, not C++ gameplay code. The files are the reference for the future screen-by-screen UI refactor; they should not be treated as a finished implementation.
+This folder is the **approved design reference**, not C++ gameplay code. Theme, widget, text-fit, focus and motion foundations exist in `src/app/ui_*.h`, but the current application screens have **not yet migrated** to the new visual treatment.
 
 ## Locked direction
 

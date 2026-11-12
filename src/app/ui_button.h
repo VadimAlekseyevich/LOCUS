@@ -3,6 +3,7 @@
 #include "raylib.h"
 #include "app/ui_theme.h"
 #include "app/ui_motion.h"
+#include "app/ui_text.h"
 
 #include <algorithm>
 
@@ -140,9 +141,13 @@ inline void DrawUiThemedButton(
             UiRoundness(ring, theme.buttonRadiusPx + 3.0f), 12, 1.5f,
             UiOpacity(theme.rose, animation.focus));
     }
+    const std::string label = UiFitText(
+        font, caption ? caption : "", std::max(0.0f, bounds.width - 20.0f),
+        style.fontSize, style.fontSpacing);
+    if (label.empty()) return;
     const Vector2 measured = MeasureTextEx(
-        font, caption, style.fontSize, style.fontSpacing);
-    DrawTextEx(font, caption,
+        font, label.c_str(), style.fontSize, style.fontSpacing);
+    DrawTextEx(font, label.c_str(),
         {bounds.x + (bounds.width - measured.x) * 0.5f,
          bounds.y + (bounds.height - measured.y) * 0.5f +
               (state.disabled ? 0.0f : animation.press)},
