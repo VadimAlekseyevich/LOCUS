@@ -189,7 +189,7 @@ void DrawMainMenu(Font font, const std::string& status,
     const char* labels[] = {"PLAY", "EDITOR", "SKINS", "SETTINGS", "EXIT"};
     constexpr UiButtonVariant variants[] = {
         UiButtonVariant::Rose, UiButtonVariant::Blue,
-        UiButtonVariant::Neutral, UiButtonVariant::Neutral,
+        UiButtonVariant::Cool, UiButtonVariant::Warm,
         UiButtonVariant::Quiet
     };
     for (int i = 0; i < kHomeMenuActionCount; ++i) {
@@ -198,7 +198,7 @@ void DrawMainMenu(Font font, const std::string& status,
         state.focused = ui.focus.Focused() == i;
         DrawUiThemedButton(font, bounds, labels[i], variants[i],
                            state, ui.motion[static_cast<std::size_t>(i)].Frame(now),
-                           theme, i == 4 ? 14.0f : 18.0f);
+                           theme, i == 4 ? 16.0f : 18.0f);
     }
 
     // The approved Home composition intentionally has no stats/shortcut

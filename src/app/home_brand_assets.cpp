@@ -39,29 +39,19 @@ void HomeBrandAssets::Load() {
             // Runtime titlebar/taskbar icon. The packaged EXE resource can
             // be updated separately without changing these menu textures.
             SetWindowIcon(image);
-            icon_ = LoadTextureFromImage(image);
             UnloadImage(image);
-            if (IsTextureValid(icon_))
-                SetTextureFilter(icon_, TEXTURE_FILTER_BILINEAR);
         }
     }
 }
 
 void HomeBrandAssets::Unload() {
     if (IsTextureValid(wordmark_)) UnloadTexture(wordmark_);
-    if (IsTextureValid(icon_)) UnloadTexture(icon_);
     wordmark_ = {};
-    icon_ = {};
 }
 
 void HomeBrandAssets::Draw(Font fallback) const {
-    if (IsTextureValid(icon_))
-        DrawTextureIn(icon_, {45.0f, 34.0f, 44.0f, 44.0f});
-    else
-        DrawTextEx(fallback, "LO", {48.0f, 43.0f}, 23.0f, 1.0f,
-                   ApprovedUiTheme().softBlue);
-
-    // The raster is produced from the exact approved SVG outlines.
+    // Keep LO only as the actual Windows icon, not a second logo on Home.
+    // The wordmark raster is produced from the approved SVG outlines.
     if (IsTextureValid(wordmark_))
         DrawTextureIn(wordmark_, {315.0f, 145.0f, 330.0f, 97.6f});
     else

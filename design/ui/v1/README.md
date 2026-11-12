@@ -6,10 +6,11 @@ This folder is the **approved design reference**, not C++ gameplay code. Theme, 
 
 - Centered main menu composition based on the approved concept **02**.
 - Main wordmark: soft lowercase **locus.**, with rose dot. Original vector outlines from concept 02 retained, with SVG viewBox cropped to the artwork.
-- Compact mark: **LO** from concept **06**, original vector outlines retained.
+- Compact mark: **LO** from concept **06**, retained for the actual app/window icon only; it is **not displayed in the Home corner**.
 - Windows launcher icon: **exactly the same LO vector inside a centered dark circle**, with transparent outside, no separate logo treatment.
 - Muted charcoal, creamy soft blue and dusty rose; no glow, busy grids, decorative micro-labels or invented UI information.
-- Four real primary actions from the current game: Play, Editor, Skins, Settings; Exit remains quiet.
+- Four real primary actions: Play, Editor, Skins, Settings. Skins and Settings have more visible tinted treatments; Exit is a small clearly bounded button.
+- Home hover now resolves in 55 ms (press 45 ms; focus 95 ms), independently of other menus.
 
 ## Files
 

@@ -17,7 +17,6 @@ public:
 
 private:
     Texture2D wordmark_{};
-    Texture2D icon_{};
 };
 
 } // namespace locus::app

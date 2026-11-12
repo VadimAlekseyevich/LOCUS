@@ -66,7 +66,7 @@ inline void DrawUiButton(Font font, Rectangle rect, const char* caption,
 }
 
 
-enum class UiButtonVariant { Rose, Blue, Neutral, Quiet, Danger };
+enum class UiButtonVariant { Rose, Blue, Neutral, Cool, Warm, Quiet, Danger };
 
 // New semantic styles reuse the existing UiButtonStyle and chrome renderer.
 // Legacy Menu/Skin/Editor styles stay untouched until each screen is approved.
@@ -102,12 +102,27 @@ inline UiButtonStyle ApprovedButtonStyle(
             break;
         case UiButtonVariant::Neutral:
             break;
+        case UiButtonVariant::Cool:
+            // Stronger secondary presence without competing with Play/Edit.
+            style.fill = UiMix(theme.surface, theme.softBlue, 0.35f);
+            style.selectedFill = UiMix(theme.surface, theme.softBlue, 0.51f);
+            style.stroke = UiMix(theme.surface, theme.softBlue, 0.67f);
+            style.selectedStroke = theme.softBlue;
+            break;
+        case UiButtonVariant::Warm:
+            style.fill = UiMix(theme.surface, theme.rose, 0.25f);
+            style.selectedFill = UiMix(theme.surface, theme.rose, 0.40f);
+            style.stroke = UiMix(theme.surface, theme.rose, 0.63f);
+            style.selectedStroke = theme.rose;
+            break;
         case UiButtonVariant::Quiet:
-            style.fill = UiOpacity(theme.surface, 0.0f);
-            style.selectedFill = UiOpacity(theme.surface, 0.0f);
-            style.stroke = UiOpacity(theme.divider, 0.0f);
-            style.selectedStroke = style.stroke;
-            style.text = theme.secondaryText;
+            // Exit is a real button with a deliberate hit area and clear
+            // border, not an almost invisible line of text.
+            style.fill = UiMix(theme.background, theme.surface, 0.80f);
+            style.selectedFill = UiMix(theme.surface, theme.rose, 0.18f);
+            style.stroke = UiOpacity(theme.secondaryText, 0.46f);
+            style.selectedStroke = UiOpacity(theme.rose, 0.86f);
+            style.text = theme.foreground;
             break;
         case UiButtonVariant::Danger:
             style.fill = theme.surface;

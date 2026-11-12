@@ -13,7 +13,7 @@ Existing gameplay/camera movement, scoring effects and PLAY→Results outro rema
 
 - `src/app/ui_button.h` implements shared chrome, the three existing button styles and new semantic variants. `ui_theme.h`, `ui_motion.h`, `ui_focus.h`, `ui_widgets.h`, and `ui_text.h` form the menu/editor-only foundation. **Evolve these, do not add an unrelated widget framework.**
 - `src/app/transition_easing.h` provides smoothstep/ease; `src/app/screen_fade_transition.h` provides 65 ms exit + 95 ms entrance; `src/app/play_outro_transition.h` handles the separate in-game result transition.
-- Home now uses the approved brand, theme, shared buttons, focus and motion. Song Library, Settings, editor and SKIN still have hardcoded legacy screen-specific styles. Centralize those without moving business logic.
+- Home now uses the approved centered wordmark (no corner duplicate), theme, shared buttons, focus and faster 55 ms hover. Song Library, Settings, editor and SKIN still have hardcoded legacy screen-specific styles. Centralize those without moving business logic.
 - `viewport.h` keeps UI coordinates in a 960 × 540 virtual canvas; continue sharing layout rectangles between renderer and input for proper window scaling.
 
 ## Common UI foundation

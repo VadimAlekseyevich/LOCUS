@@ -44,6 +44,19 @@ int main() {
                 editor.fill.b == theme.softBlue.b,
                 "semantic button variants have consistent contrast");
 
+    const auto cool = ApprovedButtonStyle(UiButtonVariant::Cool);
+    const auto warm = ApprovedButtonStyle(UiButtonVariant::Warm);
+    const auto exitStyle = ApprovedButtonStyle(UiButtonVariant::Quiet);
+    ok &= Check(cool.fill.b > theme.surface.b &&
+                warm.fill.r > theme.surface.r &&
+                warm.fill.r > warm.fill.g &&
+                cool.selectedFill.b > cool.fill.b &&
+                warm.selectedFill.r > warm.fill.r &&
+                exitStyle.fill.a == 255 &&
+                exitStyle.stroke.a > 0 &&
+                exitStyle.text.r == theme.foreground.r,
+                "Home secondary actions and Exit have visible chrome");
+
     UiMotionState animated;
     animated.Update({true, false, false, false, false}, 10.0);
     ok &= Check(Near(animated.Frame(10.0).hover, 0.0f) &&
@@ -133,6 +146,10 @@ int main() {
                 HomeMenuButton(0).y == HomeMenuButton(3).y &&
                 HomeMenuButton(4).y > HomeMenuButton(0).y,
                 "Home click and menu-only hover share stable geometry");
+    const float homeHoverAt30ms = home.motion[2].Frame(3.43).hover;
+    ok &= Check(homeHoverAt30ms > 0.5f &&
+                Near(home.motion[2].Frame(3.46).hover, 1.0f),
+                "Home hover settles in 55ms, not the old 130ms");
     home.Reset();
     ok &= Check(!home.active && home.focus.Focused() == -1 &&
                 Near(home.motion[2].Frame(4.0).hover, 0.0f),

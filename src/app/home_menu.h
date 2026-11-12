@@ -11,7 +11,7 @@ namespace locus::app {
 // Every rectangle is in the shared virtual 960x540 UI canvas.
 constexpr int kHomeMenuActionCount = 5;
 inline Rectangle HomeMenuButton(int index) noexcept {
-    if (index == 4) return {812.0f, 468.0f, 88.0f, 38.0f};
+    if (index == 4) return {784.0f, 458.0f, 122.0f, 46.0f};
     if (index < 0 || index >= 4) return {};
     return {77.0f + 204.0f * index, 324.0f, 192.0f, 80.0f};
 }
@@ -63,6 +63,12 @@ struct HomeMenuUi {
             if (id) action = *id;
         }
 
+        // The previous 130 ms hover felt like a delayed response. Home
+        // responds almost immediately; other menus keep their own timings.
+        UiMotionDurations homeMotion{};
+        homeMotion.hoverSeconds = 0.055;
+        homeMotion.pressSeconds = 0.045;
+        homeMotion.selectionSeconds = 0.095;
         for (int i = 0; i < kHomeMenuActionCount; ++i) {
             const bool hovered = input.pointerValid &&
                 UiPointerHit(HomeMenuButton(i), input.pointer);
@@ -71,7 +77,7 @@ struct HomeMenuUi {
             state.pressed = hovered && input.pointerDown;
             state.focused = focus.Focused() == i;
             motion[static_cast<std::size_t>(i)].Update(
-                state, now, input.reducedMotion);
+                state, now, input.reducedMotion, homeMotion);
         }
         return action;
     }
