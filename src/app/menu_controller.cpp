@@ -18,7 +18,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                            locus::app::SettingsUi& settingsUi,
                            locus::app::Skin& draftSkin,
                            locus::app::SkinUi& skinUi,
-                           HomeMenuUi& homeUi) {
+                           HomeMenuUi& homeUi, double now) {
     MenuEvents events;
     const bool mouseClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     const auto transform = locus::app::ViewportTransform::Menu(
@@ -39,7 +39,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                               IsKeyDown(KEY_RIGHT_SHIFT);
         homeInput.keyboardActivate = IsKeyPressed(KEY_ENTER) ||
             IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE);
-        const int action = homeUi.Update(homeInput, GetTime());
+        const int action = homeUi.Update(homeInput, now);
         // Enter without focused navigation keeps the existing Play shortcut.
         // With a focused button Enter/Space belongs to that button.
         if (homeInput.keyboardActivate && homeUi.focus.Focused() >= 0)

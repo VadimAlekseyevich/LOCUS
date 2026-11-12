@@ -306,8 +306,9 @@ int main(int argc, char** argv) {
         const bool wasQuitConfirmation = state.quitConfirmation;
         const bool wasLevelExitConfirmation = state.levelExitConfirmation;
         const bool wasAnyModal = wasQuitConfirmation || wasLevelExitConfirmation;
+        const double inputNow = MonotonicSeconds();
         FrameInput input = locus::app::PollFrameInput(
-            debugScreens, state, settings, MonotonicSeconds(),
+            debugScreens, state, settings, inputNow,
             state.screen == Screen::Play &&
                 (customChart ? chartPlayback.Paused() : transport.Paused()));
         const auto [repeatSpeed, repeatPreview] = adjustmentRepeater.Advance(
@@ -317,7 +318,8 @@ int main(int argc, char** argv) {
         const MenuEvents menuEvents =
             (wasAnyModal || input.closeRequested) ? MenuEvents{} :
             HandleMenuInput(state, input, library, libraryUi, settings,
-                            settingsUi, draftSkin, skinUi, homeUi);
+                            settingsUi, draftSkin, skinUi, homeUi,
+                            inputNow);
         if (menuEvents.calibrationStop) calibrationTransport.Shutdown();
         if (menuEvents.calibrationStart) {
             locus::core::Chart clickGuide = demo;

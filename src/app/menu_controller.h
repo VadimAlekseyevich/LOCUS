@@ -38,6 +38,6 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                             const SongLibrary& library, SongSelectUi& libraryUi,
                             GameSettings& settings, SettingsUi& settingsUi,
                             Skin& draftSkin, SkinUi& skinUi,
-                            HomeMenuUi& homeUi);
+                            HomeMenuUi& homeUi, double now);
 
 } // namespace locus::app
