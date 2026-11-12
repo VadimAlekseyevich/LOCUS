@@ -474,6 +474,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/library_browser.cpp
         src/app/library_file_actions.cpp
         src/app/menu_ui.cpp
+        src/app/home_brand_assets.cpp
         src/app/game_settings.cpp
             ${LOCUS_SONG_LIBRARY_SOURCES}
         src/app/song_archive.cpp

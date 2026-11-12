@@ -17,7 +17,7 @@ This folder is the **approved design reference**, not C++ gameplay code. Theme, 
 - `wordmark.svg`: full `locus.` mark.
 - `monogram.svg`: short `LO` mark.
 - `app-icon.svg`: circle-backed, geometrically centered `LO`; transparent outside circle.
-- `../../assets/ui/wordmark.png` and `../../assets/ui/app-icon.png` (repository-root `assets/ui/`): rasterizations of the approved SVG outlines, bundled next to the Windows executable via CMake for Home and runtime window icon.
+- `assets/ui/wordmark.png` and `assets/ui/app-icon.png` (repository-root `assets/ui/`): rasterizations of the approved SVG outlines, bundled next to the Windows executable via CMake for Home and runtime window icon.
 - `tokens.json`: shared palette and initial style/motion tokens.
 - `IMPLEMENTATION_PLAN.md`: migration architecture, animation rules and review stages.
 
