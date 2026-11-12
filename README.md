@@ -4,7 +4,7 @@
 
 A Windows rhythm game with a built-in chart editor. Read the moving route and press the outgoing direction in time with your song; missed notes change your grade, never the authored route.
 
-UI redesign reference: [approved LOCUS visual direction and migration plan](design/ui/v1/README.md). This is a design-only reference; the current in-game UI is not yet migrated.
+UI design: **[interactive Interface Studio v2](design/ui/v2/index.html)** — open the HTML file locally to review every screen, editor tab, dialog and component. [Design documentation](design/ui/v2/README.md). It is a design-only prototype; C++ UI migration is paused pending review.
 
 ## Run
 

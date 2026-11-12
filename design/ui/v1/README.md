@@ -1,3 +1,5 @@
+> **New:** The current full-application interactive UI design is [Interface Studio v2](../v2/index.html). This v1 folder remains the source of approved vector branding and the original Home concept.
+
 # LOCUS — approved UI reference (v1)
 
 This folder is the **approved design reference**, not C++ gameplay code. Theme, widget, text-fit, focus and motion foundations exist in `src/app/ui_*.h`. **Home is integrated in C++**; Library, Settings, SKIN, Editor and other screens are not yet migrated.
