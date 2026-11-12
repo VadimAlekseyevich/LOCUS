@@ -76,10 +76,14 @@ int main() {
     if (opened) {
         parsed.title = "My edited chart";
         parsed.offsetSeconds = -0.125;
+        // v4 charts keep the first tempo marker and offsetMs synchronized.
+        // Moving the song offset must shift the authoritative tempo map too.
+        parsed.route.tempoMap.front().timeMs = -125;
         parsed.route.turns.push_back({7, locus::core::Heading::Down});
     }
     const bool savedOnce = opened && locus::app::SaveChartWithAudioPath(
         saved.wstring(), resolved, parsed, message);
+    const std::string saveError = savedOnce ? std::string{} : message;
     locus::core::LoadedChart reopened;
     std::wstring songAgain;
     const bool reloaded = savedOnce && locus::app::OpenChartWithAudioPath(
@@ -137,7 +141,8 @@ int main() {
     fs::remove_all(sibling, errorCode);
     if (!correct || !blocked || !roundTrip || !denseRoundTrip ||
         !refusedOutside || !existedAfterError) {
-        std::cerr << "CHART_FILE_FAIL " << message
+        std::cerr << "CHART_FILE_FAIL save_error=" << saveError
+                  << " last_error=" << message
                   << " opened=" << opened << " correct=" << correct
                   << " saved=" << savedOnce << " reloaded=" << reloaded
                   << " roundTrip=" << roundTrip
