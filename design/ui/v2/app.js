@@ -3,28 +3,29 @@
 'use strict';
 const L=window.LocusDemo,S=window.LocusScreens,s=L.state,H=L.H;
 const screen=document.getElementById('screen'),overlay=document.getElementById('overlay'),dialog=document.getElementById('dialog');
-const topbar=document.getElementById('topbar'),navrail=document.getElementById('navrail'),statusbar=document.getElementById('statusbar');
+const topbar=document.getElementById('topbar'),navrail=document.getElementById('navrail');
 const titles={home:'Home',library:'Song library',editor:'Chart editor',skins:'Skins',settings:'Settings',
- listen:'Listen',play:'Play',results:'Results',system:'Component library'};
+ play:'Play',results:'Results',system:'Components'};
+const navigationPages=['home','library','editor','skins','settings','system'];
 const startingLibrary=JSON.stringify(L.library),startingBindings=JSON.stringify(L.bindings);
 const modalTypes={
- quit:{icon:'↗',title:'Exit LOCUS?',message:'Leave this interface preview? The application will not close. Unsaved demo state can be reset at any time.',buttons:[['Stay','cancel','ghost'],['Exit preview','exit-confirm','danger-button']]},
- unsaved:{icon:'!',title:'Unsaved chart changes',message:'Save the current chart before leaving? This models the real editor protection; no chart file is written.',buttons:[['Cancel','cancel','ghost'],['Discard demo changes','discard-changes','danger-button'],['Save demo','save-changes','button blue']]},
- 'delete-chart':{icon:'−',title:'Move difficulty to Trash?',message:'The selected difficulty would be recoverable. This demonstration changes only sample data.',buttons:[['Cancel','cancel','ghost'],['Move to Trash','delete-chart-confirm','danger-button']]},
- 'delete-set':{icon:'−',title:'Move entire Song Set to Trash?',message:'The shared song audio, artwork and all difficulties would be moved together. This preview does not touch local files.',buttons:[['Cancel','cancel','ghost'],['Move Song Set','delete-set-confirm','danger-button']]},
- leave:{icon:'←',title:'Leave this level?',message:'In the real game, leaving a level needs confirmation so a single Escape press cannot discard the run.',buttons:[['Keep playing','cancel','ghost'],['Leave level','leave-confirm','danger-button']]},
- retry:{icon:'↺',title:'Restart chart?',message:'Restarting would discard the current attempt and begin again. This is a static gameplay preview.',buttons:[['Cancel','cancel','ghost'],['Restart demo','retry-confirm','button primary']]},
- import:{icon:'+',title:'Import to Song Library',message:'The real app imports a chart or .locuspack and validates its song and metadata. Here you can inspect the confirmation and error states without opening files.',buttons:[['Cancel','cancel','ghost'],['Preview import','import-confirm','button blue']]},
- export:{icon:'↗',title:'Export Song Set',message:'A packaged Song Set includes its song, metadata and difficulties. The browser prototype does not create an archive.',buttons:[['Cancel','cancel','ghost'],['Preview export','export-confirm','button blue']]},
- saveas:{icon:'▣',title:'Save as…',message:'Enter a difficulty title to demonstrate filename and unsaved-state handling. No file will be created.',input:'Horizon Copy',buttons:[['Cancel','cancel','ghost'],['Save demo copy','saveas-confirm','button blue']]},
- error:{icon:'!',title:'Cannot open chart',message:'The referenced song audio is missing or inaccessible. The selected chart remains unchanged and can be retried safely.',details:'Example: audioPath is missing, unreadable or outside the Song Set folder.',buttons:[['Close','cancel','button']]},
- success:{icon:'✓',title:'Operation complete',message:'This is an example of the success confirmation used after an important file action.',buttons:[['Close','cancel','button blue']]},
- compare:{icon:'◫',title:'Compare charts',message:'Choose up to two additional difficulties. Each preview shares the same song-time position.',buttons:[['Close','cancel','button blue']]},
- commands:{icon:'⌕',title:'Quick navigation',message:'Jump directly to any window in this prototype.',buttons:[['Close','cancel','ghost']]},
- 'skin-saveas':{icon:'◇',title:'Save skin profile as…',message:'Store a named profile in the demonstration. Gameplay skin files remain untouched.',input:'My skin',buttons:[['Cancel','cancel','ghost'],['Create profile','skin-saveas-confirm','button blue']]},
- 'skin-delete':{icon:'−',title:'Delete skin profile?',message:'The real application asks before moving a saved profile to recoverable Trash.',buttons:[['Cancel','cancel','ghost'],['Delete demo profile','skin-delete-confirm','danger-button']]},
- 'remove-bg':{icon:'−',title:'Remove background?',message:'This removes the Song Set artwork reference, not the audio or any difficulties.',buttons:[['Cancel','cancel','ghost'],['Remove preview BG','remove-bg-confirm','danger-button']]},
- 'choose-audio':{icon:'♫',title:'Choose music',message:'The native application opens a system file picker. The browser prototype does not access your filesystem.',buttons:[['Cancel','cancel','ghost'],['Use sample title','audio-confirm','button blue']]}
+ quit:{icon:'↗',title:'Exit LOCUS?',message:'Close LOCUS?',buttons:[['Stay','cancel','ghost'],['Exit preview','exit-confirm','danger-button']]},
+ unsaved:{icon:'!',title:'Unsaved chart changes',message:'Save changes before leaving?',buttons:[['Cancel','cancel','ghost'],['Discard demo changes','discard-changes','danger-button'],['Save demo','save-changes','button blue']]},
+ 'delete-chart':{icon:'−',title:'Move difficulty to Trash?',message:'This difficulty will be moved to Trash.',buttons:[['Cancel','cancel','ghost'],['Move to Trash','delete-chart-confirm','danger-button']]},
+ 'delete-set':{icon:'−',title:'Move entire Song Set to Trash?',message:'Song, audio and all difficulties will move to Trash.',buttons:[['Cancel','cancel','ghost'],['Move Song Set','delete-set-confirm','danger-button']]},
+ leave:{icon:'←',title:'Leave this level?',message:'The current attempt will be lost.',buttons:[['Keep playing','cancel','ghost'],['Leave level','leave-confirm','danger-button']]},
+ retry:{icon:'↺',title:'Restart chart?',message:'The current attempt will be lost.',buttons:[['Cancel','cancel','ghost'],['Restart demo','retry-confirm','button primary']]},
+ import:{icon:'+',title:'Import to Song Library',message:'Chart or .locuspack package.',buttons:[['Cancel','cancel','ghost'],['Preview import','import-confirm','button blue']]},
+ export:{icon:'↗',title:'Export Song Set',message:'Export song, audio and difficulties.',buttons:[['Cancel','cancel','ghost'],['Preview export','export-confirm','button blue']]},
+ saveas:{icon:'▣',title:'Save as…',message:'New difficulty name.',input:'Horizon Copy',buttons:[['Cancel','cancel','ghost'],['Save demo copy','saveas-confirm','button blue']]},
+ error:{icon:'!',title:'Cannot open chart',message:'Audio file is missing or inaccessible.',details:'Example: audioPath is missing, unreadable or outside the Song Set folder.',buttons:[['Close','cancel','button']]},
+ success:{icon:'✓',title:'Operation complete',message:'Completed.',buttons:[['Close','cancel','button blue']]},
+ compare:{icon:'◫',title:'Compare charts',message:'Choose up to two difficulties.',buttons:[['Close','cancel','button blue']]},
+ commands:{icon:'⌕',title:'Quick navigation',message:'Go to',buttons:[['Close','cancel','ghost']]},
+ 'skin-saveas':{icon:'◇',title:'Save skin profile as…',message:'Profile name.',input:'My skin',buttons:[['Cancel','cancel','ghost'],['Create profile','skin-saveas-confirm','button blue']]},
+ 'skin-delete':{icon:'−',title:'Delete skin profile?',message:'Move this profile to Trash?',buttons:[['Cancel','cancel','ghost'],['Delete demo profile','skin-delete-confirm','danger-button']]},
+ 'remove-bg':{icon:'−',title:'Remove background?',message:'Remove Song Set background?',buttons:[['Cancel','cancel','ghost'],['Remove preview BG','remove-bg-confirm','danger-button']]},
+ 'choose-audio':{icon:'♫',title:'Choose music',message:'Select an audio file.',buttons:[['Cancel','cancel','ghost'],['Use sample title','audio-confirm','button blue']]}
 };
 let restoreFocus=null;
 let renderedPage=null;
@@ -36,18 +37,12 @@ function toast(message,warning){
  el.textContent=message;box.appendChild(el);
  window.setTimeout(function(){el.remove();},3900);
 }
-function trackStatus(){
- document.getElementById('statusLeft').textContent=s.page==='editor'
-  ? (s.editorDirty?'Chart modified · Not saved':'Chart editor · Sample document')
-  : s.page==='library'?'Library · Sample data':'Design prototype · '+(titles[s.page]||'');
- document.getElementById('statusRight').textContent=s.page==='editor'
-  ? 'SNAP '+s.snap+'   ·   '+s.practice+'%   ·   No audio'
-  : 'No files or system settings are changed';
-}
 function loadHash(){
  const bits=location.hash.replace(/^#/,'').split('/');
  const page=bits[0];
- if(S[page])s.page=page;
+ if(S[page] && page!=='results')s.page=page;
+ else if(page==='results'&&L.selectedRun())s.page='results';
+ else if(page==='results'||page==='listen')s.page='library';
  if(page==='editor'&&['set','route','audio','field'].includes(bits[1]))s.editorTab=bits[1];
  if(page==='skins'&&['path','player','colors','profiles'].includes(bits[1]))s.skinTab=bits[1];
  if(page==='settings'&&['game','display','bindings','audio'].includes(bits[1]))s.settingsTab=bits[1];
@@ -59,7 +54,7 @@ function setHash(){
 }
 function render(){
  const fullScreen=s.page==='home'||s.page==='play';
- topbar.hidden=fullScreen;navrail.hidden=fullScreen;statusbar.hidden=fullScreen;
+ topbar.hidden=fullScreen;navrail.hidden=fullScreen;
  document.getElementById('pageTitle').textContent=titles[s.page]||'LOCUS';
  document.querySelectorAll('[data-go]').forEach(function(button){
   button.classList.toggle('active',button.dataset.go===s.page);
@@ -69,10 +64,10 @@ function render(){
  const scrollY=renderedPage===s.page?screen.scrollTop:0;
  screen.innerHTML=S[s.page]?S[s.page]():S.home();
  screen.scrollTop=scrollY;renderedPage=s.page;
- trackStatus();setHash();renderModal();
+ setHash();renderModal();
 }
 function navigate(page,sub,allowUnsaved){
- if(!S[page])return;
+ if(!S[page] || (page==='results'&&!L.selectedRun()))return;
  if(!allowUnsaved&&s.page==='editor'&&page!=='editor'&&s.editorDirty){s.modalReturn={page:page,sub:sub};openModal('unsaved');return;}
  s.lastPage=s.page;s.page=page;
  if(page==='editor'&&sub)s.editorTab=sub;
@@ -113,7 +108,7 @@ function renderModal(){
   }).join('')+'</div><div class="caption" style="margin-top:10px">'+s.compare.length+' of 2 reference charts selected</div>';
  }
  if(kind==='commands'){
-  extra='<div class="list">'+Object.keys(titles).map(function(key){
+  extra='<div class="list">'+navigationPages.map(function(key){
    return '<button class="list-row" type="button" data-modal-go="'+key+'"><span class="row-main"><span class="row-title">'+titles[key]+'</span></span><span>↗</span></button>';
   }).join('')+'</div>';
  }
@@ -154,7 +149,7 @@ function performEdit(mode){
   const note=s.notes.find(function(n){return n.beat===s.selectedBeat;});
   if(!note){toast('No note on this beat.',true);return;}
   s.clipboard={direction:note.direction};if(mode==='cut')updateNote('DEL');else render();
-  toast(mode==='cut'?'Note cut in prototype.':'Note copied in prototype.');return;
+  toast(mode==='cut'?'Note cut.':'Note copied.');return;
  }
  if(mode==='paste'){
   if(!s.clipboard){toast('Clipboard is empty.',true);return;}
@@ -167,13 +162,34 @@ function performEdit(mode){
  }
  transformNote(mode);
 }
+function finishAttempt(){
+ const chart=L.selectedChart();
+ if(!chart||chart.notes<=0){toast('This chart has no notes.',true);return;}
+ const count=chart.notes,sequence=++s.runSequence;
+ const miss=Math.floor(count*(.002+(sequence%4)*.004));
+ const bad=Math.floor(count*(.003+(sequence%3)*.004));
+ const good=Math.floor(count*(.06+(sequence%3)*.015));
+ const perfect=count-miss-bad-good;
+ const accuracy=Number(((perfect+.75*good+.5*bad)/count*100).toFixed(2));
+ const timestamp=new Date().toLocaleString(undefined,{
+   year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'
+ });
+ const run={id:'run-'+sequence,time:timestamp,total:count,perfect:perfect,
+   good:good,bad:bad,miss:miss,accuracy:accuracy};
+ const key=L.chartKey();
+ if(!s.resultsByChart[key])s.resultsByChart[key]=[];
+ s.resultsByChart[key].unshift(run);
+ s.selectedRunId=run.id;
+ s.playPaused=false;
+ navigate('results');
+}
 function sampleSaved(){
- s.editorDirty=false;toast('Sample chart saved in this browser session (no file written).');render();
+ s.editorDirty=false;toast('Saved in prototype only.');render();
 }
 function handleModalAction(action){
  const kind=s.modal;
  if(action==='cancel'){closeModal();return;}
- if(action==='exit-confirm'){closeModal();navigate('home');toast('Preview stays open. No application process was closed.');return;}
+ if(action==='exit-confirm'){closeModal();navigate('home');toast('Preview mode');return;}
  if(action==='save-changes'||action==='discard-changes'){
   if(action==='save-changes')s.editorDirty=false;
   if(action==='discard-changes')s.editorDirty=false;
@@ -233,7 +249,7 @@ function action(name,el){
   L.library.splice(0,L.library.length,...JSON.parse(startingLibrary));
   Object.keys(L.bindings).forEach(k=>{L.bindings[k]=JSON.parse(startingBindings)[k];});
   navigate('home');toast('Demo reset.');return;
- case 'back':if(s.page==='home')openModal('quit');else navigate('home');return;
+ case 'back':if(s.page==='home')openModal('quit');else navigate(s.page==='results'?'library':'home');return;
  case 'quit':openModal('quit');return;
  case 'open-commands':openModal('commands');return;
  case 'library-refresh':toast('Rescan preview complete. Sample library unchanged.');return;
@@ -245,7 +261,7 @@ function action(name,el){
  case 'library-manage':navigate('editor','set');return;
  case 'library-play':s.playPaused=false;navigate('play');return;
  case 'library-edit':navigate('editor','route');return;
- case 'library-listen':navigate('listen');return;
+
  case 'settings-reset':s.volume=70;s.vsync=true;s.fps='240';s.showFps=false;s.fullscreen=false;s.offset=0;s.hitFlash=true;render();toast('Demo settings reset.');return;
  case 'settings-bindings':navigate('settings','bindings');return;
  case 'settings-skins':navigate('skins','path');return;
@@ -285,7 +301,7 @@ function action(name,el){
  case 'editor-saveas':openModal('saveas');return;
  case 'editor-exit':navigate('home');return;
  case 'editor-test':s.playPaused=false;navigate('play',null,true);return;
- case 'preview-toggle':s.previewPlaying=!s.previewPlaying;render();toast('Transport state changed. No audio playback is connected.');return;
+ case 'preview-toggle':s.previewPlaying=!s.previewPlaying;render();toast('Preview toggled.');return;
  case 'preview-restart':s.previewPlaying=false;s.selectedBeat=0;render();return;
  case 'zoom-in':s.zoom=Math.min(300,s.zoom+25);render();return;
  case 'zoom-out':s.zoom=Math.max(50,s.zoom-25);render();return;
@@ -294,19 +310,15 @@ function action(name,el){
  case 'beat-prev':s.selectedBeat=Math.max(0,s.selectedBeat-1);render();return;
  case 'beat-next':s.selectedBeat=Math.min(12,s.selectedBeat+1);render();return;
  case 'compare-open':openModal('compare');return;
- case 'listen-choose':openModal('choose-audio');return;
- case 'listen-toggle':s.listenPlaying=!s.listenPlaying;render();toast('Playback is visual only; no audio is produced.');return;
- case 'listen-restart':s.listenProgress=0;s.listenPlaying=false;render();return;
- case 'listen-home':navigate('home');return;
  case 'play-pause':s.playPaused=!s.playPaused;render();return;
  case 'play-retry':openModal('retry');return;
  case 'play-leave':openModal('leave');return;
- case 'play-results':s.playPaused=false;navigate('results');return;
+ case 'play-complete':finishAttempt();return;
  case 'results-library':navigate('library');return;
  case 'results-retry':s.playPaused=false;navigate('play');return;
  case 'results-edit':navigate('editor','route');return;
  case 'system-home':navigate('home');return;
- case 'sample-toast':toast('Control state demonstration.');return;
+ case 'sample-toast':toast('Done');return;
  case 'sample-error':openModal('error');return;
  }
  toast('This control is represented in the design, but its native action requires LOCUS.',true);
@@ -347,6 +359,12 @@ function handleClick(event){
  }
  const chart=event.target.closest('[data-chart][data-song-id]');
  if(chart){s.song=chart.dataset.songId;s.chart=chart.dataset.chart;render();return;}
+ const runRow=event.target.closest('[data-run-id]');
+ if(runRow){
+   const run=L.runsForChart().find(function(x){return x.id===runRow.dataset.runId;});
+   if(run){s.selectedRunId=run.id;navigate('results');}
+   return;
+ }
  const selected=event.target.closest('[data-chart-id]');
  if(selected){
   if(s.editorDirty){s.pendingChartSelection=selected.dataset.chartId;openModal('unsaved');return;}
@@ -397,8 +415,7 @@ function handleChange(event){
  }
  if(node.hasAttribute('data-range')){
   const field=node.dataset.range;
-  if(field==='listenProgress')s.listenProgress=Number(node.value);
-  else s[field]=Number(node.value);
+  s[field]=Number(node.value);
   render();return;
  }
  if(node.hasAttribute('data-skin-range')){
@@ -458,6 +475,7 @@ function handleKey(event){
  }
  if(event.key==='Escape'){
   if(s.modal){event.preventDefault();closeModal();return;}
+  if(s.page==='results'){event.preventDefault();navigate('library');return;}
   if(s.page==='home'){openModal('quit');return;}
   if(s.page==='play'){s.playPaused=!s.playPaused;render();return;}
   if(!event.target.closest('input,textarea,select')){navigate('home');return;}

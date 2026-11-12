@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="description" content="LOCUS complete interactive application UI prototype: library, editor, skins, settings and states.">
+  <meta name="description" content="LOCUS interface prototype.">
   <title>LOCUS · Interface Studio — v2</title>
   <link rel="icon" type="image/svg+xml" href="../v1/app-icon.svg">
   <link rel="stylesheet" href="styles.css">
@@ -19,18 +19,16 @@
 <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M4 19h16M5 15l10-10 4 4-10 10H5zM13 7l4 4"/></symbol>
 <symbol id="ic-skin" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20h2.1a2.3 2.3 0 0 0 0-4.6h-.6a2 2 0 0 1 0-4h3a5 5 0 0 0 5-5A10 10 0 0 0 12 2Z"/><path d="M6.5 10h.01M9.5 6h.01M15 6h.01M18 10h.01"/></symbol>
 <symbol id="ic-settings" viewBox="0 0 24 24"><path d="M10 2h4l.6 2.2 2 1.1 2.2-.7 2 3.4-1.6 1.6v2.8l1.6 1.6-2 3.4-2.2-.7-2 1.1L14 20h-4l-.6-2.2-2-1.1-2.2.7-2-3.4L4.8 12V9.6L3.2 8l2-3.4 2.2.7 2-1.1z" transform="translate(0 1) scale(.93)"/><circle cx="12" cy="11.4" r="3"/></symbol>
-<symbol id="ic-music" viewBox="0 0 24 24"><path d="M9 19V5l11-2v14"/><ellipse cx="6" cy="19" rx="3" ry="2"/><ellipse cx="17" cy="17" rx="3" ry="2"/></symbol>
-<symbol id="ic-results" viewBox="0 0 24 24"><path d="M6 21h12M12 17v4M7 3h10v9a5 5 0 0 1-10 0z"/><path d="M7 5H4v5a4 4 0 0 0 4 4m9-9h3v5a4 4 0 0 1-4 4"/></symbol>
 <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
 <symbol id="ic-back" viewBox="0 0 24 24"><path d="m13 5-7 7 7 7M6 12h14"/></symbol>
 </svg>
 <div class="studio">
   <div class="studio-meta">
-    <div class="studio-mark"><span class="studio-mark-dot"></span> LOCUS <span class="studio-muted">/ Interface Studio</span> <span class="version">V2</span></div>
+    <div class="studio-mark"><span class="studio-mark-dot"></span> LOCUS <span class="studio-muted">/ UI</span> <span class="version">V2</span></div>
     <div class="studio-tools">
-      <span class="prototype-flag">INTERACTIVE PROTOTYPE · SAMPLE DATA</span>
-      <button class="ghost studio-help" type="button" data-go="system">Components &amp; states</button>
-      <button class="ghost studio-reset" type="button" data-action="reset">Reset demo</button>
+      <span class="prototype-flag">UI PROTOTYPE</span>
+      <button class="ghost studio-help" type="button" data-go="system">Components</button>
+      <button class="ghost studio-reset" type="button" data-action="reset">Reset</button>
     </div>
   </div>
   <div class="device" id="device">
@@ -43,7 +41,6 @@
           <div class="topbar-page" id="pageTitle">Library</div>
         </div>
         <div class="topbar-actions">
-          <span class="session-pill" id="sessionBadge"><span class="pulse-dot"></span> Prototype session</span>
           <button class="icon-btn" type="button" data-action="open-commands" title="Quick navigation (Ctrl+K)" aria-label="Quick navigation"><svg class="nav-icon" aria-hidden="true"><use href="#ic-search"></use></svg></button>
           <button class="quiet-button" type="button" data-action="quit">Exit</button>
         </div>
@@ -57,20 +54,12 @@
             <button type="button" class="nav-button" data-go="skins" title="Skin editor"><svg class="nav-icon" aria-hidden="true"><use href="#ic-skin"></use></svg><span>Skins</span></button>
             <button type="button" class="nav-button" data-go="settings" title="Settings"><svg class="nav-icon" aria-hidden="true"><use href="#ic-settings"></use></svg><span>Settings</span></button>
           </div>
-          <div class="navrail-group navrail-bottom">
-            <button type="button" class="nav-button" data-go="listen" title="Listen mode"><svg class="nav-icon" aria-hidden="true"><use href="#ic-music"></use></svg><span>Listen</span></button>
-            <button type="button" class="nav-button" data-go="results" title="Results preview"><svg class="nav-icon" aria-hidden="true"><use href="#ic-results"></use></svg><span>Results</span></button>
-          </div>
+
         </nav>
         <main class="screen" id="screen" tabindex="-1" aria-live="polite"></main>
       </div>
-      <footer class="statusbar" id="statusbar" hidden>
-        <div><span class="status-led"></span><span id="statusLeft">Ready</span></div>
-        <div><span id="statusRight">Preview only · No files are changed</span></div>
-      </footer>
     </div>
   </div>
-  <div class="studio-bottom"><span>All views are demonstrative. Controls model UI behavior; audio, chart editing, file access and scoring are not connected.</span><span>Preview with keyboard: <kbd>Tab</kbd> <kbd>Enter</kbd> <kbd>Esc</kbd> · <kbd>Ctrl</kbd>+<kbd>K</kbd></span></div>
 </div>
 <div class="toast-region" id="toasts" role="status" aria-live="polite"></div>
 <div class="overlay" id="overlay" hidden><div class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"></div></div>

@@ -32,8 +32,7 @@
     menus:[
       ['Back','Esc'],['Open library','P'],['Open editor','E'],['Open skins','K'],
       ['Open settings','S'],['Fullscreen','F11'],['Refresh library','F5'],
-      ['Choose music','O'],['Choose chart','C'],['Listen pause','Space'],
-      ['Listen replay','R']
+      ['Choose chart','C']
     ],
     editor:[
       ['Save','Ctrl+S'],['Save as','Ctrl+Shift+S'],['Open','Ctrl+O'],
@@ -59,7 +58,16 @@
       practice:100,previewPlaying:false,previewSpeed:135,previewLength:800,
       fieldWidth:4,fieldHeight:4,startX:1,startY:1,heading:'→',
       volume:70,hitFlash:true,vsync:true,fps:'240',showFps:false,fullscreen:false,offset:0,
-      listenProgress:33,listenPlaying:false,playPaused:false,
+      playPaused:false,selectedRunId:null,runSequence:3,
+      resultsByChart:{
+        'aurora/horizon':[
+          {id:'run-2',time:'12 Nov 2026 · 14:42',total:486,perfect:445,good:37,bad:0,miss:4,accuracy:97.27},
+          {id:'run-1',time:'12 Nov 2026 · 13:18',total:486,perfect:430,good:40,bad:8,miss:8,accuracy:95.47}
+        ],
+        'aurora/parallax':[
+          {id:'run-3',time:'12 Nov 2026 · 14:03',total:912,perfect:812,good:68,bad:20,miss:12,accuracy:95.72}
+        ]
+      },
       modal:null,modalReturn:null,calibrationOpen:false,calibrationCount:0,calibrationComplete:false,selectedColor:'trajectory',
       skinName:'Default',skinDirty:false,skinProfile:'default',
       profiles:[{id:'default',name:'Default',subtitle:'Current design'},{id:'night',name:'Nightglass',subtitle:'Saved profile'}],
@@ -85,6 +93,11 @@
     return song.charts.find(x=>x.id===state.chart)||song.charts[0]||null;
   }
   function pointMax(n,min,max){return Math.max(min,Math.min(max,n));}
+  function chartKey(){return state.song+'/'+state.chart;}
+  function runsForChart(key){return state.resultsByChart[key||chartKey()]||[];}
+  function selectedRun(){
+    return runsForChart().find(function(r){return r.id===state.selectedRunId;})||null;
+  }
   function field(name,value,note){
     return '<label class="input-label">'+H(name)+'<input type="text" value="'+H(value)+'"'+(note?' placeholder="'+H(note)+'"':'')+'></label>';
   }
@@ -114,6 +127,7 @@
       '</svg>';
   }
   window.LocusDemo={state:state,defaults:defaults,library:library,bindings:bindings,H:H,
-    selectedSong:selectedSong,selectedChart:selectedChart,pointMax:pointMax,
+    selectedSong:selectedSong,selectedChart:selectedChart,chartKey:chartKey,
+    runsForChart:runsForChart,selectedRun:selectedRun,pointMax:pointMax,
     field:field,segment:segment,shortButton:shortButton,routeSvg:routeSvg};
 })();
