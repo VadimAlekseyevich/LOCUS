@@ -3,6 +3,7 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/RenderInterface.h>
+#include <RmlUi/Core/StyleTypes.h>
 
 #include <cmath>
 #include <filesystem>
@@ -55,6 +56,15 @@ int main() {
         auto* results = document->GetElementById("results-scroll");
         ok &= Check(left && right && search && results,
                     "PLAY has real panels, search and results");
+        // RmlUi supplies no user-agent CSS. Without explicit display:block
+        // on divs, summary values form a single overlapping inline row.
+        for (const char* id : {"song-title", "song-author",
+                               "song-meta", "chart-title", "chart-notes"}) {
+            auto* element = document->GetElementById(id);
+            ok &= Check(element && element->GetDisplay() ==
+                                      Rml::Style::Display::Block,
+                        "PLAY metadata fields must have block layout");
+        }
         if (left && right) {
             const float x0 = left->GetAbsoluteLeft();
             const float x1 = right->GetAbsoluteLeft();
