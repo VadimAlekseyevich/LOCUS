@@ -32,6 +32,9 @@
 #include "app/gameplay_ui.h"
 #include "app/song_library.h"
 #include "app/song_set_storage.h"
+#ifdef LOCUS_WITH_RMLUI
+#include "app/native_menu_ui.h"
+#endif
 #include "app/run_results.h"
 #include "app/library_browser.h"
 #include "app/library_launch_actions.h"
@@ -144,6 +147,11 @@ int main(int argc, char** argv) {
     locus::app::HomeBrandAssets homeBrand;
     homeBrand.Load();
     locus::app::HomeMenuUi homeUi;
+#ifdef LOCUS_WITH_RMLUI
+    locus::app::NativeMenuUi nativeMenu;
+    if (!nativeMenu.Initialize())
+        std::cerr << "RMLUI_UNAVAILABLE_FALLING_BACK_TO_LEGACY_UI\n";
+#endif
     std::cout << "LOCUS_WINDOW_OPEN\n";
 
     const auto userData = locus::app::UserDataDirectory();
@@ -343,11 +351,16 @@ int main(int argc, char** argv) {
             input.baseSpeedHeld, input.previewTimeHeld, GetFrameTime());
         input.baseSpeedDelta += repeatSpeed;
         input.previewTimeDelta += repeatPreview;
-        const MenuEvents menuEvents =
-            (wasAnyModal || input.closeRequested) ? MenuEvents{} :
-            HandleMenuInput(state, input, library, libraryUi, settings,
-                            settingsUi, draftSkin, skinUi, homeUi,
-                            inputNow);
+        MenuEvents menuEvents;
+        if (!(wasAnyModal || input.closeRequested)) {
+#ifdef LOCUS_WITH_RMLUI
+            if (state.screen == Screen::SongSelect && nativeMenu.Available())
+                menuEvents = nativeMenu.Update(library, libraryUi, input);
+            else
+#endif
+                menuEvents = HandleMenuInput(state, input, library, libraryUi,
+                    settings, settingsUi, draftSkin, skinUi, homeUi, inputNow);
+        }
         if (state.screen == Screen::SongSelect &&
             menuEvents.viewResultIndex >= 0 &&
             menuEvents.viewResultIndex <
@@ -946,6 +959,9 @@ int main(int argc, char** argv) {
                 libraryUi.notice = notice;
             }
         }
+#ifdef LOCUS_WITH_RMLUI
+        if (visibleState.screen != Screen::SongSelect) nativeMenu.Hide();
+#endif
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, editorClock,
                     editorStatus, editorDiscard.Pending(),
@@ -957,13 +973,20 @@ int main(int argc, char** argv) {
                     state.quitConfirmation ? 0.0f : fadeFrame.opacity,
                     &songBackground,
                     displayedResult ? &*displayedResult : nullptr,
-                    historicalResult);
+                    historicalResult
+#ifdef LOCUS_WITH_RMLUI
+                    , &nativeMenu
+#endif
+                    );
     }
 
     persistHotkeySkin(); // Flush pending adjustments on exit.
     // Both borrowed streams must unload BEFORE closing the shared device.
     chartPlayback.Stop();
     menuMusic.Shutdown();
+#ifdef LOCUS_WITH_RMLUI
+    nativeMenu.Shutdown(); // Rml glyph textures before raylib context.
+#endif
     songBackground.Shutdown(); // GPU texture before CloseWindow.
     homeBrand.Unload();
     localSong.Shutdown();

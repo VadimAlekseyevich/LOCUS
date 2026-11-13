@@ -23,6 +23,8 @@
 
 namespace locus::app {
 
+class NativeMenuUi;
+
 // Application UI font, owned only when loaded from the user's OS.
 struct UiFont {
     Font value{};
@@ -67,6 +69,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   float screenFadeOpacity = 0.0f,
                   const ImageAssetTexture* background = nullptr,
                   const RunResult* displayedResult = nullptr,
-                  bool historicalResult = false);
+                  bool historicalResult = false,
+                  NativeMenuUi* nativeMenu = nullptr);
 
 } // namespace locus::app

@@ -5,6 +5,7 @@ project(LOCUS VERSION 0.1.0 LANGUAGES C CXX)
 
 option(LOCUS_BUILD_TESTS "Build and register core tests with CTest" OFF)
 option(LOCUS_BUILD_BENCHMARKS "Build optional headless route preview profiler" OFF)
+option(LOCUS_ENABLE_RMLUI "Use responsive RmlUi for non-gameplay UI screens" ON)
 
 # Pinned raylib and JSON dependencies.
 include(cmake/dependencies.cmake)
@@ -101,6 +102,24 @@ add_executable(locus
     src/app/route_renderer.cpp
     src/app/path_mesh.cpp
 )
+if(LOCUS_ENABLE_RMLUI)
+    target_sources(locus PRIVATE
+        src/app/rml_raylib_renderer.cpp
+        src/app/native_menu_ui.cpp
+    )
+    target_link_libraries(locus PRIVATE RmlUi::Core)
+    target_compile_definitions(locus PRIVATE LOCUS_WITH_RMLUI=1)
+    # Load editable RML/RCSS documents next to the Windows executable.
+    add_custom_command(TARGET locus POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:locus>/assets/ui/rml"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${PROJECT_SOURCE_DIR}/assets/ui/rml"
+            "$<TARGET_FILE_DIR:locus>/assets/ui/rml"
+        VERBATIM
+    )
+endif()
+
 # Keep approved Home raster assets next to the executable regardless of the
 # current working directory (launcher BAT, IDE, packaged release).
 add_custom_command(TARGET locus POST_BUILD
@@ -139,6 +158,15 @@ endif()
 
 if(LOCUS_BUILD_TESTS)
     enable_testing()
+    if(LOCUS_ENABLE_RMLUI)
+        add_executable(locus_rml_layout_tests tests/rml_ui_layout_tests.cpp)
+        target_compile_features(locus_rml_layout_tests PRIVATE cxx_std_17)
+        target_link_libraries(locus_rml_layout_tests PRIVATE RmlUi::Core)
+        target_compile_definitions(locus_rml_layout_tests PRIVATE
+            LOCUS_RML_UI_DIR="\"${PROJECT_SOURCE_DIR}/assets/ui/rml\"")
+        add_test(NAME locus_rml_responsive_play
+                 COMMAND locus_rml_layout_tests)
+    endif()
     add_executable(locus_run_results_tests
         tests/run_results_tests.cpp src/app/run_results.cpp)
     target_compile_features(locus_run_results_tests PRIVATE cxx_std_17)

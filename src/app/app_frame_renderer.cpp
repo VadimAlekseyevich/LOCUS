@@ -6,6 +6,9 @@
 #include "app/ui_button.h"
 #include "app/screen_action_buttons.h"
 #include "app/viewport.h"
+#ifdef LOCUS_WITH_RMLUI
+#include "app/native_menu_ui.h"
+#endif
 
 #include <algorithm>
 #include <cstdlib>
@@ -196,7 +199,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   float screenFadeOpacity,
                   const ImageAssetTexture* background,
                   const RunResult* displayedResult,
-                  bool historicalResult) {
+                  bool historicalResult,
+                  NativeMenuUi* nativeMenu) {
     BeginDrawing();
     ClearBackground(state.screen == Screen::Play
                         ? gameplay.skin.background
@@ -235,7 +239,10 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     if (state.screen == Screen::Home) {
         DrawHomeScreen(font, menuStatus, homeUi, homeBrand, now);
     } else if (state.screen == Screen::SongSelect) {
-        locus::app::DrawSongSelectMenu(font, library, libraryUi);
+#ifdef LOCUS_WITH_RMLUI
+        if (!nativeMenu || !nativeMenu->Available())
+#endif
+            locus::app::DrawSongSelectMenu(font, library, libraryUi);
     } else if (state.screen == Screen::Skin) {
         locus::app::DrawSkinMenu(font, draftSkin, skinUi);
     } else if (state.screen == Screen::Settings) {
@@ -391,6 +398,10 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                       Color{250, 165, 152, 255});
     }
     EndMode2D();
+#ifdef LOCUS_WITH_RMLUI
+    if (state.screen == Screen::SongSelect && nativeMenu &&
+        nativeMenu->Available()) nativeMenu->Render();
+#endif
     if (settings.showFps) {
         // Screen-pixel overlay, separate from the gameplay camera.
         DrawRectangleRounded({8.0f, 8.0f, 100.0f, 30.0f}, 0.18f, 4,
