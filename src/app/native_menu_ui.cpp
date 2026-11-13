@@ -477,6 +477,12 @@ void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status) {
         lastHomeNotice_ = notice;
     }
     PumpInput();
+    // RmlUi activates focused buttons with Space; support Enter as well,
+    // without allowing the Home default shortcut to steal focus activation.
+    if (auto* focus = context_->GetFocusElement();
+        focus && focus->GetTagName() == "button" &&
+        (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
+        focus->Click();
     switch (pendingHomeAction_) {
         case 0: input.requestedScreen = Screen::SongSelect; break;
         case 1: input.requestedScreen = Screen::Editor; break;
@@ -508,6 +514,10 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
     pending_ = {};
     Rebuild(library, ui);
     PumpInput();
+    if (auto* focus = context_->GetFocusElement();
+        focus && focus->GetTagName() == "button" &&
+        (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
+        focus->Click();
     const bool typing = IsSearchFocused();
     if (!typing) {
         if (IsKeyPressed(KEY_UP)) ui.MoveTree(-1, library);
