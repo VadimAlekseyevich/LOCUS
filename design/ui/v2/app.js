@@ -167,7 +167,12 @@ function action(name){
  if(name==='library'||name==='settings'||name==='skins'){navigate(name);return;}
  if(name==='editor-new'){enterEditor(false,'set');return;}
  if(name==='editor-open'||name==='editor-set'){enterEditor(true,name==='editor-set'?'set':'route');return;}
- if(name==='play'){s.paused=false;navigate('play');return;}
+ if(name==='play'){
+  s.paused=false;
+  if(s.view==='editor'){s.view='play';render();}
+  else navigate('play');
+  return;
+ }
  if(name==='pause'){s.paused=!s.paused;render();return;}
  if(name==='quit'){openDialog('quit');return;}
  if(name.startsWith('dialog-')){openDialog(name.slice(7));return;}
