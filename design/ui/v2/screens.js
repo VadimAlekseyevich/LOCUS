@@ -8,8 +8,8 @@ function button(text,action,cls,attrs){
 function panel(title,content,extra){
  return '<section class="box '+(extra||'')+'"><div class="box-head">'+title+'</div>'+content+'</section>';
 }
-function bar(name,extra){
- return '<header class="backbar">'+button('← BACK','home','back')+
+function bar(name,extra,backAction){
+ return '<header class="backbar">'+button('← BACK',backAction||'home','back')+
  '<h1>'+H(name)+'</h1>'+(extra||'')+'</header>';
 }
 function field(label,key,value,type,extra){
@@ -65,6 +65,7 @@ function library(){
   '<div class="view-content no-scroll"><div class="library-layout">'+left+center+breakdown+'</div></div></div>';
 }
 function routePreview(seed,name,selected){
+ const blank=!s.editorLoaded&&seed===0;
  const points=[
   '35,164 76,164 76,101 138,101 138,39 205,39 205,105 250,105',
   '38,167 38,115 99,115 144,74 207,74 207,129 254,129',
@@ -73,8 +74,8 @@ function routePreview(seed,name,selected){
  return '<button type="button" class="route-pane '+(selected?'active':'')+'" data-pane="'+seed+'" aria-label="Focus '+H(name)+'">'+
   '<span class="route-pane-title">'+H(name)+'</span>'+
   '<svg viewBox="0 0 290 200" aria-hidden="true"><path d="M0 50H290M0 100H290M0 150H290M50 0V200M100 0V200M150 0V200M200 0V200M250 0V200" fill="none" stroke="#dedede" stroke-width="1"/>'+
-  '<polyline points="'+points[seed%3]+'" fill="none" stroke="#555" stroke-width="6" stroke-linejoin="round"/>'+
-  '<circle cx="76" cy="164" r="10" fill="#333" stroke="#000" stroke-width="2"/></svg></button>';
+  (blank?'':('<polyline points="'+points[seed%3]+'" fill="none" stroke="#555" stroke-width="6" stroke-linejoin="round"/>'+
+  '<circle cx="76" cy="164" r="10" fill="#333" stroke="#000" stroke-width="2"/>'))+'</svg></button>';
 }
 const noteDirections=['↖','↑','↗','←','DEL','→','↙','↓','↘'];
 function pressCount(direction){
@@ -270,9 +271,9 @@ function skins(){
 function results(){
  const run=M.result();
  const chart=M.chart(),song=M.song();
- if(!run)return '<div class="view">'+bar('RESULTS')+'<div class="empty">No result selected</div></div>';
+ if(!run)return '<div class="view">'+bar('RESULTS','','library')+'<div class="empty">No result selected</div></div>';
  const rows=[['PERFECT',run.perfect],['GOOD',run.good],['BAD',run.bad],['MISS',run.miss]];
- return '<div class="view">'+bar('RESULTS')+
+ return '<div class="view">'+bar('RESULTS','','library')+
   '<div class="view-content no-scroll"><div class="results-layout">'+
   '<div class="box results-primary"><div><h2>'+H(song.title)+'</h2><div>'+H(chart.title)+'</div>'+
   '<div class="muted" style="margin-top:7px">'+H(M.datetime(run.datetime))+'</div></div>'+

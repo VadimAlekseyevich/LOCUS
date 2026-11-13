@@ -82,7 +82,7 @@ function openDialog(kind){
  if(focus)focus.focus();
 }
 function closeDialog(){
- s.dialog=null;paintModal();
+ pending=null;s.dialog=null;paintModal();
  if(previousFocus?.isConnected)previousFocus.focus();
  previousFocus=null;
 }
