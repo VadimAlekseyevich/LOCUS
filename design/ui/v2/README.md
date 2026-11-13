@@ -20,7 +20,7 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
 - SKINS now uses the same dark violet/sky menu palette, a full-width tab bar,
   skin name in the header and actions beneath the preview. The existing
   functional wheel, sliders, swatches, skin profiles and controls remain.
-- Home, Editor, Skins, Settings and Results are **not** RmlUi screens yet. See [the actual migration plan](../../../docs/UI_RML_MIGRATION.md). Manual cross-resolution visual inspection of the new GPU renderer is still needed; CI checks the headless layout, compilation and app logic. Scored gameplay,
+- Home now shares PLAY's responsive RmlUi context and approved brand layout. Editor, Skins, Settings and Results are **not** RmlUi screens yet. See [the actual migration plan](../../../docs/UI_RML_MIGRATION.md). Manual cross-resolution visual inspection of the new GPU renderer is still needed; CI checks the headless layout, compilation and app logic. Scored gameplay,
   chart timing and chart file formats were not changed.
 
 ## Design direction — Nightbloom
