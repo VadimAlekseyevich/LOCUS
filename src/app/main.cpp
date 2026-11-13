@@ -354,7 +354,9 @@ int main(int argc, char** argv) {
         MenuEvents menuEvents;
         if (!(wasAnyModal || input.closeRequested)) {
 #ifdef LOCUS_WITH_RMLUI
-            if (state.screen == Screen::SongSelect && nativeMenu.Available())
+            if (state.screen == Screen::Home && nativeMenu.HomeAvailable())
+                nativeMenu.UpdateHome(input, menuStatus);
+            else if (state.screen == Screen::SongSelect && nativeMenu.Available())
                 menuEvents = nativeMenu.Update(library, libraryUi, input);
             else
 #endif
@@ -960,7 +962,8 @@ int main(int argc, char** argv) {
             }
         }
 #ifdef LOCUS_WITH_RMLUI
-        if (visibleState.screen != Screen::SongSelect) nativeMenu.Hide();
+        if (visibleState.screen != Screen::SongSelect &&
+            visibleState.screen != Screen::Home) nativeMenu.Hide();
 #endif
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, editorClock,

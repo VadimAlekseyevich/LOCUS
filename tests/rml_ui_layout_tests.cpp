@@ -82,6 +82,39 @@ int main() {
                         results->GetOffsetHeight() >= 0,
                         "search has focusable layout; results can scroll");
     }
+    // HOME uses the shared context and adaptive buttons, not fixed hitboxes.
+    auto* home = context->LoadDocument("assets/ui/rml/home.rml");
+    ok &= Check(home != nullptr, "native HOME document parses");
+    if (home) {
+        if (document) document->Hide();
+        home->Show();
+        context->SetDimensions({960, 540});
+        context->Update();
+        auto* actions = home->GetElementById("home-actions");
+        auto* play = home->GetElementById("home-play");
+        auto* editor = home->GetElementById("home-editor");
+        auto* exit = home->GetElementById("home-exit");
+        ok &= Check(actions && play && editor && exit,
+                    "HOME has real navigation controls");
+        if (play && editor && exit) {
+            ok &= Check(play->GetOffsetWidth() > 100.0f &&
+                        editor->GetAbsoluteLeft() >=
+                            play->GetAbsoluteLeft() + play->GetOffsetWidth() &&
+                        exit->GetAbsoluteLeft() + exit->GetOffsetWidth() <= 960.1f,
+                        "960x540: HOME actions fit");
+            context->SetDimensions({800, 450});
+            context->Update();
+            ok &= Check(editor->GetAbsoluteLeft() >=
+                            play->GetAbsoluteLeft() + play->GetOffsetWidth() &&
+                        exit->GetAbsoluteLeft() + exit->GetOffsetWidth() <= 800.1f,
+                        "800x450: HOME actions fit");
+            context->SetDimensions({1920, 810});
+            context->Update();
+            ok &= Check(actions->GetOffsetWidth() > 0 &&
+                        exit->GetAbsoluteLeft() + exit->GetOffsetWidth() <= 1920.1f,
+                        "1920x810: HOME actions fit");
+        }
+    }
     Rml::RemoveContext("headless-layout");
     Rml::Shutdown();
     return ok ? 0 : 1;

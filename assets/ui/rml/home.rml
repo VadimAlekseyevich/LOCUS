@@ -1,0 +1,22 @@
+<rml>
+<head>
+<title>LOCUS / HOME</title>
+<link type="text/rcss" href="common.rcss" />
+<link type="text/rcss" href="home.rcss" />
+</head>
+<body>
+<div id="home">
+  <div id="home-main">
+    <img id="home-wordmark" src="../../../ui/wordmark.png" alt="locus." />
+    <div id="home-actions">
+      <button id="home-play" class="home-action primary" data-action="home-play">PLAY</button>
+      <button id="home-editor" class="home-action secondary" data-action="home-editor">EDITOR</button>
+      <button id="home-skins" class="home-action" data-action="home-skins">SKINS</button>
+      <button id="home-settings" class="home-action" data-action="home-settings">SETTINGS</button>
+    </div>
+  </div>
+  <div id="home-notice"></div>
+  <button id="home-exit" data-action="home-exit">EXIT</button>
+</div>
+</body>
+</rml>

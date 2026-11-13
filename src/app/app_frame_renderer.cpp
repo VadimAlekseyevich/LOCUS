@@ -237,7 +237,11 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     }
 
     if (state.screen == Screen::Home) {
-        DrawHomeScreen(font, menuStatus, homeUi, homeBrand, now);
+#ifdef LOCUS_WITH_RMLUI
+        if (!nativeMenu || !nativeMenu->HomeAvailable() ||
+            state.quitConfirmation)
+#endif
+            DrawHomeScreen(font, menuStatus, homeUi, homeBrand, now);
     } else if (state.screen == Screen::SongSelect) {
 #ifdef LOCUS_WITH_RMLUI
         if (!nativeMenu || !nativeMenu->Available())
@@ -401,9 +405,11 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
 #ifdef LOCUS_WITH_RMLUI
     // Confirmation dialogs must stay above all menu content, including
     // the RmlUi document. Never cover a native quit/leave modal.
-    if (state.screen == Screen::SongSelect && nativeMenu &&
-        nativeMenu->Available() && !state.quitConfirmation &&
-        !state.levelExitConfirmation) nativeMenu->Render();
+    if (nativeMenu && !state.quitConfirmation &&
+        !state.levelExitConfirmation &&
+        ((state.screen == Screen::SongSelect && nativeMenu->Available()) ||
+         (state.screen == Screen::Home && nativeMenu->HomeAvailable())))
+        nativeMenu->Render();
 #endif
     if (settings.showFps) {
         // Screen-pixel overlay, separate from the gameplay camera.

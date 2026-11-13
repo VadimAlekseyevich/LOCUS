@@ -157,6 +157,15 @@ bool NativeMenuUi::Initialize() {
         Rml::Shutdown();
         return false;
     }
+    // Home is optional: a bad document must not disable working PLAY.
+    homeDocument_ = context_->LoadDocument(
+        (file.parent_path() / "home.rml").u8string());
+    if (homeDocument_) {
+        homeDocument_->AddEventListener("click", this);
+        homeDocument_->Hide();
+    } else {
+        std::cerr << "Could not load HOME RmlUi; using legacy HOME UI.\n";
+    }
     document_->AddEventListener("click", this);
     document_->AddEventListener("input", this);
     document_->Hide();
@@ -170,23 +179,42 @@ void NativeMenuUi::Shutdown() {
             document_->RemoveEventListener("click", this);
             document_->RemoveEventListener("input", this);
         }
+        if (homeDocument_) homeDocument_->RemoveEventListener("click", this);
         document_ = nullptr;
+        homeDocument_ = nullptr;
         context_->UnloadAllDocuments();
         Rml::RemoveContext("locus-menu");
         context_ = nullptr;
         Rml::Shutdown();
         renderer_.ReleaseAllTextures();
     }
-    visible_ = false;
+    visiblePage_ = Page::None;
+    pendingHomeAction_ = -1;
+    currentUi_ = nullptr;
+    currentLibrary_ = nullptr;
+}
+
+void NativeMenuUi::Activate(Page page) {
+    if (visiblePage_ == page) return;
+    if (document_) document_->Hide();
+    if (homeDocument_) homeDocument_->Hide();
+    visiblePage_ = page;
+    if (page == Page::Home && homeDocument_) {
+        homeDocument_->Show();
+        lastHomeNotice_.clear();
+    } else if (page == Page::Play && document_) {
+        document_->Show();
+        lastTreeSignature_.clear();
+        lastResultSignature_.clear();
+    }
+    ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
 
 void NativeMenuUi::Hide() {
-    if (!visible_) return;
-    if (document_) document_->Hide();
-    visible_ = false;
+    if (visiblePage_ == Page::None) return;
+    Activate(Page::None);
     currentUi_ = nullptr;
     currentLibrary_ = nullptr;
-    ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
 
 void NativeMenuUi::SetText(const char* id, const std::string& value) {
@@ -200,9 +228,24 @@ bool NativeMenuUi::IsSearchFocused() const {
 }
 
 void NativeMenuUi::ProcessEvent(Rml::Event& event) {
-    if (!currentUi_ || !currentLibrary_) return;
     auto* target = event.GetTargetElement();
     if (!target) return;
+    if (visiblePage_ == Page::Home) {
+        if (event.GetType() != "click") return;
+        while (target && !target->HasAttribute("data-action"))
+            target = target->GetParentNode();
+        if (!target) return;
+        const std::string action =
+            target->GetAttribute<Rml::String>("data-action", "");
+        if (action == "home-play") pendingHomeAction_ = 0;
+        else if (action == "home-editor") pendingHomeAction_ = 1;
+        else if (action == "home-skins") pendingHomeAction_ = 2;
+        else if (action == "home-settings") pendingHomeAction_ = 3;
+        else if (action == "home-exit") pendingHomeAction_ = 4;
+        return;
+    }
+    if (visiblePage_ != Page::Play || !currentUi_ || !currentLibrary_)
+        return;
     if (event.GetType() == "input") {
         if (target->GetId() != "search") return;
         if (auto* search = dynamic_cast<Rml::ElementFormControlInput*>(target)) {
@@ -373,22 +416,7 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
     }
 }
 
-MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
-                                FrameInput& input) {
-    MenuEvents result;
-    if (!Available()) return result;
-    if (!visible_) {
-        visible_ = true;
-        document_->Show();
-        lastTreeSignature_.clear();
-        lastResultSignature_.clear();
-        if (auto* search = document_->GetElementById("search"))
-            static_cast<Rml::ElementFormControlInput*>(search)->
-                SetValue(ui.search);
-    }
-    currentLibrary_ = &library;
-    currentUi_ = &ui;
-    pending_ = {};
+void NativeMenuUi::PumpInput() {
     const int width = GetScreenWidth(), height = GetScreenHeight();
     if (width != lastWidth_ || height != lastHeight_) {
         context_->SetDimensions({std::max(1,width),std::max(1,height)});
@@ -430,14 +458,67 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
     int codepoint = 0;
     while ((codepoint = GetCharPressed()) != 0)
         context_->ProcessTextInput(static_cast<Rml::Character>(codepoint));
+}
+
+void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status) {
+    if (!HomeAvailable()) return;
+    Activate(Page::Home);
+    currentUi_ = nullptr;
+    currentLibrary_ = nullptr;
+    pendingHomeAction_ = -1;
+    const bool failed = status.find("FAILED") != std::string::npos ||
+        status.find("UNAVAILABLE") != std::string::npos ||
+        status.find("NOT SAVED") != std::string::npos;
+    const std::string notice = failed ? status : "";
+    if (notice != lastHomeNotice_) {
+        if (auto* element = homeDocument_->GetElementById("home-notice"))
+            element->SetInnerRML(Escape(notice));
+        lastHomeNotice_ = notice;
+    }
+    PumpInput();
+    switch (pendingHomeAction_) {
+        case 0: input.requestedScreen = Screen::SongSelect; break;
+        case 1: input.requestedScreen = Screen::Editor; break;
+        case 2: input.requestedScreen = Screen::Skin; break;
+        case 3: input.requestedScreen = Screen::Settings; break;
+        case 4: input.closeRequested = true; break;
+        default: break;
+    }
+    // Enter on a focused button cannot double-trigger the Home PLAY shortcut.
+    const auto* focus = context_->GetFocusElement();
+    if (pendingHomeAction_ >= 0 ||
+        (focus && focus->GetTagName() == "button"))
+        input.startPressed = false;
+    context_->Update();
+}
+
+MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
+                                FrameInput& input) {
+    MenuEvents result;
+    if (!Available()) return result;
+    if (visiblePage_ != Page::Play) {
+        Activate(Page::Play);
+        if (auto* search = document_->GetElementById("search"))
+            static_cast<Rml::ElementFormControlInput*>(search)->
+                SetValue(ui.search);
+    }
+    currentLibrary_ = &library;
+    currentUi_ = &ui;
+    pending_ = {};
+    PumpInput();
     const bool typing = IsSearchFocused();
     if (!typing) {
         if (IsKeyPressed(KEY_UP)) ui.MoveTree(-1, library);
         if (IsKeyPressed(KEY_DOWN)) ui.MoveTree(1, library);
         if (IsKeyPressed(KEY_LEFT)) ui.MoveChart(-1, library);
         if (IsKeyPressed(KEY_RIGHT)) ui.MoveChart(1, library);
-        if (IsKeyPressed(KEY_ENTER)) pending_.playSelected = true;
-        if (IsKeyPressed(KEY_E)) pending_.editSelected = true;
+        // Enter on a focused EDIT button cannot start the chart as well.
+        const auto* focus = context_->GetFocusElement();
+        const bool buttonFocused = focus && focus->GetTagName() == "button";
+        if (!buttonFocused && IsKeyPressed(KEY_ENTER))
+            pending_.playSelected = true;
+        if (!buttonFocused && IsKeyPressed(KEY_E))
+            pending_.editSelected = true;
         if (IsKeyPressed(KEY_ESCAPE)) input.backPressed = true;
     } else {
         if (IsKeyPressed(KEY_ESCAPE)) {
@@ -462,7 +543,7 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
 }
 
 void NativeMenuUi::Render() {
-    if (!Available() || !visible_) return;
+    if (!context_ || visiblePage_ == Page::None) return;
     BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
     context_->Render();
     renderer_.EnableScissorRegion(false);
