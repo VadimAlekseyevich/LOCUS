@@ -164,11 +164,10 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     }
 
     if (state.screen == Screen::Settings && settingsUi.editingGlobalOffset) {
-        // Manual milliseconds field consumes Enter/ESC and the text queue.
-        input.backPressed = false;
-        input.homePressed = false;
-        input.requestedScreen.reset();
-        input.fullscreenPressed = false;
+        // Exclusive text input cannot emit any navigation/editor shortcuts.
+        const bool nativeClose = input.closeRequested;
+        input = FrameInput{};
+        input.closeRequested = nativeClose;
         if (IsKeyPressed(KEY_ESCAPE)) {
             settingsUi.editingGlobalOffset = false;
             settingsUi.notice = "OFFSET EDIT CANCELED";
@@ -212,12 +211,11 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     }
 
     if (state.screen == Screen::Settings && settingsUi.capturing >= 0) {
-        // Exclusive capture: neither the newly pressed key nor its modifier
-        // combination may activate another menu or navigation command.
-        input.backPressed = false;
-        input.homePressed = false;
-        input.requestedScreen.reset();
-        input.fullscreenPressed = false;
+        // Suppress all shortcuts derived from the captured key; preserve
+        // only the OS close request, which has its own confirmation flow.
+        const bool nativeClose = input.closeRequested;
+        input = FrameInput{};
+        input.closeRequested = nativeClose;
         const int index = settingsUi.capturing;
         const bool escBindable = index == static_cast<int>(GameAction::Pause) ||
             index == kGameActionCount + static_cast<int>(ShortcutAction::Back);
