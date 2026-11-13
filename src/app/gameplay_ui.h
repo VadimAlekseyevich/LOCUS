@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/game_settings.h"
+#include "app/run_results.h"
 #include "app/hit_flash.h"
 #include "app/route_renderer.h"
 #include "app/play_outro_transition.h"
@@ -100,6 +101,8 @@ struct GameplayCamera {
 
 
 void DrawPlayGrid(Font font, const GameplayView& gameplay, double now);
-void DrawResultsScreen(Font font, const GameplayView& gameplay);
+void DrawResultsScreen(Font font, const GameplayView& gameplay,
+                       const RunResult* saved = nullptr,
+                       bool historical = false);
 
 } // namespace locus::app

@@ -5,6 +5,7 @@
 #include "app/home_brand_assets.h"
 #include "app/global_offset_calibrator.h"
 #include "app/song_library.h"
+#include "app/run_results.h"
 #include "raylib.h"
 
 #include <string>
@@ -28,6 +29,9 @@ struct SongSelectUi {
     bool treeChartFocused = false;
     std::string search;
     bool editingSearch = false;
+    RunKey resultKey;
+    std::vector<RunResult> results;
+    int resultScroll = 0;
     std::string notice;
     LibraryDeletePending pendingDelete = LibraryDeletePending::None;
 
@@ -66,6 +70,10 @@ Rectangle LibraryChartRow(int row);
 // Flat visible rows contain the complete song list and child charts of only
 // the selected song. All drawing, mouse and key hit-testing share these rows.
 constexpr int kLibraryTreeVisibleRows = 8;
+constexpr int kLibraryResultVisibleRows = 4;
+Rectangle LibraryResultRow(int visibleRow);
+Rectangle LibraryResultPrevButton();
+Rectangle LibraryResultNextButton();
 std::vector<LibraryTreeEntry> LibraryTreeRows(const SongLibrary& songs,
                                                const SongSelectUi& ui);
 Rectangle LibraryRefreshButton();

@@ -194,7 +194,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   const locus::app::SkinUi& skinUi,
                   const std::string& menuStatus,
                   float screenFadeOpacity,
-                  const ImageAssetTexture* background) {
+                  const ImageAssetTexture* background,
+                  const RunResult* displayedResult,
+                  bool historicalResult) {
     BeginDrawing();
     ClearBackground(state.screen == Screen::Play
                         ? gameplay.skin.background
@@ -263,8 +265,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                           Color{5, 6, 11, static_cast<unsigned char>(
                               std::lround(gameplay.outro.blackOpacity * 255.0f))});
     } else if (state.screen == Screen::Results) {
-        DrawResultsScreen(font, gameplay);
-        if (gameplay.outro.resultBlackOpacity > 0.0f)
+        DrawResultsScreen(font, gameplay, displayedResult, historicalResult);
+        if (!historicalResult && gameplay.outro.resultBlackOpacity > 0.0f)
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
                           Color{5, 6, 11, static_cast<unsigned char>(
                               std::lround(gameplay.outro.resultBlackOpacity * 255.0f))});

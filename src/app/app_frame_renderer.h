@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/screen_flow.h"
+#include "app/run_results.h"
 #include "app/gameplay_ui.h"
 #include "app/image_asset_texture.h"
 #include "app/chart_editor_ui.h"
@@ -64,6 +65,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                   const locus::app::SkinUi& skinUi,
                   const std::string& menuStatus,
                   float screenFadeOpacity = 0.0f,
-                  const ImageAssetTexture* background = nullptr);
+                  const ImageAssetTexture* background = nullptr,
+                  const RunResult* displayedResult = nullptr,
+                  bool historicalResult = false);
 
 } // namespace locus::app

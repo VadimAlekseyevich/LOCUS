@@ -16,6 +16,7 @@ struct MenuEvents {
     bool removeBackground = false;
     bool refresh = false;
     bool playSelected = false;
+    int viewResultIndex = -1; // Actual saved attempt, never a gameplay replay.
     bool editSelected = false;
     bool newDifficulty = false;
     bool duplicateDifficulty = false;

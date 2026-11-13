@@ -179,49 +179,59 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
             502.0f, 15.0f, gameplay.skin.hudText);
 }
 
-void DrawResultsScreen(Font font, const GameplayView& gameplay) {
-    const auto& judge = gameplay.judge;
-    const auto& counts = judge.Counts();
-    DrawTextLabel(font, gameplay.completed
-                            ? (gameplay.custom ? "CHART COMPLETE" : "DEMO COMPLETE")
-                            : "RESULTS PREVIEW",
-                  Vector2{100.0f, 111.0f}, 41.0f,
-                  Color{195, 237, 232, 255});
-    const std::string title = core::utf8::Truncate(gameplay.title, 29);
-    DrawTextLabel(font, title.c_str(), Vector2{570.0f, 167.0f},
-                  17.0f, Color{170, 215, 222, 255});
-    DrawTextLabel(font, TextFormat("PERFECT   %d", counts.perfect),
-                  Vector2{110.0f, 206.0f}, 27.0f,
-                  Color{128, 238, 204, 255});
-    DrawTextLabel(font, TextFormat("GOOD      %d", counts.good),
-                  Vector2{110.0f, 250.0f}, 27.0f,
-                  Color{147, 215, 245, 255});
-    DrawTextLabel(font, TextFormat("BAD       %d", counts.bad),
-                  Vector2{110.0f, 294.0f}, 27.0f,
-                  Color{240, 197, 138, 255});
-    DrawTextLabel(font, TextFormat("MISS      %d", counts.miss),
-                  Vector2{110.0f, 338.0f}, 27.0f,
-                  Color{243, 150, 151, 255});
+void DrawResultsScreen(Font font, const GameplayView& gameplay,
+                       const RunResult* saved, bool historical) {
+    const auto& theme = ApprovedUiTheme();
+    const core::GradeCounts& counts =
+        saved ? saved->grades : gameplay.judge.Counts();
+    const int total = saved ? saved->notesJudged
+        : static_cast<int>(gameplay.judge.ScorableCount());
+    const std::string title = saved ? saved->chartTitle : gameplay.title;
+    const Color muted = theme.secondaryText;
+    const Color sky = theme.softBlue;
+    const Color violet = theme.rose;
 
-    DrawTextLabel(font, "ACCURACY", Vector2{570.0f, 215.0f}, 22.0f,
-                  Color{170, 215, 222, 255});
+    DrawRectangleRounded({72, 77, 412, 306}, 0.04f, 8,
+                         Color{38, 43, 66, 246});
+    DrawRectangleRounded({497, 77, 398, 306}, 0.04f, 8,
+                         Color{39, 45, 68, 246});
+    DrawTextLabel(font, historical ? "SAVED RESULT" :
+                       gameplay.completed ? "CHART COMPLETE" : "RESULTS",
+                  Vector2{94.0f, 92.0f}, 28.0f, sky);
+    const std::string shown = core::utf8::Truncate(title, 36);
+    DrawTextLabel(font, shown.c_str(), {94, 130}, 17, theme.foreground);
+    if (saved) {
+        const auto date = FormatRunTimestamp(saved->completedAtMs);
+        DrawTextLabel(font, date.c_str(), {94, 158}, 13, muted);
+    }
+    DrawTextLabel(font, "ACCURACY", {94, 206}, 17, muted);
     DrawTextLabel(font, TextFormat("%.2f%%", counts.AccuracyPercent()),
-                  Vector2{570.0f, 245.0f}, 43.0f,
-                  Color{225, 246, 229, 255});
-    DrawTextLabel(font,
-                  TextFormat("NOTES JUDGED  %d / %d", counts.Resolved(),
-                             static_cast<int>(judge.ScorableCount())),
-                  Vector2{570.0f, 327.0f}, 19.0f,
-                  Color{204, 225, 228, 255});
-    DrawTextLabel(font, "NO FAIL  -  ROUTE UNCHANGED",
-                  Vector2{570.0f, 367.0f}, 15.0f,
-                  Color{158, 193, 204, 255});
-    DrawUiButton(font, kResultsReplayButton, "PLAY AGAIN",
-                 MenuButtonStyle({236, 219, 160, 255}));
-    DrawUiButton(font, kResultsLibraryButton, "SONG LIBRARY",
-                 MenuButtonStyle({130, 226, 215, 255}));
-    DrawUiButton(font, kResultsEditorButton, "EDIT CHART",
-                 MenuButtonStyle({183, 166, 243, 255}));
+                  {94, 232}, 44, violet);
+    DrawTextLabel(font, TextFormat("%d / %d NOTES JUDGED",
+                  counts.Resolved(), total),
+                  {94, 319}, 15, muted);
+    if (saved && saved->practiceRate < 0.999)
+        DrawTextLabel(font,
+                      TextFormat("PRACTICE %.0f%%", saved->practiceRate * 100),
+                      {94, 346}, 13, sky);
+
+    const auto item = [&](const char* name, int value, float y, Color tint) {
+        DrawTextLabel(font, name, {523, y}, 19, tint);
+        DrawTextLabel(font, TextFormat("%d", value), {794, y}, 20,
+                      theme.foreground);
+    };
+    item("PERFECT", counts.perfect, 112, sky);
+    item("GOOD", counts.good, 176, violet);
+    item("BAD", counts.bad, 240, muted);
+    item("MISS", counts.miss, 304, Color{210, 164, 203, 255});
+    if (!historical) {
+        DrawUiThemedButton(font, kResultsReplayButton, "PLAY AGAIN",
+                           UiButtonVariant::Blue);
+        DrawUiThemedButton(font, kResultsEditorButton, "EDIT CHART",
+                           UiButtonVariant::Rose);
+    }
+    DrawUiThemedButton(font, kResultsLibraryButton, "SONG LIBRARY",
+                       UiButtonVariant::Neutral);
 }
 
 

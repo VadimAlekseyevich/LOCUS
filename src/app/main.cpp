@@ -32,6 +32,7 @@
 #include "app/gameplay_ui.h"
 #include "app/song_library.h"
 #include "app/song_set_storage.h"
+#include "app/run_results.h"
 #include "app/library_browser.h"
 #include "app/library_launch_actions.h"
 #include "app/game_settings.h"
@@ -56,6 +57,7 @@
 #include <cstring>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
 
 // Production screens share one window and one input/update/render loop.
@@ -297,6 +299,22 @@ int main(int argc, char** argv) {
     bool playCameFromEditor = false;
     std::filesystem::path playedChartPath;
     std::filesystem::path playedBackgroundPath;
+    const locus::app::RunResultsStore resultsStore(userData / L"Results");
+    locus::app::RunKey playedRunKey;
+    std::string playedSongTitle = "BUILT-IN DEMO";
+    std::optional<locus::app::RunResult> displayedResult;
+    bool historicalResult = false;
+    const auto currentRunKey = [&]() -> locus::app::RunKey {
+        if (libraryUi.selectedSong == 0)
+            return {"builtin-demo", "original"};
+        const int index = libraryUi.selectedSong - 1;
+        if (index < 0 || index >= static_cast<int>(library.Songs().size()))
+            return {};
+        const auto* chart = libraryUi.Selected(library);
+        if (!chart) return {};
+        return {library.Songs()[static_cast<std::size_t>(index)].id,
+                chart->file.filename().u8string()};
+    };
     locus::app::ListenSession listener{
         localSong, loadedAudioPath, musicError,
         locus::app::ChooseLocalMusicFile, MonotonicSeconds
@@ -307,6 +325,16 @@ int main(int argc, char** argv) {
         const bool wasLevelExitConfirmation = state.levelExitConfirmation;
         const bool wasAnyModal = wasQuitConfirmation || wasLevelExitConfirmation;
         const double inputNow = MonotonicSeconds();
+        if (state.screen == Screen::SongSelect) {
+            const auto key = currentRunKey();
+            if (key != libraryUi.resultKey) {
+                std::string error;
+                libraryUi.results = resultsStore.Load(key, error);
+                libraryUi.resultKey = key;
+                libraryUi.resultScroll = 0;
+                if (!error.empty()) libraryUi.notice = "RESULTS: " + error;
+            }
+        }
         FrameInput input = locus::app::PollFrameInput(
             debugScreens, state, settings, inputNow,
             state.screen == Screen::Play &&
@@ -320,6 +348,22 @@ int main(int argc, char** argv) {
             HandleMenuInput(state, input, library, libraryUi, settings,
                             settingsUi, draftSkin, skinUi, homeUi,
                             inputNow);
+        if (state.screen == Screen::SongSelect &&
+            menuEvents.viewResultIndex >= 0 &&
+            menuEvents.viewResultIndex <
+                static_cast<int>(libraryUi.results.size())) {
+            displayedResult = libraryUi.results[
+                static_cast<std::size_t>(menuEvents.viewResultIndex)];
+            historicalResult = true;
+            input.requestedScreen = Screen::Results;
+            input.startPressed = false;
+            input.backPressed = false;
+        }
+        if (state.screen == Screen::Results && historicalResult) {
+            input.startPressed = false;
+            input.restartPressed = false;
+            input.openEditorPressed = false;
+        }
         if (menuEvents.calibrationStop) calibrationTransport.Shutdown();
         if (menuEvents.calibrationStart) {
             locus::core::Chart clickGuide = demo;
@@ -648,8 +692,16 @@ int main(int argc, char** argv) {
             menuMusic.FadeOut(now);
         }
         if (state.screen != previousScreen) {
-            if (state.screen == Screen::Play && previousScreen != Screen::Results)
-                playCameFromEditor = previousScreen == Screen::Editor;
+            if (state.screen == Screen::Play) {
+                displayedResult.reset();
+                historicalResult = false;
+                if (previousScreen != Screen::Results)
+                    playCameFromEditor = previousScreen == Screen::Editor;
+            } else if (previousScreen == Screen::Results &&
+                       state.screen != Screen::Results) {
+                displayedResult.reset();
+                historicalResult = false;
+            }
             if (state.screen == Screen::Play) {
                 presentation.EnterPlay();
                 drainingGameplayAudio = false;
@@ -674,6 +726,8 @@ int main(int argc, char** argv) {
                 // library selection later must not change the scored song.
                 playedChartPath.clear();
                 playedBackgroundPath.clear();
+                playedRunKey = {"builtin-demo", "original"};
+                playedSongTitle = "BUILT-IN DEMO";
                 if (customChart) {
                     if (previousScreen == Screen::Editor)
                         playedChartPath = std::filesystem::path(editorChartPath);
@@ -684,8 +738,14 @@ int main(int argc, char** argv) {
                             playedChartPath, songIndex, difficultyIndex) &&
                         songIndex >= 0 &&
                         songIndex < static_cast<int>(library.Songs().size()))
-                        playedBackgroundPath = library.Songs()[
-                            static_cast<std::size_t>(songIndex)].backgroundImage;
+                    {
+                        const auto& song = library.Songs()[
+                            static_cast<std::size_t>(songIndex)];
+                        playedBackgroundPath = song.backgroundImage;
+                        playedRunKey = {song.id,
+                            playedChartPath.filename().u8string()};
+                        playedSongTitle = song.title;
+                    }
                 }
             }
             if (state.screen == Screen::Editor) {
@@ -741,9 +801,35 @@ int main(int argc, char** argv) {
                             input.startPressed, input.pausePressed, now);
         if (state.screen == Screen::Editor)
             editorSession.UpdatePreview(now);
-        if (state.screen == Screen::Play)
+        if (state.screen == Screen::Play) {
+            const bool alreadyCompleted = sessionCompleted;
             playActions.Update(input, now);
-        else if (state.screen == Screen::Results) {
+            // Record exactly once at the completed-outro edge, never from
+            // editor TEST, an unfinished run or an open Results screen.
+            if (!alreadyCompleted && sessionCompleted &&
+                !playCameFromEditor && !gameSession.IsEditorTest() &&
+                !playedRunKey.Empty() && judge.ScorableCount() > 0 &&
+                judge.Counts().Resolved() ==
+                    static_cast<int>(judge.ScorableCount())) {
+                locus::app::RunResult record;
+                record.songSetId = playedRunKey.songSetId;
+                record.difficultyFile = playedRunKey.difficultyFile;
+                record.songTitle = playedSongTitle;
+                record.chartTitle = chartTitle;
+                record.grades = judge.Counts();
+                record.notesJudged = static_cast<int>(judge.ScorableCount());
+                record.practiceRate = playActions.Transport(now).practiceSpeed;
+                std::string error;
+                if (resultsStore.Save(record, error)) {
+                    displayedResult = record;
+                    historicalResult = false;
+                    libraryUi.resultKey = {}; // Reload the history on return.
+                } else {
+                    libraryUi.notice = "RESULT NOT SAVED: " + error;
+                    std::cerr << libraryUi.notice << '\n';
+                }
+            }
+        } else if (state.screen == Screen::Results && !historicalResult) {
             if (customChart) chartPlayback.Update(now);
             else transport.Update(now);
         }
@@ -869,7 +955,9 @@ int main(int argc, char** argv) {
                     library, homeUi, homeBrand, libraryUi, settings, settingsUi,
                     draftSkin, skinUi, menuStatus,
                     state.quitConfirmation ? 0.0f : fadeFrame.opacity,
-                    &songBackground);
+                    &songBackground,
+                    displayedResult ? &*displayedResult : nullptr,
+                    historicalResult);
     }
 
     persistHotkeySkin(); // Flush pending adjustments on exit.

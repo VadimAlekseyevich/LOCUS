@@ -78,6 +78,7 @@ add_executable(locus
     src/app/listen_session.cpp
     src/app/chart_playback.cpp
     src/app/game_session.cpp
+    src/app/run_results.cpp
         ${LOCUS_SONG_LIBRARY_SOURCES}
     src/app/song_archive.cpp
     src/app/library_playback.cpp
@@ -138,6 +139,13 @@ endif()
 
 if(LOCUS_BUILD_TESTS)
     enable_testing()
+    add_executable(locus_run_results_tests
+        tests/run_results_tests.cpp src/app/run_results.cpp)
+    target_compile_features(locus_run_results_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_run_results_tests PRIVATE
+        locus_core nlohmann_json::nlohmann_json)
+    add_test(NAME locus_completed_run_history COMMAND locus_run_results_tests)
+
     add_executable(locus_route_tests tests/route_tests.cpp)
     target_compile_features(locus_route_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_route_tests PRIVATE locus_core)

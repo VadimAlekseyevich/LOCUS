@@ -318,9 +318,18 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (IsKeyPressed(KEY_RIGHT)) libraryUi.MoveChart(1, library);
         if (IsKeyPressed(KEY_F5)) events.refresh = true;
         const float wheel = GetMouseWheelMove();
-        if (wheel != 0.0f && validMouse &&
-            CheckCollisionPointRec(mouse, {382, 65, 564, 461}))
-            libraryUi.ScrollTree(wheel > 0.0f ? -1 : 1, library);
+        if (wheel != 0.0f && validMouse) {
+            if (CheckCollisionPointRec(mouse, {382, 65, 564, 461})) {
+                libraryUi.ScrollTree(wheel > 0.0f ? -1 : 1, library);
+            } else if (CheckCollisionPointRec(mouse, {23, 274, 333, 183})) {
+                const int maxScroll = std::max(0,
+                    static_cast<int>(libraryUi.results.size()) -
+                    kLibraryResultVisibleRows);
+                libraryUi.resultScroll = std::clamp(
+                    libraryUi.resultScroll + (wheel > 0.0f ? -1 : 1),
+                    0, maxScroll);
+            }
+        }
         if (input.startPressed) events.playSelected = true;
         if (IsKeyPressed(KEY_E)) events.editSelected = true;
     }
@@ -335,6 +344,25 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
         if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
         if (hit(locus::app::LibraryEditButton())) events.editSelected = true;
+        const int historySize = static_cast<int>(libraryUi.results.size());
+        const int maxHistoryScroll =
+            std::max(0, historySize - kLibraryResultVisibleRows);
+        if (hit(LibraryResultPrevButton()) && maxHistoryScroll > 0) {
+            libraryUi.resultScroll = std::max(0, libraryUi.resultScroll - 1);
+            return events;
+        }
+        if (hit(LibraryResultNextButton()) && maxHistoryScroll > 0) {
+            libraryUi.resultScroll = std::min(
+                maxHistoryScroll, libraryUi.resultScroll + 1);
+            return events;
+        }
+        for (int row = 0; row < kLibraryResultVisibleRows; ++row) {
+            const int index = libraryUi.resultScroll + row;
+            if (index >= historySize) break;
+            if (!hit(LibraryResultRow(row))) continue;
+            events.viewResultIndex = index;
+            return events;
+        }
         // Songs and their nested difficulties form one vertically scrollable
         // tree. Hit-test the same flattened row identity used for rendering.
         const auto rows = locus::app::LibraryTreeRows(library, libraryUi);

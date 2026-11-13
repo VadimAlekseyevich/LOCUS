@@ -50,6 +50,11 @@ Rectangle LibraryChartRow(int row) {
 Rectangle LibraryRefreshButton() { return {807, 480, 126, 37}; }
 Rectangle LibraryBackButton() { return {14, 9, 100, 39}; }
 Rectangle LibrarySearchField() { return {395, 109, 538, 35}; }
+Rectangle LibraryResultRow(int row) {
+    return {27.0f, 308.0f + 36.0f * row, 322.0f, 32.0f};
+}
+Rectangle LibraryResultPrevButton() { return {278, 277, 32, 25}; }
+Rectangle LibraryResultNextButton() { return {315, 277, 32, 25}; }
 Rectangle LibraryPlayButton() { return {27, 473, 154, 41}; }
 Rectangle LibraryEditButton() { return {193, 473, 155, 41}; }
 Rectangle SettingsBindingButton(int row) {
@@ -330,9 +335,31 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     DrawLine(28, 271, 350, 271, line);
 
     Label(font, "RESULTS", 28, 283, 12, sky);
-    // No invented results or fake replay entries. Native per-chart attempt
-    // persistence is a separate feature; the area is reserved for real data.
-    Label(font, "NO SAVED RUNS YET", 28, 319, 14, faint);
+    Label(font, TextFormat("%d", static_cast<int>(ui.results.size())),
+          116, 283, 12, lilac);
+    const int total = static_cast<int>(ui.results.size());
+    if (total > kLibraryResultVisibleRows) {
+        action(LibraryResultPrevButton(), "^", UiButtonVariant::Quiet);
+        action(LibraryResultNextButton(), "v", UiButtonVariant::Quiet);
+    }
+    if (total == 0) {
+        Label(font, "NO SAVED RESULTS", 28, 319, 13, faint);
+    } else {
+        for (int row = 0; row < kLibraryResultVisibleRows; ++row) {
+            const int index = ui.resultScroll + row;
+            if (index >= total) break;
+            const RunResult& result = ui.results[static_cast<std::size_t>(index)];
+            const Rectangle rect = LibraryResultRow(row);
+            DrawRectangleRounded(rect, UiRoundness(rect, 8.0f), 8,
+                                 Color{49, 54, 81, 238});
+            DrawRectangleRoundedLinesEx(rect, UiRoundness(rect, 8.0f), 8,
+                                        1.0f, line);
+            Label(font, TextFormat("%.2f%%", result.accuracyPercent),
+                  rect.x + 9, rect.y + 7, 14, sky);
+            fit(FormatRunTimestamp(result.completedAtMs),
+                rect.x + 125, rect.y + 10, rect.width - 137, 10, faint);
+        }
+    }
     action(LibraryPlayButton(), "PLAY", UiButtonVariant::Blue);
     action(LibraryEditButton(), "EDIT", UiButtonVariant::Rose);
 
