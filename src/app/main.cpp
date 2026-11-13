@@ -7,6 +7,7 @@
 #include "app/music_picker.h"
 #include "app/chart_editor_ui.h"
 #include "app/app_input.h"
+#include "app/library_file_actions.h"
 #include "app/screen_action_buttons.h"
 #include "app/app_runtime_policy.h"
 #include "app/play_screen_actions.h"
@@ -261,6 +262,12 @@ int main(int argc, char** argv) {
     const locus::app::LibraryLaunchContext libraryLaunch{
         library, libraryUi, editorFiles, transitions, loadedAudioPath,
         state, musicError
+    };
+    locus::app::LibraryFileActions libraryFileActions{
+        library, libraryUi, menuStatus, musicError,
+        {locus::app::ChooseLibraryImportFile,
+         locus::app::ChooseSongSetExportFile, MonotonicSeconds,
+         locus::app::ChooseSongBackgroundFile}
     };
     locus::app::PlayPresentation presentation;
     locus::app::PlayScreenActions playActions{
@@ -686,8 +693,12 @@ int main(int argc, char** argv) {
         if (state.screen == Screen::SongSelect) {
             if (menuEvents.refresh)
                 locus::app::RefreshLibraryBrowser(library, libraryUi, menuStatus);
+            if (menuEvents.import)
+                libraryFileActions.Apply(menuEvents, false, now);
             loadedNewChart = locus::app::LaunchLibrarySelection(
                 libraryLaunch, menuEvents, now);
+            if (menuEvents.openSet && state.screen == Screen::Editor)
+                editorUi.tab = locus::app::EditorTab::Set;
         }
 
         // Menu listening never borrows the chart's scored stream. A change

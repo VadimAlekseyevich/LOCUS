@@ -19,6 +19,7 @@ struct MenuEvents {
     bool playSelected = false;
     int viewResultIndex = -1; // Actual saved attempt, never a gameplay replay.
     bool editSelected = false;
+    bool openSet = false; // Editor SET tab for the selected managed Song Set.
     bool newDifficulty = false;
     bool duplicateDifficulty = false;
     bool trashDifficulty = false;

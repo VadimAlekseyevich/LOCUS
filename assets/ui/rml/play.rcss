@@ -1,57 +1,108 @@
-/* Nightbloom: adaptive menu-only layout. Do not apply to scored gameplay. */
-#app { display:flex; flex-direction:column; width:100%; height:100%; padding:2.1vh 2.2vw 2.0vh; }
-#heading { flex:0 0 52dp; display:flex; align-items:center; gap:22dp; margin-bottom:10dp; }
-.heading-title { font-size:21dp; color:#a2d8ee; letter-spacing:1dp; }
-.back { width:115dp; height:43dp; flex:0 0 115dp; }
-#workspace { display:flex; flex-direction:row; flex:1; min-height:0; width:100%; gap:16dp; }
-#details { display:flex; flex-direction:column; flex:0 0 36%; min-width:260dp; max-width:520dp; }
-#library { display:flex; flex-direction:column; flex:1; min-width:0; }
-#song-title { font-size:23dp; font-weight:600; margin:8dp 0 5dp; }
-#chart-title { font-size:19dp; font-weight:500; margin:4dp 0; }
-.difficulty-heading { display:flex; flex-direction:row; justify-content:space-between; align-items:center; }
-#rating { color:#a2d8ee; font-size:28dp; }
-.metric { font-size:12dp; color:#b7bdd5; margin-top:5dp; }
-#history { display:flex; flex-direction:column; flex:1; min-height:90dp;
-  margin-top:12dp; border-top:1dp #454d70; padding-top:12dp; }
-.history-heading { color:#a2d8ee; font-size:13dp; margin-bottom:10dp; }
-#result-count { color:#baabf5; margin-left:15dp; }
+/* Song selection: approved design/ui/v2 hierarchy at 960x540.
+   RmlUi uses physical-pixel scaling configured by NativeMenuUi. */
+#app { display:flex; flex-direction:column; width:100%; height:100%; }
+#heading { display:flex; flex-direction:row; align-items:center;
+  flex:0 0 56dp; height:56dp; padding:7dp 14dp;
+  gap:12dp; background-color:#23283bd9; border-bottom:1dp #535873; }
+.back { flex:0 0 93dp; width:93dp; height:40dp;
+  color:#cfc1fa; border-color:#726a99; }
+.heading-title { color:#d0c7fa; font-size:22dp; font-weight:750;
+  letter-spacing:1dp; }
+#workspace { display:flex; flex:1; min-height:0; min-width:0;
+  flex-direction:row; gap:16dp; padding:12dp 14dp 14dp; }
+#details { flex:0 0 352dp; width:352dp; min-width:0;
+  display:flex; flex-direction:column; overflow:hidden; }
+#library { flex:1; display:flex; flex-direction:column; min-width:0;
+  overflow:hidden; }
+#summary { display:block; flex:0 0 auto; }
+#pack-section { display:block; padding:12dp 15dp 10dp;
+  border-bottom:1dp #515572; }
+#song-title { display:block; font-size:22dp; font-weight:750;
+  margin:5dp 0 3dp; color:#f3f0ff; }
+#song-author { display:block; font-size:15dp; color:#a2d8ee; font-weight:660; }
+#song-mapper { display:block; font-size:11dp; color:#acb6cb; margin-top:2dp; }
+#song-meta { display:block; font-size:11dp; font-weight:650;
+  color:#d0c7fa; margin-top:7dp; }
+#song-tags { display:block; font-size:10dp; color:#acb6cb; margin-top:3dp; }
+#difficulty-section { display:block; padding:10dp 15dp 11dp;
+  border-bottom:1dp #515572; }
+.difficulty-heading { display:flex; flex-direction:row;
+  align-items:center; justify-content:space-between; }
+#rating { display:block; font-size:26dp; color:#d0c7fa; font-weight:850; }
+#chart-title { display:block; font-size:19dp; font-weight:750;
+  color:#eef1fb; margin-top:2dp; }
+#chart-notes { display:block; font-size:11dp; color:#acb6cb;
+  margin-top:5dp; }
+#metrics { display:flex; flex-direction:column; gap:7dp; margin-top:10dp; }
+.metrics-row { display:flex; flex-direction:row; gap:10dp; }
+.metric { display:flex; flex:1; flex-direction:row; min-width:0;
+  justify-content:space-between; align-items:center;
+  font-size:10dp; color:#acb6cb; }
+.metric strong { color:#e0def6; font-size:11dp; font-weight:750; }
+#history { display:flex; flex-direction:column; flex:1; min-height:0;
+  padding:0 11dp; }
+.history-heading { display:flex; flex-direction:row;
+  align-items:center; justify-content:space-between;
+  flex:0 0 36dp; height:36dp; font-size:12dp;
+  font-weight:800; letter-spacing:1dp; color:#a2d8ee; }
 #results-scroll { flex:1; min-height:0; overflow-y:auto; }
-#results-list { display:flex; flex-direction:column; gap:6dp; padding-right:5dp; }
-.result { display:flex; flex-direction:row; justify-content:space-between;
-  align-items:center; text-align:left; width:100%; padding:10dp 12dp;
-  background-color:#323a57; font-size:12dp; }
-.result strong { color:#a2d8ee; font-size:16dp; }
-.result span { color:#b9c2d9; font-size:11dp; }
-#notice { color:#a2d8ee; font-size:12dp; margin-top:3dp; }
-#commands { display:flex; flex-direction:row; flex:0 0 46dp; gap:12dp; padding-top:8dp; }
-#commands button { flex:1; padding:7dp; height:44dp; }
-.library-heading { color:#a2d8ee; font-size:19dp; margin-bottom:12dp; }
-#search { margin-bottom:12dp; }
-
-#tree-scroll { flex:1; min-height:0; overflow-y:auto; padding-right:4dp; }
-#tree { display:flex; flex-direction:column; gap:5dp; }
-.song-row { width:100%; min-height:40dp; text-align:left; border-radius:9dp;
-  background-color:#303650; border:1dp #545a7d; padding:7dp 11dp; }
-.song-row.active { background-color:#444568; border-color:#b2a4ef; }
-.chart-row { width:95%; margin-left:5%; min-height:41dp;
-  background-color:#2b3555; text-align:left; border-radius:9dp;
-  border:1dp #424d70; padding:7dp 11dp; display:flex;
-  flex-direction:row; justify-content:space-between; align-items:center; }
-.chart-row.active { background-color:#625c91; border-color:#a2d8ee; }
-.row-rating { color:#a2d8ee; margin-left:10dp; }
-#library-footer { flex:0 0 46dp; display:flex; flex-direction:row;
-  justify-content:space-between; align-items:center; padding-top:8dp; }
-#row-count { color:#a9b7ce; font-size:12dp; }
-.quiet { min-width:115dp; height:38dp; font-size:14dp; padding:6dp 12dp; }
+#results-list { display:flex; flex-direction:column; gap:5dp;
+  padding:2dp 0 7dp; }
+.result { display:flex; flex-direction:row; align-items:center;
+  width:100%; min-height:38dp; padding:7dp 9dp; gap:8dp;
+  text-align:left; font-size:12dp; border:1dp #545a79;
+  background-color:#343a57; }
+.result:hover { border-color:#b5a4f3; background-color:#484c73; }
+.result strong { color:#d0c7fa; font-size:15dp; min-width:78dp; }
+.result .result-date { flex:1; min-width:0; font-size:10dp; color:#c2c5d7; }
+.result .result-arrow { color:#a2d8ee; font-size:18dp; }
+#notice { display:block; color:#ecc3d1; padding:0 12dp;
+  font-size:11dp; }
+#commands { display:flex; flex-direction:row;
+  flex:0 0 67dp; gap:8dp; padding:9dp 12dp 12dp; }
+#commands button { flex:1; height:46dp;
+  font-size:15dp; font-weight:800; letter-spacing:1dp; }
+.library-heading { display:flex; flex-direction:row; align-items:center;
+  justify-content:space-between; flex:0 0 44dp;
+  padding:5dp 13dp 0; color:#a2d8ee;
+  font-size:14dp; font-weight:750; letter-spacing:0.7dp; }
+#search { flex:0 0 39dp; margin:3dp 12dp 9dp;
+  width:auto; height:39dp; }
+#tree-scroll { flex:1; min-height:0; overflow-y:auto;
+  padding:0 10dp 2dp; }
+#tree { display:flex; flex-direction:column; gap:6dp; }
+.song-row { display:flex; flex-direction:row; align-items:center;
+  width:100%; min-height:45dp; height:45dp; text-align:left;
+  background-color:#303750; border:1dp #535979; padding:5dp 12dp;
+  font-size:15dp; font-weight:730; }
+.song-row:hover { background-color:#454b6c; }
+.song-row.active { background-color:#59517d; border-color:#b5a4f3; }
+.chart-row { display:flex; flex-direction:row; align-items:center;
+  width:96%; margin-left:4%; min-height:42dp; height:42dp;
+  padding:5dp 12dp; text-align:left; font-size:13dp;
+  background-color:#27344f; border:1dp #4e5878; }
+.chart-row.active { background-color:#525b84; border-color:#a2d8ee; }
+.chart-row:hover { background-color:#404e73; border-color:#9ed2e9; }
+.row-chevron { display:inline-block; width:18dp;
+  font-size:19dp; color:#b5a4f3; }
+.chart-marker { display:inline-block; width:7dp; height:7dp;
+  border-radius:4dp; margin-right:9dp; background-color:#a2d8ee; }
+.row-label { flex:1; min-width:0; overflow:hidden; }
+.row-count { font-size:12dp; color:#acb6cb; margin-left:10dp; }
+.row-rating { font-size:13dp; font-weight:750; color:#d0c7fa;
+  margin-left:10dp; }
+#library-footer { display:flex; flex-direction:row;
+  flex:0 0 59dp; padding:9dp 10dp; gap:7dp;
+  border-top:1dp #505571; }
+#library-footer button { flex:1; height:39dp; font-size:12dp;
+  font-weight:700; letter-spacing:0.4dp; }
 @media (max-width:800dp) {
-  #workspace { flex-direction:column; overflow-y:auto; }
-  #details { flex:0 0 auto; min-width:0; max-width:none; }
-  #history { min-height:110dp; max-height:180dp; }
-  #library { flex:1; min-height:250dp; }
-  .panel { padding:12dp 14dp; }
+  #workspace { gap:10dp; padding:8dp; }
+  #details { flex-basis:330dp; width:330dp; }
+  #pack-section, #difficulty-section { padding-left:11dp; padding-right:11dp; }
 }
-@media (min-width:1700dp) {
-  #details { flex-basis:30%; }
-  .panel { padding:22dp 28dp; }
-  #song-title { font-size:28dp; }
+@media (max-height:510dp) {
+  #pack-section { padding-top:8dp; padding-bottom:7dp; }
+  #difficulty-section { padding-top:7dp; padding-bottom:7dp; }
+  #commands { flex-basis:58dp; padding-top:6dp; padding-bottom:6dp; }
 }

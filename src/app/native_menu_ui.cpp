@@ -284,6 +284,11 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
     else if (action == "play") pending_.playSelected = true;
     else if (action == "edit") pending_.editSelected = true;
     else if (action == "rescan") pending_.refresh = true;
+    else if (action == "import") pending_.import = true;
+    else if (action == "song-set") {
+        pending_.editSelected = true;
+        pending_.openSet = true;
+    }
     else if (action == "song") {
         const int song = target->GetAttribute<int>("data-song", -1);
         if (song >= 0) {
@@ -317,26 +322,38 @@ void NativeMenuUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
         : static_cast<int>(core::MakeDemoChart().turns.size());
     SetText("notice", ui.notice);
     SetText("song-title", song ? song->title : "BUILT-IN DEMO");
-    std::string author = song
+    SetText("song-author", song
         ? (song->artist.empty() ? "UNKNOWN ARTIST" : song->artist)
-        : "LOCUS";
-    if (song && !song->mapper.empty()) author += " / " + song->mapper;
-    SetText("song-author", author);
-    std::string facts = song
-        ? Rating(song->bpm) + " BPM  |  " +
+        : "LOCUS");
+    SetText("song-mapper", song && !song->mapper.empty()
+        ? "Mapped by " + song->mapper : "");
+    SetText("song-meta", song
+        ? Rating(song->bpm) + " BPM  /  " +
           std::to_string(song->charts.size()) + " CHARTS"
-        : "120 BPM  |  1 CHART";
-    if (song && !song->tags.empty()) facts += "  |  " + song->tags.front();
-    SetText("song-meta", facts);
+        : "120 BPM  /  1 CHART");
+    std::string tags;
+    if (song) {
+        for (std::size_t i = 0; i < song->tags.size() && i < 3; ++i) {
+            if (!tags.empty()) tags += "  /  ";
+            tags += song->tags[i];
+        }
+    }
+    SetText("song-tags", tags);
     SetText("chart-title", chart ? chart->data.title : "ORIGINAL");
     SetText("rating", Rating(rating.overall));
     SetText("chart-notes", std::to_string(count) + " TURNS");
-    SetText("metrics-a", "SPD " + Rating(rating.speed) +
-        "   RHY " + Rating(rating.rhythm) +
-        "   COORD " + Rating(rating.coordination));
-    SetText("metrics-b", "READ " + Rating(rating.reading) +
-        "   STA " + Rating(rating.stamina) +
-        "   PEAK " + Rating(rating.peak));
+    SetText("metric-speed", Rating(rating.speed));
+    SetText("metric-rhythm", Rating(rating.rhythm));
+    SetText("metric-coord", Rating(rating.coordination));
+    SetText("metric-reading", Rating(rating.reading));
+    SetText("metric-stamina", Rating(rating.stamina));
+    SetText("metric-peak", Rating(rating.peak));
+    if (auto* editSet = document_->GetElementById("set-button")) {
+        if (song && song->managed && chart)
+            editSet->RemoveAttribute("disabled");
+        else
+            editSet->SetAttribute("disabled", "");
+    }
 }
 
 void NativeMenuUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
@@ -373,16 +390,26 @@ void NativeMenuUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
              << "' data-action='" << (isChart ? "chart" : "song")
              << "' data-song='" << item.song << "'";
         if (isChart) html << " data-chart='" << item.chart << "'";
-        html << "><span>" << (isChart ? "" : item.song == ui.selectedSong ?
-                "&#8964;  " : "&#8250;  ") << Escape(name) << "</span>";
+        html << ">";
+        if (isChart) html << "<span class='chart-marker'></span>";
+        else html << "<span class='row-chevron'>"
+                  << (item.song == ui.selectedSong ? "&#9662;" : "&#9656;")
+                  << "</span>";
+        html << "<span class='row-label'>" << Escape(name) << "</span>";
         if (isChart) html << "<span class='row-rating'>"
                           << Rating(difficulty) << "</span>";
+        else {
+            const std::size_t count = item.song == 0 ? 1 :
+                library.Songs()[static_cast<std::size_t>(item.song - 1)]
+                    .charts.size();
+            html << "<span class='row-count'>" << count << "</span>";
+        }
         html << "</button>";
     }
     if (entries.empty()) html << "<div class='empty'>NO MATCHING SONGS</div>";
     rows->SetInnerRML(html.str());
     if (scroll) scroll->SetScrollTop(oldScroll);
-    SetText("row-count", std::to_string(entries.size()) + " ENTRIES");
+    SetText("set-count", std::to_string(library.Songs().size() + 1));
 }
 
 void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
@@ -396,9 +423,9 @@ void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
         const auto& result = ui.results[i];
         html << "<button class='result' data-action='result' data-index='"
              << i << "'><strong>" << Accuracy(result.accuracyPercent)
-             << "</strong><span>"
+             << "</strong><span class='result-date'>"
              << Escape(FormatRunTimestamp(result.completedAtMs))
-             << "</span></button>";
+             << "</span><span class='result-arrow'>&#8250;</span></button>";
     }
     if (ui.results.empty())
         html << "<div class='empty'>NO SAVED RESULTS</div>";

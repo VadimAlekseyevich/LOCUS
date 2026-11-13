@@ -7,28 +7,45 @@
 <body>
 <div id="app">
   <div id="heading">
-    <button class="back" data-action="back">BACK</button>
+    <button class="back quiet" data-action="back">&#8592; BACK</button>
     <div class="heading-title">PLAY</div>
   </div>
   <div id="workspace">
     <div id="details" class="panel">
       <div id="summary">
-        <div class="eyebrow">SONG SET</div>
-        <div id="song-title">BUILT-IN DEMO</div>
-        <div class="subline" id="song-author">LOCUS</div>
-        <div class="meta" id="song-meta">120 BPM</div>
-        <div class="rule"></div>
-        <div class="eyebrow">DIFFICULTY</div>
-        <div class="difficulty-heading">
-          <div id="chart-title">ORIGINAL</div>
-          <span id="rating">0.0</span>
+        <div id="pack-section">
+          <div class="eyebrow">SONG SET</div>
+          <div id="song-title">BUILT-IN DEMO</div>
+          <div id="song-author">LOCUS</div>
+          <div id="song-mapper"></div>
+          <div id="song-meta">120 BPM</div>
+          <div id="song-tags"></div>
         </div>
-        <div class="meta" id="chart-notes">0 TURNS</div>
-        <div class="metric" id="metrics-a">SPD —  RHY —  COORD —</div>
-        <div class="metric" id="metrics-b">READ —  STA —  PEAK —</div>
+        <div id="difficulty-section">
+          <div class="difficulty-heading">
+            <div class="eyebrow">DIFFICULTY</div>
+            <div id="rating">0.8</div>
+          </div>
+          <div id="chart-title">ORIGINAL</div>
+          <div id="chart-notes">9 TURNS</div>
+          <div id="metrics">
+            <div class="metrics-row">
+              <div class="metric"><span>Speed</span><strong id="metric-speed">0.0</strong></div>
+              <div class="metric"><span>Rhythm</span><strong id="metric-rhythm">0.0</strong></div>
+              <div class="metric"><span>Coord.</span><strong id="metric-coord">0.0</strong></div>
+            </div>
+            <div class="metrics-row">
+              <div class="metric"><span>Reading</span><strong id="metric-reading">0.0</strong></div>
+              <div class="metric"><span>Stamina</span><strong id="metric-stamina">0.0</strong></div>
+              <div class="metric"><span>Peak</span><strong id="metric-peak">0.0</strong></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div id="history">
-        <div class="history-heading">RESULTS <span id="result-count">0</span></div>
+        <div class="history-heading">
+          <span>RESULTS</span><span id="result-count" class="count-pill">0</span>
+        </div>
         <div id="results-scroll"><div id="results-list"></div></div>
       </div>
       <div id="notice"></div>
@@ -38,11 +55,15 @@
       </div>
     </div>
     <div id="library" class="panel">
-      <div class="library-heading">SONGS / CHARTS</div>
+      <div class="library-heading">
+        <span>SONGS &amp; CHARTS</span>
+        <span id="set-count" class="count-pill">1</span>
+      </div>
       <input id="search" class="ui-input" type="text" placeholder="Search songs..." maxlength="64" />
       <div id="tree-scroll"><div id="tree"></div></div>
       <div id="library-footer">
-        <span id="row-count">0 SONGS</span>
+        <button id="set-button" data-action="song-set" class="quiet">SONG SET</button>
+        <button data-action="import" class="quiet">IMPORT</button>
         <button data-action="rescan" class="quiet">RESCAN</button>
       </div>
     </div>
