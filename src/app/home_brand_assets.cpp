@@ -11,7 +11,7 @@ std::string AssetPath(const char* file) {
     // Assets are copied alongside the executable by CMake, so launching
     // LOCUS from a shortcut or another working directory still works.
     return (std::filesystem::u8path(GetApplicationDirectory()) /
-            "ui" / file).u8string();
+            "assets" / "ui" / file).u8string();
 }
 
 void DrawTextureIn(Texture2D texture, Rectangle bounds) {

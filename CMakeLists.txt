@@ -123,13 +123,13 @@ endif()
 # Keep approved Home raster assets next to the executable regardless of the
 # current working directory (launcher BAT, IDE, packaged release).
 add_custom_command(TARGET locus POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:locus>/ui"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:locus>/assets/ui"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${PROJECT_SOURCE_DIR}/assets/ui/wordmark.png"
-        "$<TARGET_FILE_DIR:locus>/ui/wordmark.png"
+        "$<TARGET_FILE_DIR:locus>/assets/ui/wordmark.png"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${PROJECT_SOURCE_DIR}/assets/ui/app-icon.png"
-        "$<TARGET_FILE_DIR:locus>/ui/app-icon.png"
+        "$<TARGET_FILE_DIR:locus>/assets/ui/app-icon.png"
     VERBATIM)
 target_link_libraries(locus PRIVATE locus_core raylib nlohmann_json::nlohmann_json)
 if(WIN32)

@@ -7,7 +7,7 @@
 <body>
 <div id="home">
   <div id="home-main">
-    <img id="home-wordmark" src="../../../ui/wordmark.png" alt="locus." />
+    <img id="home-wordmark" src="../wordmark.png" alt="locus." />
     <div id="home-actions">
       <button id="home-play" class="home-action primary" data-action="home-play">PLAY</button>
       <button id="home-editor" class="home-action secondary" data-action="home-editor">EDITOR</button>
