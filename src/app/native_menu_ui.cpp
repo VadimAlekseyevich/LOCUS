@@ -202,6 +202,8 @@ void NativeMenuUi::Activate(Page page) {
     if (page == Page::Home && homeDocument_) {
         homeDocument_->Show();
         lastHomeNotice_.clear();
+        if (auto* notice = homeDocument_->GetElementById("home-notice"))
+            notice->SetInnerRML("");
     } else if (page == Page::Play && document_) {
         document_->Show();
         lastTreeSignature_.clear();
@@ -429,7 +431,6 @@ void NativeMenuUi::PumpInput() {
         context_->SetDensityIndependentPixelRatio(density);
         lastDensity_ = density;
     }
-    Rebuild(library, ui);
     const int mods = Modifiers();
     const auto mouse = GetMousePosition();
     context_->ProcessMouseMove(static_cast<int>(mouse.x),
@@ -505,6 +506,7 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
     currentLibrary_ = &library;
     currentUi_ = &ui;
     pending_ = {};
+    Rebuild(library, ui);
     PumpInput();
     const bool typing = IsSearchFocused();
     if (!typing) {
