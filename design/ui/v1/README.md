@@ -1,4 +1,4 @@
-> **New:** The current full-application interactive UI design is [Interface Studio v2](../v2/index.html). This v1 folder remains the source of approved vector branding and the original Home concept.
+> **Current layout review:** [960×540 monochrome screen wireframes](../v2/index.html). The v1 folder retains the approved vector brand and original Home concept.
 
 # LOCUS — approved UI reference (v1)
 

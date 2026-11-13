@@ -1,133 +1,121 @@
-/* LOCUS UI v2 — deterministic in-browser demo state. No audio, files or game data. */
+/* LOCUS 960×540 wireframe: sample state and actual feature inventory. */
 (function () {
   'use strict';
-  const library = [
-    {
-      id:'demo', title:'Built-in demo', artist:'LOCUS', duration:'0:32', bpm:120, offset:0,
-      charts:[{id:'original',title:'Original',rating:2.5,speed:1.4,rhythm:2.8,keys:2.0,reading:2.2,stamina:1.6,peak:3.1,notes:32}]
-    },
-    {
-      id:'aurora', title:'Aurora Drive', artist:'NOVA', duration:'3:12', bpm:174, offset:-15,
+  const songs = [
+    { id:'demo',title:'Built-in demo',artist:'LOCUS',duration:32,bpm:120,offset:0,
+      charts:[{id:'original',title:'Original',difficulty:2.5,notes:32,
+        dims:[1.4,2.8,2.0,2.2,1.6,3.1]}]},
+    { id:'aurora',title:'Aurora Drive',artist:'NOVA',duration:192,bpm:174,offset:-15,
       charts:[
-        {id:'horizon',title:'Horizon',rating:5.8,speed:5.4,rhythm:5.9,keys:6.1,reading:5.7,stamina:5.3,peak:6.6,notes:486},
-        {id:'parallax',title:'Parallax',rating:8.3,speed:8.2,rhythm:8.6,keys:8.4,reading:8.1,stamina:7.9,peak:9.2,notes:912}
-      ]
-    },
-    {
-      id:'afterglow', title:'Afterglow', artist:'ECHO / WAV', duration:'4:06', bpm:156, offset:24,
+        {id:'horizon',title:'Horizon',difficulty:5.8,notes:486,
+          dims:[5.4,5.9,6.1,5.7,5.3,6.6]},
+        {id:'parallax',title:'Parallax',difficulty:8.3,notes:912,
+          dims:[8.2,8.6,8.4,8.1,7.9,9.2]}
+      ]},
+    { id:'afterglow',title:'Afterglow',artist:'ECHO / WAV',duration:246,bpm:156,offset:24,
       charts:[
-        {id:'glimmer',title:'Glimmer',rating:3.9,speed:3.8,rhythm:4.1,keys:3.6,reading:4.4,stamina:3.2,peak:4.8,notes:320},
-        {id:'refraction',title:'Refraction',rating:6.6,speed:6.3,rhythm:7.0,keys:6.4,reading:6.8,stamina:6.1,peak:7.4,notes:655}
-      ]
-    }
+        {id:'glimmer',title:'Glimmer',difficulty:3.9,notes:320,
+          dims:[3.8,4.1,3.6,4.4,3.2,4.8]},
+        {id:'refraction',title:'Refraction',difficulty:6.6,notes:655,
+          dims:[6.3,7.0,6.4,6.8,6.1,7.4]}
+      ]}
   ];
-  const bindings = {
+  const actions = {
     play:[
       ['Move up','J'],['Move right','K'],['Move down','F'],['Move left','D'],
-      ['Pause / menu','Esc'],['Retry','R'],['Leave level','H'],
+      ['Pause / menu','Esc'],['Retry','R'],['Home','H'],
       ['Practice 100%','1'],['Practice 75%','2'],['Practice 50%','3'],
       ['Practice 25%','4'],['Practice 10%','5'],
       ['Speed up',']'],['Speed down','['],['Preview up','.'],['Preview down',',']
     ],
     menus:[
-      ['Back','Esc'],['Open library','P'],['Open editor','E'],['Open skins','K'],
-      ['Open settings','S'],['Fullscreen','F11'],['Refresh library','F5'],
-      ['Choose chart','C']
+      ['Back','Esc'],['Open library','P'],['Open editor','E'],
+      ['Open skins','K'],['Open settings','S'],['Fullscreen','F11'],
+      ['Rescan','F5'],['Choose music','O'],['Choose chart','C'],
+      ['Preview / pause','Space'],['Replay','R']
     ],
     editor:[
       ['Save','Ctrl+S'],['Save as','Ctrl+Shift+S'],['Open','Ctrl+O'],
-      ['New chart','Ctrl+N'],['Test chart','T'],['Preview / pause','Space'],
-      ['Restart preview','R'],['Copy','Ctrl+C'],['Cut','Ctrl+X'],['Paste','Ctrl+V'],
-      ['Undo','Ctrl+Z'],['Redo','Ctrl+Y'],['Mirror H','I'],['Mirror V','Shift+I'],
-      ['Zoom in','+'],['Zoom out','-'],['Snap finer','.'],['Snap coarser',',']
+      ['New','Ctrl+N'],['Test','T'],['Preview / pause','Space'],
+      ['Restart','R'],['Copy','Ctrl+C'],['Cut','Ctrl+X'],
+      ['Paste','Ctrl+V'],['Undo','Ctrl+Z'],['Redo','Ctrl+Y'],
+      ['Mirror H','I'],['Mirror V','Shift+I'],
+      ['Zoom +','+'],['Zoom −','-'],['Snap +','.'],['Snap −',',']
     ]
   };
-  const initialNotes = [
-    {beat:1,direction:'↑'},{beat:2,direction:'↗'},{beat:3,direction:'→'},
-    {beat:4,direction:'↓'},{beat:5,direction:'↙'},{beat:6,direction:'←'},
-    {beat:7,direction:'↖'},{beat:8,direction:'↑'},{beat:9,direction:'↘'}
+  const skinPath=[
+    {key:'lookahead',title:'Preview time',value:800,min:50,max:10000,step:50,unit:'ms'},
+    {key:'pathWidth',title:'Path width',value:5,min:.25,max:40,step:.25,unit:'px'},
+    {key:'outlineScale',title:'Outline scale',value:2,min:1,max:8,step:.25,unit:''},
+    {key:'fadePower',title:'Fade curve',value:1.5,min:.1,max:8,step:.1,unit:''},
+    {key:'pathOpacity',title:'Path opacity',value:1,min:0,max:1,step:.05,unit:''},
+    {key:'junctionRadius',title:'Turn size',value:10,min:1,max:64,step:1,unit:'px'},
+    {key:'junctionGlow',title:'Turn glow',value:true,type:'toggle'},
+    {key:'reverseCapScale',title:'Reverse cap',value:2,min:0,max:12,step:.25,unit:''}
   ];
-  function defaults(){
+  const skinPlayer=[
+    {key:'playerRadius',title:'Player size',value:11,min:1,max:80,step:1,unit:'px'},
+    {key:'baseSpeed',title:'Speed',value:460,min:20,max:2000,step:10,unit:'px/s'},
+    {key:'playerGlow',title:'Player glow',value:true,type:'toggle'},
+    {key:'hitFlashScale',title:'Hit flash size',value:1,min:.1,max:8,step:.1,unit:''},
+    {key:'showHud',title:'Show HUD',value:true,type:'toggle'},
+    {key:'cameraLagMs',title:'Camera lag',value:100,min:0,max:1500,step:25,unit:'ms'}
+  ];
+  const colors=[
+    ['background','Background'],['trajectory','Trajectory'],['outline','Outline'],
+    ['junction','Junction'],['player','Player'],['playerCore','Player core'],
+    ['hudBackground','HUD background'],['hudText','HUD text'],
+    ['hitFlash','Hit flash'],['fieldBorder','Field border']
+  ];
+  const seedRuns={
+    'aurora/horizon':[
+      {id:'r1',datetime:'2026-11-12T14:42:00',count:486,perfect:445,good:37,bad:0,miss:4},
+      {id:'r2',datetime:'2026-11-12T13:18:00',count:486,perfect:430,good:40,bad:8,miss:8}
+    ],
+    'aurora/parallax':[
+      {id:'r3',datetime:'2026-11-12T14:03:00',count:912,perfect:812,good:68,bad:20,miss:12}
+    ]
+  };
+  const seedNotes=[
+    {beat:1,dir:'↑'}, {beat:2,dir:'↗'}, {beat:3,dir:'→'}, {beat:4,dir:'↓'},
+    {beat:5,dir:'↙'}, {beat:6,dir:'←'}, {beat:7,dir:'↖'}, {beat:8,dir:'↑'},
+    {beat:9,dir:'↘'}
+  ];
+  const deep=(x)=>JSON.parse(JSON.stringify(x));
+  function initial(){
     return {
-      page:'home',lastPage:'home',song:'aurora',chart:'horizon',expanded:['aurora'],
-      search:'',libraryEmpty:false,editorTab:'route',skinTab:'path',settingsTab:'game',
-      bindingGroup:'play',bindingSearch:'',capture:null,
-      editorDirty:false,chartName:'Horizon',tempo:[{time:-15,bpm:174}],previewMs:12500,
-      selectedBeat:4,selectedDirection:'↓',notes:initialNotes.map(n=>({beat:n.beat,direction:n.direction})),
-      clipboard:null,undo:[],redo:[],compare:[],focusedPane:0,zoom:100,snap:'1/4',
-      practice:100,previewPlaying:false,previewSpeed:135,previewLength:800,
-      fieldWidth:4,fieldHeight:4,startX:1,startY:1,heading:'→',
-      volume:70,hitFlash:true,vsync:true,fps:'240',showFps:false,fullscreen:false,offset:0,
-      playPaused:false,selectedRunId:null,runSequence:3,
-      resultsByChart:{
-        'aurora/horizon':[
-          {id:'run-2',time:'12 Nov 2026 · 14:42',total:486,perfect:445,good:37,bad:0,miss:4,accuracy:97.27},
-          {id:'run-1',time:'12 Nov 2026 · 13:18',total:486,perfect:430,good:40,bad:8,miss:8,accuracy:95.47}
-        ],
-        'aurora/parallax':[
-          {id:'run-3',time:'12 Nov 2026 · 14:03',total:912,perfect:812,good:68,bad:20,miss:12,accuracy:95.72}
-        ]
-      },
-      modal:null,modalReturn:null,calibrationOpen:false,calibrationCount:0,calibrationComplete:false,selectedColor:'trajectory',
-      skinName:'Default',skinDirty:false,skinProfile:'default',
-      profiles:[{id:'default',name:'Default',subtitle:'Current design'},{id:'night',name:'Nightglass',subtitle:'Saved profile'}],
-      skin:{baseSpeed:460,lookahead:800,pathWidth:5,outlineScale:2,fadePower:1.5,pathOpacity:1,
-        junctionRadius:10,junctionGlow:false,reverseCapScale:2,playerRadius:11,playerGlow:true,
-        hitFlashScale:1,cameraLagMs:100,showHud:true,colors:{
-        background:'#151b24',trajectory:'#b3d9e7',outline:'#edf0f5',junction:'#a795dd',
-        player:'#ef74ac',playerCore:'#ffffff',hudBackground:'#232932',hudText:'#f0eced',
-        hitFlash:'#9adfcb',fieldBorder:'#667989'
-      }},
-      changedSet:false
+      view:'home',song:'aurora',chart:'horizon',expanded:'aurora',query:'',
+      editorTab:'route',editorLoaded:false,editorTitle:'Untitled',
+      editorDirty:false,beat:4,notes:deep(seedNotes),undo:[],redo:[],clipboard:null,
+      zoom:100,snap:4,practice:100,editorPlaying:false,compared:[],
+      focusedPane:0,editorSpeed:135,editorPath:800,songPosition:.32,
+      background:false,tempo:[{time:-15,bpm:174}],previewStart:12500,
+      headingIndex:2,
+      settingsTab:'game',bindGroup:'play',bindCapture:null,
+      volume:70,hitFlash:true,vsync:true,fps:'240',showFps:false,
+      fullscreen:false,globalOffset:0,calibration:0,
+      skinTab:'path',skinName:'Default',skinDirty:false,
+      skin:{...Object.fromEntries(skinPath.concat(skinPlayer).map(x=>[x.key,x.value])),
+        colors:Object.fromEntries(colors.map((x,i)=>[x[0],['#202020','#aaaaaa','#cccccc','#777777','#555555','#ffffff','#333333','#f5f5f5','#bbbbbb','#777777'][i]]))},
+      selectedColor:'trajectory',selectedProfile:'Default',
+      profiles:['Default','Nightglass'],
+      results:deep(seedRuns),resultId:'r1',runCounter:4,
+      paused:false,dialog:null,notice:''
     };
   }
-  const state=defaults();
-  function H(value){
-    return String(value==null?'':value).replace(/[&<>"']/g,function(c){
-      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
-    });
+  const state=initial();
+  function escape(input){
+    return String(input==null?'':input).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
-  function selectedSong(){return library.find(x=>x.id===state.song)||library[1];}
-  function selectedChart(){
-    const song=selectedSong();
-    return song.charts.find(x=>x.id===state.chart)||song.charts[0]||null;
-  }
-  function pointMax(n,min,max){return Math.max(min,Math.min(max,n));}
-  function chartKey(){return state.song+'/'+state.chart;}
-  function runsForChart(key){return state.resultsByChart[key||chartKey()]||[];}
-  function selectedRun(){
-    return runsForChart().find(function(r){return r.id===state.selectedRunId;})||null;
-  }
-  function field(name,value,note){
-    return '<label class="input-label">'+H(name)+'<input type="text" value="'+H(value)+'"'+(note?' placeholder="'+H(note)+'"':'')+'></label>';
-  }
-  function segment(id,selected,label,attribute){
-    return '<button type="button" class="seg'+(selected===id?' active':'')+'" '+attribute+'="'+H(id)+'">'+H(label)+'</button>';
-  }
-  function shortButton(title,act,variant){
-    return '<button type="button" class="'+(variant||'ghost')+' slim" data-action="'+H(act)+'">'+H(title)+'</button>';
-  }
-  function routeSvg(seed,color){
-    const c=color||state.skin.colors;
-    const choices=[
-      'M40 170 L80 170 L80 105 L150 105 L150 55 L212 55 L212 113 L274 113',
-      'M45 183 L45 125 L111 125 L158 80 L218 80 L218 133 L282 133',
-      'M42 75 L110 75 L110 122 L155 168 L222 168 L260 120 L288 120'
-    ];
-    const d=choices[seed%choices.length],markers=seed%3===1
-      ?[[45,125],[111,125],[158,80],[218,133]]
-      :seed%3===2?[[110,75],[155,168],[260,120]]:[[80,170],[80,105],[150,105],[212,55],[212,113]];
-    return '<svg viewBox="0 0 330 230" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Representative route preview">'+
-      '<defs><pattern id="g'+seed+'" width="22" height="22" patternUnits="userSpaceOnUse"><path d="M22 0H0V22" fill="none" stroke="'+H(c.fieldBorder)+'" stroke-width=".6" opacity=".47"/></pattern></defs>'+
-      '<rect width="330" height="230" fill="'+H(c.background)+'"/>'+
-      '<rect width="330" height="230" fill="url(#g'+seed+')"/>'+
-      '<path d="'+d+'" stroke="'+H(c.trajectory)+'" stroke-width="'+Math.max(2,state.skin.pathWidth+2)+'" stroke-linejoin="round" stroke-linecap="round" fill="none"/>'+
-      markers.map(function(p,i){return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+(i===0?'6':'4')+'" fill="'+(i===0?H(c.player):H(c.outline))+'" stroke="'+H(c.background)+'" stroke-width="2"/>';}).join('')+
-      '<circle cx="80" cy="170" r="8" fill="'+H(c.player)+'" stroke="'+H(c.outline)+'" stroke-width="2"/>'+
-      '</svg>';
-  }
-  window.LocusDemo={state:state,defaults:defaults,library:library,bindings:bindings,H:H,
-    selectedSong:selectedSong,selectedChart:selectedChart,chartKey:chartKey,
-    runsForChart:runsForChart,selectedRun:selectedRun,pointMax:pointMax,
-    field:field,segment:segment,shortButton:shortButton,routeSvg:routeSvg};
+  const song=()=>songs.find(x=>x.id===state.song)||songs[0];
+  const chart=()=>song().charts.find(x=>x.id===state.chart)||song().charts[0]||null;
+  const chartKey=()=>state.song+'/'+state.chart;
+  const runs=()=>state.results[chartKey()]||[];
+  const result=()=>runs().find(x=>x.id===state.resultId)||null;
+  const accuracy=(r)=>100*(r.perfect+.75*r.good+.5*r.bad)/Math.max(1,r.count);
+  const datetime=(iso)=>new Date(iso).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+  const clock=(sec)=>Math.floor(sec/60)+':'+String(Math.floor(sec%60)).padStart(2,'0');
+  const selectedSkinSetting=(key)=>skinPath.concat(skinPlayer).find(x=>x.key===key);
+  window.LocusWire={songs,actions,skinPath,skinPlayer,colors,state,initial,deep,escape,
+    song,chart,chartKey,runs,result,accuracy,datetime,clock,selectedSkinSetting};
 })();

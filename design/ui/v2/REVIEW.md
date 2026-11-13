@@ -1,19 +1,19 @@
-# LOCUS UI v2 — design review
+# Wireframe acceptance checks
 
-- [ ] Home: no corner monogram; clear Play / Editor / Skins / Settings / Exit.
-- [ ] Song Library: song tree, difficulty selection, compact chart actions and difficulty breakdown.
-- [ ] Selected chart: **Results history appears on the left**, sorted newest first, with date and accuracy. No results if none exist.
-- [ ] Opening any history entry shows that attempt's accuracy, Perfect, Good, Bad, Miss and notes judged.
-- [ ] PLAY sample: **Finish chart** creates another in-memory attempt and opens its Results detail. Retry and leaving do not create records.
-- [ ] Switching difficulty cannot show another chart's attempt history.
-- [ ] **Listen and global Results navigation absent.** Results detail is contextual.
-- [ ] Settings: Game / Display / Key bindings / Audio & offset, calibrated offset controls.
-- [ ] Skin: PATH / PLAYER / COLORS / MY SKINS, real game settings and a preview.
-- [ ] Editor: SET / ROUTE / AUDIO / FIELD, one timeline and one whole-song overview, large note pad, up to two reference panes.
-- [ ] Dialogs: unsaved, delete, quit, compare and errors keep essential warnings.
-- [ ] No instructions beneath obvious buttons, no decorative captions, no redundant headlines.
-- [ ] Layout works at 960×540 and 1280×720; mouse, keyboard and focus states remain aligned.
-- [ ] No new animation or gameplay effect during PLAY.
-- [ ] Preview actions never persist fake results to game/user files.
-
-Native Results recording is documented as a future requirement in [README](README.md); it is **not** implemented by this HTML work.
+- [ ] Each page fits in a **960×540** application frame; no responsive webpage layout is substituted.
+- [ ] Home has four approximately 192×80 actions, plus 122×46 Exit.
+- [ ] Song Library keeps songs and selected chart's Results together on the left, Play/Edit prominent and difficulty metrics to the right.
+- [ ] Result rows are tied to the currently selected difficulty; clicking one opens that exact record.
+- [ ] No standalone Listen or Results in app navigation.
+- [ ] Editor note ruler is **above** the workspace; whole-song overview is **below** the workspace on ALL four editor tabs.
+- [ ] Lower overview shows song duration/position and shared BPM markers independently of note ruler zoom.
+- [ ] ROUTE editing tools have 40-pixel hit targets, with a separate 3×3 directional pad and previews of equal size.
+- [ ] ROUTE practice rates are BELOW the song overview.
+- [ ] SET difficulty rows open directly; no extra Open/Prev/Next.
+- [ ] AUDIO owns shared BPM table; FIELD owns only initial heading and read-only context.
+- [ ] Settings keep key bindings alongside Game/Display/Audio.
+- [ ] Skins exposes PATH, PLAYER, COLORS, MY SKINS with a persistent preview.
+- [ ] No UI animation is proposed during PLAY.
+- [ ] Destructive changes and unsaved edits use explicit confirmation.
+- [ ] No microcopy explaining obvious controls; content is names, numbers and actions.
+- [ ] Only reviewer controls (outside 960×540) may jump directly between screens and simulate completed attempts.

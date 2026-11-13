@@ -1,67 +1,55 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <meta name="description" content="LOCUS interface prototype.">
-  <title>LOCUS · Interface Studio — v2</title>
-  <link rel="icon" type="image/svg+xml" href="../v1/app-icon.svg">
-  <link rel="stylesheet" href="styles.css">
-  <script src="model.js" defer></script>
-  <script src="screens.js" defer></script>
-  <script src="app.js" defer></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>LOCUS — Wireframes</title>
+<link rel="stylesheet" href="styles.css">
+<script src="model.js" defer></script>
+<script src="screens.js" defer></script>
+<script src="app.js" defer></script>
 </head>
 <body>
-<svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
-<symbol id="ic-home" viewBox="0 0 24 24"><path d="m3 11 9-7 9 7v9H3z"/><path d="M9 20v-7h6v7"/></symbol>
-<symbol id="ic-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></symbol>
-<symbol id="ic-edit" viewBox="0 0 24 24"><path d="M4 19h16M5 15l10-10 4 4-10 10H5zM13 7l4 4"/></symbol>
-<symbol id="ic-skin" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20h2.1a2.3 2.3 0 0 0 0-4.6h-.6a2 2 0 0 1 0-4h3a5 5 0 0 0 5-5A10 10 0 0 0 12 2Z"/><path d="M6.5 10h.01M9.5 6h.01M15 6h.01M18 10h.01"/></symbol>
-<symbol id="ic-settings" viewBox="0 0 24 24"><path d="M10 2h4l.6 2.2 2 1.1 2.2-.7 2 3.4-1.6 1.6v2.8l1.6 1.6-2 3.4-2.2-.7-2 1.1L14 20h-4l-.6-2.2-2-1.1-2.2.7-2-3.4L4.8 12V9.6L3.2 8l2-3.4 2.2.7 2-1.1z" transform="translate(0 1) scale(.93)"/><circle cx="12" cy="11.4" r="3"/></symbol>
-<symbol id="ic-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
-<symbol id="ic-back" viewBox="0 0 24 24"><path d="m13 5-7 7 7 7M6 12h14"/></symbol>
-</svg>
-<div class="studio">
-  <div class="studio-meta">
-    <div class="studio-mark"><span class="studio-mark-dot"></span> LOCUS <span class="studio-muted">/ UI</span> <span class="version">V2</span></div>
-    <div class="studio-tools">
-      <span class="prototype-flag">UI PROTOTYPE</span>
-      <button class="ghost studio-help" type="button" data-go="system">Components</button>
-      <button class="ghost studio-reset" type="button" data-action="reset">Reset</button>
-    </div>
-  </div>
-  <div class="device" id="device">
-    <div class="application" id="application">
-      <header class="topbar" id="topbar" hidden>
-        <div class="topbar-leading">
-          <button class="icon-btn back-button" type="button" data-action="back" aria-label="Go back" title="Back"><svg class="nav-icon" aria-hidden="true"><use href="#ic-back"></use></svg></button>
-          <button type="button" class="topbar-brand" data-go="home" title="Home">locus<span>.</span></button>
-          <span class="topbar-separator"></span>
-          <div class="topbar-page" id="pageTitle">Library</div>
-        </div>
-        <div class="topbar-actions">
-          <button class="icon-btn" type="button" data-action="open-commands" title="Quick navigation (Ctrl+K)" aria-label="Quick navigation"><svg class="nav-icon" aria-hidden="true"><use href="#ic-search"></use></svg></button>
-          <button class="quiet-button" type="button" data-action="quit">Exit</button>
-        </div>
-      </header>
-      <div class="body-layout" id="bodyLayout">
-        <nav class="navrail" id="navrail" aria-label="Application sections" hidden>
-          <div class="navrail-group">
-            <button type="button" class="nav-button" data-go="home" title="Home"><svg class="nav-icon" aria-hidden="true"><use href="#ic-home"></use></svg><span>Home</span></button>
-            <button type="button" class="nav-button" data-go="library" title="Song library"><svg class="nav-icon" aria-hidden="true"><use href="#ic-list"></use></svg><span>Library</span></button>
-            <button type="button" class="nav-button" data-go="editor" title="Chart editor"><svg class="nav-icon" aria-hidden="true"><use href="#ic-edit"></use></svg><span>Editor</span></button>
-            <button type="button" class="nav-button" data-go="skins" title="Skin editor"><svg class="nav-icon" aria-hidden="true"><use href="#ic-skin"></use></svg><span>Skins</span></button>
-            <button type="button" class="nav-button" data-go="settings" title="Settings"><svg class="nav-icon" aria-hidden="true"><use href="#ic-settings"></use></svg><span>Settings</span></button>
-          </div>
-
-        </nav>
-        <main class="screen" id="screen" tabindex="-1" aria-live="polite"></main>
-      </div>
-    </div>
-  </div>
+<div class="review-bar">
+  <span class="review-name">LOCUS / WIREFRAMES</span>
+  <label class="review-picker">Page
+    <select id="view" aria-label="Wireframe page">
+      <option value="home">Home</option>
+      <option value="library">Song Library</option>
+      <optgroup label="Editor">
+        <option value="editor/set">SET</option>
+        <option value="editor/route">ROUTE</option>
+        <option value="editor/audio">AUDIO</option>
+        <option value="editor/field">FIELD</option>
+      </optgroup>
+      <optgroup label="Skins">
+        <option value="skins/path">PATH</option>
+        <option value="skins/player">PLAYER</option>
+        <option value="skins/colors">COLORS</option>
+        <option value="skins/profiles">MY SKINS</option>
+      </optgroup>
+      <optgroup label="Settings">
+        <option value="settings/game">GAME</option>
+        <option value="settings/display">DISPLAY</option>
+        <option value="settings/keys">KEY BINDINGS</option>
+        <option value="settings/audio">AUDIO / OFFSET</option>
+      </optgroup>
+      <option value="results">Results — selected attempt</option>
+      <option value="play">PLAY — untouched reference</option>
+      <option value="dialogs">Dialogs</option>
+    </select>
+  </label>
+  <button type="button" class="review-button" id="complete" hidden>Simulate completion</button>
+  <button type="button" class="review-button" id="reset">Reset sample</button>
 </div>
-<div class="toast-region" id="toasts" role="status" aria-live="polite"></div>
-<div class="overlay" id="overlay" hidden><div class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"></div></div>
+<div class="stage-holder" id="stageHolder">
+  <main class="stage" id="stage" aria-label="960 by 540 game window">
+    <div class="screen" id="screen"></div>
+    <div class="overlay" id="overlay" hidden>
+      <section id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"></section>
+    </div>
+  </main>
+</div>
 </body>
 </html>
