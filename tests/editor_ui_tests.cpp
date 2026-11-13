@@ -295,6 +295,18 @@ int main() {
                 reopened.speedIndex==-1&&slow.speedIndex==4&&
                 !ui.rateDropdownOpen,
                 "rate dropdown selects 100 and 10 percent");
+    // Dropdown options cover part of the AUDIO marker table. The popup
+    // exclusively handles that click instead of editing the hidden BPM.
+    ChartEditor rateDraft;
+    EditorUiState rateUi;
+    rateUi.tab = EditorTab::Audio;
+    rateUi.rateDropdownOpen = true;
+    const auto rateOption = ApplyEditorControls(rateDraft,rateUi,Click(763,410));
+    ok &= Check(rateOption.speedIndex == 2 && !rateOption.changedChart &&
+                !rateUi.rateDropdownOpen && rateUi.tempoEditingRow == -1 &&
+                !rateDraft.Dirty(),
+                "rate popup consumes AUDIO underlay clicks without chart edits");
+
     const auto test=ApplyEditorControls(chart,ui,Click(73,434));
     ok &= Check(test.testPlay,"test command is in the vertical toolrail");
     // A modal comparison picker consumes clicks and editor shortcuts:

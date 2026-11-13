@@ -217,14 +217,8 @@ void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
               bounds.width < 155.0f ? 10.0f : 12.0f, accent);
     }
 
-    const auto ms = static_cast<long long>(std::llround(songSeconds * 1000.0));
-    const auto absolute = std::llabs(ms);
-    const std::string current = TextFormat("TIME %s%lld:%02lld.%03lld",
-        ms < 0 ? "-" : "", absolute / 60000,
-        (absolute / 1000) % 60, absolute % 1000);
-    Label(font, current.c_str(),
-          kRouteTimeValue.x, kRouteTimeValue.y + 5, 13.0f,
-          Color{158, 225, 212, 255});
+    // Time now lives in the shared bottom overview, not the route field.
+
 }
 
 void DrawComparisonPicker(Font font, const EditorUiState& ui,
@@ -258,7 +252,7 @@ void DrawComparisonPicker(Font font, const EditorUiState& ui,
     CompactButton(font, kComparePickerNext, "NEXT", Color{148, 163, 193, 255});
     Label(font, TextFormat("%d / %d",
         std::min(count, ui.comparisonPickerFirst + 5), count),
-        586, 424, 12.0f, Color{183, 202, 216, 255});
+        kComparePopup.x + 107, kComparePopup.y + 182, 11.0f, Color{183, 202, 216, 255});
 }
 
 // Zoomable, note-bearing ruler. Its pixel scale never controls the
