@@ -334,7 +334,7 @@ int main() {
             ok &= Check(pane.width==firstPane.width&&
                         pane.height==firstPane.height&&
                         pane.x>=prev.x+prev.width+7.9f&&
-                        pane.x+pane.width<=733&&
+                        pane.x+pane.width<=733.5f&&
                         pane.y+pane.height<detail::kSongOverview.y,
                         "comparison panes stay equal and above overview");
         }
@@ -353,7 +353,7 @@ int main() {
                 "editor speed/path controls do not overlap pad or overview");
 
     // The selected beat stays under the fixed playhead after ruler resizing.
-    constexpr float cursor = 50.0f + 860.0f / 3.0f;
+    constexpr float cursor = detail::kPlayheadX;
     chart.SelectBeat(15);
     ApplyEditorControls(chart, ui, Click(cursor + 36, 140));
     ok &= Check(chart.SelectedBeat() == 16,

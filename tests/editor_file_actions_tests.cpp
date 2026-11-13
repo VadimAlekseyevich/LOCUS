@@ -265,7 +265,7 @@ int main() {
         ok &= Check(editor.SetSongDuration(10.0), "tempo edit has audio duration");
         app::EditorControls tempoClick;
         tempoClick.mouseClick = true;
-        tempoClick.mouse = {410.0f, 298.0f};
+        tempoClick.mouse = {660.0f, 256.0f};
         managedSet.HandleControls(tempoClick);
         ok &= Check(ui.tempoEditingRow == 0 && ui.tempoEditingBpm,
                     "managed AUDIO BPM cell enters editing");
@@ -281,7 +281,7 @@ int main() {
                     editor.Data().route.bpm == 170.5,
                     "editing BPM updates whole pack and current draft");
         editor.SelectBeat(4);
-        tempoClick.mouse = {730.0f, 447.0f};
+        tempoClick.mouse = {454.0f, 441.0f};
         managedSet.HandleControls(tempoClick);
         const auto& twoTempo = managedLibrary.Songs()[0].tempoMap;
         ok &= Check(twoTempo.size() == 2 &&
@@ -298,11 +298,11 @@ int main() {
         ui.tab = app::EditorTab::Route;
         app::EditorControls clickCompare;
         clickCompare.mouseClick = true;
-        clickCompare.mouse = {664.0f, 216.0f};
+        clickCompare.mouse = {73.0f, 386.0f};
         managedSet.HandleControls(clickCompare);
         ok &= Check(ui.comparisonPickerOpen,
                     "real managed Song Set COMPARE+ opens on first click");
-        clickCompare.mouse = {548.0f, 307.0f};
+        clickCompare.mouse = {155.0f, 310.0f};
         managedSet.HandleControls(clickCompare);
         ok &= Check(ui.comparisonFiles.size() == 1 &&
                     ui.comparisonFiles.front() == installedHard,

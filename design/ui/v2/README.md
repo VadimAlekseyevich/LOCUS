@@ -2,7 +2,7 @@
 
 Open [index.html](index.html) locally in a browser. This is a **clickable HTML/CSS/JavaScript prototype** using the real 960 × 540 LOCUS virtual menu resolution. The Page selector above the window is a reviewer-only control, not part of the game UI.
 
-## Native port (first working stage)
+## Native UI port (in progress)
 
 - The C++ PLAY song-selection screen uses the new **352px compact left column** with room for run history and a **564px song tree** on the right. Mouse hitboxes and keyboard/tree navigation were updated together.
 - The native right-hand tree searches song titles, artists and difficulty titles. Search typing cannot accidentally launch PLAY/EDIT; F5 refresh and chart launches still work.
@@ -13,8 +13,15 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
   storage, indexed values, a validated atomic edit API and editor SET view data.
   Difficulty/chart JSON deliberately has **no tags**. Native SET text fields
   now edit the managed Song Set's shared metadata (Enter to save, Esc to cancel).
-- SET metadata/actions have a native violet/sky layout. ROUTE/AUDIO/Skins
-  native layouts remain to be migrated. Gameplay and timing remain untouched.
+- SET, ROUTE and AUDIO now use a shared native editor header and upper note ruler,
+  with one bottom whole-song timeline, Play/Restart icons, playback-rate menu and
+  millisecond copy button. ROUTE uses an icon toolrail, larger square previews,
+  a right-hand direction pad and START controls; AUDIO has two columns.
+- SKINS now uses the same dark violet/sky menu palette, a full-width tab bar,
+  skin name in the header and actions beneath the preview. The existing
+  functional wheel, sliders, swatches, skin profiles and controls remain.
+- Further visual polish and interaction review may be needed. Scored gameplay,
+  chart timing and chart file formats were not changed.
 
 ## Design direction — Nightbloom
 
@@ -43,7 +50,7 @@ Editor: SET / ROUTE / AUDIO. The zoomable **note ruler stays above** the workspa
 
 Settings: Display and Audio, with key bindings alongside. Skin: PATH / PLAYER / COLORS / MY SKINS and a dynamic preview. Results: a contextual record for one chart, accessible from that chart's history or the simulated completion flow.
 
-## Data and behavior before the remaining native UI port
+## Data and behavior during the native UI port
 
 Already implemented in C++: managed Song Set metadata, shared audio/background
 images, song-wide tempo map and preview position, chart title, difficulty
@@ -52,12 +59,12 @@ theme. The Song Set's mapper and tags are now persisted and searchable.
 
 Implemented in native C++: completion-history storage and read-only reopening
 of prior Results; the records in the HTML prototype are still sample data. The
-remaining editor/skin layouts and their input bindings are visual work, not
+remaining refinements to visual layout and input bindings are UI work, not
 new chart formats. Tags are **never per difficulty**.
 
 ## Limitations and scope
 
-This stage includes the HTML/CSS/SVG prototype, runtime icon/wordmark PNGs and native **PLAY/SET/Results/Settings UI**. Scored gameplay, scoring calculations, chart data formats and judgement timing are unchanged. The application copies the PNG assets next to the executable on build. The in-memory sample data resets on refresh; demo actions are not an implementation of native features.
+This stage includes the HTML/CSS/SVG prototype, runtime icon/wordmark PNGs and native **PLAY/SET/ROUTE/AUDIO/SKINS/Results/Settings UI**. Scored gameplay, scoring calculations, chart data formats and judgement timing are unchanged. The application copies the PNG assets next to the executable on build. The in-memory sample data resets on refresh; demo actions are not an implementation of native features.
 
 No new animation, transitions or visual HUD elements are introduced to scored gameplay.
 
