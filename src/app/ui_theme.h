@@ -10,18 +10,20 @@ namespace locus::app {
 // Approved interface palette. Intentionally independent of gameplay SKIN:
 // changing chart colors and path speed must not recolor application chrome.
 struct UiTheme {
-    Color background{32, 33, 41, 255};      // #202129
-    Color surface{40, 42, 52, 255};         // #282A34
-    Color raised{49, 51, 62, 255};
-    Color foreground{240, 236, 237, 255};  // #F0ECED
-    Color secondaryText{178, 176, 184, 255};
-    Color softBlue{187, 210, 227, 255};    // #BBD2E3
-    Color rose{233, 90, 153, 255};         // #E95A99
-    Color onAccent{32, 27, 36, 255};
-    Color divider{240, 236, 237, 23};
-    Color danger{239, 139, 149, 255};
-    float buttonRadiusPx = 17.0f;
-    float panelRadiusPx = 22.0f;
+    // Nightbloom: soft dark violet-blue, sky blue and lilac; no warm yellow.
+    // This is menu chrome only; gameplay SKIN colors are independent.
+    Color background{28, 33, 50, 255};      // #1C2132
+    Color surface{41, 46, 69, 255};         // #292E45
+    Color raised{54, 59, 83, 255};
+    Color foreground{238, 241, 251, 255};  // #EEF1FB
+    Color secondaryText{172, 182, 203, 255};
+    Color softBlue{162, 216, 238, 255};    // #A2D8EE
+    Color rose{181, 164, 243, 255};        // Lilac #B5A4F3
+    Color onAccent{36, 38, 58, 255};
+    Color divider{188, 188, 234, 48};
+    Color danger{236, 163, 182, 255};
+    float buttonRadiusPx = 14.0f;
+    float panelRadiusPx = 14.0f;
     float controlHeightPx = 44.0f;
     float gapPx = 12.0f;
     float fontSize = 17.0f;

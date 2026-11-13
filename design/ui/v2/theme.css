@@ -325,3 +325,22 @@ input[type="search"]{background:rgba(23,28,44,.76) !important;}
 @media (prefers-reduced-motion:reduce){
  .home-page button,.view button,.review-bar button{transition:none!important;}
 }
+
+/* PLAY: compact song / chart details leave more of the left column for Results. */
+.play-pack{padding:8px 14px 6px;}
+.play-pack h2{font-size:18px;line-height:1.15;margin:3px 0 1px;}
+.pack-artist{font-size:13px;}
+.pack-mapper{font-size:11px;margin-top:1px;}
+.pack-facts{margin-top:5px;gap:7px;font-size:11px;}
+.play-chart-summary{padding:6px 14px 6px;}
+.play-chart-title{font-size:17px;margin:1px 0;}
+.play-chart-top .section-label{font-size:10px;}
+.play-difficulty{font-size:22px;}
+.play-note-total{font-size:10px;}
+.play-metrics{margin-top:5px;gap:4px 9px;}
+.play-metric{font-size:11px;}
+.play-result-section{flex:1;min-height:0;}
+.play-result-heading{height:30px;min-height:30px;}
+.play-results .result-row{height:37px;min-height:37px;}
+.play-primary-actions{padding:6px 12px 9px;}
+.play-primary-actions button{height:44px;min-height:44px;}

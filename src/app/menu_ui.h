@@ -26,6 +26,8 @@ struct SongSelectUi {
     int firstVisibleChart = 0;
     int treeScroll = 0;
     bool treeChartFocused = false;
+    std::string search;
+    bool editingSearch = false;
     std::string notice;
     LibraryDeletePending pendingDelete = LibraryDeletePending::None;
 
@@ -41,7 +43,7 @@ struct SongSelectUi {
 enum class SettingsPage { Game, Display };
 
 struct SettingsUi {
-    SettingsPage page = SettingsPage::Game;
+    SettingsPage page = SettingsPage::Display;
     int bindingGroup = 0; // 0=PLAY, 1=MENUS/LISTEN, 2=EDITOR.
     int firstBinding = 0; // Scroll within the selected group.
     int capturing = -1; // Global index: 0..gameplay + shortcut actions.
@@ -63,10 +65,12 @@ Rectangle LibrarySongRow(int row);
 Rectangle LibraryChartRow(int row);
 // Flat visible rows contain the complete song list and child charts of only
 // the selected song. All drawing, mouse and key hit-testing share these rows.
-constexpr int kLibraryTreeVisibleRows = 7;
+constexpr int kLibraryTreeVisibleRows = 8;
 std::vector<LibraryTreeEntry> LibraryTreeRows(const SongLibrary& songs,
                                                const SongSelectUi& ui);
 Rectangle LibraryRefreshButton();
+Rectangle LibraryBackButton();
+Rectangle LibrarySearchField();
 Rectangle LibraryPlayButton();
 Rectangle LibraryEditButton();
 Rectangle SettingsBindingButton(int visibleRow);

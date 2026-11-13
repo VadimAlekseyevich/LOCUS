@@ -198,15 +198,14 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     BeginDrawing();
     ClearBackground(state.screen == Screen::Play
                         ? gameplay.skin.background
-                        : state.screen == Screen::Home
-                            ? ApprovedUiTheme().background : kBackground);
+                        : ApprovedUiTheme().background);
     // Draw in physical pixels before the virtual UI camera: cover fills any
     // aspect ratio without distortion and crops the excess at the edges.
     if (background && background->Ready() &&
         (state.screen == Screen::Play || state.screen == Screen::Results ||
          state.screen == Screen::SongSelect || state.screen == Screen::Editor)) {
         const unsigned char veil = state.screen == Screen::Play ? 160
-            : state.screen == Screen::SongSelect ? 216
+            : state.screen == Screen::SongSelect ? 132
             : state.screen == Screen::Editor ? 202 : 190;
         background->DrawCover(GetScreenWidth(), GetScreenHeight(), veil);
     }
@@ -225,7 +224,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     BeginMode2D(camera);
 
     // No wordmark or global help text during scoring: only field + hits.
-    if (state.screen != Screen::Play && state.screen != Screen::Home) {
+    if (state.screen != Screen::Play && state.screen != Screen::Home &&
+        state.screen != Screen::SongSelect) {
         DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
                       Color{223, 225, 238, 255});
     }

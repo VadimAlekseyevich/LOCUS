@@ -1,6 +1,7 @@
 #include "app/menu_controller.h"
 
 #include "app/viewport.h"
+#include "core/utf8.h"
 #include "raylib.h"
 
 #include <algorithm>
@@ -266,13 +267,59 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     }
 
     if (state.screen == Screen::SongSelect) {
+        // Search owns keystrokes while focused: E must not edit, Enter must
+        // not launch PLAY and Escape must not leave the song browser.
+        const bool searchClicked = mouseClick && validMouse &&
+            CheckCollisionPointRec(mouse, LibrarySearchField());
+        if (searchClicked) {
+            libraryUi.editingSearch = true;
+            input.startPressed = false;
+            input.backPressed = false;
+            input.homePressed = false;
+            input.requestedScreen.reset();
+            return events;
+        }
+        if (libraryUi.editingSearch) {
+            if (mouseClick) {
+                libraryUi.editingSearch = false; // Continue same click.
+            } else {
+                input.startPressed = false;
+                input.backPressed = false;
+                input.homePressed = false;
+                input.openPlayPressed = false;
+                input.openEditorPressed = false;
+                input.requestedScreen.reset();
+                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER) ||
+                    IsKeyPressed(KEY_KP_ENTER)) {
+                    libraryUi.editingSearch = false;
+                } else {
+                    if (IsKeyPressed(KEY_BACKSPACE)) {
+                        core::utf8::PopBack(libraryUi.search);
+                        libraryUi.treeScroll = 0;
+                    }
+                    int codepoint = 0;
+                    while ((codepoint = GetCharPressed()) != 0) {
+                        int length = 0;
+                        const char* text = CodepointToUTF8(codepoint, &length);
+                        if (text && length > 0 &&
+                            core::utf8::AppendLimited(libraryUi.search,
+                                std::string_view(text, static_cast<std::size_t>(length)),
+                                64, 256)) {
+                            libraryUi.treeScroll = 0;
+                        }
+                    }
+                }
+                return events;
+            }
+        }
         if (IsKeyPressed(KEY_UP)) libraryUi.MoveTree(-1, library);
         if (IsKeyPressed(KEY_DOWN)) libraryUi.MoveTree(1, library);
         if (IsKeyPressed(KEY_LEFT)) libraryUi.MoveChart(-1, library);
         if (IsKeyPressed(KEY_RIGHT)) libraryUi.MoveChart(1, library);
         if (IsKeyPressed(KEY_F5)) events.refresh = true;
         const float wheel = GetMouseWheelMove();
-        if (wheel != 0.0f)
+        if (wheel != 0.0f && validMouse &&
+            CheckCollisionPointRec(mouse, {382, 65, 564, 461}))
             libraryUi.ScrollTree(wheel > 0.0f ? -1 : 1, library);
         if (input.startPressed) events.playSelected = true;
         if (IsKeyPressed(KEY_E)) events.editSelected = true;
@@ -284,7 +331,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     };
 
     if (state.screen == Screen::SongSelect) {
-        if (hit(locus::app::MenuBackButton())) input.backPressed = true;
+        if (hit(locus::app::LibraryBackButton())) input.backPressed = true;
         if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
         if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
         if (hit(locus::app::LibraryEditButton())) events.editSelected = true;
@@ -376,10 +423,6 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             };
             if (hit(SettingsVolumeMinus())) changeVolume(-1);
             else if (hit(SettingsVolumePlus())) changeVolume(1);
-            else if (hit(SettingsFlashButton())) {
-                settings.hitFlash = !settings.hitFlash;
-                events.saveSettings = true;
-            }
         } else {
             if (hit(SettingsVsyncButton())) {
                 settings.vsync = !settings.vsync;

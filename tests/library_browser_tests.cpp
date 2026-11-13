@@ -99,6 +99,39 @@ int main() {
                 expanded[2].song == 1 && expanded[2].chart == 0 &&
                 expanded[3].song == 1 && expanded[3].chart == 1,
                 "Song Library displays charts indented directly beneath selected song");
+    // The native PLAY browser now filters song and difficulty titles. A
+    // difficulty-name hit must not expose unrelated sibling difficulties.
+    ui.search = "Hard";
+    const auto hardFiltered = LibraryTreeRows(library, ui);
+    ok &= Check(hardFiltered.size() == 2 &&
+                hardFiltered[0].song == 1 && hardFiltered[0].chart == -1 &&
+                hardFiltered[1].song == 1 && hardFiltered[1].chart == 1,
+                "search isolates matching difficulty with its parent Song Set");
+    ui.search = "ZZ-SONG";
+    const auto songFiltered = LibraryTreeRows(library, ui);
+    ok &= Check(songFiltered.size() == 3 &&
+                songFiltered[0].song == 1 &&
+                songFiltered[1].chart == 0 && songFiltered[2].chart == 1,
+                "song-name search displays all difficulties case-insensitively");
+    ui.search = "no-such-song";
+    ok &= Check(LibraryTreeRows(library, ui).empty(),
+                "unmatched song query yields empty scroll tree");
+    ui.search.clear();
+    ui.treeScroll = 0;
+
+    // Drawing and mouse input use identical 960x540 hitboxes. The expanded
+    // right tree cannot overlap the Play/Edit buttons in the left column.
+    const Rectangle treeFirst = LibrarySongRow(0);
+    const Rectangle treeLast = LibraryChartRow(kLibraryTreeVisibleRows - 1);
+    const Rectangle playButton = LibraryPlayButton();
+    const Rectangle editButton = LibraryEditButton();
+    ok &= Check(kLibraryTreeVisibleRows == 8 &&
+                treeFirst.x >= 382.0f && treeLast.x >= 382.0f &&
+                treeLast.y + treeLast.height <= 470.0f &&
+                playButton.x + playButton.width < treeFirst.x &&
+                editButton.x + editButton.width < treeFirst.x,
+                "native PLAY layout has eight scroll rows and a separate action column");
+
     ui.MoveTree(-1, library);
     ok &= Check(ui.selectedSong == 1 && ui.selectedChart == 0 &&
                 ui.treeChartFocused,

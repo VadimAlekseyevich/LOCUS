@@ -2,6 +2,15 @@
 
 Open [index.html](index.html) locally in a browser. This is a **clickable HTML/CSS/JavaScript prototype** using the real 960 × 540 LOCUS virtual menu resolution. The Page selector above the window is a reviewer-only control, not part of the game UI.
 
+## Native port (first working stage)
+
+- The C++ PLAY song-selection screen uses the new **352px compact left column** with room for run history and a **564px song tree** on the right. Mouse hitboxes and keyboard/tree navigation were updated together.
+- The native right-hand tree searches song titles, artists and difficulty titles. Search typing cannot accidentally launch PLAY/EDIT; F5 refresh and chart launches still work.
+- The menu theme and reusable button classes use the violet/sky palette. Settings now presents **Display / Audio**, with volume/offset under Audio and no Hit Flash setting.
+- Song Set backgrounds already fill the window and are now less heavily darkened on the selector.
+- Native completed-attempt **persistence, replay opening and Results history** are *not implemented yet*. The native Results area is intentionally empty until genuine records exist.
+- ROUTE/SET/AUDIO/Skins native layouts have not yet been migrated to the reviewed HTML layout. Gameplay and timing remain untouched.
+
 ## Design direction — Nightbloom
 
 The interface uses a gently dark violet-blue base, sky-blue interactive accents, softer violet selection states and sparse soft lilac emphasis on important values. It remains a dark application, not a bright website.
@@ -31,7 +40,7 @@ Settings: Display and Audio, with key bindings alongside. Skin: PATH / PLAYER / 
 
 ## Limitations and scope
 
-This iteration updates the HTML prototype, SVG sources, theme tokens **and the runtime Home/Windows-icon PNG assets** in `assets/ui`. C++ rendering and gameplay code, scoring, persistent run history and data formats are unchanged. The application copies the PNG assets next to the executable on build. The in-memory sample data resets on refresh; demo actions are not an implementation of native features.
+This stage includes the HTML/CSS/SVG prototype, runtime icon/wordmark PNGs and initial **C++ menu rendering/input**. Scored gameplay, scoring calculations, chart data formats and persistent run history are unchanged. The application copies the PNG assets next to the executable on build. The in-memory sample data resets on refresh; demo actions are not an implementation of native features.
 
 No new animation, transitions or visual HUD elements are introduced to scored gameplay.
 

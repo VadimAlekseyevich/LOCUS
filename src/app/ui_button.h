@@ -27,21 +27,23 @@ struct UiButtonStyle {
 };
 
 inline UiButtonStyle SkinButtonStyle() noexcept {
-    return {{35, 41, 56, 255}, {49, 69, 82, 255},
-            {183, 166, 243, 255}, {244, 210, 137, 255},
-            {225, 232, 240, 255}, 0.12f, 4, 1.3f, 1.3f, 15.0f, 1.0f};
+    const auto& theme = ApprovedUiTheme();
+    return {theme.surface, theme.raised, theme.rose, theme.softBlue,
+            theme.foreground, 0.20f, 8, 1.0f, 1.5f, 15.0f, 1.0f};
 }
 
 inline UiButtonStyle MenuButtonStyle(Color tint) noexcept {
-    return {{36, 42, 58, 255}, {42, 75, 83, 255},
-            tint, tint, {225, 232, 240, 255},
-            0.10f, 5, 1.6f, 2.5f, 17.0f, 1.0f};
+    const auto& theme = ApprovedUiTheme();
+    return {theme.surface, UiMix(theme.surface, tint, 0.28f),
+            UiOpacity(tint, 0.67f), tint, theme.foreground,
+            0.23f, 10, 1.1f, 1.6f, 17.0f, 1.0f};
 }
 
 inline UiButtonStyle EditorButtonStyle(Color tint) noexcept {
-    return {{36, 43, 58, 255}, {45, 81, 88, 255},
-            tint, tint, {232, 238, 245, 255},
-            0.16f, 5, 1.7f, 1.7f, 17.0f, 1.0f};
+    const auto& theme = ApprovedUiTheme();
+    return {theme.surface, UiMix(theme.surface, tint, 0.25f),
+            UiOpacity(tint, 0.65f), tint, theme.foreground,
+            0.22f, 10, 1.1f, 1.6f, 17.0f, 1.0f};
 }
 
 inline void DrawUiButtonChrome(Rectangle rect, const UiButtonStyle& style,
