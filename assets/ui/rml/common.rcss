@@ -1,4 +1,9 @@
 /* LOCUS shared Nightbloom theme. RmlUi-only; not gameplay. */
+/* RmlUi has NO browser user-agent stylesheet: div is inline by default.
+   Without block defaults, SONG SET metadata flows into a single text line. */
+div, body, p { display:block; }
+span { display:inline; }
+strong { font-weight:bold; }
 body {
   margin:0; padding:0; width:100%; height:100%;
   background-color: transparent;
@@ -7,7 +12,7 @@ body {
   font-size:16dp;
 }
 * { box-sizing:border-box; }
-button { tab-index:auto; color:#eff2ff; font-family:Locus; font-size:15dp; background-color:#303650;
+button { display:inline-block; tab-index:auto; color:#eff2ff; font-family:Locus; font-size:15dp; background-color:#303650;
   border:1dp #62698c; border-radius:13dp; padding:10dp 18dp; cursor:pointer;
   transition: background-color 0.13s sine-out, border-color 0.13s sine-out; }
 button:hover { background-color:#444e72; border-color:#a2d8ee; }
