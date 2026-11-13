@@ -59,7 +59,7 @@ Rml::TextureHandle RmlRaylibRenderer::LoadTexture(
     // Use the same file interface as RML and RCSS. This supports consistent
     // paths and will also work with future packaged asset file interfaces.
     auto* files = Rml::GetFileInterface();
-    const Rml::FileHandle handle = files ? files->Open(source) : nullptr;
+    const Rml::FileHandle handle = files ? files->Open(source) : Rml::FileHandle{};
     if (!handle) {
         std::cerr << "RmlUi image not found: " << source << '\n';
         return {};
