@@ -9,7 +9,7 @@ body {
 * { box-sizing:border-box; }
 button { color:#eff2ff; font-family:Locus; font-size:15dp; background-color:#303650;
   border:1dp #62698c; border-radius:13dp; padding:10dp 18dp; cursor:pointer;
-  transition: background-color border-color 0.13s sine-out; }
+  transition: background-color 0.13s sine-out, border-color 0.13s sine-out; }
 button:hover { background-color:#444e72; border-color:#a2d8ee; }
 button:active { background-color:#5b628e; }
 button:focus { border-color:#a2d8ee; }
@@ -27,5 +27,5 @@ button:focus { border-color:#a2d8ee; }
 .ui-input { display:block; width:100%; height:44dp; background-color:#303650;
   border:1dp #444d71; border-radius:12dp; padding:7dp 15dp;
   font-family:Locus; font-size:15dp; color:#eef1fb;
-  transition: background-color border-color 0.13s sine-out; }
+  transition: background-color 0.13s sine-out, border-color 0.13s sine-out; }
 .ui-input:focus { border-color:#a2d8ee; background-color:#3a4264; }
