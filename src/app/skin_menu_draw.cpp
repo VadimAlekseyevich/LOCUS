@@ -17,10 +17,10 @@ namespace locus::app {
 using namespace skin_detail;
 namespace {
 constexpr Color kText{225, 232, 240, 255};
-constexpr Color kMuted{159, 181, 201, 255};
-constexpr Color kAccent{183, 166, 243, 255};
-constexpr Color kGold{244, 210, 137, 255};
-constexpr Color kPanel{26, 30, 42, 255};
+constexpr Color kMuted{173, 185, 213, 255};
+constexpr Color kAccent{180, 166, 240, 255};
+constexpr Color kGold{157, 209, 234, 255}; // Sky contrast, no yellow chrome.
+constexpr Color kPanel{33, 39, 61, 255};
 
 void Label(Font font, const std::string& label, float x, float y,
            float size = 16.0f, Color color = kText) {
@@ -28,12 +28,13 @@ void Label(Font font, const std::string& label, float x, float y,
 }
 
 void Button(Font font, Rectangle r, const char* text, bool active = false) {
-    DrawUiButton(font, r, text, SkinButtonStyle(), active);
+    DrawUiThemedButton(font,r,text,active?UiButtonVariant::Cool:UiButtonVariant::Quiet,
+                       {},{},ApprovedUiTheme(),r.height<38?12:14);
 }
 
 void DrawSwitch(Font font, Rectangle rect, bool enabled) {
-    const Color fill = enabled ? Color{65, 114, 113, 255}
-                               : Color{63, 67, 81, 255};
+    const Color fill = enabled ? Color{76, 81, 126, 255}
+                               : Color{57, 61, 84, 255};
     DrawRectangleRounded(rect, 0.5f, 8, fill);
     DrawCircleV({enabled ? rect.x + rect.width - 16.0f : rect.x + 16.0f,
                  rect.y + rect.height * 0.5f}, 10.5f, kText);
@@ -42,9 +43,9 @@ void DrawSwitch(Font font, Rectangle rect, bool enabled) {
 }
 
 void Panel(Rectangle area) {
-    DrawRectangleRounded(area, 0.05f, 6, kPanel);
-    DrawRectangleRoundedLinesEx(area, 0.05f, 6, 1.0f,
-                                Color{51, 62, 78, 255});
+    DrawRectangleRounded(area,UiRoundness(area,13),10,kPanel);
+    DrawRectangleRoundedLinesEx(area,UiRoundness(area,13),10,1,
+                                ApprovedUiTheme().divider);
 }
 
 std::string FitText(Font font, std::string text, float width, float fontSize) {
@@ -63,8 +64,8 @@ std::string FitText(Font font, std::string text, float width, float fontSize) {
 void DrawInput(Font font, Rectangle rect, const std::string& value,
                bool focused, bool selected = false) {
     DrawRectangleRounded(rect, 0.14f, 5,
-                         focused ? Color{53, 62, 83, 255}
-                                 : Color{31, 38, 52, 255});
+                         focused ? Color{61, 57, 96, 255}
+                                 : Color{31, 39, 61, 255});
     DrawRectangleRoundedLinesEx(rect, 0.14f, 5, focused ? 2.0f : 1.0f,
                                 focused ? kGold : Color{89, 103, 119, 255});
     const std::string shown = FitText(font, value, rect.width - 17.0f, 15.0f);
@@ -101,7 +102,7 @@ void PreviewPath(Font font, const Skin& skin) {
     const Rectangle frame{641.0f, 220.0f, 191.0f, 200.0f};
     DrawRectangleRounded(area, 0.07f, 6, skin.background);
     DrawRectangleRoundedLinesEx(area, 0.07f, 6, 1.2f, kMuted);
-    Label(font, "SPEED PREVIEW / 120 BPM", 622, 202, 14.0f, kMuted);
+    Label(font, "LIVE PREVIEW", 619, 201, 13.0f, kMuted);
 
     // The SKIN preview clips like the real gameplay square,
     // including thick outline strokes and partially visible junctions.
@@ -181,7 +182,7 @@ void PreviewPath(Font font, const Skin& skin) {
         Label(font, "HUD", 839, 280, 11, kMuted);
         Label(font, "OFF", 840, 296, 11, kMuted);
     }
-    Label(font, "PLAY: [ / ] OR NUM - / +  (10 PX/S)", 610, 425, 11.0f, kMuted);
+
 }
 
 void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
@@ -233,21 +234,30 @@ void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
     DrawInput(font, SkinHexRect(),
               ui.editingHex ? ui.hexBuffer : FormatSkinHex(current),
               ui.editingHex, ui.editingHex && ui.hexSelectAll);
-    Label(font, "6 DIGITS=RGB  8=RGBA", 334, 449, 11, kMuted);
+
 }
 
 
 } // namespace
 
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
-    Label(font, "SKIN  /  GAMEPLAY APPEARANCE", 52, 88, 27, kAccent);
-    Button(font, MenuBackButton(), "BACK / CANCEL");
-    const char* tabs[] = {"PATH", "PLAYER", "COLORS", "MY SKINS"};
-    for (int i = 0; i < 4; ++i)
-        Button(font, SkinTabButton(i), tabs[i], ui.page == i);
+    const auto& theme=ApprovedUiTheme();
+    const Rectangle header{44,69,892,49};
+    DrawRectangleRounded(header,UiRoundness(header,11),9,theme.surface);
+    DrawUiThemedButton(font,SkinBackButton(),"BACK",UiButtonVariant::Quiet,
+                       {},{},theme,14);
+    Label(font,"SKINS",166,84,22,theme.softBlue);
+    Label(font,"NAME",650,87,12,kMuted);
+    DrawInput(font,NameField(),skin.name,ui.editingName,
+              ui.editingName&&ui.nameSelectAll);
+    const char* tabs[]={"PATH","PLAYER","COLORS","MY SKINS"};
+    for(int i=0;i<4;++i)
+        DrawUiThemedButton(font,SkinTabButton(i),tabs[i],
+            ui.page==i?UiButtonVariant::Cool:UiButtonVariant::Quiet,
+            {},{},theme,14);
 
-    Panel({52, 181, 519, 276});
-    Panel({590, 181, 329, 276});
+    Panel({52,181,536,302});
+    Panel({595,181,341,342});
     if (ui.page == 0 || ui.page == 1) {
         for (int row = 0; row < RowCount(ui.page); ++row) {
             Label(font, RowName(ui.page, row), 70.0f,
@@ -305,16 +315,17 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
         Button(font, SkinProfileActionRect(4), "UNDO");
         PreviewPath(font, skin);
     }
-    Label(font, "SKIN NAME", 616, 111, 12, kMuted);
-    DrawInput(font, NameField(), skin.name, ui.editingName,
-              ui.editingName && ui.nameSelectAll);
-    Label(font, ui.dirty ? "UNSAVED CHANGES" : "ACTIVE PROFILE",
-          630, 171, 12, ui.dirty ? kGold : kMuted);
-    const char* actions[] = {"LOAD", "SAVE", "SAVE AS", "RESET"};
-    for (int i = 0; i < 4; ++i)
-        Button(font, SkinActionButton(i), actions[i]);
-    Label(font, core::utf8::Truncate(ui.notice, 112), 53, 515, 13,
-          ui.noticeError ? Color{245, 150, 150, 255} : kGold);
+    if (ui.dirty)
+        Label(font,"UNSAVED",849,114,10,theme.rose);
+    const char* actions[]={"LOAD","SAVE","SAVE AS","RESET"};
+    for(int i=0;i<4;++i)
+        Button(font,SkinActionButton(i),actions[i]);
+    const bool showNotice=ui.noticeError ||
+        (ui.notice!="COLOR WHEEL + HEX; SKINS IN PERSONAL PROFILES FOLDER" &&
+         !ui.notice.empty());
+    if (showNotice)
+        Label(font,core::utf8::Truncate(ui.notice,78),53,513,12,
+              ui.noticeError?Color{246,154,180,255}:theme.softBlue);
     if (!ui.pendingDeleteProfile.empty()) {
         DrawRectangle(0, 0, 960, 540, Color{12, 14, 22, 202});
         Panel({171, 188, 618, 183});

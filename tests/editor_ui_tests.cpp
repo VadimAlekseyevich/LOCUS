@@ -563,8 +563,8 @@ int main() {
     ui.rangeFirst=ui.rangeLast=-1;
     EditorControls pasteKeys;
     pasteKeys.pasteRange=true;
-    const auto pasted=ApplyEditorControls(chart,ui,pasteKeys);
-    ok &= Check(pasted.changedChart&&ui.HasRange()&&
+    const auto pastedHotkey=ApplyEditorControls(chart,ui,pasteKeys);
+    ok &= Check(pastedHotkey.changedChart&&ui.HasRange()&&
                 ui.rangeFirst==20&&ui.rangeLast==22&&
                 chart.Data().route.turns.back().beat==22,
                 "Ctrl+V selects newly pasted notes and gaps");

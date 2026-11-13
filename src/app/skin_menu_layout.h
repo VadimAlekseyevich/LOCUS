@@ -16,7 +16,7 @@ inline Rectangle ColorRow(int row) {
     // Ten colours must fit above the skin action row at y=473.
     return {70.0f, 194.0f + row * 25.0f, 205.0f, 24.0f};
 }
-inline Rectangle NameField() { return {615.0f, 128.0f, 302.0f, 36.0f}; }
+inline Rectangle NameField() { return {710, 76, 220, 37}; }
 constexpr float RowPitch(int page) noexcept {
     return page == 0 ? 31.0f : 36.0f;
 }

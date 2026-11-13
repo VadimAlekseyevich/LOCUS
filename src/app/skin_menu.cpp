@@ -85,11 +85,13 @@ void DeleteLastCodepoint(std::string& text) {
 
 } // namespace
 
+Rectangle SkinBackButton() { return {52, 74, 100, 39}; }
 Rectangle SkinTabButton(int index) {
-    return {52.0f + index * 131.0f, 134.0f, 123.0f, 34.0f};
+    return {52.0f + index * 221.0f, 128.0f, 214.0f, 40.0f};
 }
 Rectangle SkinActionButton(int index) {
-    return {52.0f + index * 135.0f, 473.0f, 125.0f, 34.0f};
+    return {604.0f + (index % 2) * 166.0f,
+            443.0f + (index / 2) * 40.0f, 157.0f, 36.0f};
 }
 Rectangle SkinNumberInputRect(int page, int row) {
     return page == 2 ? Rectangle{814.0f, 248.0f + row * 42.0f, 91.0f, 30.0f}

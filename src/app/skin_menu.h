@@ -54,6 +54,7 @@ bool FinishSkinTextInput(Skin& skin, SkinUi& ui, bool apply);
 // Called every frame, even when no new click arrives.
 void UpdateSkinSliderDrag(Vector2 mouse, bool leftHeld, Skin& skin, SkinUi& ui);
 
+Rectangle SkinBackButton();
 Rectangle SkinTabButton(int index);
 Rectangle SkinActionButton(int index);
 Rectangle SkinNumberInputRect(int page, int row);

@@ -383,7 +383,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             break;
         }
     } else if (state.screen == Screen::Skin) {
-        if (hit(locus::app::MenuBackButton())) input.backPressed = true;
+        if (hit(locus::app::SkinBackButton())) input.backPressed = true;
         else events.skinCommand = locus::app::SkinMenuClick(mouse, draftSkin, skinUi);
     } else if (state.screen == Screen::Settings) {
         if (hit(locus::app::MenuBackButton())) {

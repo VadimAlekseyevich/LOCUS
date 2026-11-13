@@ -145,6 +145,9 @@ constexpr Rectangle kStartHeadingValue{854, 367, 37, 35};
 constexpr Rectangle kStartHeadingNext{896, 367, 34, 35};
 constexpr Rectangle kAudioMetaPanel{52, 178, 302, 292};
 constexpr Rectangle kAudioTempoPanel{367, 178, 566, 292};
+// Retired standalone fields are not interactive; old enum cases are inert.
+constexpr Rectangle kBpm{-1, -1, 0, 0};
+constexpr Rectangle kOffset{-1, -1, 0, 0};
 constexpr Rectangle kTitle{66, 219, 270, 39};
 constexpr Rectangle kAudioPreviewMs{66, 306, 270, 39};
 constexpr Rectangle TempoOffsetCell(int row) noexcept {

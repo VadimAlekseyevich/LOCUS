@@ -61,11 +61,11 @@ bool CheckPresentationLayout() {
             return false;
     }
     const auto back = locus::app::detail::kEditorBack;
-    const auto tab = locus::app::detail::kTabField;
+    const auto tab = locus::app::detail::kTabSet;
     const auto exit = locus::app::HomeMenuButton(4);
-    // Dedicated Back and Exit actions must stay visible and not overlap
-    // the editor FIELD tab or the Home SETTINGS button.
-    if (back.x < tab.x + tab.width ||
+    // Back belongs to the left of three editor tabs. Both remain visible.
+    if (back.x + back.width > tab.x ||
+        back.x < 0 ||
         back.x + back.width > kWindowWidth ||
         back.y + back.height > kWindowHeight ||
         exit.y < locus::app::HomeMenuButton(3).y +
