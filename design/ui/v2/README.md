@@ -9,6 +9,10 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
 - The menu theme and reusable button classes use the violet/sky palette. Settings now presents **Display / Audio**, with volume/offset under Audio and no Hit Flash setting.
 - Song Set backgrounds already fill the window and are now less heavily darkened on the selector.
 - Native completed-attempt **persistence, replay opening and Results history** are *not implemented yet*. The native Results area is intentionally empty until genuine records exist.
+- Song Set title, artist, **set-wide mapper and tags** now have native persistent
+  storage, indexed values, a validated atomic edit API and editor SET view data.
+  Difficulty/chart JSON deliberately has **no tags**. The SET text inputs still
+  need to be wired into the native UI in the next stage.
 - ROUTE/SET/AUDIO/Skins native layouts have not yet been migrated to the reviewed HTML layout. Gameplay and timing remain untouched.
 
 ## Design direction — Nightbloom
@@ -37,6 +41,18 @@ Home: four prominent actions and Exit, with the approved \`locus.\` wordmark.
 Editor: SET / ROUTE / AUDIO. The zoomable **note ruler stays above** the workspace. The bottom full-song timeline holds miniature Play/Restart controls on the left and playback-speed dropdown and copyable timestamp on the right. ROUTE has icon tools on the left of the expanded preview, a 3×3 direction pad, start heading, editor speed/path length and equal-sized compare panes. SET edits Song title, Artist, Mapper and Tags. AUDIO edits chart title/preview timing and the shared tempo map.
 
 Settings: Display and Audio, with key bindings alongside. Skin: PATH / PLAYER / COLORS / MY SKINS and a dynamic preview. Results: a contextual record for one chart, accessible from that chart's history or the simulated completion flow.
+
+## Data and behavior before the remaining native UI port
+
+Already implemented in C++: managed Song Set metadata, shared audio/background
+images, song-wide tempo map and preview position, chart title, difficulty
+calculation, UTF-8 text, editor transformations, skin settings and the menu
+theme. The Song Set's mapper and tags are now persisted and searchable.
+
+Not implemented yet: native completion-history storage and opening previous
+Results/replays; those records in the HTML prototype are sample data. The
+remaining editor/skin layouts and their input bindings are visual work, not
+new chart formats. Tags are **never per difficulty**.
 
 ## Limitations and scope
 

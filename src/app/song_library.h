@@ -32,7 +32,9 @@ struct LibrarySong {
     std::string title; // Original filename, without version metadata.
     std::vector<LibraryChart> charts; // Different authored difficulties.
     std::string id;             // Stable identity from Song Set metadata.
-    std::string artist;         // Optional display metadata.
+    std::string artist;         // Song Set artist.
+    std::string mapper;         // Song Set-wide mapper.
+    std::vector<std::string> tags; // Shared by all difficulties.
     std::filesystem::path folder; // Parent of all managed chart files.
     bool managed = false;       // True after a valid current Song Set manifest is indexed.
     int previewStartMs = 0; // Song Set menu preview, independent of BPM/offset.
@@ -93,6 +95,11 @@ public:
     bool TrashSongSet(const std::filesystem::path& folder,
                       std::string& error);
     bool RestoreLastDeleted(std::string& error);
+    // Atomically update the whole Song Set's display fields, not charts.
+    bool SetSongMetadata(int songIndex, const std::string& title,
+                         const std::string& artist, const std::string& mapper,
+                         const std::vector<std::string>& tags,
+                         std::string& error);
     bool SetPreviewStartMs(int songIndex, int timeMs, std::string& error);
     // Validates all difficulties before publishing Song Set timing.
     bool SetSongTiming(int songIndex, double bpm, int offsetMs,

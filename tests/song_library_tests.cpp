@@ -133,17 +133,57 @@ int main() {
     SongSetManifest unicodeMetadata = metadata;
     unicodeMetadata.title = u8"Песня — Ночной город";
     unicodeMetadata.artist = u8"Исполнитель Ёж";
+    unicodeMetadata.mapper = u8"Маппер Ёж";
+    unicodeMetadata.tags = {u8"электроника", u8"ночь"};
     const fs::path unicodeManifest = folder / "unicode-set.json";
     SongSetManifest unicodeLoaded;
     ok &= Check(WriteNewSongSetManifest(unicodeManifest, unicodeMetadata, error) &&
                 LoadSongSetManifest(unicodeManifest, unicodeLoaded, error) &&
                 unicodeLoaded.title == unicodeMetadata.title &&
-                unicodeLoaded.artist == unicodeMetadata.artist,
-                "Song Set title and artist round-trip UTF-8 without corruption");
+                unicodeLoaded.artist == unicodeMetadata.artist &&
+                unicodeLoaded.mapper == unicodeMetadata.mapper &&
+                unicodeLoaded.tags == unicodeMetadata.tags,
+                "Song Set metadata including pack-wide tags round-trips UTF-8");
     fs::remove(unicodeManifest, ec);
     // Menu listening start is SONG SET metadata, not a difficulty's
     // BPM/offset or note timestamps. It persists and survives ZIP export.
     const auto originalChartBytes = Read(easyInstalled);
+    const auto originalHardBytes = Read(hardInstalled);
+    const std::vector<std::string> packTags{u8"electronic", u8"ночь", "rhythm"};
+    ok &= Check(library.SetSongMetadata(
+                    0, u8"Песня — Ночной город", u8"Исполнитель Ёж",
+                    u8"Маппер Ёж", packTags, error) &&
+                library.Songs()[0].title == u8"Песня — Ночной город" &&
+                library.Songs()[0].artist == u8"Исполнитель Ёж" &&
+                library.Songs()[0].mapper == u8"Маппер Ёж" &&
+                library.Songs()[0].tags == packTags &&
+                LoadSongSetManifest(easyInstalled.parent_path() /
+                                    "set.locus.json", metadata, error) &&
+                metadata.tags == packTags &&
+                metadata.mapper == u8"Маппер Ёж" &&
+                Read(easyInstalled) == originalChartBytes &&
+                Read(hardInstalled) == originalHardBytes &&
+                library.ChartCount() == 2,
+                "metadata edits apply to entire pack without changing charts");
+    ok &= Check(!library.SetSongMetadata(
+                    0, "Bad", "", "Mapper", {"dance", "DANCE"}, error) &&
+                !library.SetSongMetadata(
+                    0, "Bad", "", "Mapper", {""}, error) &&
+                library.Songs()[0].tags == packTags &&
+                Read(easyInstalled) == originalChartBytes,
+                "invalid tags rejected before any in-memory or disk mutation");
+    SongSetManifest badTagManifest = metadata;
+    badTagManifest.tags = {"dance", "DANCE"};
+    const fs::path badTagFile = folder / "bad-pack-tags.json";
+    ok &= Check(!WriteNewSongSetManifest(badTagFile, badTagManifest, error) &&
+                !fs::exists(badTagFile),
+                "invalid duplicate pack tags cannot be serialized");
+    ok &= Check(!locus::app::ValidSongSetTags(
+                    {"rhythm,broken"}) &&
+                !locus::app::ValidSongSetTags(
+                    std::vector<std::string>(17, "x")) &&
+                locus::app::ValidSongSetTags(packTags),
+                "pack tag validation enforces flat array, count and encoding");
     ok &= Check(metadata.previewStartMs == 0 &&
                 library.Songs()[0].previewStartMs == 0,
                 "new Song Sets default preview start to time zero");
@@ -181,7 +221,10 @@ int main() {
     ok &= Check(reopened.Refresh(note) &&
                 reopened.Songs()[0].bpm == 150.0 &&
                 reopened.Songs()[0].offsetMs == 175 &&
-                reopened.Songs()[0].previewStartMs == 12500,
+                reopened.Songs()[0].previewStartMs == 12500 &&
+                reopened.Songs()[0].title == u8"Песня — Ночной город" &&
+                reopened.Songs()[0].mapper == u8"Маппер Ёж" &&
+                reopened.Songs()[0].tags == packTags,
                 "preview position survives app restart / library rescan");
     ok &= Check(!library.SetPreviewStartMs(0, -100, error) &&
                 library.Songs()[0].previewStartMs == 12500 &&
@@ -314,6 +357,8 @@ int main() {
                 fs::exists(importedFolder / "set.locus.json") &&
                 copiedLibrary.Songs()[0].previewStartMs == 12500 &&
                 copiedLibrary.Songs()[0].tempoMap == multiTempo &&
+                copiedLibrary.Songs()[0].mapper == u8"Маппер Ёж" &&
+                copiedLibrary.Songs()[0].tags == packTags &&
                 fs::exists(copiedLibrary.Songs()[0].backgroundImage) &&
                 Read(copiedLibrary.Songs()[0].backgroundImage) == Read(sourceCover) &&
                 Read(importedFolder / "song.wav") == firstBytes,

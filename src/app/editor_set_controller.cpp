@@ -64,6 +64,8 @@ EditorSetView EditorSetController::View() const {
     view.managed = true;
     view.title = set->title;
     view.artist = set->artist;
+    view.mapper = set->mapper;
+    view.tags = set->tags;
     view.audioName = set->audioFile.filename().u8string();
     view.id = set->id;
     view.newDifficultyDraft = ctx_.chartPath.empty();

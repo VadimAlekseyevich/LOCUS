@@ -1,7 +1,9 @@
 # LOCUS — Song Sets and data recovery
 
-Song Set `title` and `artist`, difficulty titles, source audio filenames and
-skin-profile names use **UTF-8**. Windows filesystem paths use Unicode APIs;
+Song Set `title`, `artist`, `mapper` and `tags[]`, difficulty titles,
+source audio filenames and skin-profile names use **UTF-8**. Tags and mapper
+belong to the **whole Song Set**; individual difficulty JSON files do not
+contain them. Windows filesystem paths use Unicode APIs;
 authored-name limits are in Unicode characters rather than arbitrary bytes.
 
 ## New installed layout
@@ -15,7 +17,7 @@ also store one optional **shared background image** (PNG/JPEG).
       Songs/
         song-<technical-id>/
           .locus-lock                   OS writer-lock placeholder
-          set.locus.json                setId/title/artist/audioFile/tempoMap/previewStartMs/backgroundFile
+          set.locus.json                setId/title/artist/mapper/tags/audioFile/tempoMap/previewStartMs/backgroundFile
           song.mp3                      SHARED, never silently replaced
           background-<id>.png           optional, shared by all difficulties
           Easy.locus.json               difficulty name/turns/absolute note timestamps
@@ -26,6 +28,15 @@ also store one optional **shared background image** (PNG/JPEG).
         item-<timestamp>-.../
           origin.json                   original relative path
           payload                       deleted chart or whole Song Set
+
+The Song Set manifest stores optional `mapper` (UTF-8, up to 100 characters)
+and a single `tags` array (up to 16 nonempty unique tags, maximum 32 UTF-8
+characters each; commas separate tags only in the editor). New manifest writes
+include both fields; existing manifest v2 files without them load as empty
+metadata. Library indexing, portable `.locuspack` export/import and direct
+Song Set metadata updates preserve these fields without rewriting difficulty
+files or recalculating chart ratings. A title edit changes the display title,
+not the stable Song Set ID or chart filenames.
 
 Each managed Song Set owns **one shared ordered tempo map**, saved in manifest
 version 2. EDIT → AUDIO has a BPM/OFFSET (MS) table; each row changes tempo at

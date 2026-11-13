@@ -152,11 +152,11 @@ bool SongLibrary::Refresh(std::string& message) {
         if (found == byAudio.end()) {
             index = next.size();
             byAudio.emplace(logicalAudio, index);
-            const std::string title = metadata.artist.empty() ? metadata.title
-                : metadata.artist + " - " + metadata.title;
-            next.push_back({audioFile, title, {}});
+            next.push_back({audioFile, metadata.title, {}});
             next.back().id = metadata.id;
             next.back().artist = metadata.artist;
+            next.back().mapper = metadata.mapper;
+            next.back().tags = metadata.tags;
             next.back().folder = path.parent_path();
             next.back().managed = true;
             next.back().previewStartMs = metadata.previewStartMs;

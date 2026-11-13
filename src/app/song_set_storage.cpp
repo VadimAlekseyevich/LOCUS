@@ -14,6 +14,7 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <set>
 #include <string>
 #include <vector>
 #include <system_error>
@@ -80,6 +81,26 @@ bool PublishNewFile(const fs::path& staged, const fs::path& dest,
 
 } // namespace
 
+bool ValidSongSetMapper(const std::string& mapper) noexcept {
+    return mapper.empty() || core::utf8::ValidName(mapper, 100, 512);
+}
+
+bool ValidSongSetTags(const std::vector<std::string>& tags) {
+    if (tags.size() > 16) return false;
+    std::set<std::string> unique;
+    for (const auto& tag : tags) {
+        if (!core::utf8::ValidName(tag, 32, 128) ||
+            tag.find(',') != std::string::npos) return false;
+        // Preserve UTF-8 tags as authored. Ignore ASCII case for duplicates.
+        std::string key = tag;
+        for (char& c : key) {
+            if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+        }
+        if (!unique.insert(std::move(key)).second) return false;
+    }
+    return true;
+}
+
 FolderWriteLock::~FolderWriteLock() {
 #ifdef _WIN32
     if (handle_) CloseHandle(static_cast<HANDLE>(handle_));
@@ -138,6 +159,34 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
          !core::utf8::ValidName(loaded.artist, 256, 1024)) ||
         !SafeAudioFilename(loaded.audioFile)) {
         error = "Song Set metadata has missing or invalid fields.";
+        return false;
+    }
+    if (data.contains("mapper")) {
+        if (!data["mapper"].is_string()) {
+            error = "Song Set mapper must be a string.";
+            return false;
+        }
+        loaded.mapper = data["mapper"].get<std::string>();
+    }
+    if (data.contains("tags")) {
+        if (!data["tags"].is_array()) {
+            error = "Song Set tags must be an array.";
+            return false;
+        }
+        if (data["tags"].size() > 16) {
+            error = "Song Set tags exceed the supported limit.";
+            return false;
+        }
+        for (const auto& tag : data["tags"]) {
+            if (!tag.is_string()) {
+                error = "Song Set tags must contain only strings.";
+                return false;
+            }
+            loaded.tags.push_back(tag.get<std::string>());
+        }
+    }
+    if (!ValidSongSetMapper(loaded.mapper) || !ValidSongSetTags(loaded.tags)) {
+        error = "Song Set mapper or tags are invalid.";
         return false;
     }
     if (!data.contains("previewStartMs") ||
@@ -216,6 +265,8 @@ bool WriteNewSongSetManifest(const fs::path& path,
         !core::utf8::ValidName(manifest.title, 256, 1024) ||
         (!manifest.artist.empty() &&
          !core::utf8::ValidName(manifest.artist, 256, 1024)) ||
+        !ValidSongSetMapper(manifest.mapper) ||
+        !ValidSongSetTags(manifest.tags) ||
         (!SafeAudioFilename(manifest.audioFile) ||
          manifest.previewStartMs < 0 ||
          manifest.previewStartMs > kMaxSongPreviewStartMs ||
@@ -246,7 +297,8 @@ bool WriteNewSongSetManifest(const fs::path& path,
     const fs::path stage = path.wstring() + UniqueSuffix();
     nlohmann::json data = {
         {"formatVersion", 2}, {"setId", manifest.id}, {"title", manifest.title},
-        {"artist", manifest.artist}, {"audioFile", manifest.audioFile},
+        {"artist", manifest.artist}, {"mapper", manifest.mapper},
+        {"tags", manifest.tags}, {"audioFile", manifest.audioFile},
         {"previewStartMs", manifest.previewStartMs},
         {"backgroundFile", manifest.backgroundFile}
     };
@@ -283,6 +335,8 @@ bool ReplaceSongSetManifest(const fs::path& path,
         !core::utf8::ValidName(manifest.title, 256, 1024) ||
         (!manifest.artist.empty() &&
          !core::utf8::ValidName(manifest.artist, 256, 1024)) ||
+        !ValidSongSetMapper(manifest.mapper) ||
+        !ValidSongSetTags(manifest.tags) ||
         !SafeAudioFilename(manifest.audioFile) ||
         manifest.previewStartMs < 0 ||
         manifest.previewStartMs > kMaxSongPreviewStartMs ||
@@ -312,6 +366,7 @@ bool ReplaceSongSetManifest(const fs::path& path,
     nlohmann::json data = {
         {"formatVersion", 2}, {"setId", manifest.id},
         {"title", manifest.title}, {"artist", manifest.artist},
+        {"mapper", manifest.mapper}, {"tags", manifest.tags},
         {"audioFile", manifest.audioFile},
         {"previewStartMs", manifest.previewStartMs},
         {"backgroundFile", manifest.backgroundFile}

@@ -113,8 +113,11 @@ bool SongMatches(const SongLibrary& library, int index,
     if (index == 0)
         return SearchMatches("BUILT-IN DEMO ORIGINAL", query);
     const auto& song = library.Songs()[static_cast<std::size_t>(index - 1)];
-    if (SearchMatches(song.title, query) || SearchMatches(song.artist, query))
-        return true;
+    if (SearchMatches(song.title, query) ||
+        SearchMatches(song.artist, query) ||
+        SearchMatches(song.mapper, query)) return true;
+    for (const auto& tag : song.tags)
+        if (SearchMatches(tag, query)) return true;
     for (const auto& chart : song.charts)
         if (SearchMatches(chart.data.title, query)) return true;
     return false;
@@ -135,7 +138,13 @@ std::vector<LibraryTreeEntry> LibraryTreeRows(const SongLibrary& songs,
                     static_cast<std::size_t>(song - 1)].charts.size());
             const bool showAll = ui.search.empty() || song == 0 ||
                 SearchMatches(songs.Songs()[static_cast<std::size_t>(song - 1)].title, ui.search) ||
-                SearchMatches(songs.Songs()[static_cast<std::size_t>(song - 1)].artist, ui.search);
+                SearchMatches(songs.Songs()[static_cast<std::size_t>(song - 1)].artist, ui.search) ||
+                SearchMatches(songs.Songs()[static_cast<std::size_t>(song - 1)].mapper, ui.search) ||
+                std::any_of(songs.Songs()[static_cast<std::size_t>(song - 1)].tags.begin(),
+                            songs.Songs()[static_cast<std::size_t>(song - 1)].tags.end(),
+                            [&](const std::string& tag) {
+                                return SearchMatches(tag, ui.search);
+                            });
             for (int chart = 0; chart < difficulties; ++chart) {
                 if (showAll || SearchMatches(
                     songs.Songs()[static_cast<std::size_t>(song - 1)]

@@ -3,6 +3,7 @@
 #include "app/song_set_storage.h"
 #include "app/chart_file_fingerprint.h"
 #include "app/song_timing.h"
+#include "core/utf8.h"
 #include "app/image_asset_file.h"
 #include <algorithm>
 #include <chrono>
@@ -120,6 +121,57 @@ bool SongLibrary::SetSongTempoMap(
             song.charts[i].data.route, song.charts[i].data.offsetSeconds);
     }
     SortChartDifficulties(song.charts);
+    error.clear();
+    return true;
+}
+
+bool SongLibrary::SetSongMetadata(
+    int songIndex, const std::string& title, const std::string& artist,
+    const std::string& mapper, const std::vector<std::string>& tags,
+    std::string& error) {
+    if (songIndex < 0 || songIndex >= static_cast<int>(songs_.size()) ||
+        !songs_[static_cast<std::size_t>(songIndex)].managed) {
+        error = "Select a managed Song Set before editing metadata.";
+        return false;
+    }
+    if (!core::utf8::ValidName(title, 256, 1024) ||
+        (!artist.empty() && !core::utf8::ValidName(artist, 256, 1024)) ||
+        !ValidSongSetMapper(mapper) || !ValidSongSetTags(tags)) {
+        error = "Invalid Song Set title, artist, mapper or tags.";
+        return false;
+    }
+    auto& song = songs_[static_cast<std::size_t>(songIndex)];
+    if (song.title == title && song.artist == artist &&
+        song.mapper == mapper && song.tags == tags) {
+        error.clear();
+        return true;
+    }
+    FolderWriteLock lock;
+    if (!lock.Acquire(song.folder, error)) return false;
+    SongSetManifest manifest;
+    const fs::path path = song.folder / L"set.locus.json";
+    if (!LoadSongSetManifest(path, manifest, error)) return false;
+    const std::string background = song.backgroundImage.empty()
+        ? std::string() : song.backgroundImage.filename().u8string();
+    // Reject stale metadata; never overwrite concurrent timing/art edits.
+    if (manifest.id != song.id || manifest.title != song.title ||
+        manifest.artist != song.artist || manifest.mapper != song.mapper ||
+        manifest.tags != song.tags || manifest.previewStartMs != song.previewStartMs ||
+        manifest.tempoMap != song.tempoMap ||
+        manifest.backgroundFile != background ||
+        manifest.audioFile != song.audioFile.filename().u8string()) {
+        error = "Song Set changed on disk; refresh the library.";
+        return false;
+    }
+    manifest.title = title;
+    manifest.artist = artist;
+    manifest.mapper = mapper;
+    manifest.tags = tags;
+    if (!ReplaceSongSetManifest(path, manifest, error)) return false;
+    song.title = title;
+    song.artist = artist;
+    song.mapper = mapper;
+    song.tags = tags;
     error.clear();
     return true;
 }

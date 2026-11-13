@@ -65,7 +65,8 @@ struct EditorSetView {
     double bpm = 120.0;
     int offsetMs = 0;
     std::vector<core::TempoMarker> tempoMap; // Shared by all difficulties.
-    std::string title, artist, audioName, id;
+    std::string title, artist, mapper, audioName, id;
+    std::vector<std::string> tags; // Set-wide metadata.
     std::vector<std::string> difficulties;
     std::vector<EditorComparisonOption> comparisonOptions;
     int current = -1, selected = -1, firstVisible = 0;
