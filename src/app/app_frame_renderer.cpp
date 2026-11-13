@@ -256,11 +256,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         DrawRectangleGradientEx({0, 0, w, h},
             {36, 33, 60, 255}, {28, 33, 53, 255},
             {25, 34, 52, 255}, {27, 31, 49, 255});
-        DrawCircleGradient(static_cast<int>(w * 0.45f),
-            static_cast<int>(h * 0.28f), h * 0.58f,
+        DrawCircleGradient({w * 0.45f, h * 0.28f}, h * 0.58f,
             {120, 101, 203, 32}, {120, 101, 203, 0});
-        DrawCircleGradient(static_cast<int>(w * 0.82f),
-            static_cast<int>(h * 0.87f), h * 0.55f,
+        DrawCircleGradient({w * 0.82f, h * 0.87f}, h * 0.55f,
             {116, 187, 218, 20}, {116, 187, 218, 0});
         // Actual Song Set art takes precedence. The illustrative route
         // belongs only to the artwork-free library selector.

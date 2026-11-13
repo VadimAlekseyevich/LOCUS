@@ -234,7 +234,7 @@ bool NativeMenuUi::ShowingPlay() const noexcept {
 
 Rectangle NativeMenuUi::HomeWordmarkBounds() const noexcept {
     if (!ShowingHome() || !homeDocument_) return {};
-    if (const auto* element = homeDocument_->GetElementById("home-wordmark"))
+    if (auto* element = homeDocument_->GetElementById("home-wordmark"))
         return {element->GetAbsoluteLeft(), element->GetAbsoluteTop(),
                 static_cast<float>(element->GetOffsetWidth()),
                 static_cast<float>(element->GetOffsetHeight())};
