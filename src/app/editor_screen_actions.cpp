@@ -61,6 +61,14 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
             }
         }
     }
+    // Footer controls and the expanded playback-rate popup own their click.
+    // Its options overlap AUDIO's tempo cells, but must never edit BPM.
+    const bool footerClick = input.editor.mouseClick &&
+        (context_.ui.rateDropdownOpen ||
+         detail::Hit(detail::kEditorRateDropdown,input.editor.mouse) ||
+         detail::Hit(detail::kEditorPreviewPlay,input.editor.mouse) ||
+         detail::Hit(detail::kEditorPreviewRestart,input.editor.mouse) ||
+         detail::Hit(detail::kRouteTimeValue,input.editor.mouse));
     const auto beforeTempo = context_.session.TempoMap();
     const EditorUiAction uiAction = context_.session.ApplyControls(
         input.editor, now);
@@ -75,9 +83,10 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
         context_.sets.SyncSongTiming(uiAction.historyOperation);
     // ROUTE owns comparison selection; SET owns library tools; AUDIO has
     // the editable Song Set preview start. Selection never edits chart data.
-    if (context_.ui.tab == EditorTab::Route ||
-        context_.ui.tab == EditorTab::Set ||
-        context_.ui.tab == EditorTab::Audio) {
+    if (!footerClick &&
+        (context_.ui.tab == EditorTab::Route ||
+         context_.ui.tab == EditorTab::Set ||
+         context_.ui.tab == EditorTab::Audio)) {
         const auto beforeTempo = context_.session.TempoMap();
         context_.sets.HandleControls(input.editor);
         if (context_.session.TempoMap() != beforeTempo)

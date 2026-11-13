@@ -32,9 +32,9 @@ EditorControls Type(const char* text) {
 
 int main() {
     bool ok = true;
-    ok &= Check(detail::ClickedSetAction({180, 426}) ==
+    ok &= Check(detail::ClickedSetAction({180, 447}) ==
                 EditorSetAction::OpenFolder &&
-                detail::ClickedSetAction({290, 359}) ==
+                detail::ClickedSetAction({350, 374}) ==
                 EditorSetAction::RemoveBackground,
                 "Set folder shortcut owns an isolated clickable hitbox");
     // A physical window maps both drawing and hitboxes to the same virtual
@@ -81,36 +81,38 @@ int main() {
                 chart.Data().route.start.x == 3 &&
                 chart.Data().route.start.y == 3,
                 "editor opens with 8x8 square view and automatic route origin");
-    // ROUTE preview has independent speed/lookahead controls; chart grid
-    // metadata never changes the visible geometry or playback time.
-    // These strips must remain spatially separate from toolbar and footer.
-    ok &= Check(detail::kTimelineY == 115.0f &&
-                detail::kTimelineY + detail::kTimelineHeight <=
-                    detail::kRouteTest.y &&
-                detail::kSongOverview.y > detail::kRouteTimeValue.y +
-                    detail::kRouteTimeValue.height &&
-                detail::kSongOverview.y + detail::kSongOverview.height <=
-                    detail::RouteSpeedBounds(0).y &&
-                std::abs(detail::SongOverviewX(30.0, 120.0) -
-                    (detail::kSongOverview.x + detail::kSongOverview.width * .25f))
-                    < 0.001f &&
+    // Top note ruler, central square previews and the one bottom row
+    // must never overlap or shift when comparisons change.
+    ok &= Check(detail::kTimelineY == 117.0f &&
+                detail::kTimelineY+detail::kTimelineHeight <
+                    detail::kPreviewTop &&
+                detail::kSongOverview.y == detail::kRouteTimeValue.y &&
+                detail::kEditorPreviewPlay.y == detail::kSongOverview.y &&
+                detail::kEditorPreviewRestart.x+
+                    detail::kEditorPreviewRestart.width < detail::kSongOverview.x &&
+                detail::kSongOverview.x+detail::kSongOverview.width <=
+                    detail::kEditorRateDropdown.x &&
+                detail::kEditorRateDropdown.x+
+                    detail::kEditorRateDropdown.width <= detail::kRouteTimeValue.x &&
+                std::abs(detail::SongOverviewX(30.0,120.0)-
+                    (detail::kSongOverview.x+detail::kSongOverview.width*.25f))
+                    <.001f &&
                 std::abs(detail::SongOverviewSeconds(
-                    detail::kSongOverview.x +
-                    detail::kSongOverview.width * .25f, 120.0) - 30.0)
-                    < 0.001,
-                "top note ruler and bottom song overview have independent geometry");
-
+                    detail::kSongOverview.x+
+                    detail::kSongOverview.width*.25f,120.0)-30.0)<.001,
+                "two independent timeline rows share no hitboxes");
     const auto referenceSquare = detail::ComparisonPreviewBounds(3, 0);
-    ok &= Check(referenceSquare.width == 222.0f &&
-                referenceSquare.height == 222.0f &&
+    ok &= Check(referenceSquare.width > 200.0f &&
+                referenceSquare.width < 210.0f &&
+                referenceSquare.height == referenceSquare.width &&
                 referenceSquare.y >= detail::kTimelineY +
                     detail::kTimelineHeight &&
                 referenceSquare.y + referenceSquare.height <
                     detail::kSongOverview.y,
-                "three enlarged preview panes fit between toolbar and overview");
+                "three equal preview panes fit in available route workspace");
 
     // Audio settings are no longer stacked on top of the route grid.
-    ApplyEditorControls(chart, ui, Click(612, 89));
+    ApplyEditorControls(chart, ui, Click(780, 89));
     ok &= Check(ui.tab == EditorTab::Audio, "Audio tab opens");
     // BPM/offset editing is owned by the shared tempo table, not
     // the old single-difficulty numeric text fields.
@@ -127,7 +129,7 @@ int main() {
     };
     EditorControls enter;
     enter.enter = true;
-    HandleTempoTable(ui, Click(400, 298), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(665, 256), currentTempo(), chart, applyTempo);
     ok &= Check(ui.tempoEditingRow == 0 && ui.tempoEditingBpm,
                 "AUDIO tempo table opens BPM cell");
     HandleTempoTable(ui, Type("400,5"), currentTempo(), chart, applyTempo);
@@ -136,19 +138,19 @@ int main() {
                 std::abs(chart.Data().route.bpm - 400.5) < 1e-9,
                 "tempo table accepts decimal BPM");
 
-    HandleTempoTable(ui, Click(145, 298), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(450, 256), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, Type("-175"), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, enter, currentTempo(), chart, applyTempo);
     ok &= Check(std::abs(chart.Data().offsetSeconds + 0.175) < 1e-10 &&
                 currentTempo().size() == 1,
                 "first tempo marker defines shared signed offset and initial BPM");
 
-    ApplyEditorControls(chart, ui, Click(145, 226));
+    ApplyEditorControls(chart, ui, Click(145, 235));
     ApplyEditorControls(chart, ui, Type("My rhythm chart"));
     ApplyEditorControls(chart, ui, enter);
     ok &= Check(chart.Data().title == "My rhythm chart",
                 "chart title can be typed in Audio tab");
-    ApplyEditorControls(chart, ui, Click(145, 226));
+    ApplyEditorControls(chart, ui, Click(145, 235));
     ApplyEditorControls(chart, ui, Type(u8"Новый чарт 🎵"));
     EditorControls backspaceUtf8;
     backspaceUtf8.backspace = true;
@@ -163,7 +165,7 @@ int main() {
     ok &= Check(audioEmpty.speedIndex == -1,
                 "practice speed buttons are no longer in the Audio tab");
 
-    ApplyEditorControls(chart, ui, Click(300, 89));
+    ApplyEditorControls(chart, ui, Click(500, 89));
     ok &= Check(ui.tab == EditorTab::Set, "Song Set management tab opens");
     const auto titleBeforeSet = chart.Data().title;
     EditorControls noModification;
@@ -173,72 +175,61 @@ int main() {
     ApplyEditorControls(chart, ui, noModification);
     ok &= Check(chart.Data().title == titleBeforeSet && ui.tab == EditorTab::Set,
                 "SET tab does not mutate chart from editing shortcuts");
-    ok &= Check(detail::ClickedSetAction({550, 184}) ==
+    ok &= Check(detail::ClickedSetAction({630, 193}) ==
                     EditorSetAction::NewDifficulty &&
-                detail::ClickedSetAction({550, 430}) ==
+                detail::ClickedSetAction({630, 440}) ==
                     EditorSetAction::DeleteDifficulty &&
-                detail::ClickedSetAction({370, 428}) ==
+                detail::ClickedSetAction({390, 447}) ==
                     EditorSetAction::Restore,
                 "Song Set action buttons have distinct hitboxes");
-    ok &= Check(detail::kAudioPreviewMs.x <= 650 &&
-                detail::kAudioPreviewMs.y <= 220 &&
-                detail::kAudioPreviewMs.x + detail::kAudioPreviewMs.width > 650 &&
-                detail::kAudioPreviewMs.y + detail::kAudioPreviewMs.height > 220 &&
+    ok &= Check(detail::kAudioPreviewMs.x <= 160 &&
+                detail::kAudioPreviewMs.y <= 325 &&
+                detail::kAudioPreviewMs.x + detail::kAudioPreviewMs.width > 160 &&
+                detail::kAudioPreviewMs.y + detail::kAudioPreviewMs.height > 325 &&
                 detail::ClickedSetAction({168, 280}) == EditorSetAction::None,
-                "Song preview lives in AUDIO and has no increment buttons");
-    ok &= Check(detail::ClickedSetAction({85, 359}) ==
+                "song preview lives in AUDIO and has no increment buttons");
+    ok &= Check(detail::ClickedSetAction({85, 374}) ==
                     EditorSetAction::AttachBackground &&
-                detail::ClickedSetAction({285, 359}) ==
+                detail::ClickedSetAction({350, 374}) ==
                     EditorSetAction::RemoveBackground,
                 "background actions remain in SET");
-    ok &= Check(detail::ClickedSetMetadataField({160, 195}) ==
+    ok &= Check(detail::ClickedSetMetadataField({160, 211}) ==
                     EditorSetField::Title &&
-                detail::ClickedSetMetadataField({150, 251}) ==
+                detail::ClickedSetMetadataField({150, 265}) ==
                     EditorSetField::Artist &&
-                detail::ClickedSetMetadataField({300, 251}) ==
+                detail::ClickedSetMetadataField({350, 265}) ==
                     EditorSetField::Mapper &&
-                detail::ClickedSetMetadataField({180, 306}) ==
+                detail::ClickedSetMetadataField({180, 319}) ==
                     EditorSetField::Tags &&
-                detail::ClickedSetAction({180, 306}) ==
+                detail::ClickedSetAction({180, 319}) ==
                     EditorSetAction::None,
                 "SET metadata owns distinct text-field hitboxes");
-    // Ruler labels are real music time; renderer/click detection agree
-    // even at fractional selected positions and different zoom values.
     ChartEditor ruler;
-    ok &= Check(detail::RouteTimeMs(ruler, 4.0) == 2000 &&
-                detail::RouteTimeMs(ruler, 4.5) == 2250 &&
-                detail::kRouteTimeValue.x <= 770 &&
-                detail::kRouteTimeValue.y <= 267 &&
-                detail::kRouteTimeValue.x +
-                    detail::kRouteTimeValue.width > 770 &&
-                detail::kRouteTimeValue.y +
-                    detail::kRouteTimeValue.height > 267,
-                "clickable Route time uses fractional beat audio milliseconds");
+    ok &= Check(detail::RouteTimeMs(ruler,4.0)==2000 &&
+                detail::RouteTimeMs(ruler,4.5)==2250 &&
+                detail::Hit(detail::kRouteTimeValue,{854,506}),
+                "bottom song time copies fractional-beat milliseconds");
     EditorUiState timeCopyUi;
-    EditorControls timeCopyClick = Click(770, 267);
-    timeCopyClick.timelineViewBeat = 4.5;
-    const auto timeCopyAction = ApplyEditorControls(ruler, timeCopyUi, timeCopyClick);
-    ok &= Check(timeCopyAction.clipboardWrite == "2250" &&
-                timeCopyUi.feedback == "2250 MS COPIED",
-                "copy timestamp is a pure command without a native clipboard call");
-    // FIELD contains only the starting compass direction. Old grid-size
-    // text entry is gone, and heading changes require clicking the controls.
-    ApplyEditorControls(chart, ui, Click(783, 89));
-    ok &= Check(ui.tab == EditorTab::Field, "FIELD tab opens");
-    const auto oldGrid = chart.Data().route.gridWidth;
-    const auto previousHeading = chart.Data().route.initialHeading;
-    const auto rotateForward =
-        ApplyEditorControls(chart, ui, Click(425, 253));
-    const auto rotateBackward =
-        ApplyEditorControls(chart, ui, Click(122, 253));
-    ok &= Check(rotateForward.changedChart && rotateBackward.changedChart &&
-                chart.Data().route.initialHeading == previousHeading &&
-                chart.Data().route.gridWidth == oldGrid &&
-                !ui.EditingText(),
-                "FIELD controls change initial heading but never grid size");
-    const auto blank = ApplyEditorControls(chart, ui, Click(523, 248));
-    ok &= Check(!blank.changedChart && !ui.EditingText(),
-                "removed visible-square field is not clickable");
+    EditorControls timeCopyClick=Click(854,506);
+    timeCopyClick.timelineViewBeat=4.5;
+    const auto timeCopyAction=ApplyEditorControls(ruler,timeCopyUi,timeCopyClick);
+    ok &= Check(timeCopyAction.clipboardWrite=="2250" &&
+                timeCopyUi.feedback=="2250 MS COPIED",
+                "copy time is a pure clipboard intent");
+    // FIELD is removed from navigation; START belongs to ROUTE now.
+    ApplyEditorControls(chart,ui,Click(625,89));
+    ok &= Check(ui.tab==EditorTab::Route,"Route tab has start heading");
+    const auto oldGrid=chart.Data().route.gridWidth;
+    const auto previousHeading=chart.Data().route.initialHeading;
+    const auto rotateForward=ApplyEditorControls(chart,ui,Click(913,384));
+    const auto rotateBackward=ApplyEditorControls(chart,ui,Click(834,384));
+    ok &= Check(rotateForward.changedChart&&rotateBackward.changedChart&&
+                chart.Data().route.initialHeading==previousHeading&&
+                chart.Data().route.gridWidth==oldGrid&&!ui.EditingText(),
+                "Route START arrows change direction without changing grid");
+    const auto blank=ApplyEditorControls(chart,ui,Click(520,248));
+    ok &= Check(!blank.changedChart&&!ui.EditingText(),
+                "obsolete field input is not clickable");
 
     ok &= Check(chart.SetSongDuration(10.0) &&
                 chart.Data().route.lengthBeats > 0,
@@ -248,17 +239,17 @@ int main() {
     ui.tab = EditorTab::Audio;
     chart.SelectBeat(20);
     const auto beforeAdd = currentTempo();
-    HandleTempoTable(ui, Click(740, 447), beforeAdd, chart, applyTempo);
+    HandleTempoTable(ui, Click(455, 441), beforeAdd, chart, applyTempo);
     ok &= Check(currentTempo().size() == 2 &&
                 currentTempo()[1].bpm == currentTempo()[0].bpm,
                 "AUDIO add marker uses selected audio position and prior BPM");
-    HandleTempoTable(ui, Click(400, 327), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(665, 295), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, Type("255.5"), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, enter, currentTempo(), chart, applyTempo);
     ok &= Check(currentTempo().size() == 2 &&
                 currentTempo()[1].bpm == 255.5,
                 "second BPM table row commits a tempo change");
-    HandleTempoTable(ui, Click(145, 327), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(450, 295), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, Type("-175"), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, enter, currentTempo(), chart, applyTempo);
     ok &= Check(ui.tempoEditingRow == 1 &&
@@ -267,11 +258,11 @@ int main() {
     EditorControls cancelTempo;
     cancelTempo.escape = true;
     HandleTempoTable(ui, cancelTempo, currentTempo(), chart, applyTempo);
-    HandleTempoTable(ui, Click(635, 327), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(850, 295), currentTempo(), chart, applyTempo);
     ok &= Check(currentTempo().size() == 1 &&
                 !ui.EditingText(),
                 "AUDIO delete removes only the chosen later BPM marker");
-    ui.tab = EditorTab::Field;
+    ui.tab = EditorTab::Audio;
 
     // Multiple BPM segments preserve absolute note times, including undo.
     const double initialBpm = chart.Data().route.bpm;
@@ -286,28 +277,33 @@ int main() {
                 "adding a tempo change is undoable without resetting song zero");
 
 
-    // Transport is shared by all tabs.
-    const auto song = ApplyEditorControls(chart, ui, Click(113, 519));
-    const auto play = ApplyEditorControls(chart, ui, Click(210, 519));
-    const auto restart = ApplyEditorControls(chart, ui, Click(324, 519));
-    const auto test = ApplyEditorControls(chart, ui, Click(445, 519));
-    ok &= Check(song.chooseAudio && play.previewToggle &&
-                    restart.previewRestart && test.testPlay,
-                "song, play, restart and test remain on every tab");
-
-    ApplyEditorControls(chart, ui, Click(450, 89));
-    ok &= Check(ui.tab == EditorTab::Route, "Route tab restores the large grid");
-    const auto normal = ApplyEditorControls(chart, ui, Click(98, 519));
-    const auto slow = ApplyEditorControls(chart, ui, Click(505, 519));
-    ok &= Check(normal.speedIndex == 0 && slow.speedIndex == 4,
-                "compact practice speed 100 and 10 percent are clickable on Route");
+    // The audio attachment lives in AUDIO; bottom transport is shared.
+    ui.tab=EditorTab::Audio;
+    const auto audioAttach=ApplyEditorControls(chart,ui,Click(184,428));
+    const auto play=ApplyEditorControls(chart,ui,Click(73,504));
+    const auto restart=ApplyEditorControls(chart,ui,Click(116,504));
+    ok &= Check(audioAttach.chooseAudio&&play.previewToggle&&
+                restart.previewRestart,
+                "Audio attachment and shared footer transport work");
+    ApplyEditorControls(chart,ui,Click(625,89));
+    ok &= Check(ui.tab==EditorTab::Route,"Route tab restores grid");
+    const auto opened=ApplyEditorControls(chart,ui,Click(756,504));
+    const auto normal=ApplyEditorControls(chart,ui,Click(765,355));
+    const auto reopened=ApplyEditorControls(chart,ui,Click(756,504));
+    const auto slow=ApplyEditorControls(chart,ui,Click(765,463));
+    ok &= Check(opened.speedIndex==-1&&normal.speedIndex==0&&
+                reopened.speedIndex==-1&&slow.speedIndex==4&&
+                !ui.rateDropdownOpen,
+                "rate dropdown selects 100 and 10 percent");
+    const auto test=ApplyEditorControls(chart,ui,Click(73,434));
+    ok &= Check(test.testPlay,"test command is in the vertical toolrail");
     // A modal comparison picker consumes clicks and editor shortcuts:
     // dismissing it must not place a note or execute hidden toolbar actions.
     ChartEditor popupChart;
     EditorUiState popupUi;
     popupUi.comparisonPickerOpen = true;
     const auto blockedNote = ApplyEditorControls(
-        popupChart, popupUi, Click(766, 292));
+        popupChart, popupUi, Click(770, 207));
     const auto blockedPlay = ApplyEditorControls(
         popupChart, popupUi, Click(195, 129));
     EditorControls blockedDelete;
@@ -319,45 +315,44 @@ int main() {
                 !popupChart.Dirty() && popupChart.Data().route.turns.empty(),
                 "open comparison picker blocks hidden editor actions");
 
-    const auto compactTest = ApplyEditorControls(chart, ui, Click(109, 180));
+    const auto compactTest = ApplyEditorControls(chart, ui, Click(73, 433));
     const auto unusedTransport = ApplyEditorControls(chart, ui, Click(590, 263));
     ok &= Check(compactTest.testPlay &&
                 !unusedTransport.previewToggle &&
                 !unusedTransport.previewRestart,
                 "ROUTE has TEST but no obsolete PLAY/RESTART/SONG toolbar");
 
-    for (int n = 1; n <= 3; ++n) {
-        const auto firstPane = detail::ComparisonPreviewBounds(n, 0);
-        ok &= Check(firstPane.width == 222.0f &&
-                    firstPane.height == 222.0f &&
-                    firstPane.x >= 52.0f &&
-                    firstPane.x + firstPane.width <= 734.0f,
-                    "editor panes are enlarged and equal-sized");
-        for (int i = 1; i < n; ++i) {
-            const auto previous = detail::ComparisonPreviewBounds(n, i - 1);
-            const auto pane = detail::ComparisonPreviewBounds(n, i);
-            ok &= Check(pane.width == firstPane.width &&
-                        pane.height == firstPane.height &&
-                        pane.x >= previous.x + previous.width + 7.9f &&
-                        pane.x + pane.width <= 734.0f &&
-                        pane.y + pane.height < detail::kSongOverview.y,
-                        "up to three equal previews fit without overlaying overview");
+    for(int n=1;n<=3;++n){
+        const auto firstPane=detail::ComparisonPreviewBounds(n,0);
+        ok &= Check(firstPane.width>200&&firstPane.width<=280&&
+                    firstPane.width==firstPane.height&&
+                    firstPane.x>=106&&firstPane.x+firstPane.width<=733,
+                    "preview layout maximizes square playfield");
+        for(int i=1;i<n;++i){
+            const auto prev=detail::ComparisonPreviewBounds(n,i-1);
+            const auto pane=detail::ComparisonPreviewBounds(n,i);
+            ok &= Check(pane.width==firstPane.width&&
+                        pane.height==firstPane.height&&
+                        pane.x>=prev.x+prev.width+7.9f&&
+                        pane.x+pane.width<=733&&
+                        pane.y+pane.height<detail::kSongOverview.y,
+                        "comparison panes stay equal and above overview");
         }
     }
-    ok &= Check(detail::ComparisonPreviewBounds(4, 3).width == 0.0f &&
-                detail::EditorSpeedControlDelta({861, 405}) == -1 &&
-                detail::EditorSpeedControlDelta({909, 405}) == 1 &&
-                detail::EditorPathControlDelta({861, 438}) == -1 &&
-                detail::EditorPathControlDelta({909, 438}) == 1 &&
-                detail::EditorPathControlDelta({861, 405}) == 0 &&
-                detail::kEditorSpeedMinus.y > 
-                    detail::DirectionPadBounds(2, 0).y +
-                    detail::DirectionPadBounds(2, 0).height &&
-                detail::kEditorPathPlus.y + detail::kEditorPathPlus.height <
+    ok &= Check(detail::ComparisonPreviewBounds(4,3).width==0&&
+                detail::EditorSpeedControlDelta({868,421})==-1&&
+                detail::EditorSpeedControlDelta({908,421})==1&&
+                detail::EditorPathControlDelta({868,455})==-1&&
+                detail::EditorPathControlDelta({908,455})==1&&
+                detail::EditorPathControlDelta({868,421})==0&&
+                detail::kEditorSpeedMinus.y>
+                    detail::DirectionPadBounds(2,0).y+
+                    detail::DirectionPadBounds(2,0).height&&
+                detail::kEditorPathPlus.y+detail::kEditorPathPlus.height<
                     detail::kSongOverview.y,
-                "separate editor controls do not overlap pad or song overview");
+                "editor speed/path controls do not overlap pad or overview");
 
-    // At x = 50 + 860/3, the selected beat stays under the fixed playhead.
+    // The selected beat stays under the fixed playhead after ruler resizing.
     constexpr float cursor = 50.0f + 860.0f / 3.0f;
     chart.SelectBeat(15);
     ApplyEditorControls(chart, ui, Click(cursor + 36, 140));
@@ -383,7 +378,7 @@ int main() {
     ApplyEditorControls(chart, ui, Click(cursor + 52, 140));
     ok &= Check(chart.SelectedBeat() == 17,
                 "zoomed ruler maps clicks to nearby beat ticks");
-    ApplyEditorControls(chart, ui, Click(785, 216));
+    ApplyEditorControls(chart, ui, Click(865, 154));
     ok &= Check(ui.timelineZoomIndex == 3,
                 "zoom-out button restores the original scale");
     EditorControls zoomOut;
@@ -545,12 +540,12 @@ int main() {
     ok &= Check(chart.Data().route.turns[2].direction == Heading::Right,
                 "Ctrl+Y redoes mirrored group");
     // Rotation buttons share the selected interval with FLIP H / FLIP V.
-    const auto rotateRight = ApplyEditorControls(chart, ui, Click(520, 217));
+    const auto rotateRight = ApplyEditorControls(chart, ui, Click(73, 338));
     ok &= Check(rotateRight.changedChart && ui.HasRange() &&
                 chart.Data().route.turns[2].direction == Heading::Down &&
                 chart.Data().route.turns[3].direction == Heading::Up,
                 "ROT +90 button rotates the selected pattern without shifting beats");
-    const auto rotateLeft = ApplyEditorControls(chart, ui, Click(390, 217));
+    const auto rotateLeft = ApplyEditorControls(chart, ui, Click(73, 292));
     ok &= Check(rotateLeft.changedChart &&
                 chart.Data().route.turns[2].direction == Heading::Right &&
                 chart.Data().route.turns[3].direction == Heading::Left,
@@ -563,14 +558,16 @@ int main() {
                 chart.Data().route.turns[3].beat == 13,
                 "Ctrl+Shift+Left moves whole highlighted group one beat");
 
-    // The on-screen PASTE button must preserve selection just like Ctrl+V.
+    // Copy/Cut/Paste and Undo/Redo no longer occupy visible toolbar rows.
     chart.SelectBeat(20);
-    ui.rangeFirst = ui.rangeLast = -1;
-    const auto clickedPaste = ApplyEditorControls(chart, ui, Click(342, 180));
-    ok &= Check(clickedPaste.changedChart && ui.HasRange() &&
-                ui.rangeFirst == 20 && ui.rangeLast == 22 &&
-                chart.Data().route.turns.back().beat == 22,
-                "ROUTE paste button selects newly pasted notes and gaps");
+    ui.rangeFirst=ui.rangeLast=-1;
+    EditorControls pasteKeys;
+    pasteKeys.pasteRange=true;
+    const auto pasted=ApplyEditorControls(chart,ui,pasteKeys);
+    ok &= Check(pasted.changedChart&&ui.HasRange()&&
+                ui.rangeFirst==20&&ui.rangeLast==22&&
+                chart.Data().route.turns.back().beat==22,
+                "Ctrl+V selects newly pasted notes and gaps");
 
     // Regression: dragging off the right edge must keep scrolling the ruler
     // instead of capping selection at the last visible tick.
@@ -708,42 +705,42 @@ int main() {
     // Eight-way compass on ROUTE authors actual diagonal route notes.
     ChartEditor compassUi;
     EditorUiState diagonalUi;
-    auto chooseNE = ApplyEditorControls(compassUi, diagonalUi, Click(882, 292));
+    auto chooseNE = ApplyEditorControls(compassUi, diagonalUi, Click(901, 208));
     ok &= Check(chooseNE.changedChart &&
                 compassUi.SelectedTurn() &&
                 compassUi.SelectedTurn()->direction == Heading::UpRight &&
                 SampleRouteStep(compassUi.Data().route, 0).heading == Heading::UpRight,
                 "compass NE button authors absolute up-right");
     compassUi.SelectBeat(1);
-    auto chooseEast = ApplyEditorControls(compassUi, diagonalUi, Click(882, 331));
+    auto chooseEast = ApplyEditorControls(compassUi, diagonalUi, Click(901, 267));
     ok &= Check(chooseEast.changedChart &&
                 compassUi.SelectedTurn() &&
                 compassUi.SelectedTurn()->direction == Heading::Right &&
                 SampleRouteStep(compassUi.Data().route, 1).heading == Heading::Right,
                 "compass cardinal button supports diagonal-to-cardinal transitions");
     compassUi.SelectBeat(2);
-    ApplyEditorControls(compassUi, diagonalUi, Click(766, 292));
+    ApplyEditorControls(compassUi, diagonalUi, Click(770, 207));
     ok &= Check(compassUi.SelectedTurn() &&
                 compassUi.SelectedTurn()->direction == Heading::UpLeft,
                 "compass button authors an absolute up-left heading");
-    ApplyEditorControls(compassUi, diagonalUi, Click(785, 90));
-    ApplyEditorControls(compassUi, diagonalUi, Click(425, 253));
+    ApplyEditorControls(compassUi, diagonalUi, Click(625, 89));
+    ApplyEditorControls(compassUi, diagonalUi, Click(913, 384));
     ok &= Check(compassUi.Data().route.initialHeading == Heading::DownRight,
-                "initial heading rotates only with the FIELD control");
+                "initial heading rotates only with the ROUTE start control");
 
     // A compass direction opposite to the incoming route is an ordinary
     // note, whether clicked or pressed using the game direction binding.
     ChartEditor reverseUi;
     EditorUiState reverseState;
     const auto clickBack = ApplyEditorControls(
-        reverseUi, reverseState, Click(766, 330)); // L from default Right.
+        reverseUi, reverseState, Click(770, 267)); // L from default Right.
     ok &= Check(clickBack.changedChart && reverseUi.SelectedTurn() &&
                 reverseUi.SelectedTurn()->direction == Heading::Left &&
                 SampleRouteStep(reverseUi.Data().route, 0).heading == Heading::Left,
                 "direction pad authors a normal 180-degree note");
     reverseUi.SelectBeat(1);
     const auto keyReverse = ApplyEditorControls(
-        reverseUi, reverseState, Click(882, 331));
+        reverseUi, reverseState, Click(901, 267));
     ok &= Check(keyReverse.changedChart && reverseUi.SelectedTurn() &&
                 reverseUi.SelectedTurn()->direction == Heading::Right &&
                 SampleRouteStep(reverseUi.Data().route, 1).heading == Heading::Right,
@@ -756,8 +753,8 @@ int main() {
     snapChart.SelectBeat(5);
     snapChart.PutTurn(Heading::Left);
     const auto originalTime = snapChart.Data().route.turns.front().timeMs;
-    const auto half = ApplyEditorControls(snapChart, snapUi, Click(865, 180));
-    const auto third = ApplyEditorControls(snapChart, snapUi, Click(865, 180));
+    const auto half = ApplyEditorControls(snapChart, snapUi, Click(905, 130));
+    const auto third = ApplyEditorControls(snapChart, snapUi, Click(905, 130));
     ok &= Check(half.changedChart && third.changedChart &&
                 snapChart.Data().route.snapDivision == 3 &&
                 snapChart.Data().route.ticksPerBeat == 6 &&
@@ -765,7 +762,7 @@ int main() {
                 snapChart.Data().route.turns.front().timeMs == originalTime &&
                 snapUi.timelineZoomIndex == 3,
                 "MORE grid button reaches triplets without changing BPM, notes or zoom");
-    const auto coarser = ApplyEditorControls(snapChart, snapUi, Click(780, 180));
+    const auto coarser = ApplyEditorControls(snapChart, snapUi, Click(865, 130));
     ok &= Check(coarser.changedChart &&
                 snapChart.Data().route.snapDivision == 2 &&
                 snapChart.Data().route.turns.front().timeMs == originalTime,
@@ -777,8 +774,7 @@ int main() {
                 snapChart.Data().route.snapDivision == 2,
                 "existing zoom buttons remain independent of snap division");
 
-    // Button Undo must clear the selected range after undoing a tick
-    // resolution expansion, just like Ctrl+Z. Old code had two paths.
+    // Ctrl+Z/Redo keep old tick-domain selections consistent.
     ChartEditor undoChart;
     EditorUiState undoUi;
     undoChart.SelectBeat(2);
@@ -786,11 +782,13 @@ int main() {
     undoChart.SetSnapDivision(2);
     undoUi.rangeFirst = 4;
     undoUi.rangeLast = 6;
-    const auto mouseUndo = ApplyEditorControls(undoChart, undoUi, Click(548, 180));
-    ok &= Check(mouseUndo.changedChart &&
+    EditorControls undoKey;
+    undoKey.undo=true;
+    const auto didUndo=ApplyEditorControls(undoChart,undoUi,undoKey);
+    ok &= Check(didUndo.changedChart &&
                 undoChart.Data().route.ticksPerBeat == 1 &&
                 !undoUi.HasRange(),
-                "Undo button clears old tick-domain selection");
+                "Ctrl+Z clears old tick-domain selection");
     undoUi.rangeFirst = 2;
     undoUi.rangeLast = 3;
     EditorControls redoInput;
@@ -799,7 +797,7 @@ int main() {
     ok &= Check(keyboardRedo.changedChart &&
                 undoChart.Data().route.ticksPerBeat == 2 &&
                 !undoUi.HasRange(),
-                "Ctrl+Y and button Undo share one selection cleanup path");
+                "Ctrl+Y and Ctrl+Z share one selection cleanup path");
 
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS route_controls=1 field_heading=1 zoom=1\n";

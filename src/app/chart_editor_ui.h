@@ -113,6 +113,7 @@ struct EditorUiState {
     int comparisonFocusedSlot = 0; // Stable physical pane index of focused chart, [0..comparisonFiles.size()].
     bool comparisonPickerOpen = false;
     int comparisonPickerFirst = 0;
+    bool rateDropdownOpen = false; // Preview transport rate, all editor tabs.
     int timelineZoomIndex = 3; // Default 36 px/beat; zoom changes view only.
     // Exact song-time anchor set by cross-difficulty focus. Each chart's
     // authoring cursor is projected to its own tick grid, but an idle

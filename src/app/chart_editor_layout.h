@@ -13,9 +13,16 @@ constexpr float kGridCenterX = 448.0f, kGridCenterY = 282.0f;
 constexpr float kGridMaxSpan = 240.0f;
 // Zoomable, note-bearing ruler sits beneath the editor tabs.
 // The separate full-song overview is always mapped to actual audio seconds.
-constexpr float kTimelineX = 50.0f, kTimelineY = 115.0f;
-constexpr float kTimelineWidth = 860.0f, kTimelineHeight = 43.0f;
-constexpr Rectangle kSongOverview{52.0f, 466.0f, 856.0f, 35.0f};
+constexpr float kTimelineX = 52.0f, kTimelineY = 117.0f;
+constexpr float kTimelineWidth = 660.0f, kTimelineHeight = 47.0f;
+constexpr Rectangle kEditorPreviewPlay{52, 485, 39, 40};
+constexpr Rectangle kEditorPreviewRestart{96, 485, 39, 40};
+constexpr Rectangle kSongOverview{145, 485, 570, 40};
+constexpr Rectangle kEditorRateDropdown{725, 485, 93, 40};
+constexpr Rectangle kEditorRatePopup{725, 341, 93, 140};
+inline Rectangle EditorRateOption(int i) noexcept {
+    return {729.0f, 345.0f + i * 27.0f, 85.0f, 25.0f};
+}
 // Fixed playhead at one third of the ruler; the fractional-beat ruler moves.
 constexpr float kPlayheadX = kTimelineX + kTimelineWidth / 3.0f;
 constexpr float kZoomPixelsPerBeat[7] = {12, 18, 26, 36, 52, 76, 104};
@@ -25,10 +32,10 @@ constexpr float kDragEdgeZone = 48.0f;
 constexpr float kBarRepeatDelay = 0.23f;
 constexpr float kBarRepeatInterval = 0.075f;
 constexpr float kBarRepeatFastInterval = 0.04f;
-constexpr Rectangle kZoomOut{744, 202, 78, 30};
-constexpr Rectangle kZoomIn{830, 202, 78, 30};
-constexpr Rectangle kSnapLess{744, 166, 78, 30};
-constexpr Rectangle kSnapMore{830, 166, 78, 30};
+constexpr Rectangle kSnapLess{846, 118, 37, 22};
+constexpr Rectangle kSnapMore{888, 118, 37, 22};
+constexpr Rectangle kZoomOut{846, 143, 37, 22};
+constexpr Rectangle kZoomIn{888, 143, 37, 22};
 constexpr int kSnapDivisions[9] = {1, 2, 3, 4, 6, 8, 12, 16, 24};
 
 inline float PixelsPerBeat(const EditorUiState& ui) {
@@ -53,20 +60,17 @@ inline double ViewBeat(const core::ChartEditor& draft, double activeBeat) {
         : static_cast<double>(draft.SelectedBeat());
 }
 
-constexpr Rectangle kTabSet{277, 73, 110, 35};
-constexpr Rectangle kTabRoute{397, 73, 132, 35};
-constexpr Rectangle kTabAudio{539, 73, 132, 35};
-constexpr Rectangle kTabField{681, 73, 132, 35};
-constexpr Rectangle kEditorBack{823, 73, 126, 35}; // Obvious exit from editor to Home.
-
-// Non-ROUTE transport sits below the overview rather than obscuring the ruler.
-constexpr Rectangle kSong{52, 505, 103, 28};
-constexpr Rectangle kPlay{164, 505, 98, 28};
-constexpr Rectangle kStop{271, 505, 111, 28};
-constexpr Rectangle kTest{391, 505, 103, 28};
+constexpr Rectangle kTabSet{433, 69, 127, 37};
+constexpr Rectangle kTabRoute{567, 69, 145, 37};
+constexpr Rectangle kTabAudio{719, 69, 145, 37};
+constexpr Rectangle kEditorBack{52, 69, 99, 37};
+constexpr Rectangle kSong{66, 412, 270, 35};
+constexpr Rectangle kPlay = kEditorPreviewPlay;
+constexpr Rectangle kStop = kEditorPreviewRestart;
+constexpr Rectangle kTest{0, 0, 0, 0};
 // Eight directions around DEL (center); positioned above the timeline.
 constexpr Rectangle DirectionPadBounds(int row, int col) noexcept {
-    return {744.0f + col * 56.0f, 275.0f + row * 39.0f, 52.0f, 35.0f};
+    return {748.0f + col * 63.0f, 181.0f + row * 60.0f, 58.0f, 55.0f};
 }
 inline std::optional<core::Heading> DirectionPadHeading(int row, int col) noexcept {
     constexpr core::Heading values[9] = {
@@ -93,51 +97,41 @@ inline std::array<int, 8> DirectionPressCounts(const core::Chart& chart) noexcep
     return counts;
 }
 
-// Same click geometry is used by the pure controls and renderer.
-constexpr Rectangle kRouteTest{52, 166, 120, 30};
-constexpr Rectangle kCopyTurns{184, 166, 100, 30};
-constexpr Rectangle kPasteTurns{294, 166, 100, 30};
-constexpr Rectangle kCutTurns{404, 166, 92, 30};
-constexpr Rectangle kUndoEdit{506, 166, 108, 30};
-constexpr Rectangle kRedoEdit{624, 166, 110, 30};
-constexpr Rectangle kMirrorHorizontal{52, 202, 127, 30};
-constexpr Rectangle kMirrorVertical{190, 202, 127, 30};
-constexpr Rectangle kRotateCounterclockwise{328, 202, 127, 30};
-constexpr Rectangle kRotateClockwise{466, 202, 127, 30};
-constexpr Rectangle kCompareToggle{604, 202, 130, 30};
-constexpr Rectangle kComparePopup{489, 240, 245, 207};
+// Vertical icon rail: clipboard/undo/redo remain keyboard-only.
+constexpr Rectangle kMirrorHorizontal{52, 181, 42, 42};
+constexpr Rectangle kMirrorVertical{52, 227, 42, 42};
+constexpr Rectangle kRotateCounterclockwise{52, 273, 42, 42};
+constexpr Rectangle kRotateClockwise{52, 319, 42, 42};
+constexpr Rectangle kCompareToggle{52, 365, 42, 42};
+constexpr Rectangle kRouteTest{52, 411, 42, 42};
+constexpr Rectangle kComparePopup{105, 243, 252, 211};
 constexpr Rectangle ComparePickerRow(int row) noexcept {
-    return {499.0f, 264.0f + row * 29.0f, 225.0f, 25.0f};
+    return {115.0f, 266.0f + row * 29.0f, 232.0f, 25.0f};
 }
-constexpr Rectangle kComparePickerPrev{503, 420, 80, 20};
-constexpr Rectangle kComparePickerNext{638, 420, 84, 20};
+constexpr Rectangle kComparePickerPrev{118, 420, 78, 21};
+constexpr Rectangle kComparePickerNext{266, 420, 78, 21};
 
-// ROUTE comparison is capped at three charts. Each pane is the same size,
-// including the one in focus, and never changes size/position on focus.
-// The editor's 960x540 viewport leaves 222px between controls and overview:
-// 3 x 222 + 2 x 8 = 682, exactly the available width.
-constexpr float kPreviewLeft = 52.0f;
-constexpr float kPreviewRight = 734.0f;
-constexpr float kPreviewTop = 239.0f;
-constexpr float kPreviewSide = 222.0f;
+// Each preview remains square; shared comparison layouts never shift slots.
+constexpr float kPreviewLeft = 106.0f;
+constexpr float kPreviewRight = 733.0f;
+constexpr float kPreviewTop = 179.0f;
+constexpr float kPreviewMaxSide = 280.0f;
 constexpr float kPreviewGap = 8.0f;
 inline Rectangle ComparisonPreviewBounds(int count, int index) noexcept {
     const int visible = std::clamp(count, 1, 3);
     if (index < 0 || index >= visible) return {};
-    const float total = visible * kPreviewSide +
-        (visible - 1) * kPreviewGap;
-    const float left = kPreviewLeft +
-        (kPreviewRight - kPreviewLeft - total) * 0.5f;
-    return {left + index * (kPreviewSide + kPreviewGap),
-            kPreviewTop, kPreviewSide, kPreviewSide};
+    const float width = kPreviewRight - kPreviewLeft;
+    const float side = std::min(kPreviewMaxSide,
+        (width - (visible - 1) * kPreviewGap) / visible);
+    const float total = side * visible + (visible - 1) * kPreviewGap;
+    return {kPreviewLeft + (width - total) * 0.5f +
+                index * (side + kPreviewGap),
+            kPreviewTop + (kPreviewMaxSide - side) * 0.5f, side, side};
 }
-
-// Editor-only presentation controls, disjoint from the direction pad above
-// and the fixed whole-song timeline below.
-constexpr Rectangle kEditorSpeedMinus{842, 394, 39, 28};
-constexpr Rectangle kEditorSpeedPlus{889, 394, 39, 28};
-constexpr Rectangle kEditorPathMinus{842, 428, 39, 28};
-constexpr Rectangle kEditorPathPlus{889, 428, 39, 28};
+constexpr Rectangle kEditorSpeedMinus{852, 408, 36, 28};
+constexpr Rectangle kEditorSpeedPlus{894, 408, 36, 28};
+constexpr Rectangle kEditorPathMinus{852, 444, 36, 28};
+constexpr Rectangle kEditorPathPlus{894, 444, 36, 28};
 inline int EditorSpeedControlDelta(Vector2 point) noexcept {
     return CheckCollisionPointRec(point, kEditorSpeedMinus) ? -1
          : CheckCollisionPointRec(point, kEditorSpeedPlus) ? 1 : 0;
@@ -146,31 +140,32 @@ inline int EditorPathControlDelta(Vector2 point) noexcept {
     return CheckCollisionPointRec(point, kEditorPathMinus) ? -1
          : CheckCollisionPointRec(point, kEditorPathPlus) ? 1 : 0;
 }
-
-constexpr Rectangle kTitle{92, 205, 520, 38};
-constexpr Rectangle kBpm{92, 290, 350, 43};
-constexpr Rectangle kOffset{510, 290, 350, 43};
-constexpr Rectangle kAudioPreviewMs{635, 205, 225, 38};
-// Shared timing table; no chart-specific BPM/offset editor widgets.
+constexpr Rectangle kStartHeadingPrev{817, 367, 34, 35};
+constexpr Rectangle kStartHeadingValue{854, 367, 37, 35};
+constexpr Rectangle kStartHeadingNext{896, 367, 34, 35};
+constexpr Rectangle kAudioMetaPanel{52, 178, 302, 292};
+constexpr Rectangle kAudioTempoPanel{367, 178, 566, 292};
+constexpr Rectangle kTitle{66, 219, 270, 39};
+constexpr Rectangle kAudioPreviewMs{66, 306, 270, 39};
 constexpr Rectangle TempoOffsetCell(int row) noexcept {
-    return {104.0f, 284.0f + row * 30.0f, 233.0f, 27.0f};
+    return {384.0f, 242.0f + row * 35.0f, 197.0f, 31.0f};
 }
 constexpr Rectangle TempoBpmCell(int row) noexcept {
-    return {350.0f, 284.0f + row * 30.0f, 235.0f, 27.0f};
+    return {590.0f, 242.0f + row * 35.0f, 196.0f, 31.0f};
 }
 constexpr Rectangle TempoDeleteCell(int row) noexcept {
-    return {600.0f, 284.0f + row * 30.0f, 70.0f, 27.0f};
+    return {797.0f, 242.0f + row * 35.0f, 122.0f, 31.0f};
 }
-constexpr Rectangle kTempoAdd{694, 434, 166, 27};
-constexpr Rectangle kTempoPrev{694, 284, 76, 27};
-constexpr Rectangle kTempoNext{784, 284, 76, 27};
-constexpr Rectangle kTempoTable{92, 280, 580, 155};
+constexpr Rectangle kTempoAdd{384, 427, 319, 30};
+constexpr Rectangle kTempoPrev{773, 186, 68, 28};
+constexpr Rectangle kTempoNext{851, 186, 68, 28};
+constexpr Rectangle kTempoTable{380, 236, 540, 182};
 // Song Set editor: metadata on the left, difficulties on the right.
 // These rectangles are shared by drawing, hit-testing and input ownership.
-constexpr Rectangle kSetTitleField{52, 185, 396, 33};
-constexpr Rectangle kSetArtistField{52, 240, 190, 33};
-constexpr Rectangle kSetMapperField{251, 240, 197, 33};
-constexpr Rectangle kSetTagsField{52, 294, 396, 34};
+constexpr Rectangle kSetTitleField{52, 194, 506, 35};
+constexpr Rectangle kSetArtistField{52, 248, 246, 35};
+constexpr Rectangle kSetMapperField{312, 248, 246, 35};
+constexpr Rectangle kSetTagsField{52, 303, 506, 35};
 constexpr Rectangle SetMetadataBounds(EditorSetField field) noexcept {
     switch (field) {
         case EditorSetField::Title: return kSetTitleField;
@@ -190,18 +185,18 @@ inline EditorSetField ClickedSetMetadataField(Vector2 p) noexcept {
             return field;
     return EditorSetField::None;
 }
-constexpr Rectangle kSetBackground{52, 345, 190, 29};
-constexpr Rectangle kSetRemoveBackground{251, 345, 197, 29};
-constexpr Rectangle kSetImport{52, 379, 190, 29};
-constexpr Rectangle kSetExport{251, 379, 197, 29};
-constexpr Rectangle kSetOpenFolder{52, 413, 190, 29};
-constexpr Rectangle kSetRestore{251, 413, 197, 29};
-constexpr Rectangle kSetNew{503, 171, 190, 29};
-constexpr Rectangle kSetDuplicate{705, 171, 198, 29};
-constexpr Rectangle kSetDeleteDifficulty{503, 417, 190, 29};
-constexpr Rectangle kSetDeleteSong{705, 417, 198, 29};
+constexpr Rectangle kSetBackground{52, 360, 246, 29};
+constexpr Rectangle kSetRemoveBackground{312, 360, 246, 29};
+constexpr Rectangle kSetImport{52, 397, 246, 29};
+constexpr Rectangle kSetExport{312, 397, 246, 29};
+constexpr Rectangle kSetOpenFolder{52, 434, 246, 29};
+constexpr Rectangle kSetRestore{312, 434, 246, 29};
+constexpr Rectangle kSetNew{570, 179, 170, 31};
+constexpr Rectangle kSetDuplicate{747, 179, 183, 31};
+constexpr Rectangle kSetDeleteDifficulty{570, 426, 170, 31};
+constexpr Rectangle kSetDeleteSong{747, 426, 183, 31};
 constexpr Rectangle SetDifficultyRow(int row) noexcept {
-    return {503.0f, 206.0f + row * 39.0f, 400.0f, 36.0f};
+    return {570.0f, 221.0f + row * 39.0f, 360.0f, 36.0f};
 }
 inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
     if (CheckCollisionPointRec(p, kSetOpenFolder)) return EditorSetAction::OpenFolder;
@@ -216,13 +211,13 @@ inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
     if (CheckCollisionPointRec(p, kSetRestore)) return EditorSetAction::Restore;
     return EditorSetAction::None;
 }
-constexpr Rectangle kFieldHeadingPrev{104, 235, 51, 47};
-constexpr Rectangle kFieldHeading{162, 235, 234, 47};
-constexpr Rectangle kFieldHeadingNext{403, 235, 51, 47};
+constexpr Rectangle kFieldHeadingPrev = kStartHeadingPrev;
+constexpr Rectangle kFieldHeading = kStartHeadingValue;
+constexpr Rectangle kFieldHeadingNext = kStartHeadingNext;
 
 // Absolute song milliseconds at the same fractional tick used by the route.
 // The displayed value and copied clipboard value share this calculation.
-constexpr Rectangle kRouteTimeValue{744, 258, 191, 16};
+constexpr Rectangle kRouteTimeValue{827, 485, 105, 40};
 inline long long RouteTimeMs(const core::ChartEditor& draft, double activeTick) {
     const auto& loaded = draft.Data();
     const double tick = ViewBeat(draft, activeTick);
@@ -264,7 +259,7 @@ inline int SongOverviewTick(const core::ChartEditor& draft,
 }
 
 inline Rectangle RouteSpeedBounds(int index) {
-    return {52.0f + index * 102.0f, 505.0f, 94.0f, 28.0f};
+    return EditorRateOption(index);
 }
 
 inline bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(pos, bounds); }
@@ -273,7 +268,6 @@ inline EditorTab ClickedTab(Vector2 mouse, EditorTab previous) {
     if (Hit(kTabSet, mouse)) return EditorTab::Set;
     if (Hit(kTabRoute, mouse)) return EditorTab::Route;
     if (Hit(kTabAudio, mouse)) return EditorTab::Audio;
-    if (Hit(kTabField, mouse)) return EditorTab::Field;
     return previous;
 }
 

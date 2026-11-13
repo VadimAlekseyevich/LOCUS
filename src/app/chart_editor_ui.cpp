@@ -49,6 +49,81 @@ void DirectionButton(Font font, Rectangle rect, const char* count,
     DrawUiButton(font, rect, count, EditorButtonStyle(tint), active);
 }
 
+// Vector icons, so Windows' Latin/Cyrillic font needs no arrow glyphs.
+enum class EditorIcon { FlipH, FlipV, RotateL, RotateR, Compare, Play, Pause, Restart, Previous, Next };
+void EditorGlyph(Rectangle bounds, EditorIcon icon, Color tint) {
+    const float x = bounds.x + bounds.width / 2;
+    const float y = bounds.y + bounds.height / 2;
+    const auto line = [&](float ax, float ay, float bx, float by) {
+        DrawLineEx({x+ax,y+ay},{x+bx,y+by},2.5f,tint);
+    };
+    switch (icon) {
+        case EditorIcon::FlipH:
+            line(0,-12,0,12); line(-13,0,13,0);
+            line(-13,0,-6,-6); line(-13,0,-6,6);
+            line(13,0,6,-6); line(13,0,6,6); break;
+        case EditorIcon::FlipV:
+            line(-12,0,12,0); line(0,-13,0,13);
+            line(0,-13,-6,-6); line(0,-13,6,-6);
+            line(0,13,-6,6); line(0,13,6,6); break;
+        case EditorIcon::RotateL:
+        case EditorIcon::RotateR:
+            DrawRing({x,y},8,10,-70,210,28,tint);
+            if (icon == EditorIcon::RotateL)
+                DrawTriangle({x-12,y-10},{x-4,y-12},{x-8,y-3},tint);
+            else
+                DrawTriangle({x+12,y-10},{x+8,y-3},{x+4,y-12},tint);
+            break;
+        case EditorIcon::Compare:
+            DrawRectangleRoundedLinesEx({x-13,y-12,18,20},.2f,6,2,tint);
+            DrawRectangleRoundedLinesEx({x-4,y-5,18,20},.2f,6,2,tint); break;
+        case EditorIcon::Play:
+            DrawTriangle({x-7,y-11},{x-7,y+11},{x+11,y},tint); break;
+        case EditorIcon::Pause:
+            DrawRectangleRec({x-9,y-10,6,20},tint);
+            DrawRectangleRec({x+3,y-10,6,20},tint); break;
+        case EditorIcon::Restart:
+            DrawRing({x,y},9,11,-50,245,28,tint);
+            DrawTriangle({x-12,y-10},{x-4,y-10},{x-9,y-2},tint); break;
+        case EditorIcon::Previous:
+            line(6,-9,-5,0);line(-5,0,6,9);break;
+        case EditorIcon::Next:
+            line(-6,-9,5,0);line(5,0,-6,9);break;
+    }
+}
+void EditorIconButton(Rectangle bounds, EditorIcon icon,
+                      Color color, bool selected=false) {
+    auto style = EditorButtonStyle(color);
+    style.roundness = UiRoundness(bounds,9);
+    DrawUiButtonChrome(bounds,style,selected);
+    EditorGlyph(bounds,icon,color);
+}
+void HeadingArrow(Rectangle bounds, core::Heading heading, Color tint) {
+    constexpr float dx[]{0,1,0,-1,1,1,-1,-1};
+    constexpr float dy[]{-1,0,1,0,-1,1,1,-1};
+    const auto i=static_cast<int>(heading);
+    if(i<0||i>=8)return;
+    const float scale=core::IsDiagonal(heading)?.7071f:1.0f;
+    const float x=dx[i]*scale, y=dy[i]*scale;
+    const Vector2 center{bounds.x+bounds.width/2,bounds.y+bounds.height*.45f};
+    const Vector2 end{center.x+x*13,center.y+y*13};
+    DrawLineEx({center.x-x*10,center.y-y*10},end,2.7f,tint);
+    DrawLineEx(end,{end.x-x*6-y*6,end.y-y*6+x*6},2.4f,tint);
+    DrawLineEx(end,{end.x-x*6+y*6,end.y-y*6-x*6},2.4f,tint);
+}
+void EditorToolTip(Font font, Rectangle button, const std::string& caption) {
+    const Vector2 mouse = EditorVirtualMouse(
+        GetMousePosition(),GetScreenWidth(),GetScreenHeight());
+    if (!Hit(button,mouse)) return;
+    const float width=MeasureTextEx(font,caption.c_str(),12,1).x+22;
+    const Rectangle popup{button.x+button.width+9,button.y+6,width,29};
+    DrawRectangleRounded(popup,UiRoundness(popup,7),6,Color{40,45,68,248});
+    DrawRectangleRoundedLinesEx(popup,UiRoundness(popup,7),6,1,
+                                ApprovedUiTheme().rose);
+    Label(font,caption.c_str(),popup.x+11,popup.y+7,12,
+          ApprovedUiTheme().foreground);
+}
+
 const char* HeadingName(core::Heading heading) {
     switch (heading) {
         case core::Heading::Up: return "UP";
@@ -199,7 +274,10 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     const Rectangle strip{kTimelineX, kTimelineY, kTimelineWidth, kTimelineHeight};
     const float lineY = kTimelineY + 25.0f;
 
-    DrawRectangleRounded(strip, 0.15f, 5, Color{34, 44, 59, 255});
+    DrawRectangleRounded(strip, UiRoundness(strip,8), 8,
+                         Color{30, 37, 58, 255});
+    DrawRectangleRoundedLinesEx(strip,UiRoundness(strip,8),8,1,
+                                ApprovedUiTheme().divider);
     DrawRectangleRec({kTimelineX + 2.0f, kTimelineY + 2.0f,
                       kPlayheadX - kTimelineX - 2.0f, kTimelineHeight - 4.0f},
                      Color{41, 62, 70, 255});
@@ -274,26 +352,31 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     }
     DrawRectangleRec({kPlayheadX - 3.0f, kTimelineY + 1.0f,
                       6.0f, kTimelineHeight - 2.0f},
-                     Color{241, 206, 118, 255});
-    DrawCircleV({kPlayheadX, lineY}, 5.0f, Color{253, 246, 215, 255});
+                     ApprovedUiTheme().softBlue);
+    DrawCircleV({kPlayheadX, lineY}, 5.0f, ApprovedUiTheme().foreground);
 
-    // These controls affect the authored ruler only; their hitboxes stay
-    // outside both timelines. SET does not mutate grid/snap settings.
-    if (ui.tab == EditorTab::Route || ui.tab == EditorTab::Field) {
-        CompactButton(font, kSnapLess, "SNAP -", Color{128, 221, 202, 255});
-        CompactButton(font, kSnapMore, "SNAP +", Color{128, 221, 202, 255});
-        CompactButton(font, kZoomOut, "ZOOM -", Color{125, 167, 205, 255});
-        CompactButton(font, kZoomIn, "ZOOM +", Color{125, 167, 205, 255});
-        Label(font, TextFormat("1/%d", chart.snapDivision),
-              kTimelineX + 9.0f, kTimelineY + 3.0f, 11.0f,
-              Color{164, 188, 208, 255});
+    // The note ruler and the 2x +/- pairs share a single upper row.
+    if (ui.tab == EditorTab::Route) {
+        const auto& colors = ApprovedUiTheme();
+        Label(font,TextFormat("SNAP 1/%d",chart.snapDivision),
+              730,121,12,colors.softBlue);
+        Label(font,TextFormat("ZOOM %d%%",
+              static_cast<int>(std::round(PixelsPerBeat(ui)/36.0f*100))),
+              730,146,12,colors.secondaryText);
+        CompactButton(font,kSnapLess,"-",colors.rose);
+        CompactButton(font,kSnapMore,"+",colors.softBlue);
+        CompactButton(font,kZoomOut,"-",colors.rose);
+        CompactButton(font,kZoomIn,"+",colors.softBlue);
     }
+
 }
 
 void DrawSongOverview(Font font, const core::ChartEditor& draft,
                       const EditorSetView& set, double songSeconds) {
     const Rectangle bounds = kSongOverview;
-    DrawRectangleRounded(bounds, 0.14f, 5, Color{34, 44, 59, 255});
+    DrawRectangleRounded(bounds,UiRoundness(bounds,8),8,Color{30,38,60,255});
+    DrawRectangleRoundedLinesEx(bounds,UiRoundness(bounds,8),8,1,
+                                ApprovedUiTheme().divider);
     const double duration = draft.SongDurationSeconds();
     if (!std::isfinite(duration) || duration <= 0.0) {
         Label(font, "NO AUDIO", bounds.x + 9.0f, bounds.y + 8.0f,
@@ -307,7 +390,7 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
     if (cursor > bounds.x + 2.0f) {
         DrawRectangleRec({bounds.x + 2.0f, lineY - 2.0f,
                           cursor - bounds.x - 2.0f, 5.0f},
-                         Color{45, 94, 97, 255});
+                         Color{98,102,161,120});
     }
     DrawLineEx({bounds.x + 3.0f, lineY}, {right - 3.0f, lineY},
                1.5f, Color{104, 134, 154, 255});
@@ -338,7 +421,7 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
     DrawRectangleRec({cursor - 2.0f, bounds.y + 2.0f,
                       4.0f, bounds.height - 4.0f},
                      Color{241, 206, 118, 255});
-    DrawCircleV({cursor, lineY}, 4.0f, Color{255, 244, 209, 255});
+    DrawCircleV({cursor, lineY}, 4.0f, ApprovedUiTheme().foreground);
     const int total = static_cast<int>(std::ceil(duration));
     const char* end = TextFormat("%d:%02d", total / 60, total % 60);
     const float timeWidth = MeasureTextEx(font, end, 11.0f, 1.0f).x;
@@ -357,198 +440,207 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const EditorComparisonFrame* comparisons,
                        double previewSeconds) {
     const auto& chart = draft.Data().route;
-    Label(font, "CHART EDITOR", 49, 80, 22, Color{194, 236, 231, 255});
-    const bool routeTab = ui.tab == EditorTab::Route;
-    const auto navButton = routeTab ? CompactButton : Button;
-    navButton(font, kTabSet, "SET", ApprovedUiTheme().rose,
-              ui.tab == EditorTab::Set);
-    navButton(font, kTabRoute, "ROUTE", Color{126, 219, 209, 255},
-              routeTab);
-    navButton(font, kTabAudio, "AUDIO", Color{131, 190, 237, 255},
-              ui.tab == EditorTab::Audio);
-    navButton(font, kTabField, "FIELD", Color{239, 203, 129, 255},
-              ui.tab == EditorTab::Field);
-    navButton(font, kEditorBack, "BACK", Color{247, 202, 145, 255}, false);
-
+    const auto& theme = ApprovedUiTheme();
     const bool running = previewPlaying && !previewPaused;
-    if (routeTab) {
-        CompactButton(font, kRouteTest, "TEST CHART",
-                      Color{188, 176, 232, 255});
-    } else {
-        // The SET/AUDIO/FIELD transport stays operable but no longer
-        // advertises obsolete hardcoded key names under every button.
-        Button(font, kSong, "SONG", Color{97, 222, 193, 255});
-        Button(font, kPlay, running ? "PAUSE" : "PLAY",
-               Color{137, 211, 235, 255});
-        Button(font, kStop, "RESTART", Color{211, 178, 137, 255});
-        Button(font, kTest, "TEST", Color{188, 176, 232, 255});
-        Label(font, hasAudio ? Truncate(songName, 26).c_str() : "NO AUDIO",
-              544, 513, 12,
-              hasAudio ? Color{178, 227, 222, 255}
-                       : Color{242, 181, 164, 255});
-    }
+    const bool routeTab = ui.tab == EditorTab::Route;
+    const Color violet = theme.rose;
+    const Color sky = theme.softBlue;
+    const Color muted = theme.secondaryText;
 
-    if (ui.tab == EditorTab::Route) {
-        CompactButton(font, kCopyTurns, "COPY", Color{126, 190, 221, 255});
-        CompactButton(font, kPasteTurns, "PASTE", Color{127, 224, 199, 255});
-        CompactButton(font, kCutTurns, "CUT", Color{216, 166, 155, 255});
-        CompactButton(font, kUndoEdit, "UNDO", Color{169, 188, 217, 255});
-        CompactButton(font, kRedoEdit, "REDO", Color{169, 188, 217, 255});
-        CompactButton(font, kMirrorHorizontal, "FLIP H",
-                      Color{190, 168, 229, 255});
-        CompactButton(font, kMirrorVertical, "FLIP V",
-                      Color{190, 168, 229, 255});
-        CompactButton(font, kRotateCounterclockwise, "ROT -90",
-                      Color{140, 196, 237, 255});
-        CompactButton(font, kRotateClockwise, "ROT +90",
-                      Color{140, 196, 237, 255});
-        CompactButton(font, kCompareToggle,
-                      ui.comparisonFiles.empty() ? "COMPARE +" : "COMPARE",
-                      set.managed ? Color{124, 217, 206, 255}
-                                  : Color{112, 131, 147, 255},
-                      ui.comparisonPickerOpen);
+    // Fixed 56px-style header: BACK, active difficulty, then three tabs.
+    DrawRectangleRounded({43,65,899,45},.12f,8,theme.surface);
+    DrawUiThemedButton(font,kEditorBack,"BACK",UiButtonVariant::Quiet,
+                       {},{},theme,14);
+    const std::string activeTitle = Truncate(draft.Data().title,23);
+    Label(font,activeTitle.c_str(),160,80,16,theme.foreground);
+    if (draft.Dirty()) Label(font,"*",385,79,19,violet);
+    DrawUiThemedButton(font,kTabSet,"SET",
+                       ui.tab==EditorTab::Set?UiButtonVariant::Cool:UiButtonVariant::Quiet);
+    DrawUiThemedButton(font,kTabRoute,"ROUTE",
+                       routeTab?UiButtonVariant::Cool:UiButtonVariant::Quiet);
+    DrawUiThemedButton(font,kTabAudio,"AUDIO",
+                       ui.tab==EditorTab::Audio?UiButtonVariant::Cool:UiButtonVariant::Quiet);
+
+    if (routeTab) {
+        // Unlike the old horizontal button bars, this six-icon vertical
+        // rail never reduces the usable height of the playing field.
+        EditorIconButton(kMirrorHorizontal,EditorIcon::FlipH,violet);
+        EditorIconButton(kMirrorVertical,EditorIcon::FlipV,violet);
+        EditorIconButton(kRotateCounterclockwise,EditorIcon::RotateL,sky);
+        EditorIconButton(kRotateClockwise,EditorIcon::RotateR,sky);
+        EditorIconButton(kCompareToggle,EditorIcon::Compare,
+                         set.managed?sky:muted,ui.comparisonPickerOpen);
+        EditorIconButton(kRouteTest,EditorIcon::Play,sky);
+
+        const Rectangle previewArea{
+            kPreviewLeft-3,kPreviewTop-3,
+            kPreviewRight-kPreviewLeft+6,kPreviewMaxSide+6};
+        DrawRectangleRounded(previewArea,UiRoundness(previewArea,12),10,
+                             Color{25,33,53,235});
+        DrawRectangleRoundedLinesEx(previewArea,UiRoundness(previewArea,12),
+                                    10,1,theme.divider);
         EditorComparisonFrame fallback;
         core::TimedRoute one;
         if (!comparisons) {
-            if (one.Compile(draft.Data().route, draft.Data().offsetSeconds))
-                fallback.panes[0] = {&one, draft.Data().title, true};
-            fallback.count = 1;
-            fallback.directionPressCounts = DirectionPressCounts(chart);
-            comparisons = &fallback;
+            if (one.Compile(draft.Data().route,draft.Data().offsetSeconds))
+                fallback.panes[0]={&one,draft.Data().title,true};
+            fallback.count=1;
+            fallback.directionPressCounts=DirectionPressCounts(chart);
+            comparisons=&fallback;
         }
-        // ROUTE presentation is intentionally independent of PLAY's SKIN.
-        // Reuse the same trajectory styling, overriding only the editor's
-        // chosen speed and lookahead duration. Practice slowdown still uses
-        // one shared song-time clock for every comparison pane.
-        Skin editorSkin = skin;
-        editorSkin.lookaheadMs = settings.editorPreviewLengthMs;
-        DrawComparisonPreviews(font, *comparisons, previewSeconds,
-            settings.editorPreviewSpeed /
-                static_cast<float>(std::max(0.1, playbackSpeed)), editorSkin);
-        Label(font, TextFormat("SPD %.0f PX/S", settings.editorPreviewSpeed),
-              745, 403, 11, Color{174, 222, 226, 255});
-        CompactButton(font, kEditorSpeedMinus, "-", Color{134, 176, 212, 255});
-        CompactButton(font, kEditorSpeedPlus, "+", Color{134, 212, 180, 255});
-        Label(font, TextFormat("PATH %.0f MS", settings.editorPreviewLengthMs),
-              745, 437, 11, Color{174, 222, 226, 255});
-        CompactButton(font, kEditorPathMinus, "-", Color{134, 176, 212, 255});
-        CompactButton(font, kEditorPathPlus, "+", Color{134, 212, 180, 255});
-        // Place the rating within the focused pane, not beneath the newly
-        // enlarged previews where it would overlap the route drawing.
-        const int focused = std::clamp(ui.comparisonFocusedSlot, 0,
-                                       comparisons->count - 1);
-        const Rectangle focusedBounds = ComparisonPreviewBounds(
-            comparisons->count, focused);
-        Label(font, TextFormat("DIFF %.1f", draft.Difficulty().overall),
-              focusedBounds.x + focusedBounds.width - 82,
-              focusedBounds.y + 6, 11, Color{239, 202, 137, 255});
-        // Starting direction is owned by FIELD, not duplicated here.
-        const auto* turn = draft.SelectedTurn();
-        const auto incoming = core::IncomingHeadingAt(chart, draft.SelectedBeat());
-        const auto outgoing = turn ? turn->direction : incoming;
-        Label(font, TextFormat("%.3f  %s",
-                              static_cast<double>(draft.SelectedBeat()) /
-                                  chart.ticksPerBeat,
-                              turn ? core::DirectionName(turn->direction) : "STRAIGHT"),
-              744, 244, 12, Color{216, 232, 239, 255});
-        // Full-chart totals, including each diagonal's two cardinals.
-        const auto& pressCounts = comparisons->directionPressCounts;
-        for (int row = 0; row < 3; ++row)
-            for (int col = 0; col < 3; ++col) {
-                const auto heading = DirectionPadHeading(row, col);
-                const std::string label = heading
-                    ? std::to_string(pressCounts[static_cast<std::size_t>(*heading)])
-                    : "DEL";
-                DirectionButton(font, DirectionPadBounds(row, col),
-                                label.c_str(),
-                                !heading ? Color{127, 140, 156, 255}
-                                  : core::IsDiagonal(*heading)
-                                    ? Color{186, 160, 235, 255}
-                                    : Color{110, 220, 198, 255},
-                                heading ? (turn && *heading == outgoing)
-                                        : false); // DEL is always neutral, never selected
+        Skin editorSkin=skin;
+        editorSkin.lookaheadMs=settings.editorPreviewLengthMs;
+        DrawComparisonPreviews(font,*comparisons,previewSeconds,
+            settings.editorPreviewSpeed/
+                static_cast<float>(std::max(0.1,playbackSpeed)),editorSkin);
+        const int focused=std::clamp(ui.comparisonFocusedSlot,0,
+                                    comparisons->count-1);
+        const Rectangle focusedBounds=ComparisonPreviewBounds(
+            comparisons->count,focused);
+        Label(font,TextFormat("%.1f",draft.Difficulty().overall),
+              focusedBounds.x+focusedBounds.width-43,
+              focusedBounds.y+23,12,sky);
+
+        // Only the compass buttons place notes; diagonal counts also
+        // contribute to their corresponding cardinal arrows.
+        const auto* turn=draft.SelectedTurn();
+        const core::Heading incoming=core::IncomingHeadingAt(
+            chart,draft.SelectedBeat());
+        const core::Heading outgoing=turn?turn->direction:incoming;
+        const auto& counts=comparisons->directionPressCounts;
+        for (int row=0;row<3;++row) for(int col=0;col<3;++col) {
+            const auto heading=DirectionPadHeading(row,col);
+            const Rectangle rect=DirectionPadBounds(row,col);
+            auto style=EditorButtonStyle(
+                heading&&core::IsDiagonal(*heading)?violet:sky);
+            style.roundness=UiRoundness(rect,9);
+            style.fill=Color{45,53,80,245};
+            DrawUiButtonChrome(rect,style,
+                heading&&turn&&*heading==outgoing);
+            if (!heading) {
+                const char* del="DEL";
+                const float w=MeasureTextEx(font,del,14,1).x;
+                Label(font,del,rect.x+(rect.width-w)*.5f,
+                      rect.y+20,14,muted);
+            } else {
+                HeadingArrow(rect,*heading,
+                             core::IsDiagonal(*heading)?violet:sky);
+                const std::string count=std::to_string(
+                    counts[static_cast<std::size_t>(*heading)]);
+                Label(font,count.c_str(),rect.x+rect.width-
+                      MeasureTextEx(font,count.c_str(),10,1).x-5,
+                      rect.y+rect.height-15,10,muted);
             }
+        }
+        Label(font,"START",750,377,12,muted);
+        EditorIconButton(kStartHeadingPrev,EditorIcon::Previous,sky);
+        EditorIconButton(kStartHeadingNext,EditorIcon::Next,sky);
+        const Rectangle start=kStartHeadingValue;
+        DrawRectangleRounded(start,UiRoundness(start,8),8,theme.surface);
+        DrawRectangleRoundedLinesEx(start,UiRoundness(start,8),8,1,violet);
+        HeadingArrow(start,chart.initialHeading,violet);
+
+        Label(font,"SPEED",749,410,12,muted);
+        Label(font,TextFormat("%.0f px/s",settings.editorPreviewSpeed),
+              749,427,11,sky);
+        CompactButton(font,kEditorSpeedMinus,"-",violet);
+        CompactButton(font,kEditorSpeedPlus,"+",sky);
+        Label(font,"PATH",749,446,12,muted);
+        Label(font,TextFormat("%.0f ms",settings.editorPreviewLengthMs),
+              749,462,11,sky);
+        CompactButton(font,kEditorPathMinus,"-",violet);
+        CompactButton(font,kEditorPathPlus,"+",sky);
     } else if (ui.tab == EditorTab::Audio) {
-        DrawTextField(font, kTitle, "DIFFICULTY", draft.Data().title,
-                      EditorField::Title, ui);
-        // Managed sets use the manifest's tempo, not the currently open
-        // chart's cached BPM metadata. A draft uses its own tempo map.
-        const auto changes = set.managed && !set.tempoMap.empty()
-            ? set.tempoMap
-            : core::EffectiveTempoMap(chart, draft.Data().offsetSeconds);
-        const auto& rating = draft.Difficulty();
-        Label(font, TextFormat("DIFF %.1f", rating.overall),
-              92, 252, 12, Color{239, 202, 137, 255});
-        Label(font, "SONG PREVIEW (MS)", kAudioPreviewMs.x,
-              kAudioPreviewMs.y - 22.0f, 15,
-              Color{172, 199, 218, 255});
-        DrawRectangleRounded(kAudioPreviewMs, 0.14f, 5,
-                             ui.editingSetPreview ? Color{47, 68, 78, 255}
-                                                  : Color{35, 43, 56, 255});
-        DrawRectangleRoundedLinesEx(kAudioPreviewMs, 0.14f, 5,
-                                    ui.editingSetPreview ? 2.0f : 1.0f,
-                                    ui.editingSetPreview ? Color{129, 235, 214, 255}
-                                                         : Color{91, 114, 139, 255});
+        DrawRectangleRounded(kAudioMetaPanel,
+            UiRoundness(kAudioMetaPanel,12),10,theme.surface);
+        DrawRectangleRoundedLinesEx(kAudioMetaPanel,
+            UiRoundness(kAudioMetaPanel,12),10,1,theme.divider);
+        DrawRectangleRounded(kAudioTempoPanel,
+            UiRoundness(kAudioTempoPanel,12),10,theme.surface);
+        DrawRectangleRoundedLinesEx(kAudioTempoPanel,
+            UiRoundness(kAudioTempoPanel,12),10,1,theme.divider);
+        Label(font,"CHART",66,185,17,violet);
+        DrawTextField(font,kTitle,"DIFFICULTY TITLE",
+                      draft.Data().title,EditorField::Title,ui);
+        Label(font,"SONG PREVIEW START  /  MS",kAudioPreviewMs.x,
+              kAudioPreviewMs.y-21,13,muted);
+        const Color box=ui.editingSetPreview
+            ? Color{61,58,91,255}:Color{34,42,64,255};
+        DrawRectangleRounded(kAudioPreviewMs,
+            UiRoundness(kAudioPreviewMs,9),9,box);
+        DrawRectangleRoundedLinesEx(kAudioPreviewMs,
+            UiRoundness(kAudioPreviewMs,9),9,
+            ui.editingSetPreview?2.0f:1.0f,
+            ui.editingSetPreview?sky:theme.divider);
         const std::string preview = ui.editingSetPreview
             ? ui.setPreviewBuffer
             : (set.managed ? std::to_string(set.previewStartMs)
                            : "SAVE SONG FIRST");
-        Label(font, preview.c_str(),
-              kAudioPreviewMs.x + 10.0f, kAudioPreviewMs.y + 9.0f, 16,
-              Color{225, 235, 241, 255});
+        Label(font,preview.c_str(),kAudioPreviewMs.x+10,
+              kAudioPreviewMs.y+10,15,theme.foreground);
+        Label(font,TextFormat("DIFFICULTY  %.1f",
+              draft.Difficulty().overall),
+              66,372,16,sky);
+        DrawUiThemedButton(font,kSong,
+            hasAudio?"REPLACE AUDIO":"ATTACH AUDIO",
+            UiButtonVariant::Quiet,{}, {},theme,13);
 
-        Label(font, "OFFSET (MS)", 104, 267, 13,
-              Color{184, 215, 231, 255});
-        Label(font, "BPM", 350, 267, 13, Color{184, 215, 231, 255});
-        const int count = static_cast<int>(changes.size());
-        const int first = std::clamp(ui.tempoFirstVisible, 0,
-                                     std::max(0, count - 5));
-        for (int row = 0; row < 5; ++row) {
-            const int index = first + row;
-            if (index >= count) break;
-            const auto& marker = changes[static_cast<std::size_t>(index)];
-            const auto field = [&](Rectangle rect, const std::string& value,
-                                   bool active) {
-                DrawRectangleRounded(rect, 0.12f, 5,
-                    active ? Color{47, 73, 77, 255}
-                           : Color{35, 43, 56, 255});
-                DrawRectangleRoundedLinesEx(rect, 0.12f, 5,
-                    active ? 1.8f : 1.0f,
-                    active ? Color{118, 226, 206, 255}
-                           : Color{95, 123, 151, 255});
-                Label(font, value.c_str(), rect.x + 9, rect.y + 6, 14,
-                      Color{222, 237, 237, 255});
+        const auto changes=set.managed&&!set.tempoMap.empty()
+            ?set.tempoMap
+            :core::EffectiveTempoMap(chart,draft.Data().offsetSeconds);
+        Label(font,"SONG TEMPO MAP",384,186,17,violet);
+        CompactButton(font,kTempoPrev,"PREV",violet);
+        CompactButton(font,kTempoNext,"NEXT",sky);
+        Label(font,"OFFSET / MS",384,220,12,muted);
+        Label(font,"BPM",590,220,12,muted);
+        const int count=static_cast<int>(changes.size());
+        const int first=std::clamp(ui.tempoFirstVisible,0,
+                                   std::max(0,count-5));
+        for(int row=0;row<5;++row) {
+            const int index=first+row;
+            if(index>=count)break;
+            const auto& marker=changes[static_cast<std::size_t>(index)];
+            const auto cell=[&](Rectangle bounds,const std::string& value,
+                                bool editing) {
+                const auto tint=editing?sky:theme.divider;
+                DrawRectangleRounded(bounds,UiRoundness(bounds,7),8,
+                   editing?Color{62,59,92,255}:Color{31,41,63,255});
+                DrawRectangleRoundedLinesEx(bounds,
+                   UiRoundness(bounds,7),8,editing?2.0f:1.0f,tint);
+                Label(font,UiFitText(font,value,bounds.width-16,14).c_str(),
+                      bounds.x+8,bounds.y+8,14,theme.foreground);
             };
             char bpm[48]{};
-            std::snprintf(bpm, sizeof(bpm), "%g", marker.bpm);
-            const bool editingMs = ui.tempoEditingRow == index &&
-                                   !ui.tempoEditingBpm;
-            const bool editingBpm = ui.tempoEditingRow == index &&
-                                    ui.tempoEditingBpm;
-            field(TempoOffsetCell(row),
-                editingMs ? ui.tempoBuffer : std::to_string(marker.timeMs),
-                editingMs);
-            field(TempoBpmCell(row),
-                editingBpm ? ui.tempoBuffer : std::string(bpm),
-                editingBpm);
-            if (index > 0) {
-                CompactButton(font, TempoDeleteCell(row), "DEL",
-                              Color{221, 160, 159, 255});
-            } else {
-                Label(font, "START", TempoDeleteCell(row).x + 7,
-                      TempoDeleteCell(row).y + 8, 11,
-                      Color{157, 190, 210, 255});
-            }
+            std::snprintf(bpm,sizeof(bpm),"%g",marker.bpm);
+            const bool msActive=ui.tempoEditingRow==index&&
+                                !ui.tempoEditingBpm;
+            const bool bpmActive=ui.tempoEditingRow==index&&
+                                 ui.tempoEditingBpm;
+            cell(TempoOffsetCell(row),
+                msActive?ui.tempoBuffer:std::to_string(marker.timeMs),msActive);
+            cell(TempoBpmCell(row),
+                bpmActive?ui.tempoBuffer:std::string(bpm),bpmActive);
+            if(index>0)CompactButton(font,TempoDeleteCell(row),
+                                    "DELETE",violet);
+            else Label(font,"START",TempoDeleteCell(row).x+20,
+                       TempoDeleteCell(row).y+9,12,sky);
         }
-        CompactButton(font, kTempoPrev, "PREV",
-                      Color{130, 169, 207, 255});
-        CompactButton(font, kTempoNext, "NEXT",
-                      Color{130, 169, 207, 255});
-        CompactButton(font, kTempoAdd, "ADD BPM MARKER",
-                      Color{119, 223, 194, 255});
-        Label(font, TextFormat("%d / %d", count ? first + 1 : 0, count),
-              695, 318, 12, Color{177, 203, 221, 255});
+        DrawUiThemedButton(font,kTempoAdd,"+ ADD BPM MARKER",
+                           UiButtonVariant::Cool,{}, {},theme,13);
+        Label(font,TextFormat("%d / %d",count?first+1:0,count),
+              801,437,12,muted);
     } else if (ui.tab == EditorTab::Set) {
+        const Rectangle metadataPanel{43,175,522,294};
+        const Rectangle difficultiesPanel{567,175,370,294};
+        DrawRectangleRounded(metadataPanel,UiRoundness(metadataPanel,11),
+                             9,theme.surface);
+        DrawRectangleRoundedLinesEx(metadataPanel,UiRoundness(metadataPanel,11),
+                                    9,1,theme.divider);
+        DrawRectangleRounded(difficultiesPanel,UiRoundness(difficultiesPanel,11),
+                             9,theme.surface);
+        DrawRectangleRoundedLinesEx(difficultiesPanel,
+                                    UiRoundness(difficultiesPanel,11),
+                                    9,1,theme.divider);
         // Same geometry and hitboxes as SET input. Only this tab changes:
         // shared Song Set metadata is editable, chart files remain separate.
         const auto& theme = ApprovedUiTheme();
@@ -586,6 +678,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             if (!tagList.empty()) tagList += ", ";
             tagList += tag;
         }
+        Label(font,"SONG SET",53,164,12,theme.rose);
+        Label(font,"DIFFICULTIES",575,164,12,theme.softBlue);
         metadataField(EditorSetField::Title, kSetTitleField,
                       "SONG TITLE", set.title);
         metadataField(EditorSetField::Artist, kSetArtistField,
@@ -624,12 +718,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                 static_cast<std::size_t>(index)], 29);
             Label(font, title.c_str(), bounds.x + 11,
                   bounds.y + 8, 15, normal);
-            if (active) Label(font, "EDITING", bounds.x + 315,
+            if (active) Label(font, "EDITING", bounds.x + 282,
                               bounds.y + 10, 11, violet);
         }
         if (!set.managed)
-            Label(font, "SAVE AUDIO / CHART TO CREATE A SONG SET",
-                  53, 445, 11, muted);
+            Label(font, "SAVE CHART TO ENABLE PACK METADATA",
+                  53, 463, 10, muted);
     } else {
         Label(font, "INITIAL HEADING", 104, 207, 17,
               Color{194, 218, 231, 255});
@@ -646,17 +740,51 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
 
     }
 
-    DrawTimeline(font, draft, ui, previewBeat);
-    DrawSongOverview(font, draft, set, previewSeconds);
-    if (routeTab) {
-        // Practice speed now lives below the ruler, not beside TEST.
-        const char* speeds[5] = {"100%", "75%", "50%", "25%", "10%"};
-        for (int i = 0; i < 5; ++i)
-            CompactButton(font, RouteSpeedBounds(i), speeds[i],
-                Color{125, 183, 222, 255},
-                std::abs(playbackSpeed - kSpeeds[i]) < 0.001);
-        DrawComparisonPicker(font, ui, set);
+    DrawTimeline(font,draft,ui,previewBeat);
+    DrawSongOverview(font,draft,set,previewSeconds);
+
+    // One functional footer for every editor tab; no second transport row.
+    EditorIconButton(kEditorPreviewPlay,
+        running?EditorIcon::Pause:EditorIcon::Play,sky);
+    EditorIconButton(kEditorPreviewRestart,EditorIcon::Restart,violet);
+    const char* speeds[5]={"100%","75%","50%","25%","10%"};
+    int rate=0;
+    for(int i=0;i<5;++i)
+        if(std::abs(playbackSpeed-kSpeeds[i])<.001)rate=i;
+    DrawUiThemedButton(font,kEditorRateDropdown,
+        (std::string(speeds[rate])+" v").c_str(),
+        UiButtonVariant::Quiet,{}, {},theme,13);
+    DrawUiThemedButton(font,kRouteTimeValue,
+        TextFormat("%lld ms",RouteTimeMs(draft,previewBeat)),
+        UiButtonVariant::Quiet,{}, {},theme,12);
+
+    if(routeTab) {
+        DrawComparisonPicker(font,ui,set);
+        // Hover hint includes configured shortcuts, not hardcoded defaults.
+        EditorToolTip(font,kMirrorHorizontal,
+            "Flip horizontally  /  "+
+            KeyboardChordName(settings.Shortcut(ShortcutAction::EditorMirrorH)));
+        EditorToolTip(font,kMirrorVertical,
+            "Flip vertically  /  "+
+            KeyboardChordName(settings.Shortcut(ShortcutAction::EditorMirrorV)));
+        EditorToolTip(font,kRotateCounterclockwise,"Rotate 90 left");
+        EditorToolTip(font,kRotateClockwise,"Rotate 90 right");
+        EditorToolTip(font,kCompareToggle,"Compare charts");
+        EditorToolTip(font,kRouteTest,
+            "Test chart  /  "+
+            KeyboardChordName(settings.Shortcut(ShortcutAction::EditorTest)));
     }
+    if(ui.rateDropdownOpen) {
+        DrawRectangleRounded(kEditorRatePopup,UiRoundness(kEditorRatePopup,9),
+                             8,Color{32,38,63,254});
+        DrawRectangleRoundedLinesEx(kEditorRatePopup,
+            UiRoundness(kEditorRatePopup,9),8,1,theme.rose);
+        for(int i=0;i<5;++i)
+            DrawUiThemedButton(font,EditorRateOption(i),speeds[i],
+               i==rate?UiButtonVariant::Cool:UiButtonVariant::Quiet,
+               {},{},theme,12);
+    }
+
 }
 
 } // namespace locus::app

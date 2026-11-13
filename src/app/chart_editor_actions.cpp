@@ -45,11 +45,6 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     // Song Set preview time belongs to the Set controller, not the chart.
     // Suppress route/transport shortcuts; the Set controller consumes text.
     if (ui.editingSetPreview || ui.tempoEditingRow >= 0) return action;
-    if (ui.tab == EditorTab::Audio && input.mouseClick &&
-        (Hit(kTempoTable, input.mouse) ||
-         Hit(kTempoAdd, input.mouse) ||
-         Hit(kTempoPrev, input.mouse) ||
-         Hit(kTempoNext, input.mouse))) return action;
 
     if (ui.EditingText())
         return editor_text::HandleTextInput(draft, ui, input);
@@ -78,10 +73,34 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return action;
     }
 
+    // The rate selector and transport are shared by every editor tab.
+    if (ui.rateDropdownOpen) {
+        if (input.escape) { ui.rateDropdownOpen = false; return action; }
+        if (input.mouseClick) {
+            for (int i = 0; i < 5; ++i)
+                if (Hit(EditorRateOption(i), input.mouse)) {
+                    action.speedIndex = i;
+                    break;
+                }
+            ui.rateDropdownOpen = false;
+            return action;
+        }
+    }
+    if (input.mouseClick && Hit(kEditorRateDropdown, input.mouse)) {
+        ui.rateDropdownOpen = true;
+        return action;
+    }
+    if (input.mouseClick && Hit(kEditorPreviewPlay, input.mouse)) {
+        action.previewToggle = true;
+        return action;
+    }
+    if (input.mouseClick && Hit(kEditorPreviewRestart, input.mouse)) {
+        action.previewRestart = true;
+        return action;
+    }
     // The current Route time readout, not individual timeline beats, copies
     // a single exact audio timestamp as whole milliseconds.
-    if (ui.tab == EditorTab::Route && input.mouseClick &&
-        Hit(kRouteTimeValue, input.mouse)) {
+    if (input.mouseClick && Hit(kRouteTimeValue, input.mouse)) {
         const long long ms = RouteTimeMs(draft, input.timelineViewBeat);
         action.clipboardWrite = std::to_string(ms);
         ui.feedback = std::to_string(ms) + " MS COPIED";
@@ -89,17 +108,21 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return action;
     }
 
+    // The native AUDIO marker table handles its own clicks after this pass.
+    // Dropdown popup options overlap that table visually and take priority.
+    if (ui.tab == EditorTab::Audio && input.mouseClick &&
+        (Hit(kTempoTable, input.mouse) ||
+         Hit(kTempoAdd, input.mouse) ||
+         Hit(kTempoPrev, input.mouse) ||
+         Hit(kTempoNext, input.mouse))) return action;
+
     // SET is a library-management tab: note keys, undo and the timeline
     // must not modify the current chart while managing its difficulties.
     if (ui.tab == EditorTab::Set) {
         ui.draggingTimeline = false;
         if (input.mouseClick) {
             const EditorTab next = ClickedTab(input.mouse, ui.tab);
-            if (next != ui.tab) ui.tab = next;
-            else if (Hit(kSong, input.mouse)) action.chooseAudio = true;
-            else if (Hit(kPlay, input.mouse)) action.previewToggle = true;
-            else if (Hit(kStop, input.mouse)) action.previewRestart = true;
-            else if (Hit(kTest, input.mouse)) action.testPlay = true;
+            if (next != ui.tab) { ui.tab = next; ui.rateDropdownOpen = false; }
         }
         action.previewToggle |= input.previewToggle;
         action.previewRestart |= input.previewRestart;
@@ -134,6 +157,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         const EditorTab nextTab = ClickedTab(mouse, ui.tab);
         if (nextTab != ui.tab) {
             ui.comparisonPickerOpen = false;
+            ui.rateDropdownOpen = false;
             ui.tab = nextTab;
             return action;
         }
@@ -143,44 +167,36 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             return action;
         }
 
-        if (ui.tab != EditorTab::Audio && Hit(kSnapLess, mouse)) { editor_timeline::ChangeSnap(draft, ui, -1, action); return action; }
-        if (ui.tab != EditorTab::Audio && Hit(kSnapMore, mouse)) { editor_timeline::ChangeSnap(draft, ui, 1, action); return action; }
-        if (ui.tab != EditorTab::Route && Hit(kSong, mouse))
+        if (ui.tab == EditorTab::Route && Hit(kSnapLess, mouse)) { editor_timeline::ChangeSnap(draft, ui, -1, action); return action; }
+        if (ui.tab == EditorTab::Route && Hit(kSnapMore, mouse)) { editor_timeline::ChangeSnap(draft, ui, 1, action); return action; }
+        if (ui.tab == EditorTab::Audio && Hit(kSong, mouse))
             action.chooseAudio = true;
-        else if (ui.tab != EditorTab::Route && Hit(kPlay, mouse))
-            action.previewToggle = true;
-        else if (ui.tab != EditorTab::Route && Hit(kStop, mouse))
-            action.previewRestart = true;
-        else if (Hit(ui.tab == EditorTab::Route ? kRouteTest : kTest, mouse))
+        else if (ui.tab == EditorTab::Route && Hit(kRouteTest, mouse))
             action.testPlay = true;
-        else if (ui.tab != EditorTab::Audio && Hit(kZoomOut, mouse))
+        else if (ui.tab == EditorTab::Route && Hit(kZoomOut, mouse))
             ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
-        else if (ui.tab != EditorTab::Audio && Hit(kZoomIn, mouse))
+        else if (ui.tab == EditorTab::Route && Hit(kZoomIn, mouse))
             ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
-        else if (ui.tab == EditorTab::Route && Hit(kCopyTurns, mouse)) commands.copy = true;
-        else if (ui.tab == EditorTab::Route && Hit(kPasteTurns, mouse)) commands.paste = true;
-        else if (ui.tab == EditorTab::Route && Hit(kMirrorHorizontal, mouse)) commands.mirrorH = true;
-        else if (ui.tab == EditorTab::Route && Hit(kMirrorVertical, mouse)) commands.mirrorV = true;
-        else if (ui.tab == EditorTab::Route && Hit(kRotateCounterclockwise, mouse)) commands.rotateCCW = true;
-        else if (ui.tab == EditorTab::Route && Hit(kRotateClockwise, mouse)) commands.rotateCW = true;
-        else if (ui.tab == EditorTab::Route && Hit(kCutTurns, mouse)) commands.cut = true;
-        else if (ui.tab == EditorTab::Route && Hit(kUndoEdit, mouse)) {
-            ApplyHistoryAction(draft, ui, true, action);
-            return action;
-        } else if (ui.tab == EditorTab::Route && Hit(kRedoEdit, mouse)) {
-            ApplyHistoryAction(draft, ui, false, action);
-            return action;
-        } else if (ui.tab == EditorTab::Field &&
-                   Hit(kFieldHeadingPrev, mouse)) {
+        else if (ui.tab == EditorTab::Route && Hit(kMirrorHorizontal, mouse))
+            commands.mirrorH = true;
+        else if (ui.tab == EditorTab::Route && Hit(kMirrorVertical, mouse))
+            commands.mirrorV = true;
+        else if (ui.tab == EditorTab::Route &&
+                 Hit(kRotateCounterclockwise, mouse))
+            commands.rotateCCW = true;
+        else if (ui.tab == EditorTab::Route && Hit(kRotateClockwise, mouse))
+            commands.rotateCW = true;
+        else if (ui.tab == EditorTab::Route && Hit(kStartHeadingPrev, mouse)) {
             draft.RotateHeading45(-1);
             action.changedChart = true;
-        } else if (ui.tab == EditorTab::Field &&
-                   (Hit(kFieldHeading, mouse) || Hit(kFieldHeadingNext, mouse))) {
+        } else if (ui.tab == EditorTab::Route &&
+                   (Hit(kStartHeadingValue, mouse) ||
+                    Hit(kStartHeadingNext, mouse))) {
             draft.RotateHeading45(1);
             action.changedChart = true;
         } else if (ui.tab == EditorTab::Route &&
-                   mouse.x >= 744.0f && mouse.x <= 908.0f &&
-                   mouse.y >= 275.0f && mouse.y <= 388.0f) {
+                   mouse.x >= 748.0f && mouse.x <= 932.0f &&
+                   mouse.y >= 181.0f && mouse.y <= 356.0f) {
             for (int row = 0; row < 3; ++row)
                 for (int col = 0; col < 3; ++col) {
                     if (!Hit(DirectionPadBounds(row, col), mouse)) continue;
@@ -194,15 +210,6 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                         commands.deleteTurns = true;
                     }
                 }
-        } else if (ui.tab == EditorTab::Route &&
-                   mouse.y >= 505.0f && mouse.y < 533.0f &&
-                   mouse.x >= 52.0f && mouse.x < 554.0f) {
-            for (int i = 0; i < 5; ++i) {
-                if (Hit(RouteSpeedBounds(i), mouse)) {
-                    action.speedIndex = i;
-                    break;
-                }
-            }
         } else if (mouse.y >= kTimelineY && mouse.y <= kTimelineY + kTimelineHeight &&
                    mouse.x >= kTimelineX &&
                    mouse.x <= kTimelineX + kTimelineWidth) {
