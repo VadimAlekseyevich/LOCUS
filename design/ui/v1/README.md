@@ -1,4 +1,4 @@
-> **Current clickable UI:** [night-mode interactive prototype](../v2/index.html). This folder retains the approved SVG glyph geometry; vector colors now match the newer violet/sky/faded-yellow palette.
+> **Current clickable UI:** [night-mode interactive prototype](../v2/index.html). This folder retains the approved SVG glyph geometry; vector colors now match the newer violet/sky/soft lilac palette.
 
 # LOCUS — approved UI reference (v1)
 
@@ -7,10 +7,10 @@ This folder is the **approved design reference**, not C++ gameplay code. Theme, 
 ## Locked direction
 
 - Centered main menu composition based on the approved concept **02**.
-- Main wordmark: soft lowercase **locus.**, with faded-yellow dot. Original vector outlines from concept 02 retained, with SVG viewBox cropped to the artwork.
+- Main wordmark: soft lowercase **locus.**, with light sky-blue dot. Original vector outlines from concept 02 retained, with SVG viewBox cropped to the artwork.
 - Compact mark: **LO** from concept **06**, retained for the actual app/window icon only; it is **not displayed in the Home corner**.
 - Windows launcher icon: **exactly the same LO vector inside a centered dark circle**, with transparent outside, no separate logo treatment.
-- Soft charcoal-violet, sky blue, muted violet and sparse faded-yellow accents; avoid busy grids, decorative micro-labels and invented UI information.
+- Soft charcoal-violet, sky blue, muted violet and sparse soft lilac accents; avoid busy grids, decorative micro-labels and invented UI information.
 - Four real primary actions: Play, Editor, Skins, Settings. Skins and Settings have more visible tinted treatments; Exit is a small clearly bounded button.
 - Home hover now resolves in 55 ms (press 45 ms; focus 95 ms), independently of other menus.
 
@@ -32,4 +32,6 @@ New screens first receive a reviewable HTML/CSS/SVG mockup with interaction stat
 
 No chart, Song Set, SKIN or user-settings file formats were changed by adding these assets.
 
-SVG design sources are recolored for the new UI palette. Existing compiled app PNG assets remain unchanged until the native UI pass.
+SVG design sources are recolored for the new UI palette. The runtime PNG app icon and wordmark are regenerated from these SVG vectors.
+
+Rebuild source rasterizations: `python design/ui/v1/render_brand.py` (requires `cairosvg` and `Pillow`). This updates the actual `assets/ui/*.png` files read by the app.

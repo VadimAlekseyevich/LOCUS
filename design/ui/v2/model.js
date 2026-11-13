@@ -97,7 +97,7 @@
       fullscreen:false,globalOffset:0,calibration:0,
       skinTab:'path',skinName:'Default',skinDirty:false,
       skin:{...Object.fromEntries(skinPath.concat(skinPlayer).map(x=>[x.key,x.value])),
-        colors:Object.fromEntries(colors.map((x,i)=>[x[0],['#1e2538','#a9d8ef','#b4a3f2','#e5d6a8','#b4a3f2','#edf2fa','#292f45','#eaf0ff','#e5d6a8','#798ba9'][i]]))},
+        colors:Object.fromEntries(colors.map((x,i)=>[x[0],['#1e2538','#a9d8ef','#b4a3f2','#c3b6f6','#b4a3f2','#edf2fa','#292f45','#eaf0ff','#c3b6f6','#798ba9'][i]]))},
       selectedColor:'trajectory',selectedProfile:'Default',
       profiles:['Default','Nightglass'],
       results:deep(seedRuns),resultId:'r1',runCounter:4,

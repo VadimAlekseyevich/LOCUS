@@ -4,7 +4,7 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
 
 ## Design direction — Nightbloom
 
-The interface uses a gently dark violet-blue base, sky-blue interactive accents, softer violet selection states and sparse faded-yellow emphasis on important values. It remains a dark application, not a bright website.
+The interface uses a gently dark violet-blue base, sky-blue interactive accents, softer violet selection states and sparse soft lilac emphasis on important values. It remains a dark application, not a bright website.
 
 The palette is defined in [tokens.json](tokens.json) and [theme.css](theme.css). [song-backdrop.svg](song-backdrop.svg) supplies a fullscreen *illustrative* Song Set background for the HTML PLAY song-selection screen. The approved **glyph geometry** of the wordmark and LO app icon is unchanged, with recolored vector assets in [v1](../v1/).
 
@@ -31,8 +31,19 @@ Settings: Display and Audio, with key bindings alongside. Skin: PATH / PLAYER / 
 
 ## Limitations and scope
 
-This commit changes **only design HTML/CSS/JS, tokens and SVG reference assets**. Native C++ rendering, real gameplay, scoring, disk I/O, persistent run history, Song Set formats, and compiled Windows PNG assets are unchanged. The in-memory sample data resets on refresh; demo actions are not an implementation of native features.
+This iteration updates the HTML prototype, SVG sources, theme tokens **and the runtime Home/Windows-icon PNG assets** in `assets/ui`. C++ rendering and gameplay code, scoring, persistent run history and data formats are unchanged. The application copies the PNG assets next to the executable on build. The in-memory sample data resets on refresh; demo actions are not an implementation of native features.
 
 No new animation, transitions or visual HUD elements are introduced to scored gameplay.
 
 Check [REVIEW.md](REVIEW.md) for acceptance points.
+
+## Regenerate the real app icon
+
+The **actual running game's icon** is `assets/ui/app-icon.png` (used by `SetWindowIcon`); Home loads `assets/ui/wordmark.png`. Both have been regenerated from the SVG artwork, not merely previewed in HTML. To rebuild them again:
+
+```bash
+python -m pip install cairosvg Pillow
+python design/ui/v1/render_brand.py
+```
+
+Output is 256×256 and 460×136 respectively, with transparent PNG outside the icon circle and the exact approved LO geometry. The existing Windows binary itself is not rebuilt by this design commit; launch a new build to see the updated icon.
