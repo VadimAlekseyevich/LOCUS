@@ -23,18 +23,23 @@ bool Near(float lhs, float rhs, float tolerance = 0.015f) {
 int main() {
     bool ok = true;
     const auto& theme = ApprovedUiTheme();
-    ok &= Check(theme.background.r == 32 && theme.background.g == 33 &&
-                theme.softBlue.r == 187 && theme.softBlue.g == 210 &&
-                theme.rose.r == 233 && theme.rose.g == 90 &&
-                theme.buttonRadiusPx == 17.0f,
-                "locked palette and geometry");
+    ok &= Check(theme.background.r == 28 && theme.background.g == 33 &&
+                theme.softBlue.r == 162 && theme.softBlue.g == 216 &&
+                theme.rose.r == 181 && theme.rose.g == 164 &&
+                theme.rose.b > theme.rose.r &&
+                theme.softBlue.b > theme.softBlue.r &&
+                theme.buttonRadiusPx == 14.0f,
+                "nightbloom palette and control geometry");
     ok &= Check(UiOpacity(theme.rose, 0.0f).a == 0 &&
                 UiOpacity(theme.rose, 1.0f).a == 255 &&
-                UiMix(theme.background, theme.foreground, 0.0f).r == 32 &&
-                UiMix(theme.background, theme.foreground, 1.0f).r == 240,
+                UiMix(theme.background, theme.foreground, 0.0f).r ==
+                    theme.background.r &&
+                UiMix(theme.background, theme.foreground, 1.0f).r ==
+                    theme.foreground.r,
                 "color transforms clamp and match approved theme");
-    ok &= Check(Near(UiRoundness({0, 0, 160, 50}, 17), 0.68f) &&
-                UiRoundness({0, 0, 160, 0}, 17) == 0.0f,
+    ok &= Check(Near(UiRoundness({0, 0, 160, 50}, theme.buttonRadiusPx),
+                     2.0f * theme.buttonRadiusPx / 50.0f) &&
+                UiRoundness({0, 0, 160, 0}, theme.buttonRadiusPx) == 0.0f,
                 "pixel radii are independent of screen layout");
 
     const auto primary = ApprovedButtonStyle(UiButtonVariant::Rose);
@@ -49,9 +54,9 @@ int main() {
     const auto exitStyle = ApprovedButtonStyle(UiButtonVariant::Quiet);
     ok &= Check(cool.fill.b > theme.surface.b &&
                 warm.fill.r > theme.surface.r &&
-                warm.fill.r > warm.fill.g &&
+                warm.fill.b > theme.surface.b &&
                 cool.selectedFill.b > cool.fill.b &&
-                warm.selectedFill.r > warm.fill.r &&
+                warm.selectedFill.b > warm.fill.b &&
                 exitStyle.fill.a == 255 &&
                 exitStyle.stroke.a > 0 &&
                 exitStyle.text.r == theme.foreground.r,
