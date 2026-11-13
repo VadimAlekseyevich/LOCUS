@@ -7,7 +7,7 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
 - The native PLAY song-selection screen now uses **RmlUi 6.3**, not fixed 960x540 raylib hitboxes. The left summary/history panel has proportional width with sensible limits; the right song tree expands to fill the remaining window and both lists scroll. Layout lives in `assets/ui/rml/play.rml` and `play.rcss`, with shared Nightbloom components in `common.rcss`.
 - The RmlUi document handles pointer events, typing and keyboard focus natively, forwarding the same library commands to C++. The right-hand tree searches songs, artists, mapper, shared tags and chart titles. PLAY/EDIT/BACK/RESCAN and old Results viewing are hooked up.
 - The menu theme and reusable button classes use the violet/sky palette. Settings now presents **Display / Audio**, with volume/offset under Audio and no Hit Flash setting.
-- Song Set backgrounds already fill the window and are now less heavily darkened on the selector.
+- When the selected Song Set supplies artwork, the native selector displays that artwork across the window; otherwise it uses the plain theme.
 - Native completed-attempt **JSON persistence and per-chart Results history** are implemented. PLAY shows real records and opens a saved result read-only. **Replay playback is intentionally not implemented.** See [Results storage](../../../docs/RESULTS.md).
 - Song Set title, artist, **set-wide mapper and tags** now have native persistent
   storage, indexed values, a validated atomic edit API and editor SET view data.
@@ -27,7 +27,7 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
 
 The interface uses a gently dark violet-blue base, sky-blue interactive accents, softer violet selection states and sparse soft lilac emphasis on important values. It remains a dark application, not a bright website.
 
-The palette is defined in [tokens.json](tokens.json) and [theme.css](theme.css). [song-backdrop.svg](song-backdrop.svg) supplies a fullscreen *illustrative* Song Set background for the HTML PLAY song-selection screen. The approved **glyph geometry** of the wordmark and LO app icon is unchanged, with recolored vector assets in [v1](../v1/).
+The palette is defined in [tokens.json](tokens.json) and [theme.css](theme.css). The approved **glyph geometry** of the wordmark and LO app icon is unchanged, with recolored vector assets in [v1](../v1/).
 
 The UI is composed of the existing reusable controls and the layout in [styles.css](styles.css). Styling, focus, hover, pressed and selected states are all interactive. Reduced-motion settings are supported. The static scored-gameplay reference has **no UI transitions or animations**.
 
@@ -35,7 +35,7 @@ The UI is composed of the existing reusable controls and the layout in [styles.c
 
 **PLAY on Home is the song/beatmap selection screen**, not the scored gameplay screen.
 
-- The illustrative background fills **the entire 960 × 540 screen** behind the content. There is **no dedicated central artwork container**.
+- The song-selection layout has **no dedicated central artwork container**.
 - **Left:** Song Set title, artist, mapper, tags, BPM, duration, current difficulty, its metrics and the per-chart Results list, plus PLAY and EDIT actions.
 - **Right:** a much wider scrollable song/difficulty tree, search and Song Set/import/rescan actions.
 - Selecting another chart switches the summary and results; no invented osu! leaderboard, mods or gameplay mechanics.

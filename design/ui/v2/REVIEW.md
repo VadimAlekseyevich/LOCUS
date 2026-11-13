@@ -1,7 +1,7 @@
 # LOCUS UI — design review
 
 - [ ] PLAY on Home opens **song selection**, not the scored playfield.
-- [ ] PLAY background covers the entire 960 × 540 application frame (not a center artwork box).
+- [ ] PLAY has a plain background unless its selected Song Set supplies artwork; no synthetic artwork or central artwork box.
 - [ ] All Song Set details and chart metrics appear on the left, with PLAY and EDIT easily reachable.
 - [ ] Results history is chart-specific and appears in the left panel; multiple attempts are selectable.
 - [ ] Song/difficulty scrolling occupies the expanded right-hand browser, with readable rows and search.
