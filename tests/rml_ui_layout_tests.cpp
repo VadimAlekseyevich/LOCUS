@@ -97,7 +97,7 @@ int main() {
         ok &= Check(actions && play && editor && exit,
                     "HOME has real navigation controls");
         if (play && editor && exit) {
-            auto* first = home->FindNextTabElement(nullptr, true);
+            auto* first = home->FindNextTabElement(home, true);
             auto* second = first ? home->FindNextTabElement(first, true)
                                  : nullptr;
             ok &= Check(first == play && second == editor,
