@@ -1,0 +1,61 @@
+<rml>
+<head>
+<title>LOCUS / SETTINGS</title>
+<link type="text/rcss" href="common.rcss" />
+<link type="text/rcss" href="settings.rcss" />
+</head>
+<body>
+<div id="settings-root">
+  <div class="settings-header">
+    <button class="quiet settings-back" data-action="back">BACK</button>
+    <div class="settings-title">SETTINGS</div>
+  </div>
+  <div id="settings-panels">
+    <div class="panel settings-panel">
+      <div class="settings-tabs">
+        <button id="tab-display" class="settings-tab selected" data-action="page-display">DISPLAY</button>
+        <button id="tab-audio" class="settings-tab" data-action="page-audio">AUDIO / OFFSET</button>
+      </div>
+      <div id="settings-display" class="settings-fields">
+        <div class="settings-row"><span>Vertical sync</span><button id="value-vsync" data-action="vsync">ON</button></div>
+        <div class="settings-row"><span>Frame rate limit</span><div class="settings-step"><button data-action="fps-minus">-</button><strong id="value-fps">240</strong><button data-action="fps-plus">+</button></div></div>
+        <div class="settings-row"><span>Show FPS counter</span><button id="value-show-fps" data-action="show-fps">OFF</button></div>
+        <div class="settings-row"><span>Fullscreen</span><button id="value-fullscreen" data-action="fullscreen">OFF</button></div>
+      </div>
+      <div id="settings-audio" class="settings-fields" style="display:none;">
+        <div class="settings-row"><span>Master volume</span><div class="settings-step"><button data-action="volume-minus">-</button><strong id="value-volume">70%</strong><button data-action="volume-plus">+</button></div></div>
+        <div class="settings-row"><span>Global audio offset</span><button id="value-offset" data-action="edit-offset">0 MS</button></div>
+        <div class="settings-description">Signed milliseconds, from -1000 to +1000. Press Enter to save; Escape cancels.</div>
+        <div class="settings-row"><span>Offset calibration</span><button data-action="calibrate" class="secondary">CALIBRATE</button></div>
+        <div class="settings-description">Tap your bound direction keys in time with the 100 BPM metronome.</div>
+      </div>
+    </div>
+    <div class="panel settings-panel" id="settings-bindings">
+      <div class="settings-binding-tabs">
+        <button id="group-play" data-action="group-play" class="settings-tab selected">PLAY</button>
+        <button id="group-menus" data-action="group-menus" class="settings-tab">MENUS</button>
+        <button id="group-editor" data-action="group-editor" class="settings-tab">EDITOR</button>
+      </div>
+      <div id="bind-scroll">
+        <div id="bind-list"></div>
+      </div>
+    </div>
+  </div>
+  <div id="settings-notice"></div>
+  <div id="settings-calibration" style="display:none;">
+    <div class="calibration-panel">
+      <div class="calibration-heading">GLOBAL OFFSET CALIBRATION</div>
+      <div class="calibration-hint">100 BPM METRONOME - TAP BOUND DIRECTION KEYS</div>
+      <div class="calibration-hint">Start on any beat and tap every click.</div>
+      <div id="calibration-progress">0 / 18 TAPS</div>
+      <div id="calibration-feedback"></div>
+      <div class="calibration-actions">
+        <button id="calibration-apply" data-action="calibration-apply" class="primary">APPLY</button>
+        <button data-action="calibration-retry" class="secondary">RETRY</button>
+        <button data-action="calibration-cancel" class="quiet">CANCEL</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</rml>

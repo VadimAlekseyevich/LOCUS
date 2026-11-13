@@ -1,0 +1,80 @@
+/* Native Settings follows design/ui/v2: two adaptive, scrollable columns. */
+#settings-root { width:100%; height:100%; position:relative;
+  display:flex; flex-direction:column; }
+.settings-header { height:56dp; flex:0 0 56dp;
+  display:flex; align-items:center; flex-direction:row; gap:12dp;
+  padding:7dp 14dp; border-bottom:1dp #535873;
+  background-color:#23283bd9; }
+.settings-back { flex:0 0 93dp; width:93dp; height:40dp;
+  color:#cfc1fa; }
+.settings-title { font-weight:800; font-size:22dp;
+  letter-spacing:1dp; color:#d0c7fa; }
+#settings-panels { flex:1; min-height:0; min-width:0;
+  display:flex; flex-direction:row; gap:12dp; padding:12dp 14dp; }
+.settings-panel { flex:1; min-width:0; }
+#settings-bindings { flex:1.05; }
+.settings-tabs, .settings-binding-tabs {
+  flex:0 0 57dp; display:flex; flex-direction:row; gap:6dp;
+  align-items:center; padding:8dp; border-bottom:1dp #535873; }
+.settings-tab { flex:1; min-width:0; height:40dp; padding:5dp 4dp;
+  font-size:12dp; font-weight:800; letter-spacing:0.5dp; }
+.settings-tab.selected { background-color:#585281;
+  border-color:#b5a4f3; color:#f4efff; }
+.settings-fields { display:flex; flex-direction:column;
+  flex:1; min-height:0; padding:10dp 14dp; gap:3dp; }
+.settings-row { display:flex; flex-direction:row; align-items:center;
+  justify-content:space-between; flex:0 0 66dp; min-height:66dp;
+  padding:6dp 0; border-bottom:1dp #4b516e;
+  font-size:14dp; font-weight:650; gap:10dp; }
+.settings-row button { flex:0 0 auto; min-width:96dp; height:40dp;
+  font-size:13dp; font-weight:750; }
+.settings-step { display:flex; flex-direction:row; align-items:center;
+  gap:7dp; }
+.settings-step button { flex:0 0 36dp; min-width:36dp;
+  width:36dp; height:36dp; padding:0; }
+.settings-step strong { min-width:67dp; font-size:15dp;
+  text-align:center; color:#d0c7fa; }
+.settings-description { color:#acb6cb; font-size:11dp;
+  padding:8dp 1dp; }
+#bind-scroll { flex:1; min-height:0; overflow-y:auto;
+  padding:5dp 11dp 10dp; }
+#bind-list { display:flex; flex-direction:column; }
+.binding-row { display:flex; flex-direction:row;
+  justify-content:space-between; align-items:center; gap:10dp;
+  flex:0 0 46dp; height:46dp; padding:3dp 1dp;
+  border-bottom:1dp #484e69; }
+.binding-label { flex:1; min-width:0; overflow:hidden;
+  white-space:nowrap; text-overflow:ellipsis; font-size:13dp;
+  color:#eef1fb; }
+.binding-key { flex:0 0 155dp; height:35dp; min-width:0;
+  font-size:12dp; color:#d0c7fa; }
+.binding-key.capturing { background-color:#665a98;
+  border-color:#d2c6fa; color:#ffffff; }
+#settings-notice { flex:0 0 22dp; min-height:22dp;
+  font-size:11dp; color:#acb6cb; padding:1dp 15dp; }
+#settings-notice.error { color:#ecc3d1; }
+#settings-calibration { position:absolute; left:0; top:0;
+  width:100%; height:100%; z-index:20;
+  background-color:#0a0e19ef; align-items:center; justify-content:center; }
+.calibration-panel { width:65%; max-width:620dp;
+  display:flex; flex-direction:column; padding:24dp; gap:14dp;
+  background-color:#252d43; border:2dp #a2d8ee;
+  border-radius:15dp; }
+.calibration-heading { font-size:20dp; color:#a2d8ee; font-weight:800; }
+.calibration-hint { font-size:12dp; color:#acb6cb; }
+#calibration-progress { font-size:28dp; font-weight:850;
+  text-align:center; color:#d0c7fa; padding:20dp 0; }
+#calibration-feedback { min-height:22dp; color:#acb6cb;
+  font-size:13dp; text-align:center; }
+.calibration-actions { display:flex; flex-direction:row; gap:8dp; }
+.calibration-actions button { flex:1; height:42dp; }
+@media (max-width:730dp) {
+  #settings-panels { gap:7dp; padding:7dp; }
+  .settings-fields { padding:8dp; }
+  .binding-key { flex-basis:110dp; }
+  .settings-tab { font-size:11dp; }
+}
+@media (max-height:480dp) {
+  .settings-row { flex-basis:52dp; min-height:52dp; }
+  .settings-fields { overflow-y:auto; }
+}
