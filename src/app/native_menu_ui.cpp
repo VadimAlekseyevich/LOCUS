@@ -181,10 +181,12 @@ void NativeMenuUi::Shutdown() {
 }
 
 void NativeMenuUi::Hide() {
-    if (document_ && visible_) document_->Hide();
+    if (!visible_) return;
+    if (document_) document_->Hide();
     visible_ = false;
     currentUi_ = nullptr;
     currentLibrary_ = nullptr;
+    ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
 
 void NativeMenuUi::SetText(const char* id, const std::string& value) {
@@ -216,7 +218,7 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
     if (!target) return;
     const std::string action =
         target->GetAttribute<Rml::String>("data-action", "");
-    if (action == "back") pending_.viewResultIndex = -2; // Applied to input.
+    if (action == "back") pending_.backRequested = true;
     else if (action == "play") pending_.playSelected = true;
     else if (action == "edit") pending_.editSelected = true;
     else if (action == "rescan") pending_.refresh = true;
@@ -251,6 +253,7 @@ void NativeMenuUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     const int count = chart
         ? static_cast<int>(chart->data.route.turns.size())
         : static_cast<int>(core::MakeDemoChart().turns.size());
+    SetText("notice", ui.notice);
     SetText("song-title", song ? song->title : "BUILT-IN DEMO");
     std::string author = song
         ? (song->artist.empty() ? "UNKNOWN ARTIST" : song->artist)
@@ -344,7 +347,7 @@ void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
 void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
     std::ostringstream sig;
     sig << ui.selectedSong << ":" << ui.selectedChart << ":" <<
-        ui.treeChartFocused << ":" << ui.search << ":";
+        ui.treeChartFocused << ":" << ui.search << ":" << ui.notice << ":";
     for (const auto& song : library.Songs()) {
         sig << song.id << "/" << song.title << "/" << song.artist
             << "/" << song.mapper << "/" << song.bpm
@@ -390,6 +393,13 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
     if (width != lastWidth_ || height != lastHeight_) {
         context_->SetDimensions({std::max(1,width),std::max(1,height)});
         lastWidth_ = width; lastHeight_ = height;
+    }
+    // DPI can change when the window moves between monitors.
+    const Vector2 dpi = GetWindowScaleDPI();
+    const float density = std::clamp(std::max(dpi.x, dpi.y), 0.75f, 2.5f);
+    if (std::abs(density - lastDensity_) > 0.01f) {
+        context_->SetDensityIndependentPixelRatio(density);
+        lastDensity_ = density;
     }
     Rebuild(library, ui);
     const int mods = Modifiers();
@@ -443,10 +453,7 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
         input.openEditorPressed = false;
         input.requestedScreen.reset();
     }
-    if (pending_.viewResultIndex == -2) {
-        input.backPressed = true;
-        pending_.viewResultIndex = -1;
-    }
+    if (pending_.backRequested) input.backPressed = true;
     Rebuild(library, ui);
     context_->Update();
     result = pending_;

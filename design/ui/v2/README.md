@@ -4,8 +4,8 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
 
 ## Native UI port (in progress)
 
-- The C++ PLAY song-selection screen uses the new **352px compact left column** with room for run history and a **564px song tree** on the right. Mouse hitboxes and keyboard/tree navigation were updated together.
-- The native right-hand tree searches song titles, artists and difficulty titles. Search typing cannot accidentally launch PLAY/EDIT; F5 refresh and chart launches still work.
+- The native PLAY song-selection screen now uses **RmlUi 6.3**, not fixed 960x540 raylib hitboxes. The left summary/history panel has proportional width with sensible limits; the right song tree expands to fill the remaining window and both lists scroll. Layout lives in `assets/ui/rml/play.rml` and `play.rcss`, with shared Nightbloom components in `common.rcss`.
+- The RmlUi document handles pointer events, typing and keyboard focus natively, forwarding the same library commands to C++. The right-hand tree searches songs, artists, mapper, shared tags and chart titles. PLAY/EDIT/BACK/RESCAN and old Results viewing are hooked up.
 - The menu theme and reusable button classes use the violet/sky palette. Settings now presents **Display / Audio**, with volume/offset under Audio and no Hit Flash setting.
 - Song Set backgrounds already fill the window and are now less heavily darkened on the selector.
 - Native completed-attempt **JSON persistence and per-chart Results history** are implemented. PLAY shows real records and opens a saved result read-only. **Replay playback is intentionally not implemented.** See [Results storage](../../../docs/RESULTS.md).
@@ -20,7 +20,7 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
 - SKINS now uses the same dark violet/sky menu palette, a full-width tab bar,
   skin name in the header and actions beneath the preview. The existing
   functional wheel, sliders, swatches, skin profiles and controls remain.
-- Further visual polish and interaction review may be needed. Scored gameplay,
+- Home, Editor, Skins, Settings and Results are **not** RmlUi screens yet. See [the actual migration plan](../../../docs/UI_RML_MIGRATION.md). Manual cross-resolution visual inspection of the new GPU renderer is still needed; CI checks the headless layout, compilation and app logic. Scored gameplay,
   chart timing and chart file formats were not changed.
 
 ## Design direction — Nightbloom

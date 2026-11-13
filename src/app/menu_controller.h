@@ -15,6 +15,7 @@ struct MenuEvents {
     bool attachBackground = false;
     bool removeBackground = false;
     bool refresh = false;
+    bool backRequested = false; // UI event; frame input owns actual navigation.
     bool playSelected = false;
     int viewResultIndex = -1; // Actual saved attempt, never a gameplay replay.
     bool editSelected = false;

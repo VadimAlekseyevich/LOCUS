@@ -50,6 +50,7 @@ private:
     MenuEvents pending_;
     bool visible_ = false;
     int lastWidth_ = -1, lastHeight_ = -1;
+    float lastDensity_ = -1.0f;
     std::string lastTreeSignature_, lastResultSignature_, lastSummarySignature_;
 };
 

@@ -1,6 +1,7 @@
 <rml>
 <head>
 <title>LOCUS / PLAY</title>
+<link type="text/rcss" href="common.rcss" />
 <link type="text/rcss" href="play.rcss" />
 </head>
 <body>
@@ -30,6 +31,7 @@
         <div class="history-heading">RESULTS <span id="result-count">0</span></div>
         <div id="results-scroll"><div id="results-list"></div></div>
       </div>
+      <div id="notice"></div>
       <div id="commands">
         <button id="start" data-action="play" class="primary">PLAY</button>
         <button id="edit" data-action="edit" class="secondary">EDIT</button>
@@ -37,7 +39,7 @@
     </div>
     <div id="library" class="panel">
       <div class="library-heading">SONGS / CHARTS</div>
-      <input id="search" type="text" placeholder="Search songs..." maxlength="64" />
+      <input id="search" class="ui-input" type="text" placeholder="Search songs..." maxlength="64" />
       <div id="tree-scroll"><div id="tree"></div></div>
       <div id="library-footer">
         <span id="row-count">0 SONGS</span>

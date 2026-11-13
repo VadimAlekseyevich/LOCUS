@@ -4,7 +4,7 @@
 
 A Windows rhythm game with a built-in chart editor. Read the moving route and press the outgoing direction in time with your song; missed notes change your grade, never the authored route.
 
-UI design: **[interactive LOCUS prototype](design/ui/v2/index.html)** — dark violet/sky theme and compact PLAY song selection. **Native UI migration is underway:** PLAY song browser, Display/Audio Settings, SET, ROUTE, AUDIO, SKINS and per-chart saved Results use native C++ controls and the violet/sky palette. The editor and skin screens have been restructured toward the approved prototype; additional visual refinement may follow. [Design notes](design/ui/v2/README.md). Scored gameplay remains unchanged.
+UI design: **[interactive LOCUS prototype](design/ui/v2/index.html)**. The new **responsive RmlUi** migration is active for PLAY (song/chart selection): flex-based panels, native search, scrolling and saved Results. Shared RCSS theme and raylib integration: [migration plan and status](docs/UI_RML_MIGRATION.md). Home, SET/ROUTE/AUDIO, SKINS, Settings and Results still use the previous raylib UI while they are migrated. All chart/gameplay logic and scored gameplay rendering remain unchanged.
 
 ## Run
 
