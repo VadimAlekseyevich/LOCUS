@@ -205,6 +205,20 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     ClearBackground(state.screen == Screen::Play
                         ? gameplay.skin.background
                         : ApprovedUiTheme().background);
+    // Static Nightbloom atmosphere belongs to menus, never gameplay.
+    if (state.screen == Screen::Home || state.screen == Screen::SongSelect) {
+        const float w = static_cast<float>(GetScreenWidth());
+        const float h = static_cast<float>(GetScreenHeight());
+        DrawRectangleGradientEx({0, 0, w, h},
+            {36, 33, 60, 255}, {28, 33, 53, 255},
+            {25, 34, 52, 255}, {27, 31, 49, 255});
+        DrawCircleGradient(static_cast<int>(w * 0.45f),
+            static_cast<int>(h * 0.28f), h * 0.58f,
+            {120, 101, 203, 32}, {120, 101, 203, 0});
+        DrawCircleGradient(static_cast<int>(w * 0.82f),
+            static_cast<int>(h * 0.87f), h * 0.55f,
+            {116, 187, 218, 20}, {116, 187, 218, 0});
+    }
     // Draw in physical pixels before the virtual UI camera: cover fills any
     // aspect ratio without distortion and crops the excess at the edges.
     if (background && background->Ready() &&
@@ -412,7 +426,11 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
           nativeMenu->ShowingPlay()) ||
          (state.screen == Screen::Home && nativeMenu->HomeAvailable() &&
           nativeMenu->ShowingHome())))
+    {
         nativeMenu->Render();
+        if (state.screen == Screen::Home)
+            homeBrand.DrawAt(font, nativeMenu->HomeWordmarkBounds());
+    }
 #endif
     if (settings.showFps) {
         // Screen-pixel overlay, separate from the gameplay camera.

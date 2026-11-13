@@ -28,6 +28,7 @@ public:
     bool HomeAvailable() const noexcept { return homeDocument_ != nullptr; }
     bool ShowingHome() const noexcept;
     bool ShowingPlay() const noexcept;
+    Rectangle HomeWordmarkBounds() const noexcept;
     // Share RmlUi input and rendering for HOME and PLAY; both retain fallback.
     void UpdateHome(FrameInput& input, const std::string& status);
 

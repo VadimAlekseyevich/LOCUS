@@ -1,36 +1,40 @@
-/* LOCUS shared Nightbloom theme. RmlUi-only; not gameplay. */
-/* RmlUi has NO browser user-agent stylesheet: div is inline by default.
-   Without block defaults, SONG SET metadata flows into a single text line. */
+/* LOCUS Nightbloom menu components. Gameplay renders separately in raylib. */
 div, body, p { display:block; }
 span { display:inline; }
 strong { font-weight:bold; }
-body {
-  margin:0; padding:0; width:100%; height:100%;
-  background-color: transparent;
-  color:#eef1fb;
-  font-family:Locus;
-  font-size:16dp;
-}
 * { box-sizing:border-box; }
-button { display:inline-block; tab-index:auto; color:#eff2ff; font-family:Locus; font-size:15dp; background-color:#303650;
-  border:1dp #62698c; border-radius:13dp; padding:10dp 18dp; cursor:pointer;
-  transition: background-color 0.13s sine-out, border-color 0.13s sine-out; }
-button:hover { background-color:#444e72; border-color:#a2d8ee; }
-button:active { background-color:#5b628e; }
-button:focus { border-color:#a2d8ee; }
-.panel { background-color:#1e2437ed; border:1dp #4c5079d0; border-radius:16dp;
-  padding:18dp 20dp; min-width:0; min-height:0; }
-.eyebrow { color:#baabf5; font-size:11dp; letter-spacing:1dp; }
-.subline { color:#a2d8ee; margin:0 0 8dp; font-size:14dp; }
-.meta { font-size:12dp; color:#a5b1cb; margin:7dp 0; }
-.rule { height:1dp; background-color:#454d70; margin:13dp 0; }
-.empty { padding:13dp 5dp; color:#97a6c4; }
-.primary { background-color:#a2d8ee; color:#20253b; border-color:#a2d8ee; }
-.primary:hover { background-color:#c7ecf8; }
-.secondary { background-color:#b2a4ef; color:#25243a; border-color:#b2a4ef; }
-.secondary:hover { background-color:#cec6fc; }
-.ui-input { display:block; width:100%; height:44dp; background-color:#303650;
-  border:1dp #444d71; border-radius:12dp; padding:7dp 15dp;
-  font-family:Locus; font-size:15dp; color:#eef1fb;
-  transition: background-color 0.13s sine-out, border-color 0.13s sine-out; }
-.ui-input:focus { border-color:#a2d8ee; background-color:#3a4264; }
+body { margin:0; padding:0; width:100%; height:100%;
+  color:#eef1fb; font-family:Locus; font-size:15dp;
+  background-color:transparent; }
+button { display:inline-block; tab-index:auto;
+  font-family:Locus; font-size:14dp; font-weight:650;
+  color:#eef1fb; cursor:pointer;
+  background-color:#30364e; border:1dp #666b94;
+  border-radius:10dp; padding:8dp 12dp;
+  transition:background-color 0.12s sine-out, border-color 0.12s sine-out, color 0.12s sine-out; }
+button:hover { background-color:#414763; border-color:#a2d8ee; }
+button:active { background-color:#565a7b; }
+button:focus { border:2dp #c8dcff; }
+button:disabled { opacity:0.40; cursor:default; }
+.primary { background-color:#b3a4ef; color:#25253d; border-color:#cec2ff; }
+.primary:hover { background-color:#c7bafa; border-color:#e2dcff; color:#22253b; }
+.secondary { background-color:#323e5b; color:#a2d8ee; border-color:#819fc0; }
+.secondary:hover { background-color:#465476; border-color:#bdeaff; }
+.quiet { background-color:#2a3046; color:#acb6cb; border-color:#626785; }
+.quiet:hover { background-color:#3b435e; color:#eef1fb; }
+.panel { display:flex; flex-direction:column; min-width:0; min-height:0;
+  padding:0; background-color:#20263be8;
+  border:1dp #535a79b0; border-radius:14dp; }
+.eyebrow { display:block; color:#b5a4f3;
+  font-size:10dp; font-weight:750; letter-spacing:1dp; }
+.subline { display:block; color:#a2d8ee; font-size:14dp; }
+.meta { display:block; font-size:11dp; color:#acb6cb; }
+.empty { display:block; color:#acb6cb; font-size:12dp; padding:12dp; }
+.count-pill { display:inline-block; min-width:24dp; text-align:center;
+  padding:4dp 8dp; border:1dp #6d668f; border-radius:7dp;
+  background-color:#363452; color:#d0c7fa; font-size:11dp; font-weight:bold; }
+.ui-input { display:block; tab-index:auto; width:100%; height:40dp;
+  background-color:#192237; color:#eef1fb; font-family:Locus;
+  font-size:13dp; border:1dp #565f80; border-radius:9dp;
+  padding:7dp 13dp; transition:border-color 0.12s sine-out; }
+.ui-input:focus { border:2dp #a2d8ee; background-color:#252c43; }

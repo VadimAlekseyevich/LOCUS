@@ -49,14 +49,24 @@ void HomeBrandAssets::Unload() {
     wordmark_ = {};
 }
 
-void HomeBrandAssets::Draw(Font fallback) const {
-    // Keep LO only as the actual Windows icon, not a second logo on Home.
-    // The wordmark raster is produced from the approved SVG outlines.
-    if (IsTextureValid(wordmark_))
-        DrawTextureIn(wordmark_, {315.0f, 145.0f, 330.0f, 97.6f});
-    else
-        DrawTextEx(fallback, "locus.", {316.0f, 165.0f}, 72.0f, 1.0f,
+void HomeBrandAssets::DrawAt(Font fallback, Rectangle bounds) const {
+    if (bounds.width <= 0.0f || bounds.height <= 0.0f) return;
+    if (IsTextureValid(wordmark_)) {
+        const float aspect = static_cast<float>(wordmark_.width) /
+                             static_cast<float>(wordmark_.height);
+        const float width = std::min(bounds.width, bounds.height * aspect);
+        const float height = width / aspect;
+        DrawTextureIn(wordmark_, {bounds.x + (bounds.width - width) * 0.5f,
+            bounds.y + (bounds.height - height) * 0.5f, width, height});
+    } else {
+        const float size = bounds.height * 0.7f;
+        DrawTextEx(fallback, "locus.", {bounds.x, bounds.y}, size, 1.0f,
                    ApprovedUiTheme().softBlue);
+    }
+}
+
+void HomeBrandAssets::Draw(Font fallback) const {
+    DrawAt(fallback, {315.0f, 145.0f, 330.0f, 97.6f});
 }
 
 } // namespace locus::app

@@ -220,6 +220,15 @@ bool NativeMenuUi::ShowingPlay() const noexcept {
     return visiblePage_ == Page::Play;
 }
 
+Rectangle NativeMenuUi::HomeWordmarkBounds() const noexcept {
+    if (!ShowingHome() || !homeDocument_) return {};
+    if (const auto* element = homeDocument_->GetElementById("home-wordmark"))
+        return {element->GetAbsoluteLeft(), element->GetAbsoluteTop(),
+                static_cast<float>(element->GetOffsetWidth()),
+                static_cast<float>(element->GetOffsetHeight())};
+    return {};
+}
+
 void NativeMenuUi::Hide() {
     if (visiblePage_ == Page::None) return;
     Activate(Page::None);
@@ -433,8 +442,10 @@ void NativeMenuUi::PumpInput() {
         lastWidth_ = width; lastHeight_ = height;
     }
     // DPI can change when the window moves between monitors.
-    const Vector2 dpi = GetWindowScaleDPI();
-    const float density = std::clamp(std::max(dpi.x, dpi.y), 0.75f, 2.5f);
+    // Match the 960x540 approved design rather than monitor DPI. Extra
+    // ultrawide space is handled by the responsive flex container.
+    const float density = std::clamp(std::min(
+        width / 960.0f, height / 540.0f), 0.7f, 3.0f);
     if (std::abs(density - lastDensity_) > 0.01f) {
         context_->SetDensityIndependentPixelRatio(density);
         lastDensity_ = density;

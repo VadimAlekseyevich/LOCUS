@@ -1,30 +1,36 @@
-/* HOME uses the same menu-only Nightbloom controls as PLAY. */
-#home { display:flex; flex-direction:column; align-items:center;
-  justify-content:center; position:relative; width:100%; height:100%;
-  padding:24dp 4vw; }
+/* Approved Home composition at 960x540; UI density scales dp to window. */
+#home { display:flex; flex-direction:column; position:relative;
+  justify-content:center; align-items:center; width:100%; height:100%;
+  padding:20dp; }
 #home-main { display:flex; flex-direction:column; align-items:center;
   justify-content:center; width:100%; min-height:0; }
-#home-wordmark { display:block; width:330dp; height:98dp;
-  max-width:75%; margin:0 0 68dp; }
-#home-actions { display:flex; flex-direction:row; width:94%;
-  max-width:900dp; gap:12dp; }
+#home-wordmark { display:block; flex:0 0 110dp;
+  width:370dp; height:110dp; margin-bottom:74dp; }
+#home-actions { display:flex; flex-direction:row;
+  width:100%; max-width:804dp; gap:12dp; }
 .home-action { flex:1; min-width:0; height:80dp; padding:12dp 4dp;
-  font-size:19dp; text-align:center; font-weight:600; }
-.home-action:focus { border:2dp #d5effb; }
-#home-skins { background-color:#333f63; border-color:#7b92ba; }
-#home-skins:hover { background-color:#4b608c; border-color:#a2d8ee; }
-#home-settings { background-color:#3c3b61; border-color:#8b82bb; }
-#home-settings:hover { background-color:#555487; border-color:#b2a4ef; }
-#home-exit { position:absolute; right:5vw; bottom:5vh; width:122dp;
-  height:46dp; background-color:#2a3047; border-color:#565c80; }
-#home-exit:hover { background-color:#434e6b; }
-#home-notice { position:absolute; left:5vw; bottom:5vh; width:68%;
-  color:#efabbc; font-size:13dp; }
-@media (max-height:520dp) {
-  #home-wordmark { width:255dp; height:76dp; margin-bottom:36dp; }
-  .home-action { height:64dp; }
-}
+  font-size:18dp; font-weight:800; letter-spacing:1dp;
+  text-align:center; border-radius:17dp; border:1dp #746e99;
+  background-color:#30354d; color:#eef1fb; }
+#home-play { background-color:#b1a8ed; color:#25243a; border-color:#d2c6fa; }
+#home-play:hover { background-color:#c7bcf8; border-color:#e1dcff; }
+#home-editor { background-color:#303a56; color:#a2d8ee; border-color:#799dc0; }
+#home-editor:hover { background-color:#40557b; border-color:#c2eafc; }
+#home-skins { background-color:#353452; color:#d4c8ff; border-color:#8170ac; }
+#home-skins:hover { background-color:#4e4674; border-color:#c3b2f5; }
+#home-settings { background-color:#30334d; color:#d0c7fa; border-color:#776d9e; }
+#home-settings:hover { background-color:#474364; border-color:#c8bdfa; }
+.home-action:focus { border:2dp #d9eaff; }
+#home-exit { position:absolute; right:54dp; bottom:32dp;
+  width:122dp; height:46dp; border-radius:12dp;
+  font-size:13dp; font-weight:700; }
+#home-notice { position:absolute; left:55dp; bottom:40dp;
+  width:55%; font-size:12dp; color:#ecc3d1; }
 @media (max-width:680dp) {
-  #home-actions { width:100%; gap:6dp; }
+  #home-actions { gap:6dp; }
   .home-action { font-size:14dp; }
+  #home-wordmark { width:295dp; height:88dp; flex-basis:88dp; margin-bottom:45dp; }
+}
+@media (max-height:460dp) {
+  #home-wordmark { margin-bottom:38dp; }
 }

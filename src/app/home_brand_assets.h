@@ -14,6 +14,7 @@ public:
     void Load();
     void Unload();
     void Draw(Font fallback) const;
+    void DrawAt(Font fallback, Rectangle physicalBounds) const;
 
 private:
     Texture2D wordmark_{};

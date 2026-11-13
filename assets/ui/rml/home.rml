@@ -7,16 +7,17 @@
 <body>
 <div id="home">
   <div id="home-main">
-    <img id="home-wordmark" src="../wordmark.png" alt="locus." />
+    <!-- Approved PNG drawn by HomeBrandAssets at this responsive RmlUi box. -->
+    <div id="home-wordmark"></div>
     <div id="home-actions">
-      <button id="home-play" class="home-action primary" data-action="home-play">PLAY</button>
-      <button id="home-editor" class="home-action secondary" data-action="home-editor">EDITOR</button>
+      <button id="home-play" class="home-action" data-action="home-play">PLAY</button>
+      <button id="home-editor" class="home-action" data-action="home-editor">EDITOR</button>
       <button id="home-skins" class="home-action" data-action="home-skins">SKINS</button>
       <button id="home-settings" class="home-action" data-action="home-settings">SETTINGS</button>
     </div>
   </div>
   <div id="home-notice"></div>
-  <button id="home-exit" data-action="home-exit">EXIT</button>
+  <button id="home-exit" class="quiet" data-action="home-exit">EXIT</button>
 </div>
 </body>
 </rml>
