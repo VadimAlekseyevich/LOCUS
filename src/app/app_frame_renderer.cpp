@@ -14,7 +14,6 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
-#include <initializer_list>
 #include <vector>
 
 namespace locus::app {
@@ -23,47 +22,7 @@ constexpr int kWindowWidth = 960;
 constexpr int kWindowHeight = 540;
 constexpr Color kBackground = {21, 23, 33, 255};
 
-// Recreates the route-line ambience from design/ui/v2/song-backdrop.svg.
-// No game route or scoring state is involved; this is menu-only decoration.
-void DrawNightbloomSongBackdrop(int screenWidth, int screenHeight) {
-    const float width = static_cast<float>(screenWidth);
-    const float height = static_cast<float>(screenHeight);
-    const float scale = std::max(width / 960.0f, height / 540.0f);
-    const Vector2 offset{
-        (width - 960.0f * scale) * 0.5f,
-        (height - 540.0f * scale) * 0.5f
-    };
-    const auto point = [&](Vector2 p) {
-        return Vector2{offset.x + p.x * scale, offset.y + p.y * scale};
-    };
-    const auto route = [&](std::initializer_list<Vector2> nodes,
-                           Color wide, Color edge, float thickness) {
-        auto draw = [&](Color color, float size) {
-            auto previous = nodes.begin();
-            for (auto it = previous + 1; it != nodes.end(); ++it) {
-                DrawLineEx(point(*previous), point(*it),
-                           std::max(1.0f, size * scale), color);
-                previous = it;
-            }
-        };
-        draw(wide, thickness);
-        draw(edge, 1.5f);
-    };
-    route({{-94,416},{82,416},{82,308},{215,308},{215,182},
-           {332,182},{332,96},{438,96}},
-          {166,160,232,48}, {196,185,240,64}, 18.0f);
-    route({{641,-56},{641,116},{742,116},{742,257},
-           {860,257},{860,408},{1030,408}},
-          {149,212,237,42}, {193,230,241,64}, 15.0f);
-    route({{350,594},{350,454},{456,454},{456,354},
-           {597,354},{597,220},{660,220}},
-          {168,204,238,32}, {168,204,238,70}, 8.0f);
-    DrawCircleLinesV(point({215,308}), 9.0f * scale,
-                     {203,182,244,128});
-    DrawCircleLinesV(point({742,257}), 8.0f * scale,
-                     {167,219,234,108});
-    DrawCircleLinesV(point({456,354}), 7.0f * scale,
-                     {168,204,238,106});
+
 }
 }
 
@@ -250,7 +209,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                         ? gameplay.skin.background
                         : ApprovedUiTheme().background);
     // Static Nightbloom atmosphere belongs to menus, never gameplay.
-    if (state.screen == Screen::Home || state.screen == Screen::SongSelect) {
+    if (state.screen == Screen::Home) {
         const float w = static_cast<float>(GetScreenWidth());
         const float h = static_cast<float>(GetScreenHeight());
         DrawRectangleGradientEx({0, 0, w, h},
@@ -260,11 +219,6 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
             {120, 101, 203, 32}, {120, 101, 203, 0});
         DrawCircleGradient({w * 0.82f, h * 0.87f}, h * 0.55f,
             {116, 187, 218, 20}, {116, 187, 218, 0});
-        // Actual Song Set art takes precedence. The illustrative route
-        // belongs only to the artwork-free library selector.
-        if (state.screen == Screen::SongSelect &&
-            (!background || !background->Ready()))
-            DrawNightbloomSongBackdrop(GetScreenWidth(), GetScreenHeight());
     }
     // Draw in physical pixels before the virtual UI camera: cover fills any
     // aspect ratio without distortion and crops the excess at the edges.

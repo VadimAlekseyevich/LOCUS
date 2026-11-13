@@ -406,9 +406,9 @@ void NativeMenuUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
         if (isChart) html << " data-chart='" << item.chart << "'";
         html << ">";
         if (isChart) html << "<span class='chart-marker'></span>";
-        else html << "<span class='row-chevron'>"
-                  << (item.song == ui.selectedSong ? "&#9662;" : "&#9656;")
-                  << "</span>";
+        else html << "<span class='row-chevron"
+                  << (item.song == ui.selectedSong ? " expanded" : "")
+                  << "'></span>";
         html << "<span class='row-label'>" << Escape(name) << "</span>";
         if (isChart) html << "<span class='row-rating'>"
                           << Rating(difficulty) << "</span>";
@@ -439,7 +439,7 @@ void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
              << i << "'><strong>" << Accuracy(result.accuracyPercent)
              << "</strong><span class='result-date'>"
              << Escape(FormatRunTimestamp(result.completedAtMs))
-             << "</span><span class='result-arrow'>&#8250;</span></button>";
+             << "</span><span class='result-arrow'>&gt;</span></button>";
     }
     if (ui.results.empty())
         html << "<div class='empty'>NO SAVED RESULTS</div>";

@@ -83,8 +83,11 @@
   background-color:#27344f; border:1dp #4e5878; }
 .chart-row.active { background-color:#525b84; border-color:#a2d8ee; }
 .chart-row:hover { background-color:#404e73; border-color:#9ed2e9; }
-.row-chevron { display:inline-block; width:18dp;
-  font-size:19dp; color:#b5a4f3; }
+.row-chevron { display:inline-block; flex:0 0 9dp;
+  width:9dp; height:9dp; border-top:2dp #b5a4f3;
+  border-right:2dp #b5a4f3; transform:rotate(45deg);
+  margin:0 10dp 0 3dp; }
+.row-chevron.expanded { transform:rotate(135deg); }
 .chart-marker { display:inline-block; width:7dp; height:7dp;
   border-radius:4dp; margin-right:9dp; background-color:#a2d8ee; }
 .row-label { flex:1; min-width:0; overflow:hidden;

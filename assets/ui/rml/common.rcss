@@ -6,7 +6,7 @@ strong { font-weight:bold; }
 body { margin:0; padding:0; width:100%; height:100%;
   color:#eef1fb; font-family:Locus; font-size:15dp;
   background-color:transparent; }
-button { display:inline-block; tab-index:auto;
+button { display:flex; align-items:center; justify-content:center; tab-index:auto;
   font-family:Locus; font-size:14dp; font-weight:650;
   color:#eef1fb; cursor:pointer; text-align:center;
   background-color:#30364e; border:1dp #666b94;

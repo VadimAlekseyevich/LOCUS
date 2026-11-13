@@ -131,15 +131,9 @@ input[type="search"]{background:rgba(23,28,44,.76) !important;}
 .home-actions button:hover:not(:disabled) {filter:brightness(1.12);transform:translateY(-2px);}
 .home-exit {background:rgba(35,40,57,.78);border-radius:12px;color:var(--muted);}
 
-/* PLAY SONG SELECTION. The image is the full-screen background, behind both panels.
-   Right browser is deliberately wide; NO central artwork column/card. */
+/* PLAY SONG SELECTION. The background is plain unless the actual Song Set
+   supplies artwork at runtime. No decorative fallback or fake cover art. */
 .play-selection-screen {position:relative;isolation:isolate;background:#242638;}
-.play-selection-screen::before {content:"";position:absolute;inset:0;z-index:0;
- background-image:linear-gradient(180deg,rgba(21,23,38,.08),rgba(21,27,45,.28)),url("song-backdrop.svg");
- background-size:cover;background-position:center;pointer-events:none;}
-.play-selection-screen::after {content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
- background:linear-gradient(90deg,rgba(20,24,39,.24),transparent 45%,rgba(13,22,37,.12));}
-.play-selection-screen > * {position:relative;z-index:1;}
 .play-header {background:rgba(28,31,51,.63);border-color:rgba(198,197,238,.20);backdrop-filter:blur(12px);}
 .play-header h1 {color:#d2c6ff;}
 .play-selection-content {padding:12px 14px 14px;}

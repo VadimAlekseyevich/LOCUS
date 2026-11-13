@@ -70,8 +70,8 @@ FreeType. Обычная инкрементальная сборка измен�
 - RmlUi solid geometry (панели, кнопки, рамки) использует белую текстуру
   raylib по умолчанию вместо GL texture ID 0; иначе фон мог пропасть.
 - Все локальные UI-ассеты исполняемого файла находятся в `assets/ui/`:
-  `home.rml` ссылается на `../wordmark.png`, а общий RmlUi renderer
-  загружает изображения через RmlUi FileInterface и сообщает об ошибках.
+  Home wordmark draws through `HomeBrandAssets` at RmlUi layout bounds;
+  arbitrary RmlUi images load through `RmlUi FileInterface`.
 - Disk image альфа премультиплицируется только при загрузке в RmlUi;
   скины и игровой рендер не изменены.
 
@@ -85,6 +85,7 @@ FreeType. Обычная инкрементальная сборка измен�
 - PLAY restores distinct Song Set, difficulty, six metrics, saved history
   and wide library tree sections. The footer exposes wired SONG SET, IMPORT
   and RESCAN controls.
-- Static atmospheric rendering belongs only to menus and never gameplay.
+- Home retains its static atmospheric gradient. Song selection has no
+  synthetic background: artwork is displayed only when the Song Set has one.
 - CTest checks layout structure, relative sizing, approved asset PNG and
   keyboard focus. Real GPU visual inspection still requires Windows hardware.
