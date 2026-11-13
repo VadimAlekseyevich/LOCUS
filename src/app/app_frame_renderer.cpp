@@ -21,9 +21,6 @@ namespace {
 constexpr int kWindowWidth = 960;
 constexpr int kWindowHeight = 540;
 constexpr Color kBackground = {21, 23, 33, 255};
-
-
-}
 }
 
 // The installed Windows UI font is read from the OS, not bundled or redistributed.
