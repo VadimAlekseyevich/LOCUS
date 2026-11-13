@@ -42,7 +42,7 @@ int main() {
     bool ok = true;
     auto* context = Rml::CreateContext("headless-layout", {1280, 720});
     if (!context) { Rml::Shutdown(); return 1; }
-    const std::string path = std::string(LOCUS_RML_UI_DIR) + "/play.rml";
+    const std::string path = "assets/ui/rml/play.rml";
     auto* document = context->LoadDocument(path);
     ok &= Check(document != nullptr, "native PLAY document parses");
     if (document) {

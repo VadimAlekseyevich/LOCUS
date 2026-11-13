@@ -346,8 +346,13 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
     sig << ui.selectedSong << ":" << ui.selectedChart << ":" <<
         ui.treeChartFocused << ":" << ui.search << ":";
     for (const auto& song : library.Songs()) {
-        sig << song.id << "/" << song.title << "/" << song.charts.size() << ":";
-        for (const auto& chart : song.charts) sig << chart.data.title << "|";
+        sig << song.id << "/" << song.title << "/" << song.artist
+            << "/" << song.mapper << "/" << song.bpm
+            << "/" << song.charts.size() << ":";
+        for (const auto& tag : song.tags) sig << tag << ";";
+        for (const auto& chart : song.charts)
+            sig << chart.data.title << "/" << chart.data.route.turns.size()
+                << "/" << chart.difficulty.overall << "|";
     }
     const std::string signature = sig.str();
     if (signature != lastTreeSignature_) {
@@ -453,6 +458,7 @@ void NativeMenuUi::Render() {
     if (!Available() || !visible_) return;
     BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
     context_->Render();
+    renderer_.EnableScissorRegion(false);
     EndBlendMode();
 }
 

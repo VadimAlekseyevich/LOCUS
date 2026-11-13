@@ -162,10 +162,10 @@ if(LOCUS_BUILD_TESTS)
         add_executable(locus_rml_layout_tests tests/rml_ui_layout_tests.cpp)
         target_compile_features(locus_rml_layout_tests PRIVATE cxx_std_17)
         target_link_libraries(locus_rml_layout_tests PRIVATE RmlUi::Core)
-        target_compile_definitions(locus_rml_layout_tests PRIVATE
-            LOCUS_RML_UI_DIR="\"${PROJECT_SOURCE_DIR}/assets/ui/rml\"")
         add_test(NAME locus_rml_responsive_play
                  COMMAND locus_rml_layout_tests)
+        set_tests_properties(locus_rml_responsive_play PROPERTIES
+            WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     endif()
     add_executable(locus_run_results_tests
         tests/run_results_tests.cpp src/app/run_results.cpp)

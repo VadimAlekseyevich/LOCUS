@@ -399,8 +399,11 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     }
     EndMode2D();
 #ifdef LOCUS_WITH_RMLUI
+    // Confirmation dialogs must stay above all menu content, including
+    // the RmlUi document. Never cover a native quit/leave modal.
     if (state.screen == Screen::SongSelect && nativeMenu &&
-        nativeMenu->Available()) nativeMenu->Render();
+        nativeMenu->Available() && !state.quitConfirmation &&
+        !state.levelExitConfirmation) nativeMenu->Render();
 #endif
     if (settings.showFps) {
         // Screen-pixel overlay, separate from the gameplay camera.
