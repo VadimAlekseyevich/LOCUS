@@ -5,8 +5,11 @@
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/StyleTypes.h>
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -54,8 +57,10 @@ int main() {
         auto* right = document->GetElementById("library");
         auto* search = document->GetElementById("search");
         auto* results = document->GetElementById("results-scroll");
-        ok &= Check(left && right && search && results,
-                    "PLAY has real panels, search and results");
+        auto* metric = document->GetElementById("metric-speed");
+        auto* setButton = document->GetElementById("set-button");
+        ok &= Check(left && right && search && results && metric && setButton,
+                    "PLAY has separate summary, metrics and real action controls");
         // RmlUi supplies no user-agent CSS. Without explicit display:block
         // on divs, summary values form a single overlapping inline row.
         for (const char* id : {"song-title", "song-author",
@@ -104,11 +109,23 @@ int main() {
         auto* wordmark = home->GetElementById("home-wordmark");
         ok &= Check(wordmark != nullptr, "HOME wordmark is present");
         if (wordmark) {
-            const std::filesystem::path source = "assets/ui/rml";
-            const std::filesystem::path asset = source /
-                wordmark->GetAttribute<Rml::String>("src", "");
-            ok &= Check(std::filesystem::is_regular_file(asset),
-                        "HOME wordmark source resolves to a bundled image");
+            ok &= Check(wordmark->GetTagName() == "div",
+                        "HOME logo is raylib-backed, not an unloaded RmlUi image");
+            std::ifstream image("assets/ui/wordmark.png", std::ios::binary);
+            std::array<unsigned char, 24> header{};
+            image.read(reinterpret_cast<char*>(header.data()), header.size());
+            constexpr std::array<unsigned char, 8> png = {
+                0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+            const auto dimension = [&](int i) {
+                return (static_cast<unsigned int>(header[i]) << 24) |
+                       (static_cast<unsigned int>(header[i + 1]) << 16) |
+                       (static_cast<unsigned int>(header[i + 2]) << 8) |
+                       static_cast<unsigned int>(header[i + 3]);
+            };
+            ok &= Check(image.gcount() == static_cast<std::streamsize>(header.size()) &&
+                        std::equal(png.begin(), png.end(), header.begin()) &&
+                        dimension(16) == 460 && dimension(20) == 136,
+                        "Approved 460x136 PNG wordmark exists and is intact");
         }
         auto* actions = home->GetElementById("home-actions");
         auto* play = home->GetElementById("home-play");
@@ -116,7 +133,7 @@ int main() {
         auto* exit = home->GetElementById("home-exit");
         ok &= Check(actions && play && editor && exit,
                     "HOME has real navigation controls");
-        if (play && editor && exit) {
+        if (play && editor && exit && wordmark) {
             auto* first = home->FindNextTabElement(home, true);
             auto* second = first ? home->FindNextTabElement(first, true)
                                  : nullptr;
@@ -133,7 +150,16 @@ int main() {
                             play->GetAbsoluteLeft() + play->GetOffsetWidth() &&
                         exit->GetAbsoluteLeft() + exit->GetOffsetWidth() <= 800.1f,
                         "800x450: HOME actions fit");
+            context->SetDimensions({1536, 960});
+            context->SetDensityIndependentPixelRatio(1.6f);
+            context->Update();
+            ok &= Check(play->GetOffsetHeight() >= 120.0f &&
+                        wordmark->GetOffsetWidth() >= 550.0f &&
+                        wordmark->GetAbsoluteTop() + wordmark->GetOffsetHeight() <=
+                            play->GetAbsoluteTop() - 70.0f,
+                        "1536x960: Nightbloom controls and wordmark scale together");
             context->SetDimensions({1920, 810});
+            context->SetDensityIndependentPixelRatio(1.5f);
             context->Update();
             ok &= Check(actions->GetOffsetWidth() > 0 &&
                         exit->GetAbsoluteLeft() + exit->GetOffsetWidth() <= 1920.1f,

@@ -74,3 +74,17 @@ FreeType. Обычная инкрементальная сборка измен�
   загружает изображения через RmlUi FileInterface и сообщает об ошибках.
 - Disk image альфа премультиплицируется только при загрузке в RmlUi;
   скины и игровой рендер не изменены.
+
+## Nightbloom visual parity (Home / PLAY)
+
+- Home uses the 804dp action row, 370dp wordmark, 74dp gap and Nightbloom
+  colors of `design/ui/v2`. The approved PNG is rendered by raylib at the
+  RmlUi layout box, not by an RmlUi `<img>` placeholder.
+- Layout scale is `min(width/960,height/540)`, independent of monitor DPI:
+  an 80dp control is 128 physical pixels high in a 1536x960 window.
+- PLAY restores distinct Song Set, difficulty, six metrics, saved history
+  and wide library tree sections. The footer exposes wired SONG SET, IMPORT
+  and RESCAN controls.
+- Static atmospheric rendering belongs only to menus and never gameplay.
+- CTest checks layout structure, relative sizing, approved asset PNG and
+  keyboard focus. Real GPU visual inspection still requires Windows hardware.

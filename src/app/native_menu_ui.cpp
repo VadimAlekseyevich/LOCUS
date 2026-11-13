@@ -118,8 +118,20 @@ bool LoadUiFontFace() {
     for (const char* path : preferred) {
         if (!fs::exists(fs::u8path(path))) continue;
         if (Rml::LoadFontFace(path, "Locus", Rml::Style::FontStyle::Normal,
-                              Rml::Style::FontWeight::Normal))
+                              Rml::Style::FontWeight::Normal)) {
+            // The approved hierarchy requires real bold face glyphs.
+            const fs::path regular = fs::u8path(path);
+            const fs::path bold = regular.parent_path() /
+                (regular.filename() == "segoeui.ttf" ? "segoeuib.ttf" :
+                 regular.filename() == "arial.ttf" ? "arialbd.ttf" :
+                 regular.filename() == "DejaVuSans.ttf" ? "DejaVuSans-Bold.ttf" :
+                 "LiberationSans-Bold.ttf");
+            if (fs::exists(bold))
+                Rml::LoadFontFace(bold.u8string(), "Locus",
+                    Rml::Style::FontStyle::Normal,
+                    Rml::Style::FontWeight::Bold);
             return true;
+        }
     }
     return false;
 }
