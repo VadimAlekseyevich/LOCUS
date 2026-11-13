@@ -25,8 +25,9 @@
 **Статус:** этапы 1–3 реализованы и проверены на Windows x64 (Release/CTest).
 Этап 4 начат: HOME и PLAY теперь используют общий RmlUi-контекст и адаптивную
 разметку. Headless-тесты HOME проверяют 960×540, 800×450 и 1920×810;
-ручная визуальная проверка на Windows ещё нужна. Editor, SKINS, Settings и
-Results пока остаются на raylib.
+ручная визуальная проверка на Windows ещё нужна. Settings (Display/Audio,
+binds, calibration) добавлен в общий RmlUi-контекст; Editor, SKINS и Results
+пока остаются на raylib.
 
 ## Граница реализации
 
@@ -35,7 +36,8 @@ Results пока остаются на raylib.
 - На данном этапе остальные экраны используют прежние raylib-виджеты.
   Никакие автоматические анимации не добавляются в скоринговый экран.
 - RML/RCSS: `assets/ui/rml/home.rml`, `assets/ui/rml/home.rcss`,
-  `assets/ui/rml/play.rml`, `assets/ui/rml/play.rcss` и общий
+  `assets/ui/rml/play.rml`, `assets/ui/rml/play.rcss`,
+  `assets/ui/rml/settings.rml`, `assets/ui/rml/settings.rcss` и общий
   `assets/ui/rml/common.rcss`.
   Ресурсы копируются рядом с exe при сборке.
 - Граница интеграции: \`NativeMenuUi\` — владелец Rml-документа, обрабатывает
@@ -54,10 +56,21 @@ Results пока остаются на raylib.
 - Windows x64 Release + CTest и существующие headless проверки.
 - Тест компоновки RmlUi: PLAY 1280×720, 1920×810, 800×540;
   HOME 960×540, 800×450, 1920×810;
+  SETTINGS 960×540 и 1536×960;
   старые тесты и игровые headless-проверки остались зелёными.
 - Ручная визуальная проверка перед заменой остальных экранов: 16:9, 16:10,
   21:9; фокус поиска, клики по чартам, скролл и выбор сохранённых Results.
   CI без графического окна не заменяет эту проверку.
+
+## Settings: новая граница представления
+
+`NativeSettingsUi` — отдельный RmlUi presenter. Он не хранит копию настроек,
+вместо этого редактирует `GameSettings`, сохраняет текущую страницу/группу в
+`SettingsUi` и передаёт `MenuEvents` в приложение. Общий контроллер
+`HandleMenuInput` обслуживает только семантику эксклюзивного ввода
+(rebind, offset edit, calibration), а его фиксированные mouse hitboxes
+при включённом Native Settings игнорируются. Калибровка остаётся привязана
+к исходным timestamp клавиш, а не к частоте кадров или RmlUi.
 
 ## Цена новой библиотеки
 

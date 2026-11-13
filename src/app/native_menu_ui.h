@@ -2,6 +2,7 @@
 
 #include "app/rml_raylib_renderer.h"
 #include "app/menu_controller.h"
+#include "app/native_settings_ui.h"
 #include <RmlUi/Core/EventListener.h>
 
 #include <string>
@@ -26,11 +27,16 @@ public:
     void Shutdown();
     bool Available() const noexcept { return document_ != nullptr; }
     bool HomeAvailable() const noexcept { return homeDocument_ != nullptr; }
+    bool SettingsAvailable() const noexcept { return settingsDocument_ != nullptr; }
     bool ShowingHome() const noexcept;
     bool ShowingPlay() const noexcept;
+    bool ShowingSettings() const noexcept;
     Rectangle HomeWordmarkBounds() const noexcept;
     // Share RmlUi input and rendering for HOME and PLAY; both retain fallback.
     void UpdateHome(FrameInput& input, const std::string& status);
+    void UpdateSettings(GameSettings& settings, SettingsUi& ui,
+                        FrameInput& input, MenuEvents& events,
+                        bool exclusiveKeyboardInput);
 
     // Poll only while SongSelect is visible. Other screens keep raylib input.
     MenuEvents Update(const SongLibrary& library, SongSelectUi& ui,
@@ -39,9 +45,9 @@ public:
     void Render();
 
 private:
-    enum class Page { None, Home, Play };
+    enum class Page { None, Home, Play, Settings };
     void Activate(Page page);
-    void PumpInput();
+    void PumpInput(bool dispatchKeyboard = true);
     void ProcessEvent(Rml::Event& event) override;
     void Rebuild(const SongLibrary& library, SongSelectUi& ui);
     void UpdateSummary(const SongLibrary& library, SongSelectUi& ui);
@@ -55,6 +61,8 @@ private:
     Rml::Context* context_ = nullptr;
     Rml::ElementDocument* document_ = nullptr;
     Rml::ElementDocument* homeDocument_ = nullptr;
+    Rml::ElementDocument* settingsDocument_ = nullptr;
+    NativeSettingsUi settingsPresenter_;
     const SongLibrary* currentLibrary_ = nullptr;
     SongSelectUi* currentUi_ = nullptr;
     MenuEvents pending_;

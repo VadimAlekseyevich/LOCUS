@@ -41,6 +41,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                             const SongLibrary& library, SongSelectUi& libraryUi,
                             GameSettings& settings, SettingsUi& settingsUi,
                             Skin& draftSkin, SkinUi& skinUi,
-                            HomeMenuUi& homeUi, double now);
+                            HomeMenuUi& homeUi, double now,
+                            bool nativeSettings = false);
 
 } // namespace locus::app

@@ -178,6 +178,15 @@ bool NativeMenuUi::Initialize() {
     } else {
         std::cerr << "Could not load HOME RmlUi; using legacy HOME UI.\n";
     }
+    settingsDocument_ = context_->LoadDocument(
+        (file.parent_path() / "settings.rml").u8string());
+    if (settingsDocument_) {
+        settingsDocument_->AddEventListener("click", this);
+        settingsDocument_->Hide();
+        settingsPresenter_.Attach(settingsDocument_);
+    } else {
+        std::cerr << "Could not load SETTINGS RmlUi; using legacy settings.\n";
+    }
     document_->AddEventListener("click", this);
     document_->AddEventListener("input", this);
     document_->Hide();
@@ -192,6 +201,10 @@ void NativeMenuUi::Shutdown() {
             document_->RemoveEventListener("input", this);
         }
         if (homeDocument_) homeDocument_->RemoveEventListener("click", this);
+        if (settingsDocument_)
+            settingsDocument_->RemoveEventListener("click", this);
+        settingsPresenter_.Attach(nullptr);
+        settingsDocument_ = nullptr;
         document_ = nullptr;
         homeDocument_ = nullptr;
         context_->UnloadAllDocuments();
@@ -210,6 +223,7 @@ void NativeMenuUi::Activate(Page page) {
     if (visiblePage_ == page) return;
     if (document_) document_->Hide();
     if (homeDocument_) homeDocument_->Hide();
+    if (settingsDocument_) settingsDocument_->Hide();
     visiblePage_ = page;
     if (page == Page::Home && homeDocument_) {
         homeDocument_->Show();
@@ -220,6 +234,9 @@ void NativeMenuUi::Activate(Page page) {
         document_->Show();
         lastTreeSignature_.clear();
         lastResultSignature_.clear();
+    } else if (page == Page::Settings && settingsDocument_) {
+        settingsDocument_->Show();
+        settingsPresenter_.Attach(settingsDocument_);
     }
     ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
@@ -230,6 +247,10 @@ bool NativeMenuUi::ShowingHome() const noexcept {
 
 bool NativeMenuUi::ShowingPlay() const noexcept {
     return visiblePage_ == Page::Play;
+}
+
+bool NativeMenuUi::ShowingSettings() const noexcept {
+    return visiblePage_ == Page::Settings;
 }
 
 Rectangle NativeMenuUi::HomeWordmarkBounds() const noexcept {
@@ -273,6 +294,10 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
         else if (action == "home-skins") pendingHomeAction_ = 2;
         else if (action == "home-settings") pendingHomeAction_ = 3;
         else if (action == "home-exit") pendingHomeAction_ = 4;
+        return;
+    }
+    if (visiblePage_ == Page::Settings) {
+        settingsPresenter_.ProcessEvent(event);
         return;
     }
     if (visiblePage_ != Page::Play || !currentUi_ || !currentLibrary_)
@@ -476,7 +501,7 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
     }
 }
 
-void NativeMenuUi::PumpInput() {
+void NativeMenuUi::PumpInput(bool dispatchKeyboard) {
     const int width = GetScreenWidth(), height = GetScreenHeight();
     if (width != lastWidth_ || height != lastHeight_) {
         context_->SetDimensions({std::max(1,width),std::max(1,height)});
@@ -501,6 +526,9 @@ void NativeMenuUi::PumpInput() {
         context_->ProcessMouseButtonUp(0, mods);
     const float wheel = GetMouseWheelMove();
     if (wheel != 0) context_->ProcessMouseWheel(-wheel, mods);
+    // Exclusive key capture, manual offset and calibration must never leak
+    // their keyboard events into RmlUi buttons or navigation.
+    if (!dispatchKeyboard) return;
     for (int key = KEY_A; key <= KEY_Z; ++key) {
         const auto name = ToRmlKey(key);
         if (IsKeyPressed(key)) context_->ProcessKeyDown(name, mods);
@@ -519,6 +547,39 @@ void NativeMenuUi::PumpInput() {
     int codepoint = 0;
     while ((codepoint = GetCharPressed()) != 0)
         context_->ProcessTextInput(static_cast<Rml::Character>(codepoint));
+}
+
+void NativeMenuUi::UpdateSettings(GameSettings& settings, SettingsUi& ui,
+                                  FrameInput& input, MenuEvents& events,
+                                  bool exclusiveKeyboardInput) {
+    if (!SettingsAvailable()) return;
+    Activate(Page::Settings);
+    currentLibrary_ = nullptr;
+    currentUi_ = nullptr;
+    settingsPresenter_.BeginFrame(settings, ui, input, events);
+    settingsPresenter_.Sync();
+    const bool keyboard = !exclusiveKeyboardInput &&
+        ui.capturing < 0 && !ui.editingGlobalOffset && !ui.calibrationOpen;
+    PumpInput(keyboard);
+    if (keyboard) {
+        if (auto* focus = context_->GetFocusElement();
+            focus && focus->GetTagName() == "button" &&
+            (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
+            focus->Click();
+    }
+    // A focused Settings action must not trigger global menu shortcuts.
+    if (ui.capturing >= 0 || ui.editingGlobalOffset || ui.calibrationOpen) {
+        input.startPressed = false;
+        input.backPressed = false;
+        input.requestedScreen.reset();
+        input.fullscreenPressed = false;
+    } else if (auto* focus = context_->GetFocusElement();
+               focus && focus->GetTagName() == "button") {
+        input.startPressed = false;
+    }
+    settingsPresenter_.Sync();
+    context_->Update();
+    settingsPresenter_.EndFrame();
 }
 
 void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status) {

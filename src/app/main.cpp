@@ -365,7 +365,17 @@ int main(int argc, char** argv) {
                 nativeMenu.UpdateHome(input, menuStatus);
             else if (state.screen == Screen::SongSelect && nativeMenu.Available())
                 menuEvents = nativeMenu.Update(library, libraryUi, input);
-            else
+            else if (state.screen == Screen::Settings &&
+                     nativeMenu.SettingsAvailable()) {
+                const bool exclusiveKeyboard =
+                    settingsUi.capturing >= 0 ||
+                    settingsUi.editingGlobalOffset ||
+                    settingsUi.calibrationOpen;
+                menuEvents = HandleMenuInput(state, input, library, libraryUi,
+                    settings, settingsUi, draftSkin, skinUi, homeUi, inputNow, true);
+                nativeMenu.UpdateSettings(settings, settingsUi, input,
+                    menuEvents, exclusiveKeyboard);
+            } else
 #endif
                 menuEvents = HandleMenuInput(state, input, library, libraryUi,
                     settings, settingsUi, draftSkin, skinUi, homeUi, inputNow);
@@ -974,7 +984,8 @@ int main(int argc, char** argv) {
         }
 #ifdef LOCUS_WITH_RMLUI
         if (visibleState.screen != Screen::SongSelect &&
-            visibleState.screen != Screen::Home) nativeMenu.Hide();
+            visibleState.screen != Screen::Home &&
+            visibleState.screen != Screen::Settings) nativeMenu.Hide();
 #endif
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, editorClock,

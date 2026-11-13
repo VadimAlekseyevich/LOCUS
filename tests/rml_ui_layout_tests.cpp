@@ -166,6 +166,35 @@ int main() {
                         "1920x810: HOME actions fit");
         }
     }
+    // SETTINGS shares the same context, with independent scrolling bindings.
+    auto* settingsDoc = context->LoadDocument("assets/ui/rml/settings.rml");
+    ok &= Check(settingsDoc != nullptr, "native SETTINGS document parses");
+    if (settingsDoc) {
+        if (home) home->Hide();
+        settingsDoc->Show();
+        context->SetDimensions({960, 540});
+        context->SetDensityIndependentPixelRatio(1.f);
+        context->Update();
+        auto* left = settingsDoc->GetElementById("settings-display");
+        auto* right = settingsDoc->GetElementById("settings-bindings");
+        auto* bindings = settingsDoc->GetElementById("bind-scroll");
+        auto* modal = settingsDoc->GetElementById("settings-calibration");
+        auto* volume = settingsDoc->GetElementById("value-volume");
+        ok &= Check(left && right && bindings && modal && volume,
+                    "SETTINGS contains Display, Audio, bindings and calibration");
+        if (left && right) {
+            ok &= Check(right->GetAbsoluteLeft() > left->GetAbsoluteLeft() &&
+                        right->GetAbsoluteLeft() +
+                            right->GetOffsetWidth() <= 960.1f,
+                        "960x540: SETTINGS columns fit side by side");
+            context->SetDimensions({1536, 960});
+            context->SetDensityIndependentPixelRatio(1.6f);
+            context->Update();
+            ok &= Check(right->GetAbsoluteLeft() +
+                            right->GetOffsetWidth() <= 1536.1f,
+                        "1536x960: SETTINGS scales without overflow");
+        }
+    }
     Rml::RemoveContext("headless-layout");
     Rml::Shutdown();
     return ok ? 0 : 1;

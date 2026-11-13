@@ -246,7 +246,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
 
     // No wordmark or global help text during scoring: only field + hits.
     if (state.screen != Screen::Play && state.screen != Screen::Home &&
-        state.screen != Screen::SongSelect) {
+        state.screen != Screen::SongSelect && state.screen != Screen::Settings) {
         DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
                       Color{223, 225, 238, 255});
     }
@@ -266,7 +266,11 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::Skin) {
         locus::app::DrawSkinMenu(font, draftSkin, skinUi);
     } else if (state.screen == Screen::Settings) {
-        locus::app::DrawSettingsMenu(font, settings, settingsUi);
+#ifdef LOCUS_WITH_RMLUI
+        if (!nativeMenu || !nativeMenu->SettingsAvailable() ||
+            !nativeMenu->ShowingSettings() || state.quitConfirmation)
+#endif
+            locus::app::DrawSettingsMenu(font, settings, settingsUi);
     } else if (state.screen == Screen::Listen) {
         DrawLocalMusicScreen(font, localSong, now, musicError);
     } else if (state.screen == Screen::Play) {
@@ -426,7 +430,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         ((state.screen == Screen::SongSelect && nativeMenu->Available() &&
           nativeMenu->ShowingPlay()) ||
          (state.screen == Screen::Home && nativeMenu->HomeAvailable() &&
-          nativeMenu->ShowingHome())))
+          nativeMenu->ShowingHome()) ||
+         (state.screen == Screen::Settings && nativeMenu->SettingsAvailable() &&
+          nativeMenu->ShowingSettings())))
     {
         nativeMenu->Render();
         if (state.screen == Screen::Home)

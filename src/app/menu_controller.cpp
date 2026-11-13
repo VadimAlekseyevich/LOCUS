@@ -19,7 +19,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                            locus::app::SettingsUi& settingsUi,
                            locus::app::Skin& draftSkin,
                            locus::app::SkinUi& skinUi,
-                           HomeMenuUi& homeUi, double now) {
+                           HomeMenuUi& homeUi, double now, bool nativeSettings) {
     MenuEvents events;
     const bool mouseClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     const auto transform = locus::app::ViewportTransform::Menu(
@@ -256,7 +256,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         return events;
     }
 
-    if (state.screen == Screen::Settings) {
+    if (state.screen == Screen::Settings && !nativeSettings) {
         const float wheel = GetMouseWheelMove();
         if (wheel != 0.0f) {
             settingsUi.firstBinding = std::clamp(
@@ -334,7 +334,9 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (IsKeyPressed(KEY_E)) events.editSelected = true;
     }
 
-    if (!mouseClick || !validMouse) return events;
+    // Native Settings reuses only capture/calibration/offset keyboard rules;
+    // physical-pixel RmlUi exclusively handles mouse and scrolling.
+    if (nativeSettings || !mouseClick || !validMouse) return events;
     const auto hit = [&](Rectangle area) {
         return CheckCollisionPointRec(mouse, area);
     };
