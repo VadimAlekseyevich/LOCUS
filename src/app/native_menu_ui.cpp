@@ -332,7 +332,9 @@ void NativeMenuUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     const int count = chart
         ? static_cast<int>(chart->data.route.turns.size())
         : static_cast<int>(core::MakeDemoChart().turns.size());
-    SetText("notice", ui.notice);
+    // Initial library-index telemetry is not a user-facing notification.
+    SetText("notice", ui.notice.rfind("LIBRARY:", 0) == 0
+        ? "" : ui.notice);
     SetText("song-title", song ? song->title : "BUILT-IN DEMO");
     SetText("song-author", song
         ? (song->artist.empty() ? "UNKNOWN ARTIST" : song->artist)
