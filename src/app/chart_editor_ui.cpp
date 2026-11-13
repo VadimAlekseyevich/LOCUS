@@ -360,7 +360,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     Label(font, "CHART EDITOR", 49, 80, 22, Color{194, 236, 231, 255});
     const bool routeTab = ui.tab == EditorTab::Route;
     const auto navButton = routeTab ? CompactButton : Button;
-    navButton(font, kTabSet, "SET", Color{244, 197, 124, 255},
+    navButton(font, kTabSet, "SET", ApprovedUiTheme().rose,
               ui.tab == EditorTab::Set);
     navButton(font, kTabRoute, "ROUTE", Color{126, 219, 209, 255},
               routeTab);
@@ -549,57 +549,87 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Label(font, TextFormat("%d / %d", count ? first + 1 : 0, count),
               695, 318, 12, Color{177, 203, 221, 255});
     } else if (ui.tab == EditorTab::Set) {
-        const Color heading{186, 219, 231, 255};
-        const Color ordinary{211, 226, 236, 255};
-        const Color amber{239, 202, 137, 255};
-        Label(font, "SONG SET", 52, 170, 20, heading);
-        if (set.managed) {
-            Label(font, Truncate(set.title, 35).c_str(), 52, 201, 20, ordinary);
-            if (!set.artist.empty())
-                Label(font, Truncate(set.artist, 44).c_str(),
-                      52, 233, 14, heading);
-            Label(font, Truncate(set.audioName, 44).c_str(),
-                  52, 255, 14, heading);
-            if (set.newDifficultyDraft)
-                Label(font, "NEW DIFFICULTY / UNSAVED", 505, 187, 12, amber);
-        } else {
-            Label(font, "NOT INSTALLED YET", 52, 208, 20, amber);
-            Label(font, "ATTACH AUDIO, THEN CTRL+S", 52, 242, 15, heading);
-            Label(font, "TO CREATE A SONG SET", 52, 265, 15, heading);
+        // Same geometry and hitboxes as SET input. Only this tab changes:
+        // shared Song Set metadata is editable, chart files remain separate.
+        const auto& theme = ApprovedUiTheme();
+        const Color sky = theme.softBlue;
+        const Color violet = theme.rose;
+        const Color normal = theme.foreground;
+        const Color muted = theme.secondaryText;
+        const auto metadataField = [&](EditorSetField field,
+                                       Rectangle bounds, const char* label,
+                                       const std::string& value) {
+            const bool focus = ui.editingSetField == field;
+            Label(font, label, bounds.x, bounds.y - 15, 12, muted);
+            DrawRectangleRounded(bounds, 0.16f, 6,
+                focus ? Color{60, 59, 94, 255} : theme.surface);
+            DrawRectangleRoundedLinesEx(bounds, 0.16f, 6,
+                focus ? 2.0f : 1.0f,
+                focus ? sky : Color{112, 112, 158, 160});
+            const std::string& text = focus ? ui.setFieldBuffer : value;
+            const int limit = static_cast<int>(bounds.width / 9.5f) - 2;
+            const std::string shown = Truncate(text,
+                static_cast<std::size_t>(std::max(4, limit)));
+            Label(font, shown.c_str(), bounds.x + 9, bounds.y + 8,
+                  15, set.managed ? normal : muted);
+            if (focus) {
+                const float width = MeasureTextEx(font, shown.c_str(),
+                                                  15, 1.0f).x;
+                const float x = std::min(bounds.x + bounds.width - 5,
+                                           bounds.x + 11 + width);
+                DrawLineEx({x, bounds.y + 7}, {x, bounds.y + 26},
+                           1.6f, sky);
+            }
+        };
+        std::string tagList;
+        for (const auto& tag : set.tags) {
+            if (!tagList.empty()) tagList += ", ";
+            tagList += tag;
         }
+        metadataField(EditorSetField::Title, kSetTitleField,
+                      "SONG TITLE", set.title);
+        metadataField(EditorSetField::Artist, kSetArtistField,
+                      "ARTIST", set.artist);
+        metadataField(EditorSetField::Mapper, kSetMapperField,
+                      "MAPPER", set.mapper);
+        metadataField(EditorSetField::Tags, kSetTagsField,
+                      "TAGS", tagList);
         if (set.managed) {
-            Button(font, kSetOpenFolder, "OPEN FOLDER", Color{174, 198, 234, 255});
-            Button(font, kSetBackground, set.hasBackground ? "REPLACE BG" : "ADD BG",
-                   Color{126, 219, 209, 255});
-            Button(font, kSetRemoveBackground, "REMOVE BG", Color{227, 198, 137, 255});
+            CompactButton(font, kSetBackground,
+                set.hasBackground ? "BACKGROUND" : "ADD BACKGROUND", sky);
+            CompactButton(font, kSetRemoveBackground, "REMOVE BG", violet);
+            CompactButton(font, kSetOpenFolder, "OPEN FOLDER", sky);
         }
-        Button(font, kSetNew, "NEW", Color{239, 203, 129, 255});
-        Button(font, kSetDuplicate, "COPY", Color{162, 178, 239, 255});
-        Button(font, kSetImport, "IMPORT", Color{122, 209, 226, 255});
-        Button(font, kSetExport, "EXPORT", Color{122, 209, 226, 255});
-        Button(font, kSetDeleteDifficulty, "DELETE", Color{235, 150, 146, 255});
-        Button(font, kSetDeleteSong, "DELETE SET", Color{235, 150, 146, 255});
-        Button(font, kSetRestore, "RESTORE LAST", Color{227, 198, 137, 255});
-        Label(font, "DIFFICULTIES", 503, 170, 19, heading);
+        CompactButton(font, kSetImport, "IMPORT", sky);
+        CompactButton(font, kSetExport, "EXPORT", violet);
+        CompactButton(font, kSetRestore, "RESTORE", violet);
+        CompactButton(font, kSetNew, "NEW", sky);
+        CompactButton(font, kSetDuplicate, "DUPLICATE", violet);
+        CompactButton(font, kSetDeleteDifficulty,
+                      "DELETE CHART", Color{214, 159, 198, 255});
+        CompactButton(font, kSetDeleteSong,
+                      "DELETE SET", Color{214, 159, 198, 255});
+
         for (int row = 0; row < 5; ++row) {
             const int index = set.firstVisible + row;
             if (index >= static_cast<int>(set.difficulties.size())) break;
-            const Rectangle rect = SetDifficultyRow(row);
-            const bool selected = index == set.selected;
+            const Rectangle bounds = SetDifficultyRow(row);
+            const bool chosen = index == set.selected;
             const bool active = index == set.current;
-            DrawRectangleRounded(rect, 0.12f, 5,
-                                 selected ? Color{55, 78, 81, 255}
-                                          : Color{35, 43, 56, 255});
-            DrawRectangleRoundedLinesEx(rect, 0.12f, 5, 1.3f,
-                                        active ? Color{239, 203, 129, 255}
-                                               : Color{101, 134, 159, 255});
-            Label(font, Truncate(set.difficulties[index], 27).c_str(),
-                  rect.x + 12, rect.y + 6, 16, ordinary);
-            if (active)
-                Label(font, "EDITING", rect.x + 311, rect.y + 9, 12, amber);
+            DrawRectangleRounded(bounds, 0.13f, 6,
+                chosen ? Color{62, 61, 95, 255} : theme.surface);
+            DrawRectangleRoundedLinesEx(bounds, 0.13f, 6,
+                active ? 2.0f : 1.0f, active ? sky : theme.divider);
+            const std::string title = Truncate(set.difficulties[
+                static_cast<std::size_t>(index)], 29);
+            Label(font, title.c_str(), bounds.x + 11,
+                  bounds.y + 8, 15, normal);
+            if (active) Label(font, "EDITING", bounds.x + 315,
+                              bounds.y + 10, 11, violet);
         }
-        // The list scrolls with the mouse wheel; clicking any row opens it.
-        // No paging buttons or duplicate OPEN action.
+        if (!set.managed)
+            Label(font, "SAVE AUDIO / CHART TO CREATE A SONG SET",
+                  53, 445, 11, muted);
     } else {
         Label(font, "INITIAL HEADING", 104, 207, 17,
               Color{194, 218, 231, 255});

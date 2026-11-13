@@ -90,10 +90,15 @@ bool ValidRunResult(const RunResult& r) noexcept {
         r.id.empty() || r.id.size() > 80 ||
         !core::utf8::ValidName(r.songTitle, 256, 1024) ||
         !core::utf8::ValidName(r.chartTitle, 256, 1024) ||
+        r.id.find_first_not_of("0123456789-") != std::string::npos ||
         r.completedAtMs <= 0 ||
         r.grades.perfect < 0 || r.grades.good < 0 ||
         r.grades.bad < 0 || r.grades.miss < 0 ||
         r.notesJudged <= 0 || r.notesJudged > 2000000 ||
+        r.grades.perfect > r.notesJudged ||
+        r.grades.good > r.notesJudged ||
+        r.grades.bad > r.notesJudged ||
+        r.grades.miss > r.notesJudged ||
         r.grades.Resolved() != r.notesJudged ||
         !std::isfinite(r.accuracyPercent) ||
         !std::isfinite(r.practiceRate) ||

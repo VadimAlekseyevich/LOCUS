@@ -4,7 +4,7 @@
 
 A Windows rhythm game with a built-in chart editor. Read the moving route and press the outgoing direction in time with your song; missed notes change your grade, never the authored route.
 
-UI design: **[interactive LOCUS prototype](design/ui/v2/index.html)** — dark violet/sky theme and compact PLAY song selection. **Native UI migration has begun:** PLAY song browser and Display/Audio Settings now use the same menu palette and layout principles; editor and skins are still being migrated. [Design notes](design/ui/v2/README.md). Scored gameplay remains unchanged.
+UI design: **[interactive LOCUS prototype](design/ui/v2/index.html)** — dark violet/sky theme and compact PLAY song selection. **Native UI migration is underway:** PLAY song browser, Display/Audio Settings, the **SET metadata panel** and per-chart **saved Results history** use native C++. ROUTE/AUDIO/Skins layouts are still being migrated. [Design notes](design/ui/v2/README.md). Scored gameplay remains unchanged.
 
 ## Run
 
@@ -24,7 +24,7 @@ The audio offset is stored as an optional `globalOffsetMs` integer in the curren
 
 The world is infinite. During PLAY, an experimental camera **slightly lags behind the moving player** instead of anticipating the route: the player appears ahead of center as the camera catches up. The lag scales with movement speed (up to a safe limit), and turns are smoothed without reading future notes. The **red forward route moves with the camera**. Only the part inside the centered square is visible. In landscape the square's side equals the **window height**; a thin white frame can be recolored in SKIN. No gameplay grid or text is drawn on the left.
 
-To the right, the game shows **Accuracy** and counts for Perfect, Good, Bad and Miss. Accuracy is `(100×Perfect + 75×Good + 50×Bad) / all judged notes`; a Miss contributes zero. A chart ends **when its final note is judged**, not when the music file ends. Results shows the final accuracy and counts.
+Completed charts now also produce timestamped **Results JSON files** under `%LOCALAPPDATA%\\LOCUS\\Results`. From PLAY, click any previous result in the left panel to view its Perfect/Good/Bad/Miss and accuracy; multiple attempts are supported, **without replay playback**. Editor TEST and abandoned attempts do not count. See [Results storage](docs/RESULTS.md). To the right, the game shows **Accuracy** and counts for Perfect, Good, Bad and Miss. Accuracy is `(100×Perfect + 75×Good + 50×Bad) / all judged notes`; a Miss contributes zero. A chart ends **when its final note is judged**, not when the music file ends. Results shows the final accuracy and counts.
 
 | Game action | Default key |
 | --- | --- |
@@ -42,7 +42,7 @@ Home has **PLAY, EDIT, SKIN, SETTINGS, EXIT**. PLAY opens a read-only library wi
 
 EDIT has four tabs and two independent timelines. The **upper note ruler** scrolls with zoom/snap and shows authored turns. The **bottom whole-song overview** always spans the exact audio duration, never zooms and shows the Song Set's shared BPM markers rather than chart notes. Click or drag the bottom bar to jump to distant sections at the closest snap tick without modifying the chart. All compared previews follow the same selected song time:
 
-- **SET:** Song Set, shared audio and difficulties (easiest first). **Click a difficulty to open it directly**; unsaved draft changes require confirmation. Use NEW, COPY, IMPORT, EXPORT, DELETE/RESTORE and OPEN FOLDER. The list scrolls with the mouse wheel, without paging buttons.
+- **SET:** Song Set, shared audio and difficulties (easiest first), plus editable **Song Title / Artist / Mapper / Song Set Tags** (Enter saves; Esc cancels). **Click a difficulty to open it directly**; unsaved draft changes require confirmation. Use NEW, COPY, IMPORT, EXPORT, DELETE/RESTORE and OPEN FOLDER. The list scrolls with the mouse wheel, without paging buttons.
 - **ROUTE:** larger single-purpose editing buttons, TEST, an enlarged 222×222 route preview and full-size 3×3 mouse-only direction pad. **COMPARE** opens at most two other difficulties of the same Song Set, for three equally sized, exact-time synchronized previews. The **SPD −/+** and **PATH −/+** controls beside the pad set editor-only movement speed (px/s) and visible path length (ms), saved separately from the gameplay SKIN. Click a preview to focus that chart **without moving or resizing its pane or seeking the song**: the upper ruler and lower song overview remain at exactly the same music time, even with different tick resolutions or paused playback. Its notes and tools appear above, while the single audio playback stays shared. Each open chart retains its own Undo/Redo and unsaved route; nonfocused unsaved panes show an asterisk. Practice-speed buttons stay below the whole-song overview. Copy/paste, shift, mirror, rotations and undo/redo are available.
 - **AUDIO:** difficulty name, an editable **song-wide BPM table** (absolute offset in whole milliseconds and BPM per row), plus the independent Song Preview Start. Add a marker at the selected song position, edit its time/tempo, or delete a later marker. The first row establishes beat zero; later rows change BPM without restarting beat count. The table and markers apply to every difficulty in the pack.
 
@@ -107,5 +107,6 @@ When the service launches, its published Terms of Service and copyright policy s
 - [Architecture audit](docs/ARCHITECTURE.md)
 - [Chart format](docs/CHART_FORMAT.md)
 - [Song Set storage and recovery](docs/SONG_SETS.md)
+- [Completed Results storage (no replay playback)](docs/RESULTS.md)
 
 The Windows CI checks compilation, chart/editor behavior and scoring without a GUI. Physical audio latency and desktop appearance still require real-device testing.

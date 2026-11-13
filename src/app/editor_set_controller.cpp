@@ -10,9 +10,11 @@
 #include "app/song_library.h"
 #include "app/song_set_storage.h"
 #include "core/chart_editor.h"
+#include "core/utf8.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cctype>
 #include <filesystem>
 #include <iterator>
 #include <string>
@@ -26,6 +28,50 @@ const LibrarySong* FindSet(const SongLibrary& library, const fs::path& folder) {
     for (const auto& song : library.Songs())
         if (song.managed && song.folder == folder) return &song;
     return nullptr;
+}
+
+std::string JoinTags(const std::vector<std::string>& tags) {
+    std::string result;
+    for (const auto& tag : tags) {
+        if (!result.empty()) result += ", ";
+        result += tag;
+    }
+    return result;
+}
+
+std::string TrimWhitespace(std::string text) {
+    while (!text.empty() &&
+           std::isspace(static_cast<unsigned char>(text.front())))
+        text.erase(text.begin());
+    while (!text.empty() &&
+           std::isspace(static_cast<unsigned char>(text.back())))
+        text.pop_back();
+    return text;
+}
+
+std::vector<std::string> SplitTags(const std::string& input) {
+    std::vector<std::string> tags;
+    if (TrimWhitespace(input).empty()) return tags;
+    std::size_t start = 0;
+    do {
+        const std::size_t end = input.find(',', start);
+        tags.push_back(TrimWhitespace(input.substr(
+            start, end == input.npos ? input.npos : end - start)));
+        if (end == input.npos) break;
+        start = end + 1;
+    } while (true);
+    return tags;
+}
+
+std::string FieldValue(const EditorSetView& view, EditorSetField field) {
+    switch (field) {
+        case EditorSetField::Title: return view.title;
+        case EditorSetField::Artist: return view.artist;
+        case EditorSetField::Mapper: return view.mapper;
+        case EditorSetField::Tags: return JoinTags(view.tags);
+        case EditorSetField::None: return "";
+    }
+    return "";
 }
 
 bool ReplacesDraft(EditorSetAction action) {
@@ -251,6 +297,96 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         return;
     }
     if (ui.tab != EditorTab::Set && ui.tab != EditorTab::Audio) return;
+    if (ui.tab == EditorTab::Set) {
+        const EditorSetField hovered = clicked
+            ? detail::ClickedSetMetadataField(mouse)
+            : EditorSetField::None;
+        if (ui.editingSetField != EditorSetField::None) {
+            if (input.escape) {
+                ui.editingSetField = EditorSetField::None;
+                ui.setFieldBuffer.clear();
+                ui.editingSetId.clear();
+                ui.feedback.clear();
+                return;
+            }
+            if (input.backspace) {
+                if (ui.setFieldReplaceOnType) ui.setFieldBuffer.clear();
+                else core::utf8::PopBack(ui.setFieldBuffer);
+                ui.setFieldReplaceOnType = false;
+            }
+            if (!input.typedUtf8.empty()) {
+                std::string next = ui.setFieldReplaceOnType
+                    ? "" : ui.setFieldBuffer;
+                if (core::utf8::AppendLimited(
+                        next, input.typedUtf8, 700, 2048)) {
+                    ui.setFieldBuffer = std::move(next);
+                    ui.setFieldReplaceOnType = false;
+                }
+            }
+            const bool commit = input.enter || input.tab ||
+                (clicked && hovered != ui.editingSetField);
+            if (!commit) return;
+            const EditorSetView view = View();
+            if (!view.managed || view.id != ui.editingSetId) {
+                Notice("SONG SET CHANGED; CANCEL THE FIELD AND REFRESH", true);
+                return;
+            }
+            const auto& songs = ctx_.library.Songs();
+            const auto it = std::find_if(songs.begin(), songs.end(),
+                [&](const LibrarySong& set) {
+                    return set.managed && set.id == view.id &&
+                           set.folder == ctx_.files.ActiveSetFolder();
+                });
+            if (it == songs.end()) {
+                Notice("SONG SET NOT FOUND", true);
+                return;
+            }
+            std::string title = view.title;
+            std::string artist = view.artist;
+            std::string mapper = view.mapper;
+            std::vector<std::string> tags = view.tags;
+            const std::string value = TrimWhitespace(ui.setFieldBuffer);
+            switch (ui.editingSetField) {
+                case EditorSetField::Title: title = value; break;
+                case EditorSetField::Artist: artist = value; break;
+                case EditorSetField::Mapper: mapper = value; break;
+                case EditorSetField::Tags: tags = SplitTags(value); break;
+                case EditorSetField::None: return;
+            }
+            std::string error;
+            if (!ctx_.library.SetSongMetadata(
+                    static_cast<int>(it - songs.begin()),
+                    title, artist, mapper, tags, error)) {
+                Notice(error, true);
+                return; // Retain field contents for correction.
+            }
+            ui.editingSetField = EditorSetField::None;
+            ui.setFieldBuffer.clear();
+            ui.editingSetId.clear();
+            Notice("SONG SET METADATA SAVED");
+            if (hovered != EditorSetField::None) {
+                const EditorSetView updated = View();
+                ui.editingSetField = hovered;
+                ui.setFieldBuffer = FieldValue(updated, hovered);
+                ui.editingSetId = updated.id;
+                ui.setFieldReplaceOnType = true;
+            }
+            return; // Never activate an unrelated button on focus loss.
+        }
+        if (hovered != EditorSetField::None) {
+            const EditorSetView view = View();
+            if (!view.managed) {
+                Notice("SAVE THE SONG SET BEFORE EDITING ITS METADATA", true);
+                return;
+            }
+            ui.editingSetField = hovered;
+            ui.setFieldBuffer = FieldValue(view, hovered);
+            ui.editingSetId = view.id;
+            ui.setFieldReplaceOnType = true;
+            ui.feedback.clear();
+            return;
+        }
+    }
     if (ui.tab == EditorTab::Audio && !ui.editingSetPreview) {
         const EditorSetView view = View();
         const auto tempo = view.managed && !view.tempoMap.empty()

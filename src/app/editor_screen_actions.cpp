@@ -37,6 +37,16 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
         context_.sets.HandleControls(input.editor);
         return false;
     }
+    // Metadata text owns all keystrokes and mouse focus changes until
+    // committed/canceled. Never route these keys into chart note editing.
+    if (context_.ui.tab == EditorTab::Set &&
+        (context_.ui.editingSetField != EditorSetField::None ||
+         (input.editor.mouseClick &&
+          detail::ClickedSetMetadataField(input.editor.mouse) !=
+              EditorSetField::None))) {
+        context_.sets.HandleControls(input.editor);
+        return false;
+    }
     // SET row focus clicks are exclusive too. A simultaneous Ctrl+S must
     // never accidentally write whichever chart was clicked in that frame.
     if (context_.ui.tab == EditorTab::Set && input.editor.mouseClick) {

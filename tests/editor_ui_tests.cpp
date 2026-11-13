@@ -32,9 +32,9 @@ EditorControls Type(const char* text) {
 
 int main() {
     bool ok = true;
-    ok &= Check(detail::ClickedSetAction({280, 283}) ==
+    ok &= Check(detail::ClickedSetAction({280, 426}) ==
                 EditorSetAction::OpenFolder &&
-                detail::ClickedSetAction({290, 314}) ==
+                detail::ClickedSetAction({290, 359}) ==
                 EditorSetAction::RemoveBackground,
                 "Set folder shortcut owns an isolated clickable hitbox");
     // A physical window maps both drawing and hitboxes to the same virtual
@@ -173,11 +173,11 @@ int main() {
     ApplyEditorControls(chart, ui, noModification);
     ok &= Check(chart.Data().title == titleBeforeSet && ui.tab == EditorTab::Set,
                 "SET tab does not mutate chart from editing shortcuts");
-    ok &= Check(detail::ClickedSetAction({240, 353}) ==
+    ok &= Check(detail::ClickedSetAction({550, 184}) ==
                     EditorSetAction::NewDifficulty &&
-                detail::ClickedSetAction({370, 383}) ==
+                detail::ClickedSetAction({550, 430}) ==
                     EditorSetAction::DeleteDifficulty &&
-                detail::ClickedSetAction({370, 416}) ==
+                detail::ClickedSetAction({370, 428}) ==
                     EditorSetAction::Restore,
                 "Song Set action buttons have distinct hitboxes");
     ok &= Check(detail::kAudioPreviewMs.x <= 650 &&
@@ -186,11 +186,22 @@ int main() {
                 detail::kAudioPreviewMs.y + detail::kAudioPreviewMs.height > 220 &&
                 detail::ClickedSetAction({168, 280}) == EditorSetAction::None,
                 "Song preview lives in AUDIO and has no increment buttons");
-    ok &= Check(detail::ClickedSetAction({85, 317}) ==
+    ok &= Check(detail::ClickedSetAction({85, 359}) ==
                     EditorSetAction::AttachBackground &&
-                detail::ClickedSetAction({285, 317}) ==
+                detail::ClickedSetAction({285, 359}) ==
                     EditorSetAction::RemoveBackground,
                 "background actions remain in SET");
+    ok &= Check(detail::ClickedSetMetadataField({160, 195}) ==
+                    EditorSetField::Title &&
+                detail::ClickedSetMetadataField({150, 251}) ==
+                    EditorSetField::Artist &&
+                detail::ClickedSetMetadataField({300, 251}) ==
+                    EditorSetField::Mapper &&
+                detail::ClickedSetMetadataField({180, 306}) ==
+                    EditorSetField::Tags &&
+                detail::ClickedSetAction({180, 306}) ==
+                    EditorSetAction::None,
+                "SET metadata owns distinct text-field hitboxes");
     // Ruler labels are real music time; renderer/click detection agree
     // even at fractional selected positions and different zoom values.
     ChartEditor ruler;

@@ -304,12 +304,18 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     Label(font, "SONG SET", 28, 77, 11, lilac);
     fit(song ? song->title : "BUILT-IN DEMO",
         28, 94, 320, 19, theme.foreground);
-    fit(song ? (song->artist.empty() ? "UNKNOWN ARTIST" : song->artist)
-             : "LOCUS", 28, 120, 315, 14, sky);
-    Label(font, song ? TextFormat("%.2f BPM  |  %d CHARTS",
+    const std::string artistMapper = song
+        ? (song->artist.empty() ? "UNKNOWN ARTIST" : song->artist) +
+          (song->mapper.empty() ? std::string() : " / " + song->mapper)
+        : "LOCUS";
+    fit(artistMapper, 28, 120, 315, 13, sky);
+    std::string songFacts = song
+        ? TextFormat("%.2f BPM  |  %d CHARTS",
               song->bpm, static_cast<int>(song->charts.size()))
-                : "120 BPM  |  1 CHART",
-          28, 143, 12, faint);
+        : "120 BPM  |  1 CHART";
+    if (song && !song->tags.empty())
+        songFacts += "  |  " + song->tags.front();
+    fit(songFacts, 28, 143, 320, 12, faint);
     DrawLine(28, 166, 350, 166, line);
 
     Label(font, "DIFFICULTY", 28, 174, 11, lilac);

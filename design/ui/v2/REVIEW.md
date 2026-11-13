@@ -15,4 +15,6 @@
 - [ ] AUDIO tempo map remains readable; Settings has only Display/Audio; Skins preview reflects color changes.
 - [ ] Every keyboard-focused control has an obvious visible focus state.
 - [ ] Reduced motion is respected; **no scored-gameplay UI animations**.
-- [ ] No C++ or chart data format changes; sample Results and image backgrounds remain prototype-only.
+- [ ] Native PLAY shows saved results with per-chart history; HTML sample Results remain demo-only.
+- [ ] Native SET edits shared Song Set metadata without mutating any chart file.
+- [ ] No replay playback, scored-gameplay UI animation or chart file format change.

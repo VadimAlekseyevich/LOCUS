@@ -72,12 +72,17 @@ struct EditorSetView {
     int current = -1, selected = -1, firstVisible = 0;
 };
 enum class EditorField { None, Title, Bpm, OffsetMs };
+enum class EditorSetField { None, Title, Artist, Mapper, Tags };
 
 struct EditorUiState {
     EditorField active = EditorField::None;
     EditorTab tab = EditorTab::Route;
     std::string buffer;
     bool replaceOnType = false;
+    EditorSetField editingSetField = EditorSetField::None;
+    std::string setFieldBuffer;
+    bool setFieldReplaceOnType = false;
+    std::string editingSetId;
     std::string feedback;
     bool feedbackError = false;
     int rangeFirst = -1, rangeLast = -1; // Inclusive selected beats.
@@ -116,7 +121,8 @@ struct EditorUiState {
     double focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
     bool EditingText() const noexcept {
         return active != EditorField::None || editingSetPreview ||
-               tempoEditingRow >= 0;
+               tempoEditingRow >= 0 ||
+               editingSetField != EditorSetField::None;
     }
 };
 

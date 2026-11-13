@@ -8,12 +8,13 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
 - The native right-hand tree searches song titles, artists and difficulty titles. Search typing cannot accidentally launch PLAY/EDIT; F5 refresh and chart launches still work.
 - The menu theme and reusable button classes use the violet/sky palette. Settings now presents **Display / Audio**, with volume/offset under Audio and no Hit Flash setting.
 - Song Set backgrounds already fill the window and are now less heavily darkened on the selector.
-- Native completed-attempt **persistence, replay opening and Results history** are *not implemented yet*. The native Results area is intentionally empty until genuine records exist.
+- Native completed-attempt **JSON persistence and per-chart Results history** are implemented. PLAY shows real records and opens a saved result read-only. **Replay playback is intentionally not implemented.** See [Results storage](../../../docs/RESULTS.md).
 - Song Set title, artist, **set-wide mapper and tags** now have native persistent
   storage, indexed values, a validated atomic edit API and editor SET view data.
-  Difficulty/chart JSON deliberately has **no tags**. The SET text inputs still
-  need to be wired into the native UI in the next stage.
-- ROUTE/SET/AUDIO/Skins native layouts have not yet been migrated to the reviewed HTML layout. Gameplay and timing remain untouched.
+  Difficulty/chart JSON deliberately has **no tags**. Native SET text fields
+  now edit the managed Song Set's shared metadata (Enter to save, Esc to cancel).
+- SET metadata/actions have a native violet/sky layout. ROUTE/AUDIO/Skins
+  native layouts remain to be migrated. Gameplay and timing remain untouched.
 
 ## Design direction — Nightbloom
 
@@ -49,14 +50,14 @@ images, song-wide tempo map and preview position, chart title, difficulty
 calculation, UTF-8 text, editor transformations, skin settings and the menu
 theme. The Song Set's mapper and tags are now persisted and searchable.
 
-Not implemented yet: native completion-history storage and opening previous
-Results/replays; those records in the HTML prototype are sample data. The
+Implemented in native C++: completion-history storage and read-only reopening
+of prior Results; the records in the HTML prototype are still sample data. The
 remaining editor/skin layouts and their input bindings are visual work, not
 new chart formats. Tags are **never per difficulty**.
 
 ## Limitations and scope
 
-This stage includes the HTML/CSS/SVG prototype, runtime icon/wordmark PNGs and initial **C++ menu rendering/input**. Scored gameplay, scoring calculations, chart data formats and persistent run history are unchanged. The application copies the PNG assets next to the executable on build. The in-memory sample data resets on refresh; demo actions are not an implementation of native features.
+This stage includes the HTML/CSS/SVG prototype, runtime icon/wordmark PNGs and native **PLAY/SET/Results/Settings UI**. Scored gameplay, scoring calculations, chart data formats and judgement timing are unchanged. The application copies the PNG assets next to the executable on build. The in-memory sample data resets on refresh; demo actions are not an implementation of native features.
 
 No new animation, transitions or visual HUD elements are introduced to scored gameplay.
 
