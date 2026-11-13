@@ -125,7 +125,8 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         input = FrameInput{};
         input.closeRequested = nativeClose; // OS close still shows quit dialog.
         const auto hit = [&](Rectangle rect) {
-            return mouseClick && validMouse &&
+            // RmlUi owns modal clicks, the legacy virtual hitboxes do not.
+            return !nativeSettings && mouseClick && validMouse &&
                 CheckCollisionPointRec(mouse, rect);
         };
         if (IsKeyPressed(KEY_ESCAPE) ||
