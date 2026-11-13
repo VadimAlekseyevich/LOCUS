@@ -1,19 +1,22 @@
-# Wireframe acceptance checks
+# LOCUS wireframe acceptance checks (960 × 540)
 
-- [ ] Each page fits in a **960×540** application frame; no responsive webpage layout is substituted.
-- [ ] Home has four approximately 192×80 actions, plus 122×46 Exit.
-- [ ] Song Library keeps songs and selected chart's Results together on the left, Play/Edit prominent and difficulty metrics to the right.
-- [ ] Result rows are tied to the currently selected difficulty; clicking one opens that exact record.
-- [ ] No standalone Listen or Results in app navigation.
-- [ ] Editor note ruler is **above** the workspace; whole-song overview is **below** the workspace on ALL four editor tabs.
-- [ ] Lower overview shows song duration/position and shared BPM markers independently of note ruler zoom.
-- [ ] ROUTE editing tools have 40-pixel hit targets, with a separate 3×3 directional pad and previews of equal size.
-- [ ] ROUTE practice rates are BELOW the song overview.
-- [ ] SET difficulty rows open directly; no extra Open/Prev/Next.
-- [ ] AUDIO owns shared BPM table; FIELD owns only initial heading and read-only context.
-- [ ] Settings keep key bindings alongside Game/Display/Audio.
-- [ ] Skins exposes PATH, PLAYER, COLORS, MY SKINS with a persistent preview.
-- [ ] No UI animation is proposed during PLAY.
-- [ ] Destructive changes and unsaved edits use explicit confirmation.
-- [ ] No microcopy explaining obvious controls; content is names, numbers and actions.
-- [ ] Only reviewer controls (outside 960×540) may jump directly between screens and simulate completed attempts.
+- [ ] Home PLAY opens **song and chart selection**, not the active game.
+- [ ] Song selection uses right-hand song/difficulty tree, central background/artwork and PLAY/EDIT, left-hand chart info and per-chart Results.
+- [ ] No invented global leaderboard, modes or osu! skin assets.
+- [ ] SET edits song title, artist, mapper and comma-separated tags.
+- [ ] SET Background/Remove BG are side by side; Import/Export are side by side.
+- [ ] SET difficulty rows open directly, with New/Duplicate and deletions accessible.
+- [ ] Editor has **three tabs: SET, ROUTE, AUDIO**. No FIELD tab.
+- [ ] Initial heading moved to the ROUTE sidebar.
+- [ ] Editor note ruler stays above the workspace, song overview below the workspace.
+- [ ] Editor **no extra transport row**: Play/Restart icons are to the left of the lower overview, playback speed dropdown and copy-time action to its right.
+- [ ] Snap has distinct − and +; Zoom has distinct − and +, increasing ruler width.
+- [ ] ROUTE removes visible Copy/Cut/Paste/Undo/Redo but retains keyboard shortcuts.
+- [ ] ROUTE vertical icon rail is left of the larger playfield; tooltips show meanings and real keyboard chords only.
+- [ ] ROUTE keeps up to three equal-sized comparison panes and a 3×3 directional pad.
+- [ ] AUDIO retains the shared BPM table and chart title.
+- [ ] Settings shows only Display / Audio, with key bindings on the right.
+- [ ] Master volume sits under Audio; Hit flash toggle does not appear in Settings.
+- [ ] Skin hit flash sizing remains in Player, with its existing preview.
+- [ ] Results stay contextual to the selected chart; multiple in-memory attempts are supported.
+- [ ] No gameplay animation, no change to native gameplay and no additional scored PLAY UI.

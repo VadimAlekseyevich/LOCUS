@@ -2,17 +2,17 @@
 (function () {
   'use strict';
   const songs = [
-    { id:'demo',title:'Built-in demo',artist:'LOCUS',duration:32,bpm:120,offset:0,
+    { id:'demo',title:'Built-in demo',artist:'LOCUS',mapper:'LOCUS',tags:['demo'],duration:32,bpm:120,offset:0,
       charts:[{id:'original',title:'Original',difficulty:2.5,notes:32,
         dims:[1.4,2.8,2.0,2.2,1.6,3.1]}]},
-    { id:'aurora',title:'Aurora Drive',artist:'NOVA',duration:192,bpm:174,offset:-15,
+    { id:'aurora',title:'Aurora Drive',artist:'NOVA',mapper:'mapper_01',tags:['electronic','fast'],duration:192,bpm:174,offset:-15,
       charts:[
         {id:'horizon',title:'Horizon',difficulty:5.8,notes:486,
           dims:[5.4,5.9,6.1,5.7,5.3,6.6]},
         {id:'parallax',title:'Parallax',difficulty:8.3,notes:912,
           dims:[8.2,8.6,8.4,8.1,7.9,9.2]}
       ]},
-    { id:'afterglow',title:'Afterglow',artist:'ECHO / WAV',duration:246,bpm:156,offset:24,
+    { id:'afterglow',title:'Afterglow',artist:'ECHO / WAV',mapper:'mapper_02',tags:['ambient','rhythm'],duration:246,bpm:156,offset:24,
       charts:[
         {id:'glimmer',title:'Glimmer',difficulty:3.9,notes:320,
           dims:[3.8,4.1,3.6,4.4,3.2,4.8]},
@@ -86,13 +86,14 @@
     return {
       view:'home',song:'aurora',chart:'horizon',expanded:'aurora',query:'',
       editorTab:'route',editorLoaded:false,editorTitle:'Untitled',
+      setMeta:{title:'',artist:'',mapper:'',tags:''},
       editorDirty:false,beat:4,notes:deep(seedNotes),undo:[],redo:[],clipboard:null,
       zoom:100,snap:4,practice:100,editorPlaying:false,compared:[],
       focusedPane:0,editorSpeed:135,editorPath:800,songPosition:.32,
       background:false,tempo:[{time:-15,bpm:174}],previewStart:12500,
       headingIndex:2,
-      settingsTab:'game',bindGroup:'play',bindCapture:null,
-      volume:70,hitFlash:true,vsync:true,fps:'240',showFps:false,
+      settingsTab:'display',bindGroup:'play',bindCapture:null,
+      volume:70,vsync:true,fps:'240',showFps:false,
       fullscreen:false,globalOffset:0,calibration:0,
       skinTab:'path',skinName:'Default',skinDirty:false,
       skin:{...Object.fromEntries(skinPath.concat(skinPlayer).map(x=>[x.key,x.value])),

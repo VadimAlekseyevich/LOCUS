@@ -24,45 +24,47 @@ function home(){
  button('SETTINGS','settings')+'</div>'+button('EXIT','quit','home-exit')+'</div>';
 }
 function library(){
- const song=M.song(),chart=M.chart(),visible=M.songs.filter(x=>(x.title+' '+x.artist+' '+x.charts.map(c=>c.title).join(' ')).toLowerCase().includes(s.query.toLowerCase()));
+ const song=M.song(),chart=M.chart();
+ const query=s.query.toLowerCase();
+ const visible=M.songs.filter(x=>(x.title+' '+x.artist+' '+(x.mapper||'')+' '+(x.tags||[]).join(' ')+' '+x.charts.map(c=>c.title).join(' ')).toLowerCase().includes(query));
  const tree=visible.map(function(sg){
-  const expanded=sg.id===s.expanded;
-  return '<button type="button" class="song-row '+(sg.id===s.song?'current':'')+'" data-song="'+H(sg.id)+'">'+
-    (expanded?'▾':'▸')+' <span class="clip">'+H(sg.title)+'</span></button>'+
-    (expanded?sg.charts.map(function(c){
-      return '<button type="button" class="song-row chart '+(sg.id===s.song&&c.id===s.chart?'current':'')+
-      '" data-chart="'+H(c.id)+'" data-set="'+H(sg.id)+'"><span class="clip">'+H(c.title)+'</span><span class="rate">'+c.difficulty.toFixed(1)+'</span></button>';
-    }).join(''):'');
+   const expanded=sg.id===s.expanded;
+   return '<button type="button" class="song-row '+(sg.id===s.song?'current':'')+'" data-song="'+H(sg.id)+'">'+
+   '<span class="song-chevron">'+(expanded?'▾':'▸')+'</span><span class="clip">'+H(sg.title)+'</span><span class="rate">'+sg.charts.length+'</span></button>'+
+   (expanded?sg.charts.map(function(c){
+     return '<button type="button" class="song-row chart '+(sg.id===s.song&&c.id===s.chart?'current':'')+
+     '" data-chart="'+H(c.id)+'" data-set="'+H(sg.id)+'"><span class="clip">'+H(c.title)+'</span><span class="rate">'+c.difficulty.toFixed(1)+'</span></button>';
+   }).join(''):'');
  }).join('');
  const history=M.runs();
- const results=history.length?history.map(function(run){
-  return '<button class="result-row" type="button" data-run="'+H(run.id)+'"><strong>'+M.accuracy(run).toFixed(2)+'%</strong>'+
-   '<time>'+H(M.datetime(run.datetime))+'</time><span class="spacer"></span>›</button>';
- }).join(''):'<div class="empty" style="font-size:14px">No results</div>';
- const left='<div class="library-left">'+panel('SONGS', '<div class="library-songs">'+
-  '<input class="library-search" type="search" aria-label="Search songs" placeholder="Search" value="'+H(s.query)+'" data-field="query">'+
-  '<div class="song-tree vertical-scroll">'+(tree||'<div class="empty">No songs</div>')+'</div></div>')+
-  panel('RESULTS <span class="badge">'+history.length+'</span>',
-  '<div class="results-list vertical-scroll">'+results+'</div>')+'</div>';
- const isVisible=visible.some(x=>x.id===s.song)&&!!chart;
- const center=isVisible?'<div class="box library-details">'+
-  '<div class="artwork-placeholder">ARTWORK</div>'+
-  '<div class="library-name">'+H(song.title)+'</div>'+
-  '<div class="muted clip">'+H(song.artist)+' · '+song.bpm+' BPM · '+M.clock(song.duration)+'</div>'+
-  '<div class="library-mini-row"><span class="library-chart-name">'+H(chart.title)+'</span><span class="rating-total">'+chart.difficulty.toFixed(1)+'</span></div>'+
-  '<div class="library-main-actions">'+button('PLAY','play','primary')+button('EDIT','editor-open')+'</div>'+
-  '<div class="library-sub-actions">'+button('Song Set','editor-set')+'</div>'+
-  '<div class="spacer"></div>'+
-  '<div class="library-mini-row"><span>Best</span><strong>'+((history.length)?Math.max.apply(null,history.map(M.accuracy)).toFixed(2)+'%':'—')+'</strong></div>'+
-  '<div class="library-mini-row"><span>Notes</span><strong>'+chart.notes+'</strong></div>'+
-  '</div>':'<div class="box"><div class="empty">No chart selected</div></div>';
- const labels=['Speed','Rhythm','Coordination','Reading','Stamina','Peak'];
- const breakdown=isVisible?panel('DIFFICULTY','<div class="library-breakdown">'+
-  labels.map((label,i)=>'<div class="rating-line"><span>'+label+'</span><span class="rating-bar"><b style="width:'+Math.min(100,chart.dims[i]*10)+'%"></b></span><b>'+chart.dims[i].toFixed(1)+'</b></div>').join('')+
-  '<div class="summary-kv"><span>Song offset</span><b>'+song.offset+' ms</b><span>Charts</span><b>'+song.charts.length+'</b></div></div>'):
-  '<div class="box"></div>';
- return '<div class="view">'+bar('SONG LIBRARY',button('IMPORT','file')+button('RESCAN','rescan'))+
-  '<div class="view-content no-scroll"><div class="library-layout">'+left+center+breakdown+'</div></div></div>';
+ const results=history.length?history.map(function(r){
+   return '<button class="result-row" type="button" data-run="'+H(r.id)+'"><strong>'+M.accuracy(r).toFixed(2)+'%</strong>'+
+    '<time>'+H(M.datetime(r.datetime))+'</time><span>›</span></button>';
+ }).join(''):'<div class="play-no-results">No results</div>';
+ const active=visible.some(x=>x.id===s.song)&&chart;
+ const metrics=active?['Speed','Rhythm','Coord.','Reading','Stamina','Peak'].map((label,i)=>
+   '<div class="play-metric"><span>'+label+'</span><b>'+chart.dims[i].toFixed(1)+'</b></div>').join(''):'';
+ const left='<section class="box play-summary"><div class="box-head">CHART</div>'+
+   (active?'<div class="play-chart-summary"><div class="play-chart-title">'+H(chart.title)+'</div>'+
+    '<div class="row"><span class="play-difficulty">'+chart.difficulty.toFixed(1)+'</span><span>'+chart.notes+' notes</span></div>'+
+    '<div class="play-metrics">'+metrics+'</div></div>':'<div class="play-chart-summary">No chart selected</div>')+
+   '<div class="box-head">RESULTS <span class="badge">'+history.length+'</span></div>'+
+   '<div class="play-results vertical-scroll">'+results+'</div></section>';
+ const center='<section class="play-showcase">'+
+   '<div class="play-artwork" aria-label="Song background / artwork">'+
+   '<div class="play-artwork-geometry"><span></span><span></span><span></span><span></span></div>'+
+   '<span class="play-artwork-label">BACKGROUND / ARTWORK</span></div>'+
+   '<div class="play-selected-text"><h2 class="clip">'+H(song.title)+'</h2>'+
+   '<div class="clip">'+H(song.artist)+' · '+song.bpm+' BPM · '+M.clock(song.duration)+'</div>'+
+   '<div class="clip">Mapped by '+H(song.mapper||'—')+'</div></div>'+
+   '<div class="play-primary-actions">'+button('PLAY','play','primary')+button('EDIT','editor-open')+'</div></section>';
+ const right='<section class="box play-song-browser"><div class="box-head">SONGS / CHARTS</div>'+
+   '<input class="play-search" type="search" placeholder="Search songs…" aria-label="Search songs" data-field="query" value="'+H(s.query)+'">'+
+   '<div class="play-song-tree vertical-scroll">'+(tree||'<div class="empty">No songs</div>')+'</div>'+
+   '<div class="play-song-footer">'+button('SONG SET','editor-set')+button('RESCAN','rescan')+'</div></section>';
+ return '<div class="view"><header class="backbar">'+button('← BACK','home','back')+
+   '<h1>PLAY</h1>'+button('IMPORT','file')+'</header>'+
+   '<div class="view-content no-scroll"><div class="play-selection-layout">'+left+center+right+'</div></div></div>';
 }
 function routePreview(seed,name,selected){
  const blank=!s.editorLoaded&&seed===0;
@@ -82,19 +84,21 @@ function pressCount(direction){
  const combos={'↖':['↑','←'],'↗':['↑','→'],'↙':['↓','←'],'↘':['↓','→']};
  return s.notes.filter(n=>n.dir===direction||(combos[n.dir]||[]).includes(direction)).length;
 }
+function toolButton(symbol,action,label,hotkey){
+ const tooltip=label+(hotkey?' · '+hotkey:' · button only');
+ return '<button type="button" class="tool-icon" data-act="'+H(action)+'" data-tooltip="'+H(tooltip)+'"'+
+   ' title="'+H(tooltip)+'" aria-label="'+H(tooltip)+'">'+symbol+'</button>';
+}
+function rulerControl(title,value,minus,plus){
+ return '<div class="ruler-pair"><span>'+H(title)+' <b>'+H(value)+'</b></span>'+
+   toolButton('−',minus,title+' decrease',null)+toolButton('+',plus,title+' increase',null)+'</div>';
+}
 function noteRuler(){
  const markers=s.notes.map(n=>'<span class="ruler-beat" title="'+H(n.dir)+'" style="left:'+(n.beat/12*94+3)+'%"></span>').join('');
  return '<div class="note-ruler"><div class="ruler-track" data-seek="note">'+markers+
   '<div class="ruler-cursor" style="left:'+(s.beat/12*94+3)+'%"></div></div>'+
-  '<div class="ruler-controls">'+button('SNAP 1/'+s.snap,'snap')+
-  button('ZOOM '+s.zoom+'%','zoom')+'</div></div>';
-}
-function transport(){
- const rates=s.editorTab==='route'?[100,75,50,25,10].map(n=>button(n+'%', 'rate-'+n,
-  'small '+(s.practice===n?'selected':''),'aria-pressed="'+(s.practice===n)+'"')).join(''):'';
- return '<div class="editor-transport">'+button(s.editorPlaying?'PAUSE':'PLAY','transport-play')+
-  button('RESTART','transport-restart')+(rates?'<div class="practice">'+rates+'</div>':'')+
-  '<div class="clock">'+M.clock(s.songPosition*M.song().duration)+' / '+M.clock(M.song().duration)+'</div></div>';
+  '<div class="ruler-controls">'+rulerControl('SNAP','1/'+s.snap,'snap-less','snap-more')+
+  rulerControl('ZOOM',s.zoom+'%','zoom-less','zoom-more')+'</div></div>';
 }
 function overview(){
  const x=Math.round(s.songPosition*100);
@@ -102,51 +106,74 @@ function overview(){
    const pos=Math.min(100,Math.max(0,t.time/1000/Math.max(1,M.song().duration)*100));
    return '<span class="overview-bpm" style="left:'+pos+'%">'+t.bpm+' BPM</span>';
  });
- return '<div class="song-overview"><div class="song-overview-bar" data-seek="song">'+
-  '<span class="overview-progress" style="width:'+x+'%"></span>'+
-  bpm.join('')+'<span class="overview-cursor" style="left:'+x+'%"></span>'+
-  '<span class="overview-end">'+M.clock(M.song().duration)+'</span></div></div>';
+ const seconds=s.songPosition*M.song().duration;
+ const ms=Math.round(seconds*1000);
+ return '<div class="song-overview">'+
+   '<div class="overview-transport">'+
+     toolButton(s.editorPlaying?'Ⅱ':'▶','transport-play',s.editorPlaying?'Pause preview':'Play preview','Space')+
+     toolButton('↺','transport-restart','Restart preview','R')+'</div>'+
+   '<div class="song-overview-bar" data-seek="song" aria-label="Whole song overview">'+
+     '<span class="overview-progress" style="width:'+x+'%"></span>'+
+     bpm.join('')+'<span class="overview-cursor" style="left:'+x+'%"></span>'+
+     '<span class="overview-end">'+M.clock(M.song().duration)+'</span></div>'+
+   '<label class="overview-rate" title="Preview playback rate"><select data-field="practice" aria-label="Preview playback rate">'+
+     [100,75,50,25,10].map(rate=>'<option value="'+rate+'" '+(s.practice===rate?'selected':'')+'>'+rate+'%</option>').join('')+
+   '</select></label>'+
+   '<button type="button" class="overview-time" data-act="copy-time" title="Copy current song time in milliseconds">'+
+     ms+' ms</button>'+
+   '</div>';
 }
 function route(){
- const tools='<div class="route-toolbars"><div class="toolrow">'+
-  ['Copy','Cut','Paste','Undo','Redo'].map(x=>button(x.toUpperCase(),'tool-'+x.toLowerCase())).join('')+
-  '</div><div class="toolrow">'+
-  [['FLIP H','flip-h'],['FLIP V','flip-v'],['ROT −90','rot-ccw'],['ROT +90','rot-cw'],['COMPARE','compare'],['TEST','play']].map(x=>button(x[0],x[1])).join('')+'</div></div>';
- const previewNames=[s.editorLoaded?M.chart().title:'Untitled'].concat(s.compared.map(id=>
+ const toolData=[
+   ['↔','flip-h','Mirror horizontally','I'],
+   ['↕','flip-v','Mirror vertically','Shift+I'],
+   ['↶','rot-ccw','Rotate 90° counterclockwise',null],
+   ['↷','rot-cw','Rotate 90° clockwise',null],
+   ['▣','compare','Compare charts',null],
+   ['▷','play','Test chart','T']
+ ];
+ const toolbar='<div class="route-toolrail" aria-label="Pattern tools">'+toolData.map(t=>toolButton(t[0],t[1],t[2],t[3])).join('')+'</div>';
+ const previewNames=[s.editorLoaded?(M.chart()?.title||s.editorTitle):'Untitled'].concat(s.compared.map(id=>
    M.song().charts.find(x=>x.id===id)).filter(Boolean).map(c=>c.title));
- const preview='<div class="route-preview">'+previewNames.map((name,i)=>
+ const preview='<div class="route-preview compare-'+Math.min(3,previewNames.length)+'">'+previewNames.map((name,i)=>
    routePreview(i,name,s.focusedPane===i)).join('')+'</div>';
  const pad='<div class="pad-3">'+noteDirections.map(dir=>
-  '<button type="button" data-note="'+H(dir)+'">'+H(dir)+
+  '<button type="button" data-note="'+H(dir)+'" title="'+(dir==='DEL'?'Remove selected note':'Place '+H(dir)+' note')+'">'+H(dir)+
    (dir==='DEL'?'':'<span class="count">'+pressCount(dir)+'</span>')+'</button>').join('')+'</div>';
- return '<div class="route-grid">'+
-  '<div class="route-left">'+tools+preview+'</div>'+
-  '<aside class="route-side"><div class="route-ms">'+button('TIME  '+Math.round(s.songPosition*M.song().duration*1000)+' ms','copy-time','small')+'</div>'+pad+
-  '<div class="pair-control"><span class="pair-name">SPEED<b>'+s.editorSpeed+' px/s</b></span>'+
-  button('−','speed-down','icon')+button('+','speed-up','icon')+'</div>'+
-  '<div class="pair-control"><span class="pair-name">PATH<b>'+s.editorPath+' ms</b></span>'+
-  button('−','path-down','icon')+button('+','path-up','icon')+'</div></aside></div>';
+ const heading=['↑','↗','→','↘','↓','↙','←','↖'][s.headingIndex];
+ const headingRow='<div class="route-heading-row"><span>START</span>'+
+   toolButton('‹','heading-prev','Previous start heading',null)+
+   '<b>'+heading+'</b>'+toolButton('›','heading-next','Next start heading',null)+'</div>';
+ const speedRow='<div class="pair-control"><span class="pair-name">SPEED<b>'+s.editorSpeed+' px/s</b></span>'+
+  toolButton('−','speed-down','Decrease preview speed',null)+toolButton('+','speed-up','Increase preview speed',null)+'</div>';
+ const pathRow='<div class="pair-control"><span class="pair-name">PATH<b>'+s.editorPath+' ms</b></span>'+
+  toolButton('−','path-down','Shorter preview path',null)+toolButton('+','path-up','Longer preview path',null)+'</div>';
+ return '<div class="route-grid">'+toolbar+preview+
+  '<aside class="route-side">'+pad+headingRow+speedRow+pathRow+'</aside></div>';
 }
 function setPage(){
- const song=M.song();
  const managed=s.editorLoaded;
- const actions=[
-  ['OPEN FOLDER','file'],['BACKGROUND','background'],['REMOVE BG','remove-bg'],
-  ['IMPORT','file'],['EXPORT','file'],['RESTORE','restore']
- ];
+ const meta=s.setMeta||{};
  const left='<section class="box set-meta"><h2>SONG SET</h2>'+
-  '<div class="set-name">'+(managed?H(song.title):'New Song Set')+'</div>'+
-  '<div class="clip">'+(managed?H(song.artist)+' · '+song.bpm+' BPM':'No audio')+'</div>'+
-  '<div class="line"></div><div class="set-action-grid">'+
-  actions.map(x=>button(x[0],x[1])).join('')+'</div>'+
-  '<div class="set-footer-actions">'+button('DELETE CHART','delete-chart','danger')+
-  button('DELETE SET','delete-set','danger')+'</div></section>';
+   '<div class="set-fields">'+
+   '<label class="field set-title-field">Song title<input data-field="setTitle" value="'+H(meta.title||'')+'" placeholder="Song title"></label>'+
+   '<label class="field">Artist<input data-field="setArtist" value="'+H(meta.artist||'')+'" placeholder="Artist"></label>'+
+   '<label class="field">Mapper<input data-field="setMapper" value="'+H(meta.mapper||'')+'" placeholder="Mapper"></label>'+
+   '<label class="field set-tags-field">Tags<input data-field="setTags" value="'+H(meta.tags||'')+'" placeholder="Tags, separated by commas"></label>'+
+   '</div><div class="set-action-grid">'+
+   button('BACKGROUND','background')+button('REMOVE BG','remove-bg')+
+   button('IMPORT','file')+button('EXPORT','export')+
+   button('OPEN FOLDER','file')+button('RESTORE','restore')+
+   '</div></section>';
+ const song=M.song();
  const items=managed?song.charts.map(c=>
   '<button type="button" class="difficulty-row '+(s.chart===c.id?'selected':'')+
   '" data-difficulty="'+H(c.id)+'"><span class="clip">'+H(c.title)+'</span><span class="badge">'+c.difficulty.toFixed(1)+'</span></button>').join(''):'';
  const right='<section class="box set-diffs"><div class="box-head">DIFFICULTIES</div>'+
   '<div class="diff-actions">'+button('NEW','difficulty-new')+button('DUPLICATE','difficulty-copy')+'</div>'+
-  '<div class="difficulty-list">'+(items||'<div class="empty">No charts</div>')+'</div></section>';
+  '<div class="difficulty-list">'+(items||'<div class="empty">No charts</div>')+'</div>'+
+  '<div class="set-danger-actions">'+button('DELETE CHART','delete-chart','danger')+
+  button('DELETE SET','delete-set','danger')+'</div></section>';
  return '<div class="set-grid">'+left+right+'</div>';
 }
 function audioPage(){
@@ -165,25 +192,9 @@ function audioPage(){
   '<div class="tempo-footer">'+button('+ ADD BPM MARKER','tempo-add')+'</div></section>';
  return '<div class="audio-grid">'+left+right+'</div>';
 }
-function fieldPage(){
- const head=['↑','↗','→','↘','↓','↙','←','↖'][s.headingIndex];
- return '<div class="field-grid"><section class="box field-controls">'+
-  '<h2>INITIAL HEADING</h2>'+
-  '<div class="heading-picker">'+button('‹','heading-prev','icon')+
-  button(head,'heading-next','heading-value')+button('›','heading-next','icon')+'</div>'+
-  '<div class="line"></div>'+
-  '<div class="row"><span>SKIN SPEED</span><span class="spacer"></span><strong>'+s.skin.baseSpeed+' px/s</strong></div>'+
-  '<div class="row"><span>SKIN PREVIEW</span><span class="spacer"></span><strong>'+s.skin.lookahead+' ms</strong></div>'+
-  '</section>'+
-  '<section class="box field-stage"><div class="field-diagram"><svg viewBox="0 0 220 220" aria-label="Field preview">'+
-  '<rect x="1" y="1" width="218" height="218" stroke="#999" fill="none" stroke-width="2"/>'+
-  '<circle cx="110" cy="110" r="16" fill="#555"/>'+
-  '<text x="110" y="64" font-size="33" font-family="Segoe UI Symbol, sans-serif" text-anchor="middle" fill="#333">'+head+'</text>'+
-  '</svg></div><div class="field-stats"><strong>FIELD</strong><div>Initial direction</div><div style="font-size:28px">'+head+'</div></div></section></div>';
-}
 function editor(){
- const tabs=[['set','SET'],['route','ROUTE'],['audio','AUDIO'],['field','FIELD']];
- const content=s.editorTab==='set'?setPage():s.editorTab==='route'?route():s.editorTab==='audio'?audioPage():fieldPage();
+ const tabs=[['set','SET'],['route','ROUTE'],['audio','AUDIO']];
+ const content=s.editorTab==='set'?setPage():s.editorTab==='audio'?audioPage():route();
  const title=s.editorTitle||'Untitled';
  return '<div class="editor"><header class="editor-head">'+button('← BACK','home','back')+
   '<div class="editor-title" title="'+H(title)+'">'+H(title)+'</div>'+
@@ -191,20 +202,18 @@ function editor(){
   '<span class="editor-save-flag">'+(s.editorDirty?'UNSAVED':'')+'</span></header>'+
   noteRuler()+
   '<div class="editor-work">'+content+'</div>'+
-  overview()+transport()+'</div>';
+  overview()+'</div>';
 }
 function settingRow(name,control){
  return '<div class="settings-row"><span class="clip">'+name+'</span>'+control+'</div>';
 }
 function settingsLeft(){
- if(s.settingsTab==='game')return settingRow('Hit flash',flag(s.hitFlash?'ON':'OFF',s.hitFlash,'hitFlash'))+
-   settingRow('Master volume','<div class="row"><input type="range" aria-label="Master volume" data-range="volume" min="0" max="100" value="'+s.volume+'"><strong id="volLabel">'+s.volume+'%</strong></div>');
  if(s.settingsTab==='display')return settingRow('VSync',flag(s.vsync?'ON':'OFF',s.vsync,'vsync'))+
   settingRow('FPS cap','<select data-field="fps">'+['30','60','90','120','144','165','240','Unlimited'].map(x=>
    '<option '+((s.fps===x)?'selected':'')+'>'+x+'</option>').join('')+'</select>')+
   settingRow('Show FPS',flag(s.showFps?'ON':'OFF',s.showFps,'showFps'))+
   settingRow('Fullscreen',flag(s.fullscreen?'ON':'OFF',s.fullscreen,'fullscreen'));
- return settingRow('Master volume','<div class="row"><input type="range" data-range="volume" min="0" max="100" value="'+s.volume+'"><strong>'+s.volume+'%</strong></div>')+
+ return settingRow('Master volume','<div class="row"><input aria-label="Master volume" type="range" data-range="volume" min="0" max="100" value="'+s.volume+'"><strong>'+s.volume+'%</strong></div>')+
   settingRow('Global offset','<div class="row"><input aria-label="Global offset" data-field="globalOffset" type="number" value="'+s.globalOffset+'"><strong>ms</strong></div>')+
   settingRow('Calibration',button('CALIBRATE','calibrate'));
 }
@@ -216,7 +225,7 @@ function settings(){
  return '<div class="view">'+bar('SETTINGS')+
   '<div class="view-content no-scroll"><div class="settings-layout">'+
   '<section class="box settings-col"><div class="settings-tabs">'+
-  [['game','GAME'],['display','DISPLAY'],['audio','AUDIO']].map(t=>flag(t[1],s.settingsTab===t[0],'settings-'+t[0])).join('')+
+  [['display','DISPLAY'],['audio','AUDIO']].map(t=>flag(t[1],s.settingsTab===t[0],'settings-'+t[0])).join('')+
   '</div><div class="settings-panel-body">'+settingsLeft()+'</div></section>'+
   '<section class="box settings-col"><div class="bind-groups">'+
   [['play','PLAY'],['menus','MENUS'],['editor','EDITOR']].map(t=>flag(t[1],s.bindGroup===t[0],'bind-'+t[0])).join('')+
@@ -317,6 +326,6 @@ function page(){
  if(s.view==='dialogs')return dialogs();
  return home();
 }
-window.LocusWirePages={page,home,library,editor,route,setPage,audioPage,fieldPage,
- noteRuler,overview,transport,settings,skins,results,play,dialogs,button};
+window.LocusWirePages={page,home,library,editor,route,setPage,audioPage,
+ noteRuler,overview,settings,skins,results,play,dialogs,button};
 })();

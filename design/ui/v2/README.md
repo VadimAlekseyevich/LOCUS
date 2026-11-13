@@ -1,57 +1,64 @@
-# LOCUS — screen layout wireframes
+# LOCUS — monochrome layout wireframes
 
-Open [index.html](index.html) in a browser. The frame inside the page is the **actual 960 × 540 virtual window** used by LOCUS. It scales down as a whole on narrow displays; its panels do not reflow into a website layout.
+Open [index.html](index.html) in a browser. The inner frame is the native LOCUS **960 × 540** virtual viewport. The external **Page** picker is for reviewing screens and is **not** a proposed game control.
 
-This is a **layout review**, not a finished UI theme. All in-frame controls are grayscale with square borders. There is no logo artwork, color palette, animation or decorative microcopy to approve at this stage.
+There is no product theme, finished artwork, animation or native integration yet. This change affects **only HTML wireframes**. C++ gameplay and project file formats are unchanged.
 
-## Navigation
+## PLAY means song and chart selection
 
-Use the **Page** dropdown above the 960 × 540 frame to inspect any screen without changing the in-app navigation design. It is a *reviewer tool*, not part of the future application.
+The **PLAY button on Home opens the song selector**, which is internally called `library` in the prototype. This is **not the scored gameplay screen**.
 
-| Screen | Fixed layout |
+The song selector uses LOCUS's existing concepts, rearranged for easy browsing:
+
+- **Right:** song tree with expandable difficulty rows, chart ratings and search.
+- **Center:** large background/artwork placeholder, selected song title, artist and mapper, and large PLAY / EDIT actions.
+- **Left:** selected difficulty, note count, difficulty breakdown and **personal results for the selected chart** (not an invented global ranking).
+
+The separate **Gameplay — static reference** reviewer option exists only to exercise the Results demonstration. Its actual on-screen composition is not being redesigned. Native gameplay uses a centered 540×540 field, right-side statistics and an empty left margin, with no added UI animations.
+
+## Editor layout at 960×540
+
+All three editor tabs share these fixed zones:
+
+| Vertical pixels | Function |
 | --- | --- |
-| Home | Four large actions in one row and Exit |
-| Song Library | Left: song tree and attempts of the selected chart; center: artwork, chart and large PLAY/EDIT; right: difficulty breakdown |
-| Editor / SET | Song Set operations on the left; click-to-open difficulties on the right |
-| Editor / ROUTE | Upper note ruler, editing tools, equal-sized comparison panes, 3×3 direction pad, editor-only speed/path; bottom whole-song overview; transport below |
-| Editor / AUDIO | Difficulty name/preview offset; shared Song Set BPM markers |
-| Editor / FIELD | Initial heading and a read-only field illustration |
-| Settings | Game/Display/Audio settings on the left; key bindings always visible on the right |
-| Skins | PATH/PLAYER/COLORS/MY SKINS controls on the left; one preview and profile actions on the right |
-| Results | Details of a **specific chart attempt**; no separate Results section in application navigation |
-| PLAY | **Static reference only**. No gameplay redesign or animation |
-| Dialogs | Review-only selector for quit/unsaved/delete/etc. modals |
+| 0–56 | Back, chart title, SET / ROUTE / AUDIO |
+| 56–121 | Upper **note ruler**, with separate Snap − / + and Zoom − / + |
+| 121–485 | Editing workspace |
+| 485–540 | **Whole-song timeline** with small Play / Restart icons on the left; playback-rate dropdown and copyable millisecond timestamp on the right |
 
-**Listen remains out of scope.** The current native C++ behavior is unaffected.
+There is **no separate bottom transport row**, and the lower overview remains independent of the upper note ruler's zoom. The two timelines never swap places.
 
-## Critical editor layout decision
+### SET
 
-The editor is **always the same five-zone vertical composition**:
+Editable **Song title, Artist, Mapper, Tags**. Buttons have intentional pairings by row: **Background / Remove BG**, **Import / Export**, then **Open folder / Restore**. Difficulties are on the right, clicked directly to open; New / Duplicate and deletions remain accessible.
 
-    y =   0–56    chart name / SET · ROUTE · AUDIO · FIELD / Back
-         56–118   upper zoomable NOTE RULER, snap & zoom
-        118–438   workspace for current tab
-        438–485   lower WHOLE-SONG OVERVIEW, shared tempo markers
-        485–540   transport; ROUTE practice-rate buttons here
+In this browser demo, changing metadata and pressing **Ctrl+S** updates the example Song Set in memory only. Tags are entered as comma-separated text. No project files are written.
 
-The editor uses no new full-height application sidebar, no overlapping toolbars and no lower-timeline relocation. The upper ruler contains notes; the bottom overview is independent of zoom and contains whole-song position and BPM markers.
+### ROUTE
 
-The ROUTE workspace preserves **up to three equal-sized previews** and a separate note-direction pad. Clicking a pane changes focus, not its physical size. Starting heading belongs to FIELD; chart/song file operations belong to SET. Editing direction keys remain mouse buttons only.
+Removed the visible Copy / Cut / Paste / Undo / Redo toolbar; those operations keep their **keyboard shortcuts**. The main field is larger. Small vertical icon buttons on its **left** control horizontal/vertical reflection, ±90° rotation, chart comparison and Test. Hovering/focusing exposes a short description and the shortcut **where one exists**; rotation and comparison have no fabricated keyboard shortcuts.
 
-## Results behavior
+At right are the 3×3 note placement pad, **initial heading** (previously the entire FIELD tab), editor speed and path preview length. Initial heading is no longer a separate page.
 
-A future native implementation should finalize **one record per completed attempt at the final judged note**, store it under a stable chart identity with timestamps and judgments, open Results immediately and show multiple entries beneath the song tree when that chart is selected. Different charts must have separate history; a retry or abandoned attempt must not create a completed record.
+One, two, or three comparison panes keep **equal sizes** for the active number of panes. The note ruler and song overview retain their positions.
 
-The HTML mock has several in-memory sample attempts. **Simulate completion** appears in the review bar only on PLAY and demonstrates the flow. It is not a control proposed for scored gameplay. These records do **not** persist, and this work does **not** implement real scoring or disk storage.
+### AUDIO
 
-## What to review first
+Same chart title, preview start and shared BPM/offset marker table.
 
-- Are controls large enough and correctly grouped at **960 × 540**?
-- Does every editor tab preserve both timeline positions?
-- Can the Song Library show a song tree **and** multiple results without hiding PLAY and EDIT?
-- Are SET/ROUTE/AUDIO/FIELD, Skins and Settings understandable without explanatory microtext?
-- Do menus use only the space they need and keep primary actions visible?
+## SETTINGS
 
-Only after the geometry and workflows are approved should colors, type scales, borders, transitions and brand styling be designed again.
+Only **DISPLAY** and **AUDIO** pages remain. VSync, FPS limit, FPS counter and fullscreen belong to Display. Master volume, global offset and calibration belong to Audio. Game and Hit flash toggles have been removed from these Settings wireframes; hit flash **size** remains a Skin/Player control. The separate PLAY / MENUS / EDITOR key-binding groups remain on the right.
 
-No C++ or chart/Song Set/skin/settings formats were changed.
+## SKINS and Results
+
+Skins keeps PATH, PLAYER, COLORS and MY SKINS, with a persistent preview. Results stay attached to a **specific chart attempt**, visible from the chart's history on the PLAY song selector; several attempts may exist per chart.
+
+A future native implementation should record **one completed attempt at the final judged note** with stable chart identity, timestamp, judgment counts and accuracy, then open that attempt's Results. Abandoned/retried sessions must not count as completed attempts. The external **Simulate completion** review control appends an example *in-memory* attempt; it does **not** exist in native scored gameplay.
+
+## Review priorities
+
+Review **placement and control sizes first**, especially the new PLAY song selection, SET metadata rows, expanded ROUTE preview and single lower timeline row. Everything remains grayscale until the layout is approved.
+
+No native UI, gameplay code, Song Set/chart/skin format or persistent Results storage was modified.
