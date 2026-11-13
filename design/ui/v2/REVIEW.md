@@ -1,22 +1,18 @@
-# LOCUS wireframe acceptance checks (960 × 540)
+# LOCUS UI — design review
 
-- [ ] Home PLAY opens **song and chart selection**, not the active game.
-- [ ] Song selection uses right-hand song/difficulty tree, central background/artwork and PLAY/EDIT, left-hand chart info and per-chart Results.
-- [ ] No invented global leaderboard, modes or osu! skin assets.
-- [ ] SET edits song title, artist, mapper and comma-separated tags.
-- [ ] SET Background/Remove BG are side by side; Import/Export are side by side.
-- [ ] SET difficulty rows open directly, with New/Duplicate and deletions accessible.
-- [ ] Editor has **three tabs: SET, ROUTE, AUDIO**. No FIELD tab.
-- [ ] Initial heading moved to the ROUTE sidebar.
-- [ ] Editor note ruler stays above the workspace, song overview below the workspace.
-- [ ] Editor **no extra transport row**: Play/Restart icons are to the left of the lower overview, playback speed dropdown and copy-time action to its right.
-- [ ] Snap has distinct − and +; Zoom has distinct − and +, increasing ruler width.
-- [ ] ROUTE removes visible Copy/Cut/Paste/Undo/Redo but retains keyboard shortcuts.
-- [ ] ROUTE vertical icon rail is left of the larger playfield; tooltips show meanings and real keyboard chords only.
-- [ ] ROUTE keeps up to three equal-sized comparison panes and a 3×3 directional pad.
-- [ ] AUDIO retains the shared BPM table and chart title.
-- [ ] Settings shows only Display / Audio, with key bindings on the right.
-- [ ] Master volume sits under Audio; Hit flash toggle does not appear in Settings.
-- [ ] Skin hit flash sizing remains in Player, with its existing preview.
-- [ ] Results stay contextual to the selected chart; multiple in-memory attempts are supported.
-- [ ] No gameplay animation, no change to native gameplay and no additional scored PLAY UI.
+- [ ] PLAY on Home opens **song selection**, not the scored playfield.
+- [ ] PLAY background covers the entire 960 × 540 application frame (not a center artwork box).
+- [ ] All Song Set details and chart metrics appear on the left, with PLAY and EDIT easily reachable.
+- [ ] Results history is chart-specific and appears in the left panel; multiple attempts are selectable.
+- [ ] Song/difficulty scrolling occupies the expanded right-hand browser, with readable rows and search.
+- [ ] Dark violet-blue background is soft, not black; sky and violet accents are readable; pale yellow is restrained.
+- [ ] Approved \`locus.\` and LO proportions are preserved in recolored SVG sources; app icon remains circular.
+- [ ] Home buttons have adequate size and clear selected/hover/focus feedback.
+- [ ] SET has editable song title, artist, mapper and tags, with paired import/export and background buttons.
+- [ ] ROUTE has a larger preview, icon tool rail with short tooltips/hotkeys, directional pad and heading.
+- [ ] Upper note ruler and lower song timeline remain separate in all editor tabs.
+- [ ] Lower timeline holds small Play/Restart, dropdown speed and copyable milliseconds on one line.
+- [ ] AUDIO tempo map remains readable; Settings has only Display/Audio; Skins preview reflects color changes.
+- [ ] Every keyboard-focused control has an obvious visible focus state.
+- [ ] Reduced motion is respected; **no scored-gameplay UI animations**.
+- [ ] No C++ or chart data format changes; sample Results and image backgrounds remain prototype-only.

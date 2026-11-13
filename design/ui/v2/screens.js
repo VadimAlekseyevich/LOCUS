@@ -19,52 +19,63 @@ function flag(label,pressed,action){
  return '<button type="button" data-act="'+H(action)+'" aria-pressed="'+pressed+'">'+H(label)+'</button>';
 }
 function home(){
- return '<div class="home-page"><div class="home-logo">locus.</div><div class="home-actions">'+
+ return '<div class="home-page"><div class="home-logo"><img class="home-wordmark" src="../v1/wordmark.svg" alt="locus."></div><div class="home-actions">'+
  button('PLAY','library')+button('EDITOR','editor-new')+button('SKINS','skins')+
  button('SETTINGS','settings')+'</div>'+button('EXIT','quit','home-exit')+'</div>';
 }
 function library(){
- const song=M.song(),chart=M.chart();
- const query=s.query.toLowerCase();
- const visible=M.songs.filter(x=>(x.title+' '+x.artist+' '+(x.mapper||'')+' '+(x.tags||[]).join(' ')+' '+x.charts.map(c=>c.title).join(' ')).toLowerCase().includes(query));
- const tree=visible.map(function(sg){
-   const expanded=sg.id===s.expanded;
-   return '<button type="button" class="song-row '+(sg.id===s.song?'current':'')+'" data-song="'+H(sg.id)+'">'+
-   '<span class="song-chevron">'+(expanded?'▾':'▸')+'</span><span class="clip">'+H(sg.title)+'</span><span class="rate">'+sg.charts.length+'</span></button>'+
-   (expanded?sg.charts.map(function(c){
-     return '<button type="button" class="song-row chart '+(sg.id===s.song&&c.id===s.chart?'current':'')+
-     '" data-chart="'+H(c.id)+'" data-set="'+H(sg.id)+'"><span class="clip">'+H(c.title)+'</span><span class="rate">'+c.difficulty.toFixed(1)+'</span></button>';
+ const song=M.song(),chart=M.chart(),query=s.query.toLowerCase();
+ const visible=M.songs.filter(x=>
+   (x.title+' '+x.artist+' '+(x.mapper||'')+' '+(x.tags||[]).join(' ')+' '+x.charts.map(c=>c.title).join(' ')).toLowerCase().includes(query));
+ const tree=visible.map(function(set){
+   const expanded=set.id===s.expanded;
+   return '<button type="button" class="song-row '+(set.id===s.song?'current':'')+'" data-song="'+H(set.id)+'">'+
+   '<span class="song-chevron">'+(expanded?'▾':'▸')+'</span><span class="song-name clip">'+H(set.title)+'</span>'+
+   '<span class="song-count">'+set.charts.length+'</span></button>'+
+   (expanded?set.charts.map(function(c){
+     return '<button type="button" class="song-row chart '+(set.id===s.song&&c.id===s.chart?'current':'')+
+     '" data-chart="'+H(c.id)+'" data-set="'+H(set.id)+'">'+
+       '<span class="chart-marker"></span><span class="clip">'+H(c.title)+'</span>'+
+       '<strong class="song-rating">'+c.difficulty.toFixed(1)+'</strong></button>';
    }).join(''):'');
  }).join('');
  const history=M.runs();
- const results=history.length?history.map(function(r){
-   return '<button class="result-row" type="button" data-run="'+H(r.id)+'"><strong>'+M.accuracy(r).toFixed(2)+'%</strong>'+
-    '<time>'+H(M.datetime(r.datetime))+'</time><span>›</span></button>';
- }).join(''):'<div class="play-no-results">No results</div>';
- const active=visible.some(x=>x.id===s.song)&&chart;
- const metrics=active?['Speed','Rhythm','Coord.','Reading','Stamina','Peak'].map((label,i)=>
-   '<div class="play-metric"><span>'+label+'</span><b>'+chart.dims[i].toFixed(1)+'</b></div>').join(''):'';
- const left='<section class="box play-summary"><div class="box-head">CHART</div>'+
-   (active?'<div class="play-chart-summary"><div class="play-chart-title">'+H(chart.title)+'</div>'+
-    '<div class="row"><span class="play-difficulty">'+chart.difficulty.toFixed(1)+'</span><span>'+chart.notes+' notes</span></div>'+
-    '<div class="play-metrics">'+metrics+'</div></div>':'<div class="play-chart-summary">No chart selected</div>')+
-   '<div class="box-head">RESULTS <span class="badge">'+history.length+'</span></div>'+
-   '<div class="play-results vertical-scroll">'+results+'</div></section>';
- const center='<section class="play-showcase">'+
-   '<div class="play-artwork" aria-label="Song background / artwork">'+
-   '<div class="play-artwork-geometry"><span></span><span></span><span></span><span></span></div>'+
-   '<span class="play-artwork-label">BACKGROUND / ARTWORK</span></div>'+
-   '<div class="play-selected-text"><h2 class="clip">'+H(song.title)+'</h2>'+
-   '<div class="clip">'+H(song.artist)+' · '+song.bpm+' BPM · '+M.clock(song.duration)+'</div>'+
-   '<div class="clip">Mapped by '+H(song.mapper||'—')+'</div></div>'+
+ const attempts=history.length?history.map(function(r){
+   return '<button type="button" class="result-row" data-run="'+H(r.id)+'">'+
+    '<strong>'+M.accuracy(r).toFixed(2)+'%</strong><time>'+H(M.datetime(r.datetime))+'</time>'+
+    '<span class="result-arrow">›</span></button>';
+ }).join(''):'<div class="play-no-results">No results yet</div>';
+ const active=visible.some(x=>x.id===s.song)&&!!chart;
+ const metrics=active?['Speed','Rhythm','Coord.','Reading','Stamina','Peak'].map((name,i)=>
+  '<div class="play-metric"><span>'+name+'</span><b>'+chart.dims[i].toFixed(1)+'</b></div>').join(''):'';
+ const tags=(song.tags||[]).slice(0,3).map(t=>'<span class="song-tag">'+H(t)+'</span>').join('');
+ const pack='<div class="play-pack">'+
+    '<span class="section-label">SONG SET</span><h2 class="clip" title="'+H(song.title)+'">'+H(song.title)+'</h2>'+
+    '<div class="pack-artist clip">'+H(song.artist)+'</div>'+
+    '<div class="pack-mapper clip">Mapped by '+H(song.mapper||'—')+'</div>'+
+    '<div class="pack-facts"><span>'+song.bpm+' BPM</span><span>'+M.clock(song.duration)+'</span>'+
+      (tags?'<span class="pack-tags">'+tags+'</span>':'')+'</div></div>';
+ const selected=active?'<div class="play-chart-summary">'+
+    '<div class="play-chart-top"><span class="section-label">DIFFICULTY</span>'+
+      '<span class="play-difficulty">'+chart.difficulty.toFixed(1)+'</span></div>'+
+    '<div class="play-chart-title clip">'+H(chart.title)+'</div>'+
+    '<span class="play-note-total">'+chart.notes+' NOTES</span>'+
+    '<div class="play-metrics">'+metrics+'</div></div>':
+    '<div class="play-chart-summary"><span class="section-label">DIFFICULTY</span><p>No chart selected</p></div>';
+ const left='<section class="play-summary">'+pack+selected+
+   '<div class="play-result-section"><div class="play-result-heading"><span>RESULTS</span><span class="count-pill">'+history.length+'</span></div>'+
+   '<div class="play-results vertical-scroll">'+attempts+'</div></div>'+
    '<div class="play-primary-actions">'+button('PLAY','play','primary')+button('EDIT','editor-open')+'</div></section>';
- const right='<section class="box play-song-browser"><div class="box-head">SONGS / CHARTS</div>'+
+ const right='<section class="play-song-browser">'+
+   '<div class="play-browser-head"><h2>SONGS & CHARTS</h2>'+
+     '<span class="count-pill">'+visible.length+'</span></div>'+
    '<input class="play-search" type="search" placeholder="Search songs…" aria-label="Search songs" data-field="query" value="'+H(s.query)+'">'+
    '<div class="play-song-tree vertical-scroll">'+(tree||'<div class="empty">No songs</div>')+'</div>'+
-   '<div class="play-song-footer">'+button('SONG SET','editor-set')+button('RESCAN','rescan')+'</div></section>';
- return '<div class="view"><header class="backbar">'+button('← BACK','home','back')+
-   '<h1>PLAY</h1>'+button('IMPORT','file')+'</header>'+
-   '<div class="view-content no-scroll"><div class="play-selection-layout">'+left+center+right+'</div></div></div>';
+   '<div class="play-song-footer">'+button('SONG SET','editor-set')+button('IMPORT','file')+button('RESCAN','rescan')+'</div></section>';
+ return '<div class="view play-selection-screen">'+
+   '<header class="backbar play-header">'+button('← BACK','home','back')+'<h1>PLAY</h1></header>'+
+   '<div class="view-content play-selection-content"><div class="play-selection-layout">'+left+right+'</div></div>'+
+   '</div>';
 }
 function routePreview(seed,name,selected){
  const blank=!s.editorLoaded&&seed===0;
@@ -75,9 +86,9 @@ function routePreview(seed,name,selected){
  ];
  return '<button type="button" class="route-pane '+(selected?'active':'')+'" data-pane="'+seed+'" aria-label="Focus '+H(name)+'">'+
   '<span class="route-pane-title">'+H(name)+'</span>'+
-  '<svg viewBox="0 0 290 200" aria-hidden="true"><path d="M0 50H290M0 100H290M0 150H290M50 0V200M100 0V200M150 0V200M200 0V200M250 0V200" fill="none" stroke="#dedede" stroke-width="1"/>'+
-  (blank?'':('<polyline points="'+points[seed%3]+'" fill="none" stroke="#555" stroke-width="6" stroke-linejoin="round"/>'+
-  '<circle cx="76" cy="164" r="10" fill="#333" stroke="#000" stroke-width="2"/>'))+'</svg></button>';
+  '<svg viewBox="0 0 290 200" aria-hidden="true"><path d="M0 50H290M0 100H290M0 150H290M50 0V200M100 0V200M150 0V200M200 0V200M250 0V200" fill="none" stroke="#66738e" stroke-width="1"/>'+
+  (blank?'':('<polyline points="'+points[seed%3]+'" fill="none" stroke="#a9d8ef" stroke-width="6" stroke-linejoin="round"/>'+
+  '<circle cx="76" cy="164" r="10" fill="#b4a3f2" stroke="#282a41" stroke-width="2"/>'))+'</svg></button>';
 }
 const noteDirections=['↖','↑','↗','←','DEL','→','↙','↓','↘'];
 function pressCount(direction){
@@ -264,9 +275,9 @@ function skinPreview(){
    button('SAVE AS','skin-saveas')+button('RESET','skin-reset')+'</div></section>';
 }
 function routeDiagram(){
- return '<svg viewBox="0 0 300 220" aria-hidden="true"><path d="M20 20H280V200H20Z" fill="none" stroke="#888" stroke-width="2"/>'+
-  '<path d="M35 162H83V94H155V40H240V125" fill="none" stroke="#555" stroke-width="6" stroke-linejoin="round"/>'+
-  '<circle cx="83" cy="162" r="9" fill="#444"/><circle cx="155" cy="94" r="5" fill="#777"/></svg>';
+ return '<svg viewBox="0 0 300 220" aria-hidden="true"><path d="M20 20H280V200H20Z" fill="none" stroke="#7983a6" stroke-width="2"/>'+
+  '<path d="M35 162H83V94H155V40H240V125" fill="none" stroke="'+H(s.skin.colors.trajectory)+'" stroke-width="6" stroke-linejoin="round"/>'+
+  '<circle cx="83" cy="162" r="9" fill="'+H(s.skin.colors.player)+'"/><circle cx="155" cy="94" r="5" fill="'+H(s.skin.colors.junction)+'"/></svg>';
 }
 function skins(){
  const tabs=[['path','PATH'],['player','PLAYER'],['colors','COLORS'],['profiles','MY SKINS']];

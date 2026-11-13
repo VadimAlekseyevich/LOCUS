@@ -1,24 +1,24 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LOCUS — approved UI reference</title>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LOCUS — Home / Nightbloom</title>
 <style>
-:root{color-scheme:dark;--bg:#202129;--surface:#282a34;--text:#f0eced;--muted:#b2b0b8;--blue:#bbd2e3;--pink:#e95a99;--on:#201b24}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#17191f;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
-.stage{position:relative;width:min(960px,100%);aspect-ratio:16/9;background:var(--bg);border:1px solid #343640;border-radius:26px;overflow:hidden}
+:root{color-scheme:dark;--bg:#222638;--surface:#30364F;--text:#F0F1FA;--muted:#ACB6CB;--blue:#A9D8EF;--pink:#B4A3F2;--on:#23243A;--sun:#E5D6A8}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 28% 18%,#302e4b,#171b2a 65%);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.stage{position:relative;width:min(960px,100%);aspect-ratio:16/9;background:radial-gradient(ellipse at 52% 30%,#3d365c,#242b42 57%,#1e2434);border:1px solid #555b7a;border-radius:26px;overflow:hidden}
 .word{position:absolute;left:50%;top:27%;transform:translateX(-50%);width:34.5%}
 .menu{position:absolute;top:60%;left:8%;right:8%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 button{font:inherit;cursor:pointer}
 .action{min-height:80px;border:1px solid #40414c;border-radius:17px;color:var(--text);background:var(--surface);font-size:18px;font-weight:600;transition:background-color 55ms ease-out,border-color 55ms ease-out,transform 45ms ease-out}
-.action.play{background:var(--pink);border-color:var(--pink);color:var(--on)}
-.action.edit{background:var(--blue);border-color:var(--blue);color:var(--on)}
-.action.skins{background:#5b6571;border-color:#8e9cae;color:var(--text)}
-.action.settings{background:#58404d;border-color:#a26989;color:var(--text)}
-.action.skins:hover{background:#728191;border-color:var(--blue)}
-.action.settings:hover{background:#715269;border-color:var(--pink)}
+.action.play{background:linear-gradient(120deg,var(--pink),var(--blue));border-color:var(--pink);color:var(--on)}
+.action.edit{background:#384762;border-color:var(--blue);color:var(--blue)}
+.action.skins{background:#343b57;border-color:#786caa;color:#ded6ff}
+.action.settings{background:#3f3c52;border-color:#8c806c;color:var(--sun)}
+.action.skins:hover{background:#45496c;border-color:var(--blue)}
+.action.settings:hover{background:#55516b;border-color:var(--sun)}
 .action:hover:not(.skins):not(.settings){border-color:var(--blue);background:#353741}
-.action.play:hover{background:#f17cb0}.action.edit:hover{background:#cce1ee}
+.action.play:hover{filter:brightness(1.11)}.action.edit:hover{background:#405b78}
 .action:active{transform:translateY(1px) scale(.99)}
 button:focus-visible{outline:2px solid var(--pink);outline-offset:3px}
-.exit{position:absolute;right:5.6%;bottom:6.7%;width:122px;height:46px;border:1px solid rgba(178,176,184,.46);border-radius:17px;background:#262832;color:var(--text);font-size:16px;transition:background-color 55ms ease-out,border-color 55ms ease-out,transform 45ms ease-out}
-.exit:hover{background:#493248;border-color:var(--pink)}
+.exit{position:absolute;right:5.6%;bottom:6.7%;width:122px;height:46px;border:1px solid rgba(178,176,184,.46);border-radius:17px;background:#2c3145;color:var(--text);font-size:16px;transition:background-color 55ms ease-out,border-color 55ms ease-out,transform 45ms ease-out}
+.exit:hover{background:#3d3c59;border-color:var(--pink)}
 .exit:active{transform:translateY(1px)}
 .overlay{position:absolute;inset:0;background:var(--bg);display:grid;place-content:center;text-align:center;gap:24px;opacity:0;pointer-events:none;transition:opacity 180ms ease-out}
 .overlay.open{opacity:1;pointer-events:auto}
