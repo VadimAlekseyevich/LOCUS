@@ -50,6 +50,22 @@ jobs:
           cmake --build build/windows --config Release --parallel 2
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Check packaged RmlUi assets and wordmark
+        run: |
+          $root = "build/windows/Release/assets/ui"
+          $files = @(
+            "wordmark.png", "app-icon.png",
+            "rml/common.rcss", "rml/home.rcss", "rml/home.rml",
+            "rml/play.rcss", "rml/play.rml"
+          )
+          foreach ($relative in $files) {
+            $asset = Join-Path $root $relative
+            if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) {
+              throw "Missing packaged UI asset: $asset"
+            }
+          }
+          Write-Output "PACKAGED_UI_ASSETS_PASS"
+
       - name: Run all registered CTest cases
         run: |
           ctest --test-dir build/windows -C Release --output-on-failure --output-junit build/windows/ctest.xml |

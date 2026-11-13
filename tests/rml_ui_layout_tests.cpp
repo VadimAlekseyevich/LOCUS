@@ -5,6 +5,7 @@
 #include <RmlUi/Core/RenderInterface.h>
 
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -90,6 +91,15 @@ int main() {
         home->Show();
         context->SetDimensions({960, 540});
         context->Update();
+        auto* wordmark = home->GetElementById("home-wordmark");
+        ok &= Check(wordmark != nullptr, "HOME wordmark is present");
+        if (wordmark) {
+            const std::filesystem::path source = "assets/ui/rml";
+            const std::filesystem::path asset = source /
+                wordmark->GetAttribute<Rml::String>("src", "");
+            ok &= Check(std::filesystem::is_regular_file(asset),
+                        "HOME wordmark source resolves to a bundled image");
+        }
         auto* actions = home->GetElementById("home-actions");
         auto* play = home->GetElementById("home-play");
         auto* editor = home->GetElementById("home-editor");
