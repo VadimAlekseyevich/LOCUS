@@ -212,6 +212,14 @@ void NativeMenuUi::Activate(Page page) {
     ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
 
+bool NativeMenuUi::ShowingHome() const noexcept {
+    return visiblePage_ == Page::Home;
+}
+
+bool NativeMenuUi::ShowingPlay() const noexcept {
+    return visiblePage_ == Page::Play;
+}
+
 void NativeMenuUi::Hide() {
     if (visiblePage_ == Page::None) return;
     Activate(Page::None);
