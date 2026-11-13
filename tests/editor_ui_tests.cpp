@@ -32,7 +32,7 @@ EditorControls Type(const char* text) {
 
 int main() {
     bool ok = true;
-    ok &= Check(detail::ClickedSetAction({280, 426}) ==
+    ok &= Check(detail::ClickedSetAction({180, 426}) ==
                 EditorSetAction::OpenFolder &&
                 detail::ClickedSetAction({290, 359}) ==
                 EditorSetAction::RemoveBackground,

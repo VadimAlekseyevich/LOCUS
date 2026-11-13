@@ -6,17 +6,17 @@ Each completed LOCUS chart attempt creates **one small JSON record**. A Results 
 
 - After the final judged note and end-of-chart transition, **once** per completed session.
 - Retrying, leaving early, revisiting Results, or a partial TEST from the editor never creates a completed record.
-- Normal PLAY sessions at lower practice rates include the selected speed as \`practiceRate\`. The built-in demo uses a separate identity.
+- Normal PLAY sessions at lower practice rates include the selected speed as `practiceRate`. The built-in demo uses a separate identity.
 - The newly completed result opens in Results. Selecting a prior result from the PLAY screen's left history panel opens its statistics **read-only**; no replay playback is available.
 - One chart can have as many completed results as the user creates. The library shows 4 at a time with scroll/up/down controls.
 
 ## Disk format and identity
 
-Stored under \`%LOCALAPPDATA%/LOCUS/Results/\` on Windows, **outside the Song Set**. Each chart has an opaque hashed subdirectory and one \`.json\` file per attempt. Other Song Set files, archived \`.locuspack\` files and difficulty files are not modified by the Results writer.
+Stored under `%LOCALAPPDATA%/LOCUS/Results/` on Windows, **outside the Song Set**. Each chart has an opaque hashed subdirectory and one `.json` file per attempt. Other Song Set files, archived `.locuspack` files and difficulty files are not modified by the Results writer.
 
 v1 record fields:
 
-\`\`\`json
+```json
 {
   "version": 1,
   "id": "1760000000000-0",
@@ -30,16 +30,16 @@ v1 record fields:
   "bad": 3,
   "miss": 2,
   "notesJudged": 140,
-  "accuracyPercent": 96.42857142857143,
+  "accuracyPercent": 95.35714285714286,
   "practiceRate": 1.0
 }
-\`\`\`
+```
 
-The score uses the game's existing weighted accuracy formula: \`(100*Perfect + 75*Good + 50*Bad) / notesJudged\`. Timestamps are stored as UTC Unix milliseconds and rendered as UTC.
+The score uses the game's existing weighted accuracy formula: `(100*Perfect + 75*Good + 50*Bad) / notesJudged`. Timestamps are stored as UTC Unix milliseconds and rendered as UTC.
 
 The current pre-release difficulty identity is **Song Set ID + installed difficulty filename**. Editing the display title without renaming the file preserves results; renaming/moving the actual file changes the identity. A future persistent per-difficulty ID can remove that limitation in a pre-release format update. Deleted files do not automatically delete their old result records.
 
-Writes use temporary files and same-directory atomic renames. Loading validates ranges and identifiers, ignores incomplete \`.pending\` files and malformed JSON files, and sorts the remaining attempts newest-first. Disk reads happen on library-selection changes, writes happen only on completion, never on the judgement hot path.
+Writes use temporary files and same-directory atomic renames. Loading validates ranges and identifiers, ignores incomplete `.pending` files and malformed JSON files, and sorts the remaining attempts newest-first. Disk reads happen on library-selection changes, writes happen only on completion, never on the judgement hot path.
 
 ## Native SET metadata
 
