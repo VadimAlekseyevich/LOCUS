@@ -7,7 +7,7 @@ body {
   font-size:16dp;
 }
 * { box-sizing:border-box; }
-button { color:#eff2ff; font-family:Locus; font-size:15dp; background-color:#303650;
+button { tab-index:auto; color:#eff2ff; font-family:Locus; font-size:15dp; background-color:#303650;
   border:1dp #62698c; border-radius:13dp; padding:10dp 18dp; cursor:pointer;
   transition: background-color 0.13s sine-out, border-color 0.13s sine-out; }
 button:hover { background-color:#444e72; border-color:#a2d8ee; }

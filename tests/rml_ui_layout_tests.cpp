@@ -97,6 +97,11 @@ int main() {
         ok &= Check(actions && play && editor && exit,
                     "HOME has real navigation controls");
         if (play && editor && exit) {
+            auto* first = home->FindNextTabElement(nullptr, true);
+            auto* second = first ? home->FindNextTabElement(first, true)
+                                 : nullptr;
+            ok &= Check(first == play && second == editor,
+                        "HOME keyboard Tab reaches PLAY then EDITOR");
             ok &= Check(play->GetOffsetWidth() > 100.0f &&
                         editor->GetAbsoluteLeft() >=
                             play->GetAbsoluteLeft() + play->GetOffsetWidth() &&
