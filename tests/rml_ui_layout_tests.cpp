@@ -4,6 +4,7 @@
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/StyleTypes.h>
+#include "app/rml_ui_text.h"
 
 #include <algorithm>
 #include <array>
@@ -163,6 +164,14 @@ int main() {
         ok &= Check(actions && play && editor && exit,
                     "HOME has real navigation controls");
         if (play && editor && exit && wordmark) {
+            // Direct text updates must preserve the button's child node and
+            // focusable identity, even when captions contain markup characters.
+            auto* label = play->GetChild(0);
+            locus::app::UpdateRmlText(play, "PLAY & TEST");
+            ok &= Check(play->GetChild(0) == label &&
+                        label->IsClassSet("button-label"),
+                        "RmlUi text update preserves button DOM identity");
+            locus::app::UpdateRmlText(play, "PLAY");
             auto* first = home->FindNextTabElement(home, true);
             auto* second = first ? home->FindNextTabElement(first, true)
                                  : nullptr;

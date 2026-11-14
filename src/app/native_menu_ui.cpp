@@ -2,6 +2,7 @@
 
 #include "app/menu_ui.h"
 #include "app/viewport.h"
+#include "app/rml_ui_text.h"
 #include "core/utf8.h"
 
 #include <RmlUi/Core/Core.h>
@@ -294,8 +295,8 @@ void NativeMenuUi::Hide() {
 }
 
 void NativeMenuUi::SetText(const char* id, const std::string& value) {
-    if (auto* element = document_->GetElementById(id))
-        element->SetInnerRML(Escape(value));
+    if (document_)
+        UpdateRmlText(document_->GetElementById(id), value);
 }
 
 bool NativeMenuUi::IsSearchFocused() const {

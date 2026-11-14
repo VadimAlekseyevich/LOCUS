@@ -2,6 +2,7 @@
 
 #include "app/menu_controller.h"
 #include "app/menu_ui.h"
+#include "app/rml_ui_text.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -59,10 +60,7 @@ void NativeSettingsUi::SetText(const char* id, const std::string& value) {
     const auto found = textCache_.find(id);
     if (found != textCache_.end() && found->second == value) return;
     if (auto* element = document_->GetElementById(id)) {
-        const std::string content = EscapeRml(value);
-        element->SetInnerRML(element->GetTagName() == "button"
-            ? "<span class='button-label'>" + content + "</span>"
-            : content);
+        UpdateRmlText(element, value);
         textCache_[id] = value;
     }
 }

@@ -2,6 +2,7 @@
 
 #include "app/app_input.h"
 #include "app/chart_editor_ui.h"
+#include "app/rml_ui_text.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -54,10 +55,7 @@ void NativeEditorUi::SetText(const char* id, const std::string& value) {
     const auto old = textCache_.find(id);
     if (old != textCache_.end() && old->second == value) return;
     if (auto* element = document_->GetElementById(id)) {
-        const std::string content = EscapeRml(value);
-        element->SetInnerRML(element->GetTagName() == "button"
-            ? "<span class='button-label'>" + content + "</span>"
-            : content);
+        UpdateRmlText(element, value);
         textCache_[id] = value;
     }
 }

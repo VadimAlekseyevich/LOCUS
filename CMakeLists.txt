@@ -163,6 +163,7 @@ if(LOCUS_BUILD_TESTS)
     if(LOCUS_ENABLE_RMLUI)
         add_executable(locus_rml_layout_tests tests/rml_ui_layout_tests.cpp)
         target_compile_features(locus_rml_layout_tests PRIVATE cxx_std_17)
+        target_include_directories(locus_rml_layout_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
         target_link_libraries(locus_rml_layout_tests PRIVATE RmlUi::Core)
         add_test(NAME locus_rml_responsive_play
                  COMMAND locus_rml_layout_tests)
