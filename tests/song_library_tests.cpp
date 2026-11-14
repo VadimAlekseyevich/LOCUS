@@ -69,8 +69,9 @@ int main() {
 
     SongLibrary library(root);
     std::string note, error;
-    ok &= Check(library.Refresh(note) && library.Songs().empty(),
-                "empty library can be indexed");
+    ok &= Check(library.Refresh(note) && library.Songs().empty() &&
+                library.Revision() == 1,
+                "empty library can be indexed and increments its revision");
     // A current-format chart stored outside a managed Song Set is not
     // library content. Do not parse or hash orphaned/pre-release folders.
     const fs::path orphan = root / "unmanaged";
@@ -78,6 +79,7 @@ int main() {
     Write(orphan / "song.wav", firstBytes);
     WriteChart(orphan / "orphan.locus.json", "Orphan");
     ok &= Check(library.Refresh(note) && library.Songs().empty() &&
+                library.Revision() == 2 &&
                 library.LastRefreshStats().parsedCharts == 0 &&
                 library.LastRefreshStats().reusedCharts == 0,
                 "manifestless charts are ignored before expensive parsing");
@@ -118,6 +120,8 @@ int main() {
                 library.Songs()[0].charts[0].data.title == "Easy" &&
                 library.Songs()[0].charts[1].data.title == "Hard",
                 "two difficulties are grouped in one Song Set");
+    ok &= Check(library.Revision() == 4,
+                "successful imports each advance the library revision");
     const fs::path sharedAudio = library.Songs()[0].audioFile;
     SongSetManifest metadata;
     ok &= Check(LoadSongSetManifest(
@@ -163,14 +167,16 @@ int main() {
                 metadata.mapper == u8"Маппер Ёж" &&
                 Read(easyInstalled) == originalChartBytes &&
                 Read(hardInstalled) == originalHardBytes &&
-                library.ChartCount() == 2,
+                library.ChartCount() == 2 &&
+                library.Revision() == 5,
                 "metadata edits apply to entire pack without changing charts");
     ok &= Check(!library.SetSongMetadata(
                     0, "Bad", "", "Mapper", {"dance", "DANCE"}, error) &&
                 !library.SetSongMetadata(
                     0, "Bad", "", "Mapper", {""}, error) &&
                 library.Songs()[0].tags == packTags &&
-                Read(easyInstalled) == originalChartBytes,
+                Read(easyInstalled) == originalChartBytes &&
+                library.Revision() == 5,
                 "invalid tags rejected before any in-memory or disk mutation");
     SongSetManifest badTagManifest = metadata;
     badTagManifest.tags = {"dance", "DANCE"};
@@ -193,7 +199,8 @@ int main() {
                     easyInstalled.parent_path() / "set.locus.json",
                     metadata, error) &&
                 metadata.previewStartMs == 12500 &&
-                Read(easyInstalled) == originalChartBytes,
+                Read(easyInstalled) == originalChartBytes &&
+                library.Revision() == 6,
                 "preview timestamp is atomic and does not rewrite chart timing");
     // A song's BPM/offset are single manifest properties. All difficulties
     // are reprojected in memory by exact note timestamps, and raw installed chart
