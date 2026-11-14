@@ -1,0 +1,40 @@
+/* Editor shell aligns to the existing 960x540 editor viewport.
+   Chart preview, note pad, tempo timeline and editing panels remain raylib.
+   No gameplay-related visuals or controls run through RmlUi. */
+#editor-canvas { position:absolute; left:0; top:0;
+  width:960dp; height:540dp; background-color:transparent; }
+#editor-header { position:absolute; left:43dp; top:65dp;
+  width:899dp; height:45dp; display:flex; flex-direction:row;
+  align-items:center; gap:7dp; padding:4dp 6dp;
+  border:1dp #555d80; border-radius:10dp;
+  background-color:#272c42; }
+#editor-back { width:99dp; flex:0 0 99dp; height:35dp;
+  font-size:13dp; font-weight:750; color:#cfc1fa; }
+.editor-caption { display:flex; align-items:center; flex:1; min-width:0;
+  overflow:hidden; gap:7dp; padding:0 5dp; color:#eef1fb; }
+#editor-chart-name { display:block; overflow:hidden; white-space:nowrap;
+  text-overflow:ellipsis; font-size:15dp; font-weight:750; }
+#editor-dirty { color:#b5a4f3; font-size:18dp; font-weight:800; }
+.editor-tabs { display:flex; flex:0 0 427dp; flex-direction:row;
+  align-items:center; gap:7dp; }
+.editor-tab { flex:1; min-width:0; height:35dp;
+  padding:2dp; border-radius:9dp;
+  font-weight:750; font-size:13dp; }
+.editor-tab.selected { background-color:#56527e;
+  color:#eae3ff; border-color:#b5a4f3; }
+#editor-footer-playback { position:absolute; left:52dp; top:485dp;
+  display:flex; flex-direction:row; gap:5dp; }
+#editor-footer-playback button { width:39dp; height:40dp; padding:1dp;
+  font-size:10dp; font-weight:800; border-radius:8dp; }
+#editor-footer-rate-time { position:absolute; left:725dp; top:485dp;
+  display:flex; flex-direction:row; gap:9dp; }
+#editor-footer-rate-time button { height:40dp; border-radius:9dp;
+  padding:2dp 3dp; font-weight:750; font-size:12dp; }
+#editor-preview-rate { width:93dp; }
+#editor-preview-time { width:105dp; }
+#editor-rate-popup { position:absolute; left:725dp; top:341dp;
+  width:93dp; padding:4dp; border:1dp #b5a4f3;
+  border-radius:9dp; background-color:#20263b; z-index:10;
+  flex-direction:column; gap:2dp; }
+.editor-rate-choice { height:24dp; min-height:24dp; padding:1dp;
+  font-size:11dp; font-weight:750; }

@@ -1,0 +1,38 @@
+<rml>
+<head>
+<title>LOCUS / EDITOR</title>
+<link type="text/rcss" href="common.rcss" />
+<link type="text/rcss" href="editor.rcss" />
+</head>
+<body>
+<div id="editor-canvas">
+  <div id="editor-header">
+    <button id="editor-back" class="quiet" data-action="back">BACK</button>
+    <div class="editor-caption">
+      <span id="editor-chart-name">ORIGINAL</span>
+      <span id="editor-dirty"></span>
+    </div>
+    <div class="editor-tabs">
+      <button id="editor-tab-set" class="editor-tab" data-action="tab-set">SET</button>
+      <button id="editor-tab-route" class="editor-tab selected" data-action="tab-route">ROUTE</button>
+      <button id="editor-tab-audio" class="editor-tab" data-action="tab-audio">AUDIO</button>
+    </div>
+  </div>
+  <div id="editor-footer-playback">
+    <button id="editor-preview-play" class="secondary" data-action="preview-play">PLAY</button>
+    <button id="editor-preview-restart" class="quiet" data-action="preview-restart">RST</button>
+  </div>
+  <div id="editor-footer-rate-time">
+    <button id="editor-preview-rate" class="quiet" data-action="rate-toggle">100%</button>
+    <button id="editor-preview-time" class="quiet" data-action="time-copy">0 MS</button>
+  </div>
+  <div id="editor-rate-popup" style="display:none;">
+    <button class="editor-rate-choice quiet" data-action="rate" data-index="0">100%</button>
+    <button class="editor-rate-choice quiet" data-action="rate" data-index="1">75%</button>
+    <button class="editor-rate-choice quiet" data-action="rate" data-index="2">50%</button>
+    <button class="editor-rate-choice quiet" data-action="rate" data-index="3">25%</button>
+    <button class="editor-rate-choice quiet" data-action="rate" data-index="4">10%</button>
+  </div>
+</div>
+</body>
+</rml>
