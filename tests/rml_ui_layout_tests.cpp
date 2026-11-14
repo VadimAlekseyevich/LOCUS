@@ -33,6 +33,31 @@ struct NullRenderer final : Rml::RenderInterface {
     void SetScissorRegion(Rml::Rectanglei) override {}
 };
 
+
+bool HasWrappedFlexLabels(Rml::Element* root) {
+    if (!root) return true;
+    if (root->GetTagName() == "button" &&
+        root->GetDisplay() == Rml::Style::Display::Flex) {
+        bool wrapped = false;
+        for (int i = 0; i < root->GetNumChildren(); ++i) {
+            if (auto* child = root->GetChild(i);
+                child && child->GetTagName() == "span" &&
+                child->IsClassSet("button-label")) {
+                wrapped = true;
+                break;
+            }
+        }
+        if (!wrapped) {
+            std::cerr << "RML_LAYOUT_FAIL: flex button missing text wrapper: "
+                      << root->GetId() << '\\n';
+            return false;
+        }
+    }
+    for (int i = 0; i < root->GetNumChildren(); ++i)
+        if (!HasWrappedFlexLabels(root->GetChild(i))) return false;
+    return true;
+}
+
 bool Check(bool condition, const char* reason) {
     if (!condition) std::cerr << "RML_LAYOUT_FAIL: " << reason << '\n';
     return condition;
@@ -53,7 +78,9 @@ int main() {
     if (document) {
         document->Show();
         context->Update();
-        auto* left = document->GetElementById("details");
+        auto* left = document->GetElementById("details");        ok &= Check(HasWrappedFlexLabels(document),
+                    "PLAY flex buttons contain explicit text elements");
+
         auto* right = document->GetElementById("library");
         auto* search = document->GetElementById("search");
         auto* results = document->GetElementById("results-scroll");
@@ -106,7 +133,9 @@ int main() {
         home->Show();
         context->SetDimensions({960, 540});
         context->Update();
-        auto* wordmark = home->GetElementById("home-wordmark");
+        auto* wordmark = home->GetElementById("home-wordmark");        ok &= Check(HasWrappedFlexLabels(home),
+                    "HOME flex buttons contain explicit text elements");
+
         ok &= Check(wordmark != nullptr, "HOME wordmark is present");
         if (wordmark) {
             ok &= Check(wordmark->GetTagName() == "div",
@@ -175,7 +204,9 @@ int main() {
         context->SetDimensions({960, 540});
         context->SetDensityIndependentPixelRatio(1.f);
         context->Update();
-        auto* left = settingsDoc->GetElementById("settings-display");
+        auto* left = settingsDoc->GetElementById("settings-display");        ok &= Check(HasWrappedFlexLabels(settingsDoc),
+                    "SETTINGS flex buttons contain explicit text elements");
+
         auto* right = settingsDoc->GetElementById("settings-bindings");
         auto* bindings = settingsDoc->GetElementById("bind-scroll");
         auto* modal = settingsDoc->GetElementById("settings-calibration");
@@ -204,7 +235,9 @@ int main() {
         context->SetDimensions({960, 540});
         context->SetDensityIndependentPixelRatio(1.0f);
         context->Update();
-        auto* canvas = editorDoc->GetElementById("editor-canvas");
+        auto* canvas = editorDoc->GetElementById("editor-canvas");        ok &= Check(HasWrappedFlexLabels(editorDoc),
+                    "EDITOR flex buttons contain explicit text elements");
+
         auto* header = editorDoc->GetElementById("editor-header");
         auto* set = editorDoc->GetElementById("editor-tab-set");
         auto* route = editorDoc->GetElementById("editor-tab-route");

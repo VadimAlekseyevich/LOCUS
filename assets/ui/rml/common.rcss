@@ -12,6 +12,12 @@ button { display:flex; align-items:center; justify-content:center; tab-index:aut
   background-color:#30364e; border:1dp #666b94;
   border-radius:10dp; padding:8dp 12dp;
   transition:background-color 0.12s sine-out, border-color 0.12s sine-out, color 0.12s sine-out; }
+/* RmlUi does not form a renderable anonymous flex item for bare button
+   text nodes. Every flex button uses an explicit .button-label child;
+   dynamic presenters must preserve that wrapper as well. */
+.button-label { display:block; min-width:0; max-width:100%;
+  overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  text-align:center; }
 button:hover { background-color:#414763; border-color:#a2d8ee; }
 button:active { background-color:#565a7b; }
 button:focus { border:2dp #c8dcff; }

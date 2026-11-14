@@ -59,7 +59,10 @@ void NativeSettingsUi::SetText(const char* id, const std::string& value) {
     const auto found = textCache_.find(id);
     if (found != textCache_.end() && found->second == value) return;
     if (auto* element = document_->GetElementById(id)) {
-        element->SetInnerRML(EscapeRml(value));
+        const std::string content = EscapeRml(value);
+        element->SetInnerRML(element->GetTagName() == "button"
+            ? "<span class='button-label'>" + content + "</span>"
+            : content);
         textCache_[id] = value;
     }
 }
@@ -84,7 +87,8 @@ void NativeSettingsUi::UpdateBindings() {
              << EscapeRml(name) << "</span><button class='binding-key"
              << (ui_->capturing == index ? " capturing" : "")
              << "' data-action='bind' data-index='" << index << "'>"
-             << EscapeRml(key) << "</button></div>";
+             << "<span class='button-label'>" << EscapeRml(key)
+             << "</span></button></div>";
     }
     if (signature.str() != bindingSignature_) {
         if (auto* list = document_->GetElementById("bind-list"))

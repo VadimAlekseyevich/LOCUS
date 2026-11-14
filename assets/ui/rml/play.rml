@@ -7,7 +7,7 @@
 <body>
 <div id="app">
   <div id="heading">
-    <button class="back quiet" data-action="back">&#8592; BACK</button>
+    <button class="back quiet" data-action="back"><span class="button-label">&#8592; BACK</span></button>
     <div class="heading-title">PLAY</div>
   </div>
   <div id="workspace">
@@ -50,8 +50,8 @@
       </div>
       <div id="notice"></div>
       <div id="commands">
-        <button id="start" data-action="play" class="primary">PLAY</button>
-        <button id="edit" data-action="edit" class="secondary">EDIT</button>
+        <button id="start" data-action="play" class="primary"><span class="button-label">PLAY</span></button>
+        <button id="edit" data-action="edit" class="secondary"><span class="button-label">EDIT</span></button>
       </div>
     </div>
     <div id="library" class="panel">
@@ -62,9 +62,9 @@
       <input id="search" class="ui-input" type="text" placeholder="Search songs..." maxlength="64" />
       <div id="tree-scroll"><div id="tree"></div></div>
       <div id="library-footer">
-        <button id="set-button" data-action="song-set" class="quiet">SONG SET</button>
-        <button data-action="import" class="quiet">IMPORT</button>
-        <button data-action="rescan" class="quiet">RESCAN</button>
+        <button id="set-button" data-action="song-set" class="quiet"><span class="button-label">SONG SET</span></button>
+        <button data-action="import" class="quiet"><span class="button-label">IMPORT</span></button>
+        <button data-action="rescan" class="quiet"><span class="button-label">RESCAN</span></button>
       </div>
     </div>
   </div>

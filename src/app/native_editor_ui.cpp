@@ -54,7 +54,10 @@ void NativeEditorUi::SetText(const char* id, const std::string& value) {
     const auto old = textCache_.find(id);
     if (old != textCache_.end() && old->second == value) return;
     if (auto* element = document_->GetElementById(id)) {
-        element->SetInnerRML(EscapeRml(value));
+        const std::string content = EscapeRml(value);
+        element->SetInnerRML(element->GetTagName() == "button"
+            ? "<span class='button-label'>" + content + "</span>"
+            : content);
         textCache_[id] = value;
     }
 }

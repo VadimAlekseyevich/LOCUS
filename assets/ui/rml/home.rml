@@ -10,14 +10,14 @@
     <!-- Approved PNG drawn by HomeBrandAssets at this responsive RmlUi box. -->
     <div id="home-wordmark"></div>
     <div id="home-actions">
-      <button id="home-play" class="home-action" data-action="home-play">PLAY</button>
-      <button id="home-editor" class="home-action" data-action="home-editor">EDITOR</button>
-      <button id="home-skins" class="home-action" data-action="home-skins">SKINS</button>
-      <button id="home-settings" class="home-action" data-action="home-settings">SETTINGS</button>
+      <button id="home-play" class="home-action" data-action="home-play"><span class="button-label">PLAY</span></button>
+      <button id="home-editor" class="home-action" data-action="home-editor"><span class="button-label">EDITOR</span></button>
+      <button id="home-skins" class="home-action" data-action="home-skins"><span class="button-label">SKINS</span></button>
+      <button id="home-settings" class="home-action" data-action="home-settings"><span class="button-label">SETTINGS</span></button>
     </div>
   </div>
   <div id="home-notice"></div>
-  <button id="home-exit" class="quiet" data-action="home-exit">EXIT</button>
+  <button id="home-exit" class="quiet" data-action="home-exit"><span class="button-label">EXIT</span></button>
 </div>
 </body>
 </rml>

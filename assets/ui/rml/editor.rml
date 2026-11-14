@@ -7,31 +7,31 @@
 <body>
 <div id="editor-canvas">
   <div id="editor-header">
-    <button id="editor-back" class="quiet" data-action="back">BACK</button>
+    <button id="editor-back" class="quiet" data-action="back"><span class="button-label">BACK</span></button>
     <div class="editor-caption">
       <span id="editor-chart-name">ORIGINAL</span>
       <span id="editor-dirty"></span>
     </div>
     <div class="editor-tabs">
-      <button id="editor-tab-set" class="editor-tab" data-action="tab-set">SET</button>
-      <button id="editor-tab-route" class="editor-tab selected" data-action="tab-route">ROUTE</button>
-      <button id="editor-tab-audio" class="editor-tab" data-action="tab-audio">AUDIO</button>
+      <button id="editor-tab-set" class="editor-tab" data-action="tab-set"><span class="button-label">SET</span></button>
+      <button id="editor-tab-route" class="editor-tab selected" data-action="tab-route"><span class="button-label">ROUTE</span></button>
+      <button id="editor-tab-audio" class="editor-tab" data-action="tab-audio"><span class="button-label">AUDIO</span></button>
     </div>
   </div>
   <div id="editor-footer-playback">
-    <button id="editor-preview-play" class="secondary" data-action="preview-play">PLAY</button>
-    <button id="editor-preview-restart" class="quiet" data-action="preview-restart">RST</button>
+    <button id="editor-preview-play" class="secondary" data-action="preview-play"><span class="button-label">PLAY</span></button>
+    <button id="editor-preview-restart" class="quiet" data-action="preview-restart"><span class="button-label">RST</span></button>
   </div>
   <div id="editor-footer-rate-time">
-    <button id="editor-preview-rate" class="quiet" data-action="rate-toggle">100%</button>
-    <button id="editor-preview-time" class="quiet" data-action="time-copy">0 MS</button>
+    <button id="editor-preview-rate" class="quiet" data-action="rate-toggle"><span class="button-label">100%</span></button>
+    <button id="editor-preview-time" class="quiet" data-action="time-copy"><span class="button-label">0 MS</span></button>
   </div>
   <div id="editor-rate-popup" style="display:none;">
-    <button class="editor-rate-choice quiet" data-action="rate" data-index="0">100%</button>
-    <button class="editor-rate-choice quiet" data-action="rate" data-index="1">75%</button>
-    <button class="editor-rate-choice quiet" data-action="rate" data-index="2">50%</button>
-    <button class="editor-rate-choice quiet" data-action="rate" data-index="3">25%</button>
-    <button class="editor-rate-choice quiet" data-action="rate" data-index="4">10%</button>
+    <button class="editor-rate-choice quiet" data-action="rate" data-index="0"><span class="button-label">100%</span></button>
+    <button class="editor-rate-choice quiet" data-action="rate" data-index="1"><span class="button-label">75%</span></button>
+    <button class="editor-rate-choice quiet" data-action="rate" data-index="2"><span class="button-label">50%</span></button>
+    <button class="editor-rate-choice quiet" data-action="rate" data-index="3"><span class="button-label">25%</span></button>
+    <button class="editor-rate-choice quiet" data-action="rate" data-index="4"><span class="button-label">10%</span></button>
   </div>
 </div>
 </body>
