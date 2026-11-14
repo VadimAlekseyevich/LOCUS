@@ -856,10 +856,9 @@ int main() {
     nativeCompass.nativeChrome = true;
     const auto placed = ApplyEditorControls(nativeChart, nativeState,
                                             nativeCompass);
-    ok &= Check(placed.changedChart &&
-                nativeChart.SelectedTurn() &&
-                nativeChart.SelectedTurn()->direction == Heading::UpRight,
-                "native chrome still permits raylib authoring compass");
+    ok &= Check(!placed.changedChart &&
+                !nativeChart.SelectedTurn(),
+                "native chrome forbids raylib compass hitbox; RmlUi owns placement");
 
     // Native RmlUi controls send semantic commands. They cannot depend on
     // stale raylib mouse geometry and must retain the same chart history.
