@@ -13,7 +13,8 @@ namespace locus::app {
 // F1-F4 are diagnostic shortcuts ONLY when --debug-screens is explicitly enabled.
 FrameInput PollInput(bool debugScreens, Screen currentScreen,
                      const locus::app::GameSettings& settings,
-                     double eventTimeSeconds) {
+                     double eventTimeSeconds,
+                     bool nativeEditorTextInput) {
     FrameInput input;
     const auto shortcut = [&](ShortcutAction action) {
         return ShortcutPressed(settings, action);
@@ -94,13 +95,15 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     // The chart editor consumes the raylib UTF-8 character queue.
     // Never drain it on SKIN: its numeric/name text inputs own that queue.
     if (currentScreen == Screen::Editor)
-        input.editor = locus::app::PollEditorControls(settings);
+        input.editor = locus::app::PollEditorControls(settings,
+                                                    !nativeEditorTextInput);
     return input;
 }
 
 FrameInput PollFrameInput(bool debugScreens, const AppState& state,
                           const GameSettings& settings,
-                          double eventTimeSeconds, bool playPaused) {
+                          double eventTimeSeconds, bool playPaused,
+                          bool nativeEditorTextInput) {
     if (state.quitConfirmation) {
         // Repeated native X presses cannot bypass an already-open modal.
         ConsumeNativeCloseRequest();
@@ -136,7 +139,7 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
         return input;
     }
     FrameInput input = PollInput(debugScreens, state.screen,
-                                 settings, eventTimeSeconds);
+                                 settings, eventTimeSeconds, nativeEditorTextInput);
     if (state.screen == Screen::Play && playPaused &&
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         const Vector2 mouse = GetMousePosition();

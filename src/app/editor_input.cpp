@@ -14,7 +14,8 @@ Vector2 EditorVirtualMouse(Vector2 physical, int screenWidth, int screenHeight) 
                                   : Vector2{-1.0f, -1.0f};
 }
 
-EditorControls PollEditorControls(const GameSettings& settings) {
+EditorControls PollEditorControls(const GameSettings& settings,
+                                  bool consumeText) {
     EditorControls input;
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
@@ -85,6 +86,8 @@ EditorControls PollEditorControls(const GameSettings& settings) {
         input.zoomOut |= input.mouseWheel < 0;
         input.mouseWheel = 0.0f;
     }
+    // Exclusive ownership of native UTF-8 input events.
+    if (!consumeText) return input;
     int codepoint = GetCharPressed();
     while (codepoint > 0) {
         int bytes = 0;

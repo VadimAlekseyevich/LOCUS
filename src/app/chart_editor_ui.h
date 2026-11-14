@@ -164,7 +164,8 @@ struct EditorUiAction {
 };
 
 Vector2 EditorVirtualMouse(Vector2 physicalMouse, int screenWidth, int screenHeight);
-EditorControls PollEditorControls(const GameSettings& settings);
+EditorControls PollEditorControls(const GameSettings& settings,
+                                  bool consumeText = true);
 EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                                   const EditorControls& controls);
 void RenderChartEditor(Font font, const core::ChartEditor& draft,
