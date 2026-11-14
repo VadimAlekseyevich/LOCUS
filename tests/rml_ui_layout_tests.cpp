@@ -63,10 +63,9 @@ bool TestFontAvailable() {
     return false;
 }
 
-bool HasWrappedFlexLabels(Rml::Element* root) {
+bool HasButtonLabels(Rml::Element* root) {
     if (!root) return true;
-    if (root->GetTagName() == "button" &&
-        root->GetDisplay() == Rml::Style::Display::Flex) {
+    if (root->GetTagName() == "button") {
         bool wrapped = false;
         for (int i = 0; i < root->GetNumChildren(); ++i) {
             if (auto* child = root->GetChild(i);
@@ -77,13 +76,13 @@ bool HasWrappedFlexLabels(Rml::Element* root) {
             }
         }
         if (!wrapped) {
-            std::cerr << "RML_LAYOUT_FAIL: flex button missing text wrapper: "
+            std::cerr << "RML_LAYOUT_FAIL: button missing text wrapper: "
                       << root->GetId() << '\n';
             return false;
         }
     }
     for (int i = 0; i < root->GetNumChildren(); ++i)
-        if (!HasWrappedFlexLabels(root->GetChild(i))) return false;
+        if (!HasButtonLabels(root->GetChild(i))) return false;
     return true;
 }
 
@@ -110,8 +109,8 @@ int main() {
     if (document) {
         document->Show();
         context->Update();
-        ok &= Check(HasWrappedFlexLabels(document),
-                    "PLAY flex buttons contain explicit text elements");
+        ok &= Check(HasButtonLabels(document),
+                    "PLAY buttons contain explicit text elements");
         renderer.texturedDraws = 0;
         context->Render();
         ok &= Check(renderer.texturedDraws > 0,
@@ -171,8 +170,8 @@ int main() {
         context->SetDimensions({960, 540});
         context->Update();
         auto* wordmark = home->GetElementById("home-wordmark");
-        ok &= Check(HasWrappedFlexLabels(home),
-                    "HOME flex buttons contain explicit text elements");
+        ok &= Check(HasButtonLabels(home),
+                    "HOME buttons contain explicit text elements");
         renderer.texturedDraws = 0;
         context->Render();
         ok &= Check(renderer.texturedDraws > 0,
@@ -255,8 +254,8 @@ int main() {
         context->SetDensityIndependentPixelRatio(1.f);
         context->Update();
         auto* left = settingsDoc->GetElementById("settings-display");
-        ok &= Check(HasWrappedFlexLabels(settingsDoc),
-                    "SETTINGS flex buttons contain explicit text elements");
+        ok &= Check(HasButtonLabels(settingsDoc),
+                    "SETTINGS buttons contain explicit text elements");
         renderer.texturedDraws = 0;
         context->Render();
         ok &= Check(renderer.texturedDraws > 0,
@@ -285,7 +284,7 @@ int main() {
                             "SETTINGS binding rows fill the scroll panel");
             else
                 ok &= Check(false, "SETTINGS dynamic binding row parses");
-            ok &= Check(HasWrappedFlexLabels(list),
+            ok &= Check(HasButtonLabels(list),
                         "SETTINGS generated binding buttons have labels");
         }
         if (left && right) {
@@ -311,8 +310,8 @@ int main() {
         context->SetDensityIndependentPixelRatio(1.0f);
         context->Update();
         auto* canvas = editorDoc->GetElementById("editor-canvas");
-        ok &= Check(HasWrappedFlexLabels(editorDoc),
-                    "EDITOR flex buttons contain explicit text elements");
+        ok &= Check(HasButtonLabels(editorDoc),
+                    "EDITOR buttons contain explicit text elements");
         renderer.texturedDraws = 0;
         context->Render();
         ok &= Check(renderer.texturedDraws > 0,

@@ -6,15 +6,17 @@ strong { font-weight:bold; }
 body { margin:0; padding:0; width:100%; height:100%;
   color:#eef1fb; font-family:Locus; font-size:15dp;
   background-color:transparent; }
-button { display:flex; align-items:center; justify-content:center; tab-index:auto;
+/* RmlUi's flex layout does not reliably render text inside button
+   elements, even when labels have a span wrapper. Keep buttons as native
+   inline-blocks; their parent flex containers still size and place them. */
+button { display:inline-block; tab-index:auto;
   font-family:Locus; font-size:14dp; font-weight:650;
   color:#eef1fb; cursor:pointer; text-align:center;
   background-color:#30364e; border:1dp #666b94;
   border-radius:10dp; padding:8dp 12dp;
   transition:background-color 0.12s sine-out, border-color 0.12s sine-out, color 0.12s sine-out; }
-/* RmlUi does not form a renderable anonymous flex item for bare button
-   text nodes. Every flex button uses an explicit .button-label child;
-   dynamic presenters must preserve that wrapper as well. */
+/* Always keep an explicit text child. Rebuilding text through bare
+   SetInnerRML is forbidden; UpdateRmlText modifies the text node in place. */
 .button-label { display:block; min-width:0; max-width:100%;
   overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
   text-align:center; }
