@@ -1,6 +1,7 @@
 #include "app/native_menu_ui.h"
 
 #include "app/menu_ui.h"
+#include "app/viewport.h"
 #include "core/utf8.h"
 
 #include <RmlUi/Core/Core.h>
@@ -187,6 +188,15 @@ bool NativeMenuUi::Initialize() {
     } else {
         std::cerr << "Could not load SETTINGS RmlUi; using legacy settings.\n";
     }
+    editorDocument_ = context_->LoadDocument(
+        (file.parent_path() / "editor.rml").u8string());
+    if (editorDocument_) {
+        editorDocument_->AddEventListener("click", this);
+        editorDocument_->Hide();
+        editorPresenter_.Attach(editorDocument_);
+    } else {
+        std::cerr << "Could not load editor chrome; using raylib editor UI.\n";
+    }
     document_->AddEventListener("click", this);
     document_->AddEventListener("input", this);
     document_->Hide();
@@ -205,6 +215,10 @@ void NativeMenuUi::Shutdown() {
             settingsDocument_->RemoveEventListener("click", this);
         settingsPresenter_.Attach(nullptr);
         settingsDocument_ = nullptr;
+        if (editorDocument_)
+            editorDocument_->RemoveEventListener("click", this);
+        editorPresenter_.Attach(nullptr);
+        editorDocument_ = nullptr;
         document_ = nullptr;
         homeDocument_ = nullptr;
         context_->UnloadAllDocuments();
@@ -224,6 +238,7 @@ void NativeMenuUi::Activate(Page page) {
     if (document_) document_->Hide();
     if (homeDocument_) homeDocument_->Hide();
     if (settingsDocument_) settingsDocument_->Hide();
+    if (editorDocument_) editorDocument_->Hide();
     visiblePage_ = page;
     if (page == Page::Home && homeDocument_) {
         homeDocument_->Show();
@@ -237,6 +252,9 @@ void NativeMenuUi::Activate(Page page) {
     } else if (page == Page::Settings && settingsDocument_) {
         settingsDocument_->Show();
         settingsPresenter_.Attach(settingsDocument_);
+    } else if (page == Page::Editor && editorDocument_) {
+        editorDocument_->Show();
+        editorPresenter_.Attach(editorDocument_);
     }
     ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
@@ -251,6 +269,9 @@ bool NativeMenuUi::ShowingPlay() const noexcept {
 
 bool NativeMenuUi::ShowingSettings() const noexcept {
     return visiblePage_ == Page::Settings;
+}
+bool NativeMenuUi::ShowingEditor() const noexcept {
+    return visiblePage_ == Page::Editor;
 }
 
 Rectangle NativeMenuUi::HomeWordmarkBounds() const noexcept {
@@ -298,6 +319,10 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
     }
     if (visiblePage_ == Page::Settings) {
         settingsPresenter_.ProcessEvent(event);
+        return;
+    }
+    if (visiblePage_ == Page::Editor) {
+        editorPresenter_.ProcessEvent(event);
         return;
     }
     if (visiblePage_ != Page::Play || !currentUi_ || !currentLibrary_)
@@ -510,8 +535,10 @@ void NativeMenuUi::PumpInput(bool dispatchKeyboard) {
     // DPI can change when the window moves between monitors.
     // Match the 960x540 approved design rather than monitor DPI. Extra
     // ultrawide space is handled by the responsive flex container.
-    const float density = std::clamp(std::min(
-        width / 960.0f, height / 540.0f), 0.7f, 3.0f);
+    const float density = visiblePage_ == Page::Editor
+        ? std::max(0.05f, ViewportTransform::Menu(width, height).scale)
+        : std::clamp(std::min(
+            width / 960.0f, height / 540.0f), 0.7f, 3.0f);
     if (std::abs(density - lastDensity_) > 0.01f) {
         context_->SetDensityIndependentPixelRatio(density);
         lastDensity_ = density;
@@ -547,6 +574,57 @@ void NativeMenuUi::PumpInput(bool dispatchKeyboard) {
     int codepoint = 0;
     while ((codepoint = GetCharPressed()) != 0)
         context_->ProcessTextInput(static_cast<Rml::Character>(codepoint));
+}
+
+void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
+                                const std::string& title, bool dirty,
+                                double rate, bool playing,
+                                long long songTimeMs) {
+    if (!EditorAvailable()) return;
+    Activate(Page::Editor);
+    currentLibrary_ = nullptr;
+    currentUi_ = nullptr;
+    const auto viewport = ViewportTransform::Menu(
+        GetScreenWidth(), GetScreenHeight());
+    // The editor's physical letterbox is shared with the raylib viewport,
+    // without inheriting any legacy button hitboxes.
+    if (auto* canvas = editorDocument_->GetElementById("editor-canvas")) {
+        const float scale = std::max(0.05f, viewport.scale);
+        canvas->SetProperty("left", std::to_string(viewport.offsetX / scale) + "dp");
+        canvas->SetProperty("top", std::to_string(viewport.offsetY / scale) + "dp");
+    }
+    editorPresenter_.BeginFrame(ui, input);
+    editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs);
+    // Editor text fields and shortcuts remain owned by the old controller.
+    PumpInput(false);
+    if (!ui.EditingText()) {
+        if (IsKeyPressed(KEY_TAB))
+            context_->ProcessKeyDown(Rml::Input::KI_TAB, Modifiers());
+        if (auto* focus = context_->GetFocusElement();
+            focus && focus->GetTagName() == "button" &&
+            (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
+            focus->Click();
+            input.editor.enter = false;
+        }
+    }
+    if (editorPresenter_.ConsumedPointer()) {
+        input.editor.mouseClick = false;
+        input.editor.mouseHeld = false;
+        input.editor.mouseReleased = false;
+        input.editor.mouseWheel = 0.0f;
+        input.startPressed = false;
+    }
+    editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs);
+    context_->Update();
+    editorPresenter_.EndFrame();
+}
+void NativeMenuUi::SyncEditor(const EditorUiState& ui,
+                              const std::string& title, bool dirty,
+                              double rate, bool playing,
+                              long long songTimeMs) {
+    if (!ShowingEditor() || !EditorAvailable()) return;
+    editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs);
+    context_->Update();
 }
 
 void NativeMenuUi::UpdateSettings(GameSettings& settings, SettingsUi& ui,

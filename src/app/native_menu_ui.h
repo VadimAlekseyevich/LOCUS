@@ -3,6 +3,7 @@
 #include "app/rml_raylib_renderer.h"
 #include "app/menu_controller.h"
 #include "app/native_settings_ui.h"
+#include "app/native_editor_ui.h"
 #include <RmlUi/Core/EventListener.h>
 
 #include <string>
@@ -28,12 +29,19 @@ public:
     bool Available() const noexcept { return document_ != nullptr; }
     bool HomeAvailable() const noexcept { return homeDocument_ != nullptr; }
     bool SettingsAvailable() const noexcept { return settingsDocument_ != nullptr; }
+    bool EditorAvailable() const noexcept { return editorDocument_ != nullptr; }
     bool ShowingHome() const noexcept;
     bool ShowingPlay() const noexcept;
     bool ShowingSettings() const noexcept;
+    bool ShowingEditor() const noexcept;
     Rectangle HomeWordmarkBounds() const noexcept;
     // Share RmlUi input and rendering for HOME and PLAY; both retain fallback.
     void UpdateHome(FrameInput& input, const std::string& status);
+    void UpdateEditor(EditorUiState& ui, FrameInput& input,
+                      const std::string& title, bool dirty,
+                      double rate, bool playing, long long songTimeMs);
+    void SyncEditor(const EditorUiState& ui, const std::string& title,
+                    bool dirty, double rate, bool playing, long long songTimeMs);
     void UpdateSettings(GameSettings& settings, SettingsUi& ui,
                         FrameInput& input, MenuEvents& events,
                         bool exclusiveKeyboardInput);
@@ -45,7 +53,7 @@ public:
     void Render();
 
 private:
-    enum class Page { None, Home, Play, Settings };
+    enum class Page { None, Home, Play, Settings, Editor };
     void Activate(Page page);
     void PumpInput(bool dispatchKeyboard = true);
     void ProcessEvent(Rml::Event& event) override;
@@ -62,7 +70,9 @@ private:
     Rml::ElementDocument* document_ = nullptr;
     Rml::ElementDocument* homeDocument_ = nullptr;
     Rml::ElementDocument* settingsDocument_ = nullptr;
+    Rml::ElementDocument* editorDocument_ = nullptr;
     NativeSettingsUi settingsPresenter_;
+    NativeEditorUi editorPresenter_;
     const SongLibrary* currentLibrary_ = nullptr;
     SongSelectUi* currentUi_ = nullptr;
     MenuEvents pending_;
