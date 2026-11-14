@@ -345,10 +345,17 @@ int main() {
         auto* footer = editorDoc->GetElementById("editor-footer-playback");
         auto* rate = editorDoc->GetElementById("editor-preview-rate");
         auto* time = editorDoc->GetElementById("editor-preview-time");
+        auto* compass = editorDoc->GetElementById("editor-route-pad");
+        auto* toolrail = editorDoc->GetElementById("editor-route-tools");
         ok &= Check(canvas && header && set && route && audio &&
-                    footer && rate && time,
+                    footer && rate && time && compass && toolrail,
                     "EDITOR has native tabs and transport controls");
         if (header && footer && canvas) {
+            ok &= Check(compass && toolrail &&
+                compass->GetOffsetWidth() > 170.0f &&
+                toolrail->GetAbsoluteLeft() + toolrail->GetOffsetWidth() <
+                    compass->GetAbsoluteLeft(),
+                "EDITOR ROUTE native compass and toolrail are separate");
             ok &= Check(std::abs(header->GetAbsoluteTop() - 65.0f) < 2.0f &&
                         std::abs(footer->GetAbsoluteTop() - 485.0f) < 2.0f,
                         "960x540: editor shell aligns with raylib viewport");

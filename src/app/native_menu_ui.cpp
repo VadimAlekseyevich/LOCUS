@@ -724,7 +724,8 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         const bool chromeArea = over("editor-header") ||
             over("editor-footer-playback") || transport ||
             (ui.tab == EditorTab::Route &&
-                (over("editor-route-tools") || over("editor-route-pad") ||
+                ((over("editor-route-tools") && !over("editor-route-compare-gap")) ||
+                 over("editor-route-pad") ||
                  over("editor-route-speed") || over("editor-route-path")));
         if (popupWasOpen && !popupContent && !transport) {
             ui.rateDropdownOpen = false;

@@ -24,7 +24,7 @@
     <button data-action="mirror-v" ><span class="button-label">↕</span></button>
     <button data-action="rotate-ccw" ><span class="button-label">↶</span></button>
     <button data-action="rotate-cw" ><span class="button-label">↷</span></button>
-    <div class="editor-tool-gap"></div>
+    <div id="editor-route-compare-gap" class="editor-tool-gap"></div>
     <button data-action="test-chart" ><span class="button-label">▷</span></button>
     </div>
     <div id="editor-route-pad">
