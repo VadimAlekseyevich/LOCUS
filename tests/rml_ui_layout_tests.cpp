@@ -2,6 +2,7 @@
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/ElementText.h>
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/StyleTypes.h>
 #include "app/rml_ui_text.h"
@@ -17,23 +18,50 @@
 namespace {
 
 struct NullRenderer final : Rml::RenderInterface {
+    std::size_t texturedDraws = 0;
+    Rml::TextureHandle nextTexture = 1;
     Rml::CompiledGeometryHandle CompileGeometry(
         Rml::Span<const Rml::Vertex>, Rml::Span<const int>) override {
         return 1;
     }
     void RenderGeometry(Rml::CompiledGeometryHandle, Rml::Vector2f,
-                        Rml::TextureHandle) override {}
+                        Rml::TextureHandle texture) override {
+        if (texture != 0) ++texturedDraws;
+    }
     void ReleaseGeometry(Rml::CompiledGeometryHandle) override {}
     Rml::TextureHandle LoadTexture(Rml::Vector2i&, const Rml::String&) override {
         return 0;
     }
     Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte>,
-                                        Rml::Vector2i) override { return 0; }
+                                        Rml::Vector2i) override {
+        return nextTexture++;
+    }
     void ReleaseTexture(Rml::TextureHandle) override {}
     void EnableScissorRegion(bool) override {}
     void SetScissorRegion(Rml::Rectanglei) override {}
 };
 
+
+bool TestFontAvailable() {
+#ifdef _WIN32
+    const std::array<const char*, 2> fonts = {
+        "C:/Windows/Fonts/segoeui.ttf", "C:/Windows/Fonts/arial.ttf"
+    };
+#else
+    const std::array<const char*, 2> fonts = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"
+    };
+#endif
+    for (const char* path : fonts) {
+        if (std::filesystem::exists(path) &&
+            Rml::LoadFontFace(path, "Locus",
+                Rml::Style::FontStyle::Normal,
+                Rml::Style::FontWeight::Normal))
+            return true;
+    }
+    return false;
+}
 
 bool HasWrappedFlexLabels(Rml::Element* root) {
     if (!root) return true;
@@ -71,6 +99,9 @@ int main() {
     Rml::SetRenderInterface(&renderer);
     if (!Rml::Initialise()) return 1;
     bool ok = true;
+    // A valid CSS rectangle cannot prove readable UI. Load a real font and
+    // require actual textured glyph geometry from RmlUi's render stage.
+    ok &= Check(TestFontAvailable(), "RmlUi can load an installed font face");
     auto* context = Rml::CreateContext("headless-layout", {1280, 720});
     if (!context) { Rml::Shutdown(); return 1; }
     const std::string path = "assets/ui/rml/play.rml";
@@ -79,8 +110,13 @@ int main() {
     if (document) {
         document->Show();
         context->Update();
-        auto* left = document->GetElementById("details");        ok &= Check(HasWrappedFlexLabels(document),
+        ok &= Check(HasWrappedFlexLabels(document),
                     "PLAY flex buttons contain explicit text elements");
+        renderer.texturedDraws = 0;
+        context->Render();
+        ok &= Check(renderer.texturedDraws > 0,
+                    "PLAY font glyphs produce textured render geometry");
+        auto* left = document->GetElementById("details");
 
         auto* right = document->GetElementById("library");
         auto* search = document->GetElementById("search");
@@ -134,8 +170,13 @@ int main() {
         home->Show();
         context->SetDimensions({960, 540});
         context->Update();
-        auto* wordmark = home->GetElementById("home-wordmark");        ok &= Check(HasWrappedFlexLabels(home),
+        auto* wordmark = home->GetElementById("home-wordmark");
+        ok &= Check(HasWrappedFlexLabels(home),
                     "HOME flex buttons contain explicit text elements");
+        renderer.texturedDraws = 0;
+        context->Render();
+        ok &= Check(renderer.texturedDraws > 0,
+                    "HOME button labels produce textured glyph geometry");
 
         ok &= Check(wordmark != nullptr, "HOME wordmark is present");
         if (wordmark) {
@@ -213,8 +254,13 @@ int main() {
         context->SetDimensions({960, 540});
         context->SetDensityIndependentPixelRatio(1.f);
         context->Update();
-        auto* left = settingsDoc->GetElementById("settings-display");        ok &= Check(HasWrappedFlexLabels(settingsDoc),
+        auto* left = settingsDoc->GetElementById("settings-display");
+        ok &= Check(HasWrappedFlexLabels(settingsDoc),
                     "SETTINGS flex buttons contain explicit text elements");
+        renderer.texturedDraws = 0;
+        context->Render();
+        ok &= Check(renderer.texturedDraws > 0,
+                    "SETTINGS font glyphs produce textured render geometry");
 
         auto* right = settingsDoc->GetElementById("settings-bindings");
         auto* bindings = settingsDoc->GetElementById("bind-scroll");
@@ -264,8 +310,13 @@ int main() {
         context->SetDimensions({960, 540});
         context->SetDensityIndependentPixelRatio(1.0f);
         context->Update();
-        auto* canvas = editorDoc->GetElementById("editor-canvas");        ok &= Check(HasWrappedFlexLabels(editorDoc),
+        auto* canvas = editorDoc->GetElementById("editor-canvas");
+        ok &= Check(HasWrappedFlexLabels(editorDoc),
                     "EDITOR flex buttons contain explicit text elements");
+        renderer.texturedDraws = 0;
+        context->Render();
+        ok &= Check(renderer.texturedDraws > 0,
+                    "EDITOR header and transport labels produce glyph geometry");
 
         auto* header = editorDoc->GetElementById("editor-header");
         auto* set = editorDoc->GetElementById("editor-tab-set");
