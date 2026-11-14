@@ -361,6 +361,26 @@ int main() {
                         "1536x960: editor shell respects letterboxing");
         }
     }
+    auto* resultsDoc = context->LoadDocument("assets/ui/rml/results.rml");
+    ok &= Check(resultsDoc != nullptr, "native RESULTS document parses");
+    if (resultsDoc) {
+        if (editorDoc) editorDoc->Hide();
+        resultsDoc->Show();
+        context->SetDimensions({960, 540});
+        context->SetDensityIndependentPixelRatio(1.0f);
+        context->Update();
+        ok &= Check(HasButtonLabels(resultsDoc), "RESULTS buttons contain labels");
+        auto* accuracy = resultsDoc->GetElementById("results-accuracy");
+        auto* history = resultsDoc->GetElementById("results-history");
+        auto* retry = resultsDoc->GetElementById("results-retry");
+        ok &= Check(accuracy && history && retry && accuracy->GetOffsetWidth() > 0 &&
+                    history->GetOffsetHeight() > 0,
+                    "RESULTS has separate score, history and action regions");
+        context->SetDimensions({800, 450});
+        context->Update();
+        ok &= Check(retry && retry->GetAbsoluteLeft() + retry->GetOffsetWidth()
+                    <= 800.1f, "800x450 RESULTS actions fit");
+    }
     Rml::RemoveContext("headless-layout");
     Rml::Shutdown();
     return ok ? 0 : 1;

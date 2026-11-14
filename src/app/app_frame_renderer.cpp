@@ -293,7 +293,11 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                           Color{5, 6, 11, static_cast<unsigned char>(
                               std::lround(gameplay.outro.blackOpacity * 255.0f))});
     } else if (state.screen == Screen::Results) {
-        DrawResultsScreen(font, gameplay, displayedResult, historicalResult);
+#ifdef LOCUS_WITH_RMLUI
+        if (!nativeMenu || !nativeMenu->ResultsAvailable() ||
+            !nativeMenu->ShowingResults() || state.quitConfirmation)
+#endif
+            DrawResultsScreen(font, gameplay, displayedResult, historicalResult);
         if (!historicalResult && gameplay.outro.resultBlackOpacity > 0.0f)
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
                           Color{5, 6, 11, static_cast<unsigned char>(
@@ -435,6 +439,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
           nativeMenu->ShowingPlay()) ||
          (state.screen == Screen::Home && nativeMenu->HomeAvailable() &&
           nativeMenu->ShowingHome()) ||
+         (state.screen == Screen::Results && nativeMenu->ResultsAvailable() &&
+          nativeMenu->ShowingResults()) ||
          (state.screen == Screen::Settings && nativeMenu->SettingsAvailable() &&
           nativeMenu->ShowingSettings()) ||
          (state.screen == Screen::Editor && nativeMenu->EditorAvailable() &&
