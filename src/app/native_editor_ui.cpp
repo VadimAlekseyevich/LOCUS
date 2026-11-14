@@ -99,7 +99,7 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     auto* target = event.GetTargetElement();
     while (target && !target->HasAttribute("data-action"))
         target = target->GetParentNode();
-    if (!target || target->IsDisabled()) return;
+    if (!target || target->HasAttribute("disabled")) return;
     const std::string action = target->GetAttribute<Rml::String>("data-action", "");
     if (action.empty()) return;
     consumedPointer_ = true;
