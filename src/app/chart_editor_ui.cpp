@@ -740,14 +740,15 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     DrawSongOverview(font,draft,set,previewSeconds);
 
     // Timeline and song overview still use raylib; transport chrome is RmlUi.
-    if (!nativeShell) {
-    EditorIconButton(kEditorPreviewPlay,
-        running?EditorIcon::Pause:EditorIcon::Play,sky);
-    EditorIconButton(kEditorPreviewRestart,EditorIcon::Restart,violet);
     const char* speeds[5]={"100%","75%","50%","25%","10%"};
     int rate=0;
     for(int i=0;i<5;++i)
         if(std::abs(playbackSpeed-kSpeeds[i])<.001)rate=i;
+    if (!nativeShell) {
+    EditorIconButton(kEditorPreviewPlay,
+        running?EditorIcon::Pause:EditorIcon::Play,sky);
+    EditorIconButton(kEditorPreviewRestart,EditorIcon::Restart,violet);
+
     DrawUiThemedButton(font,kEditorRateDropdown,
         (std::string(speeds[rate])+" v").c_str(),
         UiButtonVariant::Quiet,{}, {},theme,13);
