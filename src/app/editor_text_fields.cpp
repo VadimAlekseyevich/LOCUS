@@ -145,7 +145,8 @@ EditorUiAction HandleTextInput(core::ChartEditor& draft, EditorUiState& ui,
                 BeginField(ui, draft, EditorField::Bpm);
         } else if (input.mouseClick) {
             const EditorField target = ClickedField(input.mouse, ui.tab);
-            const EditorTab nextTab = ClickedTab(input.mouse, ui.tab);
+            const EditorTab nextTab = input.nativeChrome
+                ? ui.tab : ClickedTab(input.mouse, ui.tab);
             if (target != ui.active || nextTab != ui.tab) {
                 const bool committed = CommitField(ui, draft);
                 action.changedChart = committed;

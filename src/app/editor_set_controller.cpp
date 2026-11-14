@@ -434,7 +434,8 @@ void EditorSetController::HandleControls(const EditorControls& input) {
             ui.editingSetPreview = false;
             ui.setPreviewBuffer.clear();
             ui.setPreviewReplaceOnType = false;
-            if (clicked) ui.tab = detail::ClickedTab(mouse, ui.tab);
+            if (clicked && !input.nativeChrome)
+                ui.tab = detail::ClickedTab(mouse, ui.tab);
         }
         return;
     }
