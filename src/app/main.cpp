@@ -382,7 +382,7 @@ int main(int argc, char** argv) {
                     chartPlayback.Playing() && !chartPlayback.Paused(),
                     locus::app::detail::RouteTimeMs(editor,
                         static_cast<double>(editor.SelectedBeat())),
-                    editor, settings);
+                    editor, settings, editorSetView);
             } else if (state.screen == Screen::Settings &&
                      nativeMenu.SettingsAvailable()) {
                 const bool exclusiveKeyboard =
@@ -969,6 +969,8 @@ int main(int argc, char** argv) {
                     editorClock.songSeconds) * editor.Data().route.ticksPerBeat
                 : static_cast<double>(editor.SelectedBeat());
         }
+        const auto editorSetView = visibleState.screen == Screen::Editor
+            ? editorSet.View() : locus::app::EditorSetView{};
 #ifdef LOCUS_WITH_RMLUI
         if (visibleState.screen == Screen::Editor && nativeMenu.EditorAvailable())
             nativeMenu.SyncEditor(editorUi, editor.Data().title, editor.Dirty(),
@@ -977,8 +979,6 @@ int main(int argc, char** argv) {
                 locus::app::detail::RouteTimeMs(editor, editorClock.tick),
                 editor, settings);
 #endif
-        const auto editorSetView = visibleState.screen == Screen::Editor
-            ? editorSet.View() : locus::app::EditorSetView{};
         if (visibleState.screen == Screen::Editor &&
             editorChartPath != comparisonCacheChartPath) {
             editorComparison.Reset();

@@ -631,7 +631,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                            UiButtonVariant::Cool,{}, {},theme,13);
         Label(font,TextFormat("%d / %d",count?first+1:0,count),
               801,437,12,muted);
-    } else if (ui.tab == EditorTab::Set) {
+    } else if (ui.tab == EditorTab::Set && !nativeShell) {
         const Rectangle metadataPanel{43,175,522,294};
         const Rectangle difficultiesPanel{567,175,370,294};
         DrawRectangleRounded(metadataPanel,UiRoundness(metadataPanel,11),

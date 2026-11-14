@@ -194,6 +194,7 @@ bool NativeMenuUi::Initialize() {
         (file.parent_path() / "editor.rml").u8string());
     if (editorDocument_) {
         editorDocument_->AddEventListener("click", this);
+        editorDocument_->AddEventListener("change", this);
         editorDocument_->Hide();
         editorPresenter_.Attach(editorDocument_);
     } else {
@@ -236,8 +237,10 @@ void NativeMenuUi::Shutdown() {
             settingsDocument_->RemoveEventListener("click", this);
         settingsPresenter_.Attach(nullptr);
         settingsDocument_ = nullptr;
-        if (editorDocument_)
+        if (editorDocument_) {
             editorDocument_->RemoveEventListener("click", this);
+            editorDocument_->RemoveEventListener("change", this);
+        }
         editorPresenter_.Attach(nullptr);
         editorDocument_ = nullptr;
         if (resultsDocument_) resultsDocument_->RemoveEventListener("click", this);
@@ -726,7 +729,8 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
             (ui.tab == EditorTab::Route &&
                 ((over("editor-route-tools") && !over("editor-route-compare-gap")) ||
                  over("editor-route-pad") ||
-                 over("editor-route-speed") || over("editor-route-path")));
+                 over("editor-route-speed") || over("editor-route-path"))) ||
+            (ui.tab == EditorTab::Set && over("editor-set-ui"));
         if (popupWasOpen && !popupContent && !transport) {
             ui.rateDropdownOpen = false;
             // The release event must dismiss only, not navigate through
@@ -752,7 +756,7 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         input.startPressed = false;
     }
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
-                          &draft, &settings);
+                          &draft, &settings, &setView);
     context_->Update();
     if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         editorPresenter_.ReleaseClickSuppression();
@@ -765,7 +769,8 @@ void NativeMenuUi::SyncEditor(const EditorUiState& ui,
                               double rate, bool playing,
                               long long songTimeMs,
                               const core::ChartEditor& draft,
-                              const GameSettings& settings) {
+                              const GameSettings& settings,
+                              const EditorSetView& setView) {
     if (!ShowingEditor() || !EditorAvailable()) return;
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
                           &draft, &settings);

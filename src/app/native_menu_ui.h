@@ -48,7 +48,8 @@ public:
                       const std::string& title, bool dirty,
                       double rate, bool playing, long long songTimeMs,
                       const core::ChartEditor& draft,
-                      const GameSettings& settings);
+                      const GameSettings& settings,
+                     const EditorSetView& setView);
     void SyncEditor(const EditorUiState& ui, const std::string& title,
                     bool dirty, double rate, bool playing, long long songTimeMs,
                     const core::ChartEditor& draft,
