@@ -13,10 +13,10 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
   storage, indexed values, a validated atomic edit API and editor SET view data.
   Difficulty/chart JSON deliberately has **no tags**. Native SET text fields
   now edit the managed Song Set's shared metadata (Enter to save, Esc to cancel).
-- SET, ROUTE and AUDIO now use a shared native editor header and upper note ruler,
-  with one bottom whole-song timeline, Play/Restart icons, playback-rate menu and
-  millisecond copy button. ROUTE uses an icon toolrail, larger square previews,
-  a right-hand direction pad and START controls; AUDIO has two columns.
+- SET, ROUTE and AUDIO share a RmlUi header, tabs and transport controls.
+  The upper note ruler, lower song overview, route preview, authoring compass,
+  SET metadata and AUDIO tempo editor remain raylib views. UI events use the
+  existing editor control model, not synthesized raylib clicks.
 - SKINS now uses the same dark violet/sky menu palette, a full-width tab bar,
   skin name in the header and actions beneath the preview. The existing
   functional wheel, sliders, swatches, skin profiles and controls remain.
@@ -43,7 +43,9 @@ The UI is composed of the existing reusable controls and the layout in [styles.c
 - **Right:** a much wider scrollable song/difficulty tree, search and Song Set/import/rescan actions.
 - Selecting another chart switches the summary and results; no invented osu! leaderboard, mods or gameplay mechanics.
 
-The actual full-screen song background should eventually be sourced from the selected Song Set. The SVG artwork here is purely a design placeholder, not an implemented disk-backed image loader.
+The native song selector displays an installed Song Set image only when that
+Song Set actually provides one. Without an image it uses the theme background;
+there is no generated or example-artwork fallback.
 
 ## Other screens
 
