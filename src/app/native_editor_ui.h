@@ -29,5 +29,6 @@ private:
     bool consumedPointer_ = false;
     std::unordered_map<std::string, std::string> textCache_;
     bool rateOpen_ = false;
+    int lastTab_ = -1, lastTextEditing_ = -1;
 };
 } // namespace locus::app

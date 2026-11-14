@@ -81,6 +81,7 @@ private:
     std::string lastHomeNotice_;
     int lastWidth_ = -1, lastHeight_ = -1;
     float lastDensity_ = -1.0f;
+    int lastEditorWidth_ = -1, lastEditorHeight_ = -1;
     std::string lastTreeSignature_, lastResultSignature_, lastSummarySignature_;
 };
 

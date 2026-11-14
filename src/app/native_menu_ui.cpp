@@ -255,6 +255,8 @@ void NativeMenuUi::Activate(Page page) {
     } else if (page == Page::Editor && editorDocument_) {
         editorDocument_->Show();
         editorPresenter_.Attach(editorDocument_);
+        lastEditorWidth_ = -1;
+        lastEditorHeight_ = -1;
     }
     ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
@@ -588,10 +590,15 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         GetScreenWidth(), GetScreenHeight());
     // The editor's physical letterbox is shared with the raylib viewport,
     // without inheriting any legacy button hitboxes.
-    if (auto* canvas = editorDocument_->GetElementById("editor-canvas")) {
-        const float scale = std::max(0.05f, viewport.scale);
-        canvas->SetProperty("left", std::to_string(viewport.offsetX / scale) + "dp");
-        canvas->SetProperty("top", std::to_string(viewport.offsetY / scale) + "dp");
+    if (lastEditorWidth_ != GetScreenWidth() ||
+        lastEditorHeight_ != GetScreenHeight()) {
+        if (auto* canvas = editorDocument_->GetElementById("editor-canvas")) {
+            const float scale = std::max(0.05f, viewport.scale);
+            canvas->SetProperty("left", std::to_string(viewport.offsetX / scale) + "dp");
+            canvas->SetProperty("top", std::to_string(viewport.offsetY / scale) + "dp");
+        }
+        lastEditorWidth_ = GetScreenWidth();
+        lastEditorHeight_ = GetScreenHeight();
     }
     editorPresenter_.BeginFrame(ui, input);
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs);
@@ -607,7 +614,17 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
             input.editor.enter = false;
         }
     }
-    if (editorPresenter_.ConsumedPointer()) {
+    // RmlUi fires click on mouse release, while raylib records a click
+    // on mouse press. Consume the DOWN frame as soon as its hovered
+    // element belongs to native chrome, not only the later click event.
+    bool chromePointer = editorPresenter_.ConsumedPointer();
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        auto* hovered = context_->GetHoverElement();
+        while (hovered && !hovered->HasAttribute("data-action"))
+            hovered = hovered->GetParentNode();
+        chromePointer |= hovered && !hovered->HasAttribute("disabled");
+    }
+    if (chromePointer) {
         input.editor.mouseClick = false;
         input.editor.mouseHeld = false;
         input.editor.mouseReleased = false;

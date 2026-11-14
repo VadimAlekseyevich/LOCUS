@@ -37,6 +37,8 @@ void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     document_ = document;
     textCache_.clear();
     rateOpen_ = false;
+    lastTab_ = -1;
+    lastTextEditing_ = -1;
 }
 void NativeEditorUi::BeginFrame(EditorUiState& ui, FrameInput& input) noexcept {
     ui_ = &ui;
@@ -70,13 +72,16 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     }
     SetText("editor-preview-rate", kPreviewLabels[static_cast<std::size_t>(choice)]);
     SetText("editor-preview-time", std::to_string(timeMs) + " MS");
-    const auto setSelected = [&](const char* id, bool selected) {
-        if (auto* element = document_->GetElementById(id))
-            element->SetClass("selected", selected);
-    };
-    setSelected("editor-tab-set", ui.tab == EditorTab::Set);
-    setSelected("editor-tab-route", ui.tab == EditorTab::Route);
-    setSelected("editor-tab-audio", ui.tab == EditorTab::Audio);
+    if (lastTab_ != static_cast<int>(ui.tab)) {
+        const auto setSelected = [&](const char* id, bool selected) {
+            if (auto* element = document_->GetElementById(id))
+                element->SetClass("selected", selected);
+        };
+        setSelected("editor-tab-set", ui.tab == EditorTab::Set);
+        setSelected("editor-tab-route", ui.tab == EditorTab::Route);
+        setSelected("editor-tab-audio", ui.tab == EditorTab::Audio);
+        lastTab_ = static_cast<int>(ui.tab);
+    }
     if (rateOpen_ != ui.rateDropdownOpen) {
         if (auto* popup = document_->GetElementById("editor-rate-popup"))
             popup->SetProperty("display",
@@ -84,14 +89,17 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         rateOpen_ = ui.rateDropdownOpen;
     }
     const bool textEditing = ui.EditingText();
-    for (const char* id : {"editor-tab-set", "editor-tab-route",
-                           "editor-tab-audio", "editor-preview-play",
-                           "editor-preview-restart", "editor-preview-rate",
-                           "editor-preview-time"}) {
-        if (auto* element = document_->GetElementById(id)) {
-            if (textEditing) element->SetAttribute("disabled", "");
-            else element->RemoveAttribute("disabled");
+    if (lastTextEditing_ != static_cast<int>(textEditing)) {
+        for (const char* id : {"editor-tab-set", "editor-tab-route",
+                               "editor-tab-audio", "editor-preview-play",
+                               "editor-preview-restart", "editor-preview-rate",
+                               "editor-preview-time"}) {
+            if (auto* element = document_->GetElementById(id)) {
+                if (textEditing) element->SetAttribute("disabled", "");
+                else element->RemoveAttribute("disabled");
+            }
         }
+        lastTextEditing_ = static_cast<int>(textEditing);
     }
 }
 void NativeEditorUi::ProcessEvent(Rml::Event& event) {
