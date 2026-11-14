@@ -198,6 +198,15 @@ bool NativeMenuUi::Initialize() {
     } else {
         std::cerr << "Could not load editor chrome; using raylib editor UI.\n";
     }
+    resultsDocument_ = context_->LoadDocument(
+        (file.parent_path() / "results.rml").u8string());
+    if (resultsDocument_) {
+        resultsDocument_->AddEventListener("click", this);
+        resultsDocument_->Hide();
+        resultsPresenter_.Attach(resultsDocument_);
+    } else {
+        std::cerr << "Could not load RESULTS RmlUi; using raylib results UI.\n";
+    }
     document_->AddEventListener("click", this);
     document_->AddEventListener("input", this);
     document_->Hide();
@@ -220,6 +229,9 @@ void NativeMenuUi::Shutdown() {
             editorDocument_->RemoveEventListener("click", this);
         editorPresenter_.Attach(nullptr);
         editorDocument_ = nullptr;
+        if (resultsDocument_) resultsDocument_->RemoveEventListener("click", this);
+        resultsPresenter_.Attach(nullptr);
+        resultsDocument_ = nullptr;
         document_ = nullptr;
         homeDocument_ = nullptr;
         context_->UnloadAllDocuments();
@@ -247,6 +259,7 @@ void NativeMenuUi::Activate(Page page) {
     if (homeDocument_) homeDocument_->Hide();
     if (settingsDocument_) settingsDocument_->Hide();
     if (editorDocument_) editorDocument_->Hide();
+    if (resultsDocument_) resultsDocument_->Hide();
     visiblePage_ = page;
     if (page == Page::Home && homeDocument_) {
         homeDocument_->Show();
@@ -261,6 +274,9 @@ void NativeMenuUi::Activate(Page page) {
     } else if (page == Page::Settings && settingsDocument_) {
         settingsDocument_->Show();
         settingsPresenter_.Attach(settingsDocument_);
+    } else if (page == Page::Results && resultsDocument_) {
+        resultsDocument_->Show();
+        resultsPresenter_.Attach(resultsDocument_);
     } else if (page == Page::Editor && editorDocument_) {
         editorDocument_->Show();
         editorPresenter_.Attach(editorDocument_);
@@ -283,6 +299,9 @@ bool NativeMenuUi::ShowingSettings() const noexcept {
 }
 bool NativeMenuUi::ShowingEditor() const noexcept {
     return visiblePage_ == Page::Editor;
+}
+bool NativeMenuUi::ShowingResults() const noexcept {
+    return visiblePage_ == Page::Results;
 }
 
 Rectangle NativeMenuUi::HomeWordmarkBounds() const noexcept {
@@ -334,6 +353,10 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
     }
     if (visiblePage_ == Page::Editor) {
         editorPresenter_.ProcessEvent(event);
+        return;
+    }
+    if (visiblePage_ == Page::Results) {
+        resultsPresenter_.ProcessEvent(event);
         return;
     }
     if (visiblePage_ != Page::Play || !currentUi_ || !currentLibrary_)
@@ -827,6 +850,29 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
     result = pending_;
     pending_ = {};
     return result;
+}
+
+MenuEvents NativeMenuUi::UpdateResults(FrameInput& input,
+    const RunResult* selected, const core::GradeCounts& grades, int total,
+    const std::string& chartTitle, bool historical, const SongSelectUi& history) {
+    MenuEvents events;
+    if (!ResultsAvailable()) return events;
+    Activate(Page::Results);
+    currentUi_ = nullptr;
+    currentLibrary_ = nullptr;
+    SuppressGlobalMenuShortcuts(input);
+    resultsPresenter_.BeginFrame(selected, grades, total, chartTitle,
+                                 historical, history, input, events);
+    resultsPresenter_.Sync();
+    PumpInput();
+    if (auto* focus = context_->GetFocusElement();
+        focus && focus->GetTagName() == "button" &&
+        (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
+        focus->Click();
+    if (IsKeyPressed(KEY_ESCAPE)) input.backPressed = true;
+    context_->Update();
+    resultsPresenter_.EndFrame();
+    return events;
 }
 
 void NativeMenuUi::Render() {

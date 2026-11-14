@@ -363,6 +363,13 @@ int main(int argc, char** argv) {
                 nativeMenu.UpdateHome(input, menuStatus);
             else if (state.screen == Screen::SongSelect && nativeMenu.Available())
                 menuEvents = nativeMenu.Update(library, libraryUi, input);
+            else if (state.screen == Screen::Results && nativeMenu.ResultsAvailable())
+                menuEvents = nativeMenu.UpdateResults(input,
+                    displayedResult ? &*displayedResult : nullptr,
+                    displayedResult ? displayedResult->grades : judge.Counts(),
+                    displayedResult ? displayedResult->notesJudged :
+                        static_cast<int>(judge.ScorableCount()),
+                    chartTitle, historicalResult, libraryUi);
             else if (state.screen == Screen::Editor &&
                      nativeMenu.EditorAvailable() &&
                      !editorSet.HasPending() &&
@@ -388,7 +395,7 @@ int main(int argc, char** argv) {
                 menuEvents = HandleMenuInput(state, input, library, libraryUi,
                     settings, settingsUi, draftSkin, skinUi, homeUi, inputNow);
         }
-        if (state.screen == Screen::SongSelect &&
+        if ((state.screen == Screen::SongSelect || state.screen == Screen::Results) &&
             menuEvents.viewResultIndex >= 0 &&
             menuEvents.viewResultIndex <
                 static_cast<int>(libraryUi.results.size())) {
@@ -1001,7 +1008,8 @@ int main(int argc, char** argv) {
         if (visibleState.screen != Screen::SongSelect &&
             visibleState.screen != Screen::Home &&
             visibleState.screen != Screen::Settings &&
-            visibleState.screen != Screen::Editor) nativeMenu.Hide();
+            visibleState.screen != Screen::Editor &&
+            visibleState.screen != Screen::Results) nativeMenu.Hide();
 #endif
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, editorClock,
