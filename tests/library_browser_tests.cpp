@@ -77,6 +77,18 @@ int main() {
 
     SongLibrary library(installed);
     SongSelectUi ui;
+    // Native results UI observes a single revision rather than hashing
+    // an unbounded number of run records every frame.
+    const RunKey firstRunKey{"first-set", "easy.locus.json"};
+    const RunKey secondRunKey{"other-set", "hard.locus.json"};
+    ui.resultScroll = 4;
+    ui.ReplaceResults(firstRunKey, {});
+    ok &= Check(ui.resultsRevision == 1 && ui.resultKey == firstRunKey &&
+                ui.resultScroll == 0 && ui.results.empty(),
+                "results replacement advances revision and resets history scroll");
+    ui.ReplaceResults(secondRunKey, {});
+    ok &= Check(ui.resultsRevision == 2 && ui.resultKey == secondRunKey,
+                "same list content for another chart still invalidates results UI");
     std::string menuStatus = "PREVIOUS MENU STATUS";
     ok &= Check(RefreshLibraryBrowser(library, ui, menuStatus) &&
                 library.Songs().empty() && ui.selectedSong == 0,
