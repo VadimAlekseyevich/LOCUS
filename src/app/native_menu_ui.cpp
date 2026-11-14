@@ -230,12 +230,14 @@ void NativeMenuUi::Shutdown() {
     }
     visiblePage_ = Page::None;
     pendingHomeAction_ = -1;
+    editorChromePressActive_ = false;
     currentUi_ = nullptr;
     currentLibrary_ = nullptr;
 }
 
 void NativeMenuUi::Activate(Page page) {
     if (visiblePage_ == page) return;
+    editorChromePressActive_ = false;
     // Never keep keyboard focus in a document that is about to be hidden.
     // Otherwise Enter/Space on the next screen may target stale controls.
     if (context_) {
@@ -668,8 +670,14 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         } else {
             chromePointer |= chromeArea || (popupWasOpen && popupContent);
         }
-        if (chromePointer) input.backPressed = false;
+        if (chromePointer) {
+            input.backPressed = false;
+            editorChromePressActive_ = true;
+        }
     }
+    // A drag started on a UI button must never author notes after the
+    // pointer leaves that button. Ownership persists through mouse-up.
+    chromePointer |= editorChromePressActive_;
     if (chromePointer) {
         input.editor.mouseClick = false;
         input.editor.mouseHeld = false;
@@ -679,8 +687,10 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     }
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs);
     context_->Update();
-    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         editorPresenter_.ReleaseClickSuppression();
+        editorChromePressActive_ = false;
+    }
     editorPresenter_.EndFrame();
 }
 void NativeMenuUi::SyncEditor(const EditorUiState& ui,

@@ -82,6 +82,9 @@ private:
     int lastWidth_ = -1, lastHeight_ = -1;
     float lastDensity_ = -1.0f;
     int lastEditorWidth_ = -1, lastEditorHeight_ = -1;
+    // Raylib pointer capture persists across the full press/drag/release
+    // gesture begun on native editor chrome, even when the pointer moves.
+    bool editorChromePressActive_ = false;
     std::string lastTreeSignature_, lastResultSignature_, lastSummarySignature_;
 };
 
