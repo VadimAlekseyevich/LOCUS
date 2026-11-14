@@ -49,7 +49,7 @@ bool HasWrappedFlexLabels(Rml::Element* root) {
         }
         if (!wrapped) {
             std::cerr << "RML_LAYOUT_FAIL: flex button missing text wrapper: "
-                      << root->GetId() << '\\n';
+                      << root->GetId() << '\n';
             return false;
         }
     }
