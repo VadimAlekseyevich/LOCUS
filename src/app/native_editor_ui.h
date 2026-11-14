@@ -4,9 +4,11 @@
 #include <unordered_map>
 
 namespace Rml { class ElementDocument; class Event; }
+namespace locus::core { class ChartEditor; }
 namespace locus::app {
 struct EditorUiState;
 struct FrameInput;
+struct GameSettings;
 
 // Shared editor chrome presenter. RmlUi handles the menu header and
 // transport buttons; chart authoring, waveform, route preview and timelines
@@ -18,7 +20,8 @@ public:
     void ProcessEvent(Rml::Event& event);
     void Sync(const EditorUiState& ui, const std::string& chartTitle,
               bool dirty, double playbackRate, bool previewRunning,
-              long long timeMs);
+              long long timeMs, const core::ChartEditor* draft = nullptr,
+              const GameSettings* settings = nullptr);
     bool ConsumedPointer() const noexcept { return consumedPointer_; }
     void SuppressCurrentClick() noexcept { suppressClick_ = true; }
     bool SuppressingClick() const noexcept { return suppressClick_; }

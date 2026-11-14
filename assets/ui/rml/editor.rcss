@@ -38,3 +38,19 @@
   flex-direction:column; gap:2dp; }
 .editor-rate-choice { height:24dp; min-height:24dp; padding:1dp;
   font-size:11dp; font-weight:750; }
+
+#editor-route-ui { position:absolute; left:0; top:0; width:960dp; height:540dp; pointer-events:none; }
+#editor-route-tools { position:absolute; left:52dp; top:181dp; width:42dp; height:272dp; display:flex; flex-direction:column; gap:4dp; pointer-events:auto; }
+#editor-route-tools button, .editor-tool-gap { width:42dp; height:42dp; flex:0 0 42dp; padding:0; font-size:22dp; }
+.editor-tool-gap { pointer-events:none; }
+#editor-route-pad { position:absolute; left:748dp; top:181dp; width:184dp; height:175dp; display:flex; flex-direction:row; flex-wrap:wrap; gap:5dp; pointer-events:auto; }
+#editor-route-pad button { position:relative; flex:0 0 58dp; width:58dp; height:55dp; padding:4dp 2dp; font-size:25dp; color:#d5eeff; }
+#editor-route-pad .button-label { display:block; height:36dp; }
+.editor-pad-count { position:absolute; right:5dp; bottom:1dp; font-size:10dp; color:#c9bbfa; }
+#editor-route-pad button.selected { background-color:#585281; border-color:#b5a4f3; }
+#editor-route-speed, #editor-route-path { position:absolute; left:748dp; width:184dp; height:31dp; pointer-events:auto; display:flex; flex-direction:row; align-items:center; gap:4dp; }
+#editor-route-speed { top:406dp; }
+#editor-route-path { top:442dp; }
+.editor-option-label { display:block; font-size:11dp; color:#bac5dc; width:47dp; }
+.editor-option-value { display:block; font-size:10dp; color:#a2d8ee; overflow:hidden; white-space:nowrap; width:50dp; }
+#editor-route-speed button, #editor-route-path button { width:36dp; flex:0 0 36dp; height:28dp; padding:0; font-size:15dp; }

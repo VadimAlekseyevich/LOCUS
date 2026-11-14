@@ -18,6 +18,29 @@
       <button id="editor-tab-audio" class="editor-tab" data-action="tab-audio"><span class="button-label">AUDIO</span></button>
     </div>
   </div>
+  <div id="editor-route-ui">
+    <div id="editor-route-tools">
+    <button data-action="mirror-h" ><span class="button-label">↔</span></button>
+    <button data-action="mirror-v" ><span class="button-label">↕</span></button>
+    <button data-action="rotate-ccw" ><span class="button-label">↶</span></button>
+    <button data-action="rotate-cw" ><span class="button-label">↷</span></button>
+    <div class="editor-tool-gap"></div>
+    <button data-action="test-chart" ><span class="button-label">▷</span></button>
+    </div>
+    <div id="editor-route-pad">
+    <button id="editor-pad-7" data-action="note" data-heading="7"><span class="button-label">↖</span><span id="editor-count-7" class="editor-pad-count">0</span></button>
+    <button id="editor-pad-0" data-action="note" data-heading="0"><span class="button-label">↑</span><span id="editor-count-0" class="editor-pad-count">0</span></button>
+    <button id="editor-pad-4" data-action="note" data-heading="4"><span class="button-label">↗</span><span id="editor-count-4" class="editor-pad-count">0</span></button>
+    <button id="editor-pad-3" data-action="note" data-heading="3"><span class="button-label">←</span><span id="editor-count-3" class="editor-pad-count">0</span></button>
+    <button data-action="remove-note" ><span class="button-label">DEL</span></button>
+    <button id="editor-pad-1" data-action="note" data-heading="1"><span class="button-label">→</span><span id="editor-count-1" class="editor-pad-count">0</span></button>
+    <button id="editor-pad-6" data-action="note" data-heading="6"><span class="button-label">↙</span><span id="editor-count-6" class="editor-pad-count">0</span></button>
+    <button id="editor-pad-2" data-action="note" data-heading="2"><span class="button-label">↓</span><span id="editor-count-2" class="editor-pad-count">0</span></button>
+    <button id="editor-pad-5" data-action="note" data-heading="5"><span class="button-label">↘</span><span id="editor-count-5" class="editor-pad-count">0</span></button>
+    </div>
+    <div id="editor-route-speed"><div class="editor-option-label">SPEED</div><div id="editor-speed-label" class="editor-option-value">135 px/s</div><button data-action="speed-minus" ><span class="button-label">−</span></button><button data-action="speed-plus" ><span class="button-label">+</span></button></div>
+    <div id="editor-route-path"><div class="editor-option-label">PATH</div><div id="editor-path-label" class="editor-option-value">800 ms</div><button data-action="path-minus" ><span class="button-label">−</span></button><button data-action="path-plus" ><span class="button-label">+</span></button></div>
+  </div>
   <div id="editor-footer-playback">
     <button id="editor-preview-play" class="secondary" data-action="preview-play"><span class="button-label">PLAY</span></button>
     <button id="editor-preview-restart" class="quiet" data-action="preview-restart"><span class="button-label">RST</span></button>

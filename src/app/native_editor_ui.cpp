@@ -2,6 +2,8 @@
 
 #include "app/app_input.h"
 #include "app/chart_editor_ui.h"
+#include "app/chart_editor_layout.h"
+#include "app/game_settings.h"
 #include "app/rml_ui_text.h"
 
 #include <RmlUi/Core/Element.h>
@@ -62,7 +64,8 @@ void NativeEditorUi::SetText(const char* id, const std::string& value) {
 }
 void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
                           bool dirty, double rate, bool running,
-                          long long timeMs) {
+                          long long timeMs, const core::ChartEditor* draft,
+                          const GameSettings* settings) {
     if (!document_) return;
     SetText("editor-chart-name", title);
     SetText("editor-dirty", dirty ? "*" : "");
@@ -74,7 +77,27 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     }
     SetText("editor-preview-rate", kPreviewLabels[static_cast<std::size_t>(choice)]);
     SetText("editor-preview-time", std::to_string(timeMs) + " MS");
+    if (settings) {
+        SetText("editor-speed-label", std::to_string(
+            static_cast<int>(std::lround(settings->editorPreviewSpeed))) + " px/s");
+        SetText("editor-path-label", std::to_string(
+            static_cast<int>(std::lround(settings->editorPreviewLengthMs))) + " ms");
+    }
+    if (draft && ui.tab == EditorTab::Route) {
+        const auto counts = detail::DirectionPressCounts(draft->Data().route);
+        const auto* selected = draft->SelectedTurn();
+        for (int index=0; index<8; ++index) {
+            const std::string suffix = std::to_string(index);
+            SetText(("editor-count-" + suffix).c_str(),
+                std::to_string(counts[static_cast<std::size_t>(index)]));
+            if (auto* button = document_->GetElementById("editor-pad-" + suffix))
+                button->SetClass("selected", selected &&
+                    static_cast<int>(selected->direction) == index);
+        }
+    }
     if (lastTab_ != static_cast<int>(ui.tab)) {
+        if (auto* route = document_->GetElementById("editor-route-ui"))
+            route->SetProperty("display", ui.tab == EditorTab::Route ? "block" : "none");
         const auto setSelected = [&](const char* id, bool selected) {
             if (auto* element = document_->GetElementById(id))
                 element->SetClass("selected", selected);
@@ -138,7 +161,21 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
             input_->editor.speedIndex = index;
             ui_->rateDropdownOpen = false;
         }
-    } else if (action == "time-copy") {
+    } else if (action == "mirror-h") input_->editor.mirrorHorizontal = true;
+    else if (action == "mirror-v") input_->editor.mirrorVertical = true;
+    else if (action == "rotate-ccw") input_->editor.rotateCounterclockwise = true;
+    else if (action == "rotate-cw") input_->editor.rotateClockwise = true;
+    else if (action == "test-chart") input_->editorTest = true;
+    else if (action == "remove-note") input_->editor.removeTurn = true;
+    else if (action == "note") {
+        const int heading = target->GetAttribute<int>("data-heading", -1);
+        if (heading >= 0 && heading < 8)
+            input_->editor.placeHeading = static_cast<core::Heading>(heading);
+    } else if (action == "speed-minus" || action == "speed-plus")
+        input_->editor.previewSpeedDelta = action == "speed-plus" ? 1 : -1;
+    else if (action == "path-minus" || action == "path-plus")
+        input_->editor.previewLengthDelta = action == "path-plus" ? 1 : -1;
+    else if (action == "time-copy") {
         ui_->rateDropdownOpen = false;
         input_->editor.copySongTime = true;
     }
