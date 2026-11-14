@@ -9,6 +9,9 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Event.h>
+#include <RmlUi/Core/Elements/ElementFormControlInput.h>
+#include <RmlUi/Core/Context.h>
+#include <sstream>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -41,6 +44,8 @@ void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     textCache_.clear();
     rateOpen_ = false;
     suppressClick_ = false;
+    activeSetId_.clear();
+    setListSignature_.clear();
     lastTab_ = -1;
     lastTextEditing_ = -1;
 }
@@ -65,7 +70,8 @@ void NativeEditorUi::SetText(const char* id, const std::string& value) {
 void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
                           bool dirty, double rate, bool running,
                           long long timeMs, const core::ChartEditor* draft,
-                          const GameSettings* settings) {
+                          const GameSettings* settings,
+                          const EditorSetView* setView) {
     if (!document_) return;
     SetText("editor-chart-name", title);
     SetText("editor-dirty", dirty ? "*" : "");
@@ -98,6 +104,8 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     if (lastTab_ != static_cast<int>(ui.tab)) {
         if (auto* route = document_->GetElementById("editor-route-ui"))
             route->SetProperty("display", ui.tab == EditorTab::Route ? "block" : "none");
+        if (auto* set = document_->GetElementById("editor-set-ui"))
+            set->SetProperty("display", ui.tab == EditorTab::Set ? "block" : "none");
         const auto setSelected = [&](const char* id, bool selected) {
             if (auto* element = document_->GetElementById(id))
                 element->SetClass("selected", selected);
@@ -106,6 +114,52 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         setSelected("editor-tab-route", ui.tab == EditorTab::Route);
         setSelected("editor-tab-audio", ui.tab == EditorTab::Audio);
         lastTab_ = static_cast<int>(ui.tab);
+    }
+    if (setView && ui.tab == EditorTab::Set) {
+        activeSetId_ = setView->id;
+        auto* focus = document_->GetContext()->GetFocusElement();
+        const auto update = [&](const char* id, const std::string& value) {
+            auto* input = dynamic_cast<Rml::ElementFormControlInput*>(
+                document_->GetElementById(id));
+            if (!input) return;
+            if (input != focus && input->GetValue() != value)
+                input->SetValue(value);
+            if (setView->managed) input->RemoveAttribute("disabled");
+            else input->SetAttribute("disabled", "");
+        };
+        update("editor-set-title", setView->title);
+        update("editor-set-artist", setView->artist);
+        update("editor-set-mapper", setView->mapper);
+        std::string tags;
+        for (const auto& tag : setView->tags) {
+            if (!tags.empty()) tags += ", ";
+            tags += tag;
+        }
+        update("editor-set-tags", tags);
+        SetText("editor-set-hint", setView->managed ? "" :
+                "SAVE SONG TO EDIT SHARED SONG SET METADATA");
+        std::ostringstream signature;
+        signature << setView->id << ':' << setView->current
+                  << ':' << setView->selected;
+        for (const auto& difficulty : setView->difficulties)
+            signature << difficulty.size() << ':' << difficulty;
+        if (signature.str() != setListSignature_) {
+            setListSignature_ = signature.str();
+            std::ostringstream html;
+            for (std::size_t i=0; i<setView->difficulties.size(); ++i) {
+                html << "<button class='editor-set-row";
+                if (static_cast<int>(i) == setView->current) html << " active";
+                if (static_cast<int>(i) == setView->selected) html << " selected";
+                html << "' data-action='set-difficulty' data-index='" << i
+                     << "'><span class='button-label'>"
+                     << EscapeRml(setView->difficulties[i])
+                     << "</span></button>";
+            }
+            if (setView->difficulties.empty())
+                html << "<div class='empty'>NO DIFFICULTIES YET</div>";
+            if (auto* list = document_->GetElementById("editor-set-list"))
+                list->SetInnerRML(html.str());
+        }
     }
     if (rateOpen_ != ui.rateDropdownOpen) {
         if (auto* popup = document_->GetElementById("editor-rate-popup"))
@@ -129,8 +183,23 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     }
 }
 void NativeEditorUi::ProcessEvent(Rml::Event& event) {
-    if (event.GetType() != "click" || !ui_ || !input_ ||
-        suppressClick_) return;
+    if (!ui_ || !input_ || suppressClick_) return;
+    if (event.GetType() == "change" && ui_->tab == EditorTab::Set) {
+        auto* changed = dynamic_cast<Rml::ElementFormControlInput*>(
+            event.GetTargetElement());
+        if (changed && changed->GetAttribute<Rml::String>("data-kind", "") ==
+                           "set-field") {
+            const int field = changed->GetAttribute<int>("data-field", -1);
+            if (field >= static_cast<int>(EditorSetField::Title) &&
+                field <= static_cast<int>(EditorSetField::Tags)) {
+                input_->editor.metadataField = static_cast<EditorSetField>(field);
+                input_->editor.metadataValue = changed->GetValue();
+                input_->editor.metadataSetId = activeSetId_;
+            }
+        }
+        return;
+    }
+    if (event.GetType() != "click") return;
     auto* target = event.GetTargetElement();
     while (target && !target->HasAttribute("data-action"))
         target = target->GetParentNode();
@@ -161,7 +230,20 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
             input_->editor.speedIndex = index;
             ui_->rateDropdownOpen = false;
         }
-    } else if (action == "mirror-h") input_->editor.mirrorHorizontal = true;
+    } else if (action == "set-difficulty") {
+        input_->editor.selectedDifficulty =
+            target->GetAttribute<int>("data-index", -1);
+    } else if (action == "set-new") input_->editor.setRequest = EditorSetAction::NewDifficulty;
+    else if (action == "set-duplicate") input_->editor.setRequest = EditorSetAction::Duplicate;
+    else if (action == "set-import") input_->editor.setRequest = EditorSetAction::Import;
+    else if (action == "set-export") input_->editor.setRequest = EditorSetAction::Export;
+    else if (action == "set-delete-chart") input_->editor.setRequest = EditorSetAction::DeleteDifficulty;
+    else if (action == "set-delete-set") input_->editor.setRequest = EditorSetAction::DeleteSongSet;
+    else if (action == "set-restore") input_->editor.setRequest = EditorSetAction::Restore;
+    else if (action == "set-bg") input_->editor.setRequest = EditorSetAction::AttachBackground;
+    else if (action == "set-remove-bg") input_->editor.setRequest = EditorSetAction::RemoveBackground;
+    else if (action == "set-folder") input_->editor.setRequest = EditorSetAction::OpenFolder;
+    else if (action == "mirror-h") input_->editor.mirrorHorizontal = true;
     else if (action == "mirror-v") input_->editor.mirrorVertical = true;
     else if (action == "rotate-ccw") input_->editor.rotateCounterclockwise = true;
     else if (action == "rotate-cw") input_->editor.rotateClockwise = true;

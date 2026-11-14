@@ -9,6 +9,7 @@ namespace locus::app {
 struct EditorUiState;
 struct FrameInput;
 struct GameSettings;
+struct EditorSetView;
 
 // Shared editor chrome presenter. RmlUi handles the menu header and
 // transport buttons; chart authoring, waveform, route preview and timelines
@@ -21,7 +22,8 @@ public:
     void Sync(const EditorUiState& ui, const std::string& chartTitle,
               bool dirty, double playbackRate, bool previewRunning,
               long long timeMs, const core::ChartEditor* draft = nullptr,
-              const GameSettings* settings = nullptr);
+              const GameSettings* settings = nullptr,
+              const EditorSetView* setView = nullptr);
     bool ConsumedPointer() const noexcept { return consumedPointer_; }
     void SuppressCurrentClick() noexcept { suppressClick_ = true; }
     bool SuppressingClick() const noexcept { return suppressClick_; }
@@ -38,6 +40,7 @@ private:
     bool suppressClick_ = false;
     std::unordered_map<std::string, std::string> textCache_;
     bool rateOpen_ = false;
+    std::string activeSetId_, setListSignature_;
     int lastTab_ = -1, lastTextEditing_ = -1;
 };
 } // namespace locus::app
