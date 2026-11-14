@@ -44,7 +44,7 @@
   min-width:0; justify-content:space-between; align-items:center; gap:10dp;
   flex:0 0 46dp; height:46dp; padding:3dp 1dp;
   border-bottom:1dp #484e69; }
-.binding-label { flex:1; min-width:0; overflow:hidden;
+.binding-label { display:block; flex:1; min-width:0; overflow:hidden;
   white-space:nowrap; text-overflow:ellipsis; font-size:13dp;
   color:#eef1fb; }
 .binding-key { flex:0 0 155dp; height:35dp; min-width:0;

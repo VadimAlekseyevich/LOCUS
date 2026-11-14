@@ -81,8 +81,8 @@ void NativeSettingsUi::UpdateBindings() {
             : KeyboardChordName(settings_->Shortcut(
                 static_cast<ShortcutAction>(index - kGameActionCount)));
         signature << index << '/' << key << ';';
-        html << "<div class='binding-row'><span class='binding-label'>"
-             << EscapeRml(name) << "</span><button class='binding-key"
+        html << "<div class='binding-row'><div class='binding-label'>"
+             << EscapeRml(name) << "</div><button class='binding-key"
              << (ui_->capturing == index ? " capturing" : "")
              << "' data-action='bind' data-index='" << index << "'>"
              << "<span class='button-label'>" << EscapeRml(key)

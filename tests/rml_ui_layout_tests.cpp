@@ -288,7 +288,7 @@ int main() {
         if (auto* list = settingsDoc->GetElementById("bind-list")) {
             list->SetInnerRML(
                 "<div class='binding-row' id='test-binding-row'>"
-                "<span class='binding-label'>Pause / Menu</span>"
+                "<div class='binding-label'>Pause / Menu</div>"
                 "<button class='binding-key'>"
                 "<span class='button-label'>ESC</span></button></div>");
             context->Update();
@@ -301,6 +301,12 @@ int main() {
                 ok &= Check(false, "SETTINGS dynamic binding row parses");
             ok &= Check(HasButtonLabels(list),
                         "SETTINGS generated binding buttons have labels");
+            if (auto* label = settingsDoc->GetElementById("test-binding-row")) {
+                auto* child = label->GetChild(0);
+                ok &= Check(child && child->GetDisplay() == Rml::Style::Display::Block &&
+                            child->GetOffsetWidth() > 30.0f,
+                            "SETTINGS binding name is a block flex item with nonzero width");
+            }
         }
         if (left && right) {
             ok &= Check(right->GetAbsoluteLeft() > left->GetAbsoluteLeft() &&
