@@ -54,3 +54,37 @@
 .editor-option-label { display:block; font-size:11dp; color:#bac5dc; width:47dp; }
 .editor-option-value { display:block; font-size:10dp; color:#a2d8ee; overflow:hidden; white-space:nowrap; width:50dp; }
 #editor-route-speed button, #editor-route-path button { width:36dp; flex:0 0 36dp; height:28dp; padding:0; font-size:15dp; }
+
+/* All SET fields and action layout live in RCSS; the SongLibrary retains
+   exclusive ownership of metadata and difficulty identities. */
+#editor-set-ui { position:absolute; left:0; top:0; width:960dp; height:540dp; pointer-events:none; }
+.editor-set-panel { position:absolute; top:175dp; height:294dp; padding:10dp;
+  border:1dp #565d7b; border-radius:10dp; background-color:#252d45;
+  display:flex; flex-direction:column; pointer-events:auto; }
+#editor-set-metadata { left:43dp; width:522dp; }
+#editor-set-difficulties { left:567dp; width:370dp; }
+.editor-set-title { display:block; color:#b5a4f3; font-weight:800; font-size:13dp;
+  margin-bottom:6dp; letter-spacing:1dp; }
+.editor-set-field { display:flex; flex-direction:column; flex:0 0 auto;
+  gap:3dp; margin-bottom:3dp; }
+.editor-set-field div { display:block; font-size:10dp; color:#a6bad9; }
+.editor-set-input { display:block; width:100%; height:27dp;
+  background-color:#1c263e; border:1dp #606c92; border-radius:6dp;
+  color:#edf1fc; font-family:Locus; font-size:13dp; padding:3dp 7dp; }
+.editor-set-input:focus { border-color:#b5a4f3; background-color:#323354; }
+#editor-set-manage { display:flex; flex-direction:row; flex-wrap:wrap;
+  gap:4dp; margin-top:auto; }
+#editor-set-manage button { flex:0 0 48%; height:25dp; padding:0;
+  font-size:9dp; }
+.editor-set-quick { display:flex; flex-direction:row; gap:5dp;
+  margin-bottom:6dp; }
+.editor-set-quick button { flex:1; height:30dp; min-width:0;
+  padding:0; font-size:10dp; }
+#editor-set-list { display:flex; flex-direction:column; flex:1;
+  gap:5dp; overflow-y:auto; min-height:0; }
+.editor-set-row { display:block; width:100%; min-height:32dp;
+  height:32dp; padding:3dp 7dp; text-align:left; font-size:12dp; }
+.editor-set-row.active { border-color:#a2d8ee; }
+.editor-set-row.selected { background-color:#59527a; }
+#editor-set-hint { position:absolute; left:52dp; top:469dp;
+  color:#9da8c6; font-size:9dp; pointer-events:none; }
