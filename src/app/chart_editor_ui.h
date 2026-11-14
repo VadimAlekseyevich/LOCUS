@@ -38,6 +38,10 @@ struct EditorControls {
     bool enter = false, escape = false, backspace = false, tab = false;
     bool previewToggle = false, previewRestart = false;
     bool copySongTime = false;
+    // True when the native RmlUi editor shell owns tabs and transport.
+    // Legacy raylib hitboxes are forbidden in that mode, but hotkeys and
+    // note/tempo editing retain their original semantics.
+    bool nativeChrome = false;
     int speedIndex = -1; // 0..4: 100, 75, 50, 25, 10 percent.
     std::string typedUtf8;
 };

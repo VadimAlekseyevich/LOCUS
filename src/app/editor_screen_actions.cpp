@@ -64,6 +64,7 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     // Footer controls and the expanded playback-rate popup own their click.
     // Its options overlap AUDIO's tempo cells, but must never edit BPM.
     const bool footerClick = input.editor.mouseClick &&
+        !input.editor.nativeChrome &&
         (context_.ui.rateDropdownOpen ||
          detail::Hit(detail::kEditorRateDropdown,input.editor.mouse) ||
          detail::Hit(detail::kEditorPreviewPlay,input.editor.mouse) ||

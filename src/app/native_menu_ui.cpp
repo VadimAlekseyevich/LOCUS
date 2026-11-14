@@ -603,6 +603,7 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         lastEditorWidth_ = GetScreenWidth();
         lastEditorHeight_ = GetScreenHeight();
     }
+    input.editor.nativeChrome = true;
     editorPresenter_.BeginFrame(ui, input);
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs);
     // Editor text fields and shortcuts remain owned by the old controller.
@@ -622,6 +623,14 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     // chrome region on mouse DOWN using the actual RmlUi layout, so the
     // old BACK and rate hitboxes cannot run before the RmlUi event.
     bool chromePointer = editorPresenter_.ConsumedPointer();
+    // A native popup owns its close gesture too. Clicking outside dismisses
+    // it without passing the same press to a tempo/route editing surface.
+    const bool popupWasOpen = ui.rateDropdownOpen;
+    if (ui.rateDropdownOpen && IsKeyPressed(KEY_ESCAPE)) {
+        ui.rateDropdownOpen = false;
+        input.editor.escape = false;
+        input.backPressed = false;
+    }
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         const Vector2 mouse = GetMousePosition();
         const auto over = [&](const char* id) {
@@ -632,10 +641,16 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
             return mouse.x >= x && mouse.x < x + element->GetOffsetWidth() &&
                    mouse.y >= y && mouse.y < y + element->GetOffsetHeight();
         };
-        chromePointer |= over("editor-header") ||
-                         over("editor-footer-playback") ||
-                         over("editor-footer-rate-time") ||
-                         (ui.rateDropdownOpen && over("editor-rate-popup"));
+        const bool popupContent = over("editor-rate-popup");
+        const bool transport = over("editor-footer-rate-time");
+        const bool chromeArea = over("editor-header") ||
+            over("editor-footer-playback") || transport;
+        if (popupWasOpen && !popupContent && !transport) {
+            ui.rateDropdownOpen = false;
+            chromePointer = true;
+        } else {
+            chromePointer |= chromeArea || (popupWasOpen && popupContent);
+        }
         if (chromePointer) input.backPressed = false;
     }
     if (chromePointer) {

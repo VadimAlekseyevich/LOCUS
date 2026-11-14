@@ -74,7 +74,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     }
 
     // The rate selector and transport are shared by every editor tab.
-    if (ui.rateDropdownOpen) {
+    if (ui.rateDropdownOpen && !input.nativeChrome) {
         if (input.escape) { ui.rateDropdownOpen = false; return action; }
         if (input.mouseClick) {
             for (int i = 0; i < 5; ++i)
@@ -86,21 +86,25 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             return action;
         }
     }
-    if (input.mouseClick && Hit(kEditorRateDropdown, input.mouse)) {
+    if (!input.nativeChrome && input.mouseClick &&
+        Hit(kEditorRateDropdown, input.mouse)) {
         ui.rateDropdownOpen = true;
         return action;
     }
-    if (input.mouseClick && Hit(kEditorPreviewPlay, input.mouse)) {
+    if (!input.nativeChrome && input.mouseClick &&
+        Hit(kEditorPreviewPlay, input.mouse)) {
         action.previewToggle = true;
         return action;
     }
-    if (input.mouseClick && Hit(kEditorPreviewRestart, input.mouse)) {
+    if (!input.nativeChrome && input.mouseClick &&
+        Hit(kEditorPreviewRestart, input.mouse)) {
         action.previewRestart = true;
         return action;
     }
     // The current Route time readout, not individual timeline beats, copies
     // a single exact audio timestamp as whole milliseconds.
-    if (input.mouseClick && Hit(kRouteTimeValue, input.mouse)) {
+    if (!input.nativeChrome && input.mouseClick &&
+        Hit(kRouteTimeValue, input.mouse)) {
         const long long ms = RouteTimeMs(draft, input.timelineViewBeat);
         action.clipboardWrite = std::to_string(ms);
         ui.feedback = std::to_string(ms) + " MS COPIED";
@@ -129,7 +133,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     // must not modify the current chart while managing its difficulties.
     if (ui.tab == EditorTab::Set) {
         ui.draggingTimeline = false;
-        if (input.mouseClick) {
+        if (input.mouseClick && !input.nativeChrome) {
             const EditorTab next = ClickedTab(input.mouse, ui.tab);
             if (next != ui.tab) { ui.tab = next; ui.rateDropdownOpen = false; }
         }
@@ -164,7 +168,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     if (input.mouseClick) {
         ui.draggingTimeline = false;
         const Vector2 mouse = input.mouse;
-        const EditorTab nextTab = ClickedTab(mouse, ui.tab);
+        const EditorTab nextTab = input.nativeChrome
+            ? ui.tab : ClickedTab(mouse, ui.tab);
         if (nextTab != ui.tab) {
             ui.comparisonPickerOpen = false;
             ui.rateDropdownOpen = false;
