@@ -20,7 +20,7 @@ Open [index.html](index.html) locally in a browser. This is a **clickable HTML/C
 - SKINS now uses the same dark violet/sky menu palette, a full-width tab bar,
   skin name in the header and actions beneath the preview. The existing
   functional wheel, sliders, swatches, skin profiles and controls remain.
-- Home now shares PLAY's responsive RmlUi context and approved brand layout. Editor, Skins and Results are **not** RmlUi screens yet.
+- Home now shares PLAY's responsive RmlUi context and approved brand layout. Editor's common header and transport now use the same RmlUi context; its authoring panels remain raylib. Skins and Results are **not** RmlUi screens yet.
 - Settings now uses the shared RmlUi context: real Display/Audio controls,
   scrollable PLAY/MENUS/EDITOR binding groups, the existing input capture and
   offset calibrator. `GameSettings` still owns persistence and validation. See [the actual migration plan](../../../docs/UI_RML_MIGRATION.md). Manual cross-resolution visual inspection of the new GPU renderer is still needed; CI checks the headless layout, compilation and app logic. Scored gameplay,

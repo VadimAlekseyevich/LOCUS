@@ -195,6 +195,39 @@ int main() {
                         "1536x960: SETTINGS scales without overflow");
         }
     }
+    // Editor shell follows the 960x540 raylib viewport exactly.
+    auto* editorDoc = context->LoadDocument("assets/ui/rml/editor.rml");
+    ok &= Check(editorDoc != nullptr, "EDITOR shell parses");
+    if (editorDoc) {
+        if (settingsDoc) settingsDoc->Hide();
+        editorDoc->Show();
+        context->SetDimensions({960, 540});
+        context->SetDensityIndependentPixelRatio(1.0f);
+        context->Update();
+        auto* canvas = editorDoc->GetElementById("editor-canvas");
+        auto* header = editorDoc->GetElementById("editor-header");
+        auto* set = editorDoc->GetElementById("editor-tab-set");
+        auto* route = editorDoc->GetElementById("editor-tab-route");
+        auto* audio = editorDoc->GetElementById("editor-tab-audio");
+        auto* footer = editorDoc->GetElementById("editor-footer-playback");
+        auto* rate = editorDoc->GetElementById("editor-preview-rate");
+        auto* time = editorDoc->GetElementById("editor-preview-time");
+        ok &= Check(canvas && header && set && route && audio &&
+                    footer && rate && time,
+                    "EDITOR has native tabs and transport controls");
+        if (header && footer && canvas) {
+            ok &= Check(std::abs(header->GetAbsoluteTop() - 65.0f) < 2.0f &&
+                        std::abs(footer->GetAbsoluteTop() - 485.0f) < 2.0f,
+                        "960x540: editor shell aligns with raylib viewport");
+            context->SetDimensions({1536, 960});
+            context->SetDensityIndependentPixelRatio(1.6f);
+            canvas->SetProperty("top", "30dp");
+            context->Update();
+            ok &= Check(std::abs(header->GetAbsoluteTop() - 152.0f) < 4.0f &&
+                        footer->GetAbsoluteTop() < 960.0f,
+                        "1536x960: editor shell respects letterboxing");
+        }
+    }
     Rml::RemoveContext("headless-layout");
     Rml::Shutdown();
     return ok ? 0 : 1;
