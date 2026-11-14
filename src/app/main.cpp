@@ -366,7 +366,10 @@ int main(int argc, char** argv) {
             else if (state.screen == Screen::SongSelect && nativeMenu.Available())
                 menuEvents = nativeMenu.Update(library, libraryUi, input);
             else if (state.screen == Screen::Editor &&
-                     nativeMenu.EditorAvailable()) {
+                     nativeMenu.EditorAvailable() &&
+                     !editorSet.HasPending() &&
+                     editorDiscard.Pending() == locus::app::EditorPending::None &&
+                     editorFiles.PendingClose().empty()) {
                 nativeMenu.UpdateEditor(editorUi, input, editor.Data().title,
                     editor.Dirty(), chartPlayback.Speed(),
                     chartPlayback.Playing() && !chartPlayback.Paused(),

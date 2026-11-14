@@ -438,7 +438,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
          (state.screen == Screen::Settings && nativeMenu->SettingsAvailable() &&
           nativeMenu->ShowingSettings()) ||
          (state.screen == Screen::Editor && nativeMenu->EditorAvailable() &&
-          nativeMenu->ShowingEditor())))
+          nativeMenu->ShowingEditor() && !editorSetPending &&
+          editorPending == EditorPending::None &&
+          editorClosePending.empty())))
     {
         nativeMenu->Render();
         if (state.screen == Screen::Home)
