@@ -1,0 +1,45 @@
+<rml><head><title>LOCUS / SKINS</title>
+<link type="text/rcss" href="common.rcss" />
+<link type="text/rcss" href="skins.rcss" /></head>
+<body><div id="skins-root">
+ <div class="skins-header">
+  <button class="quiet skins-back" data-action="back"><span class="button-label">BACK</span></button>
+  <div class="skins-title">SKINS</div>
+  <div id="skin-dirty"></div>
+  <input id="skin-name" class="ui-input skins-name" type="text" data-kind="name" value="Default"/>
+ </div>
+ <div class="skins-tabs">
+  <button id="skin-tab-path" class="selected" data-action="tab" data-index="0"><span class="button-label">PATH</span></button>
+  <button id="skin-tab-player" data-action="tab" data-index="1"><span class="button-label">PLAYER</span></button>
+  <button id="skin-tab-colors" data-action="tab" data-index="2"><span class="button-label">COLORS</span></button>
+  <button id="skin-tab-profiles" data-action="tab" data-index="3"><span class="button-label">MY SKINS</span></button>
+ </div>
+ <div class="skins-columns">
+  <div class="panel skins-left"><div id="skin-controls"></div></div>
+  <div class="panel skins-right">
+   <div id="skin-color-edit" style="display:none;">
+    <div class="skins-label">COLOR / HEX / ALPHA</div>
+    <input id="skin-hex" type="text" class="ui-input" data-kind="hex" value="#FF4654FF"/>
+   </div>
+   <div class="skins-label">LIVE PREVIEW</div>
+   <div id="skin-preview-canvas"></div>
+   <div class="skins-actions">
+    <button data-action="load"><span class="button-label">LOAD</span></button>
+    <button data-action="save" class="primary"><span class="button-label">SAVE</span></button>
+    <button data-action="saveas"><span class="button-label">SAVE AS</span></button>
+    <button data-action="reset" class="quiet"><span class="button-label">RESET</span></button>
+   </div>
+  </div>
+ </div>
+ <div id="skin-notice"></div>
+ <div id="skin-delete-modal" style="display:none;">
+  <div class="skin-modal-panel">
+   <div id="skin-delete-title" class="skins-title">DELETE SKIN?</div>
+   <div>Selected profile moves to recoverable Trash.</div>
+   <div class="skin-modal-actions">
+    <button class="primary" data-action="delete-confirm"><span class="button-label">DELETE</span></button>
+    <button class="quiet" data-action="delete-cancel"><span class="button-label">CANCEL</span></button>
+   </div>
+  </div>
+ </div>
+</div></body></rml>
