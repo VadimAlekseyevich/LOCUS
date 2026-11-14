@@ -635,7 +635,8 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     // controller responds on mouse press. Consume the entire native
     // chrome region on mouse DOWN using the actual RmlUi layout, so the
     // old BACK and rate hitboxes cannot run before the RmlUi event.
-    bool chromePointer = editorPresenter_.ConsumedPointer();
+    bool chromePointer = editorPresenter_.ConsumedPointer() ||
+                         editorPresenter_.SuppressingClick();
     // A native popup owns its close gesture too. Clicking outside dismisses
     // it without passing the same press to a tempo/route editing surface.
     const bool popupWasOpen = ui.rateDropdownOpen;
@@ -660,6 +661,9 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
             over("editor-footer-playback") || transport;
         if (popupWasOpen && !popupContent && !transport) {
             ui.rateDropdownOpen = false;
+            // The release event must dismiss only, not navigate through
+            // to whatever RmlUi button lies underneath this popup.
+            editorPresenter_.SuppressCurrentClick();
             chromePointer = true;
         } else {
             chromePointer |= chromeArea || (popupWasOpen && popupContent);
@@ -675,6 +679,8 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     }
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs);
     context_->Update();
+    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        editorPresenter_.ReleaseClickSuppression();
     editorPresenter_.EndFrame();
 }
 void NativeMenuUi::SyncEditor(const EditorUiState& ui,

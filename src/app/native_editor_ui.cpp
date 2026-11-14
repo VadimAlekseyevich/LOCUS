@@ -38,6 +38,7 @@ void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     document_ = document;
     textCache_.clear();
     rateOpen_ = false;
+    suppressClick_ = false;
     lastTab_ = -1;
     lastTextEditing_ = -1;
 }
@@ -105,7 +106,8 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     }
 }
 void NativeEditorUi::ProcessEvent(Rml::Event& event) {
-    if (event.GetType() != "click" || !ui_ || !input_) return;
+    if (event.GetType() != "click" || !ui_ || !input_ ||
+        suppressClick_) return;
     auto* target = event.GetTargetElement();
     while (target && !target->HasAttribute("data-action"))
         target = target->GetParentNode();
