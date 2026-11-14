@@ -811,6 +811,31 @@ int main() {
                 !undoUi.HasRange(),
                 "Ctrl+Y and Ctrl+Z share one selection cleanup path");
 
+    // A native RmlUi shell owns the legacy editor header and transport
+    // rectangles. It must NOT own the actual note pad or chart keyboard.
+    ChartEditor nativeChart;
+    EditorUiState nativeState;
+    auto legacyTab = Click(625, 89); // Legacy ROUTE/AUDIO header region.
+    legacyTab.nativeChrome = true;
+    ApplyEditorControls(nativeChart, nativeState, legacyTab);
+    ok &= Check(nativeState.tab == EditorTab::Route,
+                "native chrome disables legacy editor tab hitboxes");
+    auto legacyRate = Click(751, 498);
+    legacyRate.nativeChrome = true;
+    const auto rateAction = ApplyEditorControls(
+        nativeChart, nativeState, legacyRate);
+    ok &= Check(!nativeState.rateDropdownOpen &&
+                rateAction.speedIndex == -1,
+                "native chrome disables legacy rate dropdown hitbox");
+    auto nativeCompass = Click(901, 207);
+    nativeCompass.nativeChrome = true;
+    const auto placed = ApplyEditorControls(nativeChart, nativeState,
+                                            nativeCompass);
+    ok &= Check(placed.changedChart &&
+                nativeChart.SelectedTurn() &&
+                nativeChart.SelectedTurn()->direction == Heading::UpRight,
+                "native chrome still permits raylib authoring compass");
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS route_controls=1 field_heading=1 zoom=1\n";
     return 0;

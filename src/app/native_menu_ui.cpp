@@ -236,6 +236,11 @@ void NativeMenuUi::Shutdown() {
 
 void NativeMenuUi::Activate(Page page) {
     if (visiblePage_ == page) return;
+    // Never keep keyboard focus in a document that is about to be hidden.
+    // Otherwise Enter/Space on the next screen may target stale controls.
+    if (context_) {
+        if (auto* focused = context_->GetFocusElement()) focused->Blur();
+    }
     if (document_) document_->Hide();
     if (homeDocument_) homeDocument_->Hide();
     if (settingsDocument_) settingsDocument_->Hide();
@@ -534,7 +539,9 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
 
 void NativeMenuUi::PumpInput(bool dispatchKeyboard) {
     const int width = GetScreenWidth(), height = GetScreenHeight();
+    bool layoutChanged = false;
     if (width != lastWidth_ || height != lastHeight_) {
+        layoutChanged = true;
         context_->SetDimensions({std::max(1,width),std::max(1,height)});
         lastWidth_ = width; lastHeight_ = height;
     }
@@ -548,7 +555,12 @@ void NativeMenuUi::PumpInput(bool dispatchKeyboard) {
     if (std::abs(density - lastDensity_) > 0.01f) {
         context_->SetDensityIndependentPixelRatio(density);
         lastDensity_ = density;
+        layoutChanged = true;
     }
+    // Calculate hitboxes at the NEW DPI/viewport before forwarding physical
+    // mouse coordinates. Otherwise the first click after resizing can land
+    // on the stale layout from the previous window geometry.
+    if (layoutChanged) context_->Update();
     const int mods = Modifiers();
     const auto mouse = GetMousePosition();
     context_->ProcessMouseMove(static_cast<int>(mouse.x),
