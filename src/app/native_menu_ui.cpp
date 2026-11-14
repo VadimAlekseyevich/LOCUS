@@ -614,15 +614,26 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
             input.editor.enter = false;
         }
     }
-    // RmlUi fires click on mouse release, while raylib records a click
-    // on mouse press. Consume the DOWN frame as soon as its hovered
-    // element belongs to native chrome, not only the later click event.
+    // RmlUi dispatches a click on mouse release, while the legacy
+    // controller responds on mouse press. Consume the entire native
+    // chrome region on mouse DOWN using the actual RmlUi layout, so the
+    // old BACK and rate hitboxes cannot run before the RmlUi event.
     bool chromePointer = editorPresenter_.ConsumedPointer();
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        auto* hovered = context_->GetHoverElement();
-        while (hovered && !hovered->HasAttribute("data-action"))
-            hovered = hovered->GetParentNode();
-        chromePointer |= hovered && !hovered->HasAttribute("disabled");
+        const Vector2 mouse = GetMousePosition();
+        const auto over = [&](const char* id) {
+            auto* element = editorDocument_->GetElementById(id);
+            if (!element) return false;
+            const float x = element->GetAbsoluteLeft();
+            const float y = element->GetAbsoluteTop();
+            return mouse.x >= x && mouse.x < x + element->GetOffsetWidth() &&
+                   mouse.y >= y && mouse.y < y + element->GetOffsetHeight();
+        };
+        chromePointer |= over("editor-header") ||
+                         over("editor-footer-playback") ||
+                         over("editor-footer-rate-time") ||
+                         (ui.rateDropdownOpen && over("editor-rate-popup"));
+        if (chromePointer) input.backPressed = false;
     }
     if (chromePointer) {
         input.editor.mouseClick = false;
