@@ -348,10 +348,17 @@ int main(int argc, char** argv) {
                 if (!error.empty()) libraryUi.notice = "RESULTS: " + error;
             }
         }
+#ifdef LOCUS_WITH_RMLUI
+        const bool nativeEditorTextInput = state.screen == Screen::Editor &&
+            nativeMenu.EditorTextFocused();
+#else
+        const bool nativeEditorTextInput = false;
+#endif
         FrameInput input = locus::app::PollFrameInput(
             debugScreens, state, settings, inputNow,
             state.screen == Screen::Play &&
-                (customChart ? chartPlayback.Paused() : transport.Paused()));
+                (customChart ? chartPlayback.Paused() : transport.Paused()),
+            nativeEditorTextInput);
         const auto [repeatSpeed, repeatPreview] = adjustmentRepeater.Advance(
             input.baseSpeedHeld, input.previewTimeHeld, GetFrameTime());
         input.baseSpeedDelta += repeatSpeed;

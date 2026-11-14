@@ -38,6 +38,7 @@ public:
     bool ShowingPlay() const noexcept;
     bool ShowingSettings() const noexcept;
     bool ShowingEditor() const noexcept;
+    bool EditorTextFocused() const noexcept;
     bool ShowingResults() const noexcept;
     bool ShowingSkin() const noexcept;
     Rectangle SkinPreviewBounds() const noexcept;

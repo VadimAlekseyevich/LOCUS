@@ -323,6 +323,10 @@ bool NativeMenuUi::ShowingSettings() const noexcept {
 bool NativeMenuUi::ShowingEditor() const noexcept {
     return visiblePage_ == Page::Editor;
 }
+bool NativeMenuUi::EditorTextFocused() const noexcept {
+    const auto* focus = context_ ? context_->GetFocusElement() : nullptr;
+    return ShowingEditor() && focus && focus->GetTagName() == "input";
+}
 bool NativeMenuUi::ShowingResults() const noexcept {
     return visiblePage_ == Page::Results;
 }
@@ -682,9 +686,16 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     editorPresenter_.BeginFrame(ui, input);
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
                           &draft, &settings);
-    // Editor text fields and shortcuts remain owned by the old controller.
-    PumpInput(false);
-    if (!ui.EditingText()) {
+    // The active RmlUi input is the only consumer of native character
+    // events. The legacy chart controller receives no text that frame.
+    const bool nativeTyping = EditorTextFocused();
+    if (nativeTyping) {
+        input.editor = EditorControls{};
+        input.editor.nativeChrome = true;
+        SuppressGlobalMenuShortcuts(input);
+    }
+    PumpInput(nativeTyping);
+    if (!ui.EditingText() && !nativeTyping) {
         if (IsKeyPressed(KEY_TAB)) {
             // Tab belongs to native focus traversal, not the old
             // editor's text-field navigation in the same frame.
