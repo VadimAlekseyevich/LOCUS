@@ -116,6 +116,15 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
          Hit(kTempoPrev, input.mouse) ||
          Hit(kTempoNext, input.mouse))) return action;
 
+    // RmlUi time button and legacy time hitbox share one exact clock action.
+    if (input.copySongTime) {
+        const long long ms = RouteTimeMs(draft, input.timelineViewBeat);
+        action.clipboardWrite = std::to_string(ms);
+        ui.feedback = std::to_string(ms) + " MS COPIED";
+        ui.feedbackError = false;
+        return action;
+    }
+
     // SET is a library-management tab: note keys, undo and the timeline
     // must not modify the current chart while managing its difficulties.
     if (ui.tab == EditorTab::Set) {
@@ -126,6 +135,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         }
         action.previewToggle |= input.previewToggle;
         action.previewRestart |= input.previewRestart;
+        if (input.speedIndex >= 0) action.speedIndex = input.speedIndex;
         return action;
     }
 

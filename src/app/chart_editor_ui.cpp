@@ -432,7 +432,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const GameSettings& settings, const Skin& skin,
                        const EditorSetView& set,
                        const EditorComparisonFrame* comparisons,
-                       double previewSeconds) {
+                       double previewSeconds, bool nativeShell) {
     const auto& chart = draft.Data().route;
     const auto& theme = ApprovedUiTheme();
     const bool running = previewPlaying && !previewPaused;
@@ -441,7 +441,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     const Color sky = theme.softBlue;
     const Color muted = theme.secondaryText;
 
-    // Fixed 56px-style header: BACK, active difficulty, then three tabs.
+    // Native editor shell replaces ONLY common chrome, not authoring views.
+    if (!nativeShell) {
     DrawRectangleRounded({43,65,899,45},.12f,8,theme.surface);
     DrawUiThemedButton(font,kEditorBack,"BACK",UiButtonVariant::Quiet,
                        {},{},theme,14);
@@ -454,6 +455,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        routeTab?UiButtonVariant::Cool:UiButtonVariant::Quiet);
     DrawUiThemedButton(font,kTabAudio,"AUDIO",
                        ui.tab==EditorTab::Audio?UiButtonVariant::Cool:UiButtonVariant::Quiet);
+    }
 
     if (routeTab) {
         // Unlike the old horizontal button bars, this six-icon vertical
@@ -737,7 +739,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     DrawTimeline(font,draft,ui,previewBeat);
     DrawSongOverview(font,draft,set,previewSeconds);
 
-    // One functional footer for every editor tab; no second transport row.
+    // Timeline and song overview still use raylib; transport chrome is RmlUi.
+    if (!nativeShell) {
     EditorIconButton(kEditorPreviewPlay,
         running?EditorIcon::Pause:EditorIcon::Play,sky);
     EditorIconButton(kEditorPreviewRestart,EditorIcon::Restart,violet);
@@ -751,6 +754,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     DrawUiThemedButton(font,kRouteTimeValue,
         TextFormat("%lld ms",RouteTimeMs(draft,previewBeat)),
         UiButtonVariant::Quiet,{}, {},theme,12);
+    }
 
     if(routeTab) {
         DrawComparisonPicker(font,ui,set);
@@ -768,7 +772,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             "Test chart  /  "+
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorTest)));
     }
-    if(ui.rateDropdownOpen) {
+    if(ui.rateDropdownOpen && !nativeShell) {
         DrawRectangleRounded(kEditorRatePopup,UiRoundness(kEditorRatePopup,9),
                              8,Color{32,38,63,254});
         DrawRectangleRoundedLinesEx(kEditorRatePopup,

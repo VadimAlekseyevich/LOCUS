@@ -37,6 +37,7 @@ struct EditorControls {
 
     bool enter = false, escape = false, backspace = false, tab = false;
     bool previewToggle = false, previewRestart = false;
+    bool copySongTime = false;
     int speedIndex = -1; // 0..4: 100, 75, 50, 25, 10 percent.
     std::string typedUtf8;
 };
@@ -153,6 +154,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const GameSettings& settings, const Skin& skin,
                        const EditorSetView& set = {},
                        const struct EditorComparisonFrame* comparisons = nullptr,
-                       double previewSeconds = 0.0);
+                       double previewSeconds = 0.0,
+                       bool nativeShell = false);
 
 } // namespace locus::app
