@@ -213,6 +213,26 @@ int main() {
         auto* volume = settingsDoc->GetElementById("value-volume");
         ok &= Check(left && right && bindings && modal && volume,
                     "SETTINGS contains Display, Audio, bindings and calibration");
+        // Reproduce the runtime-generated binding markup: its buttons
+        // and action labels must both remain visible and the row must
+        // expand to the available right panel width.
+        if (auto* list = settingsDoc->GetElementById("bind-list")) {
+            list->SetInnerRML(
+                "<div class='binding-row' id='test-binding-row'>"
+                "<span class='binding-label'>Pause / Menu</span>"
+                "<button class='binding-key'>"
+                "<span class='button-label'>ESC</span></button></div>");
+            context->Update();
+            auto* bindingRow = settingsDoc->GetElementById("test-binding-row");
+            if (bindingRow && right)
+                ok &= Check(bindingRow->GetOffsetWidth() >
+                            right->GetOffsetWidth() * 0.65f,
+                            "SETTINGS binding rows fill the scroll panel");
+            else
+                ok &= Check(false, "SETTINGS dynamic binding row parses");
+            ok &= Check(HasWrappedFlexLabels(list),
+                        "SETTINGS generated binding buttons have labels");
+        }
         if (left && right) {
             ok &= Check(right->GetAbsoluteLeft() > left->GetAbsoluteLeft() &&
                         right->GetAbsoluteLeft() +
