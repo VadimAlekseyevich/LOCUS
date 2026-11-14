@@ -54,11 +54,26 @@ bool TestFontAvailable() {
     };
 #endif
     for (const char* path : fonts) {
-        if (std::filesystem::exists(path) &&
-            Rml::LoadFontFace(path, "Locus",
+        if (!std::filesystem::exists(path) ||
+            !Rml::LoadFontFace(path, "Locus",
                 Rml::Style::FontStyle::Normal,
                 Rml::Style::FontWeight::Normal))
-            return true;
+            continue;
+        // The production adapter also registers the bold face. HOME is
+        // made entirely of heavyweight button labels, unlike PLAY which
+        // includes normal-weight body text. A regular-only test font setup
+        // would fail to render HOME despite a working production renderer.
+        const std::filesystem::path regular(path);
+        const std::filesystem::path bold = regular.parent_path() /
+            (regular.filename() == "segoeui.ttf" ? "segoeuib.ttf" :
+             regular.filename() == "arial.ttf" ? "arialbd.ttf" :
+             regular.filename() == "DejaVuSans.ttf" ? "DejaVuSans-Bold.ttf" :
+             "LiberationSans-Bold.ttf");
+        if (std::filesystem::exists(bold))
+            Rml::LoadFontFace(bold.u8string(), "Locus",
+                Rml::Style::FontStyle::Normal,
+                Rml::Style::FontWeight::Bold);
+        return true;
     }
     return false;
 }
