@@ -5,6 +5,7 @@
 #include "app/native_settings_ui.h"
 #include "app/native_editor_ui.h"
 #include "app/native_results_ui.h"
+#include "app/native_skin_ui.h"
 #include <RmlUi/Core/EventListener.h>
 
 #include <string>
@@ -32,11 +33,14 @@ public:
     bool SettingsAvailable() const noexcept { return settingsDocument_ != nullptr; }
     bool EditorAvailable() const noexcept { return editorDocument_ != nullptr; }
     bool ResultsAvailable() const noexcept { return resultsDocument_ != nullptr; }
+    bool SkinAvailable() const noexcept { return skinDocument_ != nullptr; }
     bool ShowingHome() const noexcept;
     bool ShowingPlay() const noexcept;
     bool ShowingSettings() const noexcept;
     bool ShowingEditor() const noexcept;
     bool ShowingResults() const noexcept;
+    bool ShowingSkin() const noexcept;
+    Rectangle SkinPreviewBounds() const noexcept;
     Rectangle HomeWordmarkBounds() const noexcept;
     // Share RmlUi input and rendering for HOME and PLAY; both retain fallback.
     void UpdateHome(FrameInput& input, const std::string& status);
@@ -49,6 +53,7 @@ public:
                         FrameInput& input, MenuEvents& events,
                         bool exclusiveKeyboardInput);
 
+    MenuEvents UpdateSkin(Skin& draft, SkinUi& ui, FrameInput& input);
     MenuEvents UpdateResults(FrameInput& input, const RunResult* selected,
         const core::GradeCounts& grades, int total, const std::string& chartTitle,
         bool historical, const SongSelectUi& history);
@@ -60,7 +65,7 @@ public:
     void Render();
 
 private:
-    enum class Page { None, Home, Play, Settings, Editor, Results };
+    enum class Page { None, Home, Play, Settings, Editor, Results, Skin };
     void Activate(Page page);
     void PumpInput(bool dispatchKeyboard = true);
     void ProcessEvent(Rml::Event& event) override;
@@ -79,9 +84,11 @@ private:
     Rml::ElementDocument* settingsDocument_ = nullptr;
     Rml::ElementDocument* editorDocument_ = nullptr;
     Rml::ElementDocument* resultsDocument_ = nullptr;
+    Rml::ElementDocument* skinDocument_ = nullptr;
     NativeSettingsUi settingsPresenter_;
     NativeEditorUi editorPresenter_;
     NativeResultsUi resultsPresenter_;
+    NativeSkinUi skinPresenter_;
     const SongLibrary* currentLibrary_ = nullptr;
     SongSelectUi* currentUi_ = nullptr;
     MenuEvents pending_;

@@ -3,6 +3,7 @@
 #include "app/menu_ui.h"
 #include "app/viewport.h"
 #include "app/rml_ui_text.h"
+#include "app/skin_controls.h"
 #include "core/utf8.h"
 
 #include <RmlUi/Core/Core.h>
@@ -207,6 +208,16 @@ bool NativeMenuUi::Initialize() {
     } else {
         std::cerr << "Could not load RESULTS RmlUi; using raylib results UI.\n";
     }
+    skinDocument_ = context_->LoadDocument(
+        (file.parent_path() / "skins.rml").u8string());
+    if (skinDocument_) {
+        for (const char* type : {"click", "input", "change"})
+            skinDocument_->AddEventListener(type, this);
+        skinDocument_->Hide();
+        skinPresenter_.Attach(skinDocument_);
+    } else {
+        std::cerr << "Could not load SKINS RmlUi; using raylib SKINS.\n";
+    }
     document_->AddEventListener("click", this);
     document_->AddEventListener("input", this);
     document_->Hide();
@@ -232,6 +243,11 @@ void NativeMenuUi::Shutdown() {
         if (resultsDocument_) resultsDocument_->RemoveEventListener("click", this);
         resultsPresenter_.Attach(nullptr);
         resultsDocument_ = nullptr;
+        if (skinDocument_)
+            for (const char* type : {"click", "input", "change"})
+                skinDocument_->RemoveEventListener(type, this);
+        skinPresenter_.Attach(nullptr);
+        skinDocument_ = nullptr;
         document_ = nullptr;
         homeDocument_ = nullptr;
         context_->UnloadAllDocuments();
@@ -260,6 +276,7 @@ void NativeMenuUi::Activate(Page page) {
     if (settingsDocument_) settingsDocument_->Hide();
     if (editorDocument_) editorDocument_->Hide();
     if (resultsDocument_) resultsDocument_->Hide();
+    if (skinDocument_) skinDocument_->Hide();
     visiblePage_ = page;
     if (page == Page::Home && homeDocument_) {
         homeDocument_->Show();
@@ -274,6 +291,9 @@ void NativeMenuUi::Activate(Page page) {
     } else if (page == Page::Settings && settingsDocument_) {
         settingsDocument_->Show();
         settingsPresenter_.Attach(settingsDocument_);
+    } else if (page == Page::Skin && skinDocument_) {
+        skinDocument_->Show();
+        skinPresenter_.Attach(skinDocument_);
     } else if (page == Page::Results && resultsDocument_) {
         resultsDocument_->Show();
         resultsPresenter_.Attach(resultsDocument_);
@@ -302,6 +322,17 @@ bool NativeMenuUi::ShowingEditor() const noexcept {
 }
 bool NativeMenuUi::ShowingResults() const noexcept {
     return visiblePage_ == Page::Results;
+}
+bool NativeMenuUi::ShowingSkin() const noexcept {
+    return visiblePage_ == Page::Skin;
+}
+Rectangle NativeMenuUi::SkinPreviewBounds() const noexcept {
+    if (!ShowingSkin() || !skinDocument_) return {};
+    if (auto* preview = skinDocument_->GetElementById("skin-preview-canvas"))
+        return {preview->GetAbsoluteLeft(), preview->GetAbsoluteTop(),
+                static_cast<float>(preview->GetOffsetWidth()),
+                static_cast<float>(preview->GetOffsetHeight())};
+    return {};
 }
 
 Rectangle NativeMenuUi::HomeWordmarkBounds() const noexcept {
@@ -357,6 +388,10 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
     }
     if (visiblePage_ == Page::Results) {
         resultsPresenter_.ProcessEvent(event);
+        return;
+    }
+    if (visiblePage_ == Page::Skin) {
+        skinPresenter_.ProcessEvent(event);
         return;
     }
     if (visiblePage_ != Page::Play || !currentUi_ || !currentLibrary_)
@@ -850,6 +885,60 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
     result = pending_;
     pending_ = {};
     return result;
+}
+
+MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
+                                      FrameInput& input) {
+    MenuEvents events;
+    if (!SkinAvailable()) return events;
+    Activate(Page::Skin);
+    currentLibrary_ = nullptr;
+    currentUi_ = nullptr;
+    SuppressGlobalMenuShortcuts(input);
+    skinPresenter_.BeginFrame(draft, ui, input, events);
+    skinPresenter_.Sync();
+    PumpInput();
+    auto* focus = context_->GetFocusElement();
+    const bool editing = focus && focus->GetTagName() == "input";
+    if (editing && IsKeyPressed(KEY_ESCAPE)) {
+        if (auto* text = dynamic_cast<Rml::ElementFormControlInput*>(focus)) {
+            const std::string kind = text->GetAttribute<Rml::String>("data-kind", "");
+            if (kind == "name") text->SetValue(draft.name);
+            else if (kind == "hex")
+                text->SetValue(FormatSkinHex(SkinColor(draft, ui.selectedColor)));
+            else if (kind == "number")
+                text->SetValue(FormatSkinNumber(GetSkinNumber(draft, ui.page,
+                    text->GetAttribute<int>("data-index", -1), ui.selectedColor)));
+            text->Blur();
+        }
+    } else if (editing && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
+        focus->Blur();
+    } else if (!editing) {
+        if (!ui.pendingDeleteProfile.empty()) {
+            if (IsKeyPressed(KEY_Y)) events.skinCommand = SkinCommand::DeleteProfile;
+            if (IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE)) {
+                ui.pendingDeleteProfile.clear();
+                ui.notice = "SKIN DELETION CANCELED";
+                ui.noticeError = false;
+            }
+        } else {
+            if (IsKeyPressed(KEY_ESCAPE)) input.backPressed = true;
+            if (focus && focus->GetTagName() == "button" &&
+                (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
+                focus->Click();
+            const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) ||
+                              IsKeyDown(KEY_RIGHT_CONTROL);
+            const bool shift = IsKeyDown(KEY_LEFT_SHIFT) ||
+                               IsKeyDown(KEY_RIGHT_SHIFT);
+            if (ctrl && IsKeyPressed(KEY_S))
+                events.skinCommand = shift ? SkinCommand::SaveAs : SkinCommand::Save;
+            if (ctrl && IsKeyPressed(KEY_O)) events.skinCommand = SkinCommand::Load;
+        }
+    }
+    skinPresenter_.Sync();
+    context_->Update();
+    skinPresenter_.EndFrame();
+    return events;
 }
 
 MenuEvents NativeMenuUi::UpdateResults(FrameInput& input,

@@ -75,6 +75,7 @@ bool SkinProfileActions::RefreshProfiles() {
                   return a.path.filename() < b.path.filename();
               });
     ui_.profiles = std::move(entries);
+    ++ui_.profilesRevision;
     ui_.selectedProfile = -1;
     for (std::size_t i=0; i<ui_.profiles.size(); ++i) {
         if (ui_.profiles[i].path == selectedPath ||
@@ -109,6 +110,7 @@ bool SkinProfileActions::SaveActive() {
     for (auto& item : ui_.profiles)
         if (!activeProfile_.empty() && item.path == activeProfile_)
             item.name = active_.name; // Name edits update the in-game list immediately.
+    ++ui_.profilesRevision;
     ui_.notice = "SKIN SAVED AND APPLIED TO ALL CHARTS";
     ui_.noticeError = false;
     return true;

@@ -4,6 +4,7 @@
 #include "raylib.h"
 
 #include <filesystem>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,7 @@ struct SkinUi {
     bool editingHex = false, hexSelectAll = false;
     std::string hexBuffer;      // #RRGGBB or #RRGGBBAA
     std::vector<SkinProfileItem> profiles;
+    std::uint64_t profilesRevision = 0;
     int selectedProfile = -1, profileOffset = 0;
     std::filesystem::path pendingDeleteProfile; // Captured file identity for confirmation.
 
@@ -44,6 +46,8 @@ struct SkinUi {
 };
 
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui);
+// Only the actual route preview remains raylib-rendered inside a native RmlUi panel.
+void DrawNativeSkinPreview(Font font, const Skin& skin, Rectangle physicalBounds);
 SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui);
 
 // Consumed keyboard input while the name or a number is being edited.

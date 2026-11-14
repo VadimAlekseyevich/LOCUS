@@ -363,6 +363,8 @@ int main(int argc, char** argv) {
                 nativeMenu.UpdateHome(input, menuStatus);
             else if (state.screen == Screen::SongSelect && nativeMenu.Available())
                 menuEvents = nativeMenu.Update(library, libraryUi, input);
+            else if (state.screen == Screen::Skin && nativeMenu.SkinAvailable())
+                menuEvents = nativeMenu.UpdateSkin(draftSkin, skinUi, input);
             else if (state.screen == Screen::Results && nativeMenu.ResultsAvailable())
                 menuEvents = nativeMenu.UpdateResults(input,
                     displayedResult ? &*displayedResult : nullptr,
@@ -1009,7 +1011,8 @@ int main(int argc, char** argv) {
             visibleState.screen != Screen::Home &&
             visibleState.screen != Screen::Settings &&
             visibleState.screen != Screen::Editor &&
-            visibleState.screen != Screen::Results) nativeMenu.Hide();
+            visibleState.screen != Screen::Results &&
+            visibleState.screen != Screen::Skin) nativeMenu.Hide();
 #endif
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, editorClock,

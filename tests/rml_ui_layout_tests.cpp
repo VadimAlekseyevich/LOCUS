@@ -381,6 +381,26 @@ int main() {
         ok &= Check(retry && retry->GetAbsoluteLeft() + retry->GetOffsetWidth()
                     <= 800.1f, "800x450 RESULTS actions fit");
     }
+    auto* skinDoc = context->LoadDocument("assets/ui/rml/skins.rml");
+    ok &= Check(skinDoc != nullptr, "native SKINS document parses");
+    if (skinDoc) {
+        if (resultsDoc) resultsDoc->Hide();
+        skinDoc->Show();
+        context->SetDimensions({960,540});
+        context->SetDensityIndependentPixelRatio(1.0f);
+        context->Update();
+        auto* controls = skinDoc->GetElementById("skin-controls");
+        auto* preview = skinDoc->GetElementById("skin-preview-canvas");
+        auto* name = skinDoc->GetElementById("skin-name");
+        ok &= Check(HasButtonLabels(skinDoc) && controls && preview && name &&
+                    preview->GetOffsetWidth() > 120.0f &&
+                    preview->GetOffsetHeight() > 70.0f,
+                    "SKINS contains responsive authoring panel and live preview");
+        context->SetDimensions({800,450});
+        context->Update();
+        ok &= Check(preview && preview->GetAbsoluteLeft() + preview->GetOffsetWidth()
+                    <= 800.1f, "800x450 SKINS preview fits");
+    }
     Rml::RemoveContext("headless-layout");
     Rml::Shutdown();
     return ok ? 0 : 1;

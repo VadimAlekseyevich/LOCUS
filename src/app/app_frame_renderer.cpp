@@ -261,7 +261,11 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
 #endif
             locus::app::DrawSongSelectMenu(font, library, libraryUi);
     } else if (state.screen == Screen::Skin) {
-        locus::app::DrawSkinMenu(font, draftSkin, skinUi);
+#ifdef LOCUS_WITH_RMLUI
+        if (!nativeMenu || !nativeMenu->SkinAvailable() ||
+            !nativeMenu->ShowingSkin() || state.quitConfirmation)
+#endif
+            locus::app::DrawSkinMenu(font, draftSkin, skinUi);
     } else if (state.screen == Screen::Settings) {
 #ifdef LOCUS_WITH_RMLUI
         if (!nativeMenu || !nativeMenu->SettingsAvailable() ||
@@ -439,6 +443,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
           nativeMenu->ShowingPlay()) ||
          (state.screen == Screen::Home && nativeMenu->HomeAvailable() &&
           nativeMenu->ShowingHome()) ||
+         (state.screen == Screen::Skin && nativeMenu->SkinAvailable() &&
+          nativeMenu->ShowingSkin()) ||
          (state.screen == Screen::Results && nativeMenu->ResultsAvailable() &&
           nativeMenu->ShowingResults()) ||
          (state.screen == Screen::Settings && nativeMenu->SettingsAvailable() &&
@@ -449,6 +455,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
           editorClosePending.empty())))
     {
         nativeMenu->Render();
+        if (state.screen == Screen::Skin)
+            DrawNativeSkinPreview(font, draftSkin, nativeMenu->SkinPreviewBounds());
         if (state.screen == Screen::Home)
             homeBrand.DrawAt(font, nativeMenu->HomeWordmarkBounds());
     }
