@@ -245,6 +245,65 @@ void EditorSetController::Notice(const std::string& message, bool failed) {
     ctx_.ui.feedbackError = failed;
 }
 
+bool EditorSetController::CommitMetadata(
+    EditorSetField field, const std::string& rawValue,
+    const std::string& expectedSetId) {
+    if (field == EditorSetField::None) return false;
+    const EditorSetView view = View();
+    if (!view.managed || view.id != expectedSetId) {
+        Notice("SONG SET CHANGED; REFRESH THE LIBRARY BEFORE EDITING", true);
+        return false;
+    }
+    const auto& songs = ctx_.library.Songs();
+    const auto it = std::find_if(songs.begin(), songs.end(),
+        [&](const LibrarySong& set) {
+            return set.managed && set.id == view.id &&
+                   set.folder == ctx_.files.ActiveSetFolder();
+        });
+    if (it == songs.end()) {
+        Notice("SONG SET NOT FOUND", true);
+        return false;
+    }
+    std::string title = view.title;
+    std::string artist = view.artist;
+    std::string mapper = view.mapper;
+    std::vector<std::string> tags = view.tags;
+    const std::string value = TrimWhitespace(rawValue);
+    switch (field) {
+        case EditorSetField::Title: title = value; break;
+        case EditorSetField::Artist: artist = value; break;
+        case EditorSetField::Mapper: mapper = value; break;
+        case EditorSetField::Tags: tags = SplitTags(value); break;
+        case EditorSetField::None: return false;
+    }
+    std::string error;
+    if (!ctx_.library.SetSongMetadata(
+            static_cast<int>(it - songs.begin()),
+            title, artist, mapper, tags, error)) {
+        Notice(error, true);
+        return false;
+    }
+    Notice("SONG SET METADATA SAVED");
+    return true;
+}
+
+bool EditorSetController::FocusDifficulty(int index) {
+    const EditorSetView view = View();
+    if (index < 0 || index >= static_cast<int>(view.difficulties.size()) ||
+        index >= static_cast<int>(view.comparisonOptions.size()))
+        return false;
+    ctx_.ui.setSelected = index;
+    if (index == view.current) return true;
+    std::string problem;
+    if (!ctx_.files.FocusChart(
+            view.comparisonOptions[static_cast<std::size_t>(index)].file,
+            problem)) {
+        Notice(problem, true);
+        return false;
+    }
+    return true;
+}
+
 void EditorSetController::HandleControls(const EditorControls& input) {
     if (pending_) return;
     auto& ui = ctx_.ui;
@@ -326,44 +385,11 @@ void EditorSetController::HandleControls(const EditorControls& input) {
             const bool commit = input.enter || input.tab ||
                 (clicked && hovered != ui.editingSetField);
             if (!commit) return;
-            const EditorSetView view = View();
-            if (!view.managed || view.id != ui.editingSetId) {
-                Notice("SONG SET CHANGED; CANCEL THE FIELD AND REFRESH", true);
-                return;
-            }
-            const auto& songs = ctx_.library.Songs();
-            const auto it = std::find_if(songs.begin(), songs.end(),
-                [&](const LibrarySong& set) {
-                    return set.managed && set.id == view.id &&
-                           set.folder == ctx_.files.ActiveSetFolder();
-                });
-            if (it == songs.end()) {
-                Notice("SONG SET NOT FOUND", true);
-                return;
-            }
-            std::string title = view.title;
-            std::string artist = view.artist;
-            std::string mapper = view.mapper;
-            std::vector<std::string> tags = view.tags;
-            const std::string value = TrimWhitespace(ui.setFieldBuffer);
-            switch (ui.editingSetField) {
-                case EditorSetField::Title: title = value; break;
-                case EditorSetField::Artist: artist = value; break;
-                case EditorSetField::Mapper: mapper = value; break;
-                case EditorSetField::Tags: tags = SplitTags(value); break;
-                case EditorSetField::None: return;
-            }
-            std::string error;
-            if (!ctx_.library.SetSongMetadata(
-                    static_cast<int>(it - songs.begin()),
-                    title, artist, mapper, tags, error)) {
-                Notice(error, true);
-                return; // Retain field contents for correction.
-            }
+            if (!CommitMetadata(ui.editingSetField, ui.setFieldBuffer,
+                                ui.editingSetId)) return;
             ui.editingSetField = EditorSetField::None;
             ui.setFieldBuffer.clear();
             ui.editingSetId.clear();
-            Notice("SONG SET METADATA SAVED");
             if (hovered != EditorSetField::None) {
                 const EditorSetView updated = View();
                 ui.editingSetField = hovered;

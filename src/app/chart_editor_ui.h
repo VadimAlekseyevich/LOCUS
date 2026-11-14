@@ -13,6 +13,9 @@
 
 namespace locus::app {
 
+enum class EditorSetAction;
+enum class EditorSetField;
+
 struct EditorControls {
     bool previousBeat = false, nextBeat = false;
     bool previousBar = false, nextBar = false; // Four beats = one 4/4 bar.
@@ -45,6 +48,12 @@ struct EditorControls {
     int rotateStartHeading = 0;
     int previewSpeedDelta = 0;
     int previewLengthDelta = 0;
+    // Typed Set editor operations. No synthetic raylib click coordinates.
+    std::optional<EditorSetAction> setRequest;
+    int selectedDifficulty = -1;
+    std::optional<EditorSetField> metadataField;
+    std::string metadataValue;
+    std::string metadataSetId;
     // True when the native RmlUi editor shell owns tabs and transport.
     // Legacy raylib hitboxes are forbidden in that mode, but hotkeys and
     // note/tempo editing retain their original semantics.

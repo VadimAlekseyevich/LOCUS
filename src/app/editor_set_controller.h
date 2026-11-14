@@ -52,6 +52,11 @@ public:
     EditorSetView View() const;
     void HandleControls(const EditorControls& input);
     void Request(EditorSetAction action);
+    // The native SET panel and legacy authoring handler share one validated
+    // metadata publication path. The identity prevents stale-focus writes.
+    bool CommitMetadata(EditorSetField field, const std::string& value,
+                        const std::string& expectedSetId);
+    bool FocusDifficulty(int index);
     // Persist a chart's tempo edit; if publication fails, reverse only the
     // operation that caused it (Undo must be reversed by Redo, not Undo).
     bool SyncSongTiming(EditorHistoryOperation operation =

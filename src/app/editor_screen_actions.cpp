@@ -12,6 +12,21 @@
 namespace locus::app {
 
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
+    // RmlUi SET commands are typed events and take precedence over the
+    // legacy pointer path. They are validated by the same domain controller.
+    if (input.editor.metadataField) {
+        context_.sets.CommitMetadata(*input.editor.metadataField,
+            input.editor.metadataValue, input.editor.metadataSetId);
+        return false;
+    }
+    if (input.editor.selectedDifficulty >= 0) {
+        context_.sets.FocusDifficulty(input.editor.selectedDifficulty);
+        return false;
+    }
+    if (input.editor.setRequest) {
+        context_.sets.Request(*input.editor.setRequest);
+        return false;
+    }
     // Process the picker BEFORE the editor: the former implementation
     // passed its click through generic editor actions first, and a popup
     // often never opened. A picker interaction consumes the whole frame.
