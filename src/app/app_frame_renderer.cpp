@@ -308,7 +308,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                                      editorClock.tick, editorClock.practiceRate,
                                      gameplay.bindings, gameplay.skin,
                                      editorSetView, &comparisons,
-                                     editorClock.songSeconds);
+                                     editorClock.songSeconds,
+                                     nativeMenu && nativeMenu->ShowingEditor());
         // Editor and preview statuses must not be painted over file buttons.
         // Keep status for workflows, but not as an overlay in the action row.
         if (editorSetPending && editorPending == EditorPending::None) {
@@ -429,7 +430,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
          (state.screen == Screen::Home && nativeMenu->HomeAvailable() &&
           nativeMenu->ShowingHome()) ||
          (state.screen == Screen::Settings && nativeMenu->SettingsAvailable() &&
-          nativeMenu->ShowingSettings())))
+          nativeMenu->ShowingSettings()) ||
+         (state.screen == Screen::Editor && nativeMenu->EditorAvailable() &&
+          nativeMenu->ShowingEditor())))
     {
         nativeMenu->Render();
         if (state.screen == Screen::Home)

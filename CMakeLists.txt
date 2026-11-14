@@ -107,6 +107,7 @@ if(LOCUS_ENABLE_RMLUI)
         src/app/rml_raylib_renderer.cpp
         src/app/native_menu_ui.cpp
         src/app/native_settings_ui.cpp
+        src/app/native_editor_ui.cpp
     )
     target_link_libraries(locus PRIVATE RmlUi::Core)
     target_compile_definitions(locus PRIVATE LOCUS_WITH_RMLUI=1)

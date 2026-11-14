@@ -365,7 +365,14 @@ int main(int argc, char** argv) {
                 nativeMenu.UpdateHome(input, menuStatus);
             else if (state.screen == Screen::SongSelect && nativeMenu.Available())
                 menuEvents = nativeMenu.Update(library, libraryUi, input);
-            else if (state.screen == Screen::Settings &&
+            else if (state.screen == Screen::Editor &&
+                     nativeMenu.EditorAvailable()) {
+                nativeMenu.UpdateEditor(editorUi, input, editor.Data().title,
+                    editor.Dirty(), chartPlayback.Speed(),
+                    chartPlayback.Playing() && !chartPlayback.Paused(),
+                    locus::app::detail::RouteTimeMs(editor,
+                        static_cast<double>(editor.SelectedBeat())));
+            } else if (state.screen == Screen::Settings &&
                      nativeMenu.SettingsAvailable()) {
                 const bool exclusiveKeyboard =
                     settingsUi.capturing >= 0 ||
@@ -943,6 +950,13 @@ int main(int argc, char** argv) {
                     editorClock.songSeconds) * editor.Data().route.ticksPerBeat
                 : static_cast<double>(editor.SelectedBeat());
         }
+#ifdef LOCUS_WITH_RMLUI
+        if (visibleState.screen == Screen::Editor && nativeMenu.EditorAvailable())
+            nativeMenu.SyncEditor(editorUi, editor.Data().title, editor.Dirty(),
+                editorClock.practiceRate,
+                editorClock.playing && !editorClock.paused,
+                locus::app::detail::RouteTimeMs(editor, editorClock.tick));
+#endif
         const auto editorSetView = visibleState.screen == Screen::Editor
             ? editorSet.View() : locus::app::EditorSetView{};
         if (visibleState.screen == Screen::Editor &&
@@ -985,7 +999,8 @@ int main(int argc, char** argv) {
 #ifdef LOCUS_WITH_RMLUI
         if (visibleState.screen != Screen::SongSelect &&
             visibleState.screen != Screen::Home &&
-            visibleState.screen != Screen::Settings) nativeMenu.Hide();
+            visibleState.screen != Screen::Settings &&
+            visibleState.screen != Screen::Editor) nativeMenu.Hide();
 #endif
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, editorClock,

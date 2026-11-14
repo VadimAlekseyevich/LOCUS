@@ -57,7 +57,8 @@ jobs:
             "wordmark.png", "app-icon.png",
             "rml/common.rcss", "rml/home.rcss", "rml/home.rml",
             "rml/play.rcss", "rml/play.rml",
-            "rml/settings.rcss", "rml/settings.rml"
+            "rml/settings.rcss", "rml/settings.rml",
+            "rml/editor.rcss", "rml/editor.rml"
           )
           foreach ($relative in $files) {
             $asset = Join-Path $root $relative
