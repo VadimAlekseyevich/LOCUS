@@ -90,7 +90,8 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     }
     const bool textEditing = ui.EditingText();
     if (lastTextEditing_ != static_cast<int>(textEditing)) {
-        for (const char* id : {"editor-tab-set", "editor-tab-route",
+        for (const char* id : {"editor-back", "editor-tab-set",
+                               "editor-tab-route",
                                "editor-tab-audio", "editor-preview-play",
                                "editor-preview-restart", "editor-preview-rate",
                                "editor-preview-time"}) {
