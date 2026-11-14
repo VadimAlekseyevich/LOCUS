@@ -381,7 +381,8 @@ int main(int argc, char** argv) {
                     editor.Dirty(), chartPlayback.Speed(),
                     chartPlayback.Playing() && !chartPlayback.Paused(),
                     locus::app::detail::RouteTimeMs(editor,
-                        static_cast<double>(editor.SelectedBeat())));
+                        static_cast<double>(editor.SelectedBeat())),
+                    editor, settings);
             } else if (state.screen == Screen::Settings &&
                      nativeMenu.SettingsAvailable()) {
                 const bool exclusiveKeyboard =
@@ -707,6 +708,13 @@ int main(int argc, char** argv) {
                     input.editor.mouseClick = false;
                 }
             }
+            if (editorUi.tab == locus::app::EditorTab::Route &&
+                (input.editor.previewSpeedDelta || input.editor.previewLengthDelta)) {
+                const bool changed = input.editor.previewSpeedDelta
+                    ? settings.StepEditorPreviewSpeed(input.editor.previewSpeedDelta)
+                    : settings.StepEditorPreviewLength(input.editor.previewLengthDelta);
+                if (changed) persistSettings();
+            }
             if (editorActions.Apply(input, now))
                 state.screen = Screen::Play;
         }
@@ -965,7 +973,8 @@ int main(int argc, char** argv) {
             nativeMenu.SyncEditor(editorUi, editor.Data().title, editor.Dirty(),
                 editorClock.practiceRate,
                 editorClock.playing && !editorClock.paused,
-                locus::app::detail::RouteTimeMs(editor, editorClock.tick));
+                locus::app::detail::RouteTimeMs(editor, editorClock.tick),
+                editor, settings);
 #endif
         const auto editorSetView = visibleState.screen == Screen::Editor
             ? editorSet.View() : locus::app::EditorSetView{};

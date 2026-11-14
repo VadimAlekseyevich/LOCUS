@@ -46,9 +46,13 @@ public:
     void UpdateHome(FrameInput& input, const std::string& status);
     void UpdateEditor(EditorUiState& ui, FrameInput& input,
                       const std::string& title, bool dirty,
-                      double rate, bool playing, long long songTimeMs);
+                      double rate, bool playing, long long songTimeMs,
+                      const core::ChartEditor& draft,
+                      const GameSettings& settings);
     void SyncEditor(const EditorUiState& ui, const std::string& title,
-                    bool dirty, double rate, bool playing, long long songTimeMs);
+                    bool dirty, double rate, bool playing, long long songTimeMs,
+                    const core::ChartEditor& draft,
+                    const GameSettings& settings);
     void UpdateSettings(GameSettings& settings, SettingsUi& ui,
                         FrameInput& input, MenuEvents& events,
                         bool exclusiveKeyboardInput);

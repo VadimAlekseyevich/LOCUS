@@ -654,7 +654,9 @@ void NativeMenuUi::PumpInput(bool dispatchKeyboard) {
 void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                                 const std::string& title, bool dirty,
                                 double rate, bool playing,
-                                long long songTimeMs) {
+                                long long songTimeMs,
+                                const core::ChartEditor& draft,
+                                const GameSettings& settings) {
     if (!EditorAvailable()) return;
     Activate(Page::Editor);
     currentLibrary_ = nullptr;
@@ -675,7 +677,8 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     }
     input.editor.nativeChrome = true;
     editorPresenter_.BeginFrame(ui, input);
-    editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs);
+    editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
+                          &draft, &settings);
     // Editor text fields and shortcuts remain owned by the old controller.
     PumpInput(false);
     if (!ui.EditingText()) {
@@ -719,7 +722,10 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         const bool popupContent = over("editor-rate-popup");
         const bool transport = over("editor-footer-rate-time");
         const bool chromeArea = over("editor-header") ||
-            over("editor-footer-playback") || transport;
+            over("editor-footer-playback") || transport ||
+            (ui.tab == EditorTab::Route &&
+                (over("editor-route-tools") || over("editor-route-pad") ||
+                 over("editor-route-speed") || over("editor-route-path")));
         if (popupWasOpen && !popupContent && !transport) {
             ui.rateDropdownOpen = false;
             // The release event must dismiss only, not navigate through
@@ -744,7 +750,8 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         input.editor.mouseWheel = 0.0f;
         input.startPressed = false;
     }
-    editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs);
+    editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
+                          &draft, &settings);
     context_->Update();
     if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         editorPresenter_.ReleaseClickSuppression();
@@ -755,9 +762,12 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
 void NativeMenuUi::SyncEditor(const EditorUiState& ui,
                               const std::string& title, bool dirty,
                               double rate, bool playing,
-                              long long songTimeMs) {
+                              long long songTimeMs,
+                              const core::ChartEditor& draft,
+                              const GameSettings& settings) {
     if (!ShowingEditor() || !EditorAvailable()) return;
-    editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs);
+    editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
+                          &draft, &settings);
     context_->Update();
 }
 
