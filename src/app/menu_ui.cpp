@@ -179,6 +179,14 @@ void KeepTreeSelectionVisible(SongSelectUi& ui, const SongLibrary& songs) {
 }
 } // namespace
 
+void SongSelectUi::ReplaceResults(RunKey key,
+                                  std::vector<RunResult> loaded) {
+    resultKey = std::move(key);
+    results = std::move(loaded);
+    resultScroll = 0;
+    ++resultsRevision;
+}
+
 void SongSelectUi::SelectSong(int index, const SongLibrary& songs) {
     selectedSong = std::clamp(index, 0,
                              static_cast<int>(songs.Songs().size()));

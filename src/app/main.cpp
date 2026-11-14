@@ -344,9 +344,7 @@ int main(int argc, char** argv) {
             const auto key = currentRunKey();
             if (key != libraryUi.resultKey) {
                 std::string error;
-                libraryUi.results = resultsStore.Load(key, error);
-                libraryUi.resultKey = key;
-                libraryUi.resultScroll = 0;
+                libraryUi.ReplaceResults(key, resultsStore.Load(key, error));
                 if (!error.empty()) libraryUi.notice = "RESULTS: " + error;
             }
         }

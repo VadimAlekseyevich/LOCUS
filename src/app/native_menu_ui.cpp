@@ -529,13 +529,10 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
         UpdateSummary(library, ui);
         lastSummarySignature_ = summary.str();
     }
-    std::ostringstream history;
-    history << ui.resultKey.songSetId << '/' << ui.resultKey.difficultyFile;
-    for (const auto& result : ui.results)
-        history << result.id << ':' << result.accuracyPercent;
-    if (history.str() != lastResultSignature_) {
+    const std::string history = std::to_string(ui.resultsRevision);
+    if (history != lastResultSignature_) {
         RebuildResults(ui);
-        lastResultSignature_ = history.str();
+        lastResultSignature_ = history;
     }
 }
 
