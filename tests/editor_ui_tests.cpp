@@ -1,4 +1,5 @@
 #include "app/chart_editor_ui.h"
+#include "app/app_input.h"
 #include "core/utf8.h"
 #include "app/chart_editor_layout.h"
 #include "app/editor_tempo_controls.h"
@@ -37,6 +38,30 @@ int main() {
                 detail::ClickedSetAction({350, 374}) ==
                 EditorSetAction::RemoveBackground,
                 "Set folder shortcut owns an isolated clickable hitbox");
+    // A focused RmlUi text field must not accidentally change screens when
+    // typing bound shortcuts such as S/E/P; native BACK may be preserved.
+    FrameInput focusedInput;
+    focusedInput.closeRequested = true;
+    focusedInput.requestedScreen = Screen::Editor;
+    focusedInput.startPressed = true;
+    focusedInput.openEditorPressed = true;
+    focusedInput.openSettingsPressed = true;
+    focusedInput.editorSave = true;
+    focusedInput.backPressed = true;
+    SuppressGlobalMenuShortcuts(focusedInput);
+    ok &= Check(focusedInput.closeRequested &&
+                !focusedInput.requestedScreen &&
+                !focusedInput.startPressed &&
+                !focusedInput.openEditorPressed &&
+                !focusedInput.openSettingsPressed &&
+                !focusedInput.editorSave &&
+                !focusedInput.backPressed,
+                "focused native text input suppresses all global shortcuts");
+    focusedInput.backPressed = true;
+    SuppressGlobalMenuShortcuts(focusedInput, true);
+    ok &= Check(focusedInput.backPressed,
+                "native BACK button retains its own navigation command");
+
     // A physical window maps both drawing and hitboxes to the same virtual
     // positions, with the gameplay square touching the limiting window edge.
     const auto wide = ViewportTransform::Gameplay(1280, 800);

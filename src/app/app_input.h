@@ -45,6 +45,29 @@ struct FrameInput {
     locus::app::EditorControls editor;
 };
 
+// A focused native menu control owns navigation keys. Preserve close requests
+// and (optionally) a BACK command produced by that menu's own button; prevent
+// the same key from also invoking a global screen/editor shortcut.
+inline void SuppressGlobalMenuShortcuts(FrameInput& input,
+                                       bool keepBack = false) noexcept {
+    input.requestedScreen.reset();
+    input.startPressed = false;
+    input.homePressed = false;
+    input.fullscreenPressed = false;
+    input.chooseMusicPressed = false;
+    input.chooseChartPressed = false;
+    input.openEditorPressed = false;
+    input.openPlayPressed = false;
+    input.openSkinPressed = false;
+    input.openSettingsPressed = false;
+    input.editorSave = false;
+    input.editorSaveAs = false;
+    input.editorOpen = false;
+    input.editorNew = false;
+    input.editorTest = false;
+    if (!keepBack) input.backPressed = false;
+}
+
 FrameInput PollInput(bool debugScreens, Screen currentScreen,
                      const GameSettings& settings, double eventTimeSeconds);
 

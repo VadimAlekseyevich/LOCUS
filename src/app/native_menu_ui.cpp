@@ -712,13 +712,12 @@ void NativeMenuUi::UpdateSettings(GameSettings& settings, SettingsUi& ui,
     }
     // A focused Settings action must not trigger global menu shortcuts.
     if (ui.capturing >= 0 || ui.editingGlobalOffset || ui.calibrationOpen) {
-        input.startPressed = false;
-        input.backPressed = false;
-        input.requestedScreen.reset();
-        input.fullscreenPressed = false;
+        SuppressGlobalMenuShortcuts(input);
     } else if (auto* focus = context_->GetFocusElement();
                focus && focus->GetTagName() == "button") {
-        input.startPressed = false;
+        // Keep BACK produced by clicking the native BACK button, but never
+        // activate a different screen's shortcuts while a control is focused.
+        SuppressGlobalMenuShortcuts(input, true);
     }
     settingsPresenter_.Sync();
     context_->Update();
@@ -747,6 +746,9 @@ void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status) {
         focus && focus->GetTagName() == "button" &&
         (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
         focus->Click();
+    if (auto* focused = context_->GetFocusElement();
+        focused && focused->GetTagName() == "button")
+        SuppressGlobalMenuShortcuts(input);
     switch (pendingHomeAction_) {
         case 0: input.requestedScreen = Screen::SongSelect; break;
         case 1: input.requestedScreen = Screen::Editor; break;
@@ -803,13 +805,11 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
         }
     }
     if (IsKeyPressed(KEY_F5)) pending_.refresh = true;
-    // Keyboard actions from PollInput must not bypass RmlUi focus.
-    input.startPressed = false;
-    if (typing) {
-        input.backPressed = false;
-        input.openEditorPressed = false;
-        input.requestedScreen.reset();
-    }
+    // Search is a real text input. All global shortcuts, not only
+    // Enter/Escape/E, must be suppressed while it owns keyboard focus.
+    // The application still receives OS window-close requests separately.
+    if (typing) SuppressGlobalMenuShortcuts(input);
+    else input.startPressed = false;
     if (pending_.backRequested) input.backPressed = true;
     Rebuild(library, ui);
     context_->Update();
