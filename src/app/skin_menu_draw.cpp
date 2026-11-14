@@ -337,4 +337,70 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     }
 }
 
+void DrawNativeSkinPreview(Font font, const Skin& skin, Rectangle bounds) {
+    // The path renderer remains independent of the menu framework. The
+    // containing RmlUi panel supplies physical bounds; no virtual 960x540
+    // menu coordinates are used for this specialized live preview.
+    if (bounds.width < 50.0f || bounds.height < 50.0f) return;
+    const float x = bounds.x, y = bounds.y;
+    const float w = bounds.width, h = bounds.height;
+    DrawRectangleRounded(bounds, 0.07f, 8, skin.background);
+    const float side = std::min(h - 22.0f, w * 0.76f - 20.0f);
+    if (side < 20.0f) return;
+    const Rectangle field{x + 10.0f, y + (h - side) * 0.5f, side, side};
+    DrawRectangleRec(field, skin.background);
+    const int sx = std::max(0, static_cast<int>(std::floor(field.x)));
+    const int sy = std::max(0, static_cast<int>(std::floor(field.y)));
+    const int sw = std::max(1, static_cast<int>(std::ceil(field.width)));
+    const int sh = std::max(1, static_cast<int>(std::ceil(field.height)));
+    BeginScissorMode(sx, sy, sw, sh);
+    const float speed = skin.baseSpeedPxPerSecond;
+    const float lag = std::clamp(speed * skin.cameraLagMs / 1000.0f,
+                                 0.0f, 72.0f);
+    const float pixelScale = side / 540.0f;
+    const float routeWidth = std::max(1.0f, skin.pathWidth * pixelScale);
+    const float outlineWidth = routeWidth * skin.outlineScale;
+    const float lead = std::clamp(skin.lookaheadMs / 1200.0f, 0.2f, 1.0f);
+    const float pivotX = field.x + side * 0.32f + lag * pixelScale;
+    const float centerY = field.y + side * 0.60f;
+    const Vector2 points[] = {
+        {field.x + side * 0.10f, centerY},
+        {pivotX, centerY},
+        {pivotX, centerY - side * 0.27f * lead},
+        {pivotX + side * 0.38f * lead, centerY - side * 0.27f * lead}
+    };
+    for (int i = 0; i < 3; ++i) {
+        const float t = static_cast<float>(i + 1) / 3.0f;
+        const float opacity = skin.pathOpacity *
+            std::pow(std::max(0.0f, 1.0f - t * 0.75f), skin.fadePower);
+        DrawLineEx(points[i], points[i + 1], outlineWidth,
+                   WithOpacity(skin.outline, opacity));
+        DrawLineEx(points[i], points[i + 1], routeWidth,
+                   WithOpacity(skin.trajectory, opacity));
+    }
+    const float junction = std::max(2.0f, skin.junctionRadius * pixelScale);
+    if (skin.junctionGlow)
+        DrawCircleV(points[1], junction * 1.6f,
+                    WithOpacity(skin.junction, 0.22f));
+    DrawCircleV(points[1], junction, skin.junction);
+    const Vector2 marker{field.x + side * 0.24f, centerY};
+    const float avatar = std::max(2.0f, skin.playerRadius * pixelScale);
+    if (skin.playerGlow)
+        DrawCircleV(marker, avatar * 1.65f, WithOpacity(skin.player, 0.22f));
+    DrawCircleV(marker, avatar, skin.player);
+    DrawCircleV(marker, avatar * 0.35f, skin.playerCore);
+    EndScissorMode();
+    DrawRectangleLinesEx(field, 1.4f, skin.fieldBorder);
+    if (skin.showHud) {
+        const Rectangle hud{x + w * 0.80f, y + h * 0.28f,
+                            w * 0.17f, h * 0.45f};
+        DrawRectangleRounded(hud, 0.1f, 5, skin.hudBackground);
+        const float fontSize = std::clamp(w * 0.038f, 9.0f, 15.0f);
+        DrawTextEx(font, "ACC", {hud.x + 4.0f, hud.y + 6.0f},
+                   fontSize, 1.0f, skin.hudText);
+        DrawTextEx(font, "98.5%", {hud.x + 4.0f, hud.y + fontSize + 10.0f},
+                   fontSize, 1.0f, skin.hudText);
+    }
+}
+
 } // namespace locus::app
