@@ -694,7 +694,8 @@ int main(int argc, char** argv) {
             // They are presentation settings, never chart edits or SKIN
             // changes. Consume the click before note/pattern handlers.
             if (editorUi.tab == locus::app::EditorTab::Route &&
-                input.editor.mouseClick && !editorUi.comparisonPickerOpen &&
+                !input.editor.nativeChrome && input.editor.mouseClick &&
+                !editorUi.comparisonPickerOpen &&
                 !editorSet.HasPending() && editorFiles.PendingClose().empty()) {
                 const int speedDelta = locus::app::detail::
                     EditorSpeedControlDelta(input.editor.mouse);

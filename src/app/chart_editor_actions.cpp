@@ -200,31 +200,31 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         if (ui.tab == EditorTab::Route && Hit(kSnapMore, mouse)) { editor_timeline::ChangeSnap(draft, ui, 1, action); return action; }
         if (ui.tab == EditorTab::Audio && Hit(kSong, mouse))
             action.chooseAudio = true;
-        else if (ui.tab == EditorTab::Route && Hit(kRouteTest, mouse))
+        else if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kRouteTest, mouse))
             action.testPlay = true;
         else if (ui.tab == EditorTab::Route && Hit(kZoomOut, mouse))
             ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
         else if (ui.tab == EditorTab::Route && Hit(kZoomIn, mouse))
             ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
-        else if (ui.tab == EditorTab::Route && Hit(kMirrorHorizontal, mouse))
+        else if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kMirrorHorizontal, mouse))
             commands.mirrorH = true;
-        else if (ui.tab == EditorTab::Route && Hit(kMirrorVertical, mouse))
+        else if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kMirrorVertical, mouse))
             commands.mirrorV = true;
-        else if (ui.tab == EditorTab::Route &&
-                 Hit(kRotateCounterclockwise, mouse))
+        else if (ui.tab == EditorTab::Route && !input.nativeChrome &&
+                  Hit(kRotateCounterclockwise, mouse))
             commands.rotateCCW = true;
-        else if (ui.tab == EditorTab::Route && Hit(kRotateClockwise, mouse))
+        else if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kRotateClockwise, mouse))
             commands.rotateCW = true;
-        else if (ui.tab == EditorTab::Route && Hit(kStartHeadingPrev, mouse)) {
+        else if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kStartHeadingPrev, mouse)) {
             draft.RotateHeading45(-1);
             action.changedChart = true;
-        } else if (ui.tab == EditorTab::Route &&
-                   (Hit(kStartHeadingValue, mouse) ||
+        } else if (ui.tab == EditorTab::Route && !input.nativeChrome &&
+                    (Hit(kStartHeadingValue, mouse) ||
                     Hit(kStartHeadingNext, mouse))) {
             draft.RotateHeading45(1);
             action.changedChart = true;
-        } else if (ui.tab == EditorTab::Route &&
-                   mouse.x >= 748.0f && mouse.x <= 932.0f &&
+        } else if (ui.tab == EditorTab::Route && !input.nativeChrome &&
+                    mouse.x >= 748.0f && mouse.x <= 932.0f &&
                    mouse.y >= 181.0f && mouse.y <= 356.0f) {
             for (int row = 0; row < 3; ++row)
                 for (int col = 0; col < 3; ++col) {

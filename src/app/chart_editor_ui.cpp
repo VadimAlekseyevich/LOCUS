@@ -460,13 +460,17 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     if (routeTab) {
         // Unlike the old horizontal button bars, this six-icon vertical
         // rail never reduces the usable height of the playing field.
+        if (!nativeShell) {
         EditorIconButton(kMirrorHorizontal,EditorIcon::FlipH,violet);
         EditorIconButton(kMirrorVertical,EditorIcon::FlipV,violet);
         EditorIconButton(kRotateCounterclockwise,EditorIcon::RotateL,sky);
         EditorIconButton(kRotateClockwise,EditorIcon::RotateR,sky);
+        }
         EditorIconButton(kCompareToggle,EditorIcon::Compare,
                          set.managed?sky:muted,ui.comparisonPickerOpen);
+        if (!nativeShell) {
         EditorIconButton(kRouteTest,EditorIcon::Play,sky);
+        }
 
         const Rectangle previewArea{
             kPreviewLeft-3,kPreviewTop-3,
@@ -497,6 +501,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
               focusedBounds.x+focusedBounds.width-43,
               focusedBounds.y+23,12,sky);
 
+        if (!nativeShell) {
         // Only the compass buttons place notes; diagonal counts also
         // contribute to their corresponding cardinal arrows.
         const auto* turn=draft.SelectedTurn();
@@ -546,6 +551,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
               749,462,11,sky);
         CompactButton(font,kEditorPathMinus,"-",violet);
         CompactButton(font,kEditorPathPlus,"+",sky);
+        }
     } else if (ui.tab == EditorTab::Audio) {
         DrawRectangleRounded(kAudioMetaPanel,
             UiRoundness(kAudioMetaPanel,12),10,theme.surface);
