@@ -6,6 +6,7 @@
 #include "raylib.h"
 
 #include <limits>
+#include <optional>
 #include <filesystem>
 #include <vector>
 #include <string>
@@ -38,6 +39,12 @@ struct EditorControls {
     bool enter = false, escape = false, backspace = false, tab = false;
     bool previewToggle = false, previewRestart = false;
     bool copySongTime = false;
+    // Semantic editor actions emitted by RmlUi; never synthesize a click at
+    // legacy pixel coordinates to reach the chart editing model.
+    std::optional<core::Heading> placeHeading;
+    int rotateStartHeading = 0;
+    int previewSpeedDelta = 0;
+    int previewLengthDelta = 0;
     // True when the native RmlUi editor shell owns tabs and transport.
     // Legacy raylib hitboxes are forbidden in that mode, but hotkeys and
     // note/tempo editing retain their original semantics.

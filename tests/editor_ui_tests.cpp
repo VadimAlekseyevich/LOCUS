@@ -861,6 +861,26 @@ int main() {
                 nativeChart.SelectedTurn()->direction == Heading::UpRight,
                 "native chrome still permits raylib authoring compass");
 
+    // Native RmlUi controls send semantic commands. They cannot depend on
+    // stale raylib mouse geometry and must retain the same chart history.
+    ChartEditor semanticChart;
+    EditorUiState semanticUi;
+    EditorControls nativePlace;
+    nativePlace.nativeChrome = true;
+    nativePlace.placeHeading = Heading::UpLeft;
+    auto nativeResult = ApplyEditorControls(semanticChart, semanticUi, nativePlace);
+    ok &= Check(nativeResult.changedChart && semanticChart.SelectedTurn() &&
+                semanticChart.SelectedTurn()->direction == Heading::UpLeft,
+                "native direction pad authors note through one chart model");
+    EditorControls nativeTurn;
+    nativeTurn.nativeChrome = true;
+    nativeTurn.rotateStartHeading = -1;
+    const auto beforeHeading = semanticChart.Data().route.initialHeading;
+    const auto rotated = ApplyEditorControls(semanticChart, semanticUi, nativeTurn);
+    ok &= Check(rotated.changedChart &&
+                semanticChart.Data().route.initialHeading != beforeHeading,
+                "native heading commands share chart history");
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS route_controls=1 field_heading=1 zoom=1\n";
     return 0;

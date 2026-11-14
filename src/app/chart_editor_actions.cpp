@@ -143,6 +143,20 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return action;
     }
 
+    // Native direction pad and start-heading controls are pure commands.
+    // The core chart editor is the only author of route and undo history.
+    if (ui.tab == EditorTab::Route && input.placeHeading) {
+        const bool changed = draft.SetOutgoingHeading(*input.placeHeading);
+        action.changedChart = changed;
+        if (!changed) notice("NO CHANGE - ALREADY HEADING THAT WAY", true);
+        return action;
+    }
+    if (ui.tab == EditorTab::Route && input.rotateStartHeading) {
+        draft.RotateHeading45(input.rotateStartHeading > 0 ? 1 : -1);
+        action.changedChart = true;
+        return action;
+    }
+
     // Undo/redo also cover field edits, history of notes and grid changes.
     if (input.undo || input.redo) {
         ApplyHistoryAction(draft, ui, input.undo, action);
