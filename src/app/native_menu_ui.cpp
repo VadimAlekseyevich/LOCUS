@@ -621,8 +621,12 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     // Editor text fields and shortcuts remain owned by the old controller.
     PumpInput(false);
     if (!ui.EditingText()) {
-        if (IsKeyPressed(KEY_TAB))
+        if (IsKeyPressed(KEY_TAB)) {
+            // Tab belongs to native focus traversal, not the old
+            // editor's text-field navigation in the same frame.
             context_->ProcessKeyDown(Rml::Input::KI_TAB, Modifiers());
+            input.editor.tab = false;
+        }
         if (auto* focus = context_->GetFocusElement();
             focus && focus->GetTagName() == "button" &&
             (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
