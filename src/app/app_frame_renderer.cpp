@@ -302,6 +302,12 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         // Display-only: time was sampled once BEFORE the frame, together
         // with the comparison pane snapshots. Rendering cannot resample
         // the decoder between the ruler and the route.
+        const bool hasNativeEditorShell =
+#ifdef LOCUS_WITH_RMLUI
+            nativeMenu && nativeMenu->ShowingEditor();
+#else
+            false;
+#endif
         locus::app::RenderChartEditor(font, editor, editorUi,
                                      localSong.DisplayName(), localSong.Ready(),
                                      editorClock.playing, editorClock.paused,
@@ -309,7 +315,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                                      gameplay.bindings, gameplay.skin,
                                      editorSetView, &comparisons,
                                      editorClock.songSeconds,
-                                     nativeMenu && nativeMenu->ShowingEditor());
+                                     hasNativeEditorShell);
         // Editor and preview statuses must not be painted over file buttons.
         // Keep status for workflows, but not as an overlay in the action row.
         if (editorSetPending && editorPending == EditorPending::None) {
