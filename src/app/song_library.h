@@ -117,12 +117,16 @@ public:
     const std::filesystem::path& Root() const noexcept { return root_; }
     const std::vector<LibrarySong>& Songs() const noexcept { return songs_; }
     const LibraryRefreshStats& LastRefreshStats() const noexcept { return lastRefreshStats_; }
+    // Monotonically changes whenever the in-memory library index is modified.
+    // Presenters use this in place of inspecting all song/chart strings every frame.
+    std::uint64_t Revision() const noexcept { return revision_; }
     std::size_t ChartCount() const noexcept;
 
 private:
     std::filesystem::path root_;
     std::vector<LibrarySong> songs_;
     LibraryRefreshStats lastRefreshStats_{};
+    std::uint64_t revision_ = 0;
 };
 
 } // namespace locus::app

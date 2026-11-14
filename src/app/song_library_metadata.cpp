@@ -121,6 +121,7 @@ bool SongLibrary::SetSongTempoMap(
             song.charts[i].data.route, song.charts[i].data.offsetSeconds);
     }
     SortChartDifficulties(song.charts);
+    ++revision_;
     error.clear();
     return true;
 }
@@ -172,6 +173,7 @@ bool SongLibrary::SetSongMetadata(
     song.artist = artist;
     song.mapper = mapper;
     song.tags = tags;
+    ++revision_;
     error.clear();
     return true;
 }
@@ -197,6 +199,7 @@ bool SongLibrary::SetPreviewStartMs(int songIndex, int timeMs,
     manifest.previewStartMs = timeMs;
     if (!ReplaceSongSetManifest(path, manifest, error)) return false;
     song.previewStartMs = timeMs;
+    ++revision_;
     return true;
 }
 
@@ -250,6 +253,7 @@ bool SongLibrary::SetBackgroundImage(int songIndex, const fs::path& source,
         return false;
     }
     song.backgroundImage = published;
+    ++revision_;
     // Delete only artwork that this Song Set owned and no longer references.
     if (!oldFile.empty() && oldFile != manifest.backgroundFile) {
         std::error_code cleanup;

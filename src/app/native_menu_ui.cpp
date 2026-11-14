@@ -248,6 +248,7 @@ void NativeMenuUi::Activate(Page page) {
     } else if (page == Page::Play && document_) {
         document_->Show();
         lastTreeSignature_.clear();
+        lastSummarySignature_.clear();
         lastResultSignature_.clear();
     } else if (page == Page::Settings && settingsDocument_) {
         settingsDocument_->Show();
@@ -500,28 +501,30 @@ void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
 }
 
 void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
-    std::ostringstream sig;
-    sig << ui.selectedSong << ":" << ui.selectedChart << ":" <<
-        ui.treeChartFocused << ":" << ui.search << ":" << ui.notice << ":";
-    for (const auto& song : library.Songs()) {
-        sig << song.id << "/" << song.title << "/" << song.artist
-            << "/" << song.mapper << "/" << song.bpm
-            << "/" << song.charts.size() << ":";
-        for (const auto& tag : song.tags) sig << tag << ";";
-        for (const auto& chart : song.charts)
-            sig << chart.data.title << "/" << chart.data.route.turns.size()
-                << "/" << chart.difficulty.overall << "|";
-    }
-    const std::string signature = sig.str();
-    if (signature != lastTreeSignature_) {
+    // Only changes that affect tree geometry trigger its expensive DOM rebuild.
+    // Library::Revision is advanced by index refreshes and in-place metadata
+    // changes, so a 10,000-chart library costs O(1) to poll on idle frames.
+    std::ostringstream tree;
+    tree << library.Revision() << ':' << ui.selectedSong << ':'
+         << ui.selectedChart << ':' << ui.treeChartFocused << ':'
+         << ui.search;
+    if (tree.str() != lastTreeSignature_) {
         RebuildRows(library, ui);
+        lastTreeSignature_ = tree.str();
+    }
+    // Status text may change without a selection/index change. Updating it
+    // must never recreate all rows or drop scroll position/focus.
+    std::ostringstream summary;
+    summary << library.Revision() << ':' << ui.selectedSong << ':'
+            << ui.selectedChart << ':' << ui.notice;
+    if (summary.str() != lastSummarySignature_) {
         UpdateSummary(library, ui);
-        lastTreeSignature_ = signature;
+        lastSummarySignature_ = summary.str();
     }
     std::ostringstream history;
-    history << ui.resultKey.songSetId << "/" << ui.resultKey.difficultyFile;
+    history << ui.resultKey.songSetId << '/' << ui.resultKey.difficultyFile;
     for (const auto& result : ui.results)
-        history << result.id << ":" << result.accuracyPercent;
+        history << result.id << ':' << result.accuracyPercent;
     if (history.str() != lastResultSignature_) {
         RebuildResults(ui);
         lastResultSignature_ = history.str();

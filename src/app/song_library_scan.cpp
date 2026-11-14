@@ -218,6 +218,7 @@ bool SongLibrary::Refresh(std::string& message) {
                   return a.audioFile < b.audioFile;
               });
     songs_ = std::move(next);
+    ++revision_;
     lastRefreshStats_ = stats;
     message = "LIBRARY: " + std::to_string(songs_.size()) + " SONGS / " +
               std::to_string(ChartCount()) + " CHARTS";
