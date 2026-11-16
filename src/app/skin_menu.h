@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/skin.h"
+#include "app/viewport.h"
 #include "raylib.h"
 
 #include <filesystem>
@@ -48,6 +49,14 @@ struct SkinUi {
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui);
 // Only the actual route preview remains raylib-rendered inside a native RmlUi panel.
 void DrawNativeSkinPreview(Font font, const Skin& skin, Rectangle physicalBounds);
+// The native HSV widget uses the original SKINS color-wheel geometry,
+// transformed to an RmlUi-owned rectangle. Both hit-testing and rendering
+// share this transform and the existing SkinColorFromHsv model.
+void DrawNativeSkinColorWheel(const Skin& skin, const SkinUi& ui,
+                              Rectangle physicalBounds, Rectangle clipBounds);
+ViewportTransform SkinColorWheelViewport(Rectangle physicalBounds) noexcept;
+void BeginSkinColorDrag(Vector2 logicalMouse, Skin& skin, SkinUi& ui);
+void UpdateSkinColorDrag(Vector2 logicalMouse, Skin& skin, SkinUi& ui);
 SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui);
 
 // Consumed keyboard input while the name or a number is being edited.

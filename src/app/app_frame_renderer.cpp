@@ -455,8 +455,13 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
           editorClosePending.empty())))
     {
         nativeMenu->Render();
-        if (state.screen == Screen::Skin)
+        if (state.screen == Screen::Skin) {
             DrawNativeSkinPreview(font, draftSkin, nativeMenu->SkinPreviewBounds());
+            if (skinUi.page == 2)
+                DrawNativeSkinColorWheel(draftSkin, skinUi,
+                    nativeMenu->SkinColorWheelBounds(),
+                    nativeMenu->SkinColorWheelClipBounds());
+        }
         if (state.screen == Screen::Home)
             homeBrand.DrawAt(font, nativeMenu->HomeWordmarkBounds());
     }

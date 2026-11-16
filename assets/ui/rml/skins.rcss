@@ -21,21 +21,18 @@
   border-bottom:1dp #414962; }
 .skin-setting-name { display:block; flex:1; min-width:0; font-size:12dp;
   color:#d6ddf3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.skin-range { display:inline-block; flex:0 0 32%; width:32%; height:30dp;
-  cursor:pointer; }
-.skin-range sliderarrowdec, .skin-range sliderarrowinc {
-  width:0; height:0; }
-.skin-range slidertrack { height:8dp; margin-top:11dp; cursor:pointer;
-  background-color:#39425e; border:1dp #667295; border-radius:5dp; }
-.skin-range sliderprogress { height:6dp; margin-top:0;
-  background-color:#aea0ee; border-radius:4dp; }
-.skin-range sliderbar { width:16dp; height:16dp;
-  margin-top:-5dp; margin-left:-8dp; margin-right:-8dp;
-  background-color:#e1e9fb; border:2dp #8d80c3; border-radius:8dp;
-  cursor:pointer; }
-.skin-range sliderbar:hover { background-color:#ffffff;
-  border-color:#c3b7fc; }
-.skin-range sliderbar:active { background-color:#b6e5f3; }
+.skin-slider { display:flex; align-items:center;
+  flex:0 0 32%; width:32%; height:30dp; cursor:pointer; }
+.skin-slider-track { position:relative; width:100%; height:6dp;
+  border:1dp #667295; border-radius:4dp; background-color:#39425e;
+  pointer-events:none; }
+.skin-slider-fill { position:absolute; left:0; top:0; height:100%;
+  background-color:#aea0ee; border-radius:4dp; pointer-events:none; }
+.skin-slider-knob { position:absolute; top:50%; width:14dp; height:14dp;
+  margin-top:-7dp; margin-left:-7dp; border:2dp #8d80c3;
+  border-radius:7dp; background-color:#e1e9fb; pointer-events:none; }
+.skin-slider:hover .skin-slider-knob { border-color:#c3b7fc;
+  background-color:#ffffff; }
 .skin-number { flex:0 0 73dp; width:73dp; height:34dp; background-color:#1b263c;
   border:1dp #647096; border-radius:6dp; font-family:Locus; font-size:12dp;
   color:#eef1fb; text-align:center; }
@@ -77,5 +74,11 @@
   .skins-name { width:160dp; flex-basis:160dp; }
   .skin-setting-name { font-size:11dp; }
   .skin-number { width:53dp; flex-basis:53dp; }
-  .skin-range { flex-basis:25%; width:25%; }
+  .skin-slider { flex-basis:25%; width:25%; }
 }
+
+.skin-wheel-title { font-size:11dp; font-weight:750; letter-spacing:0.6dp;
+  color:#acb6cb; padding:12dp 2dp 6dp; }
+#skin-wheel-canvas { display:block; width:100%; height:228dp;
+  min-height:190dp; border:1dp #4b526e; border-radius:10dp;
+  background-color:#171d30; }

@@ -85,6 +85,26 @@ void DeleteLastCodepoint(std::string& text) {
 
 } // namespace
 
+ViewportTransform SkinColorWheelViewport(Rectangle bounds) noexcept {
+    constexpr float diameter = 2.0f * kWheelOuter;
+    const float scale = bounds.width > 0.0f && bounds.height > 0.0f
+        ? std::min(bounds.width, bounds.height) / diameter : 0.0f;
+    const Vector2 center = SkinColorWheelCenter();
+    return {scale, bounds.x + bounds.width * 0.5f - center.x * scale,
+                   bounds.y + bounds.height * 0.5f - center.y * scale};
+}
+
+void BeginSkinColorDrag(Vector2 logicalMouse, Skin& skin, SkinUi& ui) {
+    ui.draggingColor = 0;
+    if (ui.page != 2) return;
+    if (InWheelRing(logicalMouse)) ui.draggingColor = 1;
+    else if (Hit(logicalMouse, SkinColorSquareRect())) ui.draggingColor = 2;
+    ChangeColorPointer(logicalMouse, skin, ui);
+}
+void UpdateSkinColorDrag(Vector2 logicalMouse, Skin& skin, SkinUi& ui) {
+    if (ui.draggingColor != 0) ChangeColorPointer(logicalMouse, skin, ui);
+}
+
 Rectangle SkinBackButton() { return {52, 74, 100, 39}; }
 Rectangle SkinTabButton(int index) {
     return {52.0f + index * 221.0f, 128.0f, 214.0f, 40.0f};
@@ -182,12 +202,7 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
             ui.noticeError = false;
             return SkinCommand::None;
         }
-        if (InWheelRing(mouse)) ui.draggingColor = 1;
-        else if (Hit(mouse, SkinColorSquareRect())) ui.draggingColor = 2;
-        if (ui.draggingColor) {
-            ChangeColorPointer(mouse, skin, ui);
-            return SkinCommand::None;
-        }
+        BeginSkinColorDrag(mouse, skin, ui);
         return SkinCommand::None;
     } else {
         for (int row = 0; row < RowCount(ui.page); ++row) {
@@ -227,7 +242,7 @@ void UpdateSkinSliderDrag(Vector2 mouse, bool leftHeld, Skin& skin, SkinUi& ui) 
         return;
     }
     if (ui.page == 2 && ui.draggingColor && !SkinMenuEditingText(ui)) {
-        ChangeColorPointer(mouse, skin, ui);
+        UpdateSkinColorDrag(mouse, skin, ui);
         return;
     }
     if (ui.draggingRow >= 0 && !SkinMenuEditingText(ui))

@@ -188,7 +188,7 @@ void PreviewPath(Font font, const Skin& skin,
 
 }
 
-void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
+void DrawColorPickerWheel(const Skin& skin, const SkinUi& ui) {
     const Vector2 center = SkinColorWheelCenter();
     const Color current = SkinColor(skin, ui.selectedColor);
     SkinHsv hsv = SkinColorToHsv(current);
@@ -233,6 +233,10 @@ void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
     DrawCircleV(selection, 5.0f, kPanel);
     DrawCircleLines(static_cast<int>(selection.x),
                     static_cast<int>(selection.y), 5.0f, kText);
+}
+
+void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
+    DrawColorPickerWheel(skin, ui);
     Label(font, "HEX / ALPHA", 347, 389, 14, kMuted);
     DrawInput(font, SkinHexRect(),
               ui.editingHex ? ui.hexBuffer : FormatSkinHex(current),
@@ -362,6 +366,33 @@ void DrawNativeSkinPreview(Font font, const Skin& skin, Rectangle bounds) {
     BeginMode2D(camera);
     PreviewPath(font, skin, &viewport);
     EndMode2D();
+}
+
+void DrawNativeSkinColorWheel(const Skin& skin, const SkinUi& ui,
+                              Rectangle bounds, Rectangle clipBounds) {
+    if (bounds.width < 80.0f || bounds.height < 80.0f ||
+        clipBounds.width <= 0.0f || clipBounds.height <= 0.0f) return;
+    const float left = std::max(bounds.x, clipBounds.x);
+    const float top = std::max(bounds.y, clipBounds.y);
+    const float right = std::min(bounds.x + bounds.width,
+                                 clipBounds.x + clipBounds.width);
+    const float bottom = std::min(bounds.y + bounds.height,
+                                  clipBounds.y + clipBounds.height);
+    if (right <= left || bottom <= top) return;
+    const int x = static_cast<int>(std::floor(left));
+    const int y = static_cast<int>(std::floor(top));
+    const int w = static_cast<int>(std::ceil(right)) - x;
+    const int h = static_cast<int>(std::ceil(bottom)) - y;
+    BeginScissorMode(x, y, w, h);
+    const auto viewport = SkinColorWheelViewport(bounds);
+    Camera2D camera{};
+    camera.offset = {viewport.offsetX, viewport.offsetY};
+    camera.target = {0.0f, 0.0f};
+    camera.zoom = viewport.scale;
+    BeginMode2D(camera);
+    DrawColorPickerWheel(skin, ui);
+    EndMode2D();
+    EndScissorMode();
 }
 
 } // namespace locus::app

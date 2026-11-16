@@ -90,14 +90,13 @@ void NativeSkinUi::RebuildControls() {
                      << (GetSkinToggle(*skin_, ui_->page, row) ? "ON" : "OFF")
                      << "</span></button>";
             } else {
-                const auto& range = setting->numberRange;
                 const double value = GetSkinNumber(*skin_, ui_->page, row,
                                                    ui_->selectedColor);
-                html << "<input type='range' class='skin-range' id='skin-range-"
-                     << row << "' data-kind='range' data-index='" << row
-                     << "' min='" << range.sliderMin << "' max='" << range.sliderMax
-                     << "' step='" << (setting->wholeMilliseconds ? "1" : "0.01")
-                     << "' value='" << value << "' />"
+                html << "<div class='skin-slider' id='skin-slider-" << row
+                     << "'><div class='skin-slider-track' id='skin-slider-track-" << row
+                     << "'><div class='skin-slider-fill' id='skin-slider-fill-" << row
+                     << "'></div><div class='skin-slider-knob' id='skin-slider-knob-"
+                     << row << "'></div></div></div>"
                      << "<input type='text' class='skin-number' id='skin-number-"
                      << row << "' data-kind='number' data-index='" << row
                      << "' value='" << Escape(FormatSkinNumber(value)) << "' />";
@@ -111,22 +110,12 @@ void NativeSkinUi::RebuildControls() {
                  << (i == ui_->selectedColor ? " selected" : "")
                  << "' data-action='swatch' data-index='" << i
                  << "'><span class='button-label'>" << Escape(SkinColorLabel(i))
-                 << "</span><span class='skin-swatch-chip' style='background-color:"
+                 << "</span><span id='skin-swatch-chip-" << i
+                 << "' class='skin-swatch-chip' style='background-color:"
                  << HexColor(SkinColor(*skin_, i)) << "'></span></button>";
         }
-        html << "</div><div class='skin-channel-heading'>RGBA CHANNELS</div>";
-        for (int channel = 0; channel < 4; ++channel) {
-            const char* names[] = {"RED", "GREEN", "BLUE", "ALPHA"};
-            const double v = GetSkinNumber(*skin_, 2, channel, ui_->selectedColor);
-            html << "<div class='skin-setting-row'><div class='skin-setting-name'>"
-                 << names[channel] << "</div>"
-                 << "<input type='range' class='skin-range' id='skin-range-"
-                 << channel << "' data-kind='range' data-index='" << channel
-                 << "' min='0' max='255' step='1' value='" << v << "' />"
-                 << "<input type='text' class='skin-number' id='skin-number-"
-                 << channel << "' data-kind='number' data-index='" << channel
-                 << "' value='" << static_cast<int>(v) << "' /></div>";
-        }
+        html << "</div><div class='skin-wheel-title'>HUE / SATURATION / VALUE</div>"
+                "<div id='skin-wheel-canvas'></div>";
     } else {
         html << "<div class='skin-profile-list'>";
         for (std::size_t i = 0; i < ui_->profiles.size(); ++i) {
@@ -149,6 +138,8 @@ void NativeSkinUi::RebuildControls() {
     }
     if (auto* list = document_->GetElementById("skin-controls"))
         list->SetInnerRML(html.str());
+    sliderRatios_.fill(-1.0f);
+    swatchColors_.fill("");
 }
 void NativeSkinUi::Sync() {
     if (!document_ || !skin_ || !ui_) return;
@@ -193,8 +184,18 @@ void NativeSkinUi::Sync() {
         syncInput("skin-hex", FormatSkinHex(
             SkinColor(*skin_, ui_->selectedColor)));
     }
-    if (ui_->page <= 2) {
-        const int count = ui_->page == 2 ? 4 : SkinSettingCount(ui_->page);
+    if (ui_->page == 2) {
+        for (int i = 0; i < kSkinColorCount; ++i) {
+            const std::string id = "skin-swatch-chip-" + std::to_string(i);
+            const std::string hex = HexColor(SkinColor(*skin_, i));
+            if (hex == swatchColors_[static_cast<std::size_t>(i)]) continue;
+            if (auto* chip = document_->GetElementById(id))
+                chip->SetProperty("background-color", hex);
+            swatchColors_[static_cast<std::size_t>(i)] = hex;
+        }
+    }
+    if (ui_->page < 2) {
+        const int count = SkinSettingCount(ui_->page);
         for (int row = 0; row < count; ++row) {
             if (ui_->page < 2 && GetSkinSetting(ui_->page, row)->toggle) {
                 // Toggling reuses the native element, preserving focus.
@@ -205,12 +206,104 @@ void NativeSkinUi::Sync() {
             const double value = GetSkinNumber(
                 *skin_, ui_->page, row, ui_->selectedColor);
             const std::string name = "skin-number-" + std::to_string(row);
-            const std::string slider = "skin-range-" + std::to_string(row);
             syncInput(name.c_str(), FormatSkinNumber(value));
-            syncInput(slider.c_str(), FormatSkinNumber(value));
+            const auto& range = GetSkinSetting(ui_->page, row)->numberRange;
+            const float ratio = range.sliderMax > range.sliderMin
+                ? static_cast<float>(std::clamp(
+                    (value - range.sliderMin) /
+                    (range.sliderMax - range.sliderMin), 0.0, 1.0))
+                : 0.0f;
+            if (std::abs(sliderRatios_[static_cast<std::size_t>(row)] - ratio)
+                > 0.00001f) {
+                const std::string amount = std::to_string(ratio * 100.0f) + "%";
+                const std::string suffix = std::to_string(row);
+                if (auto* fill = document_->GetElementById("skin-slider-fill-" + suffix))
+                    fill->SetProperty("width", amount);
+                if (auto* knob = document_->GetElementById("skin-slider-knob-" + suffix))
+                    knob->SetProperty("left", amount);
+                sliderRatios_[static_cast<std::size_t>(row)] = ratio;
+            }
         }
     }
 }
+
+void NativeSkinUi::UpdatePointer(Rectangle wheelBounds) {
+    if (!document_ || !skin_ || !ui_) return;
+    const bool held = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+    if (!ui_->pendingDeleteProfile.empty()) {
+        ui_->draggingRow = -1;
+        ui_->draggingColor = 0;
+        return;
+    }
+    const Vector2 mouse = GetMousePosition();
+    auto* controls = document_->GetElementById("skin-controls");
+    auto* panel = controls ? controls->GetParentNode() : nullptr;
+    const Rectangle clip = panel
+        ? Rectangle{panel->GetAbsoluteLeft(), panel->GetAbsoluteTop(),
+                    static_cast<float>(panel->GetOffsetWidth()),
+                    static_cast<float>(panel->GetOffsetHeight())}
+        : Rectangle{};
+    const bool inPanel = clip.width > 0.0f &&
+        CheckCollisionPointRec(mouse, clip);
+    if (inPanel && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (ui_->page < 2) {
+            for (int row = 0; row < SkinSettingCount(ui_->page); ++row) {
+                const auto* setting = GetSkinSetting(ui_->page, row);
+                if (!setting || setting->toggle) continue;
+                if (auto* slider = document_->GetElementById(
+                        "skin-slider-" + std::to_string(row))) {
+                    const Rectangle rect{slider->GetAbsoluteLeft(),
+                        slider->GetAbsoluteTop(),
+                        static_cast<float>(slider->GetOffsetWidth()),
+                        static_cast<float>(slider->GetOffsetHeight())};
+                    if (CheckCollisionPointRec(mouse, rect)) {
+                        ui_->draggingRow = row;
+                        break;
+                    }
+                }
+            }
+        } else if (ui_->page == 2 && wheelBounds.width > 0.0f &&
+                   wheelBounds.height > 0.0f &&
+                   CheckCollisionPointRec(mouse, wheelBounds)) {
+            BeginSkinColorDrag(
+                SkinColorWheelViewport(wheelBounds).ToVirtual(mouse),
+                *skin_, *ui_);
+        }
+    }
+    if (!held) {
+        ui_->draggingRow = -1;
+        ui_->draggingColor = 0;
+        return;
+    }
+    if (ui_->page < 2 && ui_->draggingRow >= 0) {
+        const int row = ui_->draggingRow;
+        if (auto* track = document_->GetElementById(
+                "skin-slider-track-" + std::to_string(row))) {
+            const float width = static_cast<float>(track->GetOffsetWidth());
+            if (width > 0.0f) {
+                const SkinSetting* setting = GetSkinSetting(ui_->page, row);
+                if (setting && !setting->toggle) {
+                    const double ratio = std::clamp(
+                        (mouse.x - track->GetAbsoluteLeft()) / width, 0.0f, 1.0f);
+                    const auto& range = setting->numberRange;
+                    const double value = range.sliderMin +
+                        ratio * (range.sliderMax - range.sliderMin);
+                    const double previous = GetSkinNumber(*skin_, ui_->page,
+                                                           row, ui_->selectedColor);
+                    std::string error;
+                    if (SetSkinNumber(*skin_, ui_->page, row, ui_->selectedColor,
+                                      value, true, error))
+                        ui_->dirty |= previous != GetSkinNumber(*skin_, ui_->page,
+                                                                 row, ui_->selectedColor);
+                }
+            }
+        }
+    } else if (ui_->page == 2 && ui_->draggingColor > 0) {
+        UpdateSkinColorDrag(
+            SkinColorWheelViewport(wheelBounds).ToVirtual(mouse), *skin_, *ui_);
+    }
+}
+
 void NativeSkinUi::CommitText(Rml::ElementFormControlInput& element) {
     if (!skin_ || !ui_) return;
     const std::string kind = element.GetAttribute<Rml::String>("data-kind", "");
@@ -266,22 +359,7 @@ void NativeSkinUi::ProcessEvent(Rml::Event& event) {
         auto* element = dynamic_cast<Rml::ElementFormControlInput*>(target);
         if (!element) return;
         const std::string kind = element->GetAttribute<Rml::String>("data-kind", "");
-        if (type == "change" && kind != "range") {
-            CommitText(*element);
-        } else if (kind == "range") {
-            const int row = element->GetAttribute<int>("data-index", -1);
-            double value = 0.0;
-            std::string error;
-            if (ParseSkinNumber(element->GetValue(), value)) {
-                const double old = GetSkinNumber(
-                    *skin_, ui_->page, row, ui_->selectedColor);
-                if (SetSkinNumber(*skin_, ui_->page, row, ui_->selectedColor,
-                                  value, true, error)) {
-                    ui_->dirty |= GetSkinNumber(*skin_, ui_->page, row,
-                                                ui_->selectedColor) != old;
-                }
-            }
-        }
+        if (type == "change") CommitText(*element);
         return;
     }
     if (type != "click") return;

@@ -42,6 +42,8 @@ public:
     bool ShowingResults() const noexcept;
     bool ShowingSkin() const noexcept;
     Rectangle SkinPreviewBounds() const noexcept;
+    Rectangle SkinColorWheelBounds() const noexcept;
+    Rectangle SkinColorWheelClipBounds() const noexcept;
     Rectangle HomeWordmarkBounds() const noexcept;
     // Share RmlUi input and rendering for HOME and PLAY; both retain fallback.
     void UpdateHome(FrameInput& input, const std::string& status);

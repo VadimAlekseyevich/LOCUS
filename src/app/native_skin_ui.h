@@ -1,6 +1,7 @@
 #pragma once
 #include "app/skin_menu.h"
 #include <cstdint>
+#include <array>
 #include <string>
 #include <unordered_map>
 
@@ -18,6 +19,8 @@ public:
                     FrameInput& input, MenuEvents& events) noexcept;
     void ProcessEvent(Rml::Event& event);
     void Sync();
+    // Native pointer capture for the model-backed slider / HSV controls.
+    void UpdatePointer(Rectangle wheelBounds);
     void EndFrame() noexcept;
 private:
     void RebuildControls();
@@ -34,5 +37,7 @@ private:
     std::uint64_t lastProfilesRevision_ = ~std::uint64_t(0);
     bool lastModal_ = false;
     std::unordered_map<std::string,std::string> cache_;
+    std::array<float, 8> sliderRatios_{};
+    std::array<std::string, kSkinColorCount> swatchColors_{};
 };
 } // namespace locus::app

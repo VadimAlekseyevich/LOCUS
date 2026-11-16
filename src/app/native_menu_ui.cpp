@@ -359,6 +359,24 @@ bool NativeMenuUi::ShowingResults() const noexcept {
 bool NativeMenuUi::ShowingSkin() const noexcept {
     return visiblePage_ == Page::Skin;
 }
+Rectangle NativeMenuUi::SkinColorWheelBounds() const noexcept {
+    if (!ShowingSkin() || !skinDocument_) return {};
+    if (auto* canvas = skinDocument_->GetElementById("skin-wheel-canvas"))
+        return {canvas->GetAbsoluteLeft(), canvas->GetAbsoluteTop(),
+                static_cast<float>(canvas->GetOffsetWidth()),
+                static_cast<float>(canvas->GetOffsetHeight())};
+    return {};
+}
+Rectangle NativeMenuUi::SkinColorWheelClipBounds() const noexcept {
+    if (!ShowingSkin() || !skinDocument_) return {};
+    if (auto* controls = skinDocument_->GetElementById("skin-controls")) {
+        if (auto* viewport = controls->GetParentNode())
+            return {viewport->GetAbsoluteLeft(), viewport->GetAbsoluteTop(),
+                    static_cast<float>(viewport->GetOffsetWidth()),
+                    static_cast<float>(viewport->GetOffsetHeight())};
+    }
+    return {};
+}
 Rectangle NativeMenuUi::SkinPreviewBounds() const noexcept {
     if (!ShowingSkin() || !skinDocument_) return {};
     if (auto* preview = skinDocument_->GetElementById("skin-preview-canvas"))
@@ -952,6 +970,7 @@ MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
     skinPresenter_.BeginFrame(draft, ui, input, events);
     skinPresenter_.Sync();
     PumpInput();
+    skinPresenter_.UpdatePointer(SkinColorWheelBounds());
     auto* focus = context_->GetFocusElement();
     const bool editing = focus && focus->GetTagName() == "input";
     if (editing && IsKeyPressed(KEY_ESCAPE)) {

@@ -18,7 +18,7 @@ struct SkinNumberRange {
 
 // Each PATH/PLAYER row is described exactly once here: its label,
 // field binding, widget type, numeric limits, and editing precision.
-// COLORS uses independent RGBA-channel controls.
+// COLORS uses the shared HSV wheel and hex/alpha input.
 struct SkinSetting {
     const char* label = "";
     SkinNumberRange numberRange{};
