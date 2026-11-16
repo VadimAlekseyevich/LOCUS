@@ -45,7 +45,10 @@
 .editor-tool-gap { pointer-events:none; }
 #editor-route-pad { position:absolute; left:748dp; top:181dp; width:184dp; height:175dp; display:flex; flex-direction:row; flex-wrap:wrap; gap:5dp; pointer-events:auto; }
 #editor-route-pad button { position:relative; flex:0 0 58dp; width:58dp; height:55dp; padding:4dp 2dp; font-size:25dp; color:#d5eeff; }
-#editor-route-pad .button-label { display:block; height:36dp; }
+#editor-route-pad .button-label { font-size:25dp; top:45%; }
+#editor-route-tools .button-label { font-size:24dp; }
+.editor-icon-label { font-family:LocusIcons; font-weight:normal;
+  color:#a2d8ee; }
 .editor-pad-count { position:absolute; right:5dp; bottom:1dp; font-size:10dp; color:#c9bbfa; }
 #editor-route-pad button.selected { background-color:#585281; border-color:#b5a4f3; }
 #editor-route-speed, #editor-route-path { position:absolute; left:748dp; width:184dp; height:31dp; pointer-events:auto; display:flex; flex-direction:row; align-items:center; gap:4dp; }
