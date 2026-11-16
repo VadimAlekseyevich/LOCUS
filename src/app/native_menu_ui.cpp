@@ -663,7 +663,8 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                                 double rate, bool playing,
                                 long long songTimeMs,
                                 const core::ChartEditor& draft,
-                                const GameSettings& settings) {
+                                const GameSettings& settings,
+                                const EditorSetView& setView) {
     if (!EditorAvailable()) return;
     Activate(Page::Editor);
     currentLibrary_ = nullptr;
@@ -685,7 +686,7 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     input.editor.nativeChrome = true;
     editorPresenter_.BeginFrame(ui, input);
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
-                          &draft, &settings);
+                          &draft, &settings, &setView);
     // The active RmlUi input is the only consumer of native character
     // events. The legacy chart controller receives no text that frame.
     const bool nativeTyping = EditorTextFocused();
@@ -784,7 +785,7 @@ void NativeMenuUi::SyncEditor(const EditorUiState& ui,
                               const EditorSetView& setView) {
     if (!ShowingEditor() || !EditorAvailable()) return;
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
-                          &draft, &settings);
+                          &draft, &settings, &setView);
     context_->Update();
 }
 

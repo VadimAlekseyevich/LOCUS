@@ -389,7 +389,7 @@ int main(int argc, char** argv) {
                     chartPlayback.Playing() && !chartPlayback.Paused(),
                     locus::app::detail::RouteTimeMs(editor,
                         static_cast<double>(editor.SelectedBeat())),
-                    editor, settings, editorSetView);
+                    editor, settings, editorSet.View());
             } else if (state.screen == Screen::Settings &&
                      nativeMenu.SettingsAvailable()) {
                 const bool exclusiveKeyboard =
@@ -984,7 +984,7 @@ int main(int argc, char** argv) {
                 editorClock.practiceRate,
                 editorClock.playing && !editorClock.paused,
                 locus::app::detail::RouteTimeMs(editor, editorClock.tick),
-                editor, settings);
+                editor, settings, editorSetView);
 #endif
         if (visibleState.screen == Screen::Editor &&
             editorChartPath != comparisonCacheChartPath) {
