@@ -106,6 +106,33 @@ bool Check(bool condition, const char* reason) {
     return condition;
 }
 
+// Visibility alone is insufficient: a caption can render at the bottom
+// border even while every element has a valid positive layout rectangle.
+// Check RmlUi's final physical line-box geometry, not source CSS strings.
+bool LabelCentered(Rml::Element* button, float tolerance = 3.0f) {
+    if (!button) return false;
+    Rml::Element* label = nullptr;
+    for (int i = 0; i < button->GetNumChildren(); ++i) {
+        auto* child = button->GetChild(i);
+        if (child && child->IsClassSet("button-label")) {
+            label = child;
+            break;
+        }
+    }
+    if (!label) return false;
+    const float labelCenter = label->GetAbsoluteTop() + 
+                              label->GetOffsetHeight() * 0.5f;
+    const float buttonCenter = button->GetAbsoluteTop() +
+                               button->GetOffsetHeight() * 0.5f;
+    if (std::abs(labelCenter - buttonCenter) > tolerance) {
+        std::cerr << "RML_LAYOUT_FAIL: off-center label on "
+                  << button->GetId() << " (delta="
+                  << (labelCenter - buttonCenter) << ")\n";
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 int main() {
@@ -219,6 +246,9 @@ int main() {
         ok &= Check(actions && play && editor && exit,
                     "HOME has real navigation controls");
         if (play && editor && exit && wordmark) {
+            ok &= Check(LabelCentered(play) && LabelCentered(editor) &&
+                        LabelCentered(exit),
+                        "HOME button captions are vertically centered");
             // Direct text updates must preserve the button's child node and
             // focusable identity, even when captions contain markup characters.
             auto* label = play->GetChild(0);
@@ -331,6 +361,16 @@ int main() {
         context->SetDensityIndependentPixelRatio(1.0f);
         context->Update();
         auto* canvas = editorDoc->GetElementById("editor-canvas");
+        for (const char* id : {"editor-back", "editor-tab-route",
+                               "editor-tool-mirror-h", "editor-tool-mirror-v",
+                               "editor-tool-rotate-ccw", "editor-tool-rotate-cw",
+                               "editor-tool-test", "editor-pad-7",
+                               "editor-pad-0", "editor-pad-1",
+                               "editor-pad-4", "editor-preview-play",
+                               "editor-preview-rate"}) {
+            ok &= Check(LabelCentered(editorDoc->GetElementById(id)),
+                        "EDITOR label centered inside its RmlUi button");
+        }
         for (const char* id : {"editor-tool-mirror-h", "editor-tool-mirror-v",
                                "editor-tool-rotate-ccw", "editor-tool-rotate-cw",
                                "editor-tool-test", "editor-pad-7", "editor-pad-0",

@@ -15,12 +15,14 @@ button { display:inline-block; position:relative; tab-index:auto;
   background-color:#30364e; border:1dp #666b94;
   border-radius:10dp; padding:8dp 12dp;
   transition:background-color 0.12s sine-out, border-color 0.12s sine-out, color 0.12s sine-out; }
-/* Buttons stay inline-block (RmlUi flex buttons can lose their glyphs).
-   The caption is positioned relative to the button's own padding box,
-   independent of all screen-specific button padding and supplementary badges. */
+/* RmlUi currently does not offset our absolute text with translateY().
+   Center the actual line box mathematically instead: top at half the
+   button, then move back half the label's own 1.1em line height.
+   Keep the button inline-block to preserve text rendering and focus. */
 .button-label { display:block; position:absolute;
-  left:0; right:0; top:50%; transform:translateY(-50%);
-  margin:0; min-width:0; max-width:100%;
+  left:0; right:0; top:50%; height:1.1em;
+  margin:-0.55em 0 0; padding:0;
+  min-width:0; max-width:100%;
   overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
   text-align:center; line-height:1.1; }
 button:hover { background-color:#414763; border-color:#a2d8ee; }
