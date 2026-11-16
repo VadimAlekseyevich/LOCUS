@@ -43,7 +43,7 @@
   text-align:left; font-size:11dp; }
 .skin-swatch .button-label { text-align:left; padding:0 25dp 0 1dp; }
 .skin-swatch-chip { display:block; position:absolute;
-  right:6dp; top:50%; transform:translateY(-50%);
+  right:6dp; top:50%; margin-top:-8dp;
   width:16dp; height:16dp; border:1dp #a6b0cf; }
 .skin-channel-heading, .skins-label { display:block; color:#acb6cb;
   font-size:11dp; letter-spacing:0.8dp; font-weight:750; padding:4dp 0; }
