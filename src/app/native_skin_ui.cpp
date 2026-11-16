@@ -110,10 +110,9 @@ void NativeSkinUi::RebuildControls() {
             html << "<button class='skin-swatch"
                  << (i == ui_->selectedColor ? " selected" : "")
                  << "' data-action='swatch' data-index='" << i
-                 << "'><span class='skin-swatch-chip' style='background-color:"
-                 << HexColor(SkinColor(*skin_, i)) << "'></span>"
-                 << "<span class='button-label'>" << Escape(SkinColorLabel(i))
-                 << "</span></button>";
+                 << "'><span class='button-label'>" << Escape(SkinColorLabel(i))
+                 << "</span><span class='skin-swatch-chip' style='background-color:"
+                 << HexColor(SkinColor(*skin_, i)) << "'></span></button>";
         }
         html << "</div><div class='skin-channel-heading'>RGBA CHANNELS</div>";
         for (int channel = 0; channel < 4; ++channel) {

@@ -21,16 +21,33 @@
   border-bottom:1dp #414962; }
 .skin-setting-name { display:block; flex:1; min-width:0; font-size:12dp;
   color:#d6ddf3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.skin-range { flex:0 0 32%; width:32%; height:30dp; }
+.skin-range { display:inline-block; flex:0 0 32%; width:32%; height:30dp;
+  cursor:pointer; }
+.skin-range sliderarrowdec, .skin-range sliderarrowinc {
+  width:0; height:0; }
+.skin-range slidertrack { height:8dp; margin-top:11dp; cursor:pointer;
+  background-color:#39425e; border:1dp #667295; border-radius:5dp; }
+.skin-range sliderprogress { height:6dp; margin-top:0;
+  background-color:#aea0ee; border-radius:4dp; }
+.skin-range sliderbar { width:16dp; height:16dp;
+  margin-top:-5dp; margin-left:-8dp; margin-right:-8dp;
+  background-color:#e1e9fb; border:2dp #8d80c3; border-radius:8dp;
+  cursor:pointer; }
+.skin-range sliderbar:hover { background-color:#ffffff;
+  border-color:#c3b7fc; }
+.skin-range sliderbar:active { background-color:#b6e5f3; }
 .skin-number { flex:0 0 73dp; width:73dp; height:34dp; background-color:#1b263c;
   border:1dp #647096; border-radius:6dp; font-family:Locus; font-size:12dp;
   color:#eef1fb; text-align:center; }
 .skin-setting-row button { flex:0 0 84dp; width:84dp; height:34dp; }
 .skin-swatches { display:flex; flex-direction:row; flex-wrap:wrap; gap:5dp; }
-.skin-swatch { display:block; flex:0 0 48%; width:48%; height:36dp;
+.skin-swatch { display:inline-block; position:relative;
+  flex:0 0 48%; width:48%; height:39dp;
   text-align:left; font-size:11dp; }
-.skin-swatch-chip { display:inline-block; width:16dp; height:16dp;
-  border:1dp #a6b0cf; margin-right:7dp; }
+.skin-swatch .button-label { text-align:left; padding:0 25dp 0 1dp; }
+.skin-swatch-chip { display:block; position:absolute;
+  right:6dp; top:50%; transform:translateY(-50%);
+  width:16dp; height:16dp; border:1dp #a6b0cf; }
 .skin-channel-heading, .skins-label { display:block; color:#acb6cb;
   font-size:11dp; letter-spacing:0.8dp; font-weight:750; padding:4dp 0; }
 .skin-channel-heading { margin-top:12dp; }
