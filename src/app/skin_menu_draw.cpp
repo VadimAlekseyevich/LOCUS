@@ -237,6 +237,7 @@ void DrawColorPickerWheel(const Skin& skin, const SkinUi& ui) {
 
 void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
     DrawColorPickerWheel(skin, ui);
+    const Color current = SkinColor(skin, ui.selectedColor);
     Label(font, "HEX / ALPHA", 347, 389, 14, kMuted);
     DrawInput(font, SkinHexRect(),
               ui.editingHex ? ui.hexBuffer : FormatSkinHex(current),
