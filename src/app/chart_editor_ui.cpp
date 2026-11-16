@@ -7,6 +7,7 @@
 #include "app/route_renderer.h"
 #include "app/viewport.h"
 #include "app/ui_button.h"
+#include "app/editor_vector_icons.h"
 
 #include <algorithm>
 #include <array>
@@ -49,67 +50,12 @@ void DirectionButton(Font font, Rectangle rect, const char* count,
     DrawUiButton(font, rect, count, EditorButtonStyle(tint), active);
 }
 
-// Vector icons, so Windows' Latin/Cyrillic font needs no arrow glyphs.
-enum class EditorIcon { FlipH, FlipV, RotateL, RotateR, Compare, Play, Pause, Restart, Previous, Next };
-void EditorGlyph(Rectangle bounds, EditorIcon icon, Color tint) {
-    const float x = bounds.x + bounds.width / 2;
-    const float y = bounds.y + bounds.height / 2;
-    const auto line = [&](float ax, float ay, float bx, float by) {
-        DrawLineEx({x+ax,y+ay},{x+bx,y+by},2.5f,tint);
-    };
-    switch (icon) {
-        case EditorIcon::FlipH:
-            line(0,-12,0,12); line(-13,0,13,0);
-            line(-13,0,-6,-6); line(-13,0,-6,6);
-            line(13,0,6,-6); line(13,0,6,6); break;
-        case EditorIcon::FlipV:
-            line(-12,0,12,0); line(0,-13,0,13);
-            line(0,-13,-6,-6); line(0,-13,6,-6);
-            line(0,13,-6,6); line(0,13,6,6); break;
-        case EditorIcon::RotateL:
-        case EditorIcon::RotateR:
-            DrawRing({x,y},8,10,-70,210,28,tint);
-            if (icon == EditorIcon::RotateL)
-                DrawTriangle({x-12,y-10},{x-4,y-12},{x-8,y-3},tint);
-            else
-                DrawTriangle({x+12,y-10},{x+8,y-3},{x+4,y-12},tint);
-            break;
-        case EditorIcon::Compare:
-            DrawRectangleRoundedLinesEx({x-13,y-12,18,20},.2f,6,2,tint);
-            DrawRectangleRoundedLinesEx({x-4,y-5,18,20},.2f,6,2,tint); break;
-        case EditorIcon::Play:
-            DrawTriangle({x-7,y-11},{x-7,y+11},{x+11,y},tint); break;
-        case EditorIcon::Pause:
-            DrawRectangleRec({x-9,y-10,6,20},tint);
-            DrawRectangleRec({x+3,y-10,6,20},tint); break;
-        case EditorIcon::Restart:
-            DrawRing({x,y},9,11,-50,245,28,tint);
-            DrawTriangle({x-12,y-10},{x-4,y-10},{x-9,y-2},tint); break;
-        case EditorIcon::Previous:
-            line(6,-9,-5,0);line(-5,0,6,9);break;
-        case EditorIcon::Next:
-            line(-6,-9,5,0);line(5,0,-6,9);break;
-    }
-}
 void EditorIconButton(Rectangle bounds, EditorIcon icon,
                       Color color, bool selected=false) {
     auto style = EditorButtonStyle(color);
     style.roundness = UiRoundness(bounds,9);
     DrawUiButtonChrome(bounds,style,selected);
     EditorGlyph(bounds,icon,color);
-}
-void HeadingArrow(Rectangle bounds, core::Heading heading, Color tint) {
-    constexpr float dx[]{0,1,0,-1,1,1,-1,-1};
-    constexpr float dy[]{-1,0,1,0,-1,1,1,-1};
-    const auto i=static_cast<int>(heading);
-    if(i<0||i>=8)return;
-    const float scale=core::IsDiagonal(heading)?.7071f:1.0f;
-    const float x=dx[i]*scale, y=dy[i]*scale;
-    const Vector2 center{bounds.x+bounds.width/2,bounds.y+bounds.height*.45f};
-    const Vector2 end{center.x+x*13,center.y+y*13};
-    DrawLineEx({center.x-x*10,center.y-y*10},end,2.7f,tint);
-    DrawLineEx(end,{end.x-x*6-y*6,end.y-y*6+x*6},2.4f,tint);
-    DrawLineEx(end,{end.x-x*6+y*6,end.y-y*6-x*6},2.4f,tint);
 }
 void EditorToolTip(Font font, Rectangle button, const std::string& caption) {
     const Vector2 mouse = EditorVirtualMouse(

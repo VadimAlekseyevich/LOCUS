@@ -2,6 +2,7 @@
 
 #include "app/menu_ui.h"
 #include "app/viewport.h"
+#include "app/editor_vector_icons.h"
 #include "app/rml_ui_text.h"
 #include "app/skin_controls.h"
 #include "core/utf8.h"
@@ -998,6 +999,42 @@ void NativeMenuUi::Render() {
     context_->Render();
     renderer_.EnableScissorRegion(false);
     EndBlendMode();
+
+    // RmlUi lays out/hit-tests the editor controls; raylib renders their
+    // vector glyphs using the same primitives as the original editor.
+    // Unicode arrows are not consistently present in the menu font.
+    if (visiblePage_ != Page::Editor || !editorDocument_) return;
+    const auto* route = editorDocument_->GetElementById("editor-route-ui");
+    if (!route || route->GetDisplay() == Rml::Style::Display::None) return;
+    const auto bounds = [](const Rml::Element* element) -> Rectangle {
+        return {element->GetAbsoluteLeft(), element->GetAbsoluteTop(),
+                static_cast<float>(element->GetOffsetWidth()),
+                static_cast<float>(element->GetOffsetHeight())};
+    };
+    struct ToolGlyph { const char* id; EditorIcon icon; };
+    constexpr ToolGlyph tools[] = {
+        {"editor-tool-mirror-h", EditorIcon::FlipH},
+        {"editor-tool-mirror-v", EditorIcon::FlipV},
+        {"editor-tool-rotate-ccw", EditorIcon::RotateL},
+        {"editor-tool-rotate-cw", EditorIcon::RotateR},
+        {"editor-tool-test", EditorIcon::Play}
+    };
+    for (const auto& item : tools) {
+        const auto* element = editorDocument_->GetElementById(item.id);
+        if (!element) continue;
+        const Rectangle rect = bounds(element);
+        const float s = std::min(rect.width / 42.0f, rect.height / 42.0f);
+        EditorGlyph(rect, item.icon, {162, 218, 241, 255}, s);
+    }
+    for (int i = 0; i < 8; ++i) {
+        const auto* element = editorDocument_->GetElementById(
+            "editor-pad-" + std::to_string(i));
+        if (!element) continue;
+        const Rectangle rect = bounds(element);
+        const float s = std::min(rect.width / 58.0f, rect.height / 55.0f);
+        HeadingArrow(rect, static_cast<core::Heading>(i),
+                     {213, 238, 255, 255}, s);
+    }
 }
 
 } // namespace locus::app

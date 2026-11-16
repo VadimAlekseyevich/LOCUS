@@ -331,6 +331,14 @@ int main() {
         context->SetDensityIndependentPixelRatio(1.0f);
         context->Update();
         auto* canvas = editorDoc->GetElementById("editor-canvas");
+        for (const char* id : {"editor-tool-mirror-h", "editor-tool-mirror-v",
+                               "editor-tool-rotate-ccw", "editor-tool-rotate-cw",
+                               "editor-tool-test", "editor-pad-7", "editor-pad-0",
+                               "editor-pad-4", "editor-pad-3", "editor-pad-1",
+                               "editor-pad-6", "editor-pad-2", "editor-pad-5"}) {
+            const auto* icon = editorDoc->GetElementById(id);
+            ok &= Check(icon != nullptr, "vector glyph button exists");
+        }
         ok &= Check(HasButtonLabels(editorDoc),
                     "EDITOR buttons contain explicit text elements");
         renderer.texturedDraws = 0;
