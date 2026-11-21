@@ -437,8 +437,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Skin editorSkin=skin;
         editorSkin.lookaheadMs=settings.editorPreviewLengthMs;
         DrawComparisonPreviews(font,*comparisons,previewSeconds,
-            settings.editorPreviewSpeed/
-                static_cast<float>(std::max(0.1,playbackSpeed)),editorSkin);
+            settings.editorPreviewSpeed, editorSkin);
         const int focused=std::clamp(ui.comparisonFocusedSlot,0,
                                     comparisons->count-1);
         const Rectangle focusedBounds=ComparisonPreviewBounds(

@@ -243,7 +243,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
 
     // No wordmark or global help text during scoring: only field + hits.
     if (state.screen != Screen::Play && state.screen != Screen::Home &&
-        state.screen != Screen::SongSelect && state.screen != Screen::Settings) {
+        state.screen != Screen::SongSelect && state.screen != Screen::Settings &&
+        state.screen != Screen::Results) {
         DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
                       Color{223, 225, 238, 255});
     }

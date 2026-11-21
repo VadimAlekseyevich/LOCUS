@@ -70,8 +70,7 @@ void NativeResultsUi::SetText(const char* id, const std::string& value) {
 }
 void NativeResultsUi::Sync() {
     if (!document_ || !grades_ || !history_) return;
-    SetText("results-heading", historical_ ? "SAVED RESULT" : "CHART COMPLETE");
-    SetText("results-song", selected_ ? selected_->songTitle : "LOCUS");
+    SetText("results-song", selected_ ? selected_->songTitle : chartTitle_);
     SetText("results-chart", selected_ ? selected_->chartTitle : chartTitle_);
     SetText("results-date", selected_
         ? FormatRunTimestamp(selected_->completedAtMs) : "");

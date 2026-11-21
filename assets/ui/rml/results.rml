@@ -9,8 +9,7 @@
  </div>
  <div class="results-columns">
   <div class="panel results-panel results-main">
-   <div><div id="results-heading" class="results-eyebrow">CHART COMPLETE</div>
-    <div id="results-song" class="results-song">LOCUS</div>
+   <div><div id="results-song" class="results-song">LOCUS</div>
     <div id="results-chart" class="results-chart">ORIGINAL</div>
     <div id="results-date" class="results-muted"></div></div>
    <div><div class="results-muted">ACCURACY</div>
