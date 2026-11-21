@@ -35,7 +35,7 @@
 #editor-preview-rate { display:block; width:100%; height:40dp;
   border:1dp #626785; border-radius:9dp; background-color:#2a3046;
   color:#cfc1fa; font-family:Locus; font-size:13dp; font-weight:750;
-  text-align:center; padding:0 9dp; tab-index:auto; }
+  text-align:center; line-height:38dp; padding:0 9dp; tab-index:auto; }
 #editor-preview-rate:focus { border:2dp #b5a4f3; background-color:#323b57; }
 .editor-rate-unit { position:absolute; right:12dp; top:50%; margin-top:-0.55em;
   line-height:1.1; color:#cfc1fa; font-size:12dp; pointer-events:none; }
