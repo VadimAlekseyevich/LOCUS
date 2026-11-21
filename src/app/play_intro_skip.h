@@ -30,10 +30,21 @@ inline std::optional<double> FirstNoteLeadStartSeconds(
     const double firstBeat = core::TempoBeatAtMs(tempo, firstNoteMs);
     const double beforeLead = core::TempoBeatAtMs(
         tempo, firstNoteMs - kMinimumFirstNoteLeadSeconds * 1000.0);
-    const double measures = std::max(1.0, std::ceil(
+    double measures = std::max(1.0, std::ceil(
         (firstBeat - beforeLead - 1e-9) / kBeatsPerMeasure));
-    const double start = core::TempoMsAtBeat(
+    double start = core::TempoMsAtBeat(
         tempo, firstBeat - measures * kBeatsPerMeasure) / 1000.0;
+    // BPM markers are new local downbeats. Their reserved fractional-beat
+    // indices can make a beat-distance calculation slightly shorter in REAL
+    // time than requested; guarantee the full second on the audio clock.
+    for (int guard = 0; guard < 4 &&
+         std::isfinite(start) &&
+         start > firstNoteMs / 1000.0 - kMinimumFirstNoteLeadSeconds + 1e-8;
+         ++guard) {
+        measures += 1.0;
+        start = core::TempoMsAtBeat(
+            tempo, firstBeat - measures * kBeatsPerMeasure) / 1000.0;
+    }
     if (!std::isfinite(start)) return std::nullopt;
     return start;
 }

@@ -90,8 +90,9 @@ int main() {
                 "adequate existing silent offset is preserved");
     early.tempoMap = {{0, 120.0}, {250, 240.0}};
     early.turns.front().timeMs = 500;
-    ok &= Check(std::abs(app::ScoredChartStartSeconds(early, 0.0) + 1.25) < 1e-9,
-                "early note lead integrates authored tempo changes");
+    ok &= Check(std::abs(app::ScoredChartStartSeconds(early, 0.0) + 1.0) < 1e-9 &&
+                0.5 - app::ScoredChartStartSeconds(early, 0.0) >= 1.0,
+                "early note lead integrates BPM changes with a full second guaranteed");
     early.tempoMap.clear();
     early.turns.clear();
     ok &= Check(app::ScoredChartStartSeconds(early, 0.0) == 0.0,
