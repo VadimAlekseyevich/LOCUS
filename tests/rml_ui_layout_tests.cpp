@@ -366,8 +366,7 @@ int main() {
                                "editor-tool-rotate-ccw", "editor-tool-rotate-cw",
                                "editor-tool-test", "editor-pad-7",
                                "editor-pad-0", "editor-pad-1",
-                               "editor-pad-4", "editor-preview-play",
-                               "editor-preview-rate"}) {
+                               "editor-pad-4", "editor-preview-play"}) {
             ok &= Check(LabelCentered(editorDoc->GetElementById(id)),
                         "EDITOR label centered inside its RmlUi button");
         }
@@ -392,6 +391,9 @@ int main() {
         auto* audio = editorDoc->GetElementById("editor-tab-audio");
         auto* footer = editorDoc->GetElementById("editor-footer-playback");
         auto* rate = editorDoc->GetElementById("editor-preview-rate");
+        ok &= Check(rate && rate->GetTagName() == "input" &&
+                    rate->GetAttribute<Rml::String>("maxlength", "") == "3",
+                    "EDITOR rate is a numeric-entry input, not a dropdown button");
         auto* time = editorDoc->GetElementById("editor-preview-time");
         auto* compass = editorDoc->GetElementById("editor-route-pad");
         auto* toolrail = editorDoc->GetElementById("editor-route-tools");
