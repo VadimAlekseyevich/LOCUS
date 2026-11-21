@@ -36,7 +36,9 @@ public:
     int TicksPerBeat() const noexcept { return ticksPerBeat_; }
     double UnitsPerSecond() const noexcept { return unitsPerSecond_; }
 
-    // O(log event count), clamped to the chart's playable time span.
+    // O(log event count). Before the chart's authored start, extrapolate
+    // backwards along the initial heading: silent preroll is genuine
+    // constant-speed movement, not a frozen marker or a shifted note.
     GridPoint PositionAt(double songSeconds) const noexcept;
     // O(log event count + visible runs). Returned spans preserve every
     // authored event boundary, including repeated same-direction notes.
@@ -60,6 +62,7 @@ private:
     std::vector<TimedTurn> turns_;
     GridPoint start_{};
     GridPoint end_{};
+    Heading initialHeading_ = Heading::Right;
     double startSeconds_ = 0.0;
     double endSeconds_ = 0.0;
     double unitsPerSecond_ = 0.0;

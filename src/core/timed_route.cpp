@@ -40,6 +40,7 @@ bool TimedRoute::Compile(const Chart& chart, double offsetSeconds) {
         return false;
 
     ticksPerBeat_ = chart.ticksPerBeat;
+    initialHeading_ = chart.initialHeading;
     unitsPerSecond_ = chart.bpm * chart.ticksPerBeat / 60.0;
     if (!std::isfinite(unitsPerSecond_) || unitsPerSecond_ <= 0.0)
         return false;
@@ -106,7 +107,10 @@ GridPoint TimedRoute::PointOn(const Run& run, double seconds) const noexcept {
 
 GridPoint TimedRoute::PositionAt(double songSeconds) const noexcept {
     if (!ready_ || !std::isfinite(songSeconds)) return start_;
-    if (songSeconds <= startSeconds_) return start_;
+    if (songSeconds < startSeconds_)
+        return Advance(start_, initialHeading_,
+                       (songSeconds - startSeconds_) * unitsPerSecond_);
+    if (songSeconds == startSeconds_) return start_;
     if (songSeconds >= endSeconds_) return end_;
     const auto after = std::upper_bound(runs_.begin(), runs_.end(),
         songSeconds, [](double time, const Run& run) {
@@ -131,6 +135,16 @@ void TimedRoute::Window(double startSeconds, double endSeconds,
     if (!ready_ || !std::isfinite(startSeconds) ||
         !std::isfinite(endSeconds) || endSeconds <= startSeconds)
         return;
+    // Include the pre-audio, pre-chart interval in the SAME route window
+    // and coordinate system. The camera, player and line all consume this
+    // single geometry; no fabricated note or offset compensation.
+    if (startSeconds < startSeconds_) {
+        const double endPre = std::min(endSeconds, startSeconds_);
+        if (endPre > startSeconds) {
+            visible.push_back({startSeconds, endPre,
+                PositionAt(startSeconds), PositionAt(endPre), initialHeading_});
+        }
+    }
     const double first = std::max(startSeconds, startSeconds_);
     const double last = std::min(endSeconds, endSeconds_);
     if (last <= first) return;

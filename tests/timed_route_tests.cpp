@@ -42,6 +42,36 @@ int main() {
                 Near(after.x, expectedTickPosition) &&
                 Near(after.y, -0.001 * 130.0 / 60.0),
                 "turn happens at exact timeMs, never the rounded editor tick");
+    // At chart zero with a turn immediately on the first beat, the player
+    // must move in SILENCE before the MP3 starts. The pre-roll trajectory
+    // connects exactly to the authored first turn at t=0, with no jump.
+    core::Chart early = chart;
+    early.bpm = 120.0;
+    early.turns = {{0, core::Heading::Up, 0}};
+    core::TimedRoute earlyRoute;
+    ok &= Check(earlyRoute.Compile(early, 0.0), "compile early first turn");
+    const auto twoSecondsBefore = earlyRoute.PositionAt(-2.0);
+    const auto oneSecondBefore = earlyRoute.PositionAt(-1.0);
+    const auto atStart = earlyRoute.PositionAt(0.0);
+    ok &= Check(Near(twoSecondsBefore.x, -4.0) &&
+                Near(oneSecondBefore.x, -2.0) &&
+                Near(atStart.x, 0.0) &&
+                Near(twoSecondsBefore.y, 0.0) &&
+                Near(oneSecondBefore.y, 0.0),
+                "silent preroll moves at authored initial heading and speed");
+    const auto previewBeforeAudio = app::MakeRoutePreview(
+        earlyRoute, -0.5, 1000.0f);
+    ok &= Check(previewBeforeAudio.ready &&
+                previewBeforeAudio.spans.size() == 2 &&
+                Near(previewBeforeAudio.spans.front().toSeconds, 0.0) &&
+                Near(previewBeforeAudio.spans.back().fromSeconds, 0.0) &&
+                previewBeforeAudio.spans.front().heading ==
+                    core::Heading::Right &&
+                previewBeforeAudio.spans.back().heading ==
+                    core::Heading::Up &&
+                Near(previewBeforeAudio.spans.front().to.x,
+                     previewBeforeAudio.spans.back().from.x),
+                "visible lead-in line connects exactly to first scored turn");
     const auto snapshot = app::MakeRoutePreview(route, 0.49, 20.0f);
     ok &= Check(snapshot.ready &&
                 Near(snapshot.marker.x, route.PositionAt(0.49).x) &&
