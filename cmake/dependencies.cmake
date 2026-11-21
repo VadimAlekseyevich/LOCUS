@@ -63,3 +63,27 @@ if(LOCUS_ENABLE_RMLUI)
     )
     FetchContent_MakeAvailable(rmlui)
 endif()
+
+# SoundTouch 2.3.3 (LGPL-2.1-or-later), pinned for deterministic builds.
+# Compile only the DSP core: the upstream CMake's DLL wrapper isn't needed.
+FetchContent_Declare(soundtouch_source
+    GIT_REPOSITORY https://github.com/stenzek/soundtouch.git
+    GIT_TAG b281fda49645c158c2085e1f2e0c3b82c84379ac
+)
+FetchContent_GetProperties(soundtouch_source)
+if(NOT soundtouch_source_POPULATED)
+    FetchContent_Populate(soundtouch_source)
+endif()
+set(LOCUS_SOUNDTOUCH_SOURCES
+    AAFilter.cpp BPMDetect.cpp cpu_detect_x86.cpp FIFOSampleBuffer.cpp
+    FIRFilter.cpp InterpolateCubic.cpp InterpolateLinear.cpp
+    InterpolateShannon.cpp mmx_optimized.cpp PeakFinder.cpp
+    RateTransposer.cpp SoundTouch.cpp sse_optimized.cpp TDStretch.cpp
+)
+list(TRANSFORM LOCUS_SOUNDTOUCH_SOURCES PREPEND
+    "${soundtouch_source_SOURCE_DIR}/source/SoundTouch/")
+add_library(locus_soundtouch STATIC ${LOCUS_SOUNDTOUCH_SOURCES})
+target_include_directories(locus_soundtouch PUBLIC "${soundtouch_source_SOURCE_DIR}/include")
+target_include_directories(locus_soundtouch PRIVATE
+    "${soundtouch_source_SOURCE_DIR}/include/soundtouch")
+target_compile_definitions(locus_soundtouch PRIVATE SOUNDTOUCH_FLOAT_SAMPLES=1)

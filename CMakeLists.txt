@@ -65,6 +65,7 @@ add_executable(locus
     src/app/audio_device.cpp
     src/app/menu_music_preview.cpp
     src/app/local_music.cpp
+    src/app/pitch_preserving_stream.cpp
     src/app/local_file_io.cpp
     src/app/music_picker.cpp
     src/app/chart_file.cpp
@@ -135,7 +136,7 @@ add_custom_command(TARGET locus POST_BUILD
         "${PROJECT_SOURCE_DIR}/assets/ui/app-icon.png"
         "$<TARGET_FILE_DIR:locus>/assets/ui/app-icon.png"
     VERBATIM)
-target_link_libraries(locus PRIVATE locus_core raylib nlohmann_json::nlohmann_json)
+target_link_libraries(locus PRIVATE locus_core raylib locus_soundtouch nlohmann_json::nlohmann_json)
 if(WIN32)
     target_link_libraries(locus PRIVATE comdlg32 user32)
 endif()
@@ -599,4 +600,19 @@ if(LOCUS_BUILD_TESTS)
     target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_judgement_tests PRIVATE locus_core)
     add_test(NAME locus_turn_judgement COMMAND locus_judgement_tests)
+
+    # Test executables compile LocalMusic directly to mock the audio device.
+    # Keep its pitch-preserving backend linked in all those same targets.
+    foreach(test_target IN ITEMS
+            locus_listen_session_tests
+            locus_editor_file_actions_tests
+            locus_editor_session_tests
+            locus_editor_document_tests
+            locus_session_transition_tests
+            locus_quit_media_tests
+            locus_library_playback_tests)
+        target_sources(${test_target} PRIVATE
+            src/app/pitch_preserving_stream.cpp)
+        target_link_libraries(${test_target} PRIVATE locus_soundtouch)
+    endforeach()
 endif()

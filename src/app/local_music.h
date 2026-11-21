@@ -5,10 +5,12 @@
 #include "raylib.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace locus::app {
+class PitchPreservingStream;
 
 // Plays a user-selected local WAV/MP3 without inventing a chart.
 // Borrows the raylib audio device from AudioDevice and never closes it.
@@ -50,6 +52,10 @@ private:
     core::SongClock clock_;
     // Raylib's memory stream borrows these bytes until UnloadMusicStream().
     std::vector<std::uint8_t> fileBytes_;
+    // Lazily decoded on sub-100% playback, keeps pitch at 1.0.
+    std::unique_ptr<PitchPreservingStream> stretch_;
+    std::string sourceFormat_;
+    bool activeStretch_ = false;
     Music music_{};
     std::string displayName_;
     std::string error_;
