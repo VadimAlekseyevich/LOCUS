@@ -30,14 +30,16 @@
   display:flex; flex-direction:row; gap:9dp; }
 #editor-footer-rate-time button { height:40dp; border-radius:9dp;
   padding:2dp 3dp; font-weight:750; font-size:12dp; }
-#editor-preview-rate { width:93dp; }
+#editor-rate-control { display:flex; position:relative; width:93dp;
+  height:40dp; flex:0 0 93dp; align-items:center; }
+#editor-preview-rate { display:block; width:100%; height:40dp;
+  border:1dp #626785; border-radius:9dp; background-color:#2a3046;
+  color:#cfc1fa; font-family:Locus; font-size:12dp; font-weight:750;
+  text-align:center; padding:3dp 24dp 3dp 6dp; tab-index:auto; }
+#editor-preview-rate:focus { border:2dp #b5a4f3; background-color:#323b57; }
+.editor-rate-unit { position:absolute; right:14dp; top:12dp;
+  color:#cfc1fa; font-size:12dp; pointer-events:none; }
 #editor-preview-time { width:105dp; }
-#editor-rate-popup { position:absolute; left:725dp; top:341dp;
-  width:93dp; padding:4dp; border:1dp #b5a4f3;
-  border-radius:9dp; background-color:#20263b; z-index:10;
-  flex-direction:column; gap:2dp; }
-.editor-rate-choice { height:24dp; min-height:24dp; padding:1dp;
-  font-size:11dp; font-weight:750; }
 
 #editor-route-ui { position:absolute; left:0; top:0; width:960dp; height:540dp; pointer-events:none; }
 #editor-route-tools { position:absolute; left:52dp; top:181dp; width:42dp; height:272dp; display:flex; flex-direction:column; gap:4dp; pointer-events:auto; }

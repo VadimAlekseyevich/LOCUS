@@ -68,15 +68,8 @@
     <button id="editor-preview-restart" class="quiet" data-action="preview-restart"><span class="button-label">RST</span></button>
   </div>
   <div id="editor-footer-rate-time">
-    <button id="editor-preview-rate" class="quiet" data-action="rate-toggle"><span class="button-label">100%</span></button>
+    <div id="editor-rate-control"><input id="editor-preview-rate" type="text" value="100" data-kind="preview-rate" maxlength="3"/><span class="editor-rate-unit">%</span></div>
     <button id="editor-preview-time" class="quiet" data-action="time-copy"><span class="button-label">0 MS</span></button>
-  </div>
-  <div id="editor-rate-popup" style="display:none;">
-    <button class="editor-rate-choice quiet" data-action="rate" data-index="0"><span class="button-label">100%</span></button>
-    <button class="editor-rate-choice quiet" data-action="rate" data-index="1"><span class="button-label">75%</span></button>
-    <button class="editor-rate-choice quiet" data-action="rate" data-index="2"><span class="button-label">50%</span></button>
-    <button class="editor-rate-choice quiet" data-action="rate" data-index="3"><span class="button-label">25%</span></button>
-    <button class="editor-rate-choice quiet" data-action="rate" data-index="4"><span class="button-label">10%</span></button>
   </div>
 </div>
 </body>

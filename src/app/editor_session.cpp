@@ -67,9 +67,12 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
             editor_.Data().route.lengthBeats - 1);
     }
     constexpr double speeds[] = {1.0, 0.75, 0.5, 0.25, 0.1};
-    if (action.speedIndex >= 0 && action.speedIndex < 5) {
+    if (input.speedPercent >= 1 && input.speedPercent <= 100) {
+        playback_.SetSpeed(input.speedPercent / 100.0, now);
+        status_ = "PREVIEW SPEED " + std::to_string(input.speedPercent) + "%";
+    } else if (action.speedIndex >= 0 && action.speedIndex < 5) {
         playback_.SetSpeed(speeds[action.speedIndex], now);
-        status_ = "PREVIEW SPEED CHANGED - AUDIO PITCH WILL ALSO CHANGE";
+        status_ = "PREVIEW SPEED CHANGED";
     }
     const bool selectionChanged = editor_.SelectedBeat() != beforeBeat;
     // Explicit navigation/seek ends the temporary exact-time focus anchor.

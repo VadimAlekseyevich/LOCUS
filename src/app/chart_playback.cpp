@@ -16,7 +16,7 @@ void ChartPlayback::Configure(
 }
 
 void ChartPlayback::SetSpeed(double fraction, double monotonicSeconds) {
-    if (!std::isfinite(fraction) || fraction < 0.1 || fraction > 1.0) return;
+    if (!std::isfinite(fraction) || fraction < 0.01 || fraction > 1.0) return;
     speed_ = fraction;
     clock_.SetRate(fraction, monotonicSeconds);
     audio_.SetSpeed(fraction, monotonicSeconds);

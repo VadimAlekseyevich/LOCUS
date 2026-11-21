@@ -117,7 +117,7 @@ void LocalMusic::SetVolume(float level) {
 }
 
 void LocalMusic::SetSpeed(double fraction, double monotonicSeconds) {
-    if (!std::isfinite(fraction) || fraction < 0.1 || fraction > 1.0) return;
+    if (!std::isfinite(fraction) || fraction < 0.01 || fraction > 1.0) return;
     speed_ = fraction;
     clock_.SetRate(fraction, monotonicSeconds);
     if (ready_) SetMusicPitch(music_, static_cast<float>(fraction));

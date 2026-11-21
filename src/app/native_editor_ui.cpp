@@ -33,16 +33,21 @@ std::string EscapeRml(const std::string& value) {
     }
     return out;
 }
-constexpr std::array<double, 5> kPreviewRates{1.0, 0.75, 0.5, 0.25, 0.1};
-constexpr std::array<const char*, 5> kPreviewLabels{
-    "100%", "75%", "50%", "25%", "10%"
-};
+bool ParsePercent(const std::string& raw, int& result) noexcept {
+    if (raw.empty() || raw.size() > 3) return false;
+    int value = 0;
+    for (const unsigned char c : raw) {
+        if (c < '0' || c > '9') return false;
+        value = value * 10 + static_cast<int>(c - '0');
+    }
+    result = std::clamp(value, 1, 100);
+    return true;
+}
 } // namespace
 
 void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     document_ = document;
     textCache_.clear();
-    rateOpen_ = false;
     suppressClick_ = false;
     activeSetId_.clear();
     setListSignature_.clear();
@@ -76,12 +81,15 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     SetText("editor-chart-name", title);
     SetText("editor-dirty", dirty ? "*" : "");
     SetText("editor-preview-play", running ? "PAUSE" : "PLAY");
-    int choice = 0;
-    for (int i = 0; i < static_cast<int>(kPreviewRates.size()); ++i) {
-        if (std::abs(rate - kPreviewRates[static_cast<std::size_t>(i)]) < 0.005)
-            choice = i;
+    lastRatePercent_ = std::clamp(
+        static_cast<int>(std::lround(rate * 100.0)), 1, 100);
+    if (auto* control = dynamic_cast<Rml::ElementFormControlInput*>(
+            document_->GetElementById("editor-preview-rate"))) {
+        const std::string number = std::to_string(lastRatePercent_);
+        if (control != document_->GetContext()->GetFocusElement() &&
+            control->GetValue() != number)
+            control->SetValue(number);
     }
-    SetText("editor-preview-rate", kPreviewLabels[static_cast<std::size_t>(choice)]);
     SetText("editor-preview-time", std::to_string(timeMs) + " MS");
     if (settings) {
         SetText("editor-speed-label", std::to_string(
@@ -161,12 +169,6 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
                 list->SetInnerRML(html.str());
         }
     }
-    if (rateOpen_ != ui.rateDropdownOpen) {
-        if (auto* popup = document_->GetElementById("editor-rate-popup"))
-            popup->SetProperty("display",
-                ui.rateDropdownOpen ? "flex" : "none");
-        rateOpen_ = ui.rateDropdownOpen;
-    }
     const bool textEditing = ui.EditingText();
     if (lastTextEditing_ != static_cast<int>(textEditing)) {
         for (const char* id : {"editor-back", "editor-tab-set",
@@ -184,6 +186,20 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
 }
 void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     if (!ui_ || !input_ || suppressClick_) return;
+    if (event.GetType() == "change" &&
+        event.GetTargetElement() &&
+        event.GetTargetElement()->GetId() == "editor-preview-rate") {
+        auto* control = dynamic_cast<Rml::ElementFormControlInput*>(
+            event.GetTargetElement());
+        int percent = 0;
+        if (control && ParsePercent(control->GetValue(), percent)) {
+            input_->editor.speedPercent = percent;
+            control->SetValue(std::to_string(percent));
+        } else if (control) {
+            control->SetValue(std::to_string(lastRatePercent_));
+        }
+        return;
+    }
     if (event.GetType() == "change" && ui_->tab == EditorTab::Set) {
         auto* changed = dynamic_cast<Rml::ElementFormControlInput*>(
             event.GetTargetElement());
@@ -222,14 +238,6 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     } else if (action == "preview-restart") {
         ui_->rateDropdownOpen = false;
         input_->editor.previewRestart = true;
-    } else if (action == "rate-toggle") {
-        ui_->rateDropdownOpen = !ui_->rateDropdownOpen;
-    } else if (action == "rate") {
-        const int index = target->GetAttribute<int>("data-index", -1);
-        if (index >= 0 && index < static_cast<int>(kPreviewRates.size())) {
-            input_->editor.speedIndex = index;
-            ui_->rateDropdownOpen = false;
-        }
     } else if (action == "set-difficulty") {
         input_->editor.selectedDifficulty =
             target->GetAttribute<int>("data-index", -1);

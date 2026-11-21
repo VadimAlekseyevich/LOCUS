@@ -39,7 +39,7 @@ private:
     // its later mouse-up (RmlUi dispatches clicks on release).
     bool suppressClick_ = false;
     std::unordered_map<std::string, std::string> textCache_;
-    bool rateOpen_ = false;
+    int lastRatePercent_ = 100;
     std::string activeSetId_, setListSignature_;
     int lastTab_ = -1, lastTextEditing_ = -1;
 };

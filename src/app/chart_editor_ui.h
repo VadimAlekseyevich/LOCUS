@@ -58,7 +58,8 @@ struct EditorControls {
     // Legacy raylib hitboxes are forbidden in that mode, but hotkeys and
     // note/tempo editing retain their original semantics.
     bool nativeChrome = false;
-    int speedIndex = -1; // 0..4: 100, 75, 50, 25, 10 percent.
+    int speedIndex = -1; // Legacy speed key bindings.
+    int speedPercent = 0; // RmlUi numeric transport rate, 1..100; 0=no change.
     std::string typedUtf8;
 };
 
