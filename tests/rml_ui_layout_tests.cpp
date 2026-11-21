@@ -399,7 +399,7 @@ int main() {
             // Real RmlUi text editing must support replacing the value in one
             // gesture and a temporarily empty field (unlike the old immediate
             // clamp-on-change behavior).
-            const auto* parent = control->GetParentNode();
+            auto* parent = control->GetParentNode();
             ok &= Check(parent && std::abs(
                             control->GetAbsoluteLeft() +
                             control->GetOffsetWidth() * 0.5f -
