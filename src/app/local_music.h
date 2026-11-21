@@ -16,7 +16,7 @@ class PitchPreservingStream;
 // Borrows the raylib audio device from AudioDevice and never closes it.
 class LocalMusic {
 public:
-    LocalMusic() = default;
+    LocalMusic() noexcept;
     LocalMusic(const LocalMusic&) = delete;
     LocalMusic& operator=(const LocalMusic&) = delete;
     ~LocalMusic();

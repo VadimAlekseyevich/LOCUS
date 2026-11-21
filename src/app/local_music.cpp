@@ -15,6 +15,10 @@
 
 namespace locus::app {
 
+// Out-of-line construction keeps unique_ptr<PitchPreservingStream>'s
+// exception-unwind destructor in a TU with a complete definition (MSVC).
+LocalMusic::LocalMusic() noexcept = default;
+
 LocalMusic::~LocalMusic() {
     Shutdown();
 }
