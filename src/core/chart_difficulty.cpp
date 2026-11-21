@@ -151,6 +151,7 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     coordinationSamples.reserve(n);
     readingSamples.reserve(n);
     double previousInterval = 0.0;
+    int sharedKeyStreak = 0;
     for (std::size_t i = 0; i < n; ++i) {
         Note& cur = notes[i];
         if (i == 0) continue;
@@ -182,6 +183,29 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
             (repeated && dt < 0.19 ? 0.52 : 0.0);
         cur.coordination *= std::clamp(0.55 / dt, 0.30, 1.8);
 
+        // A diagonal requires two simultaneous physical keys. If the NEXT
+        // note reuses either key, that finger must be released/retriggered
+        // while the previous chord is still being processed. This is not
+        // equivalent to two unrelated notes or a full key-set switch.
+        //
+        // Diagonal -> cardinal, diagonal -> overlapping diagonal and their
+        // repeated chains are all modeled. Shared key masks are invariant
+        // to rotating/mirroring the entire chart. The pressure fades out
+        // beyond 500 ms and is bounded for extremely small intervals.
+        const int reusedKeys = Bits(prev.mask & cur.mask);
+        if (reusedKeys > 0 && (prev.keys == 2 || cur.keys == 2)) {
+            sharedKeyStreak = std::min(6, sharedKeyStreak + 1);
+            const double proximity = std::clamp((0.50 - dt) / 0.40, 0.0, 1.0);
+            const double retrigger = std::min(2.75, 0.28 / dt) * proximity;
+            const double patternLoad = prev.keys == 2
+                ? (cur.keys == 2 ? (reusedKeys == 2 ? 2.10 : 1.95) : 1.80)
+                : 0.70;
+            const double chain = 1.0 + 0.12 * (sharedKeyStreak - 1);
+            cur.coordination += patternLoad * retrigger * chain;
+        } else {
+            sharedKeyStreak = 0;
+        }
+
         cur.reading = turn * urgency;
         // Scan only nearby route pieces within the last four seconds:
         // actual path returns, intersections and overlapping strokes
@@ -208,15 +232,28 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     // A fixed time window handles both full streams and micro-bursts. The
     // peak is informative, but percentile load resists one-note outliers.
     std::vector<double> keyRates, noteRates, coordRates, readRates, rhythmRates;
+    std::vector<double> burstKeyRates;
     keyRates.reserve(n); noteRates.reserve(n);
     coordRates.reserve(n); readRates.reserve(n); rhythmRates.reserve(n);
-    std::size_t first = 0;
-    int rollingKeys = 0;
+    burstKeyRates.reserve(n);
+    std::size_t first = 0, burstFirst = 0;
+    int rollingKeys = 0, burstKeys = 0;
     double rollingCoord = 0.0, rollingRead = 0.0, rollingRhythm = 0.0;
     constexpr double window = 1.8;
     constexpr std::int64_t windowMs = 1800;
+    // A shorter window detects fast microbursts without treating one
+    // isolated event as representative of the entire chart.
+    constexpr double burstWindow = 0.65;
+    constexpr std::int64_t burstWindowMs = 650;
     for (std::size_t i = 0; i < n; ++i) {
         rollingKeys += notes[i].keys;
+        burstKeys += notes[i].keys;
+        while (burstFirst < i &&
+               notes[i].timeMs - notes[burstFirst].timeMs > burstWindowMs) {
+            burstKeys -= notes[burstFirst].keys;
+            ++burstFirst;
+        }
+        burstKeyRates.push_back(burstKeys / burstWindow);
         rollingCoord += notes[i].coordination;
         rollingRead += notes[i].reading;
         rollingRhythm += notes[i].rhythm;
@@ -240,14 +277,19 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     }
     const double q85Keys = Percentile(keyRates, 0.85);
     const double q85Notes = Percentile(noteRates, 0.85);
+    const double q90BurstKeys = Percentile(burstKeyRates, 0.90);
     // Local density alone overvalues a short burst. Include the number of
     // physical presses over the chart's active spans, with rests above 1.5 s
     // contributing only 1.5 s to the denominator. Repeated dense passages
     // therefore matter even when the fastest small window is unchanged.
     const double activeKeysPerSecond = result.activeSeconds > 0.0
         ? static_cast<double>(totalKeys) / result.activeSeconds : 0.0;
-    result.speed = Nonnegative(1.35 * (
-        0.55*q85Notes + 0.20*q85Keys + 0.25*activeKeysPerSecond));
+    // Density is the leading strain: both note frequency and physical key
+    // rate matter. 1.8s + 650ms windows reward sustained passages while
+    // still registering short, intense clusters.
+    result.speed = Nonnegative(1.55 * (
+        0.48*q85Notes + 0.22*q85Keys + 0.22*activeKeysPerSecond +
+        0.08*q90BurstKeys));
 
     const double avgRhythm = rhythmSamples.empty() ? 0.0 :
         std::accumulate(rhythmSamples.begin(), rhythmSamples.end(), 0.0) /
@@ -256,8 +298,8 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         (0.38 * Percentile(rhythmRates, 0.85) + 0.30*avgRhythm) *
         std::max(0.30, q85Notes / 3.0));
     result.coordination = Nonnegative(
-        0.50 * (0.75*Percentile(coordRates, 0.85) +
-                0.25*Percentile(coordRates, 0.95)));
+        0.62 * (0.65*Percentile(coordRates, 0.85) +
+                0.35*Percentile(coordRates, 0.95)));
     result.reading = Nonnegative(
         0.80 * (0.75*Percentile(readRates, 0.85) +
                 0.25*Percentile(readRates, 0.95)) *
@@ -269,14 +311,17 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         0.85 * std::sqrt(result.activeSeconds / 30.0) *
         std::max(0.0, activeKeysPerSecond - 1.0));
     result.peak = Nonnegative(
-        0.48 * (0.75*Percentile(keyRates, 0.99) +
+        0.58 * (0.75*Percentile(keyRates, 0.99) +
                 0.25*result.keysPerSecondPeak - 1.0));
+    // Key density and fast overlapping diagonal transitions now contribute
+    // more than geometry alone. Keep the component breakdown consistent
+    // with the six existing difficulty metrics in the song-selection UI.
     const double energy =
-        0.52*result.speed*result.speed +
-        0.14*result.rhythm*result.rhythm +
-        0.14*result.coordination*result.coordination +
-        0.15*result.reading*result.reading +
-        0.05*result.stamina*result.stamina;
+        0.55*result.speed*result.speed +
+        0.08*result.rhythm*result.rhythm +
+        0.23*result.coordination*result.coordination +
+        0.11*result.reading*result.reading +
+        0.03*result.stamina*result.stamina;
     // Confidence adjusts tiny samples; it is NOT a difficulty ceiling.
     const double sampleConfidence = 0.70 + 0.30 *
         std::min(1.0, static_cast<double>(n)/24.0);

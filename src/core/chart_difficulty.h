@@ -6,8 +6,8 @@
 
 namespace locus::core {
 
-// Difficulty v2 is an unbounded, nonnegative chart-only estimate.
-// Not a grade, a player skill rating or a promise of sight-readability.
+// Difficulty v3 is an unbounded, nonnegative chart-only estimate.
+// Dense key streams and rapid shared-key diagonal transitions carry extra strain.\n// Not a grade, a player skill rating or a promise of sight-readability.
 // No skin, key binding, playback speed or song duration dependence.
 struct ChartDifficulty {
     double overall = 0.0;

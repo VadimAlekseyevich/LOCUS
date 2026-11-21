@@ -132,6 +132,37 @@ int main() {
                 diagonal.overall > fast.overall,
                 "diagonal is one note but two physical keys and greater strain");
 
+    // The difficult case is NOT merely a chord: the next note reuses a
+    // physical key from that chord, so the finger must reattack quickly.
+    // Compare equally dense sequences with identical note/key totals.
+    const auto sharedChordToSingle = CalculateChartDifficulty(
+        Sequence(80, {100}, {Heading::UpRight, Heading::Right}));
+    const auto freshChordToSingle = CalculateChartDifficulty(
+        Sequence(80, {100}, {Heading::UpRight, Heading::Down}));
+    ok &= Check(sharedChordToSingle.notes == freshChordToSingle.notes &&
+                sharedChordToSingle.keyPresses == freshChordToSingle.keyPresses &&
+                sharedChordToSingle.coordination >
+                    freshChordToSingle.coordination &&
+                sharedChordToSingle.overall > freshChordToSingle.overall,
+                "diagonal followed by its shared cardinal key is harder");
+
+    const auto sharedChordToChord = CalculateChartDifficulty(
+        Sequence(80, {100}, {Heading::UpRight, Heading::DownRight}));
+    const auto freshChordToChord = CalculateChartDifficulty(
+        Sequence(80, {100}, {Heading::UpRight, Heading::DownLeft}));
+    ok &= Check(sharedChordToChord.keyPresses == freshChordToChord.keyPresses &&
+                sharedChordToChord.coordination >
+                    freshChordToChord.coordination &&
+                sharedChordToChord.overall > freshChordToChord.overall,
+                "rapid overlapping diagonal doubles carry extra coordination strain");
+
+    const auto relaxedChordReuse = CalculateChartDifficulty(
+        Sequence(80, {650}, {Heading::UpRight, Heading::Right}));
+    ok &= Check(sharedChordToSingle.coordination >
+                relaxedChordReuse.coordination &&
+                sharedChordToSingle.overall > relaxedChordReuse.overall,
+                "shared-key retrigger pressure falls as intervals get longer");
+
     const auto steady = CalculateChartDifficulty(
         Sequence(60, {220}, {Heading::Right}));
     const auto swing = CalculateChartDifficulty(
@@ -232,6 +263,6 @@ int main() {
                 "new blank editor does not reuse previous cached score");
 
     if (!ok) return 1;
-    std::cout << "DIFFICULTY_V2_PASS unbounded density-aware chart rating\n";
+    std::cout << "DIFFICULTY_V3_PASS density and overlapping diagonal transitions\n";
     return 0;
 }
