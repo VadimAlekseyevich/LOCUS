@@ -221,6 +221,13 @@ bool NativeMenuUi::Initialize() {
     if (editorDocument_) {
         editorDocument_->AddEventListener("click", this);
         editorDocument_->AddEventListener("change", this);
+        // Focus/blur do not bubble in RmlUi. Listen directly on the rate
+        // input so editing is transactional rather than clamped on every
+        // character inserted/deleted by the text widget.
+        if (auto* rate = editorDocument_->GetElementById("editor-preview-rate")) {
+            rate->AddEventListener("focus", this);
+            rate->AddEventListener("blur", this);
+        }
         editorDocument_->Hide();
         editorPresenter_.Attach(editorDocument_);
     } else {

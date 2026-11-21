@@ -3,6 +3,7 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/ElementText.h>
+#include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/StyleTypes.h>
 #include "app/rml_ui_text.h"
@@ -394,6 +395,32 @@ int main() {
         ok &= Check(rate && rate->GetTagName() == "input" &&
                     rate->GetAttribute<Rml::String>("maxlength", "") == "3",
                     "EDITOR rate is a numeric-entry input, not a dropdown button");
+        if (auto* control = dynamic_cast<Rml::ElementFormControlInput*>(rate)) {
+            // Real RmlUi text editing must support replacing the value in one
+            // gesture and a temporarily empty field (unlike the old immediate
+            // clamp-on-change behavior).
+            const auto* parent = control->GetParentNode();
+            ok &= Check(parent && std::abs(
+                            control->GetAbsoluteLeft() +
+                            control->GetOffsetWidth() * 0.5f -
+                            (parent->GetAbsoluteLeft() +
+                             parent->GetOffsetWidth() * 0.5f)) < 2.0f,
+                        "EDITOR rate field is centered horizontally");
+            ok &= Check(control->Focus(), "EDITOR rate input accepts focus");
+            control->Select();
+            int first = -1, last = -1;
+            Rml::String selection;
+            control->GetSelection(&first, &last, &selection);
+            ok &= Check(first == 0 && last == 3 && selection == "100",
+                        "EDITOR rate can select the entire initial value");
+            control->SetValue("");
+            ok &= Check(control->GetValue().empty(),
+                        "EDITOR rate permits an empty intermediate value");
+            control->SetValue("50");
+            ok &= Check(control->GetValue() == "50",
+                        "EDITOR rate accepts replacement without retained digits");
+            control->Blur();
+        }
         auto* time = editorDoc->GetElementById("editor-preview-time");
         auto* compass = editorDoc->GetElementById("editor-route-pad");
         auto* toolrail = editorDoc->GetElementById("editor-route-tools");

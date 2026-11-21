@@ -186,17 +186,29 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
 }
 void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     if (!ui_ || !input_ || suppressClick_) return;
-    if (event.GetType() == "change" &&
-        event.GetTargetElement() &&
-        event.GetTargetElement()->GetId() == "editor-preview-rate") {
-        auto* control = dynamic_cast<Rml::ElementFormControlInput*>(
+    // RmlUi emits "change" on every keystroke, not just on form commit.
+    // Never clamp/rewrite the live value: deleting "100" to type "50" must
+    // allow an empty input. Commit only on blur (Enter also blurs).
+    if (auto* control = dynamic_cast<Rml::ElementFormControlInput*>(
             event.GetTargetElement());
-        int percent = 0;
-        if (control && ParsePercent(control->GetValue(), percent)) {
-            input_->editor.speedPercent = percent;
-            control->SetValue(std::to_string(percent));
-        } else if (control) {
-            control->SetValue(std::to_string(lastRatePercent_));
+        control && control->GetId() == "editor-preview-rate") {
+        const auto type = event.GetType();
+        if (type == "focus" || type == "click") {
+            // Select after mouse-up as well as on keyboard focus: a
+            // mousedown may move the caret and clear an earlier selection.
+            control->Select();
+            if (type == "click") consumedPointer_ = true;
+        } else if (type == "blur") {
+            int percent = 0;
+            if (ParsePercent(control->GetValue(), percent)) {
+                if (percent != lastRatePercent_)
+                    input_->editor.speedPercent = percent;
+                control->SetValue(std::to_string(percent));
+            } else {
+                // Empty or malformed input cancels, preserving the current
+                // transport rate instead of forcing a digit mid-edit.
+                control->SetValue(std::to_string(lastRatePercent_));
+            }
         }
         return;
     }
