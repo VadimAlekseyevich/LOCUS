@@ -53,7 +53,9 @@ constexpr int kMinGridSize = 2;
 constexpr int kMaxGridSize = 16;
 
 // Song-wide absolute timeline. The first marker is beat zero; each next
-// marker changes BPM at its exact millisecond without resetting beat phase.
+// marker changes BPM at its exact millisecond and starts a NEW local measure.
+// The music timestamps remain authoritative; a non-beat-aligned BPM marker
+// reserves the previous section's fractional remainder of a tick index.
 // Earlier time uses the first BPM, later time uses the final BPM.
 struct TempoMarker {
     std::int64_t timeMs = 0;
