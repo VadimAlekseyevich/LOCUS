@@ -51,9 +51,7 @@ void BeginSelection(core::ChartEditor& draft, EditorUiState& ui,
                     const EditorControls& input) {
     const Vector2 mouse = input.mouse;
     const double anchor = ViewBeat(draft, input.timelineViewBeat);
-    const double clicked = anchor + (mouse.x - kPlayheadX) /
-                                         PixelsPerTick(ui, draft.Data().route);
-    const int beat = SnapTick(clicked, draft.Data().route);
+    const int beat = TimelineTickAtX(draft, ui, anchor, mouse.x);
     if (ui.tab == EditorTab::Route && input.shiftHeld) {
         const int origin = draft.SelectedBeat();
         ui.rangeFirst = std::min(origin, beat);
@@ -87,20 +85,32 @@ void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,
             if (edge != 0.0f) {
                 const float intensity = std::min(3.0f, std::abs(edge));
                 const float dt = std::clamp(input.elapsedSeconds, 0.0f, 0.10f);
-                const double beatsPerSecond = 8.0 + intensity * 16.0;
+                // Pan in song seconds, not tick indices. Changing BPM
+                // must not make the ruler drag/autoscroll accelerate.
+                const auto& loaded = draft.Data();
+                const auto& chart = loaded.route;
+                const double secondsPerSecond =
+                    (8.0 + intensity * 16.0) * 60.0 / chart.bpm;
+                const double current = TimelineAnchorSeconds(
+                    draft, ui.dragViewBeat);
+                const double first = core::TempoSecondsAtTick(
+                    chart, loaded.offsetSeconds, chart.firstBeat);
+                const double last = core::TempoSecondsAtTick(
+                    chart, loaded.offsetSeconds, chart.lengthBeats - 1);
+                const double moved = std::clamp(
+                    current + (edge > 0.0 ? 1.0 : -1.0) *
+                                  secondsPerSecond * dt, first, last);
                 ui.dragViewBeat = std::clamp(
-                    ui.dragViewBeat +
-                        (edge > 0.0f ? 1.0 : -1.0) * beatsPerSecond * dt *
-                        draft.Data().route.ticksPerBeat,
-                    static_cast<double>(draft.Data().route.firstBeat),
-                    static_cast<double>(draft.Data().route.lengthBeats - 1));
+                    core::TempoBeatAtSeconds(
+                        chart, loaded.offsetSeconds, moved) *
+                        chart.ticksPerBeat,
+                    static_cast<double>(chart.firstBeat),
+                    static_cast<double>(chart.lengthBeats - 1));
             }
         }
         const float x = std::clamp(input.mouse.x, kTimelineX,
                                     kTimelineX + kTimelineWidth);
-        const double point = ui.dragViewBeat +
-                             (x - kPlayheadX) / PixelsPerTick(ui, draft.Data().route);
-        const int beat = SnapTick(point, draft.Data().route);
+        const int beat = TimelineTickAtX(draft, ui, ui.dragViewBeat, x);
         if (beat != ui.dragAnchorBeat) {
             ui.rangeFirst = std::min(ui.dragAnchorBeat, beat);
             ui.rangeLast = std::max(ui.dragAnchorBeat, beat);

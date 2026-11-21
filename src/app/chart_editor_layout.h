@@ -60,6 +60,42 @@ inline double ViewBeat(const core::ChartEditor& draft, double activeBeat) {
         : static_cast<double>(draft.SelectedBeat());
 }
 
+// Upper ruler: fixed SONG-TIME scale. A BPM change changes how tightly
+// musical grid lines are packed, never the rate at which the ruler scrolls.
+// Zoom retains its original meaning at the first BPM.
+inline double TimelinePixelsPerSongSecond(
+    const EditorUiState& ui, const core::Chart& chart) noexcept {
+    return PixelsPerBeat(ui) * chart.bpm / 60.0;
+}
+inline double TimelineAnchorSeconds(
+    const core::ChartEditor& draft, double anchorTick) noexcept {
+    const auto& loaded = draft.Data();
+    return core::TempoSecondsAtTick(
+        loaded.route, loaded.offsetSeconds, anchorTick);
+}
+inline float TimelineXAtSeconds(
+    const core::ChartEditor& draft, const EditorUiState& ui,
+    double anchorTick, double songSeconds) noexcept {
+    const double px = TimelinePixelsPerSongSecond(ui, draft.Data().route);
+    return kPlayheadX + static_cast<float>(
+        (songSeconds - TimelineAnchorSeconds(draft, anchorTick)) * px);
+}
+inline double TimelineSecondsAtX(
+    const core::ChartEditor& draft, const EditorUiState& ui,
+    double anchorTick, float x) noexcept {
+    const double px = TimelinePixelsPerSongSecond(ui, draft.Data().route);
+    return TimelineAnchorSeconds(draft, anchorTick) +
+        (static_cast<double>(x) - kPlayheadX) / std::max(px, 1e-6);
+}
+inline int TimelineTickAtX(
+    const core::ChartEditor& draft, const EditorUiState& ui,
+    double anchorTick, float x) {
+    const auto& loaded = draft.Data();
+    return core::TempoSnapTickAtSeconds(
+        loaded.route, loaded.offsetSeconds,
+        TimelineSecondsAtX(draft, ui, anchorTick, x));
+}
+
 constexpr Rectangle kTabSet{433, 69, 127, 37};
 constexpr Rectangle kTabRoute{567, 69, 145, 37};
 constexpr Rectangle kTabAudio{719, 69, 145, 37};
@@ -251,14 +287,8 @@ inline double SongOverviewSeconds(float x, double durationSeconds) noexcept {
 inline int SongOverviewTick(const core::ChartEditor& draft,
                             double audioSeconds) noexcept {
     const auto& data = draft.Data();
-    const auto& chart = data.route;
-    const double ticks = core::TempoBeatAtSeconds(
-        chart, data.offsetSeconds, audioSeconds) * chart.ticksPerBeat;
-    if (!std::isfinite(ticks)) return draft.SelectedBeat();
-    const double bounded = std::clamp(ticks,
-        static_cast<double>(chart.firstBeat),
-        static_cast<double>(chart.lengthBeats - 1));
-    return SnapTick(bounded, chart);
+    return core::TempoSnapTickAtSeconds(
+        data.route, data.offsetSeconds, audioSeconds);
 }
 
 inline Rectangle RouteSpeedBounds(int index) {

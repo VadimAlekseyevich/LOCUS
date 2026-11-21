@@ -203,91 +203,180 @@ void DrawComparisonPicker(Font font, const EditorUiState& ui,
 
 // Zoomable, note-bearing ruler. Its pixel scale never controls the
 // full-song overview or the compiled song-time route.
+// Time-linear, note-bearing ruler. Source milliseconds are authoritative.
+// Each tempo marker starts its own beat grid at a strong beat; increasing BPM
+// packs lines more tightly instead of changing the ruler's song-time speed.
 void DrawTimeline(Font font, const core::ChartEditor& draft,
                   const EditorUiState& ui, double previewBeat) {
-    const auto& chart = draft.Data().route;
+    const auto& loaded = draft.Data();
+    const auto& chart = loaded.route;
     const double anchor = ui.draggingTimeline
         ? ui.dragViewBeat : ViewBeat(draft, previewBeat);
-    const float pixels = PixelsPerTick(ui, chart);
-    const int ticks = chart.ticksPerBeat;
-    const int snapStep = ticks / chart.snapDivision;
+    const double pixelsPerSecond = TimelinePixelsPerSongSecond(ui, chart);
+    if (!std::isfinite(pixelsPerSecond) || pixelsPerSecond <= 0.0)
+        return;
+    const auto atX = [&](double songSeconds) {
+        return TimelineXAtSeconds(draft, ui, anchor, songSeconds);
+    };
+    const double leftTime = TimelineSecondsAtX(
+        draft, ui, anchor, kTimelineX + 5.0f);
+    const double rightTime = TimelineSecondsAtX(
+        draft, ui, anchor, kTimelineX + kTimelineWidth - 5.0f);
+    const double firstChartTime = core::TempoSecondsAtTick(
+        chart, loaded.offsetSeconds, chart.firstBeat);
+    const double lastChartTime = core::TempoSecondsAtTick(
+        chart, loaded.offsetSeconds, chart.lengthBeats);
+    const double visibleFrom = std::max(leftTime, firstChartTime);
+    const double visibleTo = std::min(rightTime, lastChartTime);
     const Rectangle strip{kTimelineX, kTimelineY, kTimelineWidth, kTimelineHeight};
     const float lineY = kTimelineY + 25.0f;
 
     DrawRectangleRounded(strip, UiRoundness(strip,8), 8,
                          Color{30, 37, 58, 255});
-    DrawRectangleRoundedLinesEx(strip,UiRoundness(strip,8),8,1,
+    DrawRectangleRoundedLinesEx(strip, UiRoundness(strip,8), 8, 1,
                                 ApprovedUiTheme().divider);
     DrawRectangleRec({kTimelineX + 2.0f, kTimelineY + 2.0f,
-                      kPlayheadX - kTimelineX - 2.0f, kTimelineHeight - 4.0f},
-                     Color{41, 62, 70, 255});
+                      kPlayheadX - kTimelineX - 2.0f,
+                      kTimelineHeight - 4.0f}, Color{41, 62, 70, 255});
+
     if (ui.tab == EditorTab::Route && ui.HasRange()) {
-        const float a = kPlayheadX +
-            static_cast<float>((ui.rangeFirst - snapStep * 0.5 - anchor) * pixels);
-        const float b = kPlayheadX +
-            static_cast<float>((ui.rangeLast + snapStep * 0.5 - anchor) * pixels);
-        const float x1 = std::max(a, kTimelineX + 2.0f);
-        const float x2 = std::min(b, kTimelineX + kTimelineWidth - 2.0f);
+        const double halfStep = 0.5 * chart.ticksPerBeat / chart.snapDivision;
+        const float firstX = atX(core::TempoSecondsAtTick(
+            chart, loaded.offsetSeconds, ui.rangeFirst - halfStep));
+        const float lastX = atX(core::TempoSecondsAtTick(
+            chart, loaded.offsetSeconds, ui.rangeLast + halfStep));
+        const float x1 = std::max(firstX, kTimelineX + 2.0f);
+        const float x2 = std::min(lastX, kTimelineX + kTimelineWidth - 2.0f);
         if (x2 > x1)
             DrawRectangleRec({x1, kTimelineY + 2.0f, x2 - x1,
-                              kTimelineHeight - 4.0f}, Color{187, 160, 231, 96});
+                              kTimelineHeight - 4.0f},
+                             Color{187, 160, 231, 96});
     }
     DrawLineEx({kTimelineX + 4.0f, lineY},
                {kTimelineX + kTimelineWidth - 4.0f, lineY},
                2.0f, Color{98, 125, 150, 255});
 
-    const int first = std::max(chart.firstBeat, static_cast<int>(std::floor(
-        anchor + (kTimelineX - kPlayheadX) / pixels)) - 1);
-    const int last = std::min(chart.lengthBeats - 1,
-        static_cast<int>(std::ceil(
-            anchor + (kTimelineX + kTimelineWidth - kPlayheadX) / pixels)) + 1);
-    for (int tick = first; tick <= last; ++tick) {
-        if (tick % snapStep != 0) continue;
-        const float x = kPlayheadX +
-                        static_cast<float>((static_cast<double>(tick) - anchor) * pixels);
-        if (x < kTimelineX + 5.0f || x > kTimelineX + kTimelineWidth - 5.0f)
-            continue;
-        const bool bar = tick % (4 * ticks) == 0;
-        const bool major = tick % ticks == 0;
-        DrawLineEx({x, kTimelineY + (bar ? 11.0f : major ? 17.0f : 23.0f)},
-                   {x, kTimelineY + 34.0f},
-                   bar ? 2.5f : major ? 1.5f : 1.0f,
-                   bar ? Color{199, 220, 234, 255}
-                     : major ? Color{113, 141, 163, 255}
-                             : Color{81, 126, 135, 220});
+    // Draw each tempo segment independently in SONG SECONDS. This avoids
+    // scanning thousands of offscreen integer ticks or accumulating rounding
+    // drift at BPM boundaries. The marker itself is local beat zero.
+    const auto markers = core::EffectiveTempoMap(chart, loaded.offsetSeconds);
+    if (visibleTo > visibleFrom) {
+        for (std::size_t i = 0; i < markers.size(); ++i) {
+            const double origin = markers[i].timeMs / 1000.0;
+            const double begin = std::max(visibleFrom,
+                i == 0 ? visibleFrom : origin);
+            const double finish = std::min(visibleTo,
+                i+1 == markers.size() ? visibleTo
+                                      : markers[i+1].timeMs / 1000.0);
+            if (finish <= begin) continue;
+            const double quarter = 60.0 / markers[i].bpm;
+            const double subdivision = quarter / chart.snapDivision;
+            const double subdivPx = subdivision * pixelsPerSecond;
+            const double beatPx = quarter * pixelsPerSecond;
+            const double barPx = 4.0 * beatPx;
+
+            const auto lines = [&](double interval, int kind, long long stride) {
+                if (!std::isfinite(interval) || interval <= 0.0 ||
+                    stride < 1) return;
+                const double low = std::ceil((begin-origin)/interval - 1e-8);
+                const double high = std::floor((finish-origin)/interval + 1e-8);
+                const long long from = static_cast<long long>(low);
+                const long long through = static_cast<long long>(high);
+                // At extremely high BPM, subpixel lines are aggregated
+                // into only the visible resolution; always keep bar zero.
+                const long long first = from >= 0
+                    ? ((from + stride - 1) / stride) * stride
+                    : -((-from) / stride) * stride;
+                for (long long k = first; k <= through; k += stride) {
+                    if (kind == 0 && k % chart.snapDivision == 0) continue;
+                    if (kind == 1 && k % 4 == 0) continue;
+                    const double songSeconds = origin + k * interval;
+                    if (i + 1 < markers.size() &&
+                        songSeconds >= markers[i+1].timeMs / 1000.0 - 1e-8)
+                        break;
+                    const float x = atX(songSeconds);
+                    if (x < kTimelineX + 5.0f ||
+                        x > kTimelineX + kTimelineWidth - 5.0f)
+                        continue;
+                    const bool bar = kind == 2;
+                    const bool major = kind == 1;
+                    DrawLineEx(
+                        {x, kTimelineY + (bar ? 11.0f
+                                    : major ? 17.0f : 23.0f)},
+                        {x, kTimelineY + 34.0f},
+                        bar ? 2.5f : major ? 1.5f : 1.0f,
+                        bar ? Color{199, 220, 234, 255}
+                            : major ? Color{113, 141, 163, 255}
+                                    : Color{81, 126, 135, 220});
+                }
+            };
+            if (subdivPx >= 4.0)
+                lines(subdivision, 0, 1);
+            if (beatPx >= 3.0)
+                lines(quarter, 1, 1);
+            if (barPx > 0.0) {
+                const long long stride = std::max(1LL, static_cast<long long>(
+                    std::ceil(3.0 / barPx)));
+                lines(4.0 * quarter, 2, stride);
+            }
+        }
+
+        // BPM markers are always highlighted even when nearby subdivisions
+        // become too dense to display at the current zoom.
+        for (std::size_t i = 1; i < markers.size(); ++i) {
+            const double time = markers[i].timeMs / 1000.0;
+            if (time < visibleFrom || time > visibleTo) continue;
+            const float x = atX(time);
+            DrawLineEx({x, kTimelineY + 7.0f},
+                       {x, kTimelineY + 39.0f},
+                       3.0f, Color{111, 233, 198, 255});
+            const char* bpm = TextFormat("%.1f", markers[i].bpm);
+            Label(font, bpm, x + 5.0f, kTimelineY + 1.0f, 10.0f,
+                  Color{160, 236, 211, 255});
+        }
     }
 
-    // The authored chart can contain 65k notes, but only a few fit in the
-    // zoomed ruler. Find the visible range in O(log N), not by scanning every
-    // previous event on each rendered frame.
+    // Notes are indexed by absolute time, not cached editor tick positions.
+    // Tempo changes may shift their tick IDs without moving a note in audio.
     const auto firstVisible = std::lower_bound(
-        chart.turns.begin(), chart.turns.end(), first,
-        [](const core::TurnEvent& event, int tick) {
-            return event.beat < tick;
+        chart.turns.begin(), chart.turns.end(), leftTime * 1000.0,
+        [&](const core::TurnEvent& event, double ms) {
+            return core::EventTimeMs(chart, event, loaded.offsetSeconds) < ms;
         });
-    for (auto it = firstVisible;
-         it != chart.turns.end() && it->beat <= last; ++it) {
+    for (auto it = firstVisible; it != chart.turns.end(); ++it) {
         const auto& event = *it;
-        const float x = kPlayheadX +
-                        static_cast<float>((static_cast<double>(event.beat) - anchor) * pixels);
-        if (x < kTimelineX + 8.0f || x > kTimelineX + kTimelineWidth - 8.0f)
+        const double songSeconds =
+            core::EventTimeMs(chart, event, loaded.offsetSeconds) / 1000.0;
+        if (songSeconds > rightTime) break;
+        const float x = atX(songSeconds);
+        if (x < kTimelineX + 8.0f ||
+            x > kTimelineX + kTimelineWidth - 8.0f)
             continue;
-        const bool diagonal = core::IsDiagonal(event.direction);
-        const float spacing = pixels * snapStep;
+        const auto next = std::upper_bound(markers.begin(), markers.end(),
+            songSeconds * 1000.0,
+            [](double ms, const core::TempoMarker& marker) {
+                return ms < marker.timeMs;
+            });
+        const double bpm = (next == markers.begin() ? markers.front()
+                                                   : *(next - 1)).bpm;
+        const float spacing = static_cast<float>(
+            pixelsPerSecond * 60.0 / (bpm * chart.snapDivision));
         const bool narrow = spacing < 26.0f;
-        const float width = narrow ? std::max(5.0f, std::min(spacing - 1.0f, 12.0f))
-                                   : std::min(spacing - 3.0f, 32.0f);
-        const Color tint = diagonal ? Color{175, 155, 236, 255}
-                                    : Color{111, 214, 202, 255};
-        DrawRectangleRec({x - width * 0.5f, kTimelineY + 29.0f, width, 12.0f}, tint);
+        const float width = narrow
+            ? std::max(5.0f, std::min(spacing - 1.0f, 12.0f))
+            : std::min(spacing - 3.0f, 32.0f);
+        const Color tint = core::IsDiagonal(event.direction)
+            ? Color{175, 155, 236, 255} : Color{111, 214, 202, 255};
+        DrawRectangleRec({x - width * 0.5f, kTimelineY + 29.0f,
+                          width, 12.0f}, tint);
         if (!narrow) {
             constexpr const char* names[] = {
                 "U", "R", "D", "L", "UR", "DR", "DL", "UL"
             };
             const char* label = names[static_cast<int>(event.direction)];
-            const float textWidth = MeasureTextEx(font, label, 10, 1).x;
-            Label(font, label, x - textWidth * 0.5f, kTimelineY + 29.0f, 10,
-                  Color{18, 26, 36, 255});
+            const float widthText = MeasureTextEx(font, label, 10, 1).x;
+            Label(font, label, x - widthText * 0.5f,
+                  kTimelineY + 29.0f, 10, Color{18, 26, 36, 255});
         }
     }
     DrawRectangleRec({kPlayheadX - 3.0f, kTimelineY + 1.0f,
@@ -295,20 +384,18 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                      ApprovedUiTheme().softBlue);
     DrawCircleV({kPlayheadX, lineY}, 5.0f, ApprovedUiTheme().foreground);
 
-    // The note ruler and the 2x +/- pairs share a single upper row.
     if (ui.tab == EditorTab::Route) {
         const auto& colors = ApprovedUiTheme();
-        Label(font,TextFormat("SNAP 1/%d",chart.snapDivision),
-              730,121,12,colors.softBlue);
-        Label(font,TextFormat("ZOOM %d%%",
+        Label(font, TextFormat("SNAP 1/%d", chart.snapDivision),
+              730, 121, 12, colors.softBlue);
+        Label(font, TextFormat("ZOOM %d%%",
               static_cast<int>(std::round(PixelsPerBeat(ui)/36.0f*100))),
-              730,146,12,colors.secondaryText);
-        CompactButton(font,kSnapLess,"-",colors.rose);
-        CompactButton(font,kSnapMore,"+",colors.softBlue);
-        CompactButton(font,kZoomOut,"-",colors.rose);
-        CompactButton(font,kZoomIn,"+",colors.softBlue);
+              730, 146, 12, colors.secondaryText);
+        CompactButton(font, kSnapLess, "-", colors.rose);
+        CompactButton(font, kSnapMore, "+", colors.softBlue);
+        CompactButton(font, kZoomOut, "-", colors.rose);
+        CompactButton(font, kZoomIn, "+", colors.softBlue);
     }
-
 }
 
 void DrawSongOverview(Font font, const core::ChartEditor& draft,

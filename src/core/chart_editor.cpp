@@ -289,16 +289,28 @@ bool ChartEditor::StepSelection(int deltaBeats) noexcept {
     return SelectBeat(static_cast<int>(next));
 }
 
-bool ChartEditor::StepSnapSelection(int direction) noexcept {
+bool ChartEditor::StepSnapSelection(int direction) {
     if (direction == 0) return false;
-    const int step = chart_.route.ticksPerBeat / chart_.route.snapDivision;
+    const auto& chart = chart_.route;
+    const int step = chart.ticksPerBeat / chart.snapDivision;
     const double base = static_cast<double>(selectedBeat_) / step;
-    const double next = (direction > 0 ? std::floor(base) + 1.0
-                                       : std::ceil(base) - 1.0) * step;
-    return SelectBeat(static_cast<int>(std::clamp(
-        static_cast<long long>(next),
-        static_cast<long long>(chart_.route.firstBeat),
-        static_cast<long long>(chart_.route.lengthBeats - 1))));
+    const long long first = chart.firstBeat;
+    const long long end = chart.lengthBeats - 1;
+    long long next = static_cast<long long>(
+        (direction > 0 ? std::floor(base) + 1.0
+                       : std::ceil(base) - 1.0) * step);
+    for (; next >= first && next <= end; next += direction > 0 ? step : -step) {
+        // A tempo marker may begin between the old section's subdivisions.
+        // Such zero-duration grid indices are reserved, not authorable.
+        if (chart.tempoMap.size() > 1) {
+            const double seconds = TempoSecondsAtTick(
+                chart, chart_.offsetSeconds, static_cast<double>(next));
+            if (TempoSnapTickAtSeconds(chart, chart_.offsetSeconds, seconds)
+                != next) continue;
+        }
+        return SelectBeat(static_cast<int>(next));
+    }
+    return SelectBeat(static_cast<int>(direction > 0 ? end : first));
 }
 
 bool ChartEditor::SetSnapDivision(int division) {

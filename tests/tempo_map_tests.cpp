@@ -32,11 +32,46 @@ int main() {
                 Near(TempoBeatAtMs(map, 40250), 100) &&
                 Near(TempoBeatAtMs(map, 50250), 115) &&
                 Near(TempoBeatAtMs(map, 0), -0.5),
-                "tempo segments integrate without resetting beat phase");
+                "aligned markers preserve their exact song-time positions");
     for (double beat : {-3.0, 0.0, 12.25, 40.0, 59.5, 100.0, 120.0}) {
         ok &= Check(Near(TempoBeatAtMs(map, TempoMsAtBeat(map, beat)), beat),
                     "beat to song milliseconds is invertible on both sides of markers");
     }
+    // A BPM marker at an arbitrary millisecond becomes beat zero of its
+    // new local meter, without retiming anything before or after it.
+    const std::vector<TempoMarker> offGrid = {
+        {0, 120.0}, {1250, 240.0}, {2250, 90.0}
+    };
+    ok &= Check(Near(TempoBeatAtMs(offGrid, 1249), 2.498) &&
+                Near(TempoBeatAtMs(offGrid, 1250), 3.0) &&
+                Near(TempoBeatAtMs(offGrid, 1500), 4.0) &&
+                Near(TempoBeatAtMs(offGrid, 2250), 7.0) &&
+                Near(TempoSegmentStartBeat(offGrid, 1), 3.0) &&
+                Near(TempoSegmentStartBeat(offGrid, 2), 7.0),
+                "each BPM marker restarts the local beat grid on an exact downbeat");
+    ok &= Check(Near(TempoMsAtBeat(offGrid, 3.0), 1250) &&
+                Near(TempoMsAtBeat(offGrid, 4.0), 1500) &&
+                Near(TempoMsAtBeat(offGrid, 7.0), 2250) &&
+                Near(TempoMsAtBeat(offGrid, 2.7), 1250),
+                "beat-to-time positions are exact; unplayed gap is pinned to marker");
+
+    Chart anchored;
+    anchored.bpm = 120.0;
+    anchored.tempoMap = offGrid;
+    anchored.ticksPerBeat = 24;
+    anchored.snapDivision = 4;
+    anchored.firstBeat = 0;
+    anchored.lengthBeats = 240;
+    ok &= Check(TempoSnapTickAtSeconds(anchored, 0.0, 1.25) == 72 &&
+                TempoSnapTickAtSeconds(anchored, 0.0, 1.50) == 96 &&
+                TempoSnapTickAtSeconds(anchored, 0.0, 2.25) == 168 &&
+                TempoSnapTickAtSeconds(anchored, 0.0, 1.20) == 72,
+                "clicking an inserted BPM marker lands on its own beat and grid");
+    ok &= Check(Near(TempoMsAtBeat(offGrid,
+                     TempoSnapTickAtSeconds(anchored, 0.0, 1.50) / 24.0), 1500),
+                "snapped tick maps back to correct source audio milliseconds");
+    // Explicitly break the old rule that markers always continue the prior
+    // fractional beat: this is a pre-release semantic format change.
     // A single audio cursor belongs to the SONG, never to the tick grid of
     // whichever compared difficulty originally started preview playback.
     Chart coarse, fine;
@@ -116,6 +151,6 @@ int main() {
                 editor.Data().route.tempoMap == map,
                 "invalid map is transactional and cannot damage the draft");
 
-    if (ok) std::cout << "TEMPO_MAP_PASS continuous_phase=1 formats=4\n";
+    if (ok) std::cout << "TEMPO_MAP_PASS local_downbeat=1 formats=4\n";
     return ok ? 0 : 1;
 }

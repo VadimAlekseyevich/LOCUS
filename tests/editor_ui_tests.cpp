@@ -302,6 +302,47 @@ int main() {
                 "adding a tempo change is undoable without resetting song zero");
 
 
+    // Upper note ruler keeps ONE uniform song-time scale while a BPM
+    // marker re-anchors the local musical grid. A 240 BPM beat occupies
+    // half the pixels of a 120 BPM beat, without shifting the audio cursor.
+    ChartEditor segmentedRuler;
+    EditorUiState segmentedUi;
+    segmentedUi.tab = EditorTab::Route;
+    ok &= Check(segmentedRuler.SetSongDuration(5.0) &&
+                segmentedRuler.SetSnapDivision(4) &&
+                segmentedRuler.SetTempoMap({
+                    {0,120.0}, {1250,240.0}, {2250,90.0}
+                }), "build off-beat BPM grid fixture");
+    const auto& segmentedChart = segmentedRuler.Data().route;
+    const float x0 = detail::TimelineXAtSeconds(
+        segmentedRuler, segmentedUi, 0.0, 0.0);
+    const float xBefore = detail::TimelineXAtSeconds(
+        segmentedRuler, segmentedUi, 0.0, 0.5);
+    const float xPrior = detail::TimelineXAtSeconds(
+        segmentedRuler, segmentedUi, 0.0, 1.0);
+    const float xMarker = detail::TimelineXAtSeconds(
+        segmentedRuler, segmentedUi, 0.0, 1.25);
+    const float xNext = detail::TimelineXAtSeconds(
+        segmentedRuler, segmentedUi, 0.0, 1.5);
+    ok &= Check(std::abs(xBefore - x0 - 36.0f) < .01f &&
+                std::abs(xMarker - xPrior - 18.0f) < .01f &&
+                std::abs(xNext - xMarker - 18.0f) < .01f,
+                "ruler is linear in real time; BPM only changes line density");
+    const int markerTick = detail::TimelineTickAtX(
+        segmentedRuler, segmentedUi, 0.0, xMarker);
+    const int nextTick = detail::TimelineTickAtX(
+        segmentedRuler, segmentedUi, 0.0, xNext);
+    ok &= Check(markerTick == 3 * segmentedChart.ticksPerBeat &&
+                nextTick == 4 * segmentedChart.ticksPerBeat,
+                "marker and following beat hit their exact local grid positions");
+    EditorControls markerClick = Click(xMarker, 140);
+    markerClick.timelineViewBeat = 0.0;
+    ApplyEditorControls(segmentedRuler, segmentedUi, markerClick);
+    segmentedRuler.PutTurn(Heading::Right);
+    ok &= Check(segmentedRuler.SelectedTurn() &&
+                segmentedRuler.SelectedTurn()->timeMs == 1250,
+                "note placed on a tempo marker retains exact song timestamp");
+
     // The audio attachment lives in AUDIO; bottom transport is shared.
     ui.tab=EditorTab::Audio;
     const auto audioAttach=ApplyEditorControls(chart,ui,Click(184,428));

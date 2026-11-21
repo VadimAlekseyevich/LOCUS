@@ -42,6 +42,32 @@ inline bool ValidTempoMap(const std::vector<TempoMarker>& map,
     return true;
 }
 
+// Every tempo marker is the first beat of a new local measure. We preserve
+// absolute song milliseconds and exact tempo on both sides. When a marker
+// falls between prior beats, reserve the remainder of the old beat-index
+// interval and begin the next segment at the next whole beat. This avoids
+// mapping a freshly inserted marker to a fractional/off-grid downbeat.
+// The reserved indices have no song duration; inverse mapping clamps them
+// to the boundary and chart editing never authors notes at those indices.
+inline double TempoMarkerAnchorBeat(double previousBeat) noexcept {
+    return std::ceil(previousBeat - 1e-9);
+}
+
+// Prefix at the START of one segment. Mainly for drawing the note ruler:
+// one pass per visible tempo segment, never a full map scan per grid line.
+inline double TempoSegmentStartBeat(const std::vector<TempoMarker>& map,
+                                    std::size_t index) noexcept {
+    if (map.empty()) return 0.0;
+    index = std::min(index, map.size() - 1);
+    double beat = 0.0;
+    for (std::size_t i = 1; i <= index; ++i) {
+        beat += (map[i].timeMs - map[i-1].timeMs) *
+                map[i-1].bpm / 60000.0;
+        beat = TempoMarkerAnchorBeat(beat);
+    }
+    return beat;
+}
+
 inline double TempoBeatAtMs(const std::vector<TempoMarker>& map,
                             double timeMs) noexcept {
     if (map.empty() || !std::isfinite(timeMs)) return 0.0;
@@ -50,11 +76,14 @@ inline double TempoBeatAtMs(const std::vector<TempoMarker>& map,
         return (timeMs - map.front().timeMs) * map.front().bpm / 60000.0;
     for (std::size_t i = 0; i < map.size(); ++i) {
         const double from = static_cast<double>(map[i].timeMs);
-        const double to = i + 1 < map.size()
-            ? static_cast<double>(map[i+1].timeMs) : timeMs;
-        if (timeMs <= to) return beats +
-            (timeMs - from) * map[i].bpm / 60000.0;
-        beats += (to - from) * map[i].bpm / 60000.0;
+        if (i + 1 == map.size())
+            return beats + (timeMs - from) * map[i].bpm / 60000.0;
+        const double to = static_cast<double>(map[i+1].timeMs);
+        // The exact marker belongs to the NEXT tempo and is a downbeat.
+        if (timeMs < to)
+            return beats + (timeMs - from) * map[i].bpm / 60000.0;
+        beats = TempoMarkerAnchorBeat(
+            beats + (to - from) * map[i].bpm / 60000.0);
     }
     return beats;
 }
@@ -66,14 +95,65 @@ inline double TempoMsAtBeat(const std::vector<TempoMarker>& map,
         return map.front().timeMs + beat * 60000.0 / map.front().bpm;
     double passed = 0.0;
     for (std::size_t i = 0; i < map.size(); ++i) {
-        const double beatsInSegment = i + 1 < map.size()
-            ? (map[i+1].timeMs - map[i].timeMs) * map[i].bpm / 60000.0
-            : std::numeric_limits<double>::infinity();
-        if (beat <= passed + beatsInSegment || i + 1 == map.size())
-            return map[i].timeMs + (beat - passed) * 60000.0 / map[i].bpm;
-        passed += beatsInSegment;
+        const double from = static_cast<double>(map[i].timeMs);
+        if (i + 1 == map.size())
+            return from + (beat - passed) * 60000.0 / map[i].bpm;
+        const double to = static_cast<double>(map[i+1].timeMs);
+        const double endBeat = passed + (to - from) * map[i].bpm / 60000.0;
+        if (beat < endBeat)
+            return from + (beat - passed) * 60000.0 / map[i].bpm;
+        const double nextBeat = TempoMarkerAnchorBeat(endBeat);
+        if (beat < nextBeat) return to; // Reserved, zero-duration gap.
+        passed = nextBeat;
     }
     return map.back().timeMs;
+}
+
+// A ruler click snaps in LOCAL song-time, not against a global integer
+// index whose phase can jump at a tempo marker. If a subdivision would
+// cross the next marker, the marker's own downbeat wins. All authored
+// placements remain exact integer subdivisions in their tempo segment.
+inline int TempoSnapTickAtSeconds(const Chart& chart, double offsetSeconds,
+                                 double songSeconds) {
+    if (!std::isfinite(songSeconds) || chart.ticksPerBeat <= 0 ||
+        chart.snapDivision <= 0 ||
+        chart.ticksPerBeat % chart.snapDivision != 0)
+        return chart.firstBeat;
+    const auto map = EffectiveTempoMap(chart, offsetSeconds);
+    if (map.empty()) return chart.firstBeat;
+    const double songMs = songSeconds * 1000.0;
+    const auto next = std::upper_bound(
+        map.begin(), map.end(), songMs,
+        [](double ms, const TempoMarker& marker) {
+            return ms < static_cast<double>(marker.timeMs);
+        });
+    const std::size_t segment = next == map.begin() ? 0
+        : static_cast<std::size_t>(next - map.begin() - 1);
+    const auto& marker = map[segment];
+    const double subdivisionMs =
+        60000.0 / (marker.bpm * chart.snapDivision);
+    const double subdivisions = std::round(
+        (songMs - marker.timeMs) / subdivisionMs);
+    const double snappedMs = marker.timeMs + subdivisions * subdivisionMs;
+    double tick = (TempoSegmentStartBeat(map, segment) +
+                   subdivisions / chart.snapDivision) * chart.ticksPerBeat;
+    if (segment + 1 < map.size() &&
+        snappedMs >= map[segment+1].timeMs) {
+        // Prevent an old section's subdivision from floating past a new
+        // downbeat, including the reserved fractional-beat prefix.
+        tick = TempoSegmentStartBeat(map, segment + 1) * chart.ticksPerBeat;
+    }
+    if (!std::isfinite(tick)) return chart.firstBeat;
+    const double step = chart.ticksPerBeat / chart.snapDivision;
+    const double bounded = std::clamp(tick,
+        static_cast<double>(chart.firstBeat),
+        static_cast<double>(chart.lengthBeats - 1));
+    // Keep the snapped tick aligned to the same discrete subdivision lattice.
+    // The caller may clamp to the chart bounds, which can be non-snap aligned.
+    const double aligned = std::round(bounded / step) * step;
+    return static_cast<int>(std::clamp(aligned,
+        static_cast<double>(chart.firstBeat),
+        static_cast<double>(chart.lengthBeats - 1)));
 }
 
 inline double TempoBeatAtSeconds(const Chart& chart,

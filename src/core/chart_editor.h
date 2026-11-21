@@ -48,7 +48,7 @@ public:
 
     bool SelectBeat(int beat) noexcept;
     bool StepSelection(int deltaBeats) noexcept; // Tick steps, clamped.
-    bool StepSnapSelection(int direction) noexcept; // One visible subdivision line.
+    bool StepSnapSelection(int direction); // One valid subdivision, skipping BPM boundary gaps.
     // Change grid snapping independently of BPM and real audio timestamps.
     // Exact tick resolution grows only if needed (LCM); existing notes do
     // not shift and reducing snap density never destroys finer notes.
