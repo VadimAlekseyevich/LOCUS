@@ -173,6 +173,57 @@ inline double TempoSecondsAtTick(const Chart& chart,
         tick / chart.ticksPerBeat) / 1000.0;
 }
 
+// Move by MUSICAL BARS, not by adding four global tick indices. Every
+// subsequent BPM marker is the beginning of a new bar, including markers
+// that were inserted mid-measure. This is used by the note ruler's left/right
+// bar navigation and held-key repeats.
+inline int TempoAdjacentBarTick(const Chart& chart, double offsetSeconds,
+                               int selectedTick, int direction) {
+    if (direction == 0 || chart.ticksPerBeat <= 0)
+        return selectedTick;
+    const auto map = EffectiveTempoMap(chart, offsetSeconds);
+    if (map.empty()) return selectedTick;
+    const double cursor = TempoSecondsAtTick(
+        chart, offsetSeconds, selectedTick);
+    const double first = TempoSecondsAtTick(
+        chart, offsetSeconds, chart.firstBeat);
+    const double last = TempoSecondsAtTick(
+        chart, offsetSeconds, chart.lengthBeats - 1);
+    constexpr double eps = 1e-7;
+    double best = direction > 0
+        ? std::numeric_limits<double>::infinity()
+        : -std::numeric_limits<double>::infinity();
+
+    for (std::size_t i = 0; i < map.size(); ++i) {
+        const double start = map[i].timeMs / 1000.0;
+        const double duration = 240.0 / map[i].bpm; // Four quarter notes.
+        const double next = i+1 < map.size()
+            ? map[i+1].timeMs / 1000.0
+            : std::numeric_limits<double>::infinity();
+        if (direction > 0) {
+            double bar = std::floor((cursor-start) / duration + eps) + 1.0;
+            if (i > 0) bar = std::max(bar, 0.0);
+            const double candidate = start + bar * duration;
+            if (candidate <= cursor + eps ||
+                candidate < first - eps || candidate > last + eps ||
+                candidate >= next - eps) continue;
+            best = std::min(best, candidate);
+        } else {
+            double bar = std::ceil((cursor-start) / duration - eps) - 1.0;
+            if (i+1 < map.size())
+                bar = std::min(bar, std::floor((next-start-eps) / duration));
+            if (i > 0 && bar < 0.0) continue;
+            const double candidate = start + bar * duration;
+            if (candidate >= cursor - eps ||
+                candidate < first - eps || candidate > last + eps ||
+                candidate >= next - eps) continue;
+            best = std::max(best, candidate);
+        }
+    }
+    if (!std::isfinite(best)) return selectedTick;
+    return TempoSnapTickAtSeconds(chart, offsetSeconds, best);
+}
+
 inline int TempoTickAtMs(const Chart& chart,
                          double offsetSeconds, std::int64_t timeMs) noexcept {
     const double beat = TempoBeatAtSeconds(chart, offsetSeconds,

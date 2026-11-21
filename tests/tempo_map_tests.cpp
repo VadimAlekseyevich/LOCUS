@@ -70,6 +70,10 @@ int main() {
     ok &= Check(Near(TempoMsAtBeat(offGrid,
                      TempoSnapTickAtSeconds(anchored, 0.0, 1.50) / 24.0), 1500),
                 "snapped tick maps back to correct source audio milliseconds");
+    ok &= Check(TempoAdjacentBarTick(anchored, 0.0, 48, 1) == 72 &&
+                TempoAdjacentBarTick(anchored, 0.0, 72, 1) == 168 &&
+                TempoAdjacentBarTick(anchored, 0.0, 96, -1) == 72,
+                "bar navigation lands at each local BPM marker downbeat");
     // Explicitly break the old rule that markers always continue the prior
     // fractional beat: this is a pre-release semantic format change.
     // A single audio cursor belongs to the SONG, never to the tick grid of

@@ -342,6 +342,16 @@ int main() {
     ok &= Check(segmentedRuler.SelectedTurn() &&
                 segmentedRuler.SelectedTurn()->timeMs == 1250,
                 "note placed on a tempo marker retains exact song timestamp");
+    EditorControls nextLocalBar;
+    nextLocalBar.nextBar = true;
+    ApplyEditorControls(segmentedRuler, segmentedUi, nextLocalBar);
+    ok &= Check(segmentedRuler.SelectedBeat() == 7 * segmentedChart.ticksPerBeat,
+                "next-bar navigation follows the BPM section's own downbeat");
+    EditorControls previousLocalBar;
+    previousLocalBar.previousBar = true;
+    ApplyEditorControls(segmentedRuler, segmentedUi, previousLocalBar);
+    ok &= Check(segmentedRuler.SelectedBeat() == 3 * segmentedChart.ticksPerBeat,
+                "previous-bar navigation returns to the exact BPM marker");
 
     // The audio attachment lives in AUDIO; bottom transport is shared.
     ui.tab=EditorTab::Audio;

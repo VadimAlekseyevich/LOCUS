@@ -126,8 +126,14 @@ void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,
     if (input.zoomIn) ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
     if (input.previousBeat) { draft.StepSnapSelection(-1); ui.rangeFirst = ui.rangeLast = -1; }
     if (input.nextBeat) { draft.StepSnapSelection(1); ui.rangeFirst = ui.rangeLast = -1; }
-    if (input.previousBar) { draft.StepSelection(-4 * draft.Data().route.ticksPerBeat); ui.rangeFirst = ui.rangeLast = -1; }
-    if (input.nextBar) { draft.StepSelection(4 * draft.Data().route.ticksPerBeat); ui.rangeFirst = ui.rangeLast = -1; }
+    if (input.previousBar || input.nextBar) {
+        const auto& loaded = draft.Data();
+        const int destination = core::TempoAdjacentBarTick(
+            loaded.route, loaded.offsetSeconds, draft.SelectedBeat(),
+            input.previousBar ? -1 : 1);
+        draft.SelectBeat(destination);
+        ui.rangeFirst = ui.rangeLast = -1;
+    }
     // Use held key state instead of OS key-repeat: consistent on all PCs.
     // First key-down gets a single step above; continuous steps begin after
     // 230ms, then speed up after 1.2 seconds of holding.
@@ -149,7 +155,11 @@ void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,
             int repeats = 0;
             while (ui.barRepeatSeconds >= interval && repeats++ < 8) {
                 ui.barRepeatSeconds -= interval;
-                if (!draft.StepSelection(held * 4 * draft.Data().route.ticksPerBeat)) {
+                const auto& loaded = draft.Data();
+                const int target = core::TempoAdjacentBarTick(
+                    loaded.route, loaded.offsetSeconds,
+                    draft.SelectedBeat(), held);
+                if (!draft.SelectBeat(target)) {
                     ui.barRepeatSeconds = 0.0f; // Stay at the chart boundary.
                     break;
                 }
