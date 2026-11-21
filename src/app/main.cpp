@@ -17,6 +17,7 @@
 #include "app/app_smoke_checks.h"
 #include "app/app_frame_renderer.h"
 #include "app/image_asset_texture.h"
+#include "app/results_background.h"
 #include "app/menu_controller.h"
 #include "app/editor_session.h"
 #include "app/editor_file_actions.h"
@@ -319,6 +320,10 @@ int main(int argc, char** argv) {
     std::string playedSongTitle = "BUILT-IN DEMO";
     std::optional<locus::app::RunResult> displayedResult;
     bool historicalResult = false;
+    // Cached on result selection, not searched across the library per frame.
+    // Historical scores identify their own Song Set, never the most recently
+    // played chart (which may be an entirely different song).
+    std::filesystem::path displayedResultBackgroundPath;
     const auto currentRunKey = [&]() -> locus::app::RunKey {
         if (libraryUi.selectedSong == 0)
             return {"builtin-demo", "original"};
@@ -411,6 +416,8 @@ int main(int argc, char** argv) {
                 static_cast<int>(libraryUi.results.size())) {
             displayedResult = libraryUi.results[
                 static_cast<std::size_t>(menuEvents.viewResultIndex)];
+            displayedResultBackgroundPath = locus::app::BackgroundForSavedResult(
+                library.Songs(), *displayedResult);
             historicalResult = true;
             input.requestedScreen = Screen::Results;
             input.startPressed = false;
@@ -763,12 +770,14 @@ int main(int argc, char** argv) {
         if (state.screen != previousScreen) {
             if (state.screen == Screen::Play) {
                 displayedResult.reset();
+                displayedResultBackgroundPath.clear();
                 historicalResult = false;
                 if (previousScreen != Screen::Results)
                     playCameFromEditor = previousScreen == Screen::Editor;
             } else if (previousScreen == Screen::Results &&
                        state.screen != Screen::Results) {
                 displayedResult.reset();
+                displayedResultBackgroundPath.clear();
                 historicalResult = false;
             }
             if (state.screen == Screen::Play) {
@@ -891,6 +900,7 @@ int main(int argc, char** argv) {
                 std::string error;
                 if (resultsStore.Save(record, error)) {
                     displayedResult = record;
+                    displayedResultBackgroundPath = playedBackgroundPath;
                     historicalResult = false;
                     libraryUi.resultKey = {}; // Reload the history on return.
                 } else {
@@ -1009,8 +1019,12 @@ int main(int argc, char** argv) {
                     libraryUi.selectedSong - 1)].backgroundImage;
         } else if (visibleState.screen == Screen::Editor) {
             artPath = editorSetView.backgroundPath;
-        } else if ((visibleState.screen == Screen::Play ||
-                    visibleState.screen == Screen::Results) && customChart) {
+        } else if (visibleState.screen == Screen::Results) {
+            // Saved results must show THEIR song's artwork, even if the
+            // current scored transport is the built-in demo or another song.
+            artPath = historicalResult ? displayedResultBackgroundPath
+                                       : playedBackgroundPath;
+        } else if (visibleState.screen == Screen::Play && customChart) {
             artPath = playedBackgroundPath;
         }
         std::string imageError;
