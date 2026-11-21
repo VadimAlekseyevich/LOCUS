@@ -18,7 +18,12 @@ void GameSession::Start(bool customChart, double now) {
                 CalibratedTime(testOrigin_->audioSeconds, local_.Speed()));
             local_.StartAtAudioSeconds(testOrigin_->audioSeconds, now);
         } else {
-            local_.Start(now);
+            // The chart may put its first turn at the very start of the MP3.
+            // Reuse the same lead-in as intro skipping, but allow it to be
+            // negative so the listener has time to orient before audio zero.
+            // This also applies to Restart and Results -> retry.
+            local_.StartAtAudioSeconds(
+                ScoredChartStartSeconds(chart_, local_.OffsetSeconds()), now);
         }
     } else {
         demo_.Start(now);

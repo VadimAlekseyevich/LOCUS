@@ -3,39 +3,69 @@
 #include "core/route.h"
 #include "core/tempo_map.h"
 
+#include <algorithm>
 #include <cmath>
 #include <optional>
 
 namespace locus::app {
 
-// A chart has a 4/4 measure by default. Skip to the first note minus the
-// smallest *whole* number of measures whose duration is at least one second.
-// The authoring timestamp is authoritative (cached tick positions may change).
-// Never seek backward, past the first note or into negative song time.
-inline std::optional<double> IntroSkipDestination(
-    const core::Chart& chart, double offsetSeconds,
-    double currentSongSeconds) noexcept {
+// Both intro skipping and automatic startup use one shared musical lead-in.
+// At least one second before the first authored note, rounded to full 4/4
+// measures and integrated across tempo changes. May be negative: the scored
+// transport supports SILENT preroll before audio file timestamp zero.
+inline constexpr double kMinimumFirstNoteLeadSeconds = 1.0;
+
+inline std::optional<double> FirstNoteLeadStartSeconds(
+    const core::Chart& chart, double offsetSeconds) {
     if (chart.turns.empty() || !std::isfinite(chart.bpm) ||
-        chart.bpm <= 0.0 || !std::isfinite(offsetSeconds) ||
-        !std::isfinite(currentSongSeconds)) return std::nullopt;
+        chart.bpm <= 0.0 || !std::isfinite(offsetSeconds))
+        return std::nullopt;
 
     constexpr double kBeatsPerMeasure = 4.0;
-    constexpr double kMinimumLeadMs = 1000.0;
     const auto tempo = core::EffectiveTempoMap(chart, offsetSeconds);
     const double firstNoteMs = static_cast<double>(
         core::EventTimeMs(chart, chart.turns.front(), offsetSeconds));
-    // Measure length is musical, not a fixed interval in seconds after a
-    // BPM change. Find the number of prior *whole measures* needed to leave
-    // at least one real second of audio, integrating every tempo segment.
+
+    // Whole measures have different real durations when BPM changes.
     const double firstBeat = core::TempoBeatAtMs(tempo, firstNoteMs);
-    const double oneSecondBefore = core::TempoBeatAtMs(
-        tempo, firstNoteMs - kMinimumLeadMs);
+    const double beforeLead = core::TempoBeatAtMs(
+        tempo, firstNoteMs - kMinimumFirstNoteLeadSeconds * 1000.0);
     const double measures = std::max(1.0, std::ceil(
-        (firstBeat - oneSecondBefore - 1e-9) / kBeatsPerMeasure));
-    const double seekTo = core::TempoMsAtBeat(
+        (firstBeat - beforeLead - 1e-9) / kBeatsPerMeasure));
+    const double start = core::TempoMsAtBeat(
         tempo, firstBeat - measures * kBeatsPerMeasure) / 1000.0;
-    if (!std::isfinite(seekTo) || seekTo <= 0.0 ||
-        currentSongSeconds + 1e-6 >= seekTo) return std::nullopt;
+    if (!std::isfinite(start)) return std::nullopt;
+    return start;
+}
+
+// Normal scored starts preserve the existing negative chart-offset preroll.
+// Only if the first note would arrive within one second of that start do we
+// begin earlier. This never shifts the MP3, chart timestamps or judgement
+// windows; the transport simply counts up from a negative audio coordinate.
+// Editor TEST seeks deliberately start at the playhead and bypass this.
+inline double ScoredChartStartSeconds(
+    const core::Chart& chart, double offsetSeconds) {
+    const double defaultStart = std::min(0.0, offsetSeconds);
+    if (!std::isfinite(defaultStart) || chart.turns.empty())
+        return 0.0;
+    const double firstNote = static_cast<double>(
+        core::EventTimeMs(chart, chart.turns.front(), offsetSeconds)) / 1000.0;
+    if (firstNote - defaultStart >= kMinimumFirstNoteLeadSeconds)
+        return defaultStart;
+    const auto lead = FirstNoteLeadStartSeconds(chart, offsetSeconds);
+    return lead ? std::min(defaultStart, *lead) : defaultStart;
+}
+
+// Manual skip is forward-only. Its destination is the same whole-measure
+// lead position used by an early chart's automatic startup, but it must stay
+// within the actual audio file instead of seeking to a negative timestamp.
+inline std::optional<double> IntroSkipDestination(
+    const core::Chart& chart, double offsetSeconds,
+    double currentSongSeconds) {
+    if (!std::isfinite(currentSongSeconds)) return std::nullopt;
+    const auto seekTo = FirstNoteLeadStartSeconds(chart, offsetSeconds);
+    if (!seekTo || *seekTo <= 0.0 ||
+        currentSongSeconds + 1e-6 >= *seekTo) return std::nullopt;
     return seekTo;
 }
 

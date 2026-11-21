@@ -58,6 +58,45 @@ int main() {
     ok &= Check(!app::IntroSkipDestination(intro, 0.0, 0.0),
                 "no notes means no intro skip");
 
+    // Songs whose first turn happens at/near the MP3 beginning must provide
+    // the same full-measure lead-in as a manually skipped long intro.
+    core::Chart early;
+    early.bpm = 120.0;
+    early.turns = {{0, core::Heading::Right, 0}};
+    ok &= Check(std::abs(app::ScoredChartStartSeconds(early, 0.0) + 2.0) < 1e-9,
+                "note at audio zero gets a silent two-second musical measure");
+    early.turns.front().timeMs = 500;
+    ok &= Check(std::abs(app::ScoredChartStartSeconds(early, 0.0) + 1.5) < 1e-9,
+                "note at 500ms gets the same one-measure preparation");
+    early.turns.front().timeMs = 1000;
+    ok &= Check(app::ScoredChartStartSeconds(early, 0.0) == 0.0,
+                "a full second before the first note needs no extra preroll");
+    early.turns.front().timeMs = 10000;
+    ok &= Check(app::ScoredChartStartSeconds(early, 0.0) == 0.0 &&
+                app::IntroSkipDestination(early, 0.0, 1.0).value_or(-1.0) == 8.0,
+                "long intros retain normal zero start and manual intro skipping");
+    early.turns.front().timeMs = 0;
+    early.bpm = 250.0;
+    ok &= Check(std::abs(app::ScoredChartStartSeconds(early, 0.0) + 1.92) < 1e-9,
+                "fast BPM keeps at least one second by using two measures");
+    early.bpm = 120.0;
+    early.turns.front().timeMs = 0;
+    ok &= Check(app::ScoredChartStartSeconds(early, -1.0) == -1.0,
+                "existing one-second negative offset is already sufficient");
+    ok &= Check(std::abs(app::ScoredChartStartSeconds(early, -0.5) + 2.0) < 1e-9,
+                "short negative offset extends to a full musical lead-in");
+    early.turns.front().timeMs = 3000;
+    ok &= Check(app::ScoredChartStartSeconds(early, -1.0) == -1.0,
+                "adequate existing silent offset is preserved");
+    early.tempoMap = {{0, 120.0}, {250, 240.0}};
+    early.turns.front().timeMs = 500;
+    ok &= Check(std::abs(app::ScoredChartStartSeconds(early, 0.0) + 1.25) < 1e-9,
+                "early note lead integrates authored tempo changes");
+    early.tempoMap.clear();
+    early.turns.clear();
+    ok &= Check(app::ScoredChartStartSeconds(early, 0.0) == 0.0,
+                "charts without turns preserve the existing audio start");
+
     const core::Chart demoChart = core::MakeDemoChart();
     core::Chart activeChart = demoChart;
     core::TurnJudge judge(activeChart);
