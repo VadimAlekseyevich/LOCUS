@@ -740,6 +740,27 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         SuppressGlobalMenuShortcuts(input);
     }
     PumpInput(nativeTyping);
+    // Numeric preview rate owns Enter/Escape while focused: commit or undo
+    // without leaking these keys into editor navigation.
+    if (nativeTyping) {
+        if (auto* focusedRate = dynamic_cast<Rml::ElementFormControlInput*>(
+                context_->GetFocusElement());
+            focusedRate && focusedRate->GetId() == "editor-preview-rate") {
+            const bool cancel = IsKeyPressed(KEY_ESCAPE);
+            const bool commit = IsKeyPressed(KEY_ENTER) ||
+                                IsKeyPressed(KEY_KP_ENTER);
+            if (cancel || commit) {
+                if (cancel)
+                    focusedRate->SetValue(std::to_string(
+                        std::clamp(static_cast<int>(std::lround(rate * 100.0)),
+                                   1, 100)));
+                focusedRate->Blur();
+                input.editor.escape = false;
+                input.editor.enter = false;
+                input.backPressed = false;
+            }
+        }
+    }
     if (!ui.EditingText() && !nativeTyping) {
         if (IsKeyPressed(KEY_TAB)) {
             // Tab belongs to native focus traversal, not the old

@@ -98,7 +98,7 @@ void LocalMusic::StartAt(double monotonicSeconds, double audioSeconds) {
         if (!stretch_->Ready()) {
             std::string error;
             if (!stretch_->Load(fileBytes_, sourceFormat_.c_str(), error))
-                std::cerr << "LOCAL_MUSIC_STRETCH_UNAVAILABLE: " << error << '\\n';
+                std::cerr << "LOCAL_MUSIC_STRETCH_UNAVAILABLE: " << error << '\n';
         }
         if (stretch_->Ready()) {
             stretch_->StartAt(audioSeconds, speed_, volume_);

@@ -47,7 +47,11 @@ bool PitchPreservingStream::Load(const std::vector<std::uint8_t>& encoded,
 
     // The normal Music stream remains untouched and is used at 100%.
     // Dedicated, prebuffered AudioStream is used only for slower preview.
+    // Use blocks the same size as raylib's subbuffers. With its default
+    // auto-sizing, UpdateAudioStream pads every small write with silence.
+    SetAudioStreamBufferSizeDefault(kBlockFrames);
     stream_ = LoadAudioStream(sampleRate_, 32, channels_);
+    SetAudioStreamBufferSizeDefault(0);
     if (!IsAudioStreamValid(stream_)) {
         samples_.clear();
         error = "Could not create pitch-preserving audio output";
