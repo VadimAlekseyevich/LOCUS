@@ -216,6 +216,26 @@ int main() {
                 !canceledLeave.editorNew && files.AnyDirty(),
                 "Editor > Esc cancel keeps both dirty histories");
 
+    // Native OS close takes precedence over the editor discard prompt.
+    // Canceling the quit dialog must leave the dirty workspace untouched.
+    app::FrameInput windowClose;
+    windowClose.closeRequested = true;
+    ok &= Check(discardGuard.Handle(windowClose, files.AnyDirty(), false, false) ==
+                    app::EditorDiscardOutcome::None &&
+                discardGuard.Pending() == app::EditorPending::None,
+                "Editor > Windows close bypasses the editor-specific modal");
+    app::NavigationInput requestQuit;
+    requestQuit.closeRequested = windowClose.closeRequested;
+    app::UpdateScreenFlow(nav, requestQuit, false);
+    ok &= Check(nav.quitConfirmation && nav.running &&
+                nav.screen == Screen::Editor && files.AnyDirty(),
+                "Editor > OS close enters application quit guard");
+    app::NavigationInput keepEditing;
+    keepEditing.quitCanceled = true;
+    app::UpdateScreenFlow(nav, keepEditing, false);
+    ok &= Check(!nav.quitConfirmation && files.HasDirtyParked(),
+                "Editor > cancel OS quit keeps parked unsaved work");
+
     const core::Chart builtinDemo = core::MakeDemoChart();
     core::Chart activeChart = builtinDemo;
     core::TurnJudge judge(activeChart);
@@ -255,6 +275,24 @@ int main() {
                 editor.CanUndo() && files.ParkedEditor(installedHard) &&
                 files.ParkedEditor(installedHard)->CanUndo(),
                 "TEST > Editor keeps exact tick, both dirty documents and Undo histories");
+    // An actual EditorSession::BeginTest gives GameSession a TestOrigin;
+    // even a completely resolved judge is not eligible for a saved attempt.
+    judge.FinishRemainingMisses();
+    app::RunResultsStore transientResults(profile.root / "Results");
+    const app::RunKey testKey{
+        library.Songs().front().id, installedEasy.filename().u8string()};
+    app::CompletedRunContext finishedTest{
+        true, game.IsEditorTest(), true, testKey,
+        library.Songs().front().title, editor.Data().title,
+        judge.Counts(), judge.ScorableCount(), playback.Speed()
+    };
+    app::RunResult rejectedTest;
+    ok &= Check(game.IsEditorTest() &&
+                !app::CaptureCompletedRun(
+                    transientResults, finishedTest, rejectedTest, error) &&
+                error.empty() && transientResults.Load(testKey, error).empty(),
+                "TEST completion cannot publish a result on the real profile");
+
     ok &= Check(files.SaveAll(now) && !files.AnyDirty(),
                 "Save All persists both documents");
 
