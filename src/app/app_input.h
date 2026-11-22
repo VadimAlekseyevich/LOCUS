@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/chart_editor_ui.h"
+#include "app/direction_input_events.h"
 #include "app/game_settings.h"
 #include "app/screen_flow.h"
 
@@ -42,6 +43,10 @@ struct FrameInput {
     std::array<bool, 4> arrowPressed{};
     std::array<double, 4> arrowCapturedAt{};
     std::array<bool, 4> arrowHeld{};
+    // Win32 event stream retains individual OS key times; the existing
+    // raylib key snapshots serve as fallback on other platforms.
+    DirectionKeyBatch directionEvents;
+    bool exactDirectionEvents = false;
     locus::app::EditorControls editor;
 };
 

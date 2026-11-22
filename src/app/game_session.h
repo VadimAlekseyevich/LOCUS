@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/chart_playback.h"
+#include "app/direction_input_events.h"
 #include "app/global_offset_calibrator.h"
 #include "app/hit_flash.h"
 #include "app/demo_transport.h"
@@ -22,6 +23,8 @@ struct ArrowInput {
     std::array<bool, 4> pressed{};
     std::array<double, 4> capturedAt{};
     std::array<bool, 4> held{};
+    const DirectionKeyBatch* events = nullptr;
+    bool precise = false;
 };
 
 // Coordinates the actual Play session, not the UI screens. Non-owning refs:

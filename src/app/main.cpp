@@ -45,6 +45,7 @@
 #include "app/skin_menu.h"
 #include "app/menu_ui.h"
 #include "app/native_close.h"
+#include "app/native_key_capture.h"
 #include "app/window_mode.h"
 #include "app/screen_flow.h"
 #include "app/session_transition.h"
@@ -165,6 +166,18 @@ int main(int argc, char** argv) {
         settingsUi.notice = "DEFAULTS USED: " + settingsError;
         settingsUi.noticeError = true;
     }
+    locus::app::DirectionInputEvents nativeDirectionInput;
+#ifdef _WIN32
+    nativeDirectionInput.Configure({
+        settings.Key(locus::app::GameAction::Up),
+        settings.Key(locus::app::GameAction::Right),
+        settings.Key(locus::app::GameAction::Down),
+        settings.Key(locus::app::GameAction::Left)
+    });
+    locus::app::BindNativeDirectionEvents(
+        &nativeDirectionInput, MonotonicSeconds());
+#endif
+
     const auto applyDisplaySettings = [&settings]() {
         // Change the Windows swap interval live; the GPU driver may still
         // override the request. Never tie musical time to rendering.
@@ -364,6 +377,21 @@ int main(int argc, char** argv) {
             state.screen == Screen::Play &&
                 (customChart ? chartPlayback.Paused() : transport.Paused()),
             nativeEditorTextInput);
+#ifdef _WIN32
+        nativeDirectionInput.Configure({
+            settings.Key(locus::app::GameAction::Up),
+            settings.Key(locus::app::GameAction::Right),
+            settings.Key(locus::app::GameAction::Down),
+            settings.Key(locus::app::GameAction::Left)
+        });
+        if (state.screen == Screen::Play && !state.quitConfirmation &&
+            !state.levelExitConfirmation) {
+            nativeDirectionInput.DrainInto(input.directionEvents);
+            input.exactDirectionEvents = true;
+        } else {
+            nativeDirectionInput.DiscardPending();
+        }
+#endif
         const auto [repeatSpeed, repeatPreview] = adjustmentRepeater.Advance(
             input.baseSpeedHeld, input.previewTimeHeld, GetFrameTime());
         input.baseSpeedDelta += repeatSpeed;
@@ -1074,6 +1102,7 @@ int main(int argc, char** argv) {
         UnloadFont(uiFont.value);
     }
     locus::app::SetBorderlessDesktop(false);
+    locus::app::BindNativeDirectionEvents(nullptr, MonotonicSeconds());
     locus::app::RemoveNativeCloseGuard();
     CloseWindow();
     std::cout << "LOCUS_WINDOW_CLOSED\n";

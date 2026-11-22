@@ -61,14 +61,19 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     const bool playing = customChart ? local_.Playing() : demo_.Playing();
     const bool paused = customChart ? local_.Paused() : demo_.Paused();
     const bool audioAlreadyFinished = customChart ? local_.Finished() : demo_.Finished();
-    // Only a *fresh* gameplay direction press can skip a long empty intro.
-    // The seek moves both audio and visual clocks. Consume this key press:
-    // it is not an attempt to hit the upcoming note.
+    // An event stream is authoritative when the OS backend is present:
+    // don't also score raylib's frame snapshot for the same keydown.
+    const bool freshInput = arrows.precise
+        ? (arrows.events && std::any_of(
+            arrows.events->events.begin(),
+            arrows.events->events.begin() + arrows.events->size,
+            [](const DirectionKeyEvent& e) { return e.pressed; }))
+        : std::any_of(arrows.pressed.begin(), arrows.pressed.end(),
+                      [](bool pressed) { return pressed; });
+    // A key used to skip the intro is consumed, not judged as a note.
     if (playing && !paused && !chart_.turns.empty() &&
         judge_.NextEvent() == &chart_.turns.front() &&
-        judge_.Counts().Resolved() == 0 &&
-        std::any_of(arrows.pressed.begin(), arrows.pressed.end(),
-                    [](bool pressed) { return pressed; })) {
+        judge_.Counts().Resolved() == 0 && freshInput) {
         const double current = customChart ? local_.AudioSeconds(now)
                                            : demo_.SongSeconds(now);
         const double offset = customChart ? local_.OffsetSeconds() : 0.0;
@@ -88,15 +93,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     // During the silent tail, allow late directional input up to the
     // standard judgement window after the final chart note.
     if ((playing && !paused) || audioAlreadyFinished) {
-        // Each fresh physical arrow is a separate note input. Two keys
-        // sharing a diagonal target are graded at their own key-down times.
-        constexpr core::Heading directions[4] = {
-            core::Heading::Up, core::Heading::Right,
-            core::Heading::Down, core::Heading::Left
-        };
-        for (std::size_t i = 0; i < arrows.pressed.size(); ++i) {
-            if (!arrows.pressed[i]) continue;
-            const double capturedAt = arrows.capturedAt[i];
+        const auto score = [&](core::Heading direction, double capturedAt) {
             const double timestamp = audioEndedAt_ >= 0.0
                 ? audioEndSongSeconds_ +
                     std::max(0.0, capturedAt - audioEndedAt_) *
@@ -104,11 +101,27 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 : (customChart ? local_.AudioSeconds(capturedAt)
                                : demo_.SongSeconds(capturedAt));
             const auto judgement = judge_.PressHeading(
-                directions[i], CalibratedTime(timestamp,
+                direction, CalibratedTime(timestamp,
                     customChart ? local_.Speed() : 1.0));
             if (judgement && !judgement->wrongDirection &&
                 judgement->grade != core::Grade::Miss)
                 hitFlash_.Trigger(judgement->grade, now);
+        };
+        if (arrows.precise) {
+            if (arrows.events) {
+                for (std::size_t i = 0; i < arrows.events->size; ++i) {
+                    const auto& event = arrows.events->events[i];
+                    if (event.pressed) score(event.arrow, event.capturedAt);
+                }
+            }
+        } else {
+            constexpr core::Heading directions[4] = {
+                core::Heading::Up, core::Heading::Right,
+                core::Heading::Down, core::Heading::Left
+            };
+            for (std::size_t i = 0; i < arrows.pressed.size(); ++i)
+                if (arrows.pressed[i])
+                    score(directions[i], arrows.capturedAt[i]);
         }
     }
     if (customChart) local_.Update(now);

@@ -43,8 +43,18 @@ void PlayScreenActions::Update(const FrameInput& input, double now) {
         }
         return;
     }
-    context_.game.Update(custom, now,
-                         {input.arrowPressed, input.arrowCapturedAt, input.arrowHeld});
+    ArrowInput arrows{input.arrowPressed, input.arrowCapturedAt, input.arrowHeld};
+    arrows.events = &input.directionEvents;
+    arrows.precise = input.exactDirectionEvents;
+    // Modal, retry, pause and rate changes consume all coincident keys.
+    if (input.pausePressed || input.restartPressed ||
+        input.leaveRequested || input.homePressed || input.requestedScreen ||
+        input.practiceSpeedIndex >= 0) {
+        arrows.pressed.fill(false);
+        arrows.events = nullptr;
+        arrows.precise = true;
+    }
+    context_.game.Update(custom, now, arrows);
     const bool audioFinished = custom
         ? context_.local.Finished() : context_.demo.Finished();
     if (ChartReadyForResults(context_.judge, audioFinished)) {

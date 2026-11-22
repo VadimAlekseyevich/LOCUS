@@ -59,6 +59,7 @@ add_executable(locus
     src/app/quit_media.cpp
     src/app/editor_discard_guard.cpp
     src/app/native_close.cpp
+    src/app/native_key_capture.cpp
     src/app/open_folder.cpp
     src/app/window_mode.cpp
     src/app/demo_transport.cpp

@@ -75,8 +75,9 @@ public:
         return false;
     }
 
-    DirectionKeyBatch Drain() noexcept {
-        DirectionKeyBatch events = pending_;
+    void DrainInto(DirectionKeyBatch& events) noexcept {
+        events.size = pending_.size;
+        std::copy_n(pending_.events.begin(), events.size, events.events.begin());
         pending_.Clear();
         std::sort(events.events.begin(),
                   events.events.begin() + events.size,
@@ -84,6 +85,11 @@ public:
                       return a.capturedAt < b.capturedAt ||
                           (a.capturedAt == b.capturedAt && a.order < b.order);
                   });
+    }
+
+    DirectionKeyBatch Drain() noexcept {
+        DirectionKeyBatch events;
+        DrainInto(events);
         return events;
     }
 

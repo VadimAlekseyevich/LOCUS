@@ -1,4 +1,5 @@
 #include "app/native_close.h"
+#include "app/native_key_capture.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -15,6 +16,11 @@ bool closeRequested = false;
 
 LRESULT CALLBACK GuardedWindowProcedure(HWND hwnd, UINT message,
                                         WPARAM wparam, LPARAM lparam) {
+    // Capture before GLFW collapses its per-frame IsKeyPressed state.
+    locus::app::CaptureNativeDirectionMessage(
+        message, static_cast<std::uintptr_t>(wparam),
+        static_cast<std::intptr_t>(lparam),
+        static_cast<std::uint32_t>(GetMessageTime()));
     if (message == WM_CLOSE) {
         closeRequested = true;
         return 0; // Never forward to GLFW: its close flag would remain latched.
