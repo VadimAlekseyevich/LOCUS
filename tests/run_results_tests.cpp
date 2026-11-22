@@ -93,6 +93,25 @@ int main() {
                     "corrupt and pending files are ignored independently");
     }
 
+    // A deliberately reused ID must never replace an earlier completed
+    // result, even if an abandoned legacy .pending file occupies its name.
+    RunResult collision = first;
+    collision.completedAtMs += 5000;
+    collision.id = first.id;
+    if (!easyFolder.empty())
+        std::ofstream(easyFolder / (collision.id + "-0.pending")) << "old";
+    ok &= Check(store.Save(collision, error) &&
+                collision.id != first.id &&
+                store.Load({"set-123", "easy.locus.json"}, error).size() == 4,
+                "colliding completed attempt is published without overwriting old result");
+    RunResult secondCollision = first;
+    secondCollision.completedAtMs += 6000;
+    secondCollision.id = first.id;
+    ok &= Check(store.Save(secondCollision, error) &&
+                secondCollision.id != collision.id &&
+                store.Load({"set-123", "easy.locus.json"}, error).size() == 5,
+                "repeated ID gets another unique result despite stale pending files");
+
     RunResult invalid = first;
     invalid.id.clear();
     invalid.grades.miss = -1;

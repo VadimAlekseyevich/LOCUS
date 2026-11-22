@@ -29,11 +29,15 @@
 
 namespace locus::app {
 
-// Publish one complete UTF-8 document, or leave the previous document intact.
-// Each writer owns an exclusive staging file, even across processes. The caller
-// creates the parent directory and validates the serialized content first.
-inline bool AtomicReplaceTextFile(const std::filesystem::path& destination,
-                                  std::string_view bytes, std::string& error) {
+// Publish a complete UTF-8 document with an exclusive temporary file.
+// CreateNew never overwrites a destination: its collision status is safe
+// to retry with another name, even when another process commits concurrently.
+enum class AtomicTextWriteMode { Replace, CreateNew };
+enum class AtomicTextWriteStatus { Published, AlreadyExists, Failed };
+
+inline AtomicTextWriteStatus AtomicWriteTextFile(
+        const std::filesystem::path& destination, std::string_view bytes,
+        AtomicTextWriteMode mode, std::string& error) {
     namespace fs = std::filesystem;
     static std::atomic<std::uint64_t> sequence{0};
 #ifdef _WIN32
@@ -69,7 +73,7 @@ inline bool AtomicReplaceTextFile(const std::filesystem::path& destination,
     if (!created) {
         error = "Cannot exclusively create a temporary file for " +
                 destination.filename().u8string() + ".";
-        return false;
+        return AtomicTextWriteStatus::Failed;
     }
 
     bool complete = true;
@@ -102,26 +106,57 @@ inline bool AtomicReplaceTextFile(const std::filesystem::path& destination,
         fs::remove(stage, cleanup);
         error = "Cannot finish writing " + destination.filename().u8string() +
                 "; the previous file was not changed.";
-        return false;
+        return AtomicTextWriteStatus::Failed;
     }
 
 #ifdef _WIN32
-    const bool published = MoveFileExW(stage.c_str(), destination.c_str(),
-                             MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+    const DWORD flags = MOVEFILE_WRITE_THROUGH |
+        (mode == AtomicTextWriteMode::Replace ? MOVEFILE_REPLACE_EXISTING : 0);
+    const bool published =
+        MoveFileExW(stage.c_str(), destination.c_str(), flags) != 0;
+    const DWORD publishError = published ? ERROR_SUCCESS : GetLastError();
+    const bool collision = mode == AtomicTextWriteMode::CreateNew &&
+        (publishError == ERROR_FILE_EXISTS || publishError == ERROR_ALREADY_EXISTS);
 #else
     std::error_code ec;
-    fs::rename(stage, destination, ec);
+    if (mode == AtomicTextWriteMode::Replace)
+        fs::rename(stage, destination, ec);
+    else
+        fs::create_hard_link(stage, destination, ec); // atomic no-replace
     const bool published = !ec;
+    const bool collision = mode == AtomicTextWriteMode::CreateNew &&
+        ec == std::errc::file_exists;
+    if (published && mode == AtomicTextWriteMode::CreateNew) {
+        std::error_code cleanup;
+        fs::remove(stage, cleanup);
+    }
 #endif
     if (!published) {
         std::error_code cleanup;
         fs::remove(stage, cleanup);
-        error = "Cannot replace " + destination.filename().u8string() +
+        if (collision) {
+            error.clear();
+            return AtomicTextWriteStatus::AlreadyExists;
+        }
+        error = "Cannot publish " + destination.filename().u8string() +
                 "; the previous file was not changed.";
-        return false;
+        return AtomicTextWriteStatus::Failed;
     }
     error.clear();
-    return true;
+    return AtomicTextWriteStatus::Published;
+}
+
+// Replace for mutable settings and skins; create for immutable completed runs.
+inline bool AtomicReplaceTextFile(const std::filesystem::path& destination,
+                                  std::string_view bytes, std::string& error) {
+    return AtomicWriteTextFile(destination, bytes,
+        AtomicTextWriteMode::Replace, error) == AtomicTextWriteStatus::Published;
+}
+inline AtomicTextWriteStatus AtomicCreateTextFile(
+        const std::filesystem::path& destination,
+        std::string_view bytes, std::string& error) {
+    return AtomicWriteTextFile(destination, bytes,
+        AtomicTextWriteMode::CreateNew, error);
 }
 
 } // namespace locus::app

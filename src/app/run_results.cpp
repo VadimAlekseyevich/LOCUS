@@ -1,4 +1,5 @@
 #include "app/run_results.h"
+#include "app/atomic_text_file.h"
 
 #include "core/utf8.h"
 #include <nlohmann/json.hpp>
@@ -170,38 +171,23 @@ bool RunResultsStore::Save(RunResult& r, std::string& error) const {
     }
     for (int suffix = 0; suffix < 1000; ++suffix) {
         const std::string fileId = r.id + "-" + std::to_string(suffix);
-        const fs::path dest = dir / (fileId + ".json");
-        const fs::path temp = dir / (fileId + ".pending");
-        if (fs::exists(dest, ec) || fs::exists(temp, ec)) continue;
         RunResult candidate = r;
         candidate.id = fileId;
-        const std::string encoded = Encode(candidate).dump(2);
-        {
-            std::ofstream stream(temp, std::ios::binary | std::ios::trunc);
-            if (!stream) {
-                error = "Could not write the result file.";
-                return false;
-            }
-            stream.write(encoded.data(),
-                         static_cast<std::streamsize>(encoded.size()));
-            stream.flush();
-            if (!stream) {
-                stream.close();
-                fs::remove(temp, ec);
-                error = "Result file could not be flushed.";
-                return false;
-            }
+        if (!ValidRunResult(candidate)) {
+            error = "Result identifier exceeds the supported length.";
+            return false;
         }
-        ec.clear();
-        fs::rename(temp, dest, ec);
-        if (!ec) {
-            r.id = candidate.id;
-            error.clear();
-            return true;
-        }
-        fs::remove(temp, ec);
-        error = "Could not atomically finalize result file.";
-        return false;
+        const fs::path dest = dir / (fileId + ".json");
+        // No exists()/ofstream gap: the CREATE_NEW/link publication is
+        // exclusive even if two processes picked the same timestamp and ID.
+        // Abandoned legacy .pending files must not block new attempts.
+        const auto status = AtomicCreateTextFile(
+            dest, Encode(candidate).dump(2), error);
+        if (status == AtomicTextWriteStatus::AlreadyExists) continue;
+        if (status != AtomicTextWriteStatus::Published) return false;
+        r.id = candidate.id;
+        error.clear();
+        return true;
     }
     error = "Could not allocate a unique result filename.";
     return false;
