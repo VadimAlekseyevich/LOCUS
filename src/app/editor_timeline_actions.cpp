@@ -172,10 +172,18 @@ void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,
         if (beat != ui.dragAnchorBeat) {
             ui.rangeFirst = std::min(ui.dragAnchorBeat, beat);
             ui.rangeLast = std::max(ui.dragAnchorBeat, beat);
+            // Moving to another tick makes this a genuine range drag,
+            // which intentionally clears any individually selected note.
+            draft.SelectBeat(beat);
         } else {
+            const bool hadRange = ui.HasRange();
             ui.rangeFirst = ui.rangeLast = -1;
+            // A real click frame has mouseHeld=true, so BeginSelection and
+            // UpdateNavigation run in the SAME frame. Re-selecting the same
+            // tick here used to erase the exact time we just hit-tested!
+            // Only reset the cursor after dragging back from another tick.
+            if (hadRange) draft.SelectBeat(beat);
         }
-        draft.SelectBeat(beat);
     }
     if (input.mouseReleased || (!input.mouseHeld && !input.mouseClick))
         ui.draggingTimeline = false;

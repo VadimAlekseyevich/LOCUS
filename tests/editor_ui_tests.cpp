@@ -1013,6 +1013,22 @@ int main() {
                 denseUi.SelectedTurn() &&
                 denseUi.SelectedTurn()->direction == Heading::Right,
                 "click selects second event independently in same grid cell");
+    // Real raylib input sets mouseClick and mouseHeld simultaneously. The
+    // drag update must not instantly clear the timestamp selection.
+    auto pressedNote = Click(secondNoteX, detail::kTimelineY + 34);
+    pressedNote.timelineViewBeat = denseAnchorTick;
+    pressedNote.mouseHeld = true;
+    ApplyEditorControls(denseUi, denseUiState, pressedNote);
+    ok &= Check(denseUi.SelectedTurnTimeMs() == 1010,
+                "same-frame held mouse click keeps exact selected note");
+    EditorControls releaseNote;
+    releaseNote.mouse = {secondNoteX, detail::kTimelineY + 34};
+    releaseNote.mouseReleased = true;
+    releaseNote.timelineViewBeat = denseAnchorTick;
+    ApplyEditorControls(denseUi, denseUiState, releaseNote);
+    ok &= Check(denseUi.SelectedTurnTimeMs() == 1010 &&
+                !denseUiState.draggingTimeline,
+                "click release without drag keeps exact identity selected");
     denseUi.PutTurn(Heading::Down);
     ok &= Check(denseUi.Data().route.turns[0].direction == Heading::Up &&
                 denseUi.Data().route.turns[1].direction == Heading::Down &&
