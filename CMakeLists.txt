@@ -209,6 +209,19 @@ if(LOCUS_BUILD_TESTS)
     # A production navigation -> judgement -> persisted-results journey,
     # without a GPU, device clock or native file dialogs.
     # T03: timestamped physical key transitions, independent of rendered FPS.
+    if(WIN32)
+        # Exercises the production Win32 key translator and time-origin
+        # adapter without requiring a desktop or physical keyboard.
+        add_executable(locus_win32_direction_events_tests
+            tests/win32_direction_events_tests.cpp
+            src/app/native_key_capture.cpp)
+        target_compile_features(locus_win32_direction_events_tests PRIVATE cxx_std_17)
+        target_link_libraries(locus_win32_direction_events_tests PRIVATE
+            locus_core user32)
+        add_test(NAME locus_win32_message_time_and_key_mapping
+                 COMMAND locus_win32_direction_events_tests)
+    endif()
+
     add_executable(locus_direction_input_tests tests/direction_input_tests.cpp)
     target_compile_features(locus_direction_input_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_direction_input_tests PRIVATE locus_core)
