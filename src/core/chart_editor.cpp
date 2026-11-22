@@ -663,14 +663,22 @@ ChartEditor::Pattern ChartEditor::CopyTurns(int firstBeat, int lastBeat) const {
     const int lastNote = (end - 1)->beat;
     result.span = lastNote - firstNote + 1;
     result.ticksPerBeat = chart_.route.ticksPerBeat;
-    for (auto note = start; note != end; ++note)
-        result.notes.push_back({note->beat - firstNote, note->direction});
+    for (auto note = start; note != end; ++note) {
+        const auto tickMs = static_cast<std::int64_t>(std::llround(
+            AudioSecondsAtBeat(note->beat) * 1000.0));
+        const auto exactMs = EventTimeMs(
+            chart_.route, *note, chart_.offsetSeconds);
+        result.notes.push_back({
+            note->beat - firstNote, note->direction, exactMs - tickMs
+        });
+    }
     return result;
 }
 
 bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
-    // Clipboard positions are expressed in its source tick resolution.
-    // A finer placement grid must not stretch a copied musical phrase.
+    // Musical placement follows the destination grid; sub-tick offsets
+    // preserve source-authored milliseconds. A pattern with multiple notes
+    // in one cell must NEVER be flattened into one replacement.
     if (pattern.span < 1 || pattern.notes.empty() ||
         pattern.ticksPerBeat < 1 ||
         chart_.route.ticksPerBeat % pattern.ticksPerBeat != 0)
@@ -680,27 +688,56 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
     if (destinationBeat < chart_.route.firstBeat ||
         static_cast<long long>(destinationBeat) + span > chart_.route.lengthBeats)
         return false;
-    std::vector<TurnEvent> updated = chart_.route.turns;
+
+    const auto& route = chart_.route;
+    std::vector<TurnEvent> updated = route.turns;
     int lastRelative = -1;
+    std::int64_t lastOffset = kNoTimeMs;
     bool changed = false;
     for (const auto& note : pattern.notes) {
-        if (note.beat < 0 || note.beat >= pattern.span ||
-            note.beat <= lastRelative) return false;
+        if (!ValidHeading(note.direction) ||
+            note.beat < 0 || note.beat >= pattern.span ||
+            note.beat < lastRelative ||
+            (note.beat == lastRelative &&
+                (note.timeMs == kNoTimeMs || lastOffset == kNoTimeMs ||
+                 note.timeMs <= lastOffset)))
+            return false;
         lastRelative = note.beat;
+        lastOffset = note.timeMs;
         const long long absolute =
             static_cast<long long>(destinationBeat) +
             static_cast<long long>(note.beat) * factor;
-        if (absolute < chart_.route.firstBeat ||
-            absolute >= chart_.route.lengthBeats) return false;
+        if (absolute < route.firstBeat || absolute >= route.lengthBeats)
+            return false;
         const int beat = static_cast<int>(absolute);
-        const auto found = std::lower_bound(updated.begin(), updated.end(), beat,
-            [](const TurnEvent& event, int n) { return event.beat < n; });
-        const std::int64_t ms = static_cast<std::int64_t>(
+        const auto tickMs = static_cast<std::int64_t>(
             std::llround(AudioSecondsAtBeat(beat) * 1000.0));
-        if (found != updated.end() && found->beat == beat) {
-            if (found->direction != note.direction || found->timeMs != ms) {
+        // Sentinel means a traditional snapped note, offset zero.
+        const auto intraTickMs =
+            note.timeMs == kNoTimeMs ? 0 : note.timeMs;
+        if (intraTickMs < -86400000 || intraTickMs > 86400000)
+            return false;
+        const std::int64_t ms = tickMs + intraTickMs;
+        if (ms < -3600000 || ms > 86400000 ||
+            (HasSongDuration() && ms >=
+                songDurationSeconds_ * 1000.0) ||
+            (ms < 0 && !(chart_.offsetSeconds < 0.0 && beat >= 0)) ||
+            TempoTickAtMs(route, chart_.offsetSeconds, ms) != beat)
+            return false;
+
+        // The vector is always sorted by song milliseconds. Replace only
+        // the event at the SAME time, never an arbitrary neighbor at its
+        // rounded tick. Sorting/insertion is logarithmic search + one splice.
+        const auto found = std::lower_bound(
+            updated.begin(), updated.end(), ms,
+            [&](const TurnEvent& event, std::int64_t timeMs) {
+                return EventTimeMs(route, event, chart_.offsetSeconds) < timeMs;
+            });
+        if (found != updated.end() &&
+            EventTimeMs(route, *found, chart_.offsetSeconds) == ms) {
+            if (found->beat != beat) return false;
+            if (found->direction != note.direction) {
                 found->direction = note.direction;
-                found->timeMs = ms;
                 changed = true;
             }
         } else {

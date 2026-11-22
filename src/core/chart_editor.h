@@ -17,6 +17,10 @@ class ChartEditor {
 public:
     // Pattern notes use beats relative to the beginning of a selected range.
     struct Pattern {
+        // For clipboard entries, timeMs is the signed millisecond offset
+        // from the source note's own musical grid tick; kNoTimeMs denotes
+        // a legacy hand-built/snapped clipboard entry. This preserves
+        // multiple notes in one tick without an additional heap allocation.
         std::vector<TurnEvent> notes;
         int span = 0;
         int ticksPerBeat = 1; // Clipboard survives grid-resolution changes.

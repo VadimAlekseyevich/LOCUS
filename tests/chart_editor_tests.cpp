@@ -570,6 +570,30 @@ int main() {
                 "grid navigation drops exact selection in favor of tick");
     ok &= Check(!exact.SelectTurnAtTimeMs(1020),
                 "nonexistent time cannot select an adjacent note");
+    // Time-precise clipboard: two authored events on one grid tick survive
+    // copying and pasting into another tick with their 10ms gap intact.
+    const auto densePattern = exact.CopyTurns(2, 2);
+    ok &= Check(densePattern.span == 1 &&
+                densePattern.notes.size() == 2 &&
+                densePattern.notes[0].beat == 0 &&
+                densePattern.notes[1].beat == 0 &&
+                densePattern.notes[0].timeMs == 0 &&
+                densePattern.notes[1].timeMs == 10,
+                "clipboard carries sub-tick timing instead of dropping it");
+    ok &= Check(exact.PasteTurns(5, densePattern) &&
+                exact.Data().route.turns.size() == 5 &&
+                exact.Data().route.turns[3].timeMs == 2500 &&
+                exact.Data().route.turns[4].timeMs == 2510 &&
+                exact.Data().route.turns[3].beat == 5 &&
+                exact.Data().route.turns[4].beat == 5 &&
+                exact.Undo() &&
+                exact.Data().route.turns.size() == 3,
+                "atomic paste retains two real milliseconds and Undo removes both");
+    auto malformedDense = densePattern;
+    malformedDense.notes[1].timeMs = 0;
+    ok &= Check(!exact.PasteTurns(5, malformedDense) &&
+                exact.Data().route.turns.size() == 3,
+                "non-increasing same-tick timestamps reject paste atomically");
 
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 patches=1\n";
