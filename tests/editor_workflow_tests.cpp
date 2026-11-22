@@ -5,6 +5,7 @@
 #include "app/game_session.h"
 #include "app/local_music.h"
 #include "app/menu_ui.h"
+#include "app/play_screen_actions.h"
 #include "app/run_results.h"
 #include "app/screen_flow.h"
 #include "app/session_transition.h"
@@ -247,17 +248,56 @@ int main() {
                 "Saved drafts survive restart with shared BPM and both note edits");
     if (!savedB || songs.empty()) return 1;
 
-    // The live judge, persistence gateway and actual disk store finish
-    // the same path as Play -> Results, not a fake JSON write.
+    // Start the real scored PlayScreenActions controller, deliver device
+    // events at their authored audio timestamps, then traverse the normal
+    // post-judgement animation and results boundary.
     core::Chart scored = savedB->data.route;
     core::TurnJudge scoredJudge(scored);
-    scoredJudge.FinishRemainingMisses();
+    app::GameSession scoredGame(scored, scoredJudge, demo, playback);
+    app::AppState scoredNav;
+    scoredNav.screen = Screen::Play;
+    bool scoredCustom = true;
+    bool scoredCompleted = false;
+    app::PlayOutroTransition outro;
+    app::PlayScreenActions scoredActions{
+        {scoredNav, scoredGame, scoredJudge, demo, playback,
+         scoredCustom, scoredCompleted, scored, outro}
+    };
+    playback.Configure(scored.bpm, savedB->data.offsetSeconds,
+                       scored.tempoMap, scored.ticksPerBeat);
+    constexpr double startAt = 20.0;
+    scoredGame.Start(true, startAt);
+    ok &= Check(playback.Playing() && scoredJudge.Counts().Resolved() == 0,
+                "Play > starts saved difficulty through scored session");
+
+    for (const auto& turn : scored.turns) {
+        app::FrameInput keyDown;
+        const double songTime = static_cast<double>(
+            core::EventTimeMs(scored, turn, savedB->data.offsetSeconds)) / 1000.0;
+        const double frameNow = startAt + songTime;
+        const unsigned physicalArrows = core::HeadingArrowMask(turn.direction);
+        for (std::size_t lane = 0; lane < keyDown.arrowPressed.size(); ++lane) {
+            if ((physicalArrows & (1u << lane)) == 0) continue;
+            keyDown.arrowPressed[lane] = true;
+            keyDown.arrowCapturedAt[lane] = frameNow;
+        }
+        scoredActions.Update(keyDown, frameNow);
+    }
+    ok &= Check(scoredJudge.AllScorableJudged() && outro.Active() &&
+                scoredJudge.Counts().perfect ==
+                    static_cast<int>(scoredJudge.ScorableCount()),
+                "Play > authored notes including diagonal are all judged Perfect");
+    scoredActions.Update({}, startAt + 5.0);
+    ok &= Check(scoredCompleted && scoredNav.screen == Screen::Results &&
+                !outro.Active(), "last judgement > outro > Results screen");
+
     app::RunResultsStore results(profile.root / "Results");
     app::CompletedRunContext finish{
-        true, false, false,
+        scoredCompleted, false, false,
         {songs[0].id, savedB->file.filename().u8string()},
         songs[0].title, savedB->data.title,
-        scoredJudge.Counts(), scoredJudge.ScorableCount(), 1.0
+        scoredJudge.Counts(), scoredJudge.ScorableCount(),
+        scoredActions.Transport(startAt + 5.0).practiceSpeed
     };
     app::RunResult record;
     ok &= Check(app::CaptureCompletedRun(results, finish, record, error) &&

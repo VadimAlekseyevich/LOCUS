@@ -397,6 +397,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_playback.cpp
         src/app/game_session.cpp
         src/app/demo_transport.cpp
+        src/app/play_screen_actions.cpp
+        src/app/app_runtime_policy.cpp
         src/app/session_transition.cpp
         src/app/screen_flow.cpp
         src/app/local_music.cpp
