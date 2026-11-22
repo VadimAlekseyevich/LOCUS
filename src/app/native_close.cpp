@@ -16,11 +16,16 @@ bool closeRequested = false;
 
 LRESULT CALLBACK GuardedWindowProcedure(HWND hwnd, UINT message,
                                         WPARAM wparam, LPARAM lparam) {
-    // Capture before GLFW collapses its per-frame IsKeyPressed state.
-    locus::app::CaptureNativeDirectionMessage(
-        message, static_cast<std::uintptr_t>(wparam),
-        static_cast<std::intptr_t>(lparam),
-        static_cast<std::uint32_t>(GetMessageTime()));
+    // Only keyboard/focus messages need a snapshot. Mouse move and paint
+    // messages can be extremely frequent: never query the timer for those.
+    if (message == WM_KEYDOWN || message == WM_KEYUP ||
+        message == WM_SYSKEYDOWN || message == WM_SYSKEYUP ||
+        message == WM_KILLFOCUS || message == WM_ACTIVATEAPP) {
+        locus::app::CaptureNativeDirectionMessage(
+            message, static_cast<std::uintptr_t>(wparam),
+            static_cast<std::intptr_t>(lparam),
+            static_cast<std::uint32_t>(GetMessageTime()));
+    }
     if (message == WM_CLOSE) {
         closeRequested = true;
         return 0; // Never forward to GLFW: its close flag would remain latched.

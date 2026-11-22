@@ -1,4 +1,5 @@
 #include "app/chart_playback.h"
+#include "app/direction_input_events.h"
 #include "app/demo_transport.h"
 #include "app/editor_file_actions.h"
 #include "app/editor_discard_guard.h"
@@ -360,21 +361,39 @@ int main() {
 
     std::vector<double> audioSampledAtPress;
     std::vector<bool> outroAfterNote;
-    for (const auto& turn : scored.turns) {
+    app::DirectionInputEvents hardwareEvents;
+    constexpr std::array<int, 4> bindings{{74, 75, 70, 68}}; // J K F D
+    hardwareEvents.Configure(bindings);
+    double firstDiagonalError = 0.0;
+    for (std::size_t noteIndex = 0; noteIndex < scored.turns.size(); ++noteIndex) {
+        const auto& turn = scored.turns[noteIndex];
         app::FrameInput keyDown;
         const double songTime = static_cast<double>(
             core::EventTimeMs(scored, turn, savedB->data.offsetSeconds)) / 1000.0;
         const double frameNow = startAt + songTime;
         const unsigned physicalArrows = core::HeadingArrowMask(turn.direction);
-        for (std::size_t lane = 0; lane < keyDown.arrowPressed.size(); ++lane) {
+        // Physical diagonal components arrive 7ms apart. No second snapshot
+        // of IsKeyPressed can reconstruct this when both are in one frame.
+        for (std::size_t lane = 0; lane < bindings.size(); ++lane) {
             if ((physicalArrows & (1u << lane)) == 0) continue;
-            keyDown.arrowPressed[lane] = true;
-            keyDown.arrowCapturedAt[lane] = frameNow;
+            const double skew = noteIndex == 0 && lane == 1 ? 0.007 : 0.0;
+            hardwareEvents.Observe(bindings[lane], true, frameNow + skew);
         }
-        audioSampledAtPress.push_back(playback.AudioSeconds(frameNow));
-        scoredActions.Update(keyDown, frameNow);
+        keyDown.exactDirectionEvents = true;
+        hardwareEvents.DrainInto(keyDown.directionEvents);
+        const double deliveredAt = frameNow + 0.008;
+        audioSampledAtPress.push_back(playback.AudioSeconds(deliveredAt));
+        scoredActions.Update(keyDown, deliveredAt);
+        if (noteIndex == 0 && scoredJudge.Last())
+            firstDiagonalError = scoredJudge.Last()->timingErrorSeconds;
         outroAfterNote.push_back(outro.Active());
+        // Real key-up messages must arrive before a subsequent tap can score.
+        for (std::size_t lane = 0; lane < bindings.size(); ++lane)
+            if (physicalArrows & (1u << lane))
+                hardwareEvents.Observe(bindings[lane], false, deliveredAt + 0.001);
     }
+    ok &= Check(std::abs(firstDiagonalError - 0.007) < 1e-7,
+                "Windows event stream > GameSession preserves 7ms diagonal skew");
     if (!scoredJudge.AllScorableJudged() || !outro.Active() ||
         scoredJudge.Counts().perfect !=
             static_cast<int>(scoredJudge.ScorableCount())) {

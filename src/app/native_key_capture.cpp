@@ -31,16 +31,19 @@ int RaylibKeyFromVirtualKey(WPARAM vk, LPARAM details) noexcept {
         case VK_RETURN: return extended ? 335 : 257;
         case VK_TAB: return 258;
         case VK_BACK: return 259;
-        case VK_INSERT: return 260;
-        case VK_DELETE: return 261;
-        case VK_RIGHT: return 262;
-        case VK_LEFT: return 263;
-        case VK_DOWN: return 264;
-        case VK_UP: return 265;
-        case VK_PRIOR: return 266;
-        case VK_NEXT: return 267;
-        case VK_HOME: return 268;
-        case VK_END: return 269;
+        // Physical numpad remains the same key with NumLock OFF; Win32 then
+        // sends navigation VKs, distinguished by the extended-key scan flag.
+        case VK_INSERT: return extended ? 260 : 320; // KP 0
+        case VK_DELETE: return extended ? 261 : 330; // KP decimal
+        case VK_RIGHT: return extended ? 262 : 326;  // KP 6
+        case VK_LEFT: return extended ? 263 : 324;   // KP 4
+        case VK_DOWN: return extended ? 264 : 322;   // KP 2
+        case VK_UP: return extended ? 265 : 328;     // KP 8
+        case VK_PRIOR: return extended ? 266 : 329;  // KP 9
+        case VK_NEXT: return extended ? 267 : 323;   // KP 3
+        case VK_HOME: return extended ? 268 : 327;   // KP 7
+        case VK_END: return extended ? 269 : 321;    // KP 1
+        case VK_CLEAR: return 325;                  // KP 5
         case VK_CAPITAL: return 280;
         case VK_SCROLL: return 281;
         case VK_NUMLOCK: return 282;

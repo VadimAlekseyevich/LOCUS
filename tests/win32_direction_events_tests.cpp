@@ -53,6 +53,25 @@ int main() {
     locus::app::CaptureNativeDirectionMessage(WM_ACTIVATEAPP, 0, 0, at + 19);
     ok &= Check(receiver.Drain().Empty(),
                 "inactive window cannot retain queued gameplay presses");
+    // Win32 sends VK_UP/INSERT etc. for keypad navigation with NumLock
+    // OFF. The same physical numpad binding must still work as with it ON.
+    receiver.Configure({328, 265, 325, 320}); // KP8, arrow Up, KP5, KP0
+    locus::app::CaptureNativeDirectionMessage(
+        WM_KEYDOWN, VK_UP, 0, at + 22);
+    locus::app::CaptureNativeDirectionMessage(
+        WM_KEYDOWN, VK_UP, 1ull << 24, at + 23);
+    locus::app::CaptureNativeDirectionMessage(
+        WM_KEYDOWN, VK_CLEAR, 0, at + 24);
+    locus::app::CaptureNativeDirectionMessage(
+        WM_KEYDOWN, VK_INSERT, 0, at + 25);
+    const auto physical = receiver.Drain();
+    ok &= Check(physical.size == 4 &&
+                physical.events[0].arrow == locus::core::Heading::Up &&
+                physical.events[1].arrow == locus::core::Heading::Right &&
+                physical.events[2].arrow == locus::core::Heading::Down &&
+                physical.events[3].arrow == locus::core::Heading::Left,
+                "numpad bindings work with NumLock on and off");
+
     locus::app::BindNativeDirectionEvents(nullptr, 0);
     return ok ? 0 : 1;
 }
