@@ -112,6 +112,35 @@ int main() {
                 "current-only import never annexes an occupied manifestless folder");
     fs::remove_all(occupied, ec);
 
+    // An invalid authored difficulty may fail after a fresh Song Set's
+    // shared audio has already been staged. The next import must not be
+    // blocked by a manifestless folder with orphaned audio.
+    {
+        SongLibrary abortLibrary(folder / "abort-user" / "Songs");
+        const fs::path abortAudio = source / "abort-audio.wav";
+        Write(abortAudio, firstBytes);
+        core::LoadedChart malformed = fresh;
+        malformed.title.clear(); // invalid only at chart serialization
+        const fs::path pendingFolder = abortLibrary.Root() /
+            (detail::FilenamePart(abortAudio.stem().u8string()) + "-" +
+             detail::HashText(fs::canonical(abortAudio)));
+        fs::path attempted;
+        const bool failed = !abortLibrary.CreateDifficulty(
+            abortAudio, malformed, attempted, error);
+        ok &= Check(failed && attempted.empty() &&
+                    fs::exists(pendingFolder) &&
+                    !fs::exists(pendingFolder / "abort-audio.wav") &&
+                    !fs::exists(pendingFolder / "set.locus.json"),
+                    "failed new Song Set save rolls back owned audio without publishing");
+        malformed.title = "Recovered";
+        ok &= Check(abortLibrary.CreateDifficulty(
+                        abortAudio, malformed, attempted, error) &&
+                    fs::exists(attempted) &&
+                    fs::exists(pendingFolder / "set.locus.json") &&
+                    abortLibrary.ChartCount() == 1,
+                    "retry installs a valid chart into the cleaned new Song Set");
+    }
+
     fs::path easyInstalled, hardInstalled;
     const bool importedEasy = library.Import(easy, easyInstalled, error);
     if (!importedEasy) std::cerr << "IMPORT_ERROR " << error << '\n';

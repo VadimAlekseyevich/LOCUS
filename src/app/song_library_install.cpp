@@ -37,6 +37,23 @@ bool EnsureFreshSongSetFolder(const fs::path& folder, std::string& error) {
     }
     return true;
 }
+
+// A new Song Set is not published until the manifest exists. Abort only the
+// audio and chart created by this operation; retain the folder lock placeholder
+// and all unrelated files. Report cleanup failure explicitly for recovery.
+void RollBackUnpublishedSet(const fs::path& audio, const fs::path& chart,
+                            std::string& error) {
+    std::error_code ec;
+    if (!chart.empty()) {
+        fs::remove(chart, ec);
+        if (ec) error += " (chart rollback failed: " + ec.message() + ")";
+    }
+    ec.clear();
+    if (!audio.empty()) {
+        fs::remove(audio, ec);
+        if (ec) error += " (audio rollback failed: " + ec.message() + ")";
+    }
+}
 } // namespace
 bool SongLibrary::ImportIntoSet(const fs::path& sourceChart,
                                  const fs::path& targetSet,
@@ -69,6 +86,7 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
                                    fs::path& installedChart,
                                    std::string& error,
                                    const fs::path& targetSet) {
+    installedChart.clear();
     std::error_code ec;
     const fs::path source = fs::canonical(sourceAudio, ec);
     if (ec || !fs::is_regular_file(source, ec)) {
@@ -136,17 +154,27 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
         }
         if (ec || fs::exists(result, ec)) {
             error = "Cannot allocate a unique difficulty filename.";
+            if (!exists) RollBackUnpublishedSet(audio, {}, error);
             return false;
         }
         if (!SaveChartWithAudioPath(result.wstring(), audio.wstring(),
-                                    installed, error, true)) return false;
-        if (!exists && !WriteNewSongSetManifest(manifestFile, metadata, error))
+                                    installed, error, true)) {
+            if (!exists) RollBackUnpublishedSet(audio, {}, error);
             return false;
+        }
+        if (!exists && !WriteNewSongSetManifest(manifestFile, metadata, error)) {
+            RollBackUnpublishedSet(audio, result, error);
+            return false;
+        }
     }
-    // Publish the in-memory library only after the complete operation.
-    std::string notice;
-    if (!Refresh(notice)) { error = notice; return false; }
+    // Disk commit has completed. Return its path even if indexing fails,
+    // so callers can resume/repair instead of creating another difficulty.
     installedChart = result;
+    std::string notice;
+    if (!Refresh(notice)) {
+        error = "Difficulty saved on disk, but library refresh failed: " + notice;
+        return false;
+    }
     error.clear();
     return true;
 }
@@ -224,16 +252,30 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     const std::string difficulty = FilenamePart(actualChart.stem().u8string());
     installedChart = folder /
         (difficulty + "-" + HashText(actualChart) + ".locus.json");
-    if (!ApplySongTiming(source, metadata.tempoMap, error)) return false;
-    if (!SaveChartWithAudioPath(installedChart.wstring(),
-                                destinationAudio.wstring(), source, error, true))
+    if (!ApplySongTiming(source, metadata.tempoMap, error)) {
+        if (!existingSet) RollBackUnpublishedSet(destinationAudio, {}, error);
+        installedChart.clear();
         return false;
-    // Metadata is published last so interrupted imports do not expose
-    // incomplete new Song Sets.
+    }
+    if (!SaveChartWithAudioPath(installedChart.wstring(),
+                                destinationAudio.wstring(), source, error, true)) {
+        if (!existingSet) RollBackUnpublishedSet(destinationAudio, {}, error);
+        installedChart.clear();
+        return false;
+    }
+    // Metadata is the last commit point. Roll back owned files if publication
+    // fails; do not strand an unindexed, unusable, manifestless Song Set.
     if (!existingSet &&
-        !WriteNewSongSetManifest(manifestPath, metadata, error)) return false;
+        !WriteNewSongSetManifest(manifestPath, metadata, error)) {
+        RollBackUnpublishedSet(destinationAudio, installedChart, error);
+        installedChart.clear();
+        return false;
+    }
     std::string notice;
-    if (!Refresh(notice)) { error = notice; return false; }
+    if (!Refresh(notice)) {
+        error = "Difficulty saved on disk, but library refresh failed: " + notice;
+        return false;
+    }
     error.clear();
     return true;
 }
