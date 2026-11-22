@@ -10,6 +10,7 @@
 #include "app/menu_ui.h"
 #include "app/song_library.h"
 #include "app/song_set_storage.h"
+#include "app/path_containment.h"
 #include "core/chart_editor.h"
 #include "core/chart_json.h"
 
@@ -238,8 +239,32 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
     int songIndex = -1, chartIndex = -1;
     // Library paths are authoritative. Do not create a duplicate external
     // authoring file on every save, or an implicit second library import.
-    const bool installed = !current.empty() &&
+    bool installed = !current.empty() &&
         context_.library.FindChart(current, songIndex, chartIndex);
+    // A previous save can commit on disk while the index refresh fails.
+    // Do not interpret its new path as an unsaved draft and duplicate it.
+    if (!installed && !current.empty() &&
+        IsPathWithinDirectory(context_.library.Root(), current)) {
+        std::error_code ec;
+        const bool managedFile = std::filesystem::is_regular_file(current, ec) &&
+            !ec && std::filesystem::is_regular_file(
+                current.parent_path() / L"set.locus.json", ec) && !ec;
+        if (managedFile) {
+            std::string notice;
+            if (!context_.library.Refresh(notice)) {
+                context_.status = "SAVE DEFERRED: CHART EXISTS ON DISK; "
+                                  "LIBRARY RESCAN FAILED: " + notice;
+                return false;
+            }
+            installed = context_.library.FindChart(
+                current, songIndex, chartIndex);
+            if (!installed) {
+                context_.status = "SAVE DEFERRED: CHART EXISTS ON DISK "
+                                  "BUT IS NOT INDEXED";
+                return false;
+            }
+        }
+    }
     if (installed) {
         std::error_code ec;
         const auto& song = context_.library.Songs()[
@@ -303,12 +328,16 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
         const std::filesystem::path target = !newDifficultySet_.empty()
             ? std::filesystem::path(newDifficultySet_)
             : installed ? current.parent_path() : std::filesystem::path{};
-        if (!context_.library.CreateDifficulty(
-                std::filesystem::path(context_.audioPath), checked,
-                destination, error, target)) {
+        const bool indexed = context_.library.CreateDifficulty(
+            std::filesystem::path(context_.audioPath), checked,
+            destination, error, target);
+        if (!indexed && destination.empty()) {
             context_.status = "SAVE FAILED: " + error;
             return false;
         }
+        // A nonempty destination is proof of a disk commit even if indexing
+        // failed. Remember it before reopen so retry cannot create a copy.
+        context_.chartPath = destination.wstring();
         core::LoadedChart reopened;
         std::wstring installedAudio;
         if (!OpenChartWithAudioPath(destination.wstring(),
@@ -323,6 +352,11 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
         context_.audioPath = installedAudio;
         context_.loadedAudioPath = installedAudio;
         newDifficultySet_.clear();
+        if (!indexed) {
+            context_.status = "CHART SAVED ON DISK; LIBRARY RESCAN FAILED: " +
+                              error + " - RETRY CTRL+S";
+            return false;
+        }
     }
     int s = -1, c = -1;
     if (context_.library.FindChart(destination, s, c)) {
