@@ -64,6 +64,14 @@ void BeginSelection(core::ChartEditor& draft, EditorUiState& ui,
         ui.dragViewBeat = anchor;
     }
     draft.SelectBeat(beat);
+    // Clicking the visible note selects its exact timestamp, even when
+    // two notes project into the same integer tick. Dragging a range
+    // still uses ticks; this path is only for an ordinary single click.
+    if (ui.tab == EditorTab::Route && !input.shiftHeld) {
+        if (const auto noteTime = TimelineNoteTimeAtX(
+                draft, ui, anchor, mouse.x))
+            draft.SelectTurnAtTimeMs(*noteTime);
+    }
 }
 
 void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,

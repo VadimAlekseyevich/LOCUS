@@ -369,6 +369,14 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
             ? Color{175, 155, 236, 255} : Color{111, 214, 202, 255};
         DrawRectangleRec({x - width * 0.5f, kTimelineY + 29.0f,
                           width, 12.0f}, tint);
+        if (draft.SelectedTurnTimeMs() && draft.SelectedTurn() == &event) {
+            // Exact event selection is visible even if another authored
+            // note shares this musical grid cell.
+            DrawRectangleLinesEx({x - width * 0.5f - 2.0f,
+                                  kTimelineY + 27.0f,
+                                  width + 4.0f, 16.0f},
+                                 2.0f, ApprovedUiTheme().foreground);
+        }
         if (!narrow) {
             constexpr const char* names[] = {
                 "U", "R", "D", "L", "UR", "DR", "DL", "UL"

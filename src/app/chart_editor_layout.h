@@ -96,6 +96,43 @@ inline int TimelineTickAtX(
         TimelineSecondsAtX(draft, ui, anchorTick, x));
 }
 
+// Hit-test the same authoritative millisecond coordinates DrawTimeline uses.
+// A note may lie BETWEEN snap marks; never map a clicked note through a
+// snapped tick first. Binary search avoids scanning offscreen chart turns.
+inline std::optional<std::int64_t> TimelineNoteTimeAtX(
+    const core::ChartEditor& draft, const EditorUiState& ui,
+    double anchorTick, float x, float radiusPixels = 7.0f) {
+    if (x < kTimelineX + 8.0f ||
+        x > kTimelineX + kTimelineWidth - 8.0f) return std::nullopt;
+    const auto& loaded = draft.Data();
+    const auto& route = loaded.route;
+    const auto& turns = route.turns;
+    if (turns.empty()) return std::nullopt;
+    const double candidateMs = TimelineSecondsAtX(
+        draft, ui, anchorTick, x) * 1000.0;
+    const auto after = std::lower_bound(
+        turns.begin(), turns.end(), candidateMs,
+        [&](const core::TurnEvent& turn, double timeMs) {
+            return core::EventTimeMs(route, turn, loaded.offsetSeconds) < timeMs;
+        });
+    float distance = radiusPixels;
+    std::optional<std::int64_t> found;
+    const auto consider = [&](const core::TurnEvent& event) {
+        const std::int64_t timeMs = core::EventTimeMs(
+            route, event, loaded.offsetSeconds);
+        const float at = TimelineXAtSeconds(
+            draft, ui, anchorTick, timeMs / 1000.0);
+        const float delta = std::abs(at - x);
+        if (delta <= distance) {
+            distance = delta;
+            found = timeMs;
+        }
+    };
+    if (after != turns.end()) consider(*after);
+    if (after != turns.begin()) consider(*(after - 1));
+    return found;
+}
+
 constexpr Rectangle kTabSet{433, 69, 127, 37};
 constexpr Rectangle kTabRoute{567, 69, 145, 37};
 constexpr Rectangle kTabAudio{719, 69, 145, 37};

@@ -972,6 +972,53 @@ int main() {
                     static_cast<float>(overviewAtMarker), 10.0)-0.75)<0.001,
                 "bottom full-song overview ignores upper ruler zoom");
 
+    // T05: two note rectangles may share a snap tick but have different
+    // exact timestamps. The same transform is used for draw AND hit test.
+    LoadedChart denseUiData;
+    denseUiData.title = "Two notes, one tick";
+    denseUiData.audioPath = "song.wav";
+    denseUiData.route.turns = {
+        {2, Heading::Up, 1000},
+        {2, Heading::Right, 1010}
+    };
+    ChartEditor denseUi;
+    denseUi.Load(denseUiData);
+    ok &= Check(denseUi.SetSongDuration(4.0),
+                "dense internal route gets a real audio duration");
+    EditorUiState denseUiState;
+    denseUiState.timelineZoomIndex = detail::kZoomMax;
+    constexpr double denseAnchorTick = 2.0;
+    const float firstNoteX = detail::TimelineXAtSeconds(
+        denseUi, denseUiState, denseAnchorTick, 1.0);
+    const float secondNoteX = detail::TimelineXAtSeconds(
+        denseUi, denseUiState, denseAnchorTick, 1.010);
+    const auto firstHit = detail::TimelineNoteTimeAtX(
+        denseUi, denseUiState, denseAnchorTick, firstNoteX);
+    const auto secondHit = detail::TimelineNoteTimeAtX(
+        denseUi, denseUiState, denseAnchorTick, secondNoteX);
+    ok &= Check(firstHit == 1000 && secondHit == 1010 &&
+                secondNoteX > firstNoteX,
+                "pixel hit-test resolves both time-distinct notes in same tick");
+    auto clickFirstNote = Click(firstNoteX, detail::kTimelineY + 34);
+    clickFirstNote.timelineViewBeat = denseAnchorTick;
+    ApplyEditorControls(denseUi, denseUiState, clickFirstNote);
+    ok &= Check(denseUi.SelectedTurnTimeMs() == 1000,
+                "click selects first exact event instead of just snapped beat");
+    auto clickSecondNote = Click(secondNoteX, detail::kTimelineY + 34);
+    clickSecondNote.timelineViewBeat = denseAnchorTick;
+    ApplyEditorControls(denseUi, denseUiState, clickSecondNote);
+    ok &= Check(denseUi.SelectedTurnTimeMs() == 1010 &&
+                denseUi.SelectedTurn() &&
+                denseUi.SelectedTurn()->direction == Heading::Right,
+                "click selects second event independently in same grid cell");
+    denseUi.PutTurn(Heading::Down);
+    ok &= Check(denseUi.Data().route.turns[0].direction == Heading::Up &&
+                denseUi.Data().route.turns[1].direction == Heading::Down &&
+                denseUi.Data().route.turns[1].timeMs == 1010 &&
+                denseUi.Undo() &&
+                denseUi.Data().route.turns[1].direction == Heading::Right,
+                "editing clicked note and Undo never touch its neighbor");
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS route_controls=1 field_heading=1 zoom=1\n";
     return 0;
