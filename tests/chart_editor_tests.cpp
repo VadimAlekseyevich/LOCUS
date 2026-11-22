@@ -570,6 +570,22 @@ int main() {
                 "grid navigation drops exact selection in favor of tick");
     ok &= Check(!exact.SelectTurnAtTimeMs(1020),
                 "nonexistent time cannot select an adjacent note");
+    ChartEditor exactAuthor;
+    ok &= Check(exactAuthor.SetSongDuration(4.0) &&
+                exactAuthor.PutTurnAtTimeMs(1010, Heading::Right) &&
+                exactAuthor.PutTurnAtTimeMs(1000, Heading::Up) &&
+                exactAuthor.Data().route.turns.size() == 2 &&
+                exactAuthor.Data().route.turns[0].timeMs == 1000 &&
+                exactAuthor.Data().route.turns[1].timeMs == 1010 &&
+                exactAuthor.Data().route.turns[0].beat ==
+                    exactAuthor.Data().route.turns[1].beat &&
+                !exactAuthor.PutTurnAtTimeMs(1010, Heading::Right) &&
+                exactAuthor.PutTurnAtTimeMs(1010, Heading::Down) &&
+                exactAuthor.Data().route.turns.size() == 2 &&
+                exactAuthor.Data().route.turns[1].direction == Heading::Down &&
+                exactAuthor.Undo() &&
+                exactAuthor.Data().route.turns[1].direction == Heading::Right,
+                "exact-time authoring inserts or replaces only target event");
     // Time-precise clipboard: two authored events on one grid tick survive
     // copying and pasting into another tick with their 10ms gap intact.
     const auto densePattern = exact.CopyTurns(2, 2);

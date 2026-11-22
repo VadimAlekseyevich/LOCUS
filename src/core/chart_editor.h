@@ -79,6 +79,8 @@ public:
     bool SetOutgoingHeading(Heading heading); // compass authoring on ROUTE
     bool SetTitle(const std::string& title);
     void PutTurn(Heading heading);
+    // Timestamp-keyed authoring: one tick can hold multiple distinct events.
+    bool PutTurnAtTimeMs(std::int64_t timeMs, Heading heading);
     bool RemoveTurn();
     bool MoveTurn(int beats); // preserves sorted, unique turn events
     const TurnEvent* SelectedTurn() const noexcept;

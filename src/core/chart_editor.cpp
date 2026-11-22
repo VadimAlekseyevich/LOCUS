@@ -582,6 +582,40 @@ void ChartEditor::PutTurn(Heading heading) {
     MarkDirty();
 }
 
+bool ChartEditor::PutTurnAtTimeMs(std::int64_t timeMs, Heading heading) {
+    if (!ValidHeading(heading) || timeMs < -3600000 ||
+        timeMs > 86400000 ||
+        (HasSongDuration() && timeMs >= songDurationSeconds_ * 1000.0))
+        return false;
+    const auto& route = chart_.route;
+    const int tick = TempoTickAtMs(route, chart_.offsetSeconds, timeMs);
+    if (tick < route.firstBeat || tick >= route.lengthBeats ||
+        (timeMs < 0 && !(chart_.offsetSeconds < 0.0 && tick >= 0)))
+        return false;
+    auto& notes = chart_.route.turns;
+    const auto at = std::lower_bound(
+        notes.begin(), notes.end(), timeMs,
+        [&](const TurnEvent& event, std::int64_t ms) {
+            return EventTimeMs(route, event, chart_.offsetSeconds) < ms;
+        });
+    if (at != notes.end() &&
+        EventTimeMs(route, *at, chart_.offsetSeconds) == timeMs) {
+        if (at->direction == heading) {
+            SelectTurnAtTimeMs(timeMs);
+            return false;
+        }
+        SaveUndo(tick, tick);
+        at->direction = heading;
+    } else {
+        SaveUndo(tick, tick);
+        notes.insert(at, {tick, heading, timeMs});
+    }
+    selectedBeat_ = tick;
+    selectedTurnTimeMs_ = timeMs;
+    MarkDirty();
+    return true;
+}
+
 bool ChartEditor::RemoveTurn() {
     auto& events = chart_.route.turns;
     auto found = std::lower_bound(
