@@ -1,5 +1,6 @@
 #include "app/run_results.h"
 #include "app/song_library.h"
+#include "song_fixture.h"
 #include "app/screen_flow.h"
 #include "core/judgement.h"
 #include "core/route.h"
@@ -19,52 +20,6 @@ bool Check(bool condition, const char* command) {
     if (!condition)
         std::cerr << "APP_JOURNEY_FAIL at command: " << command << '\n';
     return condition;
-}
-
-void WriteLe16(std::ofstream& out, std::uint16_t value) {
-    for (int i = 0; i != 2; ++i)
-        out.put(static_cast<char>((value >> (8 * i)) & 255));
-}
-void WriteLe32(std::ofstream& out, std::uint32_t value) {
-    for (int i = 0; i != 4; ++i)
-        out.put(static_cast<char>((value >> (8 * i)) & 255));
-}
-
-// A real, decodable four-second PCM WAV. This fixture is self-contained;
-// no media downloads, OS audio device or user profile are required.
-bool WriteSilentWav(const std::filesystem::path& path) {
-    constexpr std::uint32_t sampleRate = 8000;
-    constexpr std::uint32_t dataBytes = sampleRate * 4 * 2;
-    std::ofstream out(path, std::ios::binary);
-    out.write("RIFF", 4);
-    WriteLe32(out, 36 + dataBytes);
-    out.write("WAVEfmt ", 8);
-    WriteLe32(out, 16);
-    WriteLe16(out, 1); // PCM
-    WriteLe16(out, 1); // Mono
-    WriteLe32(out, sampleRate);
-    WriteLe32(out, sampleRate * 2);
-    WriteLe16(out, 2);
-    WriteLe16(out, 16);
-    out.write("data", 4);
-    WriteLe32(out, dataBytes);
-    const std::vector<char> silence(dataBytes, 0);
-    out.write(silence.data(), silence.size());
-    return static_cast<bool>(out);
-}
-
-bool WriteDifficulty(const std::filesystem::path& path, const char* title,
-                     const char* turns) {
-    std::ofstream out(path, std::ios::binary);
-    out << "{\"formatVersion\":4,\"title\":\"" << title <<
-        "\",\"audioPath\":\"song.wav\",\"bpm\":120,\"offsetMs\":0,"
-        "\"tempoMap\":[{\"timeMs\":0,\"bpm\":120},"
-        "{\"timeMs\":2000,\"bpm\":180}],"
-        "\"ticksPerBeat\":1,\"snapDivision\":1,"
-        "\"grid\":{\"width\":8,\"height\":8},"
-        "\"start\":{\"x\":3,\"y\":3,\"heading\":\"r\"},"
-        "\"previewLeadBeats\":4,\"turns\":" << turns << "}";
-    return static_cast<bool>(out);
 }
 
 struct TempResults {
@@ -104,10 +59,10 @@ int main() {
     std::filesystem::create_directories(source);
     const auto easy = source / "Easy.locus.json";
     const auto hard = source / "Hard.locus.json";
-    ok &= Check(WriteSilentWav(source / "song.wav") &&
-                WriteDifficulty(easy, "Easy",
+    ok &= Check(locus::test::WriteSilentWav(source / "song.wav") &&
+                locus::test::WriteDifficulty(easy, "Easy",
                     "[{\"timeMs\":1000,\"heading\":\"u\"}]") &&
-                WriteDifficulty(hard, "Hard",
+                locus::test::WriteDifficulty(hard, "Hard",
                     "[{\"timeMs\":1000,\"heading\":\"ru\"},"
                     "{\"timeMs\":3000,\"heading\":\"l\"}]"),
                 "create decodable WAV and two difficulties with BPM change");

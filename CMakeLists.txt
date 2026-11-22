@@ -378,6 +378,47 @@ if(LOCUS_BUILD_TESTS)
     endif()
     add_test(NAME locus_editor_file_actions_lifecycle COMMAND locus_editor_file_actions_tests)
 
+    # End-to-end editor transaction on real app controllers and a real WAV;
+    # only the sound device, file-dialog result and clock are injected.
+    add_executable(locus_editor_workflow_tests
+        tests/editor_workflow_tests.cpp
+        src/app/editor_file_actions.cpp
+        src/app/editor_comparison.cpp
+        src/app/editor_document.cpp
+        src/app/editor_session.cpp
+        src/app/chart_editor_ui.cpp
+        src/app/chart_editor_actions.cpp
+        src/app/editor_timeline_actions.cpp
+        src/app/editor_pattern_actions.cpp
+        src/app/editor_text_fields.cpp
+        src/app/editor_input.cpp
+        src/app/route_renderer.cpp
+        src/app/path_mesh.cpp
+        src/app/chart_playback.cpp
+        src/app/game_session.cpp
+        src/app/demo_transport.cpp
+        src/app/session_transition.cpp
+        src/app/screen_flow.cpp
+        src/app/local_music.cpp
+        src/app/pitch_preserving_stream.cpp
+        src/app/local_file_io.cpp
+        src/app/chart_file.cpp
+        src/app/chart_save.cpp
+        src/app/song_set_storage.cpp
+        src/app/open_folder.cpp
+        src/app/music_picker.cpp
+        src/app/run_results.cpp
+        ${LOCUS_SONG_LIBRARY_SOURCES}
+        src/app/song_archive.cpp)
+    target_compile_features(locus_editor_workflow_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_editor_workflow_tests PRIVATE
+        locus_core raylib locus_soundtouch nlohmann_json::nlohmann_json)
+    if(WIN32)
+        target_link_libraries(locus_editor_workflow_tests PRIVATE comdlg32 user32)
+    endif()
+    add_test(NAME locus_editor_to_play_to_results_journey
+             COMMAND locus_editor_workflow_tests)
+
     add_executable(locus_editor_session_tests
         tests/editor_session_tests.cpp
         src/app/editor_session.cpp
