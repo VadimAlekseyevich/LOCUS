@@ -222,6 +222,20 @@ if(LOCUS_BUILD_TESTS)
                  COMMAND locus_win32_direction_events_tests)
     endif()
 
+    # T04: transport time contract at 100%, 50%, 10%, silent preroll,
+    # pause/rate changes, seek, finished audio and missing output device.
+    add_executable(locus_clock_contract_tests
+        tests/clock_contract_tests.cpp
+        src/app/chart_playback.cpp
+        src/app/local_music.cpp
+        src/app/pitch_preserving_stream.cpp
+        src/app/local_file_io.cpp)
+    target_compile_features(locus_clock_contract_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_clock_contract_tests PRIVATE
+        locus_core raylib locus_soundtouch)
+    add_test(NAME locus_chart_clock_transport_contract
+             COMMAND locus_clock_contract_tests)
+
     add_executable(locus_direction_input_tests tests/direction_input_tests.cpp)
     target_compile_features(locus_direction_input_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_direction_input_tests PRIVATE locus_core)
