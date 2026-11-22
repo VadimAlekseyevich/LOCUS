@@ -126,6 +126,31 @@ int main() {
         locus::core::PrepareChartForSong(denseReopened, 32.0, message) &&
         fs::equivalent(fs::path(denseAudio), audio);
 
+    // T05: a real atomic disk save must preserve two millisecond-distinct
+    // notes even when they map to the exact same musical grid tick.
+    // The file must be loadable by the normal chart reader, not just JSON.
+    locus::core::LoadedChart micro = parsed;
+    micro.title = "Microtimed pair";
+    micro.route.turns = {
+        {2, locus::core::Heading::Up, 1000},
+        {2, locus::core::Heading::Right, 1010}
+    };
+    const fs::path microPath = root / "microtimed.locus.json";
+    const bool microSaved = locus::app::SaveChartWithAudioPath(
+        microPath.wstring(), resolved, micro, message);
+    locus::core::LoadedChart microReopened;
+    std::wstring microAudio;
+    const bool microRoundTrip = microSaved &&
+        locus::app::OpenChartWithAudioPath(
+            microPath.wstring(), microReopened, microAudio, message) &&
+        locus::core::PrepareChartForSong(microReopened, 4.0, message) &&
+        microReopened.route.turns.size() == 2 &&
+        microReopened.route.turns[0].beat ==
+            microReopened.route.turns[1].beat &&
+        microReopened.route.turns[0].timeMs == 1000 &&
+        microReopened.route.turns[1].timeMs == 1010 &&
+        fs::equivalent(fs::path(microAudio), audio);
+
     // An impossible save location must not modify the original JSON.
     const fs::path sibling = fs::temp_directory_path() / ("locus-sibling-" + unique);
     fs::create_directories(sibling, errorCode);
@@ -140,13 +165,14 @@ int main() {
     fs::remove_all(root, errorCode);
     fs::remove_all(sibling, errorCode);
     if (!correct || !blocked || !roundTrip || !denseRoundTrip ||
-        !refusedOutside || !existedAfterError) {
+        !microRoundTrip || !refusedOutside || !existedAfterError) {
         std::cerr << "CHART_FILE_FAIL save_error=" << saveError
                   << " last_error=" << message
                   << " opened=" << opened << " correct=" << correct
                   << " saved=" << savedOnce << " reloaded=" << reloaded
                   << " roundTrip=" << roundTrip
                   << " denseRoundTrip=" << denseRoundTrip
+                  << " microRoundTrip=" << microRoundTrip
                   << " refusedOutside=" << refusedOutside
                   << " existedAfterError=" << existedAfterError
                   << " blocked=" << blocked << '\n';
