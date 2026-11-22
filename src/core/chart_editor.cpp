@@ -548,6 +548,9 @@ const TurnEvent* ChartEditor::SelectedTurn() const noexcept {
             EventTimeMs(chart_.route, *exact, chart_.offsetSeconds) ==
                 *selectedTurnTimeMs_)
             return &*exact;
+        // Do not silently retarget a stale exact-time selection to another
+        // event sharing its cached grid tick after an external reload.
+        return nullptr;
     }
     const auto first = std::lower_bound(
         events.begin(), events.end(), selectedBeat_,
@@ -562,8 +565,9 @@ void ChartEditor::PutTurn(Heading heading) {
         events.begin(), events.end(), selectedBeat_,
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
     if (selectedTurnTimeMs_) {
-        if (const auto* selected = SelectedTurn())
-            found = events.begin() + (selected - events.data());
+        const auto* selected = SelectedTurn();
+        if (!selected) return; // stale identity: never edit a neighbor
+        found = events.begin() + (selected - events.data());
     }
     if (found != events.end() && found->beat == selectedBeat_) {
         if (found->direction == heading) return;
@@ -622,8 +626,9 @@ bool ChartEditor::RemoveTurn() {
         events.begin(), events.end(), selectedBeat_,
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
     if (selectedTurnTimeMs_) {
-        if (const auto* selected = SelectedTurn())
-            found = events.begin() + (selected - events.data());
+        const auto* selected = SelectedTurn();
+        if (!selected) return false;
+        found = events.begin() + (selected - events.data());
     }
     if (found == events.end() || found->beat != selectedBeat_) return false;
     SaveUndo(selectedBeat_, selectedBeat_);

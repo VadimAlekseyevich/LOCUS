@@ -570,6 +570,26 @@ int main() {
                 "grid navigation drops exact selection in favor of tick");
     ok &= Check(!exact.SelectTurnAtTimeMs(1020),
                 "nonexistent time cannot select an adjacent note");
+    ChartEditor stale;
+    stale.Load(denseSource);
+    ok &= Check(stale.SetSongDuration(4.0) &&
+                stale.SelectTurnAtTimeMs(1010),
+                "exact selected note exists before external chart replacement");
+    LoadedChart external = stale.Data();
+    external.route.turns.erase(external.route.turns.begin() + 1);
+    stale.ApplySavedChart(std::move(external));
+    const auto untouchedCount = stale.Data().route.turns.size();
+    stale.PutTurn(Heading::Left);
+    ok &= Check(!stale.SelectedTurn() &&
+                !stale.RemoveTurn() &&
+                stale.Data().route.turns.size() == untouchedCount &&
+                stale.Data().route.turns[0].timeMs == 1000 &&
+                stale.Data().route.turns[0].direction == Heading::Up,
+                "stale exact identity cannot silently retarget to another note");
+    ok &= Check(stale.SelectBeat(2) &&
+                stale.SelectedTurn() &&
+                stale.SelectedTurn()->timeMs == 1000,
+                "explicit grid selection re-arms normal tick-level editing");
     ChartEditor exactAuthor;
     ok &= Check(exactAuthor.SetSongDuration(4.0) &&
                 exactAuthor.PutTurnAtTimeMs(1010, Heading::Right) &&
