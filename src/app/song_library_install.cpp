@@ -181,6 +181,7 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
 
 bool SongLibrary::Import(const fs::path& sourceChart,
                          fs::path& installedChart, std::string& error) {
+    installedChart.clear(); // Assigned only after a confirmed disk commit.
     core::LoadedChart source;
     std::wstring audio;
     if (!OpenChartWithAudioPath(sourceChart.wstring(), source, audio, error))
@@ -250,27 +251,25 @@ bool SongLibrary::Import(const fs::path& sourceChart,
 
     // File identity is based on its source path, not a mutable difficulty name.
     const std::string difficulty = FilenamePart(actualChart.stem().u8string());
-    installedChart = folder /
+    const fs::path destinationChart = folder /
         (difficulty + "-" + HashText(actualChart) + ".locus.json");
     if (!ApplySongTiming(source, metadata.tempoMap, error)) {
         if (!existingSet) RollBackUnpublishedSet(destinationAudio, {}, error);
-        installedChart.clear();
         return false;
     }
-    if (!SaveChartWithAudioPath(installedChart.wstring(),
+    if (!SaveChartWithAudioPath(destinationChart.wstring(),
                                 destinationAudio.wstring(), source, error, true)) {
         if (!existingSet) RollBackUnpublishedSet(destinationAudio, {}, error);
-        installedChart.clear();
         return false;
     }
     // Metadata is the last commit point. Roll back owned files if publication
     // fails; do not strand an unindexed, unusable, manifestless Song Set.
     if (!existingSet &&
         !WriteNewSongSetManifest(manifestPath, metadata, error)) {
-        RollBackUnpublishedSet(destinationAudio, installedChart, error);
-        installedChart.clear();
+        RollBackUnpublishedSet(destinationAudio, destinationChart, error);
         return false;
     }
+    installedChart = destinationChart;
     std::string notice;
     if (!Refresh(notice)) {
         error = "Difficulty saved on disk, but library refresh failed: " + notice;
