@@ -226,6 +226,8 @@ if(LOCUS_BUILD_TESTS)
     # pause/rate changes, seek, finished audio and missing output device.
     add_executable(locus_clock_contract_tests
         tests/clock_contract_tests.cpp
+        src/app/game_session.cpp
+        src/app/demo_transport.cpp
         src/app/chart_playback.cpp
         src/app/local_music.cpp
         src/app/pitch_preserving_stream.cpp

@@ -1,4 +1,6 @@
 #include "app/chart_playback.h"
+#include "app/game_session.h"
+#include "app/demo_transport.h"
 #include "app/sampled_song_time.h"
 #include "app/global_offset_calibrator.h"
 #include "app/local_music.h"
@@ -258,6 +260,37 @@ int main() {
                 Close(firstFullSpeed.visualSeconds, beforeChange) &&
                 Close(cursorPlay.AudioSeconds(202.1), 1.85),
                 "switch 50 to 100 percent cannot jump to stale preroll clock");
+
+    // Integration regression: the real GameSession must NOT ask the slow
+    // device cursor separately for each historical key press. Both lookups
+    // would return 1.054 and produce Good + Good, losing the 7ms skew.
+    core::Chart scoredDiagonal;
+    scoredDiagonal.bpm = 120.0;
+    scoredDiagonal.turns = {{2, core::Heading::UpRight, 1000}};
+    core::TurnJudge realtimeJudge(scoredDiagonal);
+    app::DemoTransport unusedDemo;
+    app::GameSession realtimeSession(
+        scoredDiagonal, realtimeJudge, unusedDemo, cursorPlay);
+    cursorPlay.Configure(120.0, 0.0, {{0, 120.0}}, 1);
+    ok &= Check(cursorPlay.StartAtAudioSeconds(0.0, 300.0),
+                "real scored transport starts for the buffered cursor test");
+    cursorPlay.SetSpeed(0.5, 300.0);
+    cursorDevice.state->position = 1.054;
+    constexpr double frameAt = 302.12;
+    app::DirectionKeyBatch edges;
+    edges.size = 2;
+    edges.events[0] = {
+        core::Heading::Up, true, frameAt - 0.014, 0};
+    edges.events[1] = {
+        core::Heading::Right, true, frameAt - 0.007, 1};
+    app::ArrowInput arrows;
+    arrows.events = &edges;
+    arrows.precise = true;
+    realtimeSession.Update(true, frameAt, arrows);
+    ok &= Check(realtimeJudge.Counts().perfect == 1 &&
+                realtimeJudge.Counts().good == 1 &&
+                realtimeJudge.Counts().Resolved() == 2,
+                "real GameSession preserves distinct Perfect/Good at 50%");
 
     MissingOutput missingDevice;
     app::LocalMusic missing(missingDevice);
