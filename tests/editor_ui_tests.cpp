@@ -1018,6 +1018,14 @@ int main() {
                 denseUi.Undo() &&
                 denseUi.Data().route.turns[1].direction == Heading::Right,
                 "editing clicked note and Undo never touch its neighbor");
+    // Even if note spacing is smaller than a physical pixel, repeated
+    // clicking the same cluster must allow choosing BOTH source events.
+    ApplyEditorControls(denseUi, denseUiState, clickFirstNote);
+    ok &= Check(denseUi.SelectedTurnTimeMs() == 1000,
+                "first click focuses first source event");
+    ApplyEditorControls(denseUi, denseUiState, clickFirstNote);
+    ok &= Check(denseUi.SelectedTurnTimeMs() == 1010,
+                "repeated click cycles overlapping events inside same tick");
 
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS route_controls=1 field_heading=1 zoom=1\n";

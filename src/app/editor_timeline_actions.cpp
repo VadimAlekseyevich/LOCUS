@@ -63,14 +63,45 @@ void BeginSelection(core::ChartEditor& draft, EditorUiState& ui,
         ui.dragAnchorBeat = beat;
         ui.dragViewBeat = anchor;
     }
+    const auto priorExact = draft.SelectedTurnTimeMs();
     draft.SelectBeat(beat);
-    // Clicking the visible note selects its exact timestamp, even when
-    // two notes project into the same integer tick. Dragging a range
-    // still uses ticks; this path is only for an ordinary single click.
+    // The hit uses source milliseconds, not grid ticks. Repeated clicking
+    // near a visually overlapping note cycles only the notes in that same
+    // tick and hit radius. That keeps subpixel note clusters selectable.
     if (ui.tab == EditorTab::Route && !input.shiftHeld) {
         if (const auto noteTime = TimelineNoteTimeAtX(
-                draft, ui, anchor, mouse.x))
-            draft.SelectTurnAtTimeMs(*noteTime);
+                draft, ui, anchor, mouse.x)) {
+            std::int64_t chosen = *noteTime;
+            if (priorExact && *priorExact == *noteTime) {
+                const auto& chart = draft.Data().route;
+                const auto& events = chart.turns;
+                const auto current = std::lower_bound(
+                    events.begin(), events.end(), *noteTime,
+                    [&](const core::TurnEvent& e, std::int64_t ms) {
+                        return core::EventTimeMs(
+                            chart, e, draft.Data().offsetSeconds) < ms;
+                    });
+                if (current != events.end() && current->beat == beat) {
+                    auto next = current + 1;
+                    if (next == events.end() || next->beat != beat)
+                        next = std::lower_bound(
+                            events.begin(), events.end(), beat,
+                            [](const core::TurnEvent& e, int tick) {
+                                return e.beat < tick;
+                            });
+                    if (next != current && next != events.end() &&
+                        next->beat == beat) {
+                        const auto ms = core::EventTimeMs(
+                            chart, *next, draft.Data().offsetSeconds);
+                        if (std::abs(TimelineXAtSeconds(
+                                draft, ui, anchor, ms / 1000.0) -
+                                mouse.x) <= 7.0f)
+                            chosen = ms;
+                    }
+                }
+            }
+            draft.SelectTurnAtTimeMs(chosen);
+        }
     }
 }
 
