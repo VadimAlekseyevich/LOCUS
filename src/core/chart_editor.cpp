@@ -389,64 +389,49 @@ bool ChartEditor::SetTempoMap(const std::vector<TempoMarker>& markers) {
         chart_.route, chart_.offsetSeconds);
     if (existing == markers) return true;
 
-    // Absolute event times and the current audio position remain fixed.
-    // A tempo change only changes their positions on the musical grid.
-    const double selectedTime = AudioSecondsAtBeat(selectedBeat_);
-    std::vector<std::int64_t> times;
-    times.reserve(chart_.route.turns.size());
-    for (const auto& note : chart_.route.turns)
-        times.push_back(EventTimeMs(chart_.route, note,
-                                    chart_.offsetSeconds));
+    // A tempo change alters only the beat lattice. Notes remain identified
+    // by their absolute millisecond timestamps, even when two project into
+    // one grid tick. Do NOT upsample to invent uniqueness on the grid.
+    const double selectedTime = selectedTurnTimeMs_
+        ? *selectedTurnTimeMs_ / 1000.0 : AudioSecondsAtBeat(selectedBeat_);
+    Chart adjusted = chart_.route;
+    adjusted.bpm = markers.front().bpm;
+    adjusted.tempoMap = markers;
+    const double nextOffset = markers.front().timeMs / 1000.0;
+    int first = adjusted.firstBeat, end = adjusted.lengthBeats;
+    if (HasSongDuration() &&
+        !TempoTickRange(adjusted, nextOffset,
+                        songDurationSeconds_, first, end, error))
+        return false;
 
-    const int originalTicks = chart_.route.ticksPerBeat;
-    for (int multiplier = 1; multiplier <= 48 / originalTicks; ++multiplier) {
-        Chart adjusted = chart_.route;
-        adjusted.bpm = markers.front().bpm;
-        adjusted.tempoMap = markers;
-        adjusted.ticksPerBeat = originalTicks * multiplier;
-        const double newOffset = markers.front().timeMs / 1000.0;
-        int first = chart_.route.firstBeat, end = chart_.route.lengthBeats;
-        if (HasSongDuration()) {
-            if (!TempoTickRange(adjusted, newOffset, songDurationSeconds_,
-                                first, end, error)) continue;
-        } else if (multiplier > 1) {
-            first *= multiplier;
-            end *= multiplier;
-        }
-
-        std::vector<TurnEvent> remapped = chart_.route.turns;
-        bool fits = true;
-        int previous = first - 1;
-        for (std::size_t i = 0; i < remapped.size(); ++i) {
-            const int tick = TempoTickAtMs(adjusted, newOffset, times[i]);
-            if (tick <= previous || tick < first || tick >= end ||
-                tick < -1000000 || tick > 999999) {
-                fits = false;
-                break;
-            }
-            remapped[i].beat = tick;
-            remapped[i].timeMs = times[i];
-            previous = tick;
-        }
-        if (!fits) continue;
-        const int selected = std::clamp(
-            TempoTickAtMs(adjusted, newOffset,
-                static_cast<std::int64_t>(std::llround(selectedTime * 1000.0))),
-            first, end - 1);
-
-        SaveUndoAllTurns();
-        chart_.route.turns = std::move(remapped);
-        chart_.route.tempoMap = markers;
-        chart_.route.bpm = markers.front().bpm;
-        chart_.route.ticksPerBeat = adjusted.ticksPerBeat;
-        chart_.offsetSeconds = newOffset;
-        chart_.route.firstBeat = first;
-        chart_.route.lengthBeats = end;
-        selectedBeat_ = selected;
-        MarkDirty();
-        return true;
+    std::vector<TurnEvent> remapped = chart_.route.turns;
+    int previous = first;
+    for (auto& turn : remapped) {
+        const std::int64_t ms = EventTimeMs(
+            chart_.route, turn, chart_.offsetSeconds);
+        const int tick = TempoTickAtMs(adjusted, nextOffset, ms);
+        if (tick < previous || tick < first || tick >= end ||
+            tick < -1000000 || tick > 999999)
+            return false;
+        turn.beat = tick;
+        turn.timeMs = ms;
+        previous = tick;
     }
-    return false; // Invalid change cannot merge or delete existing notes.
+    const int selected = std::clamp(
+        TempoTickAtMs(adjusted, nextOffset,
+            static_cast<std::int64_t>(std::llround(selectedTime * 1000.0))),
+        first, end - 1);
+
+    SaveUndoAllTurns();
+    chart_.route.turns = std::move(remapped);
+    chart_.route.tempoMap = markers;
+    chart_.route.bpm = markers.front().bpm;
+    chart_.offsetSeconds = nextOffset;
+    chart_.route.firstBeat = first;
+    chart_.route.lengthBeats = end;
+    selectedBeat_ = selected;
+    MarkDirty();
+    return true;
 }
 
 bool ChartEditor::SetBpm(double bpm) {

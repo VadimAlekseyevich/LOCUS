@@ -271,8 +271,11 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 error = where + ".timeMs: outside tick range";
                 return false;
             }
-            if (beat <= prior) {
-                error = where + ".timeMs: grid resolution merges notes";
+            // Absolute timestamps are unique and strictly increasing;
+            // several valid events may project to one editor grid tick.
+            // The grid is a placement aid, not the persistent event identity.
+            if (beat < prior) {
+                error = where + ".timeMs: projected tick order reversed";
                 return false;
             }
             prior = beat;

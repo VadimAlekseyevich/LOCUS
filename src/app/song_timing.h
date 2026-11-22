@@ -17,48 +17,34 @@ inline bool ApplySongTiming(core::LoadedChart& chart,
                             std::string& error) {
     if (!core::ValidTempoMap(markers, error)) return false;
     auto& route = chart.route;
-    const int oldTicks = route.ticksPerBeat;
-    if (oldTicks <= 0 || oldTicks > 48) {
+    if (route.ticksPerBeat <= 0 || route.ticksPerBeat > 48) {
         error = "Difficulty has an unsupported tick resolution.";
         return false;
     }
-    std::vector<std::int64_t> times;
-    times.reserve(route.turns.size());
-    for (const auto& note : route.turns)
-        times.push_back(core::EventTimeMs(route, note, chart.offsetSeconds));
-    for (int multiplier = 1; multiplier <= 48 / oldTicks; ++multiplier) {
-        core::Chart mapped = route;
-        mapped.bpm = markers.front().bpm;
-        mapped.tempoMap = markers;
-        mapped.ticksPerBeat = oldTicks * multiplier;
-        const double offsetSeconds = markers.front().timeMs / 1000.0;
-        int previous = -1000001;
-        std::vector<int> positions;
-        positions.reserve(times.size());
-        bool fits = true;
-        for (const auto time : times) {
-            const int tick = core::TempoTickAtMs(mapped, offsetSeconds, time);
-            if (tick <= previous || tick < -1000000 || tick > 999999) {
-                fits = false;
-                break;
-            }
-            previous = tick;
-            positions.push_back(tick);
+    // Song Set timing changes are transactional: compute all projections
+    // before touching the difficulty. A grid tick can contain multiple
+    // different millisecond timestamps; tempo editing must never reject
+    // or delete those distinct authored events.
+    core::Chart projected = route;
+    projected.bpm = markers.front().bpm;
+    projected.tempoMap = markers;
+    const double offsetSeconds = markers.front().timeMs / 1000.0;
+    int previous = -1000001;
+    for (auto& note : projected.turns) {
+        const auto ms = core::EventTimeMs(route, note, chart.offsetSeconds);
+        const int tick = core::TempoTickAtMs(projected, offsetSeconds, ms);
+        if (tick < previous || tick < -1000000 || tick > 999999) {
+            error = "New BPM markers project a note outside valid tick order.";
+            return false;
         }
-        if (!fits) continue;
-        for (std::size_t i = 0; i < positions.size(); ++i) {
-            route.turns[i].beat = positions[i];
-            route.turns[i].timeMs = times[i];
-        }
-        route.ticksPerBeat = mapped.ticksPerBeat;
-        route.bpm = mapped.bpm;
-        route.tempoMap = markers;
-        chart.offsetSeconds = offsetSeconds;
-        error.clear();
-        return true;
+        previous = tick;
+        note.beat = tick;
+        note.timeMs = ms;
     }
-    error = "New BPM markers would merge notes; shared timing remains unchanged.";
-    return false;
+    route = std::move(projected);
+    chart.offsetSeconds = offsetSeconds;
+    error.clear();
+    return true;
 }
 
 inline bool ApplySongTiming(core::LoadedChart& chart,

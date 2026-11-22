@@ -2,6 +2,8 @@
 #include "core/chart_json.h"
 #include "core/tempo_map.h"
 #include "core/timed_route.h"
+#include "core/judgement.h"
+#include "app/song_timing.h"
 
 #include <cmath>
 #include <iostream>
@@ -187,6 +189,62 @@ int main() {
                 markerEditor.Data().route.turns[1].beat == 2 &&
                 markerEditor.Data().route.turns[1].timeMs == originalSecond,
                 "BPM change reprojects ticks but never retimes notes; Undo restores");
+
+    // T05: JSON already serializes integer song milliseconds. Grid-tick
+    // collisions are NOT timestamp collisions. At 120 BPM, both 1000 and
+    // 1010ms round to tick two, and both must survive real file roundtrip.
+    LoadedChart denseStored;
+    denseStored.title = "Sub-tick turns";
+    denseStored.audioPath = "song.wav";
+    denseStored.route.bpm = 120.0;
+    denseStored.route.ticksPerBeat = 1;
+    denseStored.route.turns = {
+        {2, Heading::Up, 1000}, {2, Heading::Right, 1010}
+    };
+    std::string denseJson;
+    LoadedChart denseRead;
+    ok &= Check(SerializeChartJson(denseStored, denseJson, error) &&
+                ParseChartJson(denseJson, denseRead, error) &&
+                PrepareChartForSong(denseRead, 4.0, error) &&
+                denseRead.route.turns.size() == 2 &&
+                denseRead.route.turns[0].beat == 2 &&
+                denseRead.route.turns[1].beat == 2 &&
+                denseRead.route.turns[0].timeMs == 1000 &&
+                denseRead.route.turns[1].timeMs == 1010,
+                "both exact notes survive v4 serialization in one grid cell");
+    TimedRoute denseRoute;
+    ok &= Check(denseRoute.Compile(denseRead.route, 0.0) &&
+                denseRoute.Turns().size() == 2 &&
+                Near(denseRoute.Turns()[0].songSeconds, 1.0) &&
+                Near(denseRoute.Turns()[1].songSeconds, 1.010),
+                "PLAY route preserves both exact 10ms-spaced turns");
+    TurnJudge denseJudge(denseRead.route);
+    const auto up = denseJudge.PressHeading(Heading::Up, 1.0);
+    const auto right = denseJudge.PressHeading(Heading::Right, 1.010);
+    ok &= Check(up && right &&
+                denseJudge.Counts().perfect == 2 &&
+                denseJudge.Counts().Resolved() == 2,
+                "PLAY judge awards two independent Perfect notes in one tick");
+    ChartEditor denseDraft;
+    denseDraft.Load(denseRead);
+    ok &= Check(denseDraft.SetSongDuration(4.0) &&
+                denseDraft.SetTempoMap({{0, 120.0}, {750, 240.0}}) &&
+                denseDraft.Data().route.turns[0].beat == 3 &&
+                denseDraft.Data().route.turns[1].beat == 3 &&
+                denseDraft.Data().route.turns[0].timeMs == 1000 &&
+                denseDraft.Data().route.turns[1].timeMs == 1010 &&
+                denseDraft.Undo() &&
+                denseDraft.Data().route.turns[0].beat == 2 &&
+                denseDraft.Data().route.turns[1].beat == 2,
+                "editor BPM reprojects without moving microtimed events");
+    ok &= Check(app::ApplySongTiming(
+                    denseRead, {{0, 120.0}, {750, 240.0}}, error) &&
+                denseRead.route.turns.size() == 2 &&
+                denseRead.route.turns[0].beat == 3 &&
+                denseRead.route.turns[1].beat == 3 &&
+                denseRead.route.turns[0].timeMs == 1000 &&
+                denseRead.route.turns[1].timeMs == 1010,
+                "Song Set BPM updates preserve both exact notes atomically");
 
     if (ok) std::cout << "TEMPO_MAP_PASS local_downbeat=1 formats=4\n";
     return ok ? 0 : 1;
