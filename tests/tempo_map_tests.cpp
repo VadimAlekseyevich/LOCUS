@@ -237,7 +237,7 @@ int main() {
                 denseDraft.Data().route.turns[0].beat == 2 &&
                 denseDraft.Data().route.turns[1].beat == 2,
                 "editor BPM reprojects without moving microtimed events");
-    ok &= Check(app::ApplySongTiming(
+    ok &= Check(locus::app::ApplySongTiming(
                     denseRead, {{0, 120.0}, {750, 240.0}}, error) &&
                 denseRead.route.turns.size() == 2 &&
                 denseRead.route.turns[0].beat == 3 &&
