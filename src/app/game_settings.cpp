@@ -1,4 +1,5 @@
 #include "app/game_settings.h"
+#include "app/atomic_text_file.h"
 
 #include <nlohmann/json.hpp>
 
@@ -421,37 +422,7 @@ bool SaveGameSettings(const std::filesystem::path& file,
         error = "Cannot create settings folder: " + ec.message();
         return false;
     }
-    const auto temporary = std::filesystem::path(file.wstring() + L".tmp");
-    {
-        std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
-        if (!stream) {
-            error = "Cannot create settings temporary file.";
-            return false;
-        }
-        stream << SerializeGameSettings(settings);
-        stream.flush();
-        if (!stream) {
-            error = "Cannot finish writing settings.";
-            return false;
-        }
-    }
-#ifdef _WIN32
-    if (!MoveFileExW(temporary.c_str(), file.c_str(),
-                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        std::filesystem::remove(temporary, ec);
-        error = "Cannot replace settings.json.";
-        return false;
-    }
-#else
-    std::filesystem::rename(temporary, file, ec);
-    if (ec) {
-        std::filesystem::remove(temporary, ec);
-        error = "Cannot replace settings.json.";
-        return false;
-    }
-#endif
-    error.clear();
-    return true;
+    return AtomicReplaceTextFile(file, SerializeGameSettings(settings), error);
 }
 
 } // namespace locus::app

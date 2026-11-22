@@ -93,23 +93,27 @@ bool SkinProfileActions::RefreshProfiles() {
 
 bool SkinProfileActions::SaveActive() {
     std::string error;
+    // A profile is a second persistent document. Commit it before applying
+    // the global active skin, and keep the draft dirty until BOTH succeed.
+    if (!activeProfile_.empty() &&
+        !SaveSkin(activeProfile_, draft_, error)) {
+        ui_.notice = "PERSONAL COPY FAILED; ACTIVE SKIN UNCHANGED: " + error;
+        ui_.noticeError = true;
+        return false;
+    }
     if (!SaveSkin(activeFile_, draft_, error)) {
-        ui_.notice = "SAVE FAILED: " + error;
+        ui_.notice = activeProfile_.empty()
+            ? "SAVE FAILED: " + error
+            : "PERSONAL COPY SAVED; ACTIVE SKIN FAILED: " + error;
         ui_.noticeError = true;
         return false;
     }
     active_ = draft_;
     ui_.saved = active_;
     ui_.dirty = false;
-    if (!activeProfile_.empty() &&
-        !SaveSkin(activeProfile_, active_, error)) {
-        ui_.notice = "ACTIVE SKIN SAVED; PERSONAL COPY FAILED: " + error;
-        ui_.noticeError = true;
-        return false;
-    }
     for (auto& item : ui_.profiles)
         if (!activeProfile_.empty() && item.path == activeProfile_)
-            item.name = active_.name; // Name edits update the in-game list immediately.
+            item.name = active_.name;
     ++ui_.profilesRevision;
     ui_.notice = "SKIN SAVED AND APPLIED TO ALL CHARTS";
     ui_.noticeError = false;

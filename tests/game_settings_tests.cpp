@@ -231,6 +231,33 @@ int main() {
                 onDisk.volume > 0.89f,
                 "changing settings atomically replaces previous config file");
 
+    // A stale legacy .tmp or a failed rename must never corrupt the
+    // published config. Exclusive staging files are cleaned after failure.
+    {
+        std::ofstream(folder / "settings.json.tmp") << "abandoned legacy staging";
+        options.volume = 0.55f;
+        ok &= Check(SaveGameSettings(file, options, error) &&
+                    LoadGameSettings(file, onDisk, error) &&
+                    onDisk.volume > 0.54f &&
+                    std::filesystem::exists(folder / "settings.json.tmp"),
+                    "stale staging file cannot interfere with a new save");
+        const auto blocked = folder / "blocked.json";
+        std::filesystem::create_directory(blocked);
+        ok &= Check(!SaveGameSettings(blocked, options, error) &&
+                    std::filesystem::is_directory(blocked) &&
+                    LoadGameSettings(file, onDisk, error) &&
+                    onDisk.volume > 0.54f,
+                    "failed publish leaves previous settings unchanged");
+        bool leakedStage = false;
+        for (const auto& entry : std::filesystem::directory_iterator(folder))
+            if (entry.path().filename().string().find("blocked.json.tmp-") == 0)
+                leakedStage = true;
+        ok &= Check(!leakedStage, "failed settings publish removes its staging file");
+        std::ofstream(folder / "not-a-folder") << "file";
+        ok &= Check(!SaveGameSettings(folder / "not-a-folder" / "settings.json",
+                                      options, error),
+                    "failure before writing is reported");
+    }
     std::error_code ec;
     std::filesystem::remove_all(folder, ec);
     if (!ok) return 1;

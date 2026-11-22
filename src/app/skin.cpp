@@ -1,4 +1,5 @@
 #include "app/skin.h"
+#include "app/atomic_text_file.h"
 #include "core/utf8.h"
 
 #include <nlohmann/json.hpp>
@@ -226,37 +227,7 @@ bool SaveSkin(const std::filesystem::path& file, const Skin& skin, std::string& 
             return false;
         }
     }
-    const auto temporary = std::filesystem::path(file.wstring() + L".tmp");
-    {
-        std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
-        if (!stream) {
-            error = "Cannot create skin temporary file.";
-            return false;
-        }
-        stream << SerializeSkin(skin);
-        stream.flush();
-        if (!stream) {
-            error = "Cannot finish writing skin JSON.";
-            return false;
-        }
-    }
-#ifdef _WIN32
-    if (!MoveFileExW(temporary.c_str(), file.c_str(),
-                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        std::filesystem::remove(temporary, ec);
-        error = "Cannot replace skin JSON.";
-        return false;
-    }
-#else
-    std::filesystem::rename(temporary, file, ec);
-    if (ec) {
-        std::filesystem::remove(temporary, ec);
-        error = "Cannot replace skin JSON.";
-        return false;
-    }
-#endif
-    error.clear();
-    return true;
+    return AtomicReplaceTextFile(file, SerializeSkin(skin), error);
 }
 
 } // namespace locus::app

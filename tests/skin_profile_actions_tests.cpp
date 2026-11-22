@@ -164,6 +164,32 @@ int main() {
                 active.pathWidth == 9.75f,
                 "Save updates active skin and the currently activated personal copy");
 
+    // A failure to update the selected personal copy must not publish the
+    // new global skin or clear the editable draft. The next Save can retry.
+    {
+        const float committedWidth = active.pathWidth;
+        draft.pathWidth = 11.25f;
+        ui.dirty = true;
+        std::error_code ec;
+        fs::remove(firstProfile, ec);
+        fs::create_directory(firstProfile, ec); // replacement must fail
+        bad.Apply(SkinCommand::Save);
+        Skin unchangedActive;
+        ok &= Check(ui.noticeError && ui.dirty &&
+                    active.pathWidth == committedWidth &&
+                    LoadSkin(activeFile, unchangedActive, error, false) &&
+                    unchangedActive.pathWidth == committedWidth,
+                    "failed personal copy preserves active skin and dirty draft");
+        fs::remove(firstProfile, ec);
+        bad.Apply(SkinCommand::Save);
+        Skin retriedPersonal;
+        ok &= Check(!ui.noticeError && !ui.dirty &&
+                    active.pathWidth == 11.25f &&
+                    LoadSkin(firstProfile, retriedPersonal, error, false) &&
+                    retriedPersonal.pathWidth == 11.25f,
+                    "retry commits both profile documents before clearing dirty");
+    }
+
     // Corrupted user-controlled profile files remain visible, but are never
     // applied to the game. The current active skin stays untouched.
     const fs::path broken = profileDir / "Broken.locus-skin.json";

@@ -4,9 +4,11 @@
 #include "app/movement_speed.h"
 #include <nlohmann/json.hpp>
 
+#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <iostream>
+#include <fstream>
 #include <string>
 
 using namespace locus::app;
@@ -315,13 +317,31 @@ int main() {
           !GetSkinNumberRange(1, 2, limits),
           "booleans are switches, not numeric sliders");
     const auto file = std::filesystem::temp_directory_path() /
-        "locus_skin_test" / "practice.locus-skin.json";
+        ("locus-skin-test-" + std::to_string(
+            std::chrono::steady_clock::now().time_since_epoch().count())) /
+        "practice.locus-skin.json";
     check(SaveSkin(file, original, error), "save to independent file");
     Skin loaded;
     check(LoadSkin(file, loaded, error) &&
           loaded.lookaheadMs == original.lookaheadMs,
           "load from independent file");
+    // Both failure phases preserve the previous active skin and remove
+    // only this writer's temporary file.
+    const auto blocked = file.parent_path() / "blocked.locus-skin.json";
     std::error_code ec;
+    std::filesystem::create_directory(blocked, ec);
+    check(!SaveSkin(blocked, original, error) &&
+          LoadSkin(file, loaded, error, false) &&
+          loaded.name == original.name,
+          "skin replacement failure cannot corrupt an existing profile");
+    bool leakedStage = false;
+    for (const auto& entry : std::filesystem::directory_iterator(file.parent_path()))
+        if (entry.path().filename().string().find("blocked.locus-skin.json.tmp-") == 0)
+            leakedStage = true;
+    check(!leakedStage, "failed skin publish cleans its staging file");
+    std::ofstream(file.parent_path() / "not-a-folder") << "file";
+    check(!SaveSkin(file.parent_path() / "not-a-folder" / "skin.json",
+                    original, error), "skin directory failure reported");
     std::filesystem::remove_all(file.parent_path(), ec);
     if (ok) std::cout << "SKIN_PASS independent_json=1\n";
     return ok ? 0 : 1;
