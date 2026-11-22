@@ -383,6 +383,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_editor_workflow_tests
         tests/editor_workflow_tests.cpp
         src/app/editor_file_actions.cpp
+        src/app/editor_discard_guard.cpp
         src/app/editor_comparison.cpp
         src/app/editor_document.cpp
         src/app/editor_session.cpp

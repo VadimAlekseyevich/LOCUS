@@ -1,6 +1,7 @@
 #include "app/chart_playback.h"
 #include "app/demo_transport.h"
 #include "app/editor_file_actions.h"
+#include "app/editor_discard_guard.h"
 #include "app/editor_session.h"
 #include "app/game_session.h"
 #include "app/local_music.h"
@@ -189,6 +190,32 @@ int main() {
                 files.ParkedEditor(installedHard)->Dirty(),
                 "Hard > Focus Easy restores both unsaved histories");
 
+    const auto* parkedHard = files.ParkedEditor(installedHard);
+    const int selectedBeforeTest = editor.SelectedBeat();
+    ok &= Check(editor.CanUndo() && parkedHard && parkedHard->CanUndo(),
+                "Both difficulties keep independent Undo histories after focus changes");
+
+    // The real editor guard suppresses unrelated shortcut actions while
+    // its modal is active. Cancel/Esc returns to the two dirty documents.
+    app::EditorDiscardGuard discardGuard;
+    app::FrameInput attemptLeave;
+    attemptLeave.homePressed = true;
+    attemptLeave.editorTest = true; // must not be passed beneath the modal.
+    ok &= Check(discardGuard.Handle(
+                    attemptLeave, files.AnyDirty(), false, false) ==
+                    app::EditorDiscardOutcome::PromptOpened &&
+                discardGuard.Pending() == app::EditorPending::Home &&
+                !attemptLeave.homePressed && !attemptLeave.editorTest,
+                "Editor > Home with unsaved work opens exclusive leave guard");
+    app::FrameInput canceledLeave;
+    canceledLeave.editorNew = true;
+    ok &= Check(discardGuard.Handle(
+                    canceledLeave, files.AnyDirty(), false, true) ==
+                    app::EditorDiscardOutcome::ChangesKept &&
+                discardGuard.Pending() == app::EditorPending::None &&
+                !canceledLeave.editorNew && files.AnyDirty(),
+                "Editor > Esc cancel keeps both dirty histories");
+
     const core::Chart builtinDemo = core::MakeDemoChart();
     core::Chart activeChart = builtinDemo;
     core::TurnJudge judge(activeChart);
@@ -223,8 +250,11 @@ int main() {
     app::ApplySessionTransition(transition, Screen::Play, nav.screen,
                                 false, now + 0.3);
     ok &= Check(nav.screen == Screen::Editor && files.AnyDirty() &&
-                files.HasDirtyParked() && !playback.Playing(),
-                "TEST > Editor keeps both unsaved documents");
+                files.HasDirtyParked() && !playback.Playing() &&
+                editor.SelectedBeat() == selectedBeforeTest &&
+                editor.CanUndo() && files.ParkedEditor(installedHard) &&
+                files.ParkedEditor(installedHard)->CanUndo(),
+                "TEST > Editor keeps exact tick, both dirty documents and Undo histories");
     ok &= Check(files.SaveAll(now) && !files.AnyDirty(),
                 "Save All persists both documents");
 
