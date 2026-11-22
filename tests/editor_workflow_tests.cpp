@@ -29,6 +29,16 @@
 #include <vector>
 #include <string>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#define CloseWindow Win32CloseWindow
+#define ShowCursor Win32ShowCursor
+#include <windows.h>
+#undef CloseWindow
+#undef ShowCursor
+#endif
+
 namespace {
 using namespace locus;
 namespace fs = std::filesystem;
@@ -297,8 +307,37 @@ int main() {
                 error.empty() && transientResults.Load(testKey, error).empty(),
                 "TEST completion cannot publish a result on the real profile");
 
+#ifdef _WIN32
+    // Inject a real file-sharing denial on the *second* dirty difficulty.
+    // The first chart is allowed to commit; the failed second write must
+    // preserve its parked undo history and keep the leave guard active.
+    {
+        HANDLE held = CreateFileW(installedHard.c_str(), GENERIC_READ,
+                                  FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+                                  FILE_ATTRIBUTE_NORMAL, nullptr);
+        ok &= Check(held != INVALID_HANDLE_VALUE,
+                    "fixture can block second difficulty replacement");
+        if (held != INVALID_HANDLE_VALUE) {
+            ok &= Check(!files.SaveAll(now) &&
+                        chartPath == installedEasy.wstring() &&
+                        !editor.Dirty() &&
+                        files.ParkedEditor(installedHard) &&
+                        files.ParkedEditor(installedHard)->Dirty() &&
+                        files.AnyDirty() &&
+                        status.find("SAVE FAILED: ") == 0,
+                        "partial Save All commits first and preserves second dirty draft");
+            CloseHandle(held);
+            app::SongLibrary partialRestart(profile.root / "Songs");
+            ok &= Check(partialRestart.Refresh(note) &&
+                        partialRestart.ChartCount() == 2 &&
+                        partialRestart.Songs()[0].charts[0].data.route.turns.size() == 2 &&
+                        partialRestart.Songs()[0].charts[1].data.route.turns.size() == 2,
+                        "first difficulty survives restart; blocked second is unchanged");
+        }
+    }
+#endif
     ok &= Check(files.SaveAll(now) && !files.AnyDirty(),
-                "Save All persists both documents");
+                "Save All retries remaining dirty document without duplicating first");
 
     app::SongLibrary restarted(profile.root / "Songs");
     ok &= Check(restarted.Refresh(note) && restarted.ChartCount() == 2,
