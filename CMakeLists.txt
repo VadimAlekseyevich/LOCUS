@@ -404,6 +404,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_editor_workflow_tests
         tests/editor_workflow_tests.cpp
         src/app/game_settings.cpp
+        src/app/library_playback.cpp
         src/app/editor_file_actions.cpp
         src/app/editor_discard_guard.cpp
         src/app/editor_comparison.cpp

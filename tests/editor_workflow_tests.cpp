@@ -5,6 +5,7 @@
 #include "app/editor_session.h"
 #include "app/game_session.h"
 #include "app/local_music.h"
+#include "app/library_playback.h"
 #include "app/menu_ui.h"
 #include "app/play_screen_actions.h"
 #include "app/play_intro_skip.h"
@@ -322,20 +323,36 @@ int main() {
     // Start the real scored PlayScreenActions controller, deliver device
     // events at their authored audio timestamps, then traverse the normal
     // post-judgement animation and results boundary.
-    core::Chart scored = savedB->data.route;
+    // LibraryChart::data is a validated but UNPREPARED index entry: chart
+    // length cannot be inferred until its shared audio has been loaded.
+    // Exercise the exact production activation path that prepares duration,
+    // transfers the BPM map and updates GameSession's stable chart address.
+    core::Chart scored = core::MakeDemoChart();
     core::TurnJudge scoredJudge(scored);
     app::GameSession scoredGame(scored, scoredJudge, demo, playback);
+    std::string scoredTitle;
+    bool scoredCustom = false;
+    ok &= Check(app::ActivateLibraryDifficulty(
+                    *savedB, {song, loadedAudioPath, scored, scoredTitle,
+                              playback, scoredJudge, scoredGame, scoredCustom},
+                    now, error) &&
+                scoredCustom && scoredTitle == "Hard" &&
+                scored.lengthBeats > scored.turns.back().beat &&
+                scored.tempoMap.size() == 2 &&
+                std::abs(playback.BeatAtAudioSeconds(3.0) - 7.0) < 1e-7,
+                "Library > Play prepares audio duration and exact BPM map");
+    if (!scoredCustom) {
+        std::cerr << "LIBRARY_ACTIVATION_FAIL " << error << '\n';
+        return 1;
+    }
     app::AppState scoredNav;
     scoredNav.screen = Screen::Play;
-    bool scoredCustom = true;
     bool scoredCompleted = false;
     app::PlayOutroTransition outro;
     app::PlayScreenActions scoredActions{
         {scoredNav, scoredGame, scoredJudge, demo, playback,
          scoredCustom, scoredCompleted, scored, outro}
     };
-    playback.Configure(scored.bpm, savedB->data.offsetSeconds,
-                       scored.tempoMap, scored.ticksPerBeat);
     constexpr double startAt = 20.0;
     scoredGame.Start(true, startAt);
     ok &= Check(playback.Playing() && scoredJudge.Counts().Resolved() == 0,

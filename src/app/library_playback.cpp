@@ -67,8 +67,8 @@ bool ActivateLibraryDifficulty(const LibraryChart& selected,
     context.activeChart = std::move(prepared.route);
     context.chartTitle = std::move(prepared.title);
     context.playback.Configure(
-        context.activeChart.bpm * context.activeChart.ticksPerBeat,
-        prepared.offsetSeconds);
+        context.activeChart.bpm, prepared.offsetSeconds,
+        context.activeChart.tempoMap, context.activeChart.ticksPerBeat);
     context.playback.SetSpeed(1.0, now);
     context.session.ClearTestOrigin();
     context.judge.SetOffsetSeconds(prepared.offsetSeconds);
