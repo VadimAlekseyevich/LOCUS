@@ -292,6 +292,56 @@ int main() {
                 realtimeJudge.Counts().Resolved() == 2,
                 "real GameSession preserves distinct Perfect/Good at 50%");
 
+    // The final authored note may be within the last audio buffer.
+    // Reaching the exact WAV duration is NOT permission to resolve Miss:
+    // the standard late window survives into a silent tail.
+    core::Chart tailChart;
+    tailChart.bpm = 120.0;
+    tailChart.turns = {{8, core::Heading::Up, 3950}};
+    core::TurnJudge lateJudge(tailChart);
+    app::GameSession lateSession(tailChart, lateJudge, unusedDemo, play);
+    play.Configure(120.0, 0.0, {{0, 120.0}}, 1);
+    constexpr double tailStart = 400.0;
+    ok &= Check(play.StartAtAudioSeconds(3.5, tailStart),
+                "seek near last authored note");
+    lateSession.Update(true, tailStart + 0.50, {});
+    ok &= Check(play.Finished() && lateJudge.Counts().Resolved() == 0,
+                "audio ending does not prematurely miss the last note");
+    app::ArrowInput afterAudio;
+    afterAudio.pressed[0] = true;
+    afterAudio.capturedAt[0] = tailStart + 0.55;
+    lateSession.Update(true, tailStart + 0.55, afterAudio);
+    ok &= Check(lateJudge.Counts().good == 1 &&
+                lateJudge.Counts().miss == 0,
+                "keypress 50ms after audio end can still earn Good");
+
+    core::TurnJudge missedJudge(tailChart);
+    app::GameSession missedSession(tailChart, missedJudge, unusedDemo, play);
+    play.Configure(120.0, 0.0, {{0, 120.0}}, 1);
+    ok &= Check(play.StartAtAudioSeconds(3.5, 500.0),
+                "replay late-note case without key input");
+    missedSession.Update(true, 500.50, {});
+    missedSession.Update(true, 500.75, {});
+    ok &= Check(missedJudge.Counts().miss == 1 &&
+                missedJudge.Counts().Resolved() == 1,
+                "only expiration of the late silent window records a Miss");
+
+    // Skipping a long empty intro is navigation, not an authored hit.
+    core::Chart skipChart;
+    skipChart.bpm = 120.0;
+    skipChart.turns = {{6, core::Heading::Right, 3000}};
+    core::TurnJudge skipJudge(skipChart);
+    app::GameSession skipSession(skipChart, skipJudge, unusedDemo, play);
+    play.Configure(120.0, 0.0, {{0, 120.0}}, 1);
+    skipSession.Start(true, 600.0);
+    app::ArrowInput skipPress;
+    skipPress.pressed[1] = true;
+    skipPress.capturedAt[1] = 600.1;
+    skipSession.Update(true, 600.1, skipPress);
+    ok &= Check(Close(play.AudioSeconds(600.1), 1.0) &&
+                skipJudge.Counts().Resolved() == 0,
+                "first physical input skips intro without scoring the note");
+
     MissingOutput missingDevice;
     app::LocalMusic missing(missingDevice);
     ok &= Check(!missing.LoadFromFile(file.wav.wstring()) &&
