@@ -155,6 +155,39 @@ int main() {
                 editor.Data().route.tempoMap == map,
                 "invalid map is transactional and cannot damage the draft");
 
+    // T05 canonical example: 750ms is not aligned to the 120 BPM
+    // 500ms beat. The following 240 BPM starts a new local downbeat
+    // exactly there; previously authored timestamps must not move.
+    const std::vector<TempoMarker> at750{
+        {0, 120.0}, {750, 240.0}
+    };
+    ok &= Check(Near(TempoBeatAtMs(at750, 749), 1.498) &&
+                Near(TempoBeatAtMs(at750, 750), 2.0) &&
+                Near(TempoBeatAtMs(at750, 1000), 3.0) &&
+                Near(TempoMsAtBeat(at750, 2.0), 750.0) &&
+                Near(TempoMsAtBeat(at750, 3.0), 1000.0),
+                "750ms off-grid BPM change itself is the next strong beat");
+    ChartEditor markerEditor;
+    ok &= Check(markerEditor.SetSongDuration(8.0),
+                "load 8s song for tempo re-projection");
+    markerEditor.SelectBeat(1);
+    markerEditor.PutTurn(Heading::Left);
+    markerEditor.SelectBeat(2);
+    markerEditor.PutTurn(Heading::Up);
+    const std::int64_t originalFirst =
+        markerEditor.Data().route.turns[0].timeMs;
+    const std::int64_t originalSecond =
+        markerEditor.Data().route.turns[1].timeMs;
+    ok &= Check(markerEditor.SetTempoMap(at750) &&
+                markerEditor.Data().route.turns[0].timeMs == originalFirst &&
+                markerEditor.Data().route.turns[1].timeMs == originalSecond &&
+                markerEditor.Data().route.turns[0].beat == 1 &&
+                markerEditor.Data().route.turns[1].beat == 3 &&
+                markerEditor.Undo() &&
+                markerEditor.Data().route.turns[1].beat == 2 &&
+                markerEditor.Data().route.turns[1].timeMs == originalSecond,
+                "BPM change reprojects ticks but never retimes notes; Undo restores");
+
     if (ok) std::cout << "TEMPO_MAP_PASS local_downbeat=1 formats=4\n";
     return ok ? 0 : 1;
 }

@@ -931,6 +931,47 @@ int main() {
                 semanticChart.Data().route.initialHeading != beforeHeading,
                 "native heading commands share chart history");
 
+    // T05: at 750ms, a new BPM marker MUST be the downbeat of its
+    // segment. The upper ruler is linear in SONG SECONDS; it never speeds
+    // up in response to BPM changes. Only the local beat density changes.
+    ChartEditor tempoRuler;
+    ok &= Check(tempoRuler.SetSongDuration(10.0) &&
+                tempoRuler.SetTempoMap({{0, 120.0}, {750, 240.0}}),
+                "750ms BPM marker can be inserted into the note ruler");
+    EditorUiState rulerUi;
+    const auto& adjusted = tempoRuler.Data().route;
+    const double anchorTick = 2.0; // local downbeat at 750ms
+    const double pxPerSecond =
+        detail::TimelinePixelsPerSongSecond(rulerUi, adjusted);
+    const double beforeSpacing =
+        detail::TimelineXAtSeconds(tempoRuler, rulerUi, anchorTick, 0.5) -
+        detail::TimelineXAtSeconds(tempoRuler, rulerUi, anchorTick, 0.0);
+    const double afterSpacing =
+        detail::TimelineXAtSeconds(tempoRuler, rulerUi, anchorTick, 1.0) -
+        detail::TimelineXAtSeconds(tempoRuler, rulerUi, anchorTick, 0.75);
+    ok &= Check(std::abs(beforeSpacing - pxPerSecond * 0.5) < 0.001 &&
+                std::abs(afterSpacing - pxPerSecond * 0.25) < 0.001 &&
+                std::abs(beforeSpacing - 2.0 * afterSpacing) < 0.001,
+                "120->240 BPM halves grid spacing, not time-to-pixel scale");
+    const float xDownbeat = detail::TimelineXAtSeconds(
+        tempoRuler, rulerUi, anchorTick, 0.75);
+    const float xNextBeat = detail::TimelineXAtSeconds(
+        tempoRuler, rulerUi, anchorTick, 1.0);
+    ok &= Check(detail::TimelineTickAtX(
+                    tempoRuler, rulerUi, anchorTick, xDownbeat) == 2 &&
+                detail::TimelineTickAtX(
+                    tempoRuler, rulerUi, anchorTick, xNextBeat) == 3 &&
+                std::abs(xDownbeat - detail::kPlayheadX) < 0.001,
+                "marker and first new-tempo beat are stable snapped targets");
+    const double overviewAtMarker = detail::SongOverviewX(0.75, 10.0);
+    rulerUi.timelineZoomIndex = detail::kZoomMax;
+    ok &= Check(std::abs(
+                    detail::SongOverviewX(0.75, 10.0) -
+                    overviewAtMarker) < 0.001 &&
+                std::abs(detail::SongOverviewSeconds(
+                    static_cast<float>(overviewAtMarker), 10.0)-0.75)<0.001,
+                "bottom full-song overview ignores upper ruler zoom");
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS route_controls=1 field_heading=1 zoom=1\n";
     return 0;
