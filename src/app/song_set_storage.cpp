@@ -72,9 +72,15 @@ bool PublishNewFile(const fs::path& staged, const fs::path& dest,
     error = "Cannot publish the new file (Windows error " +
             std::to_string(GetLastError()) + ").";
 #else
+    // Same-directory hard link is an atomic no-replace operation. rename()
+    // would silently overwrite a different process's shared audio on POSIX.
     std::error_code ec;
-    fs::rename(staged, dest, ec);
-    if (!ec) return true;
+    fs::create_hard_link(staged, dest, ec);
+    if (!ec) {
+        std::error_code cleanup;
+        fs::remove(staged, cleanup); // Destination is already committed.
+        return true;
+    }
     error = "Cannot publish the new file: " + ec.message();
 #endif
     return false;
