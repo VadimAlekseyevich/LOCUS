@@ -128,12 +128,26 @@ int main() {
                        "\"heading\": \"north\"", "start.heading"),
                  "all compass headings must use supported spellings");
     ok &= Expect(Reject(source, "\"timeMs\": 2750",
-                       "\"timeMs\": 1250", "timeMs") &&
+                        "\"timeMs\": 1250", "timeMs") &&
                  Reject(source, "\"timeMs\": 2750",
-                       "\"timeMs\": 1251", "grid resolution") &&
-                 Reject(source, "\"timeMs\": 2750",
-                       "\"timeMs\": 999999999", "timeMs"),
-                 "absolute event times must be ordered, distinct on grid and bounded");
+                        "\"timeMs\": 999999999", "timeMs"),
+                 "absolute event times must increase and stay bounded");
+    // A grid tick may contain two distinct milliseconds. It is only a
+    // placement index; unique source time is the persistent event identity.
+    std::string denseInput = source;
+    const auto adjacent = denseInput.find("\"timeMs\": 2750");
+    if (adjacent != std::string::npos)
+        denseInput.replace(adjacent, std::string("\"timeMs\": 2750").size(),
+                           "\"timeMs\": 1251");
+    LoadedChart denseParsed;
+    ok &= Expect(adjacent != std::string::npos &&
+                 ParseChartJson(denseInput, denseParsed, error) &&
+                 denseParsed.route.turns.size() == 3 &&
+                 denseParsed.route.turns[0].beat ==
+                     denseParsed.route.turns[1].beat &&
+                 denseParsed.route.turns[0].timeMs == 1250 &&
+                 denseParsed.route.turns[1].timeMs == 1251,
+                 "two distinct milliseconds can occupy one musical tick");
     ok &= Expect(Reject(source, "\"audioPath\": \"audio/song.mp3\"",
                        "\"audioPath\": \"../escape.mp3\"", "audioPath") &&
                  Reject(source, "\"width\": 8",
