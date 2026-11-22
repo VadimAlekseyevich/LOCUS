@@ -144,19 +144,17 @@ void LocalMusic::StartAt(double monotonicSeconds, double audioSeconds) {
         if (!stretch_) stretch_ = std::make_unique<PitchPreservingStream>();
         if (!stretch_->Ready()) {
             std::string error;
-            if (!stretch_->Load(fileBytes_, sourceFormat_.c_str(), error))
+            if (!stretch_->Load(fileBytes_, sourceFormat_.c_str(), error)) {
                 std::cerr << "LOCAL_MUSIC_STRETCH_UNAVAILABLE: " << error << '\n';
-        }
-        if (stretch_->Ready()) {
-            // First slow playback performs an on-demand whole-song decode.
-            // Report its real wall time and retained PCM footprint so T04
-            // can be profiled on actual Windows audio hardware.
-            // Subsequent seeks/rate changes reuse the decoded Wave.
-            if (stretch_->DecodeMilliseconds() > 0.0)
+            } else {
+                // One diagnostic per decode, not one per seek or retry.
                 std::cout << "LOCAL_MUSIC_STRETCH_READY decode_ms="
                           << stretch_->DecodeMilliseconds()
                           << " decoded_pcm_bytes="
                           << stretch_->DecodedPcmBytes() << '\n';
+            }
+        }
+        if (stretch_->Ready()) {
             stretch_->StartAt(audioSeconds, speed_, volume_);
             activeStretch_ = true;
         }
