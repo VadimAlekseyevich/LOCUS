@@ -12,6 +12,12 @@
 #include <iterator>
 #include <string>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
+
 using namespace locus::app;
 
 namespace {
@@ -148,7 +154,59 @@ int main() {
                 unicodeLoaded.mapper == unicodeMetadata.mapper &&
                 unicodeLoaded.tags == unicodeMetadata.tags,
                 "Song Set metadata including pack-wide tags round-trips UTF-8");
+    const std::string publishedManifest = Read(unicodeManifest);
+    // Create-only must not overwrite a preexisting manifest. A stale legacy
+    // .tmp must neither interfere nor be truncated by the new writer.
+    Write(fs::path(unicodeManifest.wstring() + L".tmp"), "abandoned");
+    unicodeMetadata.title = "Accidental replacement";
+    ok &= Check(!WriteNewSongSetManifest(unicodeManifest, unicodeMetadata, error) &&
+                error.find("already exists") != std::string::npos &&
+                Read(unicodeManifest) == publishedManifest &&
+                Read(fs::path(unicodeManifest.wstring() + L".tmp")) == "abandoned",
+                "manifest create rejects collision without touching previous file");
+    // Replacing invalid data must never change the previous published document.
+    unicodeMetadata.id = std::string(129, 'x');
+    ok &= Check(!ReplaceSongSetManifest(unicodeManifest, unicodeMetadata, error) &&
+                Read(unicodeManifest) == publishedManifest,
+                "manifest writer rejects an ID the loader cannot accept");
+    unicodeMetadata.id = metadata.id;
+    unicodeMetadata.title = u8"Обновлённый набор";
+    ok &= Check(ReplaceSongSetManifest(unicodeManifest, unicodeMetadata, error) &&
+                LoadSongSetManifest(unicodeManifest, unicodeLoaded, error) &&
+                unicodeLoaded.title == unicodeMetadata.title &&
+                unicodeLoaded.tags == unicodeMetadata.tags,
+                "manifest replacement persists all fields through shared encoder");
+#ifdef _WIN32
+    {
+        HANDLE blocked = CreateFileW(unicodeManifest.c_str(), GENERIC_READ,
+                                    FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+                                    FILE_ATTRIBUTE_NORMAL, nullptr);
+        ok &= Check(blocked != INVALID_HANDLE_VALUE,
+                    "manifest can be pinned without FILE_SHARE_DELETE");
+        if (blocked != INVALID_HANDLE_VALUE) {
+            const std::string beforeFailure = Read(unicodeManifest);
+            unicodeMetadata.title = "Blocked replacement";
+            ok &= Check(!ReplaceSongSetManifest(unicodeManifest, unicodeMetadata,
+                                                error) &&
+                        Read(unicodeManifest) == beforeFailure,
+                        "sharing violation preserves original complete manifest");
+            CloseHandle(blocked);
+            ok &= Check(ReplaceSongSetManifest(unicodeManifest, unicodeMetadata,
+                                               error) &&
+                        Read(unicodeManifest).find("Blocked replacement") !=
+                            std::string::npos,
+                        "manifest replace succeeds after releasing blocker");
+        }
+    }
+#endif
+    bool leakedManifestStage = false;
+    for (const auto& entry : fs::directory_iterator(folder))
+        if (entry.path().filename().string().find("unicode-set.json.tmp-") == 0)
+            leakedManifestStage = true;
+    ok &= Check(!leakedManifestStage,
+                "manifest save failures clean their own staging documents");
     fs::remove(unicodeManifest, ec);
+    fs::remove(fs::path(unicodeManifest.wstring() + L".tmp"), ec);
     // Menu listening start is SONG SET metadata, not a difficulty's
     // BPM/offset or note timestamps. It persists and survives ZIP export.
     const auto originalChartBytes = Read(easyInstalled);

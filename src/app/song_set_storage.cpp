@@ -1,4 +1,5 @@
 #include "app/song_set_storage.h"
+#include "app/atomic_text_file.h"
 #include "core/tempo_map.h"
 #include "core/utf8.h"
 #include "app/image_asset_file.h"
@@ -259,79 +260,12 @@ bool LoadSongSetManifest(const fs::path& path, SongSetManifest& manifest,
     return true;
 }
 
-bool WriteNewSongSetManifest(const fs::path& path,
-                             const SongSetManifest& manifest, std::string& error) {
-    if (manifest.id.empty() ||
-        !core::utf8::ValidName(manifest.title, 256, 1024) ||
-        (!manifest.artist.empty() &&
-         !core::utf8::ValidName(manifest.artist, 256, 1024)) ||
-        !ValidSongSetMapper(manifest.mapper) ||
-        !ValidSongSetTags(manifest.tags) ||
-        (!SafeAudioFilename(manifest.audioFile) ||
-         manifest.previewStartMs < 0 ||
-         manifest.previewStartMs > kMaxSongPreviewStartMs ||
-         (!manifest.backgroundFile.empty() &&
-          !SafeImageFilename(manifest.backgroundFile))) ||
-        (manifest.bpm.has_value() != manifest.offsetMs.has_value()) ||
-        (manifest.bpm && (!std::isfinite(*manifest.bpm) ||
-                          *manifest.bpm <= 0.0 ||
-                          *manifest.offsetMs < -3600000 ||
-                          *manifest.offsetMs > 3600000)) ||
-        (!manifest.tempoMap.empty() &&
-         (manifest.tempoMap.front().bpm != manifest.bpm.value_or(-1.0) ||
-          manifest.tempoMap.front().timeMs != manifest.offsetMs.value_or(-1)))) {
-        error = "Invalid new Song Set metadata.";
-        return false;
-    }
-    const std::vector<core::TempoMarker> tempo =
-        manifest.tempoMap.empty()
-            ? std::vector<core::TempoMarker>{{manifest.offsetMs.value_or(0),
-                                               manifest.bpm.value_or(120.0)}}
-            : manifest.tempoMap;
-    if (!core::ValidTempoMap(tempo, error)) return false;
-    std::error_code ec;
-    if (fs::exists(path, ec)) {
-        error = "Song Set metadata already exists.";
-        return false;
-    }
-    const fs::path stage = path.wstring() + UniqueSuffix();
-    nlohmann::json data = {
-        {"formatVersion", 2}, {"setId", manifest.id}, {"title", manifest.title},
-        {"artist", manifest.artist}, {"mapper", manifest.mapper},
-        {"tags", manifest.tags}, {"audioFile", manifest.audioFile},
-        {"previewStartMs", manifest.previewStartMs},
-        {"backgroundFile", manifest.backgroundFile}
-    };
-    data["bpm"] = tempo.front().bpm;
-    data["offsetMs"] = tempo.front().timeMs;
-    data["tempoMap"] = nlohmann::json::array();
-    for (const auto& marker : tempo)
-        data["tempoMap"].push_back({
-            {"timeMs", marker.timeMs}, {"bpm", marker.bpm}});
-
-    {
-        std::ofstream out(stage, std::ios::binary | std::ios::trunc);
-        if (!out) { error = "Cannot stage Song Set metadata."; return false; }
-        out << data.dump(2) << '\n';
-        out.flush();
-        if (!out) {
-            fs::remove(stage, ec);
-            error = "Cannot write Song Set metadata.";
-            return false;
-        }
-    }
-    if (!PublishNewFile(stage, path, error)) {
-        fs::remove(stage, ec);
-        return false;
-    }
-    error.clear();
-    return true;
-}
-
-// Call while holding the Song Set folder writer lock.
-bool ReplaceSongSetManifest(const fs::path& path,
-                            const SongSetManifest& manifest, std::string& error) {
-    if (manifest.id.empty() ||
+namespace {
+// A single validator/encoder for create and replace: they must never
+// accept different Song Set schemas or serialize different JSON shapes.
+bool EncodeSongSetManifest(const SongSetManifest& manifest,
+                           std::string& encoded, std::string& error) {
+    if (manifest.id.empty() || manifest.id.size() > 128 ||
         !core::utf8::ValidName(manifest.title, 256, 1024) ||
         (!manifest.artist.empty() &&
          !core::utf8::ValidName(manifest.artist, 256, 1024)) ||
@@ -342,68 +276,63 @@ bool ReplaceSongSetManifest(const fs::path& path,
         manifest.previewStartMs > kMaxSongPreviewStartMs ||
         (!manifest.backgroundFile.empty() &&
          !SafeImageFilename(manifest.backgroundFile)) ||
-        (manifest.bpm.has_value() != manifest.offsetMs.has_value()) ||
-        (manifest.bpm && (!std::isfinite(*manifest.bpm) ||
-                          *manifest.bpm <= 0.0 ||
-                          *manifest.offsetMs < -3600000 ||
-                          *manifest.offsetMs > 3600000)) ||
+        !manifest.bpm.has_value() || !manifest.offsetMs.has_value() ||
+        !std::isfinite(*manifest.bpm) || *manifest.bpm <= 0.0 ||
+        *manifest.offsetMs < -3600000 || *manifest.offsetMs > 3600000 ||
         (!manifest.tempoMap.empty() &&
-         (manifest.tempoMap.front().bpm != manifest.bpm.value_or(-1.0) ||
-          manifest.tempoMap.front().timeMs != manifest.offsetMs.value_or(-1)))) {
-        error = "Invalid Song Set metadata."; return false;
+         (manifest.tempoMap.front().bpm != *manifest.bpm ||
+          manifest.tempoMap.front().timeMs != *manifest.offsetMs))) {
+        error = "Invalid Song Set metadata.";
+        return false;
     }
     const std::vector<core::TempoMarker> tempo =
         manifest.tempoMap.empty()
-            ? std::vector<core::TempoMarker>{{manifest.offsetMs.value_or(0),
-                                               manifest.bpm.value_or(120.0)}}
+            ? std::vector<core::TempoMarker>{{*manifest.offsetMs, *manifest.bpm}}
             : manifest.tempoMap;
     if (!core::ValidTempoMap(tempo, error)) return false;
-    std::error_code ec;
-    if (!fs::is_regular_file(path, ec) || ec) {
-        error = "Song Set manifest is missing."; return false;
-    }
-    const fs::path stage = path.wstring() + UniqueSuffix();
     nlohmann::json data = {
         {"formatVersion", 2}, {"setId", manifest.id},
         {"title", manifest.title}, {"artist", manifest.artist},
         {"mapper", manifest.mapper}, {"tags", manifest.tags},
         {"audioFile", manifest.audioFile},
         {"previewStartMs", manifest.previewStartMs},
-        {"backgroundFile", manifest.backgroundFile}
+        {"backgroundFile", manifest.backgroundFile},
+        {"bpm", tempo.front().bpm}, {"offsetMs", tempo.front().timeMs}
     };
-    data["bpm"] = tempo.front().bpm;
-    data["offsetMs"] = tempo.front().timeMs;
     data["tempoMap"] = nlohmann::json::array();
     for (const auto& marker : tempo)
         data["tempoMap"].push_back({
             {"timeMs", marker.timeMs}, {"bpm", marker.bpm}});
-
-    {
-        std::ofstream out(stage, std::ios::binary | std::ios::trunc);
-        if (!out) { error = "Cannot stage Song Set metadata."; return false; }
-        out << data.dump(2) << '\n';
-        out.flush();
-        if (!out) {
-            fs::remove(stage, ec);
-            error = "Cannot write Song Set metadata."; return false;
-        }
-    }
-#ifdef _WIN32
-    if (!MoveFileExW(stage.c_str(), path.c_str(),
-                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        fs::remove(stage, ec);
-        error = "Cannot replace Song Set metadata."; return false;
-    }
-#else
-    fs::rename(stage, path, ec);
-    if (ec) {
-        fs::remove(stage, ec);
-        error = "Cannot replace Song Set metadata: " + ec.message();
-        return false;
-    }
-#endif
+    encoded = data.dump(2) + '\n';
     error.clear();
     return true;
+}
+} // namespace
+
+// Call while holding the Song Set folder writer lock.
+bool WriteNewSongSetManifest(const fs::path& path,
+                             const SongSetManifest& manifest, std::string& error) {
+    std::string encoded;
+    if (!EncodeSongSetManifest(manifest, encoded, error)) return false;
+    const auto published = AtomicCreateTextFile(path, encoded, error);
+    if (published == AtomicTextWriteStatus::AlreadyExists) {
+        error = "Song Set metadata already exists.";
+        return false;
+    }
+    return published == AtomicTextWriteStatus::Published;
+}
+
+// Call while holding the Song Set folder writer lock.
+bool ReplaceSongSetManifest(const fs::path& path,
+                            const SongSetManifest& manifest, std::string& error) {
+    std::string encoded;
+    if (!EncodeSongSetManifest(manifest, encoded, error)) return false;
+    std::error_code ec;
+    if (!fs::is_regular_file(path, ec) || ec) {
+        error = "Song Set manifest is missing.";
+        return false;
+    }
+    return AtomicReplaceTextFile(path, encoded, error);
 }
 
 bool SameFileBytes(const fs::path& a, const fs::path& b, bool& identical,
