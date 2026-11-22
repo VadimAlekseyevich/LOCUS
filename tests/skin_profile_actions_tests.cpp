@@ -6,6 +6,16 @@
 #include <iostream>
 #include <string>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#define CloseWindow Win32CloseWindow
+#define ShowCursor Win32ShowCursor
+#include <windows.h>
+#undef CloseWindow
+#undef ShowCursor
+#endif
+
 namespace {
 namespace fs = std::filesystem;
 fs::path importFile, exportFile;
@@ -189,6 +199,39 @@ int main() {
                     retriedPersonal.pathWidth == 11.25f,
                     "retry commits both profile documents before clearing dirty");
     }
+
+#ifdef _WIN32
+    // Locking the existing global profile without FILE_SHARE_DELETE forces a
+    // real Windows failure only on the second publication step. The personal
+    // copy is committed, but the old active appearance and draft survive.
+    {
+        const float previousActiveWidth = active.pathWidth;
+        draft.pathWidth = 12.0f;
+        ui.dirty = true;
+        HANDLE held = CreateFileW(activeFile.c_str(), GENERIC_READ,
+                                  FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+                                  FILE_ATTRIBUTE_NORMAL, nullptr);
+        ok &= Check(held != INVALID_HANDLE_VALUE,
+                    "global profile can be pinned without delete sharing");
+        if (held != INVALID_HANDLE_VALUE) {
+            bad.Apply(SkinCommand::Save);
+            Skin persistedActive, persistedPersonal;
+            ok &= Check(ui.noticeError && ui.dirty &&
+                        ui.notice.find("PERSONAL COPY SAVED; ACTIVE SKIN FAILED:") == 0 &&
+                        active.pathWidth == previousActiveWidth &&
+                        LoadSkin(activeFile, persistedActive, error, false) &&
+                        persistedActive.pathWidth == previousActiveWidth &&
+                        LoadSkin(firstProfile, persistedPersonal, error, false) &&
+                        persistedPersonal.pathWidth == 12.0f,
+                        "second-file failure reports partial commit and keeps dirty draft");
+            CloseHandle(held);
+            bad.Apply(SkinCommand::Save);
+            ok &= Check(!ui.noticeError && !ui.dirty &&
+                        active.pathWidth == 12.0f,
+                        "retry applies already saved personal skin to global active file");
+        }
+    }
+#endif
 
     // Corrupted user-controlled profile files remain visible, but are never
     // applied to the game. The current active skin stays untouched.
