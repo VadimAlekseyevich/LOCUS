@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <deque>
 #include <limits>
+#include <optional>
 #include <vector>
 
 namespace locus::core {
@@ -29,6 +30,12 @@ public:
 
     const LoadedChart& Data() const noexcept { return chart_; }
     int SelectedBeat() const noexcept { return selectedBeat_; }
+    // Exact event identity independent of snap resolution. Grid navigation
+    // clears the timestamp selection; it does not modify authored time.
+    std::optional<std::int64_t> SelectedTurnTimeMs() const noexcept {
+        return selectedTurnTimeMs_;
+    }
+    bool SelectTurnAtTimeMs(std::int64_t timeMs) noexcept;
     // Actual song timestamp for a selected beat and its signed offset.
     double AudioSecondsAtBeat(int beat) const noexcept;
     bool Dirty() const noexcept { return dirty_; }
@@ -105,6 +112,7 @@ private:
         Heading initialHeading = Heading::Right;
         int firstBeat = 0, lengthBeats = 32;
         int selectedBeat = 0;
+        std::optional<std::int64_t> selectedTurnTimeMs;
         std::uint64_t revision = 0;
     };
     struct HistoryEdit {
@@ -130,6 +138,7 @@ private:
     LoadedChart chart_;
     double songDurationSeconds_ = 0.0;
     int selectedBeat_ = 0;
+    std::optional<std::int64_t> selectedTurnTimeMs_;
     bool dirty_ = false;
     std::uint64_t revision_ = 0;
     std::uint64_t routeRevision_ = 0;

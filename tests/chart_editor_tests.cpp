@@ -518,6 +518,59 @@ int main() {
                 dense.Data().route.turns.back().beat == 39996,
                 "changing note resolution is a single reversible whole-range edit");
 
+    // T05 groundwork: two distinct timestamps can project into one
+    // musical tick. Exact-time selection and mutations must never affect
+    // the wrong note, even though chart v4 still rejects such files.
+    LoadedChart denseSource;
+    denseSource.title = "Exact time selection";
+    denseSource.audioPath = "song.wav";
+    denseSource.route.turns = {
+        {2, Heading::Up, 1000},
+        {2, Heading::Right, 1010},
+        {3, Heading::Down, 1500}
+    };
+    ChartEditor exact;
+    exact.Load(denseSource);
+    ok &= Check(exact.SetSongDuration(4.0) &&
+                exact.SelectTurnAtTimeMs(1010) &&
+                exact.SelectedBeat() == 2 &&
+                exact.SelectedTurnTimeMs() == 1010 &&
+                exact.SelectedTurn() &&
+                exact.SelectedTurn()->direction == Heading::Right,
+                "select exact second note instead of first note in same tick");
+    exact.PutTurn(Heading::DownLeft);
+    ok &= Check(exact.Data().route.turns.size() == 3 &&
+                exact.Data().route.turns[0].direction == Heading::Up &&
+                exact.Data().route.turns[0].timeMs == 1000 &&
+                exact.Data().route.turns[1].direction == Heading::DownLeft &&
+                exact.Data().route.turns[1].timeMs == 1010 &&
+                exact.Data().route.turns[2].direction == Heading::Down &&
+                exact.HistoryStoredTurns() <= 6,
+                "exact heading edit preserves neighboring notes and their times");
+    ok &= Check(exact.Undo() &&
+                exact.SelectedTurnTimeMs() == 1010 &&
+                exact.SelectedTurn() &&
+                exact.SelectedTurn()->direction == Heading::Right &&
+                exact.Redo() &&
+                exact.SelectedTurn() &&
+                exact.SelectedTurn()->direction == Heading::DownLeft,
+                "Undo/Redo restores exact note identity and direction");
+    ok &= Check(exact.RemoveTurn() &&
+                exact.Data().route.turns.size() == 2 &&
+                exact.Data().route.turns[0].timeMs == 1000 &&
+                !exact.SelectedTurnTimeMs() &&
+                exact.Undo() &&
+                exact.Data().route.turns.size() == 3 &&
+                exact.SelectedTurnTimeMs() == 1010,
+                "remove second note only and recover it with Undo");
+    ok &= Check(exact.SelectBeat(2) &&
+                !exact.SelectedTurnTimeMs() &&
+                exact.SelectedTurn() &&
+                exact.SelectedTurn()->timeMs == 1000,
+                "grid navigation drops exact selection in favor of tick");
+    ok &= Check(!exact.SelectTurnAtTimeMs(1020),
+                "nonexistent time cannot select an adjacent note");
+
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 patches=1\n";
     return 0;

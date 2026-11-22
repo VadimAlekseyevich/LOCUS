@@ -38,6 +38,7 @@ void ChartEditor::NewDraft() {
     chart_.route.turns.clear();
     chart_.offsetSeconds = 0.0;
     selectedBeat_ = 0;
+    selectedTurnTimeMs_.reset();
     ResetHistory();
 }
 
@@ -52,6 +53,7 @@ void ChartEditor::Load(const LoadedChart& source) {
     songDurationSeconds_ = 0.0;
     selectedBeat_ = std::clamp(0, chart_.route.firstBeat,
                               chart_.route.lengthBeats - 1);
+    selectedTurnTimeMs_.reset();
     ResetHistory();
 }
 
@@ -140,6 +142,7 @@ ChartEditor::HistoryMetadata ChartEditor::CaptureMetadata() const {
     state.firstBeat = route.firstBeat;
     state.lengthBeats = route.lengthBeats;
     state.selectedBeat = selectedBeat_;
+    state.selectedTurnTimeMs = selectedTurnTimeMs_;
     state.revision = revision_;
     return state;
 }
@@ -162,6 +165,7 @@ void ChartEditor::RestoreMetadata(const HistoryMetadata& state) {
     route.firstBeat = state.firstBeat;
     route.lengthBeats = state.lengthBeats;
     selectedBeat_ = state.selectedBeat;
+    selectedTurnTimeMs_ = state.selectedTurnTimeMs;
     revision_ = state.revision;
     dirty_ = revision_ != savedRevision_;
     difficultyRevision_ = std::numeric_limits<std::uint64_t>::max();
@@ -275,9 +279,28 @@ bool ChartEditor::SetAudioPath(const std::string& relativePath) {
 
 bool ChartEditor::SelectBeat(int beat) noexcept {
     if (beat < chart_.route.firstBeat ||
-        beat >= chart_.route.lengthBeats || selectedBeat_ == beat) return false;
+        beat >= chart_.route.lengthBeats) return false;
+    const bool changed = selectedBeat_ != beat || selectedTurnTimeMs_.has_value();
     selectedBeat_ = beat;
-    return true;
+    selectedTurnTimeMs_.reset();
+    return changed;
+}
+
+bool ChartEditor::SelectTurnAtTimeMs(std::int64_t timeMs) noexcept {
+    const auto& events = chart_.route.turns;
+    const auto found = std::lower_bound(
+        events.begin(), events.end(), timeMs,
+        [&](const TurnEvent& event, std::int64_t ms) {
+            return EventTimeMs(chart_.route, event, chart_.offsetSeconds) < ms;
+        });
+    if (found == events.end() ||
+        EventTimeMs(chart_.route, *found, chart_.offsetSeconds) != timeMs)
+        return false;
+    const bool changed = selectedBeat_ != found->beat ||
+                         selectedTurnTimeMs_ != timeMs;
+    selectedBeat_ = found->beat;
+    selectedTurnTimeMs_ = timeMs;
+    return changed;
 }
 
 bool ChartEditor::StepSelection(int deltaBeats) noexcept {
@@ -511,7 +534,17 @@ void ChartEditor::RotateHeading45(int eighthTurns) {
 
 bool ChartEditor::SetOutgoingHeading(Heading heading) {
     if (!ValidHeading(heading)) return false;
-    const Heading incoming = IncomingHeadingAt(chart_.route, selectedBeat_);
+    Heading incoming = IncomingHeadingAt(chart_.route, selectedBeat_);
+    if (selectedTurnTimeMs_) {
+        // In one tick, the later event's incoming direction is the
+        // previous event's outgoing direction, not the grid-cell origin.
+        incoming = chart_.route.initialHeading;
+        for (const auto& event : chart_.route.turns) {
+            if (EventTimeMs(chart_.route, event, chart_.offsetSeconds) >=
+                *selectedTurnTimeMs_) break;
+            incoming = event.direction;
+        }
+    }
     if (heading == incoming) return RemoveTurn(); // Straight means no note.
     if (SelectedTurn() && SelectedTurn()->direction == heading) return false;
     PutTurn(heading);
@@ -520,23 +553,41 @@ bool ChartEditor::SetOutgoingHeading(Heading heading) {
 
 const TurnEvent* ChartEditor::SelectedTurn() const noexcept {
     const auto& events = chart_.route.turns;
-    const auto found = std::lower_bound(
+    if (selectedTurnTimeMs_) {
+        const auto exact = std::lower_bound(
+            events.begin(), events.end(), *selectedTurnTimeMs_,
+            [&](const TurnEvent& event, std::int64_t ms) {
+                return EventTimeMs(chart_.route, event, chart_.offsetSeconds) < ms;
+            });
+        if (exact != events.end() && exact->beat == selectedBeat_ &&
+            EventTimeMs(chart_.route, *exact, chart_.offsetSeconds) ==
+                *selectedTurnTimeMs_)
+            return &*exact;
+    }
+    const auto first = std::lower_bound(
         events.begin(), events.end(), selectedBeat_,
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
-    return (found != events.end() && found->beat == selectedBeat_) ? &*found : nullptr;
+    return first != events.end() && first->beat == selectedBeat_
+        ? &*first : nullptr;
 }
 
 void ChartEditor::PutTurn(Heading heading) {
     auto& events = chart_.route.turns;
-    const auto found = std::lower_bound(
+    auto found = std::lower_bound(
         events.begin(), events.end(), selectedBeat_,
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
+    if (selectedTurnTimeMs_) {
+        if (const auto* selected = SelectedTurn())
+            found = events.begin() + (selected - events.data());
+    }
     if (found != events.end() && found->beat == selectedBeat_) {
         if (found->direction == heading) return;
         SaveUndo(selectedBeat_, selectedBeat_);
         found->direction = heading;
-        found->timeMs = static_cast<std::int64_t>(
-            std::llround(AudioSecondsAtBeat(selectedBeat_) * 1000.0));
+        if (!selectedTurnTimeMs_) {
+            found->timeMs = static_cast<std::int64_t>(
+                std::llround(AudioSecondsAtBeat(selectedBeat_) * 1000.0));
+        }
     } else {
         SaveUndo(selectedBeat_, selectedBeat_);
         events.insert(found, TurnEvent{
@@ -548,12 +599,17 @@ void ChartEditor::PutTurn(Heading heading) {
 
 bool ChartEditor::RemoveTurn() {
     auto& events = chart_.route.turns;
-    const auto found = std::lower_bound(
+    auto found = std::lower_bound(
         events.begin(), events.end(), selectedBeat_,
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
+    if (selectedTurnTimeMs_) {
+        if (const auto* selected = SelectedTurn())
+            found = events.begin() + (selected - events.data());
+    }
     if (found == events.end() || found->beat != selectedBeat_) return false;
     SaveUndo(selectedBeat_, selectedBeat_);
     events.erase(found);
+    selectedTurnTimeMs_.reset();
     MarkDirty();
     return true;
 }
@@ -567,11 +623,14 @@ bool ChartEditor::MoveTurn(int beats) {
                     [destination](const TurnEvent& event) {
                         return event.beat == destination;
                     })) return false;
-    const Heading direction = SelectedTurn()->direction;
+    const auto* selected = SelectedTurn();
+    const Heading direction = selected->direction;
+    const auto selectedIndex = static_cast<std::size_t>(
+        selected - events.data());
     SaveUndo(std::min(selectedBeat_, static_cast<int>(destination)),
              std::max(selectedBeat_, static_cast<int>(destination)));
-    const auto original = std::lower_bound(events.begin(), events.end(), selectedBeat_,
-        [](const TurnEvent& event, int beat) { return event.beat < beat; });
+    const auto original = events.begin() +
+        static_cast<std::ptrdiff_t>(selectedIndex);
     events.erase(original);
     const auto newSlot = std::lower_bound(events.begin(), events.end(),
         static_cast<int>(destination),
@@ -581,6 +640,7 @@ bool ChartEditor::MoveTurn(int beats) {
         static_cast<std::int64_t>(std::llround(
             AudioSecondsAtBeat(static_cast<int>(destination)) * 1000.0))});
     selectedBeat_ = static_cast<int>(destination);
+    selectedTurnTimeMs_.reset();
     MarkDirty();
     return true;
 }
