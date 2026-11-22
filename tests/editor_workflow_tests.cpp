@@ -342,6 +342,7 @@ int main() {
                 "Play > starts saved difficulty through scored session");
 
     std::vector<double> audioSampledAtPress;
+    std::vector<bool> outroAfterNote;
     for (const auto& turn : scored.turns) {
         app::FrameInput keyDown;
         const double songTime = static_cast<double>(
@@ -355,11 +356,20 @@ int main() {
         }
         audioSampledAtPress.push_back(playback.AudioSeconds(frameNow));
         scoredActions.Update(keyDown, frameNow);
+        outroAfterNote.push_back(outro.Active());
     }
-    if (!scoredJudge.AllScorableJudged() ||
+    if (!scoredJudge.AllScorableJudged() || !outro.Active() ||
         scoredJudge.Counts().perfect !=
             static_cast<int>(scoredJudge.ScorableCount())) {
-        std::cerr << "EDITOR_WORKFLOW_DIAGNOSTIC start=" << startAt
+        core::TimedRoute debugRoute;
+        const bool routeValid = debugRoute.Compile(
+            scored, savedB->data.offsetSeconds);
+        std::cerr << "EDITOR_WORKFLOW_DIAGNOSTIC routeValid=" << routeValid
+                  << " outroActive=" << outro.Active()
+                  << " completed=" << scoredCompleted
+                  << " state=" << static_cast<int>(scoredNav.screen)
+                  << " judgeReady=" << scoredJudge.AllScorableJudged()
+                  << " start=" << startAt
                   << " speed=" << playback.Speed()
                   << " playing=" << playback.Playing()
                   << " paused=" << playback.Paused()
@@ -374,15 +384,16 @@ int main() {
                   << " offset=" << savedB->data.offsetSeconds
                   << " introStart="
                   << app::ScoredChartStartSeconds(scored, savedB->data.offsetSeconds)
-                  << '\\n';
+                  << '\n';
         for (std::size_t i = 0; i < scored.turns.size(); ++i)
             std::cerr << "EDITOR_WORKFLOW_NOTE " << i
                       << " beat=" << scored.turns[i].beat
                       << " ms=" << core::EventTimeMs(
                           scored, scored.turns[i], savedB->data.offsetSeconds)
                       << " audioSampled=" << audioSampledAtPress[i]
+                      << " outroAfter=" << outroAfterNote[i]
                       << " heading=" << static_cast<int>(scored.turns[i].direction)
-                      << '\\n';
+                      << '\n';
     }
     ok &= Check(scoredJudge.AllScorableJudged() && outro.Active() &&
                 scoredJudge.Counts().perfect ==
