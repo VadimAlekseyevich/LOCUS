@@ -13,6 +13,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace {
 using namespace locus;
@@ -70,6 +71,47 @@ public:
             ReadLe32(data + 28));
     }
 };
+// Simulates a real output driver with a consumed cursor which can lag
+// behind the mathematical wall-clock position while buffering audio.
+struct CursorState { double position = 0.0; };
+class CursorStream final : public app::MusicOutputStream {
+public:
+    explicit CursorStream(std::shared_ptr<CursorState> state)
+        : state_(std::move(state)) {}
+    double DurationSeconds() const override { return 4.0; }
+    double PlayedSeconds() const override { return state_->position; }
+    bool Playing() const override { return playing_ && !paused_; }
+    void SetVolume(float) override {}
+    void SetPitch(float) override {}
+    void Play() override { playing_ = true; paused_ = false; }
+    void Seek(float seconds) override { state_->position = seconds; }
+    void Pause() override { paused_ = true; }
+    void Resume() override { paused_ = false; }
+    void Stop() override {
+        playing_ = false;
+        paused_ = false;
+        state_->position = 0.0;
+    }
+    void Update() override {}
+private:
+    std::shared_ptr<CursorState> state_;
+    bool playing_ = false;
+    bool paused_ = false;
+};
+class CursorOutput final : public app::MusicOutputBackend {
+public:
+    std::shared_ptr<CursorState> state = std::make_shared<CursorState>();
+    bool Ready() const override { return true; }
+    bool SupportsPitchPreserving() const noexcept override { return false; }
+    bool HasConsumedAudioCursor() const noexcept override { return true; }
+    std::unique_ptr<app::MusicOutputStream> Open(
+        const char* format, const std::uint8_t* bytes, int count) override {
+        if (count < 44 || std::strcmp(format, ".wav") != 0 ||
+            std::memcmp(bytes, "RIFF", 4) != 0) return {};
+        return std::make_unique<CursorStream>(state);
+    }
+};
+
 class MissingOutput final : public app::MusicOutputBackend {
 public:
     bool Ready() const override { return false; }
@@ -170,6 +212,27 @@ int main() {
     ok &= Check(play.Finished() &&
                 Close(play.AudioSeconds(t0 + 35.0), 4.0),
                 "song end transitions to finished clock at exact duration");
+
+    // A slow decoder can lag behind the independent preroll clock.
+    // At a rate switch the app must keep the *consumed* position even when
+    // its 100%-speed wall-clock projection differs by 250 milliseconds.
+    CursorOutput cursorDevice;
+    app::LocalMusic cursorMusic(cursorDevice);
+    app::ChartPlayback cursorPlay(cursorMusic);
+    ok &= Check(cursorMusic.LoadFromFile(file.wav.wstring()) &&
+                cursorPlay.StartAtAudioSeconds(1.0, 200.0),
+                "decoder-backed transport starts at a real song position");
+    cursorPlay.SetSpeed(0.5, 200.0);
+    cursorDevice.state->position = 1.75;
+    const double beforeChange = cursorPlay.AudioSeconds(202.0);
+    ok &= Check(Close(beforeChange, 1.75),
+                "slow playback obeys the lagged decoder cursor");
+    cursorPlay.SetSpeed(1.0, 202.0);
+    const auto firstFullSpeed = cursorPlay.Snapshot(202.0);
+    ok &= Check(Close(firstFullSpeed.judgeSeconds, beforeChange) &&
+                Close(firstFullSpeed.visualSeconds, beforeChange) &&
+                Close(cursorPlay.AudioSeconds(202.1), 1.85),
+                "switch 50 to 100 percent cannot jump to stale preroll clock");
 
     MissingOutput missingDevice;
     app::LocalMusic missing(missingDevice);

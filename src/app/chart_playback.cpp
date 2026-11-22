@@ -70,11 +70,11 @@ void ChartPlayback::Stop() {
 
 double ChartPlayback::AudioSeconds(double monotonicSeconds) const noexcept {
     if (finished_) return audio_.DurationSeconds();
-    // Negative audio-time coordinates provide silent visual preroll.
-    // At reduced speed, follow the *consumed audio frames*, not an unrelated
-    // synthetic timeline that can advance ahead of a buffered audio stream.
-    if (audioStarted_ && speed_ < 0.999)
-        return audio_.SongSeconds(monotonicSeconds);
+    // The independent chart clock exists only during silent preroll,
+    // before sound starts. After that LocalMusic owns the sole song cursor
+    // at every rate, including 100%. Switching from a slow device cursor
+    // to 100% must not snap to an unrelated parallel clock.
+    if (audioStarted_) return audio_.SongSeconds(monotonicSeconds);
     return startAudioSeconds_ + clock_.SecondsAt(monotonicSeconds);
 }
 

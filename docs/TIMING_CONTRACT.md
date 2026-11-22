@@ -8,18 +8,18 @@ FPS nor visual easing may influence scored time.
 
 | Domain | Authoritative source | Consumers |
 | --- | --- | --- |
-| OS keyboard event | Windows \`GetMessageTime()\` (queue timestamp, uptime milliseconds) | \`native_key_capture.cpp\` |
-| Application monotonic | \`steady_clock\`, same origin as \`MonotonicSeconds()\` | \`SongClock\`, \`GameSession\` |
-| Authoritative song time | \`DemoTransport::SongSeconds\` or \`ChartPlayback::AudioSeconds\` | \`TurnJudge\`, \`ChartClockFrame::judgeSeconds\` |
-| Rendered song time | \`ChartClockFrame::visualSeconds\` | Avatar, camera, route presentation only |
-| Musical beat | Song milliseconds through \`tempoMap\` and \`ticksPerBeat\` | Route and editor grid |
-| Judgement time | \`CalibratedSongSeconds(rawSongTime, globalOffsetMs, practiceRate)\` | \`TurnJudge::PressHeading\` / \`Advance\` |
+| OS keyboard event | Windows `GetMessageTime()` (queue timestamp, uptime milliseconds) | `native_key_capture.cpp` |
+| Application monotonic | `steady_clock`, same origin as `MonotonicSeconds()` | `SongClock`, `GameSession` |
+| Authoritative song time | `DemoTransport::SongSeconds` or `ChartPlayback::AudioSeconds` | `TurnJudge`, `ChartClockFrame::judgeSeconds` |
+| Rendered song time | `ChartClockFrame::visualSeconds` | Avatar, camera, route presentation only |
+| Musical beat | Song milliseconds through `tempoMap` and `ticksPerBeat` | Route and editor grid |
+| Judgement time | `CalibratedSongSeconds(rawSongTime, globalOffsetMs, practiceRate)` | `TurnJudge::PressHeading` / `Advance` |
 
 The Windows backend receives each keydown/keyup in the **same WndProc** used
 to guard window close. It converts the 32-bit message uptime to the application
-monotonic origin with \`GetTickCount64()\` and a sampled steady-clock anchor.
+monotonic origin with `GetTickCount64()` and a sampled steady-clock anchor.
 An event is sorted by its original timestamp and capture-order sequence ID.
-\`GameSession\` converts each timestamp, not the later render-frame boundary,
+`GameSession` converts each timestamp, not the later render-frame boundary,
 to calibrated song time. At a physical press/release/re-press burst all edges
 remain separate. Native Windows event timestamps have a nominal **1 ms unit**
 but **no demonstrated 1 ms physical-key latency accuracy**. Windows timer
@@ -27,54 +27,58 @@ granularity, queued-message scheduling, USB keyboard scanning and the
 audio-output delay still require measurement.
 
 On platforms without the Windows event adapter, raylib's frame-level
-\`IsKeyPressed\` is explicitly a less-precise fallback; it does not preserve
+`IsKeyPressed` is explicitly a less-precise fallback; it does not preserve
 every transition between two frames.
 
 ## Playback source selection
 
-- **Custom chart at 100%:** \`ChartPlayback\` anchors an independent
-  \`SongClock\` at the start/seek monotonic time. No frame count or audio buffer
-  size enters this clock.
+- **Custom chart during silent preroll:** `ChartPlayback` advances a
+  `SongClock` only before physical audio starts. Negative song time is
+  impossible to obtain from a decoder cursor.
+- **Custom chart at 100% after audio starts:** `ChartPlayback` uses the
+  `LocalMusic` clock, just like slow playback. Switching from a delayed
+  slow consumed cursor back to normal rate preserves the exact song position,
+  rather than jumping to the independent preroll clock.
 - **Custom chart below 100%:** after the audio stream begins,
-  \`ChartPlayback::AudioSeconds()\` requests \`LocalMusic::SongSeconds()\`.
-  \`LocalMusic\` prefers the raylib consumed cursor when using the ordinary
+  `ChartPlayback::AudioSeconds()` requests `LocalMusic::SongSeconds()`.
+  `LocalMusic` prefers the raylib consumed cursor when using the ordinary
   pitch-shifted stream and the backend supports that cursor. SoundTouch's
   pitch-preserving branch currently uses a synthetic rate clock, **not**
   verified sample-accurate hardware presentation time. If no usable consumed
   cursor is present, it also falls back to the rate clock.
-- **Built-in demo:** \`DemoTransport::SongSeconds()\` supplies the authoritative
+- **Built-in demo:** `DemoTransport::SongSeconds()` supplies the authoritative
   audio-time domain.
-- **Visuals:** \`ChartPlayback::Snapshot()\` samples the judge cursor first,
-  then may interpolate only \`visualSeconds\` with
-  \`PlaybackCursorSmoother\`. NEVER feed the interpolated visual position to
-  \`TurnJudge\`.
-- **Global latency compensation:** positive \`globalOffsetMs\` subtracts
-  \`offsetMs / 1000 * practiceRate\` from raw song time; it must never mutate
+- **Visuals:** `ChartPlayback::Snapshot()` samples the judge cursor first,
+  then may interpolate only `visualSeconds` with
+  `PlaybackCursorSmoother`. NEVER feed the interpolated visual position to
+  `TurnJudge`.
+- **Global latency compensation:** positive `globalOffsetMs` subtracts
+  `offsetMs / 1000 * practiceRate` from raw song time; it must never mutate
   chart event timestamps or tempo markers.
 
 ## Transport transitions
 
 | Transition | Rule |
 | --- | --- |
-| Start with a note at song 0 | \`ScoredChartStartSeconds\` chooses a negative start at least one second ahead of the note, rounded to musical measures |
-| Silent preroll | Same continuous, rate-scaled \`SongClock\` and authored route. No audio stream or scoring-time shift |
+| Start with a note at song 0 | `ScoredChartStartSeconds` chooses a negative start at least one second ahead of the note, rounded to musical measures |
+| Silent preroll | Same continuous, rate-scaled `SongClock` and authored route. No audio stream or scoring-time shift |
 | Crossing song time 0 | Start the physical audio stream once; preserve the overshoot and existing clock anchor |
 | Pause | Freeze song time; do not judge newly pressed keys or build up pending input |
 | Resume | Exclude paused wall time; no new origin for chart timestamps |
 | Change practice rate | Preserve the exact song position while changing slope; a rate change while paused must remain paused |
 | Seek / retry | Explicit new origin, single discontinuity, clear the presentation cursor and pending physical inputs |
-| Final audio frame | \`GameSession\` retains a short **silent judgement tail** so late inputs can finish the last note's standard window |
+| Final audio frame | `GameSession` retains a short **silent judgement tail** so late inputs can finish the last note's standard window |
 | Results | Save only the completed-outro transition, never Editor TEST or an abandoned run |
 
 ## Acceptance and known evidence gaps
 
-\`locus_precise_direction_input_events\` replays identical recorded physical
+`locus_precise_direction_input_events` replays identical recorded physical
 events under frame batches at 30, 60, 144 and 240 FPS and after an extended
-frame, comparing scores and signed errors. \`locus_win32_message_time_and_key_mapping\`
+frame, comparing scores and signed errors. `locus_win32_message_time_and_key_mapping`
 uses the production Win32 translator and tests key repeat, focus loss, and
-numpad vs navigation identity. \`locus_editor_to_play_to_results_journey\`
+numpad vs navigation identity. `locus_editor_to_play_to_results_journey`
 exercises the real controllers, completed-outro transition, persistence and
-a 7 ms inter-key diagonal. \`locus_chart_clock_transport_contract\` checks
+a 7 ms inter-key diagonal. `locus_chart_clock_transport_contract` checks
 preroll, tempo changes, 100/50/10% practice, pause, rate change while paused,
 seek, completion and missing audio output with a deterministic output backend.
 
