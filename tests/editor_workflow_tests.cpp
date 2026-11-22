@@ -169,17 +169,18 @@ int main() {
                 chartPath == installedEasy.wstring(),
                 "Library > Edit difficulty decodes WAV without a sound device");
     if (!song.Ready()) return 1;
-    ok &= Check(editor.SelectBeat(3) &&
-                editor.PutTurn(core::Heading::DownLeft) &&
-                editor.Dirty(), "Easy > author a diagonal note");
+    const bool easyBeatSelected = editor.SelectBeat(3);
+    if (easyBeatSelected) editor.PutTurn(core::Heading::DownLeft);
+    ok &= Check(easyBeatSelected && editor.Dirty(),
+                "Easy > author a diagonal note");
     ok &= Check(files.FocusChart(installedHard, error) &&
                 editor.Data().title == "Hard" &&
                 files.ParkedEditor(installedEasy) &&
                 files.ParkedEditor(installedEasy)->Dirty(),
                 "Easy > Focus Hard parks Easy and its independent undo history");
-    ok &= Check(editor.SelectBeat(5) &&
-                editor.PutTurn(core::Heading::Down) &&
-                editor.Dirty() &&
+    const bool hardBeatSelected = editor.SelectBeat(5);
+    if (hardBeatSelected) editor.PutTurn(core::Heading::Down);
+    ok &= Check(hardBeatSelected && editor.Dirty() &&
                 files.AnyDirty() && files.HasDirtyParked(),
                 "Hard > author second unsaved difficulty");
     ok &= Check(files.FocusChart(installedEasy, error) &&
