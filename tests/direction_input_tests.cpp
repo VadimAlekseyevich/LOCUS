@@ -84,7 +84,10 @@ Verdict Judge(const std::vector<app::DirectionKeyEvent>& events) {
     return result;
 }
 
+} // namespace
+
 int main() {
+    using namespace locus;
     bool ok = true;
     const auto baseline = Replay(240);
     ok &= Check(baseline.size() == 6,
