@@ -35,8 +35,11 @@ bool PitchPreservingStream::Load(const std::vector<std::uint8_t>& encoded,
     // produces a 32-bit float Wave owned by raylib, so retain that buffer
     // instead of allocating a second float array (LoadWaveSamples) and
     // copying it into a third array (std::vector<float>).
-    WaveFormat(&wave, static_cast<int>(sampleRate_), 32,
-               static_cast<int>(channels_));
+    // WaveFormat allocates and copies the entire track, even for an
+    // already-float mono/stereo source. Reuse that decoded buffer as-is.
+    if (wave.sampleSize != 32 || wave.channels != channels_)
+        WaveFormat(&wave, static_cast<int>(sampleRate_), 32,
+                   static_cast<int>(channels_));
     if (!IsWaveValid(wave) || !wave.data || !wave.frameCount ||
         wave.sampleSize != 32 || wave.channels != channels_) {
         UnloadWave(wave);
