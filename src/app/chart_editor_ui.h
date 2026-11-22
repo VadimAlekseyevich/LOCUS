@@ -27,6 +27,7 @@ struct EditorControls {
     bool removeTurn = false;
     bool mouseClick = false, mouseHeld = false, mouseReleased = false;
     bool shiftHeld = false;
+    bool ctrlHeld = false; // Ctrl+click the note ruler to stage exact milliseconds.
     Vector2 mouse{};
     float mouseWheel = 0.0f;
     // NaN means use the selected beat. -1 is a legitimate pre-offset beat.
@@ -110,6 +111,8 @@ struct EditorUiState {
     int rangeFirst = -1, rangeLast = -1; // Inclusive selected beats.
     bool draggingTimeline = false;
     bool draggingSongOverview = false; // Seek only; never selects/edits notes.
+    // A Ctrl+click only picks an exact song time; direction pad commits it.
+    std::optional<std::int64_t> pendingExactPlacementTimeMs;
     int dragAnchorBeat = 0;
     double dragViewBeat = 0.0;
     int heldBarDirection = 0;

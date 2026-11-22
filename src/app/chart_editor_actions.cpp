@@ -143,10 +143,22 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return action;
     }
 
+    // The same command path is used by native and legacy direction pads.
+    // Staging an exact time alone never authors a note.
+    const auto placeHeading = [&](core::Heading heading) {
+        if (ui.pendingExactPlacementTimeMs) {
+            const bool changed = draft.PutTurnAtTimeMs(
+                *ui.pendingExactPlacementTimeMs, heading);
+            if (changed) ui.pendingExactPlacementTimeMs.reset();
+            return changed;
+        }
+        return draft.SetOutgoingHeading(heading);
+    };
+
     // Native direction pad and start-heading controls are pure commands.
     // The core chart editor is the only author of route and undo history.
     if (ui.tab == EditorTab::Route && input.placeHeading) {
-        const bool changed = draft.SetOutgoingHeading(*input.placeHeading);
+        const bool changed = placeHeading(*input.placeHeading);
         action.changedChart = changed;
         if (!changed) notice("NO CHANGE - ALREADY HEADING THAT WAY", true);
         return action;
@@ -231,7 +243,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                     if (!Hit(DirectionPadBounds(row, col), mouse)) continue;
                     const auto heading = DirectionPadHeading(row, col);
                     if (heading) {
-                        const bool changed = draft.SetOutgoingHeading(*heading);
+                        const bool changed = placeHeading(*heading);
                         action.changedChart |= changed;
                         if (!changed) notice(
                             "NO CHANGE - ALREADY HEADING THAT WAY", true);

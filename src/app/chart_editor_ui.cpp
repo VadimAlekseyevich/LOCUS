@@ -387,6 +387,15 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                   kTimelineY + 29.0f, 10, Color{18, 26, 36, 255});
         }
     }
+    if (ui.pendingExactPlacementTimeMs) {
+        const float x = atX(*ui.pendingExactPlacementTimeMs / 1000.0);
+        if (x >= kTimelineX + 6.0f &&
+            x <= kTimelineX + kTimelineWidth - 6.0f) {
+            DrawLineEx({x, kTimelineY + 3.0f},
+                       {x, kTimelineY + 43.0f},
+                       2.0f, Color{255, 190, 112, 255});
+        }
+    }
     DrawRectangleRec({kPlayheadX - 3.0f, kTimelineY + 1.0f,
                       6.0f, kTimelineHeight - 2.0f},
                      ApprovedUiTheme().softBlue);

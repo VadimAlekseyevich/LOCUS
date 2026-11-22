@@ -1027,6 +1027,46 @@ int main() {
     ok &= Check(denseUi.SelectedTurnTimeMs() == 1010,
                 "repeated click cycles overlapping events inside same tick");
 
+    // Ctrl-click stages the unsnapped song millisecond; a direction PAD
+    // (not a keyboard note hotkey) is the sole authoring action.
+    ChartEditor unsnapped;
+    EditorUiState unsnappedUi;
+    ok &= Check(unsnapped.SetSongDuration(4.0),
+                "unsnapped placement uses a real song duration");
+    unsnappedUi.timelineZoomIndex = detail::kZoomMax;
+    const auto placeExact = [&](double seconds, Heading heading) {
+        const float x = detail::TimelineXAtSeconds(
+            unsnapped, unsnappedUi, 2.0, seconds);
+        auto click = Click(x, detail::kTimelineY + 34.0f);
+        click.ctrlHeld = true;
+        click.timelineViewBeat = 2.0;
+        const auto staged = ApplyEditorControls(
+            unsnapped, unsnappedUi, click);
+        const bool stageOnly = !staged.changedChart &&
+            unsnappedUi.pendingExactPlacementTimeMs.has_value();
+        EditorControls pad;
+        pad.nativeChrome = true;
+        pad.placeHeading = heading;
+        const auto committed = ApplyEditorControls(
+            unsnapped, unsnappedUi, pad);
+        return stageOnly && committed.changedChart &&
+               !unsnappedUi.pendingExactPlacementTimeMs;
+    };
+    ok &= Check(placeExact(1.010, Heading::Right) &&
+                placeExact(1.000, Heading::Up) &&
+                unsnapped.Data().route.turns.size() == 2 &&
+                unsnapped.Data().route.turns[0].timeMs == 1000 &&
+                unsnapped.Data().route.turns[1].timeMs == 1010 &&
+                unsnapped.Data().route.turns[0].beat ==
+                    unsnapped.Data().route.turns[1].beat,
+                "Ctrl+click and pad insert two distinct notes in same grid cell");
+    unsnappedUi.pendingExactPlacementTimeMs = 1234;
+    EditorControls navigate;
+    navigate.nextBeat = true;
+    ApplyEditorControls(unsnapped, unsnappedUi, navigate);
+    ok &= Check(!unsnappedUi.pendingExactPlacementTimeMs,
+                "ordinary navigation clears pending exact placement");
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS route_controls=1 field_heading=1 zoom=1\n";
     return 0;

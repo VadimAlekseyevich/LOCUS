@@ -20,6 +20,7 @@ EditorControls PollEditorControls(const GameSettings& settings,
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     input.shiftHeld = shift;
+    input.ctrlHeld = control;
     const auto pressed = [&](ShortcutAction action) {
         return ShortcutPressed(settings, action);
     };

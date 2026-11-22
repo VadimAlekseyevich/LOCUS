@@ -45,6 +45,7 @@ void SeekSongOverview(core::ChartEditor& draft, EditorUiState& ui,
     ui.rangeFirst = ui.rangeLast = -1;
     ui.draggingTimeline = false;
     draft.SelectBeat(tick);
+    ui.pendingExactPlacementTimeMs.reset();
 }
 
 void BeginSelection(core::ChartEditor& draft, EditorUiState& ui,
@@ -52,6 +53,24 @@ void BeginSelection(core::ChartEditor& draft, EditorUiState& ui,
     const Vector2 mouse = input.mouse;
     const double anchor = ViewBeat(draft, input.timelineViewBeat);
     const int beat = TimelineTickAtX(draft, ui, anchor, mouse.x);
+    if (ui.tab == EditorTab::Route && input.ctrlHeld && !input.shiftHeld) {
+        const auto& data = draft.Data();
+        const auto milliseconds = static_cast<std::int64_t>(std::llround(
+            TimelineSecondsAtX(draft, ui, anchor, mouse.x) * 1000.0));
+        const int tick = core::TempoTickAtMs(
+            data.route, data.offsetSeconds, milliseconds);
+        if (tick >= data.route.firstBeat && tick < data.route.lengthBeats) {
+            draft.SelectBeat(tick);
+            ui.pendingExactPlacementTimeMs = milliseconds;
+            ui.rangeFirst = ui.rangeLast = -1;
+            ui.draggingTimeline = false;
+            ui.feedback = "EXACT " + std::to_string(milliseconds) +
+                          " MS - CHOOSE DIRECTION";
+            ui.feedbackError = false;
+        }
+        return;
+    }
+    ui.pendingExactPlacementTimeMs.reset();
     if (ui.tab == EditorTab::Route && input.shiftHeld) {
         const int origin = draft.SelectedBeat();
         ui.rangeFirst = std::min(origin, beat);
@@ -163,6 +182,10 @@ void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,
 
     if (input.zoomOut) ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
     if (input.zoomIn) ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
+    if (input.previousBeat || input.nextBeat ||
+        input.previousBar || input.nextBar ||
+        input.heldBarDirection != 0 || input.mouseWheel != 0.0f)
+        ui.pendingExactPlacementTimeMs.reset();
     if (input.previousBeat) { draft.StepSnapSelection(-1); ui.rangeFirst = ui.rangeLast = -1; }
     if (input.nextBeat) { draft.StepSnapSelection(1); ui.rangeFirst = ui.rangeLast = -1; }
     if (input.previousBar || input.nextBar) {
