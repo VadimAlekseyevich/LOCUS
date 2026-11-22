@@ -615,32 +615,52 @@ bool ChartEditor::RemoveTurn() {
 }
 
 bool ChartEditor::MoveTurn(int beats) {
-    if (beats == 0 || !SelectedTurn()) return false;
-    const long long destination = static_cast<long long>(selectedBeat_) + beats;
-    if (destination < chart_.route.firstBeat || destination >= chart_.route.lengthBeats) return false;
-    auto& events = chart_.route.turns;
-    if (std::any_of(events.begin(), events.end(),
-                    [destination](const TurnEvent& event) {
-                        return event.beat == destination;
-                    })) return false;
-    const auto* selected = SelectedTurn();
+    const TurnEvent* selected = SelectedTurn();
+    if (beats == 0 || !selected) return false;
+    const long long target = static_cast<long long>(selectedBeat_) + beats;
+    if (target < chart_.route.firstBeat || target >= chart_.route.lengthBeats)
+        return false;
+    const int destination = static_cast<int>(target);
+    const auto& route = chart_.route;
+    const auto sourceTime = EventTimeMs(
+        route, *selected, chart_.offsetSeconds);
+    const auto sourceTickTime = static_cast<std::int64_t>(
+        std::llround(AudioSecondsAtBeat(selectedBeat_) * 1000.0));
+    const auto targetTickTime = static_cast<std::int64_t>(
+        std::llround(AudioSecondsAtBeat(destination) * 1000.0));
+    // Moving an exact 1010ms note from tick 2 to tick 5 must give 2510ms,
+    // not erase its 10ms microtiming. The destination tick still owns it.
+    const std::int64_t timestamp =
+        targetTickTime + (sourceTime - sourceTickTime);
+    if (timestamp < -3600000 || timestamp > 86400000 ||
+        (HasSongDuration() && timestamp >= songDurationSeconds_ * 1000.0) ||
+        (timestamp < 0 &&
+            !(chart_.offsetSeconds < 0.0 && destination >= 0)) ||
+        TempoTickAtMs(route, chart_.offsetSeconds, timestamp) != destination)
+        return false;
+
+    auto& turns = chart_.route.turns;
+    const std::size_t index = static_cast<std::size_t>(
+        selected - turns.data());
+    // Two different timestamps may live in one target cell, but the
+    // absolute timestamp is unique. Never overwrite another event.
+    for (std::size_t i = 0; i < turns.size(); ++i)
+        if (i != index &&
+            EventTimeMs(route, turns[i], chart_.offsetSeconds) == timestamp)
+            return false;
+
     const Heading direction = selected->direction;
-    const auto selectedIndex = static_cast<std::size_t>(
-        selected - events.data());
-    SaveUndo(std::min(selectedBeat_, static_cast<int>(destination)),
-             std::max(selectedBeat_, static_cast<int>(destination)));
-    const auto original = events.begin() +
-        static_cast<std::ptrdiff_t>(selectedIndex);
-    events.erase(original);
-    const auto newSlot = std::lower_bound(events.begin(), events.end(),
-        static_cast<int>(destination),
-        [](const TurnEvent& event, int beat) { return event.beat < beat; });
-    events.insert(newSlot, TurnEvent{
-        static_cast<int>(destination), direction,
-        static_cast<std::int64_t>(std::llround(
-            AudioSecondsAtBeat(static_cast<int>(destination)) * 1000.0))});
-    selectedBeat_ = static_cast<int>(destination);
-    selectedTurnTimeMs_.reset();
+    SaveUndo(std::min(selectedBeat_, destination),
+             std::max(selectedBeat_, destination));
+    turns.erase(turns.begin() + static_cast<std::ptrdiff_t>(index));
+    const auto slot = std::lower_bound(
+        turns.begin(), turns.end(), timestamp,
+        [&](const TurnEvent& note, std::int64_t timeMs) {
+            return EventTimeMs(route, note, chart_.offsetSeconds) < timeMs;
+        });
+    turns.insert(slot, {destination, direction, timestamp});
+    selectedBeat_ = destination;
+    selectedTurnTimeMs_ = timestamp;
     MarkDirty();
     return true;
 }
@@ -755,32 +775,57 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
 
 bool ChartEditor::ShiftTurns(int firstBeat, int lastBeat, int deltaBeats) {
     if (firstBeat < chart_.route.firstBeat || lastBeat < firstBeat ||
-        lastBeat >= chart_.route.lengthBeats || deltaBeats == 0) return false;
-    std::vector<TurnEvent> updated = chart_.route.turns;
+        lastBeat >= chart_.route.lengthBeats || deltaBeats == 0)
+        return false;
+    const auto& route = chart_.route;
+    std::vector<TurnEvent> updated = route.turns;
     bool moved = false;
     int touchedMin = std::numeric_limits<int>::max();
     int touchedMax = std::numeric_limits<int>::min();
     for (auto& event : updated) {
         if (event.beat < firstBeat || event.beat > lastBeat) continue;
-        const long long destination = static_cast<long long>(event.beat) + deltaBeats;
-        if (destination < chart_.route.firstBeat || destination >= chart_.route.lengthBeats) return false;
-        const int nextBeat = static_cast<int>(destination);
-        touchedMin = std::min({touchedMin, event.beat, nextBeat});
-        touchedMax = std::max({touchedMax, event.beat, nextBeat});
-        event.beat = nextBeat;
-        event.timeMs = static_cast<std::int64_t>(
+        const long long target =
+            static_cast<long long>(event.beat) + deltaBeats;
+        if (target < route.firstBeat || target >= route.lengthBeats)
+            return false;
+        const int destination = static_cast<int>(target);
+        const std::int64_t currentMs = EventTimeMs(
+            route, event, chart_.offsetSeconds);
+        const auto sourceTick = static_cast<std::int64_t>(
             std::llround(AudioSecondsAtBeat(event.beat) * 1000.0));
+        const auto targetTick = static_cast<std::int64_t>(
+            std::llround(AudioSecondsAtBeat(destination) * 1000.0));
+        const std::int64_t nextMs =
+            targetTick + (currentMs - sourceTick);
+        if (nextMs < -3600000 || nextMs > 86400000 ||
+            (HasSongDuration() && nextMs >= songDurationSeconds_ * 1000.0) ||
+            (nextMs < 0 &&
+                !(chart_.offsetSeconds < 0.0 && destination >= 0)) ||
+            TempoTickAtMs(route, chart_.offsetSeconds, nextMs) != destination)
+            return false;
+        touchedMin = std::min({touchedMin, event.beat, destination});
+        touchedMax = std::max({touchedMax, event.beat, destination});
+        event.beat = destination;
+        event.timeMs = nextMs;
         moved = true;
     }
     if (!moved) return false;
     std::sort(updated.begin(), updated.end(),
-              [](const TurnEvent& a, const TurnEvent& b) { return a.beat < b.beat; });
+        [&](const TurnEvent& lhs, const TurnEvent& rhs) {
+            return EventTimeMs(route, lhs, chart_.offsetSeconds) <
+                   EventTimeMs(route, rhs, chart_.offsetSeconds);
+        });
     for (std::size_t i = 1; i < updated.size(); ++i)
-        if (updated[i - 1].beat == updated[i].beat) return false; // No collision.
-    // Use the actual moved note bounds. Selection bounds may be huge
-    // relative to the edited notes and int addition could overflow.
+        if (EventTimeMs(route, updated[i - 1], chart_.offsetSeconds) ==
+            EventTimeMs(route, updated[i], chart_.offsetSeconds))
+            return false; // Exact timestamp collision; nothing committed.
+
+    // Moving a dense group must remain a single reversible transaction.
+    // Snapshot the complete touched cell range, including any pre-existing
+    // neighbor events at the destination; unchanged events are not copied.
     SaveUndo(touchedMin, touchedMax);
     chart_.route.turns = std::move(updated);
+    selectedTurnTimeMs_.reset(); // The selected source timestamp may have moved.
     MarkDirty();
     return true;
 }

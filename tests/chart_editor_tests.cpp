@@ -594,6 +594,35 @@ int main() {
     ok &= Check(!exact.PasteTurns(5, malformedDense) &&
                 exact.Data().route.turns.size() == 3,
                 "non-increasing same-tick timestamps reject paste atomically");
+    ok &= Check(exact.SelectTurnAtTimeMs(1010) &&
+                exact.MoveTurn(3) &&
+                exact.Data().route.turns[0].timeMs == 1000 &&
+                exact.Data().route.turns[2].timeMs == 2510 &&
+                exact.Data().route.turns[2].beat == 5 &&
+                exact.SelectedTurnTimeMs() == 2510 &&
+                exact.Undo() &&
+                exact.Data().route.turns[1].timeMs == 1010 &&
+                exact.Redo() &&
+                exact.Data().route.turns[2].timeMs == 2510 &&
+                exact.Undo(),
+                "moving exact second note preserves microtiming and history");
+    ok &= Check(exact.ShiftTurns(2, 2, 3) &&
+                exact.Data().route.turns.size() == 3 &&
+                exact.Data().route.turns[0].timeMs == 1500 &&
+                exact.Data().route.turns[1].timeMs == 2500 &&
+                exact.Data().route.turns[2].timeMs == 2510 &&
+                exact.Data().route.turns[1].beat == 5 &&
+                exact.Data().route.turns[2].beat == 5 &&
+                exact.Undo() &&
+                exact.Data().route.turns[0].timeMs == 1000 &&
+                exact.Data().route.turns[1].timeMs == 1010,
+                "shifting dense range retains 10ms spacing and is one Undo step");
+    ChartEditor clash;
+    clash.Load(denseSource);
+    ok &= Check(clash.SetSongDuration(4.0) &&
+                clash.SelectBeat(5) &&
+                !clash.MoveTurn(-2),
+                "shift to exact occupied timestamp rejects without partial change");
 
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 patches=1\n";
