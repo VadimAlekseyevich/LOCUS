@@ -131,7 +131,7 @@ void EditorFileActions::AttachAudio(double& now) {
 
     // This operation must preserve the previous document if decoding or
     // timeline validation fails. Prepare everything in temporary objects.
-    LocalMusic replacement;
+    LocalMusic replacement(context_.music.Backend());
     replacement.SetVolume(context_.music.Volume());
     replacement.SetSpeed(context_.music.Speed(), now);
     if (!replacement.LoadFromFile(picked.path)) {
@@ -162,7 +162,7 @@ bool EditorFileActions::NewDifficultyFromLibrary(
     const std::wstring& audioFile, const std::wstring& setFolder,
     std::string& error) {
     // Fully decode before discarding the editor's previous document.
-    LocalMusic replacement;
+    LocalMusic replacement(context_.music.Backend());
     replacement.SetVolume(context_.music.Volume());
     replacement.SetSpeed(context_.music.Speed(), 0.0);
     if (!replacement.LoadFromFile(audioFile)) {
@@ -353,7 +353,7 @@ bool EditorFileActions::RestoreWorkspaceAudio(std::string& error) {
         error.clear();
         return true;
     }
-    LocalMusic replacement;
+    LocalMusic replacement(context_.music.Backend());
     replacement.SetVolume(context_.music.Volume());
     replacement.SetSpeed(context_.music.Speed(), 0.0);
     if (!replacement.LoadFromFile(context_.audioPath)) {

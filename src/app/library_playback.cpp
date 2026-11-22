@@ -43,7 +43,7 @@ bool ActivateLibraryDifficulty(const LibraryChart& selected,
 
     // Prepare the decoder independently: failed decoding cannot tear down
     // the previous song or invalidate a preview currently bound to it.
-    LocalMusic replacement;
+    LocalMusic replacement(context.song.Backend());
     double duration = context.song.DurationSeconds();
     if (loadAudio) {
         replacement.SetVolume(context.song.Volume());

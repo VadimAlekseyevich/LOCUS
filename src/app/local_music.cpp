@@ -1,4 +1,5 @@
 #include "app/local_music.h"
+#include "raylib.h"
 #include "app/pitch_preserving_stream.h"
 
 #include "core/music_file.h"
@@ -15,9 +16,51 @@
 
 namespace locus::app {
 
+namespace {
+class RaylibOutputStream final : public MusicOutputStream {
+public:
+    explicit RaylibOutputStream(Music music) : music_(music) {
+        music_.looping = false;
+    }
+    ~RaylibOutputStream() override { UnloadMusicStream(music_); }
+    double DurationSeconds() const override {
+        return static_cast<double>(GetMusicTimeLength(music_));
+    }
+    double PlayedSeconds() const override {
+        return static_cast<double>(GetMusicTimePlayed(music_));
+    }
+    bool Playing() const override { return IsMusicStreamPlaying(music_); }
+    void SetVolume(float v) override { SetMusicVolume(music_, v); }
+    void SetPitch(float p) override { SetMusicPitch(music_, p); }
+    void Play() override { PlayMusicStream(music_); }
+    void Seek(float at) override { SeekMusicStream(music_, at); }
+    void Pause() override { PauseMusicStream(music_); }
+    void Resume() override { ResumeMusicStream(music_); }
+    void Stop() override { StopMusicStream(music_); }
+    void Update() override { UpdateMusicStream(music_); }
+private:
+    Music music_{};
+};
+class RaylibOutputBackend final : public MusicOutputBackend {
+public:
+    bool Ready() const override { return IsAudioDeviceReady(); }
+    std::unique_ptr<MusicOutputStream> Open(
+        const char* fmt, const std::uint8_t* bytes, int count) override {
+        Music music = LoadMusicStreamFromMemory(fmt, bytes, count);
+        if (!IsMusicValid(music)) return {};
+        return std::make_unique<RaylibOutputStream>(music);
+    }
+};
+MusicOutputBackend& DefaultOutputBackend() {
+    static RaylibOutputBackend backend;
+    return backend;
+}
+} // namespace
+
 // Out-of-line construction keeps unique_ptr<PitchPreservingStream>'s
 // exception-unwind destructor in a TU with a complete definition (MSVC).
-LocalMusic::LocalMusic() noexcept = default;
+LocalMusic::LocalMusic() noexcept : backend_(&DefaultOutputBackend()) {}
+LocalMusic::LocalMusic(MusicOutputBackend& backend) noexcept : backend_(&backend) {}
 
 LocalMusic::~LocalMusic() {
     Shutdown();
@@ -30,7 +73,8 @@ void LocalMusic::SwapWith(LocalMusic& other) noexcept {
     swap(stretch_, other.stretch_);
     swap(sourceFormat_, other.sourceFormat_);
     swap(activeStretch_, other.activeStretch_);
-    swap(music_, other.music_);
+    swap(stream_, other.stream_);
+    swap(backend_, other.backend_);
     swap(displayName_, other.displayName_);
     swap(error_, other.error_);
     swap(durationSeconds_, other.durationSeconds_);
@@ -49,7 +93,7 @@ bool LocalMusic::LoadFromFile(const std::wstring& path) {
         error_ = "Unsupported audio format. Choose a WAV or MP3.";
         return false;
     }
-    if (!IsAudioDeviceReady()) {
+    if (!backend_->Ready()) {
         error_ = "No audio output device is ready. Check Windows sound settings.";
         return false;
     }
@@ -57,27 +101,26 @@ bool LocalMusic::LoadFromFile(const std::wstring& path) {
     if (!ReadLocalFileBytes(path, newBytes, error_)) return false;
 
     const char* format = (type == core::MusicFileType::Wav) ? ".wav" : ".mp3";
-    Music candidate = LoadMusicStreamFromMemory(
+    auto candidate = backend_->Open(
         format, newBytes.data(), static_cast<int>(newBytes.size()));
-    if (!IsMusicValid(candidate)) {
+    if (!candidate) {
         error_ = "Audio decoder could not open this file. Try a different WAV or MP3.";
         return false;
     }
-    const double length = static_cast<double>(GetMusicTimeLength(candidate));
+    const double length = candidate->DurationSeconds();
     if (!std::isfinite(length) || length <= 0.0) {
-        UnloadMusicStream(candidate);
         error_ = "This audio file has no valid playback duration.";
         return false;
     }
-    candidate.looping = false;
-    SetMusicVolume(candidate, volume_);
-    SetMusicPitch(candidate, 1.0f);
+    candidate->SetVolume(volume_);
+    candidate->SetPitch(1.0f);
 
-    // Only replace the previous working song after successful decoding.
+    // Stream may borrow memory: swap its backing bytes into this object
+    // before adopting the decoder, after releasing the previous stream.
     Shutdown();
     fileBytes_.swap(newBytes);
     sourceFormat_ = format;
-    music_ = candidate;
+    stream_ = std::move(candidate);
     durationSeconds_ = length;
     displayName_ = DisplayLocalFileName(path);
     ready_ = true;
@@ -97,7 +140,7 @@ void LocalMusic::StartAt(double monotonicSeconds, double audioSeconds) {
     finished_ = false;
     startPositionSeconds_ = audioSeconds;
     activeStretch_ = false;
-    if (speed_ < 0.999) {
+    if (speed_ < 0.999 && backend_->SupportsPitchPreserving()) {
         if (!stretch_) stretch_ = std::make_unique<PitchPreservingStream>();
         if (!stretch_->Ready()) {
             std::string error;
@@ -113,10 +156,10 @@ void LocalMusic::StartAt(double monotonicSeconds, double audioSeconds) {
         // Normal-speed playback uses raylib's existing streaming decoder.
         // A decode failure in the optional DSP path falls back to audio,
         // rather than silently dropping preview sound.
-        SetMusicPitch(music_, static_cast<float>(speed_));
-        PlayMusicStream(music_);
+        stream_->SetPitch(static_cast<float>(speed_));
+        stream_->Play();
         if (audioSeconds > 0.0)
-            SeekMusicStream(music_, static_cast<float>(audioSeconds));
+            stream_->Seek(static_cast<float>(audioSeconds));
     }
     clock_.Start(monotonicSeconds);
     playing_ = true;
@@ -125,7 +168,7 @@ void LocalMusic::StartAt(double monotonicSeconds, double audioSeconds) {
 void LocalMusic::Pause(double monotonicSeconds) {
     if (!playing_ || paused_) return;
     if (activeStretch_) stretch_->Pause();
-    else PauseMusicStream(music_);
+    else stream_->Pause();
     clock_.Pause(monotonicSeconds);
     paused_ = true;
 }
@@ -133,7 +176,7 @@ void LocalMusic::Pause(double monotonicSeconds) {
 void LocalMusic::Resume(double monotonicSeconds) {
     if (!playing_ || !paused_) return;
     if (activeStretch_) stretch_->Resume();
-    else ResumeMusicStream(music_);
+    else stream_->Resume();
     clock_.Resume(monotonicSeconds);
     paused_ = false;
 }
@@ -141,7 +184,7 @@ void LocalMusic::Resume(double monotonicSeconds) {
 void LocalMusic::SetVolume(float level) {
     if (!std::isfinite(level)) return;
     volume_ = std::clamp(level, 0.0f, 1.0f);
-    if (ready_) SetMusicVolume(music_, volume_);
+    if (ready_) stream_->SetVolume(volume_);
     if (stretch_ && stretch_->Ready()) stretch_->SetVolume(volume_);
 }
 
@@ -163,7 +206,7 @@ void LocalMusic::SetSpeed(double fraction, double monotonicSeconds) {
 
 void LocalMusic::Stop() {
     if (stretch_ && stretch_->Playing()) stretch_->Stop();
-    if (ready_ && playing_ && !activeStretch_) StopMusicStream(music_);
+    if (ready_ && playing_ && !activeStretch_) stream_->Stop();
     activeStretch_ = false;
     playing_ = false;
     paused_ = false;
@@ -174,8 +217,8 @@ void LocalMusic::Stop() {
 void LocalMusic::Update(double monotonicSeconds) {
     if (!playing_ || paused_) return;
     if (activeStretch_) stretch_->Update();
-    else UpdateMusicStream(music_);
-    if ((!activeStretch_ && !IsMusicStreamPlaying(music_)) ||
+    else stream_->Update();
+    if ((!activeStretch_ && !stream_->Playing()) ||
         SongSeconds(monotonicSeconds) >= durationSeconds_) {
         Stop();
         finished_ = true;
@@ -186,10 +229,10 @@ void LocalMusic::Shutdown() {
     Stop();
     stretch_.reset();
     if (ready_) {
-        UnloadMusicStream(music_);
+        stream_.reset();
         ready_ = false;
     }
-    music_ = Music{};
+    stream_.reset();
     fileBytes_.clear();
     sourceFormat_.clear();
     displayName_.clear();
@@ -202,13 +245,14 @@ double LocalMusic::SongSeconds(double monotonicSeconds) const noexcept {
     // The raylib stream's consumed PCM frame position is the source of truth
     // for slowed authoring playback. A second synthetic rate clock drifts
     // ahead when audio output stalls, making authored turns seem late.
-    if (ready_ && playing_ && speed_ < 0.999) {
+    if (ready_ && playing_ && speed_ < 0.999 &&
+        backend_->HasConsumedAudioCursor()) {
         // The SoundTouch output is written at fixed hardware sample rate;
         // its chart-time advances at the requested musical tempo.
         if (activeStretch_)
             return std::clamp(startPositionSeconds_ +
                 clock_.SecondsAt(monotonicSeconds), 0.0, durationSeconds_);
-        const double cursor = static_cast<double>(GetMusicTimePlayed(music_));
+        const double cursor = stream_->PlayedSeconds();
         if (std::isfinite(cursor) &&
             cursor >= startPositionSeconds_ - 0.05 &&
             cursor <= durationSeconds_ + 0.05)

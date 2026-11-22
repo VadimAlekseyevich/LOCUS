@@ -45,7 +45,7 @@ bool LoadDraftFromDisk(const std::wstring& file, locus::core::ChartEditor& edito
     if (!locus::app::OpenChartWithAudioPath(file, candidate, selectedAudio, error))
         return false;
     // Decode and validate before modifying the open document or its audio.
-    locus::app::LocalMusic replacement;
+    locus::app::LocalMusic replacement(song.Backend());
     replacement.SetVolume(song.Volume());
     replacement.SetSpeed(song.Speed(), 0.0);
     if (!replacement.LoadFromFile(selectedAudio)) {

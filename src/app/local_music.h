@@ -2,8 +2,6 @@
 
 #include "core/song_clock.h"
 
-#include "raylib.h"
-
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -12,11 +10,40 @@
 namespace locus::app {
 class PitchPreservingStream;
 
+// Device and decoder boundary: tests provide in-memory sound output while
+// application controllers continue using the real LocalMusic API.
+class MusicOutputStream {
+public:
+    virtual ~MusicOutputStream() = default;
+    virtual double DurationSeconds() const = 0;
+    virtual double PlayedSeconds() const = 0;
+    virtual bool Playing() const = 0;
+    virtual void SetVolume(float) = 0;
+    virtual void SetPitch(float) = 0;
+    virtual void Play() = 0;
+    virtual void Seek(float) = 0;
+    virtual void Pause() = 0;
+    virtual void Resume() = 0;
+    virtual void Stop() = 0;
+    virtual void Update() = 0;
+};
+
+class MusicOutputBackend {
+public:
+    virtual ~MusicOutputBackend() = default;
+    virtual bool Ready() const = 0;
+    virtual std::unique_ptr<MusicOutputStream> Open(
+        const char* format, const std::uint8_t* bytes, int count) = 0;
+    virtual bool SupportsPitchPreserving() const noexcept { return true; }
+    virtual bool HasConsumedAudioCursor() const noexcept { return true; }
+};
+
 // Plays a user-selected local WAV/MP3 without inventing a chart.
 // Borrows the raylib audio device from AudioDevice and never closes it.
 class LocalMusic {
 public:
     LocalMusic() noexcept;
+    explicit LocalMusic(MusicOutputBackend& backend) noexcept;
     LocalMusic(const LocalMusic&) = delete;
     LocalMusic& operator=(const LocalMusic&) = delete;
     ~LocalMusic();
@@ -43,6 +70,7 @@ public:
     // Commit a fully decoded and validated replacement without losing the old
     // song on failure. Stop playback before swapping.
     void SwapWith(LocalMusic& other) noexcept;
+    MusicOutputBackend& Backend() const noexcept { return *backend_; }
     double DurationSeconds() const noexcept { return durationSeconds_; }
     double SongSeconds(double monotonicSeconds) const noexcept;
     const std::string& DisplayName() const noexcept { return displayName_; }
@@ -56,7 +84,8 @@ private:
     std::unique_ptr<PitchPreservingStream> stretch_;
     std::string sourceFormat_;
     bool activeStretch_ = false;
-    Music music_{};
+    std::unique_ptr<MusicOutputStream> stream_;
+    MusicOutputBackend* backend_ = nullptr;
     std::string displayName_;
     std::string error_;
     double durationSeconds_ = 0.0;
