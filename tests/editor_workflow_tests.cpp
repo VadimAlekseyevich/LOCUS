@@ -7,6 +7,7 @@
 #include "app/local_music.h"
 #include "app/menu_ui.h"
 #include "app/play_screen_actions.h"
+#include "app/play_intro_skip.h"
 #include "app/run_results.h"
 #include "app/screen_flow.h"
 #include "app/session_transition.h"
@@ -23,6 +24,7 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <vector>
 #include <string>
 
 namespace {
@@ -339,6 +341,7 @@ int main() {
     ok &= Check(playback.Playing() && scoredJudge.Counts().Resolved() == 0,
                 "Play > starts saved difficulty through scored session");
 
+    std::vector<double> audioSampledAtPress;
     for (const auto& turn : scored.turns) {
         app::FrameInput keyDown;
         const double songTime = static_cast<double>(
@@ -350,7 +353,36 @@ int main() {
             keyDown.arrowPressed[lane] = true;
             keyDown.arrowCapturedAt[lane] = frameNow;
         }
+        audioSampledAtPress.push_back(playback.AudioSeconds(frameNow));
         scoredActions.Update(keyDown, frameNow);
+    }
+    if (!scoredJudge.AllScorableJudged() ||
+        scoredJudge.Counts().perfect !=
+            static_cast<int>(scoredJudge.ScorableCount())) {
+        std::cerr << "EDITOR_WORKFLOW_DIAGNOSTIC start=" << startAt
+                  << " speed=" << playback.Speed()
+                  << " playing=" << playback.Playing()
+                  << " paused=" << playback.Paused()
+                  << " scorable=" << scoredJudge.ScorableCount()
+                  << " resolved=" << scoredJudge.Counts().Resolved()
+                  << " perfect=" << scoredJudge.Counts().perfect
+                  << " good=" << scoredJudge.Counts().good
+                  << " bad=" << scoredJudge.Counts().bad
+                  << " miss=" << scoredJudge.Counts().miss
+                  << " chartNotes=" << scored.turns.size()
+                  << " bpm=" << scored.bpm
+                  << " offset=" << savedB->data.offsetSeconds
+                  << " introStart="
+                  << app::ScoredChartStartSeconds(scored, savedB->data.offsetSeconds)
+                  << '\\n';
+        for (std::size_t i = 0; i < scored.turns.size(); ++i)
+            std::cerr << "EDITOR_WORKFLOW_NOTE " << i
+                      << " beat=" << scored.turns[i].beat
+                      << " ms=" << core::EventTimeMs(
+                          scored, scored.turns[i], savedB->data.offsetSeconds)
+                      << " audioSampled=" << audioSampledAtPress[i]
+                      << " heading=" << static_cast<int>(scored.turns[i].direction)
+                      << '\\n';
     }
     ok &= Check(scoredJudge.AllScorableJudged() && outro.Active() &&
                 scoredJudge.Counts().perfect ==
