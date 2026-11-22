@@ -52,6 +52,7 @@ bool SongLibrary::ExportPackage(const fs::path& setFolder,
 bool SongLibrary::ImportPackage(const fs::path& archive,
                                 fs::path& installedSet,
                                 std::string& error) {
+    installedSet.clear();
     std::error_code ec;
     fs::create_directories(root_, ec);
     if (ec) { error = "Cannot create Songs folder."; return false; }
@@ -139,12 +140,14 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
         error = "Cannot publish Song Set package: " + ec.message();
         return fail();
     }
+    // The rename is the disk commit point. Keep the actual installed
+    // location even if the in-memory index cannot be refreshed immediately.
+    installedSet = target;
     std::string notice;
     if (!Refresh(notice)) {
-        error = notice;
-        return false; // Files remain safely installed on disk for next rescan.
+        error = "Package installed on disk, but library refresh failed: " + notice;
+        return false;
     }
-    installedSet = target;
     error.clear();
     return true;
 }
