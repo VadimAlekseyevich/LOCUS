@@ -1,6 +1,7 @@
 #include "app/editor_pattern_actions.h"
 
 #include <algorithm>
+#include <cmath>
 #include <optional>
 
 namespace locus::app::editor_pattern {
@@ -15,31 +16,54 @@ void Apply(core::ChartEditor& draft, EditorUiState& ui,
                                                        draft.Data().route.snapDivision);
     if (input.moveNext && !ui.HasRange()) action.changedChart |= draft.MoveTurn(draft.Data().route.ticksPerBeat /
                                                       draft.Data().route.snapDivision);
+    const bool preciseSingle = !ui.HasRange() &&
+                               draft.SelectedTurnTimeMs().has_value();
     const int first = ui.HasRange() ? ui.rangeFirst : draft.SelectedBeat();
     const int last = ui.HasRange() ? ui.rangeLast : draft.SelectedBeat();
     const bool valid = first >= draft.Data().route.firstBeat &&
                        last < draft.Data().route.lengthBeats;
 
     if (commands.copy || commands.cut) {
-        ui.clipboard = valid ? draft.CopyTurns(first, last)
-                             : core::ChartEditor::Pattern{};
+        if (preciseSingle) {
+            ui.clipboard = {};
+            if (const auto* selected = draft.SelectedTurn()) {
+                const auto& chart = draft.Data();
+                const auto authored = core::EventTimeMs(
+                    chart.route, *selected, chart.offsetSeconds);
+                const auto grid = static_cast<std::int64_t>(std::llround(
+                    draft.AudioSecondsAtBeat(selected->beat) * 1000.0));
+                ui.clipboard.span = 1;
+                ui.clipboard.ticksPerBeat = chart.route.ticksPerBeat;
+                ui.clipboard.notes.push_back({
+                    0, selected->direction, authored - grid
+                });
+            }
+        } else {
+            ui.clipboard = valid ? draft.CopyTurns(first, last)
+                                 : core::ChartEditor::Pattern{};
+        }
         const bool any = !ui.clipboard.notes.empty();
-        if (any) {
-            // Reflect actual copied note bounds instead of empty ticks
-            // that the mouse happened to include before/after the notes.
+        if (any && !preciseSingle) {
+            // Beat ranges own all notes in their ticks. Selecting an exact
+            // note must not silently turn into a destructive whole-cell
+            // range when the mapper presses Ctrl+C or Ctrl+X.
             const auto& turns = draft.Data().route.turns;
-            const auto lower = std::lower_bound(turns.begin(), turns.end(), first,
+            const auto lower = std::lower_bound(
+                turns.begin(), turns.end(), first,
                 [](const core::TurnEvent& event, int beat) {
                     return event.beat < beat;
                 });
-            const auto upper = std::upper_bound(lower, turns.end(), last,
+            const auto upper = std::upper_bound(
+                lower, turns.end(), last,
                 [](int beat, const core::TurnEvent& event) {
                     return beat < event.beat;
                 });
             ui.rangeFirst = lower->beat;
             ui.rangeLast = (upper - 1)->beat;
         }
-        if (commands.cut && any) action.changedChart |= draft.DeleteTurns(first, last);
+        if (commands.cut && any)
+            action.changedChart |= preciseSingle
+                ? draft.RemoveTurn() : draft.DeleteTurns(first, last);
         notice(any ? (commands.cut ? "TURNS CUT - CTRL+V TO PASTE"
                           : "TURNS COPIED - NO LEADING/TRAILING GAPS")
                    : "NO TURNS IN SELECTION", !any);
@@ -62,24 +86,50 @@ void Apply(core::ChartEditor& draft, EditorUiState& ui,
                   : "CANNOT PASTE - EMPTY CLIPBOARD, SAME NOTES OR OUT OF BOUNDS", !ok);
     }
     if (commands.mirrorH || commands.mirrorV) {
-        const bool ok = valid && (commands.mirrorH
-            ? draft.MirrorTurnsHorizontal(first, last)
-            : draft.MirrorTurnsVertical(first, last));
+        bool ok = false;
+        if (valid && preciseSingle) {
+            if (const auto* selected = draft.SelectedTurn()) {
+                const auto outgoing = commands.mirrorH
+                    ? core::MirrorHeadingHorizontal(selected->direction)
+                    : core::MirrorHeadingVertical(selected->direction);
+                if (outgoing != selected->direction) {
+                    draft.PutTurn(outgoing);
+                    ok = true;
+                }
+            }
+        } else if (valid) {
+            ok = commands.mirrorH
+                ? draft.MirrorTurnsHorizontal(first, last)
+                : draft.MirrorTurnsVertical(first, last);
+        }
         action.changedChart |= ok;
         notice(ok ? (commands.mirrorH ? "HORIZONTAL MIRROR APPLIED"
                                : "VERTICAL MIRROR APPLIED")
                   : "NO DIRECTIONS CHANGED", !ok);
     }
     if (commands.rotateCW || commands.rotateCCW) {
-        const bool ok = valid &&
-            draft.RotateTurns(first, last, commands.rotateCW ? 1 : -1);
+        bool ok = false;
+        if (valid && preciseSingle) {
+            if (const auto* selected = draft.SelectedTurn()) {
+                const auto outgoing = core::RotateHeading(
+                    selected->direction, commands.rotateCW ? 2 : -2);
+                if (outgoing != selected->direction) {
+                    draft.PutTurn(outgoing);
+                    ok = true;
+                }
+            }
+        } else if (valid) {
+            ok = draft.RotateTurns(first, last,
+                                   commands.rotateCW ? 1 : -1);
+        }
         action.changedChart |= ok;
         notice(ok ? (commands.rotateCW ? "PATTERN ROTATED 90 CLOCKWISE"
                                : "PATTERN ROTATED 90 COUNTERCLOCKWISE")
                   : "NO TURNS TO ROTATE", !ok);
     }
     if (commands.deleteTurns) {
-        const bool ok = valid && draft.DeleteTurns(first, last);
+        const bool ok = valid && (preciseSingle
+            ? draft.RemoveTurn() : draft.DeleteTurns(first, last));
         action.changedChart |= ok;
         notice(ok ? "SELECTED TURNS DELETED" : "NO TURNS TO DELETE", !ok);
     }

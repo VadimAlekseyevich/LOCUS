@@ -1029,6 +1029,54 @@ int main() {
     ok &= Check(denseUi.SelectedTurnTimeMs() == 1010,
                 "repeated click cycles overlapping events inside same tick");
 
+    // Selecting one exact timestamp scopes copy/flip/rotate/delete/cut
+    // to that one note, never the adjacent note in its shared grid tick.
+    denseUiState.rangeFirst = denseUiState.rangeLast = -1;
+    denseUi.SelectTurnAtTimeMs(1010);
+    EditorControls copyExact;
+    copyExact.copyRange = true;
+    ApplyEditorControls(denseUi, denseUiState, copyExact);
+    ok &= Check(denseUiState.clipboard.notes.size() == 1 &&
+                denseUiState.clipboard.span == 1 &&
+                denseUiState.clipboard.notes[0].timeMs == 10 &&
+                denseUi.Data().route.turns.size() == 2,
+                "Ctrl+C on one selected timestamp copies only that note");
+    EditorControls mirrorExact;
+    mirrorExact.mirrorHorizontal = true;
+    ApplyEditorControls(denseUi, denseUiState, mirrorExact);
+    ok &= Check(denseUi.Data().route.turns[0].direction == Heading::Up &&
+                denseUi.Data().route.turns[1].direction == Heading::Left &&
+                denseUi.Data().route.turns[1].timeMs == 1010 &&
+                denseUi.Undo(),
+                "individual mirror leaves neighboring note and time intact");
+    denseUi.SelectTurnAtTimeMs(1010);
+    EditorControls rotateExact;
+    rotateExact.rotateClockwise = true;
+    ApplyEditorControls(denseUi, denseUiState, rotateExact);
+    ok &= Check(denseUi.Data().route.turns[0].direction == Heading::Up &&
+                denseUi.Data().route.turns[1].direction == Heading::Down &&
+                denseUi.Undo(),
+                "individual rotation affects only selected note");
+    denseUi.SelectTurnAtTimeMs(1010);
+    EditorControls deleteExact;
+    deleteExact.removeTurn = true;
+    ApplyEditorControls(denseUi, denseUiState, deleteExact);
+    ok &= Check(denseUi.Data().route.turns.size() == 1 &&
+                denseUi.Data().route.turns[0].timeMs == 1000 &&
+                denseUi.Undo() &&
+                denseUi.Data().route.turns.size() == 2,
+                "DEL removes exact selected note, not whole cell");
+    denseUi.SelectTurnAtTimeMs(1010);
+    EditorControls cutExact;
+    cutExact.cutRange = true;
+    ApplyEditorControls(denseUi, denseUiState, cutExact);
+    ok &= Check(denseUi.Data().route.turns.size() == 1 &&
+                denseUiState.clipboard.notes.size() == 1 &&
+                denseUiState.clipboard.notes[0].timeMs == 10 &&
+                denseUi.Undo() &&
+                denseUi.Data().route.turns.size() == 2,
+                "Ctrl+X copies and removes only selected exact event");
+
     // Ctrl-click stages the unsnapped song millisecond; a direction PAD
     // (not a keyboard note hotkey) is the sole authoring action.
     ChartEditor unsnapped;
