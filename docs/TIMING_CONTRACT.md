@@ -91,6 +91,14 @@ a 7 ms inter-key diagonal. `locus_chart_clock_transport_contract` checks
 preroll, tempo changes, 100/50/10% practice, pause, rate change while paused,
 seek, completion and missing audio output with a deterministic output backend.
 
+The optional SoundTouch decode now keeps raylib's converted 32-bit float
+`Wave` as the sole retained full-song PCM buffer. Previously it also
+allocated `LoadWaveSamples` and a second `std::vector<float>` copy of that
+PCM. `LOCAL_MUSIC_STRETCH_READY` reports decode wall milliseconds and
+retained PCM bytes at the first slowdown; these are not a process-wide
+peak-memory measurement. A bounded streaming decoder remains necessary to
+avoid memory scaling linearly with song duration.
+
 **These are logical checks, not a sound-card latency benchmark.** T04 cannot be
 fully accepted without Windows loopback or an external audio recording that
 correlates the audible click to hardware key events at 100/50/10%, including

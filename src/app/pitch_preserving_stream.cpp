@@ -1,6 +1,7 @@
 #include "app/pitch_preserving_stream.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 
@@ -11,6 +12,7 @@ PitchPreservingStream::~PitchPreservingStream() { Close(); }
 bool PitchPreservingStream::Load(const std::vector<std::uint8_t>& encoded,
                                 const char* extension, std::string& error) {
     Close();
+    const auto startedAt = std::chrono::steady_clock::now();
     if (encoded.empty() || encoded.size() >
         static_cast<std::size_t>(std::numeric_limits<int>::max())) {
         error = "Invalid or oversized audio file for time stretching";
@@ -29,21 +31,19 @@ bool PitchPreservingStream::Load(const std::vector<std::uint8_t>& encoded,
         error = "Invalid PCM format for time stretching";
         return false;
     }
-    // SoundTouch's optimized path processes float mono/stereo PCM. Convert
-    // once, not during every Update or inside the audio output callback.
+    // SoundTouch consumes float mono/stereo PCM directly. WaveFormat()
+    // produces a 32-bit float Wave owned by raylib, so retain that buffer
+    // instead of allocating a second float array (LoadWaveSamples) and
+    // copying it into a third array (std::vector<float>).
     WaveFormat(&wave, static_cast<int>(sampleRate_), 32,
                static_cast<int>(channels_));
-    const std::size_t count = static_cast<std::size_t>(wave.frameCount) * channels_;
-    float* decoded = LoadWaveSamples(wave);
-    if (!decoded || !count) {
-        if (decoded) UnloadWaveSamples(decoded);
+    if (!IsWaveValid(wave) || !wave.data || !wave.frameCount ||
+        wave.sampleSize != 32 || wave.channels != channels_) {
         UnloadWave(wave);
-        error = "Could not load float PCM for time stretching";
+        error = "Could not convert source audio to 32-bit float PCM";
         return false;
     }
-    samples_.assign(decoded, decoded + count);
-    UnloadWaveSamples(decoded);
-    UnloadWave(wave);
+    decoded_ = wave; // Transfer ownership; freed once in Close().
 
     // The normal Music stream remains untouched and is used at 100%.
     // Dedicated, prebuffered AudioStream is used only for slower preview.
@@ -53,7 +53,8 @@ bool PitchPreservingStream::Load(const std::vector<std::uint8_t>& encoded,
     stream_ = LoadAudioStream(sampleRate_, 32, channels_);
     SetAudioStreamBufferSizeDefault(0);
     if (!IsAudioStreamValid(stream_)) {
-        samples_.clear();
+        UnloadWave(decoded_);
+        decoded_ = {};
         error = "Could not create pitch-preserving audio output";
         return false;
     }
@@ -61,6 +62,8 @@ bool PitchPreservingStream::Load(const std::vector<std::uint8_t>& encoded,
     processor_.setChannels(channels_);
     processor_.setPitch(1.0);
     output_.resize(kBlockFrames * channels_);
+    decodeMilliseconds_ = std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - startedAt).count();
     ready_ = true;
     error.clear();
     return true;
@@ -68,7 +71,8 @@ bool PitchPreservingStream::Load(const std::vector<std::uint8_t>& encoded,
 
 void PitchPreservingStream::FillBlock() {
     if (!ready_) return;
-    const std::size_t frameCount = samples_.size() / channels_;
+    const std::size_t frameCount = decoded_.frameCount;
+    const auto* const samples = static_cast<const float*>(decoded_.data);
     unsigned produced = 0;
     while (produced < kBlockFrames) {
         const unsigned got = processor_.receiveSamples(
@@ -79,7 +83,7 @@ void PitchPreservingStream::FillBlock() {
         if (cursorFrames_ < frameCount) {
             const unsigned put = static_cast<unsigned>(
                 std::min<std::size_t>(4096, frameCount - cursorFrames_));
-            processor_.putSamples(samples_.data() + cursorFrames_ * channels_, put);
+            processor_.putSamples(samples + cursorFrames_ * channels_, put);
             cursorFrames_ += put;
         } else if (!flushed_) {
             processor_.flush();
@@ -109,7 +113,7 @@ void PitchPreservingStream::StartAt(double songSeconds, double tempo,
     processor_.setPitch(1.0);
     cursorFrames_ = std::min<std::size_t>(
         static_cast<std::size_t>(std::max(0.0, songSeconds) * sampleRate_),
-        samples_.size() / channels_);
+        static_cast<std::size_t>(decoded_.frameCount));
     flushed_ = false;
     SetVolume(volume);
     Prime();
@@ -141,11 +145,12 @@ void PitchPreservingStream::Close() noexcept {
         ready_ = false;
     }
     stream_ = {};
-    samples_.clear();
-    samples_.shrink_to_fit();
+    if (decoded_.data) UnloadWave(decoded_);
+    decoded_ = {};
     output_.clear();
     cursorFrames_ = 0;
     sampleRate_ = channels_ = 0;
+    decodeMilliseconds_ = 0.0;
     flushed_ = false;
 }
 } // namespace locus::app
