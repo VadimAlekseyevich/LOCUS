@@ -1015,6 +1015,7 @@ int main() {
                 "click selects second event independently in same grid cell");
     // Real raylib input sets mouseClick and mouseHeld simultaneously. The
     // drag update must not instantly clear the timestamp selection.
+    denseUi.SelectBeat(2); // clear prior click-cycle before physical mouse-down
     auto pressedNote = Click(secondNoteX, detail::kTimelineY + 34);
     pressedNote.timelineViewBeat = denseAnchorTick;
     pressedNote.mouseHeld = true;
