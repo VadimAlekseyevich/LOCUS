@@ -18,6 +18,8 @@ Double-click **`build_and_run.bat`** in the repository folder. It checks for Git
 
 A local log folder is created under `.locus-runs/` (Git-ignored). Logs are not uploaded. CI runs the same production CMake build and tests on Windows.
 
+A portable Windows build is available as the **`locus-windows-x64`** [GitHub Actions artifact](https://github.com/VadimAlekseyevich/LOCUS/actions): unzip it anywhere and run `locus.exe`. The complete `assets/ui` directory and `examples` ship beside the executable; CI diagnostics are a separate artifact. For the same portable layout locally, use `cmake --install build/windows --config Release --prefix build/windows/portable` after building. Required resources are declared in [`cmake/ui_assets_manifest.cmake`](cmake/ui_assets_manifest.cmake).
+
 The audio offset is stored as an optional `globalOffsetMs` integer in the current `settings.json` v3; existing key bindings and saved charts are preserved. No chart, skin or Song Set file format changes.
 
 ## Gameplay

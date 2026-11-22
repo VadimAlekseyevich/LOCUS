@@ -114,28 +114,54 @@ if(LOCUS_ENABLE_RMLUI)
     )
     target_link_libraries(locus PRIVATE RmlUi::Core)
     target_compile_definitions(locus PRIVATE LOCUS_WITH_RMLUI=1)
-    # Load editable RML/RCSS documents next to the Windows executable.
-    add_custom_command(TARGET locus POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory
-            "$<TARGET_FILE_DIR:locus>/assets/ui/rml"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${PROJECT_SOURCE_DIR}/assets/ui/rml"
-            "$<TARGET_FILE_DIR:locus>/assets/ui/rml"
-        VERBATIM
-    )
 endif()
 
-# Keep approved Home raster assets next to the executable regardless of the
-# current working directory (launcher BAT, IDE, packaged release).
-add_custom_command(TARGET locus POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:locus>/assets/ui"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${PROJECT_SOURCE_DIR}/assets/ui/wordmark.png"
-        "$<TARGET_FILE_DIR:locus>/assets/ui/wordmark.png"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${PROJECT_SOURCE_DIR}/assets/ui/app-icon.png"
-        "$<TARGET_FILE_DIR:locus>/assets/ui/app-icon.png"
-    VERBATIM)
+# Runtime assets are staged independently of the executable, so updating
+# RML/RCSS files never depends on a relink or a full application rebuild.
+set(LOCUS_UI_SOURCE_DIR "${PROJECT_SOURCE_DIR}/assets/ui")
+include(cmake/ui_assets_manifest.cmake)
+foreach(relative IN LISTS LOCUS_REQUIRED_UI_ASSETS)
+    if(NOT EXISTS "${LOCUS_UI_SOURCE_DIR}/${relative}")
+        message(FATAL_ERROR "Missing required LOCUS UI asset: ${relative}")
+    endif()
+endforeach()
+
+# CONFIGURE_DEPENDS detects added/removed files; a generated file-inventory
+# dependency also invalidates staging on removals, when the deleted file is
+# no longer in DEPENDS (and otherwise could leave stale packaged resources).
+file(GLOB_RECURSE LOCUS_UI_ASSET_FILES CONFIGURE_DEPENDS
+    LIST_DIRECTORIES false "${LOCUS_UI_SOURCE_DIR}/*")
+list(SORT LOCUS_UI_ASSET_FILES)
+set(LOCUS_UI_FILE_LIST "${CMAKE_CURRENT_BINARY_DIR}/ui-assets/source-files.txt")
+file(GENERATE OUTPUT "${LOCUS_UI_FILE_LIST}"
+    CONTENT "${LOCUS_UI_ASSET_FILES}\n")
+set(LOCUS_UI_STAMP "${CMAKE_CURRENT_BINARY_DIR}/ui-assets/$<CONFIG>/staged.stamp")
+add_custom_command(
+    OUTPUT "${LOCUS_UI_STAMP}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory
+        "${CMAKE_CURRENT_BINARY_DIR}/ui-assets/$<CONFIG>"
+    COMMAND "${CMAKE_COMMAND}" -E rm -rf
+        "$<TARGET_FILE_DIR:locus>/assets/ui"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${LOCUS_UI_SOURCE_DIR}" "$<TARGET_FILE_DIR:locus>/assets/ui"
+    COMMAND "${CMAKE_COMMAND}"
+        "-DLOCUS_UI_ASSETS_DIR=$<TARGET_FILE_DIR:locus>/assets/ui"
+        "-DLOCUS_UI_SOURCE_DIR=${LOCUS_UI_SOURCE_DIR}"
+        -P "${PROJECT_SOURCE_DIR}/cmake/verify_ui_assets.cmake"
+    COMMAND "${CMAKE_COMMAND}" -E touch "${LOCUS_UI_STAMP}"
+    DEPENDS ${LOCUS_UI_ASSET_FILES} "${LOCUS_UI_FILE_LIST}"
+        "${PROJECT_SOURCE_DIR}/cmake/ui_assets_manifest.cmake"
+        "${PROJECT_SOURCE_DIR}/cmake/verify_ui_assets.cmake"
+    COMMENT "Synchronizing LOCUS UI resources beside the executable"
+    VERBATIM
+)
+add_custom_target(locus_ui_assets ALL DEPENDS "${LOCUS_UI_STAMP}")
+add_dependencies(locus locus_ui_assets)
+
+# The same portable layout is used by local installs and Windows CI artifacts.
+install(TARGETS locus RUNTIME DESTINATION ".")
+install(DIRECTORY "${LOCUS_UI_SOURCE_DIR}/" DESTINATION "assets/ui")
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
 target_link_libraries(locus PRIVATE locus_core raylib locus_soundtouch nlohmann_json::nlohmann_json)
 if(WIN32)
     target_link_libraries(locus PRIVATE comdlg32 user32)
@@ -163,15 +189,21 @@ endif()
 
 if(LOCUS_BUILD_TESTS)
     enable_testing()
+    add_test(NAME locus_packaged_ui_assets
+        COMMAND "${CMAKE_COMMAND}"
+            "-DLOCUS_UI_ASSETS_DIR=$<TARGET_FILE_DIR:locus>/assets/ui"
+            "-DLOCUS_UI_SOURCE_DIR=${LOCUS_UI_SOURCE_DIR}"
+            -P "${PROJECT_SOURCE_DIR}/cmake/verify_ui_assets.cmake")
     if(LOCUS_ENABLE_RMLUI)
         add_executable(locus_rml_layout_tests tests/rml_ui_layout_tests.cpp)
         target_compile_features(locus_rml_layout_tests PRIVATE cxx_std_17)
         target_include_directories(locus_rml_layout_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
         target_link_libraries(locus_rml_layout_tests PRIVATE RmlUi::Core)
+        add_dependencies(locus_rml_layout_tests locus_ui_assets)
         add_test(NAME locus_rml_responsive_play
                  COMMAND locus_rml_layout_tests)
         set_tests_properties(locus_rml_responsive_play PROPERTIES
-            WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+            WORKING_DIRECTORY "$<TARGET_FILE_DIR:locus>")
     endif()
     add_executable(locus_run_results_tests
         tests/run_results_tests.cpp src/app/run_results.cpp)

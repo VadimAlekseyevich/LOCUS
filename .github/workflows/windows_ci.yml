@@ -8,6 +8,8 @@ on:
       - "src/**"
       - "tests/**"
       - "benchmarks/**"
+      - "assets/**"
+      - "examples/**"
       - "build_and_run.bat"
       - ".github/workflows/windows_ci.yml"
   pull_request:
@@ -17,6 +19,8 @@ on:
       - "src/**"
       - "tests/**"
       - "benchmarks/**"
+      - "assets/**"
+      - "examples/**"
       - "build_and_run.bat"
       - ".github/workflows/windows_ci.yml"
   workflow_dispatch:
@@ -50,23 +54,14 @@ jobs:
           cmake --build build/windows --config Release --parallel 2
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Check packaged RmlUi assets and wordmark
+      - name: Check staged UI manifest and file parity
         run: |
-          $root = "build/windows/Release/assets/ui"
-          $files = @(
-            "wordmark.png", "app-icon.png",
-            "rml/common.rcss", "rml/home.rcss", "rml/home.rml",
-            "rml/play.rcss", "rml/play.rml",
-            "rml/settings.rcss", "rml/settings.rml",
-            "rml/editor.rcss", "rml/editor.rml"
-          )
-          foreach ($relative in $files) {
-            $asset = Join-Path $root $relative
-            if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) {
-              throw "Missing packaged UI asset: $asset"
-            }
-          }
-          Write-Output "PACKAGED_UI_ASSETS_PASS"
+          cmake "-DLOCUS_UI_ASSETS_DIR=build/windows/Release/assets/ui" "-DLOCUS_UI_SOURCE_DIR=assets/ui" -P cmake/verify_ui_assets.cmake
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test incremental UI edits, additions and removals
+        run: |
+          & ./tests/ui_asset_sync.ps1 -BuildDir "build/windows"
 
       - name: Run all registered CTest cases
         run: |
@@ -107,6 +102,37 @@ jobs:
           }
           $report | Set-Content build/windows/diagnostics.txt
           $report | ForEach-Object { Write-Output $_ }
+
+      # A portable install is tested from RUNNER_TEMP, outside the checkout.
+      - name: Test standalone portable package outside the repository
+        run: |
+          $package = Join-Path (Get-Location) "build/windows/portable"
+          if (Test-Path -LiteralPath $package) { Remove-Item -LiteralPath $package -Recurse -Force }
+          cmake --install build/windows --config Release --prefix "$package"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake "-DLOCUS_UI_ASSETS_DIR=$package/assets/ui" "-DLOCUS_UI_SOURCE_DIR=assets/ui" -P cmake/verify_ui_assets.cmake
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path -LiteralPath (Join-Path $package "examples/default.locus-skin.json"))) {
+            throw "Missing packaged examples"
+          }
+
+          $isolated = Join-Path $env:RUNNER_TEMP "locus-standalone-smoke"
+          if (Test-Path -LiteralPath $isolated) { Remove-Item -LiteralPath $isolated -Recurse -Force }
+          Copy-Item -LiteralPath $package -Destination $isolated -Recurse
+          Push-Location $isolated
+          try {
+            # This headless RmlUi test loads the real HOME, PLAY, EDIT, SETTINGS, SKINS and RESULTS files.
+            $layoutTest = Join-Path $env:GITHUB_WORKSPACE "build/windows/Release/locus_rml_layout_tests.exe"
+            & $layoutTest
+            if ($LASTEXITCODE -ne 0) { throw "Portable UI layout test failed" }
+            $result = & (Join-Path $isolated "locus.exe") --screen-check
+            if ($LASTEXITCODE -ne 0 -or -not ($result -match "SCREEN_STATE_PASS")) {
+              throw "Portable executable screen smoke check failed: $result"
+            }
+          } finally {
+            Pop-Location
+          }
+          Write-Output "PORTABLE_UI_PACKAGE_PASS"
 
       - name: Verify Windows font fallback prerequisites
         run: |
@@ -152,15 +178,20 @@ jobs:
           if ($changes) { throw "Generated files leaked into Git worktree: $changes" }
           Write-Output "CLEAN_WORKTREE_PASS"
 
-      # Hosted Windows runners do not provide an interactive graphical desktop.
-      # Never mark actual GUI rendering or physical input latency as tested here.
-      - name: Upload binaries and diagnostics
+      # GUI rendering and physical input latency require a real Windows device.
+      - name: Upload standalone Windows application
         uses: actions/upload-artifact@v4
         with:
           name: locus-windows-x64
           if-no-files-found: error
+          path: build/windows/portable/
+
+      - name: Upload CI diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: locus-windows-diagnostics
+          if-no-files-found: error
           path: |
-            build/windows/Release/locus.exe
             build/windows/ctest-output.txt
             build/windows/ctest.xml
             build/windows/preview-benchmark.txt
