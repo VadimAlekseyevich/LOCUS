@@ -620,9 +620,12 @@ int main() {
     ChartEditor clash;
     clash.Load(denseSource);
     ok &= Check(clash.SetSongDuration(4.0) &&
-                clash.SelectBeat(5) &&
-                !clash.MoveTurn(-2),
-                "shift to exact occupied timestamp rejects without partial change");
+                clash.SelectTurnAtTimeMs(1500) &&
+                !clash.MoveTurn(-1) &&
+                clash.Data().route.turns.size() == 3 &&
+                clash.Data().route.turns[0].timeMs == 1000 &&
+                clash.Data().route.turns[2].timeMs == 1500,
+                "moving onto an existing exact time rejects atomically");
 
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 patches=1\n";
