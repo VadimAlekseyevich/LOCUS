@@ -1,8 +1,10 @@
 #include "app/chart_playback.h"
+#include "app/sampled_song_time.h"
 #include "app/global_offset_calibrator.h"
 #include "app/local_music.h"
 #include "app/play_intro_skip.h"
 #include "core/tempo_map.h"
+#include "core/judgement.h"
 #include "song_fixture.h"
 
 #include <chrono>
@@ -197,6 +199,29 @@ int main() {
     ok &= Check(Close(play.AudioSeconds(t0 + 21.0), 3.1) &&
                 Close(play.Beat(t0 + 21.0), 7.3),
                 "resume at 10% without resuming the old rate");
+
+    // At 50%, the audio device only reports the consumed cursor at the
+    // CURRENT frame. Historical queries of that cursor would collapse both
+    // events to one song timestamp. A single sampled cursor preserves 7ms
+    // physical spacing, i.e. 3.5ms in slowed chart time.
+    const app::SampledSongTime keyBatchClock{202.0, 1.054, 0.5};
+    const double keyUpTime = keyBatchClock.At(201.986);
+    const double keyRightTime = keyBatchClock.At(201.993);
+    ok &= Check(Close(keyUpTime, 1.047) &&
+                Close(keyRightTime, 1.0505) &&
+                Close(keyRightTime - keyUpTime, 0.0035),
+                "one 50%-speed cursor snapshot retains 7ms event separation");
+    core::Chart thresholdDiagonal;
+    thresholdDiagonal.turns = {{2, core::Heading::UpRight, 1000}};
+    core::TurnJudge thresholdJudge(thresholdDiagonal);
+    const auto upJudgement = thresholdJudge.PressHeading(
+        core::Heading::Up, keyUpTime);
+    const auto rightJudgement = thresholdJudge.PressHeading(
+        core::Heading::Right, keyRightTime);
+    ok &= Check(upJudgement && rightJudgement &&
+                upJudgement->grade == core::Grade::Perfect &&
+                rightJudgement->grade == core::Grade::Good,
+                "separate key times legitimately split Perfect / Good");
 
     ok &= Check(Close(app::CalibratedSongSeconds(2.0, 200, 1.0), 1.8) &&
                 Close(app::CalibratedSongSeconds(2.0, 200, 0.5), 1.9) &&

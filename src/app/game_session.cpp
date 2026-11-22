@@ -1,5 +1,6 @@
 #include "app/game_session.h"
 #include "app/play_intro_skip.h"
+#include "app/sampled_song_time.h"
 
 #include "core/route.h"
 
@@ -61,6 +62,15 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     const bool playing = customChart ? local_.Playing() : demo_.Playing();
     const bool paused = customChart ? local_.Paused() : demo_.Paused();
     const bool audioAlreadyFinished = customChart ? local_.Finished() : demo_.Finished();
+    // Sample the actual audio cursor ONCE for this input batch. Reading
+    // GetMusicTimePlayed for each historical key timestamp returns the same
+    // *current* cursor; projecting from this sample preserves inter-key
+    // spacing even if a decoder only exposes buffer-stepped positions.
+    const double playbackRate = customChart ? local_.Speed() : 1.0;
+    const SampledSongTime inputSongTime{
+        now, customChart ? local_.AudioSeconds(now) : demo_.SongSeconds(now),
+        playbackRate
+    };
     // An event stream is authoritative when the OS backend is present:
     // don't also score raylib's frame snapshot for the same keydown.
     const bool freshInput = arrows.precise
@@ -74,8 +84,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     if (playing && !paused && !chart_.turns.empty() &&
         judge_.NextEvent() == &chart_.turns.front() &&
         judge_.Counts().Resolved() == 0 && freshInput) {
-        const double current = customChart ? local_.AudioSeconds(now)
-                                           : demo_.SongSeconds(now);
+        const double current = inputSongTime.songSeconds;
         const double offset = customChart ? local_.OffsetSeconds() : 0.0;
         if (const auto target = IntroSkipDestination(chart_, offset, current)) {
             const bool seeked = customChart
@@ -96,13 +105,10 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
         const auto score = [&](core::Heading direction, double capturedAt) {
             const double timestamp = audioEndedAt_ >= 0.0
                 ? audioEndSongSeconds_ +
-                    std::max(0.0, capturedAt - audioEndedAt_) *
-                        (customChart ? local_.Speed() : 1.0)
-                : (customChart ? local_.AudioSeconds(capturedAt)
-                               : demo_.SongSeconds(capturedAt));
+                    std::max(0.0, capturedAt - audioEndedAt_) * playbackRate
+                : inputSongTime.At(capturedAt);
             const auto judgement = judge_.PressHeading(
-                direction, CalibratedTime(timestamp,
-                    customChart ? local_.Speed() : 1.0));
+                direction, CalibratedTime(timestamp, playbackRate));
             if (judgement && !judgement->wrongDirection &&
                 judgement->grade != core::Grade::Miss)
                 hitFlash_.Trigger(judgement->grade, now);

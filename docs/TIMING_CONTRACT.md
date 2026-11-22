@@ -15,6 +15,15 @@ FPS nor visual easing may influence scored time.
 | Musical beat | Song milliseconds through `tempoMap` and `ticksPerBeat` | Route and editor grid |
 | Judgement time | `CalibratedSongSeconds(rawSongTime, globalOffsetMs, practiceRate)` | `TurnJudge::PressHeading` / `Advance` |
 
+The audio backend may report only its current consumed position, even when
+queried with a historical OS timestamp. `GameSession` therefore captures a
+single `SampledSongTime` (monotonic time, audio cursor, practice rate) per
+frame and projects each individual key press back to its original monotonic
+timestamp. At 50% speed, two physical presses 7 ms apart become 3.5 ms apart
+in chart time; they do **not** collapse into one decoder-buffer cursor. The
+original judgement windows are unchanged. During the silent tail the
+end-of-audio anchor is used instead.
+
 The Windows backend receives each keydown/keyup in the **same WndProc** used
 to guard window close. It converts the 32-bit message uptime to the application
 monotonic origin with `GetTickCount64()` and a sampled steady-clock anchor.
