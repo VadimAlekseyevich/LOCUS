@@ -339,6 +339,27 @@ int main() {
     ok &= Check(files.SaveAll(now) && !files.AnyDirty(),
                 "Save All retries remaining dirty document without duplicating first");
 
+    // A saved difficulty may have a new filename while the library still
+    // holds its old index. Saving it must first rescan, not create a copy.
+    {
+        const fs::path relocated = installedEasy.parent_path() /
+            "Easy-relocated.locus.json";
+        std::error_code renameError;
+        fs::rename(installedEasy, relocated, renameError);
+        ok &= Check(!renameError,
+                    "fixture can rename the committed chart externally");
+        if (!renameError) {
+            chartPath = relocated.wstring();
+            ok &= Check(files.Save(false, now) &&
+                        chartPath == relocated.wstring() &&
+                        library.ChartCount() == 2,
+                        "Save rescans a stale library before updating chart");
+            int songIndex = -1, difficultyIndex = -1;
+            ok &= Check(library.FindChart(relocated, songIndex, difficultyIndex),
+                        "committed difficulty found under actual filename");
+        }
+    }
+
     app::SongLibrary restarted(profile.root / "Songs");
     ok &= Check(restarted.Refresh(note) && restarted.ChartCount() == 2,
                 "Restart > Library sees both saved difficulties");
