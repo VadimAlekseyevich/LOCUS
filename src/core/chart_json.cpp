@@ -247,7 +247,7 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             error = "turns: too many events";
             return false;
         }
-        int prior = -65537;
+        int prior = std::numeric_limits<int>::min();
         std::int64_t previousMs = std::numeric_limits<std::int64_t>::min();
         for (std::size_t i = 0; i < turns.size(); ++i) {
             const std::string where = "turns[" + std::to_string(i) + "]";

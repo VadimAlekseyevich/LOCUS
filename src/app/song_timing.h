@@ -6,12 +6,13 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace locus::app {
 
 // Song Set timing is authoritative. Existing note timestamps never move;
-// increase the editor tick density if a tempo change would merge two notes.
+// multiple distinct notes can project onto one grid tick after a BPM change.
 inline bool ApplySongTiming(core::LoadedChart& chart,
                             const std::vector<core::TempoMarker>& markers,
                             std::string& error) {

@@ -44,7 +44,7 @@ that absolute song time. The first marker defines beat zero, later markers
 continue the accumulated beat count and their tempo lasts until the next row
 (or the end of the song). Earlier time uses the first BPM. All difficulties
 share the map, and all authored note timestamps stay in song milliseconds.
-If a new map merges notes on the editor tick grid, the change is rejected.
+A BPM change may project multiple distinct millisecond events into one editor tick; all their original timestamps are preserved and they remain separately editable.
 Only manifest v2 and chart v4 are supported.
 
 Each Song Set also stores **previewStartMs** (default 0), independent of

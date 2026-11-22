@@ -149,7 +149,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         if (ui.pendingExactPlacementTimeMs) {
             const bool changed = draft.PutTurnAtTimeMs(
                 *ui.pendingExactPlacementTimeMs, heading);
-            if (changed) ui.pendingExactPlacementTimeMs.reset();
+            ui.pendingExactPlacementTimeMs.reset();
             return changed;
         }
         return draft.SetOutgoingHeading(heading);
@@ -171,6 +171,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
     // Undo/redo also cover field edits, history of notes and grid changes.
     if (input.undo || input.redo) {
+        ui.pendingExactPlacementTimeMs.reset();
         ApplyHistoryAction(draft, ui, input.undo, action);
         return action;
     }
@@ -197,6 +198,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         const EditorTab nextTab = input.nativeChrome
             ? ui.tab : ClickedTab(mouse, ui.tab);
         if (nextTab != ui.tab) {
+            ui.pendingExactPlacementTimeMs.reset();
             ui.comparisonPickerOpen = false;
             ui.rateDropdownOpen = false;
             ui.tab = nextTab;
