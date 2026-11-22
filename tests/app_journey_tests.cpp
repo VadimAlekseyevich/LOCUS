@@ -1,9 +1,13 @@
 #include "app/run_results.h"
+#include "app/song_library.h"
 #include "app/screen_flow.h"
 #include "core/judgement.h"
 #include "core/route.h"
 
 #include <chrono>
+#include <cstdint>
+#include <fstream>
+#include <vector>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -15,6 +19,52 @@ bool Check(bool condition, const char* command) {
     if (!condition)
         std::cerr << "APP_JOURNEY_FAIL at command: " << command << '\n';
     return condition;
+}
+
+void WriteLe16(std::ofstream& out, std::uint16_t value) {
+    for (int i = 0; i != 2; ++i)
+        out.put(static_cast<char>((value >> (8 * i)) & 255));
+}
+void WriteLe32(std::ofstream& out, std::uint32_t value) {
+    for (int i = 0; i != 4; ++i)
+        out.put(static_cast<char>((value >> (8 * i)) & 255));
+}
+
+// A real, decodable four-second PCM WAV. This fixture is self-contained;
+// no media downloads, OS audio device or user profile are required.
+bool WriteSilentWav(const std::filesystem::path& path) {
+    constexpr std::uint32_t sampleRate = 8000;
+    constexpr std::uint32_t dataBytes = sampleRate * 4 * 2;
+    std::ofstream out(path, std::ios::binary);
+    out.write("RIFF", 4);
+    WriteLe32(out, 36 + dataBytes);
+    out.write("WAVEfmt ", 8);
+    WriteLe32(out, 16);
+    WriteLe16(out, 1); // PCM
+    WriteLe16(out, 1); // Mono
+    WriteLe32(out, sampleRate);
+    WriteLe32(out, sampleRate * 2);
+    WriteLe16(out, 2);
+    WriteLe16(out, 16);
+    out.write("data", 4);
+    WriteLe32(out, dataBytes);
+    const std::vector<char> silence(dataBytes, 0);
+    out.write(silence.data(), silence.size());
+    return static_cast<bool>(out);
+}
+
+bool WriteDifficulty(const std::filesystem::path& path, const char* title,
+                     const char* turns) {
+    std::ofstream out(path, std::ios::binary);
+    out << "{\"formatVersion\":4,\"title\":\"" << title <<
+        "\",\"audioPath\":\"song.wav\",\"bpm\":120,\"offsetMs\":0,"
+        "\"tempoMap\":[{\"timeMs\":0,\"bpm\":120},"
+        "{\"timeMs\":2000,\"bpm\":180}],"
+        "\"ticksPerBeat\":1,\"snapDivision\":1,"
+        "\"grid\":{\"width\":8,\"height\":8},"
+        "\"start\":{\"x\":3,\"y\":3,\"heading\":\"r\"},"
+        "\"previewLeadBeats\":4,\"turns\":" << turns << "}";
+    return static_cast<bool>(out);
 }
 
 struct TempResults {
@@ -48,17 +98,58 @@ int main() {
     app::UpdateScreenFlow(nav, toEditor, false);
     ok &= Check(nav.screen == Screen::Editor, "Home > Editor");
 
-    // The TEST view can use the same judge and chart, but is never an attempt.
-    const core::Chart chart = core::MakeDemoChart();
+    // Import a true two-difficulty song, restart the library index and
+    // play the same chart bytes that production LOAD/PLAY will use.
+    const auto source = profile.root / "source";
+    std::filesystem::create_directories(source);
+    const auto easy = source / "Easy.locus.json";
+    const auto hard = source / "Hard.locus.json";
+    ok &= Check(WriteSilentWav(source / "song.wav") &&
+                WriteDifficulty(easy, "Easy",
+                    "[{\"timeMs\":1000,\"heading\":\"u\"}]") &&
+                WriteDifficulty(hard, "Hard",
+                    "[{\"timeMs\":1000,\"heading\":\"ru\"},"
+                    "{\"timeMs\":3000,\"heading\":\"l\"}]"),
+                "create decodable WAV and two difficulties with BPM change");
+    app::SongLibrary library(profile.root / "Songs");
+    std::string message, error;
+    std::filesystem::path savedEasy, savedHard;
+    ok &= Check(library.Refresh(message) &&
+                library.Import(easy, savedEasy, error) &&
+                library.Import(hard, savedHard, error) &&
+                savedEasy.parent_path() == savedHard.parent_path(),
+                "Library > Import Easy > Import Hard into one Song Set");
+
+    app::SongLibrary restarted(profile.root / "Songs");
+    ok &= Check(restarted.Refresh(message) &&
+                restarted.Songs().size() == 1 &&
+                restarted.ChartCount() == 2,
+                "Library > application restart > same two difficulties");
+    const auto* selected = restarted.Songs().empty() ? nullptr :
+        &restarted.Songs().front();
+    const auto* hardChart = selected && selected->charts.size() >= 2
+        ? &selected->charts[1] : nullptr;
+    ok &= Check(hardChart &&
+                hardChart->data.title == "Hard" &&
+                hardChart->data.route.tempoMap.size() == 2 &&
+                hardChart->data.route.tempoMap[1].timeMs == 2000 &&
+                hardChart->data.route.tempoMap[1].bpm == 180.0 &&
+                hardChart->data.route.turns.size() == 2 &&
+                hardChart->data.route.turns[0].direction == core::Heading::UpRight &&
+                hardChart->data.route.turns[1].timeMs == 3000 &&
+                selected->charts[0].audioFile == hardChart->audioFile,
+                "Play > selected difficulty uses absolute notes and shared tempo map");
+    if (!hardChart) return 1;
+    const core::Chart chart = hardChart->data.route;
     core::TurnJudge judge(chart);
-    const app::RunKey key{"fixture-song-set", "Hard.locus.json"};
+    const app::RunKey key{
+        selected->id, hardChart->file.filename().u8string()};
     app::CompletedRunContext completion;
     completion.key = key;
     completion.songTitle = u8"Тестовая песня";
     completion.chartTitle = u8"Сложная";
     completion.practiceRate = 0.5;
     completion.scorableCount = judge.ScorableCount();
-    std::string error;
     app::RunResult captured;
     const auto history = [&]() { return disk.Load(key, error); };
 
@@ -92,14 +183,18 @@ int main() {
     app::UpdateScreenFlow(nav, start, false);
     ok &= Check(nav.screen == Screen::Play, "Library > Play");
 
-    // Real judgement: physical arrows count individually. A diagonal
-    // contributes two notes, so ScorableCount is authoritative.
+    // Actual two-key diagonal at 1000 ms and one left key after the
+    // 2000 ms BPM transition. This path exercises the production judge.
     judge.Reset();
-    const auto first = chart.turns.front();
-    const double firstTime = first.timeMs >= 0
-        ? first.timeMs / 1000.0
-        : first.beat * 60.0 / chart.bpm;
-    judge.PressHeading(first.direction, firstTime);
+    const auto up = judge.PressHeading(core::Heading::Up, 1.000);
+    const auto right = judge.PressHeading(core::Heading::Right, 1.007);
+    const auto left = judge.PressHeading(core::Heading::Left, 3.000);
+    ok &= Check(up && right && left &&
+                up->grade == core::Grade::Perfect &&
+                right->grade == core::Grade::Perfect &&
+                left->grade == core::Grade::Perfect &&
+                judge.ScorableCount() == 3,
+                "Play > diagonal physical presses and later BPM note judged");
     judge.FinishRemainingMisses();
     completion.grades = judge.Counts();
     completion.scorableCount = judge.ScorableCount();

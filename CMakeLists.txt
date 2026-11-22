@@ -210,7 +210,13 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_app_journey_tests
         tests/app_journey_tests.cpp
         src/app/run_results.cpp
-        src/app/screen_flow.cpp)
+        src/app/screen_flow.cpp
+        ${LOCUS_SONG_LIBRARY_SOURCES}
+        src/app/song_archive.cpp
+        src/app/chart_file.cpp
+        src/app/chart_save.cpp
+        src/app/local_file_io.cpp
+        src/app/song_set_storage.cpp)
     target_compile_features(locus_app_journey_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_app_journey_tests PRIVATE
         locus_core nlohmann_json::nlohmann_json)
