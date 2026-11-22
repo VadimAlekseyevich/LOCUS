@@ -107,6 +107,34 @@ bool ValidRunResult(const RunResult& r) noexcept {
     return std::abs(r.accuracyPercent - computed) <= 0.011;
 }
 
+bool CaptureCompletedRun(const RunResultsStore& store,
+                         const CompletedRunContext& completion,
+                         RunResult& saved, std::string& error) {
+    error.clear();
+    // A Results screen or a repeated frame is NOT a new completed attempt.
+    // Never publish TEST, abandoned sessions, or a partially judged chart.
+    if (!completion.completedThisFrame || completion.editorTest ||
+        completion.launchedFromEditor || completion.key.Empty() ||
+        completion.scorableCount == 0 ||
+        completion.scorableCount >
+            static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
+        completion.grades.Resolved() !=
+            static_cast<int>(completion.scorableCount))
+        return false;
+
+    RunResult record;
+    record.songSetId = completion.key.songSetId;
+    record.difficultyFile = completion.key.difficultyFile;
+    record.songTitle = completion.songTitle;
+    record.chartTitle = completion.chartTitle;
+    record.grades = completion.grades;
+    record.notesJudged = static_cast<int>(completion.scorableCount);
+    record.practiceRate = completion.practiceRate;
+    if (!store.Save(record, error)) return false;
+    saved = std::move(record);
+    return true;
+}
+
 std::string FormatRunTimestamp(std::int64_t ms) {
     if (ms <= 0) return "--";
     const std::time_t sec = static_cast<std::time_t>(ms / 1000);

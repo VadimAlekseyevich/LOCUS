@@ -882,28 +882,23 @@ int main(int argc, char** argv) {
         if (state.screen == Screen::Play) {
             const bool alreadyCompleted = sessionCompleted;
             playActions.Update(input, now);
-            // Record exactly once at the completed-outro edge, never from
-            // editor TEST, an unfinished run or an open Results screen.
-            if (!alreadyCompleted && sessionCompleted &&
-                !playCameFromEditor && !gameSession.IsEditorTest() &&
-                !playedRunKey.Empty() && judge.ScorableCount() > 0 &&
-                judge.Counts().Resolved() ==
-                    static_cast<int>(judge.ScorableCount())) {
+            // The same completed-outro edge is used in live play and the
+            // headless journey test. Save only once; never save Editor TEST.
+            if (!alreadyCompleted && sessionCompleted) {
+                const locus::app::CompletedRunContext completion{
+                    true, gameSession.IsEditorTest(), playCameFromEditor,
+                    playedRunKey, playedSongTitle, chartTitle, judge.Counts(),
+                    judge.ScorableCount(), playActions.Transport(now).practiceSpeed
+                };
                 locus::app::RunResult record;
-                record.songSetId = playedRunKey.songSetId;
-                record.difficultyFile = playedRunKey.difficultyFile;
-                record.songTitle = playedSongTitle;
-                record.chartTitle = chartTitle;
-                record.grades = judge.Counts();
-                record.notesJudged = static_cast<int>(judge.ScorableCount());
-                record.practiceRate = playActions.Transport(now).practiceSpeed;
                 std::string error;
-                if (resultsStore.Save(record, error)) {
+                if (locus::app::CaptureCompletedRun(
+                        resultsStore, completion, record, error)) {
                     displayedResult = record;
                     displayedResultBackgroundPath = playedBackgroundPath;
                     historicalResult = false;
-                    libraryUi.resultKey = {}; // Reload the history on return.
-                } else {
+                    libraryUi.resultKey = {}; // Reload history on return.
+                } else if (!error.empty()) {
                     libraryUi.notice = "RESULT NOT SAVED: " + error;
                     std::cerr << libraryUi.notice << '\n';
                 }

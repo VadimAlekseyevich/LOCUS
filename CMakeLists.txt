@@ -205,6 +205,17 @@ if(LOCUS_BUILD_TESTS)
         set_tests_properties(locus_rml_responsive_play PROPERTIES
             WORKING_DIRECTORY "$<TARGET_FILE_DIR:locus>")
     endif()
+    # A production navigation -> judgement -> persisted-results journey,
+    # without a GPU, device clock or native file dialogs.
+    add_executable(locus_app_journey_tests
+        tests/app_journey_tests.cpp
+        src/app/run_results.cpp
+        src/app/screen_flow.cpp)
+    target_compile_features(locus_app_journey_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_app_journey_tests PRIVATE
+        locus_core nlohmann_json::nlohmann_json)
+    add_test(NAME locus_navigation_judgement_results_journey
+             COMMAND locus_app_journey_tests)
     add_executable(locus_run_results_tests
         tests/run_results_tests.cpp src/app/run_results.cpp)
     target_compile_features(locus_run_results_tests PRIVATE cxx_std_17)

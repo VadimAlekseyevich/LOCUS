@@ -2,6 +2,7 @@
 
 #include "core/judgement.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -58,6 +59,28 @@ private:
     std::filesystem::path Directory(const RunKey& key) const;
     std::filesystem::path root_;
 };
+
+// Snapshot at the completed-outro transition. Consumers supply the exact
+// scored judge counts; this is the sole path for persistence of an attempt.
+// Invalid or ineligible transitions are silently ignored with no disk writes.
+struct CompletedRunContext {
+    bool completedThisFrame = false;
+    bool editorTest = false;
+    bool launchedFromEditor = false;
+    RunKey key;
+    std::string songTitle;
+    std::string chartTitle;
+    core::GradeCounts grades;
+    std::size_t scorableCount = 0;
+    double practiceRate = 1.0;
+};
+
+// Returns true only after a durable result is written. On ineligible calls
+// returns false with empty error, leaving saved unchanged. A storage failure
+// returns false with its real error, which the application displays.
+bool CaptureCompletedRun(const RunResultsStore& store,
+                         const CompletedRunContext& completion,
+                         RunResult& saved, std::string& error);
 
 std::string FormatRunTimestamp(std::int64_t unixMs);
 bool ValidRunResult(const RunResult& result) noexcept;
