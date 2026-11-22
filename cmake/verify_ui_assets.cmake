@@ -4,6 +4,13 @@
 if(NOT DEFINED LOCUS_UI_ASSETS_DIR OR LOCUS_UI_ASSETS_DIR STREQUAL "")
     message(FATAL_ERROR "LOCUS_UI_ASSETS_DIR must be provided")
 endif()
+# Script-mode callers may pass relative paths. file(GLOB_RECURSE) with
+# RELATIVE must receive an absolute base path on Windows as well as Linux.
+# Normalize before both the required-file and file-inventory checks.
+get_filename_component(LOCUS_UI_ASSETS_DIR "${LOCUS_UI_ASSETS_DIR}" ABSOLUTE)
+if(DEFINED LOCUS_UI_SOURCE_DIR AND NOT LOCUS_UI_SOURCE_DIR STREQUAL "")
+    get_filename_component(LOCUS_UI_SOURCE_DIR "${LOCUS_UI_SOURCE_DIR}" ABSOLUTE)
+endif()
 include("${CMAKE_CURRENT_LIST_DIR}/ui_assets_manifest.cmake")
 
 foreach(relative IN LISTS LOCUS_REQUIRED_UI_ASSETS)
