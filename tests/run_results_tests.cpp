@@ -7,6 +7,12 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
+
 namespace fs = std::filesystem;
 using locus::app::RunResultsStore;
 using locus::app::RunResult;
@@ -17,7 +23,33 @@ bool Check(bool ok, const char* message) {
     return ok;
 }
 
-int main() {
+int main(int argc, char** argv) {
+#ifdef _WIN32
+    if (argc == 2 && std::string(argv[1]) == "--race-writer") {
+        std::wstring parent(32768, L'\0');
+        const DWORD length = GetEnvironmentVariableW(
+            L"LOCUS_RESULTS_RACE_ROOT", parent.data(),
+            static_cast<DWORD>(parent.size()));
+        if (length == 0 || length >= parent.size()) return 2;
+        parent.resize(length);
+        RunResultsStore writer(fs::path(parent) / "Results");
+        RunResult run;
+        run.id = "1760000000000"; // deliberately identical between processes
+        run.songSetId = "parallel-set";
+        run.difficultyFile = "parallel.locus.json";
+        run.songTitle = "Concurrent song";
+        run.chartTitle = "Concurrent chart";
+        run.completedAtMs = 1760000000000LL;
+        run.grades = {1, 0, 0, 0};
+        run.notesJudged = 1;
+        run.practiceRate = 1.0;
+        std::string failure;
+        return writer.Save(run, failure) ? 0 : 3;
+    }
+#else
+    (void)argc;
+    (void)argv;
+#endif
     const fs::path root = fs::temp_directory_path() /
         ("locus-run-test-" + std::to_string(
             std::chrono::steady_clock::now().time_since_epoch().count()));
@@ -111,6 +143,61 @@ int main() {
                 secondCollision.id != collision.id &&
                 store.Load({"set-123", "easy.locus.json"}, error).size() == 5,
                 "repeated ID gets another unique result despite stale pending files");
+
+#ifdef _WIN32
+    // Real independent processes compete for the same record ID. Both
+    // results must survive; a preflight exists() check would race here.
+    {
+        std::wstring executable(32768, L'\0');
+        const DWORD length = GetModuleFileNameW(
+            nullptr, executable.data(), static_cast<DWORD>(executable.size()));
+        const bool validExecutable = length > 0 && length < executable.size();
+        ok &= Check(validExecutable, "child executable path available");
+        if (validExecutable) {
+            executable.resize(length);
+            const bool envReady =
+                SetEnvironmentVariableW(L"LOCUS_RESULTS_RACE_ROOT",
+                                        root.c_str()) != 0;
+            ok &= Check(envReady, "child process root configured");
+            if (envReady) {
+                PROCESS_INFORMATION workers[2]{};
+                bool launched[2]{false, false};
+                for (int i = 0; i < 2; ++i) {
+                    STARTUPINFOW startup{};
+                    startup.cb = sizeof(startup);
+                    std::wstring command = L"\"" + executable +
+                                           L"\" --race-writer";
+                    launched[i] = CreateProcessW(
+                        nullptr, command.data(), nullptr, nullptr, FALSE,
+                        CREATE_NO_WINDOW, nullptr, nullptr, &startup,
+                        &workers[i]) != 0;
+                }
+                SetEnvironmentVariableW(L"LOCUS_RESULTS_RACE_ROOT", nullptr);
+                bool passed = launched[0] && launched[1];
+                for (int i = 0; i < 2; ++i) {
+                    if (!launched[i]) continue;
+                    const DWORD waited =
+                        WaitForSingleObject(workers[i].hProcess, 30000);
+                    DWORD code = 1;
+                    if (waited != WAIT_OBJECT_0)
+                        TerminateProcess(workers[i].hProcess, 1);
+                    if (waited != WAIT_OBJECT_0 ||
+                        !GetExitCodeProcess(workers[i].hProcess, &code) ||
+                        code != 0)
+                        passed = false;
+                    CloseHandle(workers[i].hThread);
+                    CloseHandle(workers[i].hProcess);
+                }
+                const auto parallel = store.Load(
+                    {"parallel-set", "parallel.locus.json"}, error);
+                ok &= Check(passed && error.empty() &&
+                            parallel.size() == 2 &&
+                            parallel[0].id != parallel[1].id,
+                            "two independent writers preserve both completed attempts");
+            }
+        }
+    }
+#endif
 
     RunResult invalid = first;
     invalid.id.clear();
