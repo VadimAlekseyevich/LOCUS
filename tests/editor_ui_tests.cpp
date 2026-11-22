@@ -1,6 +1,8 @@
 #include "app/chart_editor_ui.h"
 #include "app/app_input.h"
 #include "core/utf8.h"
+#include "core/judgement.h"
+#include "core/chart_json.h"
 #include "app/chart_editor_layout.h"
 #include "app/editor_tempo_controls.h"
 #include "app/visual_style.h"
@@ -1066,6 +1068,33 @@ int main() {
     ApplyEditorControls(unsnapped, unsnappedUi, navigate);
     ok &= Check(!unsnappedUi.pendingExactPlacementTimeMs,
                 "ordinary navigation clears pending exact placement");
+
+    // E2E for dense events: semantic UI (Ctrl-click + native direction
+    // pad) -> current production chart v4 -> parser -> PLAY's TurnJudge.
+    // No special test-only serialization path or tick upsampling exists.
+    std::string authoredJson, authoredError;
+    LoadedChart authoredReload;
+    const bool reloaded = SerializeChartJson(
+        unsnapped.Data(), authoredJson, authoredError) &&
+        ParseChartJson(authoredJson, authoredReload, authoredError) &&
+        PrepareChartForSong(authoredReload, 4.0, authoredError);
+    ok &= Check(reloaded &&
+                authoredReload.route.turns.size() == 2 &&
+                authoredReload.route.turns[0].timeMs == 1000 &&
+                authoredReload.route.turns[1].timeMs == 1010 &&
+                authoredReload.route.turns[0].beat ==
+                    authoredReload.route.turns[1].beat,
+                "native UI authored dense pair survives save/load unchanged");
+    if (reloaded) {
+        TurnJudge playable(authoredReload.route);
+        const auto firstScore = playable.PressHeading(Heading::Up, 1.000);
+        const auto secondScore = playable.PressHeading(Heading::Right, 1.010);
+        ok &= Check(firstScore && secondScore &&
+                    firstScore->grade == Grade::Perfect &&
+                    secondScore->grade == Grade::Perfect &&
+                    playable.Counts().Resolved() == 2,
+                    "PLAY scores two independently authored 10ms-apart notes");
+    }
 
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS route_controls=1 field_heading=1 zoom=1\n";
