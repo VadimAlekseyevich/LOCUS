@@ -207,6 +207,13 @@ if(LOCUS_BUILD_TESTS)
     endif()
     # A production navigation -> judgement -> persisted-results journey,
     # without a GPU, device clock or native file dialogs.
+    # T03: timestamped physical key transitions, independent of rendered FPS.
+    add_executable(locus_direction_input_tests tests/direction_input_tests.cpp)
+    target_compile_features(locus_direction_input_tests PRIVATE cxx_std_17)
+    target_link_libraries(locus_direction_input_tests PRIVATE locus_core)
+    add_test(NAME locus_precise_direction_input_events
+             COMMAND locus_direction_input_tests)
+
     add_executable(locus_app_journey_tests
         tests/app_journey_tests.cpp
         src/app/run_results.cpp
