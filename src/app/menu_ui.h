@@ -31,12 +31,14 @@ struct SongSelectUi {
     std::string search;
     bool editingSearch = false;
     RunKey resultKey;
+    std::string resultGameplayRevision;
     std::vector<RunResult> results;
     std::uint64_t resultsRevision = 0;
     int resultScroll = 0;
     // The run history is replaced atomically on selection/load, never edited
     // per frame. This lets UI consumers detect changes in O(1) time.
-    void ReplaceResults(RunKey key, std::vector<RunResult> loaded);
+    void ReplaceResults(RunKey key, std::vector<RunResult> loaded,
+                        std::string gameplayRevision = {});
     std::string notice;
     LibraryDeletePending pendingDelete = LibraryDeletePending::None;
 

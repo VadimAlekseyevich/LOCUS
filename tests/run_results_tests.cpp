@@ -111,13 +111,25 @@ int main(int argc, char** argv) {
                 store.Load({"set-123", kEasyId}, error).size() == 3,
                 "display-title edits preserve the chart history identity");
 
+    ok &= Check(locus::app::CompareRunRevision(first, kRevision) ==
+                    locus::app::RunRevisionState::Current &&
+                locus::app::CompareRunRevision(first, "") ==
+                    locus::app::RunRevisionState::Unknown,
+                "equal revision and missing reference are distinguished");
     RunResult differentRevision = first;
     differentRevision.id.clear();
     differentRevision.gameplayRevision = "22222222222222222222222222222222";
     differentRevision.completedAtMs += 4000;
     ok &= Check(store.Save(differentRevision, error) &&
-                store.Load({"set-123", kEasyId}, error).size() == 4,
-                "changed gameplay revision remains in same difficulty history");
+                store.Load({"set-123", kEasyId}, error).size() == 4 &&
+                locus::app::CompareRunRevision(differentRevision, kRevision) ==
+                    locus::app::RunRevisionState::OlderChart,
+                "old authored revision remains visible in same difficulty history");
+    RunResult oldRules = first;
+    oldRules.judgementVersion = 2;
+    ok &= Check(locus::app::CompareRunRevision(oldRules, kRevision) ==
+                    locus::app::RunRevisionState::OlderRules,
+                "old scoring rules are shown separately from old chart content");
 
     // Deliberate corruption and abandoned .pending writes cannot create
     // phantom attempts nor prevent valid results from loading.

@@ -612,10 +612,15 @@ void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
     std::ostringstream html;
     for (std::size_t i = 0; i < ui.results.size(); ++i) {
         const auto& result = ui.results[i];
+        const auto revision = CompareRunRevision(
+            result, ui.resultGameplayRevision);
+        const char* label = revision == RunRevisionState::OlderChart
+            ? "OLD CHART · " : revision == RunRevisionState::OlderRules
+                ? "OLD RULES · " : "";
         html << "<button class='result' data-action='result' data-index='"
              << i << "'><strong>" << Accuracy(result.accuracyPercent)
              << "</strong><span class='result-date'>"
-             << Escape(FormatRunTimestamp(result.completedAtMs))
+             << label << Escape(FormatRunTimestamp(result.completedAtMs))
              << "</span><span class='result-arrow'>&gt;</span></button>";
     }
     if (ui.results.empty())

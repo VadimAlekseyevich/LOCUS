@@ -43,6 +43,21 @@ struct RunKey {
     }
 };
 
+// Increment when gameplay judgement windows, grade semantics or scoring
+// rules change. Keep historical scores visible but never mark them current.
+inline constexpr int kJudgementRulesVersion = 1;
+
+enum class RunRevisionState { Current, OlderChart, OlderRules, Unknown };
+
+inline RunRevisionState CompareRunRevision(
+        const RunResult& run, const std::string& currentGameplayRevision) noexcept {
+    if (currentGameplayRevision.empty()) return RunRevisionState::Unknown;
+    if (run.judgementVersion != kJudgementRulesVersion)
+        return RunRevisionState::OlderRules;
+    return run.gameplayRevision == currentGameplayRevision
+        ? RunRevisionState::Current : RunRevisionState::OlderChart;
+}
+
 // One JSON file per *completed* attempt, outside the Song Set and chart.
 // Disk I/O happens only on completion/selection; never per judging frame.
 class RunResultsStore {

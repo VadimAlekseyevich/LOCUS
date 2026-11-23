@@ -180,8 +180,10 @@ void KeepTreeSelectionVisible(SongSelectUi& ui, const SongLibrary& songs) {
 } // namespace
 
 void SongSelectUi::ReplaceResults(RunKey key,
-                                  std::vector<RunResult> loaded) {
+                                  std::vector<RunResult> loaded,
+                                  std::string gameplayRevision) {
     resultKey = std::move(key);
+    resultGameplayRevision = std::move(gameplayRevision);
     results = std::move(loaded);
     resultScroll = 0;
     ++resultsRevision;

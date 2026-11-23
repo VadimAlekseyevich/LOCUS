@@ -339,6 +339,11 @@ int main(int argc, char** argv) {
     // Historical scores identify their own Song Set, never the most recently
     // played chart (which may be an entirely different song).
     std::filesystem::path displayedResultBackgroundPath;
+    // A full content hash is O(chart notes). Compute only when the selected
+    // difficulty or the published library generation changes, not per frame.
+    locus::app::RunKey cachedRevisionKey;
+    std::uint64_t cachedLibraryRevision = ~std::uint64_t(0);
+    std::string selectedGameplayRevision;
     const auto currentRunKey = [&]() -> locus::app::RunKey {
         if (libraryUi.selectedSong == 0)
             return {"builtin-demo", "00000000000000000000000000000001"};
@@ -362,9 +367,26 @@ int main(int argc, char** argv) {
         const double inputNow = MonotonicSeconds();
         if (state.screen == Screen::SongSelect) {
             const auto key = currentRunKey();
-            if (key != libraryUi.resultKey) {
+            if (key != cachedRevisionKey ||
+                library.Revision() != cachedLibraryRevision) {
+                cachedRevisionKey = key;
+                cachedLibraryRevision = library.Revision();
+                selectedGameplayRevision.clear();
+                if (libraryUi.selectedSong == 0) {
+                    locus::core::LoadedChart demoSnapshot;
+                    demoSnapshot.route = demo;
+                    selectedGameplayRevision =
+                        locus::core::ChartGameplayRevision(demoSnapshot);
+                } else if (const auto* picked = libraryUi.Selected(library)) {
+                    selectedGameplayRevision =
+                        locus::core::ChartGameplayRevision(picked->data);
+                }
+            }
+            if (key != libraryUi.resultKey ||
+                selectedGameplayRevision != libraryUi.resultGameplayRevision) {
                 std::string error;
-                libraryUi.ReplaceResults(key, resultsStore.Load(key, error));
+                libraryUi.ReplaceResults(key, resultsStore.Load(key, error),
+                                         selectedGameplayRevision);
                 if (!error.empty()) libraryUi.notice = "RESULTS: " + error;
             }
         }

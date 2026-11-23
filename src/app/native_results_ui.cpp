@@ -82,9 +82,20 @@ void NativeResultsUi::Sync() {
     SetText("results-good", std::to_string(grades_->good));
     SetText("results-bad", std::to_string(grades_->bad));
     SetText("results-miss", std::to_string(grades_->miss));
-    SetText("results-practice", selected_ && selected_->practiceRate < 0.999
+    std::string detail = selected_ && selected_->practiceRate < 0.999
         ? "PRACTICE " + std::to_string(static_cast<int>(
-            selected_->practiceRate * 100 + 0.5)) + "%" : "");
+            selected_->practiceRate * 100 + 0.5)) + "%" : "";
+    if (selected_) {
+        const auto revision = CompareRunRevision(
+            *selected_, history_->resultGameplayRevision);
+        if (revision == RunRevisionState::OlderChart ||
+            revision == RunRevisionState::OlderRules) {
+            if (!detail.empty()) detail += " / ";
+            detail += revision == RunRevisionState::OlderChart
+                ? "OLDER CHART REVISION" : "OLDER JUDGEMENT RULES";
+        }
+    }
+    SetText("results-practice", detail);
     for (const char* id : {"results-retry", "results-edit"}) {
         if (auto* button = document_->GetElementById(id))
             button->SetProperty("display", historical_ ? "none" : "inline-block");
@@ -104,9 +115,13 @@ void NativeResultsUi::Sync() {
             for (std::size_t i = 0; i < history_->results.size(); ++i) {
                 const auto& run = history_->results[i];
                 if (run.id == selectedId) continue;
+                const auto revision = CompareRunRevision(
+                    run, history_->resultGameplayRevision);
                 html << "<button class='results-history-row' data-action='history'"
                      << " data-index='" << i << "'><span class='button-label'>"
                      << Escape(Percent(run.accuracyPercent)) << " / "
+                     << (revision == RunRevisionState::OlderChart ? "OLD CHART / " :
+                         revision == RunRevisionState::OlderRules ? "OLD RULES / " : "")
                      << Escape(FormatRunTimestamp(run.completedAtMs))
                      << "</span></button>";
             }
