@@ -1,4 +1,5 @@
 #include "app/library_browser.h"
+#include "app/async_library_refresh.h"
 #include "app/library_file_actions.h"
 #include "app/library_virtual_list.h"
 #include "app/library_launch_actions.h"
@@ -9,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <thread>
 
 using namespace locus::app;
 
@@ -106,6 +108,34 @@ int main() {
                 ui.selectedChart == 1 && ui.Selected(library) &&
                 ui.Selected(library)->data.title == "Hard",
                 "second import selects a different difficulty in same song");
+    // An isolated worker may finish after an editor/import has already
+    // published a newer catalog generation. The older scan must be retried,
+    // never published over the authoritative in-memory result.
+    {
+        AsyncLibraryRefresh worker;
+        std::string scanStatus;
+        const auto initialGeneration = library.Revision();
+        ok &= Check(worker.Request(library, scanStatus) && worker.Busy(),
+                    "background catalog scan starts without blocking the caller");
+        ok &= Check(library.Refresh(scanStatus) &&
+                    library.Revision() > initialGeneration,
+                    "foreground edits can advance the index during a scan");
+        ok &= Check(worker.Request(library, scanStatus),
+                    "rapid second F5 coalesces with the active worker scan");
+        auto result = AsyncLibraryRefresh::PollState::Pending;
+        const auto deadline = std::chrono::steady_clock::now() +
+            std::chrono::seconds(15);
+        while (std::chrono::steady_clock::now() < deadline) {
+            result = worker.Poll(library, scanStatus);
+            if (result == AsyncLibraryRefresh::PollState::Published ||
+                result == AsyncLibraryRefresh::PollState::Failed) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        ok &= Check(result == AsyncLibraryRefresh::PollState::Published &&
+                    library.ChartCount() == 2 && !worker.Busy(),
+                    "stale worker index is discarded and latest snapshot published");
+        worker.CancelAndJoin();
+    }
     // Virtual RML list draws a bounded number of actual buttons even for
     // thousands of rows. Prefix heights preserve 45dp Song and 42dp chart
     // layout, plus the existing 6dp RmlUi gap.
