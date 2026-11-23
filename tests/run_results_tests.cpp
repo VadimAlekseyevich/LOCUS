@@ -302,9 +302,15 @@ int main(int argc, char** argv) {
             std::ofstream(easyFolder, std::ios::binary) << "not a directory";
             std::string failure;
             const auto inaccessible = store.Load({"set-123", kEasyId}, failure);
-            ok &= Check(inaccessible.empty() &&
-                        failure.find("not an accessible directory") !=
-                            std::string::npos,
+            // Windows may diagnose a non-directory path either during
+            // exists() or during the subsequent directory probe. Both are
+            // valid errors; only an empty-success history would be wrong.
+            if (failure.empty() || !inaccessible.empty())
+                std::cerr << "RUN_RESULTS_STORAGE_DIAGNOSTIC error='"
+                          << failure << "' records=" << inaccessible.size()
+                          << " is_file=" << fs::is_regular_file(easyFolder)
+                          << '\\n';
+            ok &= Check(inaccessible.empty() && !failure.empty(),
                         "inaccessible results storage is not reported as no scores");
             fs::remove(easyFolder, ec);
             fs::rename(held, easyFolder, ec);
