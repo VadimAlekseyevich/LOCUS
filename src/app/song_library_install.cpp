@@ -55,6 +55,37 @@ void RollBackUnpublishedSet(const fs::path& audio, const fs::path& chart,
         if (ec) error += " (audio rollback failed: " + ec.message() + ")";
     }
 }
+// The folder lock protects a consistent on-disk identity namespace. Validate
+// from disk, not the possibly stale in-memory catalog (imports are rare).
+bool DifficultyIdTaken(const fs::path& folder, const std::string& id,
+                       const fs::path& except, bool& taken,
+                       std::string& error) {
+    taken = false;
+    std::error_code ec;
+    for (fs::directory_iterator it(folder, ec), end; !ec && it != end;
+         it.increment(ec)) {
+        const auto file = it->path();
+        if (file == except || file.extension() != L".json" ||
+            file.filename() == L"set.locus.json") continue;
+        if (it->is_symlink(ec) || !it->is_regular_file(ec)) {
+            if (ec) break;
+            continue;
+        }
+        core::LoadedChart peer;
+        std::wstring audio;
+        std::string ignored;
+        if (OpenChartWithAudioPath(file.wstring(), peer, audio, ignored) &&
+            peer.difficultyId == id) {
+            taken = true;
+            break;
+        }
+    }
+    if (ec) {
+        error = "Cannot enumerate Song Set difficulty identities: " + ec.message();
+        return false;
+    }
+    return true;
+}
 } // namespace
 bool SongLibrary::ImportIntoSet(const fs::path& sourceChart,
                                  const fs::path& targetSet,
@@ -143,30 +174,16 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
         core::LoadedChart installed = chart;
         // Each newly authored/duplicated difficulty gets its own identity,
         // regardless of the source draft or selected displayed title.
-        installed.difficultyId = NewDifficultyId();
         for (int attempt = 0; attempt < 8; ++attempt) {
+            installed.difficultyId = NewDifficultyId();
             bool used = false;
-            for (fs::directory_iterator it(folder, ec), end; !ec && it != end;
-                 it.increment(ec)) {
-                if (it->path().extension() != L".json" ||
-                    it->path().filename() == L"set.locus.json") continue;
-                core::LoadedChart peer;
-                std::wstring peerAudio;
-                std::string ignored;
-                if (OpenChartWithAudioPath(it->path().wstring(), peer,
-                                           peerAudio, ignored) &&
-                    peer.difficultyId == installed.difficultyId) {
-                    used = true;
-                    break;
-                }
-            }
-            if (ec) { error = "Cannot inspect existing difficulty identities."; return false; }
+            if (!DifficultyIdTaken(folder, installed.difficultyId, {},
+                                   used, error)) return false;
             if (!used) break;
             if (attempt == 7) {
                 error = "Cannot allocate a unique difficulty identity.";
                 return false;
             }
-            installed.difficultyId = NewDifficultyId();
         }
         if (!ApplySongTiming(installed, metadata.tempoMap, error)) return false;
         const fs::path audio = folder / fs::u8path(metadata.audioFile);
@@ -305,21 +322,13 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     if (ec) { error = "Cannot inspect imported difficulty destination."; return false; }
     if (source.difficultyId.empty()) source.difficultyId = NewDifficultyId();
     // One Song Set cannot contain two different files claiming one ID.
-    for (fs::directory_iterator it(folder, ec), end; !ec && it != end;
-         it.increment(ec)) {
-        if (it->path() == destinationChart ||
-            it->path().filename() == L"set.locus.json" ||
-            it->path().extension() != L".json") continue;
-        core::LoadedChart peer;
-        std::wstring peerAudio;
-        std::string ignored;
-        if (OpenChartWithAudioPath(it->path().wstring(), peer, peerAudio, ignored) &&
-            peer.difficultyId == source.difficultyId) {
-            error = "Another difficulty in the Song Set already uses this difficultyId.";
-            return false;
-        }
+    bool identityTaken = false;
+    if (!DifficultyIdTaken(folder, source.difficultyId, destinationChart,
+                           identityTaken, error)) return false;
+    if (identityTaken) {
+        error = "Another difficulty in the Song Set already uses this difficultyId.";
+        return false;
     }
-    if (ec) { error = "Cannot inspect Song Set difficulty identities."; return false; }
     if (!ApplySongTiming(source, metadata.tempoMap, error)) {
         if (!existingSet) RollBackUnpublishedSet(destinationAudio, {}, error);
         return false;
