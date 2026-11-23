@@ -3,6 +3,7 @@
 #include "song_fixture.h"
 #include "app/screen_flow.h"
 #include "core/judgement.h"
+#include "core/chart_revision.h"
 #include "core/route.h"
 
 #include <chrono>
@@ -98,9 +99,10 @@ int main() {
     const core::Chart chart = hardChart->data.route;
     core::TurnJudge judge(chart);
     const app::RunKey key{
-        selected->id, hardChart->file.filename().u8string()};
+        selected->id, hardChart->data.difficultyId};
     app::CompletedRunContext completion;
     completion.key = key;
+    completion.gameplayRevision = core::ChartGameplayRevision(hardChart->data);
     completion.songTitle = u8"Тестовая песня";
     completion.chartTitle = u8"Сложная";
     completion.practiceRate = 0.5;
@@ -165,7 +167,9 @@ int main() {
                 error.empty() && !captured.id.empty() &&
                 captured.notesJudged == static_cast<int>(judge.ScorableCount()) &&
                 captured.grades.Resolved() == captured.notesJudged &&
-                captured.practiceRate == 0.5,
+                captured.practiceRate == 0.5 &&
+                captured.difficultyId == hardChart->data.difficultyId &&
+                captured.gameplayRevision == completion.gameplayRevision,
                 "Play > final judgement persists exactly one complete attempt");
 
     nav.screen = Screen::Results;
