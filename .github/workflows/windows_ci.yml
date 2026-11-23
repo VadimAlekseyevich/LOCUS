@@ -65,6 +65,7 @@ jobs:
 
       - name: Run all registered CTest cases
         run: |
+          $env:LOCUS_SCAN_BENCHMARK_OUTPUT = Join-Path (Get-Location) "build/windows/library-scan-benchmark.csv"
           ctest --test-dir build/windows -C Release --output-on-failure --output-junit build/windows/ctest.xml |
             Tee-Object -FilePath build/windows/ctest-output.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -72,6 +73,10 @@ jobs:
           if ($testOutput -notmatch "100% tests passed") {
             throw "CTest did not confirm all tests passed"
           }
+          if (-not (Test-Path -LiteralPath $env:LOCUS_SCAN_BENCHMARK_OUTPUT)) {
+            throw "Song library stress benchmark metrics missing"
+          }
+          Get-Content -LiteralPath $env:LOCUS_SCAN_BENCHMARK_OUTPUT
 
       - name: Profile compiled route snapshots without GPU
         run: |
@@ -195,5 +200,6 @@ jobs:
             build/windows/ctest-output.txt
             build/windows/ctest.xml
             build/windows/preview-benchmark.txt
+            build/windows/library-scan-benchmark.csv
             build/windows/diagnostics.txt
             build_and_run.bat

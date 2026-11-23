@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -896,6 +897,7 @@ int main() {
                     kLargeChartCount &&
                 largeLibrary.LastRefreshStats().resolvedAudioPaths == 1 &&
                 summary.find("SKIPPED") == std::string::npos;
+            const auto coldStats = largeLibrary.LastRefreshStats();
             const auto warmStart = std::chrono::steady_clock::now();
             const bool reused = complete && largeLibrary.Refresh(summary) &&
                 largeLibrary.ChartCount() == kLargeChartCount &&
@@ -908,9 +910,30 @@ int main() {
                 return std::chrono::duration_cast<std::chrono::milliseconds>(
                     duration).count();
             };
+            const auto warmStats = largeLibrary.LastRefreshStats();
             std::cout << "SONG_SET_SCAN_SCALE charts=" << kLargeChartCount
                       << " cold_ms=" << ms(warmStart - coldStart)
                       << " warm_ms=" << ms(finish - warmStart) << '\n';
+            // Emit machine-readable CI metrics from the EXISTING integration
+            // test, without launching an expensive second 8193-file scan.
+            // Parsing and path probes are recorded alongside wall time so
+            // future scanner changes can be compared without conflating work.
+            if (const char* output = std::getenv("LOCUS_SCAN_BENCHMARK_OUTPUT")) {
+                std::ofstream csv(fs::u8path(output), std::ios::binary);
+                csv << "scenario,charts,elapsed_ms,parsed,reused,audio_resolves,ratings\n";
+                csv << "cold," << kLargeChartCount << ','
+                    << ms(warmStart - coldStart) << ','
+                    << coldStats.parsedCharts << ',' << coldStats.reusedCharts
+                    << ',' << coldStats.resolvedAudioPaths << ','
+                    << coldStats.calculatedDifficulties << '\n';
+                csv << "warm," << kLargeChartCount << ','
+                    << ms(finish - warmStart) << ','
+                    << warmStats.parsedCharts << ',' << warmStats.reusedCharts
+                    << ',' << warmStats.resolvedAudioPaths << ','
+                    << warmStats.calculatedDifficulties << '\n';
+                ok &= Check(static_cast<bool>(csv),
+                            "scan benchmark CSV saved for CI comparison");
+            }
             ok &= Check(complete && reused,
                         "8193 charts scan completely with one canonical audio probe");
         } else {
