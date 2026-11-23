@@ -16,14 +16,20 @@ bool AsyncLibraryRefresh::Start(const SongLibrary& current,
     const auto diskEpoch = current.DiskMutationEpoch();
     const auto ticket = requested_;
     auto stop = std::make_shared<std::atomic<bool>>(false);
+    // The latest *displaced* published index is an independent copy of
+    // the prior generation. Transfer ownership to the worker: only the
+    // worker may read or mutate this instance while scanning.
+    auto seed = std::move(reuseIndex_);
     try {
         worker_ = std::async(std::launch::async,
-            [root, revision, diskEpoch, ticket, stop]() -> Outcome {
+            [root, revision, diskEpoch, ticket, stop,
+             seed = std::move(seed)]() mutable -> Outcome {
                 Outcome result;
                 result.launchedRevision = revision;
                 result.launchedDiskEpoch = diskEpoch;
                 result.ticket = ticket;
-                result.index = std::make_unique<SongLibrary>(root);
+                result.index = seed && seed->Root() == root
+                    ? std::move(seed) : std::make_unique<SongLibrary>(root);
                 try {
                     result.success = result.index->Refresh(
                         result.status, stop.get());
@@ -78,15 +84,26 @@ AsyncLibraryRefresh::PollState AsyncLibraryRefresh::Poll(
     if (result.ticket != requested_ ||
         result.launchedRevision != current.Revision() ||
         result.launchedDiskEpoch != current.DiskMutationEpoch()) {
+        // Even a superseded scan may retain reusable *content*. Each
+        // subsequent Refresh fingerprints disk bytes before reusing a chart.
+        reuseIndex_ = std::move(result.index);
         if (result.ticket == requested_) ++requested_;
         return Start(current, status) ? PollState::Pending : PollState::Failed;
     }
     status = std::move(result.status);
-    if (!result.success || !result.index) return PollState::Failed;
+    if (!result.success || !result.index) {
+        // Failed/cancelled Refresh leaves its previous SongLibrary unchanged.
+        reuseIndex_ = std::move(result.index);
+        return PollState::Failed;
+    }
     if (!current.PublishScannedIndex(std::move(*result.index))) {
         status = "Library root changed during background refresh.";
         return PollState::Failed;
     }
+    // PublishScannedIndex swaps the two vectors. The worker's index now
+    // owns the *previous* main-thread snapshot, which stays valid after
+    // the UI moves to the new one. Reuse it for the next background scan.
+    reuseIndex_ = std::move(result.index);
     return PollState::Published;
 }
 
@@ -98,6 +115,7 @@ void AsyncLibraryRefresh::CancelAndJoin() noexcept {
         catch (...) {}
     }
     cancellation_.reset();
+    reuseIndex_.reset();
 }
 
 } // namespace locus::app

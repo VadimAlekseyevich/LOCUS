@@ -39,6 +39,10 @@ private:
     bool Start(const SongLibrary& current, std::string& status);
 
     std::future<Outcome> worker_;
+    // Keep the displaced, previously published index for the next worker.
+    // Its immutable chart data can be reused by file fingerprints without
+    // borrowing anything from the live main-thread library.
+    std::unique_ptr<SongLibrary> reuseIndex_;
     std::shared_ptr<std::atomic<bool>> cancellation_;
     std::uint64_t requested_ = 0;
 };

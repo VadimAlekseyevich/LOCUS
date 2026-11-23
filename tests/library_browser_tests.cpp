@@ -164,6 +164,24 @@ int main() {
         ok &= Check(result == AsyncLibraryRefresh::PollState::Published &&
                     library.ChartCount() == 2 && !worker.Busy(),
                     "stale worker index is discarded and latest snapshot published");
+        // The old *published* index was swapped out, not destroyed. A new
+        // background worker can reuse all unchanged chart content, avoiding
+        // a fresh JSON parse for every F5 on an established library.
+        ok &= Check(worker.Request(library, scanStatus),
+                    "second background scan starts with retained cache");
+        result = AsyncLibraryRefresh::PollState::Pending;
+        const auto warmDeadline = std::chrono::steady_clock::now() +
+            std::chrono::seconds(15);
+        while (std::chrono::steady_clock::now() < warmDeadline) {
+            result = worker.Poll(library, scanStatus);
+            if (result == AsyncLibraryRefresh::PollState::Published ||
+                result == AsyncLibraryRefresh::PollState::Failed) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        ok &= Check(result == AsyncLibraryRefresh::PollState::Published &&
+                    library.LastRefreshStats().reusedCharts == 2 &&
+                    library.LastRefreshStats().parsedCharts == 0,
+                    "background rescan reuses unchanged chart parses and ratings");
         worker.CancelAndJoin();
         ok &= Check(!worker.Busy(), "shutdown drains and invalidates scanner future");
         // Cancellation never discards or replaces the last published index.
