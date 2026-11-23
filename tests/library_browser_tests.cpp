@@ -109,6 +109,29 @@ int main() {
                 ui.selectedChart == 1 && ui.Selected(library) &&
                 ui.Selected(library)->data.title == "Hard",
                 "second import selects a different difficulty in same song");
+    // A selected difficulty keeps its permanent ID when its disk file is
+    // renamed outside the application. Refresh must not fall back to the
+    // difficulty at the old numeric index after resorting.
+    {
+        const auto* selected = ui.Selected(library);
+        const fs::path before = selected ? selected->file : fs::path{};
+        const std::string id = selected ? selected->data.difficultyId : "";
+        const fs::path renamed = before.parent_path() / "zz-renamed.locus.json";
+        fs::rename(before, renamed, ec);
+        const bool moved = !ec;
+        const bool followed = moved &&
+            RefreshLibraryBrowser(library, ui, menuStatus) &&
+            ui.Selected(library) && ui.Selected(library)->file == renamed &&
+            ui.Selected(library)->data.difficultyId == id;
+        ok &= Check(followed,
+                    "external filename rename retains selected difficulty by ID");
+        if (moved) {
+            fs::rename(renamed, before, ec);
+            ok &= Check(!ec && RefreshLibraryBrowser(library, ui, menuStatus) &&
+                        ui.Selected(library) && ui.Selected(library)->file == before,
+                        "renaming back preserves the same logical selected chart");
+        }
+    }
     // An isolated worker may finish after an editor/import has already
     // published a newer catalog generation. The older scan must be retried,
     // never published over the authoritative in-memory result.

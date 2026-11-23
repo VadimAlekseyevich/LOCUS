@@ -9,7 +9,14 @@ namespace locus::app {
 LibrarySelectionBookmark CaptureLibrarySelection(
     const SongLibrary& library, const SongSelectUi& ui) {
     LibrarySelectionBookmark result;
-    if (const auto* selected = ui.Selected(library)) result.file = selected->file;
+    if (const auto* selected = ui.Selected(library)) {
+        result.file = selected->file;
+        result.difficultyId = selected->data.difficultyId;
+        if (ui.selectedSong > 0 &&
+            ui.selectedSong <= static_cast<int>(library.Songs().size()))
+            result.songSetId = library.Songs()[
+                static_cast<std::size_t>(ui.selectedSong - 1)].id;
+    }
     result.song = ui.selectedSong;
     result.chart = ui.selectedChart;
     return result;
@@ -19,8 +26,25 @@ void RestoreLibrarySelection(SongLibrary& library, SongSelectUi& ui,
     const LibrarySelectionBookmark& bookmark, std::string notice,
     std::string& menuStatus) {
     int song = -1, chart = -1;
-    if (!bookmark.file.empty() &&
-        library.FindChart(bookmark.file, song, chart)) {
+    // The durable chart identity survives a real filesystem rename. Match
+    // that first; matching the old path is only a fallback for legacy drafts.
+    if (!bookmark.songSetId.empty() && !bookmark.difficultyId.empty()) {
+        for (std::size_t s = 0; s < library.Songs().size(); ++s) {
+            const auto& set = library.Songs()[s];
+            if (set.id != bookmark.songSetId) continue;
+            for (std::size_t c = 0; c < set.charts.size(); ++c) {
+                if (set.charts[c].data.difficultyId == bookmark.difficultyId) {
+                    song = static_cast<int>(s);
+                    chart = static_cast<int>(c);
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    if (song < 0 && !bookmark.file.empty())
+        library.FindChart(bookmark.file, song, chart);
+    if (song >= 0 && chart >= 0) {
         ui.SelectSong(song + 1, library);
         ui.SelectChart(chart, library);
     } else {

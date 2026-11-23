@@ -12,6 +12,8 @@ namespace locus::app {
 // Sync and background publishes preserve selection with the same contract.
 struct LibrarySelectionBookmark {
     std::filesystem::path file;
+    std::string songSetId;
+    std::string difficultyId;
     int song = 0;
     int chart = 0;
 };
