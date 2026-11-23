@@ -39,8 +39,9 @@ inline std::string ChartGameplayRevision(const LoadedChart& chart) {
     add64(static_cast<std::uint64_t>(route.start.x));
     add64(static_cast<std::uint64_t>(route.start.y));
     add64(static_cast<std::uint64_t>(route.initialHeading));
+    // Grid resolution affects route traversal; editor snap selection does not.
+    // Changing only snapping must never invalidate comparable scored attempts.
     add64(static_cast<std::uint64_t>(route.ticksPerBeat));
-    add64(static_cast<std::uint64_t>(route.snapDivision));
     addDouble(chart.previewLeadBeats);
     const auto timing = EffectiveTempoMap(route, chart.offsetSeconds);
     add64(timing.size());
