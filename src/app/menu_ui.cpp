@@ -381,7 +381,8 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
         action(LibraryResultNextButton(), "v", UiButtonVariant::Quiet);
     }
     if (total == 0) {
-        Label(font, "NO SAVED RESULTS", 28, 319, 13, faint);
+        Label(font, ui.resultsLoading ? "LOADING RESULTS..." :
+                    "NO SAVED RESULTS", 28, 319, 13, faint);
     } else {
         for (int row = 0; row < kLibraryResultVisibleRows; ++row) {
             const int index = ui.resultScroll + row;

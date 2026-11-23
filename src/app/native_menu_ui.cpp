@@ -656,7 +656,9 @@ void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
         html << "<div class='result-spacer' style='height:"
              << window.after << "dp;flex:0 0 " << window.after << "dp'></div>";
     if (ui.results.empty())
-        html << "<div class='empty'>NO SAVED RESULTS</div>";
+        html << "<div class='empty'>"
+             << (ui.resultsLoading ? "LOADING RESULTS..." : "NO SAVED RESULTS")
+             << "</div>";
     rows->SetInnerRML(html.str());
     if (scroll) scroll->SetScrollTop(oldScroll);
     resultFirst_ = window.first;

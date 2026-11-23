@@ -1,11 +1,14 @@
 #include "app/run_results.h"
+#include "app/async_result_history.h"
 
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
+#include <thread>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -241,6 +244,40 @@ int main(int argc, char** argv) {
                 variableHistory.front().variablePracticeRate &&
                 variableHistory.front().practiceRate == 1.0,
                 "mixed-rate run remains distinguishable after returning to 100%");
+
+    // History loads on a worker and only the latest selected difficulty may
+    // publish. Repeated requests must cancel/discard earlier results.
+    {
+        locus::app::AsyncResultHistory reader(root / "Results");
+        std::string status;
+        const RunKey easyKey{"set-123", kEasyId};
+        const RunKey hardKey{"set-123", kHardId};
+        ok &= Check(reader.Request(easyKey, status) && reader.Busy() &&
+                    reader.Request(hardKey, status),
+                    "background history reader accepts latest selection while busy");
+        std::vector<RunResult> loaded;
+        auto outcome = locus::app::AsyncResultHistory::PollState::Pending;
+        const auto deadline = std::chrono::steady_clock::now() +
+            std::chrono::seconds(15);
+        while (std::chrono::steady_clock::now() < deadline) {
+            outcome = reader.Poll(hardKey, loaded, status);
+            if (outcome == locus::app::AsyncResultHistory::PollState::Ready ||
+                outcome == locus::app::AsyncResultHistory::PollState::Failed)
+                break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        ok &= Check(outcome == locus::app::AsyncResultHistory::PollState::Ready &&
+                    loaded.size() == 1 &&
+                    loaded.front().difficultyId == kHardId &&
+                    !reader.Busy(),
+                    "stale history never leaks into newly selected difficulty");
+        std::atomic<bool> stop{true};
+        std::string cancelled;
+        ok &= Check(store.Load(easyKey, cancelled, &stop).empty() &&
+                    cancelled.find("cancelled") != std::string::npos,
+                    "cancelled history read does not publish partial attempts");
+        reader.CancelAndJoin();
+    }
 
     RunResult invalid = first;
     invalid.id.clear();

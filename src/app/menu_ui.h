@@ -47,6 +47,7 @@ struct SongSelectUi {
     RunKey resultKey;
     std::string resultGameplayRevision;
     std::vector<RunResult> results;
+    bool resultsLoading = false;
     std::uint64_t resultsRevision = 0;
     int resultScroll = 0;
     // The run history is replaced atomically on selection/load, never edited

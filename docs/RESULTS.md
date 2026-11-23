@@ -46,7 +46,7 @@ Difficulty history is keyed by **Song Set ID + permanent 128-bit difficultyId**,
 
 **Pre-release breaking change:** v1 result records, keyed by the former filename scheme, are not loaded by v2 and stay on disk. There is no automatic migration, since filename-keyed history has no reliable way to associate renamed files. Result JSON `version` is now 2.
 
-Writes use exclusive temporary files, flushed before atomic no-clobber publication. Loading validates ranges and identifiers, ignores incomplete `.pending` files and malformed JSON files, and sorts the remaining attempts newest-first. Disk reads happen on library-selection changes, writes happen only on completion, never on the judgement hot path.
+Writes use exclusive temporary files, flushed before atomic no-clobber publication. History reads on the Song Select screen run on a background worker with cancellation; rapid difficulty switching cannot publish stale results into a newly selected chart. UI shows `LOADING RESULTS...` until the selected key is loaded. Loading validates ranges and identifiers, ignores incomplete `.pending` files and malformed JSON files, and sorts the remaining attempts newest-first. Disk reads happen on library-selection changes, writes happen only on completion, never on the judgement hot path.
 
 ## Native SET metadata
 

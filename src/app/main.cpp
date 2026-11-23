@@ -34,6 +34,7 @@
 #include "app/gameplay_ui.h"
 #include "app/song_library.h"
 #include "app/async_library_refresh.h"
+#include "app/async_result_history.h"
 #include "app/song_set_storage.h"
 #ifdef LOCUS_WITH_RMLUI
 #include "app/native_menu_ui.h"
@@ -332,6 +333,7 @@ int main(int argc, char** argv) {
     std::filesystem::path playedChartPath;
     std::filesystem::path playedBackgroundPath;
     const locus::app::RunResultsStore resultsStore(userData / L"Results");
+    locus::app::AsyncResultHistory historyReader(userData / L"Results");
     locus::app::RunKey playedRunKey;
     std::string playedGameplayRevision;
     std::string playedSongTitle = "BUILT-IN DEMO";
@@ -401,10 +403,29 @@ int main(int argc, char** argv) {
             }
             if (key != libraryUi.resultKey ||
                 selectedGameplayRevision != libraryUi.resultGameplayRevision) {
-                std::string error;
-                libraryUi.ReplaceResults(key, resultsStore.Load(key, error),
+                libraryUi.ReplaceResults(key, {}, selectedGameplayRevision);
+                libraryUi.resultsLoading = false;
+                if (!key.Empty()) {
+                    std::string startError;
+                    libraryUi.resultsLoading = historyReader.Request(
+                        key, startError);
+                    if (!libraryUi.resultsLoading)
+                        libraryUi.notice = "RESULTS: " + startError;
+                }
+            }
+            std::vector<locus::app::RunResult> loaded;
+            std::string historyError;
+            const auto historyState = historyReader.Poll(
+                key, loaded, historyError);
+            if (historyState == locus::app::AsyncResultHistory::PollState::Ready) {
+                libraryUi.ReplaceResults(key, std::move(loaded),
                                          selectedGameplayRevision);
-                if (!error.empty()) libraryUi.notice = "RESULTS: " + error;
+                libraryUi.resultsLoading = false;
+            } else if (historyState ==
+                       locus::app::AsyncResultHistory::PollState::Failed) {
+                libraryUi.ReplaceResults(key, {}, selectedGameplayRevision);
+                libraryUi.resultsLoading = false;
+                libraryUi.notice = "RESULTS: " + historyError;
             }
         }
 #ifdef LOCUS_WITH_RMLUI
@@ -1140,6 +1161,7 @@ int main(int argc, char** argv) {
                     );
     }
 
+    historyReader.CancelAndJoin(); // Both readers finish before teardown.
     libraryRefresh.CancelAndJoin(); // No worker survives application teardown.
     persistHotkeySkin(); // Flush pending adjustments on exit.
     // Both borrowed streams must unload BEFORE closing the shared device.
