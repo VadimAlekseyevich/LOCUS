@@ -84,9 +84,12 @@ AsyncLibraryRefresh::PollState AsyncLibraryRefresh::Poll(
     if (result.ticket != requested_ ||
         result.launchedRevision != current.Revision() ||
         result.launchedDiskEpoch != current.DiskMutationEpoch()) {
-        // Even a superseded scan may retain reusable *content*. Each
-        // subsequent Refresh fingerprints disk bytes before reusing a chart.
-        reuseIndex_ = std::move(result.index);
+        // A superseded SUCCESSFUL scan can still seed a newer worker after
+        // fingerprints are rechecked. A cancelled or failed detached scan
+        // may have moved chart note vectors out of its cache, so retaining
+        // it would incorrectly reuse empty/moved-from chart data.
+        if (result.success) reuseIndex_ = std::move(result.index);
+        else reuseIndex_.reset();
         if (result.ticket == requested_) ++requested_;
         return Start(current, status) ? PollState::Pending : PollState::Failed;
     }
