@@ -53,4 +53,26 @@ inline LibraryRowWindow VisibleLibraryRows(
     return view;
 }
 
+// Completed-run rows have uniform height (date labels never wrap).
+// The row step is measured from a live RmlUi element after layout, not
+// guessed from a CSS min-height that may include padding and borders.
+inline LibraryRowWindow VisibleResultRows(
+    std::size_t count, float scrollTop, float measuredRowStep,
+    std::size_t maxRows = 32, std::size_t overscan = 5) noexcept {
+    LibraryRowWindow view;
+    if (count == 0) return view;
+    const float step = std::isfinite(measuredRowStep) &&
+        measuredRowStep >= 5.0f ? measuredRowStep : 43.0f;
+    const float top = std::isfinite(scrollTop) ?
+        std::max(0.0f, scrollTop) : 0.0f;
+    const auto firstVisible = std::min(count - 1, static_cast<std::size_t>(
+        std::floor(top / step)));
+    view.first = firstVisible > overscan ? firstVisible - overscan : 0;
+    view.end = std::min(count, view.first + std::max(std::size_t(1), maxRows));
+    constexpr float gap = 5.0f;
+    view.before = view.first == 0 ? 0.0f : view.first * step - gap;
+    view.after = view.end == count ? 0.0f : (count - view.end) * step - gap;
+    return view;
+}
+
 } // namespace locus::app

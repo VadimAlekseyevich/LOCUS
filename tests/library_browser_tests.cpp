@@ -175,6 +175,30 @@ int main() {
                     library.ChartCount() == publishedCount,
                     "worker cannot publish scan from another library root");
     }
+    // The same bounded-window contract applies to long result histories.
+    // The layout row step is supplied by measured RmlUi geometry.
+    {
+        constexpr std::size_t total = 25000;
+        constexpr float step = 54.0f;
+        const auto first = VisibleResultRows(total, 0.0f, step);
+        const auto middle = VisibleResultRows(total, 13000.0f * step, step);
+        const auto last = VisibleResultRows(total, total * step, step);
+        const auto height = [&](const LibraryRowWindow& view) {
+            const auto elements = (view.end - view.first) +
+                (view.first > 0 ? 1 : 0) + (view.end < total ? 1 : 0);
+            const float rowHeight = step - 5.0f;
+            return (view.end - view.first) * rowHeight +
+                view.before + view.after + (elements - 1) * 5.0f;
+        };
+        ok &= Check(first.first == 0 && first.end <= 32 &&
+                    middle.first <= 13000 && middle.end > 13000 &&
+                    middle.end - middle.first <= 32 &&
+                    last.end == total && last.end - last.first <= 32 &&
+                    height(first) == total * step - 5.0f &&
+                    height(middle) == total * step - 5.0f &&
+                    height(last) == total * step - 5.0f,
+                    "25k saved results keep bounded buttons and invariant scroll height");
+    }
     // Virtual RML list draws a bounded number of actual buttons even for
     // thousands of rows. Prefix heights preserve 45dp Song and 42dp chart
     // layout, plus the existing 6dp RmlUi gap.

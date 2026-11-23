@@ -300,6 +300,8 @@ void NativeMenuUi::Shutdown() {
     treeEntries_.clear();
     treeOffsets_.clear();
     treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
+    resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
+    resultRowStep_ = 43.0f;
     lastSelectedSong_ = lastSelectedChart_ = -1;
     lastTreeChartFocused_ = false;
 }
@@ -330,6 +332,8 @@ void NativeMenuUi::Activate(Page page) {
         treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
         lastSummarySignature_.clear();
         lastResultSignature_.clear();
+        resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
+        resultRowStep_ = 43.0f;
     } else if (page == Page::Settings && settingsDocument_) {
         settingsDocument_->Show();
         settingsPresenter_.Attach(settingsDocument_);
@@ -628,8 +632,13 @@ void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
     auto* scroll = document_->GetElementById("results-scroll");
     const float oldScroll = scroll ? scroll->GetScrollTop() : 0;
     SetText("result-count", std::to_string(ui.results.size()));
+    const auto window = VisibleResultRows(
+        ui.results.size(), oldScroll, resultRowStep_);
     std::ostringstream html;
-    for (std::size_t i = 0; i < ui.results.size(); ++i) {
+    if (window.before > 0.0f)
+        html << "<div class='result-spacer' style='height:"
+             << window.before << "dp;flex:0 0 " << window.before << "dp'></div>";
+    for (std::size_t i = window.first; i < window.end; ++i) {
         const auto& result = ui.results[i];
         const auto revision = CompareRunRevision(
             result, ui.resultGameplayRevision);
@@ -643,10 +652,15 @@ void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
              << label << Escape(FormatRunTimestamp(result.completedAtMs))
              << "</span><span class='result-arrow'>&gt;</span></button>";
     }
+    if (window.after > 0.0f)
+        html << "<div class='result-spacer' style='height:"
+             << window.after << "dp;flex:0 0 " << window.after << "dp'></div>";
     if (ui.results.empty())
         html << "<div class='empty'>NO SAVED RESULTS</div>";
     rows->SetInnerRML(html.str());
     if (scroll) scroll->SetScrollTop(oldScroll);
+    resultFirst_ = window.first;
+    resultEnd_ = window.end;
 }
 
 void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
@@ -714,9 +728,33 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
     }
     const std::string history = std::to_string(ui.resultsRevision);
     if (history != lastResultSignature_) {
-        RebuildResults(ui);
+        resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
+        resultRowStep_ = 43.0f;
         lastResultSignature_ = history;
     }
+    // Infer the real height from RmlUi layout after the previous frame.
+    // Padding/borders can change at high DPI; a fixed CSS assumption would
+    // make virtual spacers shift when scrolling thousands of attempts.
+    if (auto* list = document_->GetElementById("results-list")) {
+        for (int i = 0; i < list->GetNumChildren(); ++i) {
+            auto* child = list->GetChild(i);
+            if (child && child->IsClassSet("result") &&
+                child->GetOffsetHeight() > 0.0f) {
+                const float step = child->GetOffsetHeight() + 5.0f;
+                if (std::abs(step - resultRowStep_) > 0.5f) {
+                    resultRowStep_ = step;
+                    resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
+                }
+                break;
+            }
+        }
+    }
+    auto* historyScroll = document_->GetElementById("results-scroll");
+    const auto visible = VisibleResultRows(ui.results.size(),
+        historyScroll ? historyScroll->GetScrollTop() : 0.0f,
+        resultRowStep_);
+    if (visible.first != resultFirst_ || visible.end != resultEnd_)
+        RebuildResults(ui);
 }
 
 void NativeMenuUi::PumpInput(bool dispatchKeyboard) {

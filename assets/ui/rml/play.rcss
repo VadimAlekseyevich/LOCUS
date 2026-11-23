@@ -48,13 +48,15 @@
 #results-scroll { flex:1; min-height:0; overflow-y:auto; }
 #results-list { display:flex; flex-direction:column; gap:5dp;
   padding:2dp 0 7dp; }
+.result-spacer { flex-shrink:0; width:1dp; }
 .result { display:flex; flex-direction:row; align-items:center;
   width:100%; min-height:38dp; padding:7dp 9dp; gap:8dp;
   text-align:left; font-size:12dp; border:1dp #545a79;
   background-color:#343a57; }
 .result:hover { border-color:#b5a4f3; background-color:#484c73; }
 .result strong { color:#d0c7fa; font-size:15dp; min-width:78dp; }
-.result .result-date { flex:1; min-width:0; font-size:10dp; color:#c2c5d7; }
+.result .result-date { flex:1; min-width:0; font-size:10dp; color:#c2c5d7;
+  overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .result .result-arrow { color:#a2d8ee; font-size:18dp; }
 #notice { display:block; color:#ecc3d1; padding:0 12dp;
   font-size:11dp; }

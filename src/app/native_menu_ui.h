@@ -120,6 +120,9 @@ private:
     int lastSelectedSong_ = -1;
     int lastSelectedChart_ = -1;
     bool lastTreeChartFocused_ = false;
+    std::size_t resultFirst_ = static_cast<std::size_t>(-1);
+    std::size_t resultEnd_ = static_cast<std::size_t>(-1);
+    float resultRowStep_ = 43.0f;
 };
 
 } // namespace locus::app
