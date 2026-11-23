@@ -698,7 +698,7 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
             }
         }
     }
-    const auto* scroll = document_->GetElementById("tree-scroll");
+    auto* scroll = document_->GetElementById("tree-scroll");
     const auto window = VisibleLibraryRows(treeOffsets_,
         scroll ? scroll->GetScrollTop() : 0.0f);
     if (window.first != treeFirst_ || window.end != treeEnd_)
