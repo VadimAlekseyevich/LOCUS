@@ -33,6 +33,7 @@
 #include "app/game_session.h"
 #include "app/gameplay_ui.h"
 #include "app/song_library.h"
+#include "app/async_library_refresh.h"
 #include "app/song_set_storage.h"
 #ifdef LOCUS_WITH_RMLUI
 #include "app/native_menu_ui.h"
@@ -202,6 +203,7 @@ int main(int argc, char** argv) {
     skinUi.saved = activeSkin;
     locus::app::SongLibrary library(userData / L"Songs");
     std::string menuStatus;
+    locus::app::AsyncLibraryRefresh libraryRefresh;
     bool hotkeySkinSavePending = false;
     double hotkeySkinSaveAfter = 0.0;
     const auto persistHotkeySkin = [&]() {
@@ -213,8 +215,8 @@ int main(int argc, char** argv) {
         }
         hotkeySkinSavePending = false;
     };
-    if (!library.Refresh(menuStatus))
-        std::cerr << "LIBRARY_SCAN_FAIL " << menuStatus << '\n';
+    if (!libraryRefresh.Request(library, menuStatus))
+        std::cerr << "LIBRARY_SCAN_START_FAIL " << menuStatus << '\n';
     locus::app::SongSelectUi libraryUi;
     libraryUi.notice = menuStatus;
     if (settings.fullscreen && !locus::app::SetBorderlessDesktop(true)) {
@@ -361,6 +363,21 @@ int main(int argc, char** argv) {
     };
 
     while (state.running) {
+        // Publish the worker result only from the main thread. Any import or
+        // editor Save that advanced the catalog revision while scanning
+        // invalidates the worker snapshot and queues a fresh scan.
+        const auto bookmark = locus::app::CaptureLibrarySelection(
+            library, libraryUi);
+        std::string scanNotice;
+        const auto scanned = libraryRefresh.Poll(library, scanNotice);
+        if (scanned == locus::app::AsyncLibraryRefresh::PollState::Published) {
+            locus::app::RestoreLibrarySelection(
+                library, libraryUi, bookmark, std::move(scanNotice), menuStatus);
+        } else if (scanned == locus::app::AsyncLibraryRefresh::PollState::Failed) {
+            libraryUi.notice = "LIBRARY SCAN FAILED: " + scanNotice;
+            menuStatus = libraryUi.notice;
+            std::cerr << "LIBRARY_SCAN_FAIL " << scanNotice << '\n';
+        }
         const bool wasQuitConfirmation = state.quitConfirmation;
         const bool wasLevelExitConfirmation = state.levelExitConfirmation;
         const bool wasAnyModal = wasQuitConfirmation || wasLevelExitConfirmation;
@@ -793,8 +810,12 @@ int main(int argc, char** argv) {
 
         bool loadedNewChart = false;
         if (state.screen == Screen::SongSelect) {
-            if (menuEvents.refresh)
-                locus::app::RefreshLibraryBrowser(library, libraryUi, menuStatus);
+            if (menuEvents.refresh) {
+                std::string queued;
+                const bool accepted = libraryRefresh.Request(library, queued);
+                libraryUi.notice = accepted ? queued : "RESCAN FAILED: " + queued;
+                menuStatus = libraryUi.notice;
+            }
             if (menuEvents.import)
                 libraryFileActions.Apply(menuEvents, false, now);
             loadedNewChart = locus::app::LaunchLibrarySelection(
@@ -1119,6 +1140,7 @@ int main(int argc, char** argv) {
                     );
     }
 
+    libraryRefresh.CancelAndJoin(); // No worker survives application teardown.
     persistHotkeySkin(); // Flush pending adjustments on exit.
     // Both borrowed streams must unload BEFORE closing the shared device.
     chartPlayback.Stop();

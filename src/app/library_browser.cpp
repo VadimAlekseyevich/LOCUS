@@ -2,35 +2,48 @@
 
 #include <filesystem>
 #include <string>
+#include <utility>
 
 namespace locus::app {
+
+LibrarySelectionBookmark CaptureLibrarySelection(
+    const SongLibrary& library, const SongSelectUi& ui) {
+    LibrarySelectionBookmark result;
+    if (const auto* selected = ui.Selected(library)) result.file = selected->file;
+    result.song = ui.selectedSong;
+    result.chart = ui.selectedChart;
+    return result;
+}
+
+void RestoreLibrarySelection(SongLibrary& library, SongSelectUi& ui,
+    const LibrarySelectionBookmark& bookmark, std::string notice,
+    std::string& menuStatus) {
+    int song = -1, chart = -1;
+    if (!bookmark.file.empty() &&
+        library.FindChart(bookmark.file, song, chart)) {
+        ui.SelectSong(song + 1, library);
+        ui.SelectChart(chart, library);
+    } else {
+        ui.SelectSong(bookmark.song, library);
+        ui.SelectChart(bookmark.chart, library);
+    }
+    ui.notice = std::move(notice);
+    menuStatus = ui.notice;
+}
 
 bool RefreshLibraryBrowser(SongLibrary& library, SongSelectUi& ui,
                            std::string& menuStatus) {
     // The SongLibrary::Refresh() implementation replaces its index on
     // success. Save identity BEFORE the rescan; selected pointers are invalid
     // once the new index is published.
-    std::filesystem::path selectedFile;
-    if (const auto* selected = ui.Selected(library))
-        selectedFile = selected->file;
-    const int oldSong = ui.selectedSong;
-    const int oldChart = ui.selectedChart;
-
-    if (!library.Refresh(ui.notice)) {
-        menuStatus = ui.notice;
-        return false; // SongLibrary keeps its previous index on scan failure.
+    const auto bookmark = CaptureLibrarySelection(library, ui);
+    std::string notice;
+    if (!library.Refresh(notice)) {
+        ui.notice = notice;
+        menuStatus = notice;
+        return false;
     }
-    int song = -1, chart = -1;
-    if (!selectedFile.empty() && library.FindChart(selectedFile, song, chart)) {
-        ui.SelectSong(song + 1, library);
-        ui.SelectChart(chart, library);
-    } else {
-        // Selected difficulty was removed; clamp to a valid neighboring row.
-        // Selecting a song always resets its chart index, so restore it next.
-        ui.SelectSong(oldSong, library);
-        ui.SelectChart(oldChart, library);
-    }
-    menuStatus = ui.notice;
+    RestoreLibrarySelection(library, ui, bookmark, std::move(notice), menuStatus);
     return true;
 }
 

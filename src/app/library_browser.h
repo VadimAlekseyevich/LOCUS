@@ -9,6 +9,18 @@
 namespace locus::app {
 
 // UI-level persistence actions; Windows native file dialogs stay in main.
+// Sync and background publishes preserve selection with the same contract.
+struct LibrarySelectionBookmark {
+    std::filesystem::path file;
+    int song = 0;
+    int chart = 0;
+};
+LibrarySelectionBookmark CaptureLibrarySelection(
+    const SongLibrary& library, const SongSelectUi& ui);
+void RestoreLibrarySelection(SongLibrary& library, SongSelectUi& ui,
+    const LibrarySelectionBookmark& bookmark, std::string notice,
+    std::string& menuStatus);
+
 // The selected difficulty is preserved by chart PATH across library rescans
 // and sorting, rather than relying on positional indices that may change.
 bool RefreshLibraryBrowser(SongLibrary& library, SongSelectUi& ui,
