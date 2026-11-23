@@ -150,10 +150,11 @@ int main() {
                 expanded[2].song == 1 && expanded[2].chart == 0 &&
                 expanded[3].song == 1 && expanded[3].chart == 1,
                 "Song Library displays charts indented directly beneath selected song");
+    std::string unicodeError;
     // Search keys are normalized with full Unicode casefold and canonical
     // composition, not a hand-written ASCII-only lowercase conversion.
     ok &= Check(library.SetSongMetadata(
-                    0, u8"Ёлка", u8"Café", u8"Straße", {}, error),
+                    0, u8"Ёлка", u8"Café", u8"Straße", {}, unicodeError),
                 "fixture can update searchable UTF-8 Song Set metadata");
     ui.search = u8"ёлка";
     ok &= Check(LibraryTreeRows(library, ui).size() == 3,
@@ -165,7 +166,7 @@ int main() {
     ok &= Check(LibraryTreeRows(library, ui).size() == 3,
                 "Unicode full casefold maps German sharp-S to ss");
     ok &= Check(library.SetSongMetadata(
-                    0, "zz-song", "", "", {}, error),
+                    0, "zz-song", "", "", {}, unicodeError),
                 "search fixture restores original Song Set metadata");
     ui.search = u8"ёлка";
     ok &= Check(LibraryTreeRows(library, ui).empty(),
