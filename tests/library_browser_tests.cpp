@@ -20,10 +20,11 @@ bool Check(bool ok, const char* label) {
 }
 
 bool WriteChart(const fs::path& file, const char* title,
-                const char* audioName) {
+                const char* audioName, const char* difficultyId = nullptr) {
     std::ofstream stream(file, std::ios::binary);
-    stream << "{\"formatVersion\":4,\"title\":\"" << title
-           << "\",\"audioPath\":\"" << audioName
+    stream << "{\"formatVersion\":4,\"title\":\"" << title << "\"";
+    if (difficultyId) stream << ",\"difficultyId\":\"" << difficultyId << "\"";
+    stream << ",\"audioPath\":\"" << audioName
            << "\",\"bpm\":120,\"offsetMs\":0,\"tempoMap\":[{\"timeMs\":0,\"bpm\":120}],"
               "\"grid\":{\"width\":4,\"height\":4},"
               "\"start\":{\"x\":1,\"y\":1,\"heading\":\"r\"},"
@@ -207,7 +208,8 @@ int main() {
     earlierSet.tempoMap = {{0, 120.0}};
     std::string manifestError;
     ok &= Check(!ec && WriteAudio(earlier / "aa-song.wav") &&
-                WriteChart(earlier / "bonus.locus.json", "Bonus", "aa-song.wav") &&
+                WriteChart(earlier / "bonus.locus.json", "Bonus", "aa-song.wav",
+                            "dddddddddddddddddddddddddddddddd") &&
                 WriteNewSongSetManifest(earlier / "set.locus.json",
                                         earlierSet, manifestError),
                 "add valid managed Song Set on disk externally");
