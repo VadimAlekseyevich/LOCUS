@@ -4,6 +4,7 @@
 #include "app/chart_filename.h"
 #include "app/song_set_storage.h"
 #include "app/song_timing.h"
+#include "app/difficulty_identity.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -140,6 +141,9 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
                 : chart.route.tempoMap;
         }
         core::LoadedChart installed = chart;
+        // Each newly authored/duplicated difficulty gets its own identity,
+        // regardless of the source draft or selected displayed title.
+        installed.difficultyId = NewDifficultyId();
         if (!ApplySongTiming(installed, metadata.tempoMap, error)) return false;
         const fs::path audio = folder / fs::u8path(metadata.audioFile);
         if (!InstallSharedSongAudio(source, audio, error)) return false;
@@ -259,6 +263,39 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     const std::string difficulty = FilenamePart(actualChart.stem().u8string());
     const fs::path destinationChart = folder /
         (difficulty + "-" + HashText(actualChart) + ".locus.json");
+    // Reimporting the SAME source into its assigned path is an update, not
+    // a new difficulty. Never silently change the installed difficulty ID.
+    if (fs::exists(destinationChart, ec)) {
+        core::LoadedChart previous;
+        std::wstring previousAudio;
+        if (!OpenChartWithAudioPath(destinationChart.wstring(), previous,
+                                    previousAudio, error)) return false;
+        if (!previous.difficultyId.empty() &&
+            !source.difficultyId.empty() &&
+            previous.difficultyId != source.difficultyId) {
+            error = "Imported source has a different identity from the installed difficulty.";
+            return false;
+        }
+        source.difficultyId = previous.difficultyId;
+    }
+    if (ec) { error = "Cannot inspect imported difficulty destination."; return false; }
+    if (source.difficultyId.empty()) source.difficultyId = NewDifficultyId();
+    // One Song Set cannot contain two different files claiming one ID.
+    for (fs::directory_iterator it(folder, ec), end; !ec && it != end;
+         it.increment(ec)) {
+        if (it->path() == destinationChart ||
+            it->path().filename() == L"set.locus.json" ||
+            it->path().extension() != L".json") continue;
+        core::LoadedChart peer;
+        std::wstring peerAudio;
+        std::string ignored;
+        if (OpenChartWithAudioPath(it->path().wstring(), peer, peerAudio, ignored) &&
+            peer.difficultyId == source.difficultyId) {
+            error = "Another difficulty in the Song Set already uses this difficultyId.";
+            return false;
+        }
+    }
+    if (ec) { error = "Cannot inspect Song Set difficulty identities."; return false; }
     if (!ApplySongTiming(source, metadata.tempoMap, error)) {
         if (!existingSet) RollBackUnpublishedSet(destinationAudio, {}, error);
         return false;

@@ -118,12 +118,14 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             error = "chart: expected an object";
             return false;
         }
+        const bool hasDifficultyId = document.contains("difficultyId");
         const bool hasTicks = document.contains("ticksPerBeat");
         const bool hasSnap = document.contains("snapDivision");
         std::set<std::string> expected = {
             "formatVersion", "title", "audioPath", "bpm",
             "offsetMs", "tempoMap", "grid", "start", "previewLeadBeats", "turns"
         };
+        if (hasDifficultyId) expected.insert("difficultyId");
         if (hasTicks) expected.insert("ticksPerBeat");
         if (hasSnap) expected.insert("snapDivision");
         for (const auto& member : document.items())
@@ -147,6 +149,14 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
         if (!Text(document["title"], parsed.title, "title", error) ||
             !Text(document["audioPath"], parsed.audioPath, "audioPath", error))
             return false;
+        if (hasDifficultyId) {
+            if (!document["difficultyId"].is_string() ||
+                !ValidDifficultyId(document["difficultyId"].get<std::string>())) {
+                error = "difficultyId: expected a 32-digit lowercase hexadecimal identifier";
+                return false;
+            }
+            parsed.difficultyId = document["difficultyId"].get<std::string>();
+        }
         if (!ValidChartAudioPath(parsed.audioPath)) {
             error = "audioPath: expected a safe relative forward-slash path";
             return false;
@@ -316,6 +326,13 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
         Ordered document = Ordered::object();
         document["formatVersion"] = 4;
         document["title"] = chart.title;
+        if (!chart.difficultyId.empty()) {
+            if (!ValidDifficultyId(chart.difficultyId)) {
+                error = "difficultyId: invalid persistent identity";
+                return false;
+            }
+            document["difficultyId"] = chart.difficultyId;
+        }
         document["audioPath"] = chart.audioPath;
         document["bpm"] = chart.route.bpm;
         const auto tempo = EffectiveTempoMap(chart.route, chart.offsetSeconds);

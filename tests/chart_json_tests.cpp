@@ -81,6 +81,21 @@ int main() {
                  again.route.turns[2].direction == Heading::Left &&
                  again.route.turns[2].timeMs == 4250,
                  "round trip preserves absolute directions and music timestamps");
+    LoadedChart identified = parsed;
+    identified.difficultyId = "0123456789abcdef0123456789abcdef";
+    std::string identifiedJson;
+    LoadedChart identifiedAgain;
+    ok &= Expect(SerializeChartJson(identified, identifiedJson, error) &&
+                 ParseChartJson(identifiedJson, identifiedAgain, error) &&
+                 identifiedAgain.difficultyId == identified.difficultyId,
+                 "authored difficulty identity survives JSON round-trip");
+    identified.difficultyId = "Not-A-Valid-Difficulty-Id";
+    ok &= Expect(!SerializeChartJson(identified, identifiedJson, error),
+                 "malformed difficulty identity cannot be saved");
+    ok &= Expect(Reject(source, "\"title\": \"Absolute Directions\"",
+                       "\"difficultyId\": \"BAD\", \"title\": \"Absolute Directions\"",
+                       "difficultyId"),
+                 "malformed difficulty identity cannot be loaded");
     LoadedChart localized = parsed;
     localized.title = u8"Сложность: Ёжик, Café 日本語 🎵";
     std::string localizedJson;

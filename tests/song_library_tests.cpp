@@ -183,6 +183,11 @@ int main() {
                 library.Songs()[0].charts[0].data.title == "Easy" &&
                 library.Songs()[0].charts[1].data.title == "Hard",
                 "two difficulties are grouped in one Song Set");
+    const auto easyId = library.Songs()[0].charts[0].data.difficultyId;
+    const auto hardId = library.Songs()[0].charts[1].data.difficultyId;
+    ok &= Check(locus::core::ValidDifficultyId(easyId) &&
+                locus::core::ValidDifficultyId(hardId) && easyId != hardId,
+                "installed difficulties receive distinct persistent identities");
     ok &= Check(library.Revision() == 4,
                 "successful imports each advance the library revision");
     const fs::path sharedAudio = library.Songs()[0].audioFile;
@@ -375,7 +380,8 @@ int main() {
 
     fs::path repeated;
     ok &= Check(library.Import(easy, repeated, error) &&
-                repeated == easyInstalled && library.ChartCount() == 2,
+                repeated == easyInstalled && library.ChartCount() == 2 &&
+                library.Songs()[0].charts[0].data.difficultyId == easyId,
                 "repeated import updates same difficulty instead of duplicating");
 
     // A change to source audio must NOT silently replace bytes referenced
@@ -403,7 +409,13 @@ int main() {
     ok &= Check(library.DuplicateDifficulty(easyInstalled, duplicate, error) &&
                 library.ChartCount() == 4 &&
                 duplicate != easyInstalled &&
-                Read(duplicate).find("Easy Copy") != std::string::npos,
+                Read(duplicate).find("Easy Copy") != std::string::npos &&
+                std::none_of(library.Songs()[0].charts.begin(),
+                             library.Songs()[0].charts.end(),
+                             [&](const LibraryChart& candidate) {
+                                 return candidate.file == duplicate &&
+                                     candidate.data.difficultyId == easyId;
+                             }),
                 "duplicate difficulty uses shared audio and a separate JSON");
 
     const auto beforeArtworkBytes = Read(easyInstalled);

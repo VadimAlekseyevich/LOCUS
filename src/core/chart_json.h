@@ -12,10 +12,23 @@ namespace locus::core {
 struct LoadedChart {
     Chart route;
     std::string title;
+    // Persistent identity for one authored difficulty; never derived from the
+    // filename, title or note content. Blank only in external/unsaved drafts.
+    std::string difficultyId;
     std::string audioPath;
     double offsetSeconds = 0.0;
     double previewLeadBeats = 4.0;
 };
+
+// 128-bit lowercase hexadecimal identifier, generated when a difficulty is
+// first installed. The parser and all persistence boundaries share this rule.
+inline bool ValidDifficultyId(std::string_view id) noexcept {
+    if (id.size() != 32) return false;
+    for (char c : id)
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
+            return false;
+    return true;
+}
 
 // No filesystem or audio device required. Reject malformed/duplicate/unknown
 // members instead of changing authored beat positions or directions.
