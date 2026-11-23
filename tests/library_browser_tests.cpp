@@ -79,8 +79,8 @@ int main() {
     SongSelectUi ui;
     // Native results UI observes a single revision rather than hashing
     // an unbounded number of run records every frame.
-    const RunKey firstRunKey{"first-set", "easy.locus.json"};
-    const RunKey secondRunKey{"other-set", "hard.locus.json"};
+    const RunKey firstRunKey{"first-set", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
+    const RunKey secondRunKey{"other-set", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"};
     ui.resultScroll = 4;
     ui.ReplaceResults(firstRunKey, {});
     ok &= Check(ui.resultsRevision == 1 && ui.resultKey == firstRunKey &&

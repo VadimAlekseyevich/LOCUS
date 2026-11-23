@@ -15,12 +15,12 @@ int main() {
 
     RunResult saved;
     saved.songSetId = "set-second";
-    saved.difficultyFile = "Hard.json";
+    saved.difficultyId = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     if (BackgroundForSavedResult(songs, saved) != songs[1].backgroundImage) {
         std::cerr << "HISTORICAL_BACKGROUND_FAIL: last played song must not win\n";
         return 1;
     }
-    saved.difficultyFile = "deleted-difficulty.json";
+    saved.difficultyId = "cccccccccccccccccccccccccccccccc";
     if (BackgroundForSavedResult(songs, saved) != songs[1].backgroundImage) {
         std::cerr << "HISTORICAL_BACKGROUND_FAIL: art is Song Set scoped\n";
         return 1;
