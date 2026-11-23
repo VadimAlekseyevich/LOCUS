@@ -117,6 +117,9 @@ private:
     std::vector<float> treeOffsets_;
     std::size_t treeFirst_ = static_cast<std::size_t>(-1);
     std::size_t treeEnd_ = static_cast<std::size_t>(-1);
+    int lastSelectedSong_ = -1;
+    int lastSelectedChart_ = -1;
+    bool lastTreeChartFocused_ = false;
 };
 
 } // namespace locus::app

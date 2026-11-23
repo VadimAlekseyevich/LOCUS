@@ -300,6 +300,8 @@ void NativeMenuUi::Shutdown() {
     treeEntries_.clear();
     treeOffsets_.clear();
     treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
+    lastSelectedSong_ = lastSelectedChart_ = -1;
+    lastTreeChartFocused_ = false;
 }
 
 void NativeMenuUi::Activate(Page page) {
@@ -656,10 +658,45 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
          << ui.selectedChart << ':' << ui.treeChartFocused << ':'
          << ui.search;
     if (tree.str() != lastTreeSignature_) {
+        const bool selectionChanged =
+            ui.selectedSong != lastSelectedSong_ ||
+            ui.selectedChart != lastSelectedChart_ ||
+            ui.treeChartFocused != lastTreeChartFocused_;
         treeEntries_ = LibraryTreeRows(library, ui);
         treeOffsets_ = LibraryRowOffsets(treeEntries_);
         lastTreeSignature_ = tree.str();
         treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
+        lastSelectedSong_ = ui.selectedSong;
+        lastSelectedChart_ = ui.selectedChart;
+        lastTreeChartFocused_ = ui.treeChartFocused;
+        // Keyboard navigation changes the active logical row without any
+        // RmlUi-focused element necessarily existing (offscreen rows have
+        // no DOM node). Scroll the virtual viewport to the selected row.
+        if (selectionChanged) {
+            if (auto* scroll = document_->GetElementById("tree-scroll")) {
+                const auto selected = std::find_if(
+                    treeEntries_.begin(), treeEntries_.end(),
+                    [&](const LibraryTreeEntry& item) {
+                        return item.song == ui.selectedSong &&
+                            item.chart == (ui.treeChartFocused
+                                ? ui.selectedChart : -1);
+                    });
+                if (selected != treeEntries_.end() &&
+                    scroll->GetClientHeight() > 0.0f) {
+                    const auto index = static_cast<std::size_t>(
+                        selected - treeEntries_.begin());
+                    const float start = treeOffsets_[index];
+                    const float bottom = treeOffsets_[index + 1] - 6.0f;
+                    const float viewportStart = scroll->GetScrollTop();
+                    const float viewportEnd =
+                        viewportStart + scroll->GetClientHeight();
+                    if (start < viewportStart)
+                        scroll->SetScrollTop(start);
+                    else if (bottom > viewportEnd)
+                        scroll->SetScrollTop(bottom - scroll->GetClientHeight());
+                }
+            }
+        }
     }
     const auto* scroll = document_->GetElementById("tree-scroll");
     const auto window = VisibleLibraryRows(treeOffsets_,
