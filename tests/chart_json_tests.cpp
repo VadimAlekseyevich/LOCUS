@@ -100,11 +100,12 @@ int main() {
     LoadedChart equivalent = parsed;
     const auto baselineRevision = ChartGameplayRevision(parsed);
     equivalent.title = "Changed visible title";
+    equivalent.previewLeadBeats = 12.0;
     equivalent.difficultyId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     equivalent.audioPath = "other/same-audio.mp3";
     ok &= Expect(ChartGameplayRevision(equivalent) == baselineRevision &&
                  baselineRevision.size() == 32,
-                 "filename, title and persistent ID do not alter gameplay revision");
+                 "filename, title, preview lead and persistent ID do not alter gameplay revision");
     LoadedChart snapped = parsed;
     snapped.route.ticksPerBeat = 24;
     snapped.route.snapDivision = 1;

@@ -42,7 +42,8 @@ inline std::string ChartGameplayRevision(const LoadedChart& chart) {
     // Grid resolution affects route traversal; editor snap selection does not.
     // Changing only snapping must never invalidate comparable scored attempts.
     add64(static_cast<std::uint64_t>(route.ticksPerBeat));
-    addDouble(chart.previewLeadBeats);
+    // previewLeadBeats belongs to authoring/presentation only. PLAY computes
+    // its scored lead-in from first-note time, not this preview setting.
     const auto timing = EffectiveTempoMap(route, chart.offsetSeconds);
     add64(timing.size());
     for (const auto& marker : timing) {

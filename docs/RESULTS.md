@@ -39,7 +39,7 @@ v2 record fields:
 
 The score uses the game's existing weighted accuracy formula: `(100*Perfect + 75*Good + 50*Bad) / notesJudged`. Timestamps are stored as UTC Unix milliseconds and rendered as UTC.
 
-Difficulty history is keyed by **Song Set ID + permanent 128-bit difficultyId**, not its filename or display title. Each attempt also records a stable gameplay-content fingerprint and the judgement rules version so old and updated authored revisions remain distinguishable without losing history. The Library results list and historical Results page label attempts from **OLDER CHART REVISION** or **OLDER JUDGEMENT RULES**; practice speed remains explicit. Different practice rates remain separate values inside attempts. Deleted files do not automatically delete result records.
+Difficulty history is keyed by **Song Set ID + permanent 128-bit difficultyId**, not its filename or display title. Authoring-only metadata (difficulty title, editor snap, preview lead) does not change the gameplay revision. Each attempt also records a stable gameplay-content fingerprint and the judgement rules version so old and updated authored revisions remain distinguishable without losing history. The Library results list and historical Results page label attempts from **OLDER CHART REVISION** or **OLDER JUDGEMENT RULES**; practice speed remains explicit. Different practice rates remain separate values inside attempts. Deleted files do not automatically delete result records.
 
 **Pre-release breaking change:** v1 result records, keyed by the former filename scheme, are not loaded by v2 and stay on disk. There is no automatic migration, since filename-keyed history has no reliable way to associate renamed files. Result JSON `version` is now 2.
 
