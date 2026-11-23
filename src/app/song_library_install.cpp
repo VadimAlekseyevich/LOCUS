@@ -176,6 +176,11 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
         error = "Difficulty saved on disk, but library refresh failed: " + notice;
         return false;
     }
+    int indexedSong = -1, indexedChart = -1;
+    if (!FindChart(installedChart, indexedSong, indexedChart)) {
+        error = "Difficulty saved on disk, but library index omitted it: " + notice;
+        return false;
+    }
     error.clear();
     return true;
 }
@@ -274,6 +279,11 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     std::string notice;
     if (!Refresh(notice)) {
         error = "Difficulty saved on disk, but library refresh failed: " + notice;
+        return false;
+    }
+    int indexedSong = -1, indexedChart = -1;
+    if (!FindChart(installedChart, indexedSong, indexedChart)) {
+        error = "Difficulty saved on disk, but library index omitted it: " + notice;
         return false;
     }
     error.clear();

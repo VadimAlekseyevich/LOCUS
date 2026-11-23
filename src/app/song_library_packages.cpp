@@ -149,6 +149,14 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
         error = "Package installed on disk, but library refresh failed: " + notice;
         return false;
     }
+    const auto present = std::find_if(songs_.begin(), songs_.end(),
+        [&](const LibrarySong& song) {
+            return song.managed && song.folder == target;
+        });
+    if (present == songs_.end() || present->charts.empty()) {
+        error = "Package installed on disk, but library index omitted it: " + notice;
+        return false;
+    }
     error.clear();
     return true;
 }
