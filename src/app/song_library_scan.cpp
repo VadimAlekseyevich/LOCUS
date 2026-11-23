@@ -49,7 +49,6 @@ bool SongLibrary::Refresh(std::string& message) {
     // rescanning every earlier chart in a 1,000+ difficulty Song Set.
     std::map<fs::path, std::set<std::string>> difficultyIds;
     std::size_t skipped = 0;
-    std::size_t scanned = 0;
     fs::recursive_directory_iterator entry(
         root, fs::directory_options::skip_permission_denied, ec);
     const fs::recursive_directory_iterator end;
@@ -57,17 +56,22 @@ bool SongLibrary::Refresh(std::string& message) {
         message = "Cannot enumerate Songs folder: " + ec.message();
         return false;
     }
-    while (entry != end && scanned < 8192) {
+    // Never publish a truncated catalog as a successful refresh. Historical
+    // backups are not playable difficulties and should not consume scan time.
+    while (entry != end) {
         const fs::directory_entry current = *entry;
+        const fs::path path = current.path();
+        if (path.filename() == L".locus-history" &&
+            current.is_directory(ec) && !ec)
+            entry.disable_recursion_pending();
+        ec.clear();
         entry.increment(ec);
         if (ec) {
             ++skipped;
             ec.clear();
         }
-        const fs::path path = current.path();
         if (path.extension() != L".json" ||
             path.filename() == L"set.locus.json") continue;
-        ++scanned;
         if (current.is_symlink(ec) || !current.is_regular_file(ec)) {
             ++skipped;
             ec.clear();
@@ -78,20 +82,20 @@ bool SongLibrary::Refresh(std::string& message) {
         // Check the manifest before expensive chart I/O or fingerprints.
         const bool managed = fs::exists(manifestPath, ec);
         if (ec || !managed) { ++skipped; ec.clear(); continue; }
-        SongSetManifest metadata;
-        {
-            const auto manifest = manifestCache.find(manifestPath);
-            if (manifest == manifestCache.end()) {
-                std::string problem;
-                if (!LoadSongSetManifest(manifestPath, metadata, problem)) {
-                    ++skipped;
-                    continue;
-                }
-                manifestCache.emplace(manifestPath, metadata);
-            } else {
-                metadata = manifest->second;
+        // One manifest per Song Set: borrow the parsed tempo map and tags
+        // rather than copying them for each difficulty in a large pack.
+        auto manifest = manifestCache.find(manifestPath);
+        if (manifest == manifestCache.end()) {
+            SongSetManifest parsed;
+            std::string problem;
+            if (!LoadSongSetManifest(manifestPath, parsed, problem)) {
+                ++skipped;
+                continue;
             }
+            manifest = manifestCache.emplace(
+                manifestPath, std::move(parsed)).first;
         }
+        const SongSetManifest& metadata = manifest->second;
         // A filesystem metadata probe is only a cache hint. If the probe
         // fails, still try parsing the chart normally instead of losing it.
         const auto timestamp = current.last_write_time(ec);
@@ -187,13 +191,23 @@ bool SongLibrary::Refresh(std::string& message) {
         }
         next[index].charts.push_back(std::move(indexed));
     }
-    if (scanned >= 8192) ++skipped;
     for (auto& song : next) {
         SongSetManifest timing;
         std::string problem;
         if (!LoadSongSetManifest(song.folder / L"set.locus.json",
                                  timing, problem)) {
             message = "Song Set timing could not be read: " + problem;
+            return false;
+        }
+        const std::string artwork = song.backgroundImage.empty()
+            ? std::string() : song.backgroundImage.filename().u8string();
+        if (timing.id != song.id ||
+            timing.audioFile != song.audioFile.filename().u8string() ||
+            timing.title != song.title || timing.artist != song.artist ||
+            timing.mapper != song.mapper || timing.tags != song.tags ||
+            timing.previewStartMs != song.previewStartMs ||
+            timing.backgroundFile != artwork) {
+            message = "Song Set metadata changed during scan; retry refresh.";
             return false;
         }
         song.bpm = *timing.bpm;

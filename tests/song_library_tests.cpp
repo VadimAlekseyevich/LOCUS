@@ -642,6 +642,10 @@ int main() {
         if (Read(it->path()) == before) backupFound = true;
     }
     ok &= Check(!ec && backupFound, "previous chart can be recovered from backup");
+    ok &= Check(library.Refresh(note) &&
+                note.find("SKIPPED") == std::string::npos &&
+                library.ChartCount() == 4,
+                "library scan ignores recoverable history without phantom skipped charts");
 
     // Creating a NEW difficulty never turns into an overwrite if a file
     // appears at the target name between filename allocation and publication.
