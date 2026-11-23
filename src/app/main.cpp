@@ -38,6 +38,7 @@
 #include "app/native_menu_ui.h"
 #endif
 #include "app/run_results.h"
+#include "core/chart_revision.h"
 #include "app/library_browser.h"
 #include "app/library_launch_actions.h"
 #include "app/game_settings.h"
@@ -330,6 +331,7 @@ int main(int argc, char** argv) {
     std::filesystem::path playedBackgroundPath;
     const locus::app::RunResultsStore resultsStore(userData / L"Results");
     locus::app::RunKey playedRunKey;
+    std::string playedGameplayRevision;
     std::string playedSongTitle = "BUILT-IN DEMO";
     std::optional<locus::app::RunResult> displayedResult;
     bool historicalResult = false;
@@ -339,14 +341,14 @@ int main(int argc, char** argv) {
     std::filesystem::path displayedResultBackgroundPath;
     const auto currentRunKey = [&]() -> locus::app::RunKey {
         if (libraryUi.selectedSong == 0)
-            return {"builtin-demo", "original"};
+            return {"builtin-demo", "00000000000000000000000000000001"};
         const int index = libraryUi.selectedSong - 1;
         if (index < 0 || index >= static_cast<int>(library.Songs().size()))
             return {};
         const auto* chart = libraryUi.Selected(library);
         if (!chart) return {};
         return {library.Songs()[static_cast<std::size_t>(index)].id,
-                chart->file.filename().u8string()};
+                chart->data.difficultyId};
     };
     locus::app::ListenSession listener{
         localSong, loadedAudioPath, musicError,
@@ -832,7 +834,12 @@ int main(int argc, char** argv) {
                 // library selection later must not change the scored song.
                 playedChartPath.clear();
                 playedBackgroundPath.clear();
-                playedRunKey = {"builtin-demo", "original"};
+                playedRunKey = {"builtin-demo", "00000000000000000000000000000001"};
+                // Built-in demo has no authoring JSON but the same gameplay
+                // revision contract as a managed difficulty.
+                locus::core::LoadedChart demoSnapshot;
+                demoSnapshot.route = activeChart;
+                playedGameplayRevision = locus::core::ChartGameplayRevision(demoSnapshot);
                 playedSongTitle = "BUILT-IN DEMO";
                 if (customChart) {
                     if (previousScreen == Screen::Editor)
@@ -849,7 +856,9 @@ int main(int argc, char** argv) {
                             static_cast<std::size_t>(songIndex)];
                         playedBackgroundPath = song.backgroundImage;
                         playedRunKey = {song.id,
-                            playedChartPath.filename().u8string()};
+                            song.charts[static_cast<std::size_t>(difficultyIndex)].data.difficultyId};
+                        playedGameplayRevision = locus::core::ChartGameplayRevision(
+                            song.charts[static_cast<std::size_t>(difficultyIndex)].data);
                         playedSongTitle = song.title;
                     }
                 }
@@ -916,7 +925,8 @@ int main(int argc, char** argv) {
                 const locus::app::CompletedRunContext completion{
                     true, gameSession.IsEditorTest(), playCameFromEditor,
                     playedRunKey, playedSongTitle, chartTitle, judge.Counts(),
-                    judge.ScorableCount(), playActions.Transport(now).practiceSpeed
+                    judge.ScorableCount(), playActions.Transport(now).practiceSpeed,
+                    playedGameplayRevision
                 };
                 locus::app::RunResult record;
                 std::string error;

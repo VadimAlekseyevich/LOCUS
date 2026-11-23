@@ -11,12 +11,14 @@
 namespace locus::app {
 
 // Immutable summary only. No keypress events, movement or replay data.
-// Song Set identity survives pack title/artist changes. Difficulty identity
-// currently uses its installed filename; display title is never a key.
+// Both Song Set and difficulty IDs survive title and filename changes. The
+// gameplay revision marks which recorded attempts used older authored notes.
 struct RunResult {
     std::string id;
     std::string songSetId;
-    std::string difficultyFile;
+    std::string difficultyId;
+    std::string gameplayRevision;
+    int judgementVersion = 1;
     std::string songTitle;
     std::string chartTitle;
     std::int64_t completedAtMs = 0; // UTC Unix milliseconds.
@@ -28,16 +30,16 @@ struct RunResult {
 
 struct RunKey {
     std::string songSetId;
-    std::string difficultyFile;
+    std::string difficultyId;
     bool operator==(const RunKey& other) const noexcept {
         return songSetId == other.songSetId &&
-               difficultyFile == other.difficultyFile;
+               difficultyId == other.difficultyId;
     }
     bool operator!=(const RunKey& other) const noexcept {
         return !(*this == other);
     }
     bool Empty() const noexcept {
-        return songSetId.empty() || difficultyFile.empty();
+        return songSetId.empty() || difficultyId.empty();
     }
 };
 
@@ -73,6 +75,7 @@ struct CompletedRunContext {
     core::GradeCounts grades;
     std::size_t scorableCount = 0;
     double practiceRate = 1.0;
+    std::string gameplayRevision;
 };
 
 // Returns true only after a durable result is written. On ineligible calls

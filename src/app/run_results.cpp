@@ -2,6 +2,7 @@
 #include "app/atomic_text_file.h"
 
 #include "core/utf8.h"
+#include "core/chart_json.h"
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -23,7 +24,7 @@ using Json = nlohmann::json;
 // no user-controlled path segments or platform-dependent std::hash.
 std::string PathToken(const RunKey& key) {
     const std::string source = key.songSetId + std::string(1, '\0') +
-                               key.difficultyFile;
+                               key.difficultyId;
     const auto hash = [&](std::uint64_t seed) {
         std::uint64_t h = seed;
         for (unsigned char c : source) {
@@ -46,8 +47,10 @@ std::int64_t ClockMs() {
 
 Json Encode(const RunResult& r) {
     return Json{
-        {"version", 1}, {"id", r.id}, {"songSetId", r.songSetId},
-        {"difficultyFile", r.difficultyFile},
+        {"version", 2}, {"id", r.id}, {"songSetId", r.songSetId},
+        {"difficultyId", r.difficultyId},
+        {"gameplayRevision", r.gameplayRevision},
+        {"judgementVersion", r.judgementVersion},
         {"songTitle", r.songTitle}, {"chartTitle", r.chartTitle},
         {"completedAtMs", r.completedAtMs},
         {"perfect", r.grades.perfect}, {"good", r.grades.good},
@@ -60,12 +63,14 @@ Json Encode(const RunResult& r) {
 
 bool Decode(const Json& obj, RunResult& out) {
     try {
-        if (!obj.is_object() || obj.at("version").get<int>() != 1)
+        if (!obj.is_object() || obj.at("version").get<int>() != 2)
             return false;
         RunResult r;
         r.id = obj.at("id").get<std::string>();
         r.songSetId = obj.at("songSetId").get<std::string>();
-        r.difficultyFile = obj.at("difficultyFile").get<std::string>();
+        r.difficultyId = obj.at("difficultyId").get<std::string>();
+        r.gameplayRevision = obj.at("gameplayRevision").get<std::string>();
+        r.judgementVersion = obj.at("judgementVersion").get<int>();
         r.songTitle = obj.at("songTitle").get<std::string>();
         r.chartTitle = obj.at("chartTitle").get<std::string>();
         r.completedAtMs = obj.at("completedAtMs").get<std::int64_t>();
@@ -87,7 +92,9 @@ bool Decode(const Json& obj, RunResult& out) {
 
 bool ValidRunResult(const RunResult& r) noexcept {
     if (r.songSetId.empty() || r.songSetId.size() > 256 ||
-        r.difficultyFile.empty() || r.difficultyFile.size() > 512 ||
+        !core::ValidDifficultyId(r.difficultyId) ||
+        !core::ValidDifficultyId(r.gameplayRevision) ||
+        r.judgementVersion < 1 || r.judgementVersion > 1000 ||
         r.id.empty() || r.id.size() > 80 ||
         !core::utf8::ValidName(r.songTitle, 256, 1024) ||
         !core::utf8::ValidName(r.chartTitle, 256, 1024) ||
@@ -125,7 +132,8 @@ bool CaptureCompletedRun(const RunResultsStore& store,
 
     RunResult record;
     record.songSetId = completion.key.songSetId;
-    record.difficultyFile = completion.key.difficultyFile;
+    record.difficultyId = completion.key.difficultyId;
+    record.gameplayRevision = completion.gameplayRevision;
     record.songTitle = completion.songTitle;
     record.chartTitle = completion.chartTitle;
     record.grades = completion.grades;
@@ -163,7 +171,7 @@ bool RunResultsStore::Save(RunResult& r, std::string& error) const {
         return false;
     }
     std::error_code ec;
-    const fs::path dir = Directory({r.songSetId, r.difficultyFile});
+    const fs::path dir = Directory({r.songSetId, r.difficultyId});
     fs::create_directories(dir, ec);
     if (ec) {
         error = "Results directory could not be created: " + ec.message();
@@ -223,7 +231,7 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
             RunResult record;
             if (!Decode(json, record) ||
                 record.songSetId != key.songSetId ||
-                record.difficultyFile != key.difficultyFile ||
+                record.difficultyId != key.difficultyId ||
                 entry.path().stem().string() != record.id) continue;
             records.push_back(std::move(record));
         } catch (const std::exception&) {

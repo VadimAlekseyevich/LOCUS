@@ -7,6 +7,7 @@ LOCUS saves UTF-8 JSON with **formatVersion 4**. Note times are absolute whole m
 ~~~json
 {
   "formatVersion": 4,
+  "difficultyId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "title": "My Chart",
   "audioPath": "song.mp3",
   "bpm": 120,
@@ -34,6 +35,7 @@ The [working sample](../examples/first-song.locus.json) contains nine turns; sup
 | Field | Rules |
 | --- | --- |
 | `formatVersion` | **4** on save and load; older versions are rejected |
+| `difficultyId` | Optional for external drafts; installed difficulties receive a permanent 32-character lowercase hex identifier. Rename preserves it; copy/new difficulty generates a new one |
 | `title` | Valid UTF-8, no control characters, at most 1024 bytes; the editor allows 100 Unicode characters |
 | `audioPath` | Nonempty local path **relative to the chart folder**, with forward slashes only |
 | `bpm` | Finite positive musical beats per minute; first tempo marker value, overridden by a managed Song Set manifest |

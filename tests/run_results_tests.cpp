@@ -18,6 +18,11 @@ using locus::app::RunResultsStore;
 using locus::app::RunResult;
 using locus::app::RunKey;
 
+constexpr const char* kEasyId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+constexpr const char* kHardId = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+constexpr const char* kParallelId = "cccccccccccccccccccccccccccccccc";
+constexpr const char* kRevision = "11111111111111111111111111111111";
+
 bool Check(bool ok, const char* message) {
     if (!ok) std::cerr << "RUN_RESULTS_FAIL: " << message << '\n';
     return ok;
@@ -36,7 +41,8 @@ int main(int argc, char** argv) {
         RunResult run;
         run.id = "1760000000000"; // deliberately identical between processes
         run.songSetId = "parallel-set";
-        run.difficultyFile = "parallel.locus.json";
+        run.difficultyId = kParallelId;
+        run.gameplayRevision = kRevision;
         run.songTitle = "Concurrent song";
         run.chartTitle = "Concurrent chart";
         run.completedAtMs = 1760000000000LL;
@@ -61,7 +67,8 @@ int main(int argc, char** argv) {
     std::string error;
     RunResult first;
     first.songSetId = "set-123";
-    first.difficultyFile = "easy.locus.json";
+    first.difficultyId = kEasyId;
+    first.gameplayRevision = kRevision;
     first.songTitle = u8"Ночная песня";
     first.chartTitle = u8"Лёгкая";
     first.completedAtMs = 1760000000000LL;
@@ -78,7 +85,7 @@ int main(int argc, char** argv) {
     second.practiceRate = 0.75;
     ok &= Check(store.Save(second, error) && first.id != second.id,
                 "another attempt creates a separate file");
-    const auto history = store.Load({"set-123", "easy.locus.json"}, error);
+    const auto history = store.Load({"set-123", kEasyId}, error);
     ok &= Check(error.empty() && history.size() == 2 &&
                 history[0].id == second.id && history[1].id == first.id &&
                 history[0].practiceRate == 0.75 &&
@@ -88,12 +95,12 @@ int main(int argc, char** argv) {
 
     RunResult other = first;
     other.id.clear();
-    other.difficultyFile = "hard.locus.json";
+    other.difficultyId = kHardId;
     ok &= Check(store.Save(other, error) &&
-                store.Load({"set-123", "hard.locus.json"}, error).size() == 1 &&
-                store.Load({"set-123", "easy.locus.json"}, error).size() == 2 &&
-                store.Load({"different-set", "easy.locus.json"}, error).empty(),
-                "records are isolated by set identity and difficulty filename");
+                store.Load({"set-123", kHardId}, error).size() == 1 &&
+                store.Load({"set-123", kEasyId}, error).size() == 2 &&
+                store.Load({"different-set", kEasyId}, error).empty(),
+                "records are isolated by set identity and persistent difficulty ID");
 
     RunResult renamedSong = first;
     renamedSong.id.clear();
@@ -101,8 +108,16 @@ int main(int argc, char** argv) {
     renamedSong.chartTitle = "Renamed Display Title";
     renamedSong.completedAtMs += 3000;
     ok &= Check(store.Save(renamedSong, error) &&
-                store.Load({"set-123", "easy.locus.json"}, error).size() == 3,
+                store.Load({"set-123", kEasyId}, error).size() == 3,
                 "display-title edits preserve the chart history identity");
+
+    RunResult differentRevision = first;
+    differentRevision.id.clear();
+    differentRevision.gameplayRevision = "22222222222222222222222222222222";
+    differentRevision.completedAtMs += 4000;
+    ok &= Check(store.Save(differentRevision, error) &&
+                store.Load({"set-123", kEasyId}, error).size() == 4,
+                "changed gameplay revision remains in same difficulty history");
 
     // Deliberate corruption and abandoned .pending writes cannot create
     // phantom attempts nor prevent valid results from loading.
@@ -121,7 +136,7 @@ int main(int argc, char** argv) {
     if (!easyFolder.empty()) {
         std::ofstream(easyFolder / "corrupt.json") << "{ broken json";
         std::ofstream(easyFolder / "stale.pending") << "unfinished";
-        ok &= Check(store.Load({"set-123", "easy.locus.json"}, error).size() == 3,
+        ok &= Check(store.Load({"set-123", kEasyId}, error).size() == 4,
                     "corrupt and pending files are ignored independently");
     }
 
@@ -134,14 +149,14 @@ int main(int argc, char** argv) {
         std::ofstream(easyFolder / (collision.id + "-0.pending")) << "old";
     ok &= Check(store.Save(collision, error) &&
                 collision.id != first.id &&
-                store.Load({"set-123", "easy.locus.json"}, error).size() == 4,
+                store.Load({"set-123", kEasyId}, error).size() == 5,
                 "colliding completed attempt is published without overwriting old result");
     RunResult secondCollision = first;
     secondCollision.completedAtMs += 6000;
     secondCollision.id = first.id;
     ok &= Check(store.Save(secondCollision, error) &&
                 secondCollision.id != collision.id &&
-                store.Load({"set-123", "easy.locus.json"}, error).size() == 5,
+                store.Load({"set-123", kEasyId}, error).size() == 6,
                 "repeated ID gets another unique result despite stale pending files");
 
 #ifdef _WIN32
@@ -189,7 +204,7 @@ int main(int argc, char** argv) {
                     CloseHandle(workers[i].hProcess);
                 }
                 const auto parallel = store.Load(
-                    {"parallel-set", "parallel.locus.json"}, error);
+                    {"parallel-set", kParallelId}, error);
                 ok &= Check(passed && error.empty() &&
                             parallel.size() == 2 &&
                             parallel[0].id != parallel[1].id,
@@ -203,9 +218,9 @@ int main(int argc, char** argv) {
     invalid.id.clear();
     invalid.grades.miss = -1;
     const std::size_t before = store.Load(
-        {"set-123", "easy.locus.json"}, error).size();
+        {"set-123", kEasyId}, error).size();
     ok &= Check(!store.Save(invalid, error) &&
-                store.Load({"set-123", "easy.locus.json"}, error).size() == before,
+                store.Load({"set-123", kEasyId}, error).size() == before,
                 "invalid judgement counts are never written");
 
     ok &= Check(locus::app::ValidRunResult(first) &&

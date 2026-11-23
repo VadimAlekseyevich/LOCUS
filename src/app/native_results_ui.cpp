@@ -99,7 +99,7 @@ void NativeResultsUi::Sync() {
         // Do not offer results from a previously selected Song Set.
         const bool sameChart = selected_ &&
             history_->resultKey.songSetId == selected_->songSetId &&
-            history_->resultKey.difficultyFile == selected_->difficultyFile;
+            history_->resultKey.difficultyId == selected_->difficultyId;
         if (sameChart) {
             for (std::size_t i = 0; i < history_->results.size(); ++i) {
                 const auto& run = history_->results[i];

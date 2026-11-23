@@ -1,4 +1,4 @@
-# Completed Results (native v1)
+# Completed Results (native v2)
 
 Each completed LOCUS chart attempt creates **one small JSON record**. A Results file is a judgement summary, **not a replay**: it contains no key timings, button sequence, trajectory recording, video or executable replay.
 
@@ -14,14 +14,16 @@ Each completed LOCUS chart attempt creates **one small JSON record**. A Results 
 
 Stored under `%LOCALAPPDATA%/LOCUS/Results/` on Windows, **outside the Song Set**. Each chart has an opaque hashed subdirectory and one `.json` file per attempt. Other Song Set files, archived `.locuspack` files and difficulty files are not modified by the Results writer.
 
-v1 record fields:
+v2 record fields:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "id": "1760000000000-0",
   "songSetId": "stable-song-set-id",
-  "difficultyFile": "easy.locus.json",
+  "difficultyId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "gameplayRevision": "11111111111111111111111111111111",
+  "judgementVersion": 1,
   "songTitle": "Song title at completion",
   "chartTitle": "Difficulty title at completion",
   "completedAtMs": 1760000000000,
@@ -37,9 +39,11 @@ v1 record fields:
 
 The score uses the game's existing weighted accuracy formula: `(100*Perfect + 75*Good + 50*Bad) / notesJudged`. Timestamps are stored as UTC Unix milliseconds and rendered as UTC.
 
-The current pre-release difficulty identity is **Song Set ID + installed difficulty filename**. Editing the display title without renaming the file preserves results; renaming/moving the actual file changes the identity. A future persistent per-difficulty ID can remove that limitation in a pre-release format update. Deleted files do not automatically delete their old result records.
+Difficulty history is keyed by **Song Set ID + permanent 128-bit difficultyId**, not its filename or display title. Each attempt also records a stable gameplay-content fingerprint and the judgement rules version so old and updated authored revisions remain distinguishable without losing history. Different practice rates remain separate values inside attempts. Deleted files do not automatically delete result records.
 
-Writes use temporary files and same-directory atomic renames. Loading validates ranges and identifiers, ignores incomplete `.pending` files and malformed JSON files, and sorts the remaining attempts newest-first. Disk reads happen on library-selection changes, writes happen only on completion, never on the judgement hot path.
+**Pre-release breaking change:** v1 result records, keyed by the former filename scheme, are not loaded by v2 and stay on disk. There is no automatic migration, since filename-keyed history has no reliable way to associate renamed files. Result JSON `version` is now 2.
+
+Writes use exclusive temporary files, flushed before atomic no-clobber publication. Loading validates ranges and identifiers, ignores incomplete `.pending` files and malformed JSON files, and sorts the remaining attempts newest-first. Disk reads happen on library-selection changes, writes happen only on completion, never on the judgement hot path.
 
 ## Native SET metadata
 

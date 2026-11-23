@@ -15,6 +15,7 @@
 #include "app/session_transition.h"
 #include "app/song_library.h"
 #include "core/chart_editor.h"
+#include "core/chart_revision.h"
 #include "core/judgement.h"
 #include "core/route.h"
 #include "song_fixture.h"
@@ -296,11 +297,13 @@ int main() {
     judge.FinishRemainingMisses();
     app::RunResultsStore transientResults(profile.root / "Results");
     const app::RunKey testKey{
-        library.Songs().front().id, installedEasy.filename().u8string()};
+        library.Songs().front().id,
+        library.Songs().front().charts[0].data.difficultyId};
     app::CompletedRunContext finishedTest{
         true, game.IsEditorTest(), true, testKey,
         library.Songs().front().title, editor.Data().title,
-        judge.Counts(), judge.ScorableCount(), playback.Speed()
+        judge.Counts(), judge.ScorableCount(), playback.Speed(),
+        core::ChartGameplayRevision(editor.Data())
     };
     app::RunResult rejectedTest;
     ok &= Check(game.IsEditorTest() &&
@@ -549,10 +552,11 @@ int main() {
     app::RunResultsStore results(profile.root / "Results");
     app::CompletedRunContext finish{
         scoredCompleted, false, false,
-        {songs[0].id, savedB->file.filename().u8string()},
+        {songs[0].id, savedB->data.difficultyId},
         songs[0].title, savedB->data.title,
         scoredJudge.Counts(), scoredJudge.ScorableCount(),
-        scoredActions.Transport(startAt + 5.0).practiceSpeed
+        scoredActions.Transport(startAt + 5.0).practiceSpeed,
+        core::ChartGameplayRevision(savedB->data)
     };
     app::RunResult record;
     ok &= Check(app::CaptureCompletedRun(results, finish, record, error) &&
