@@ -309,7 +309,7 @@ int main(int argc, char** argv) {
                 std::cerr << "RUN_RESULTS_STORAGE_DIAGNOSTIC error='"
                           << failure << "' records=" << inaccessible.size()
                           << " is_file=" << fs::is_regular_file(easyFolder)
-                          << '\\n';
+                          << '\n';
             ok &= Check(inaccessible.empty() && !failure.empty(),
                         "inaccessible results storage is not reported as no scores");
             fs::remove(easyFolder, ec);
