@@ -105,6 +105,9 @@ int main() {
     ok &= Expect(ChartGameplayRevision(equivalent) == baselineRevision &&
                  baselineRevision.size() == 32,
                  "filename, title and persistent ID do not alter gameplay revision");
+    equivalent.route.snapDivision = 1; // The current fixture's default.
+    ok &= Expect(ChartGameplayRevision(equivalent) == baselineRevision,
+                 "editor-only snapping does not affect gameplay revision");
     equivalent.route.turns[0].direction = Heading::Down;
     ok &= Expect(ChartGameplayRevision(equivalent) != baselineRevision,
                  "judged note directions change gameplay revision");
