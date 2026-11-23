@@ -13,6 +13,7 @@
 #include <iostream>
 #include <iterator>
 #include <string>
+#include <set>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -530,6 +531,18 @@ int main() {
                     "package import rejects colliding difficulty IDs before publish");
         fs::remove(duplicateFile, ec);
         fs::remove(duplicateArchive, ec);
+    }
+    // Portable packs carry the persistent IDs of each chart, not fresh IDs
+    // derived from installed filenames or export/import destination paths.
+    {
+        std::set<std::string> originals, transferred;
+        for (const auto& difficulty : library.Songs()[0].charts)
+            originals.insert(difficulty.data.difficultyId);
+        for (const auto& difficulty : copiedLibrary.Songs()[0].charts)
+            transferred.insert(difficulty.data.difficultyId);
+        ok &= Check(originals == transferred && originals.size() == 4 &&
+                    copiedLibrary.Songs()[0].id == library.Songs()[0].id,
+                    "package transfer preserves every chart ID and parent Song Set ID");
     }
     // Package import runs library rating before audio duration is decoded.
     // Every imported difficulty (including sparse ones) must be rated.
