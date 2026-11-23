@@ -103,6 +103,10 @@ int main(int argc, char** argv) {
     other.id.clear();
     other.difficultyId = kHardId;
     ok &= Check(store.Save(other, error) &&
+                // Equal filenames are legal in different RunKey directories.
+                // Identifying the history directory by filename alone would
+                // mistake Hard for Easy and break the obstruction regression.
+                other.id == first.id &&
                 store.Load({"set-123", kHardId}, error).size() == 1 &&
                 store.Load({"set-123", kEasyId}, error).size() == 2 &&
                 store.Load({"different-set", kEasyId}, error).empty(),
