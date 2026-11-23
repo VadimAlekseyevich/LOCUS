@@ -207,7 +207,8 @@ bool RunResultsStore::Save(RunResult& r, std::string& error) const {
 }
 
 std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
-                                             std::string& error) const {
+                                             std::string& error,
+                                             const std::atomic<bool>* cancelled) const {
     std::vector<RunResult> records;
     error.clear();
     if (key.Empty()) return records;
@@ -223,6 +224,10 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
         return records;
     }
     for (const auto& entry : current) {
+        if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+            error = "History loading cancelled.";
+            return {};
+        }
         if (!entry.is_regular_file(ec) ||
             entry.path().extension() != ".json" ||
             entry.file_size(ec) > 16384 || ec) {
@@ -242,6 +247,10 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
         } catch (const std::exception&) {
             // A corrupt/partial old file never hides other completed runs.
         }
+    }
+    if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+        error = "History loading cancelled.";
+        return {};
     }
     std::sort(records.begin(), records.end(),
               [](const RunResult& a, const RunResult& b) {

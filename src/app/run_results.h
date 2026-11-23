@@ -2,6 +2,7 @@
 
 #include "core/judgement.h"
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -73,7 +74,8 @@ public:
 
     // Most recent first. Malformed files are skipped independently.
     std::vector<RunResult> Load(const RunKey& key,
-                                std::string& error) const;
+                                std::string& error,
+                                const std::atomic<bool>* cancelled = nullptr) const;
 
 private:
     std::filesystem::path Directory(const RunKey& key) const;

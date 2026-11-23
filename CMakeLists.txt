@@ -47,6 +47,7 @@ set(LOCUS_SONG_LIBRARY_SOURCES
 add_executable(locus
     src/app/main.cpp
     src/app/async_library_refresh.cpp
+    src/app/async_result_history.cpp
     src/app/app_runtime_policy.cpp
     src/app/play_screen_actions.cpp
     src/app/play_presentation.cpp
@@ -263,10 +264,12 @@ if(LOCUS_BUILD_TESTS)
     add_test(NAME locus_navigation_judgement_results_journey
              COMMAND locus_app_journey_tests)
     add_executable(locus_run_results_tests
-        tests/run_results_tests.cpp src/app/run_results.cpp)
+        tests/run_results_tests.cpp
+        src/app/run_results.cpp
+        src/app/async_result_history.cpp)
     target_compile_features(locus_run_results_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_run_results_tests PRIVATE
-        locus_core nlohmann_json::nlohmann_json)
+        locus_core nlohmann_json::nlohmann_json Threads::Threads)
     add_test(NAME locus_completed_run_history COMMAND locus_run_results_tests)
 
     add_executable(locus_results_background_tests
