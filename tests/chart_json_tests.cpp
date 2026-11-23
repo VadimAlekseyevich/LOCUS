@@ -105,8 +105,12 @@ int main() {
     ok &= Expect(ChartGameplayRevision(equivalent) == baselineRevision &&
                  baselineRevision.size() == 32,
                  "filename, title and persistent ID do not alter gameplay revision");
-    equivalent.route.snapDivision = 1; // The current fixture's default.
-    ok &= Expect(ChartGameplayRevision(equivalent) == baselineRevision,
+    LoadedChart snapped = parsed;
+    snapped.route.ticksPerBeat = 24;
+    snapped.route.snapDivision = 1;
+    const auto fineGridRevision = ChartGameplayRevision(snapped);
+    snapped.route.snapDivision = 3;
+    ok &= Expect(ChartGameplayRevision(snapped) == fineGridRevision,
                  "editor-only snapping does not affect gameplay revision");
     equivalent.route.turns[0].direction = Heading::Down;
     ok &= Expect(ChartGameplayRevision(equivalent) != baselineRevision,
