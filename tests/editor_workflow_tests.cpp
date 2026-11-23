@@ -566,5 +566,45 @@ int main() {
     ok &= Check(!app::CaptureCompletedRun(results, finish, record, error) &&
                 results.Load(finish.key, error).size() == 1,
                 "Results > historical reentry cannot duplicate completed run");
+
+    // End-to-end identity contract: PLAY saves a result, the real editor
+    // renames the difficulty (including its file), then a library restart
+    // still resolves the exact same result. Copy is a separate difficulty.
+    const std::string playedDifficultyId = finish.key.difficultyId;
+    const std::string playedRevision = finish.gameplayRevision;
+    ok &= Check(files.OpenFromLibrary(installedHard.wstring(), error) &&
+                editor.Data().difficultyId == playedDifficultyId &&
+                editor.SetTitle("Hard Renamed") &&
+                files.Save(false, now),
+                "Editor Save renames an installed chart after completed PLAY");
+    const fs::path renamedHard(chartPath);
+    const bool renamed = renamedHard != installedHard;
+    app::SongLibrary afterRename(profile.root / "Songs");
+    int renamedSong = -1, renamedChart = -1;
+    ok &= Check(renamed &&
+                afterRename.Refresh(note) &&
+                afterRename.FindChart(renamedHard, renamedSong, renamedChart) &&
+                afterRename.Songs()[static_cast<std::size_t>(renamedSong)]
+                    .charts[static_cast<std::size_t>(renamedChart)]
+                    .data.difficultyId == playedDifficultyId &&
+                core::ChartGameplayRevision(afterRename.Songs()[
+                    static_cast<std::size_t>(renamedSong)].charts[
+                    static_cast<std::size_t>(renamedChart)].data) == playedRevision &&
+                results.Load({songs[0].id, playedDifficultyId}, error).size() == 1,
+                "PLAY result survives actual chart rename and library restart");
+    if (renamed) {
+        fs::path copied;
+        int copySong = -1, copyChart = -1;
+        ok &= Check(library.DuplicateDifficulty(renamedHard, copied, error) &&
+                    library.FindChart(copied, copySong, copyChart) &&
+                    library.Songs()[static_cast<std::size_t>(copySong)].charts[
+                        static_cast<std::size_t>(copyChart)].data.difficultyId !=
+                        playedDifficultyId &&
+                    results.Load({songs[0].id,
+                        library.Songs()[static_cast<std::size_t>(copySong)].charts[
+                        static_cast<std::size_t>(copyChart)].data.difficultyId},
+                        error).empty(),
+                    "Copy difficulty receives independent identity and empty results");
+    }
     return ok ? 0 : 1;
 }
