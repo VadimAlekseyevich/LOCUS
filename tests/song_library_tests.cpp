@@ -894,13 +894,15 @@ int main() {
                 largeLibrary.Songs().size() == 1 &&
                 largeLibrary.LastRefreshStats().parsedCharts ==
                     kLargeChartCount &&
+                largeLibrary.LastRefreshStats().resolvedAudioPaths == 1 &&
                 summary.find("SKIPPED") == std::string::npos;
             const auto warmStart = std::chrono::steady_clock::now();
             const bool reused = complete && largeLibrary.Refresh(summary) &&
                 largeLibrary.ChartCount() == kLargeChartCount &&
                 largeLibrary.LastRefreshStats().reusedCharts ==
                     kLargeChartCount &&
-                largeLibrary.LastRefreshStats().parsedCharts == 0;
+                largeLibrary.LastRefreshStats().parsedCharts == 0 &&
+                largeLibrary.LastRefreshStats().resolvedAudioPaths == 1;
             const auto finish = std::chrono::steady_clock::now();
             const auto ms = [](auto duration) {
                 return std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -910,7 +912,7 @@ int main() {
                       << " cold_ms=" << ms(warmStart - coldStart)
                       << " warm_ms=" << ms(finish - warmStart) << '\n';
             ok &= Check(complete && reused,
-                        "8193 charts scan completely and reuse the warm cache");
+                        "8193 charts scan completely with one canonical audio probe");
         } else {
             ok &= Check(false, "large Song Set can create valid manifest");
         }

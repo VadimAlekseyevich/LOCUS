@@ -52,6 +52,9 @@ struct LibraryRefreshStats {
     std::size_t parsedCharts = 0;
     std::size_t reusedCharts = 0;
     std::size_t calculatedDifficulties = 0;
+    // OS canonicalization probes for shared audio during the chart walk.
+    // Should scale with distinct audio files, not difficulty count.
+    std::size_t resolvedAudioPaths = 0;
 };
 
 // On-disk Songs folders are authoritative. The index is kept in RAM and

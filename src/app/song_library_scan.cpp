@@ -57,6 +57,7 @@ bool SongLibrary::Refresh(std::string& message,
     LibraryRefreshStats stats;
     std::set<fs::path> reusedFiles;
     std::map<fs::path, SongSetManifest> manifestCache;
+    std::map<fs::path, fs::path> canonicalAudioCache;
     std::vector<LibrarySong> next;
     std::map<fs::path, std::size_t> byAudio; // Logical song, not specific revision.
     std::map<std::string, fs::path> setIdOwners;
@@ -163,7 +164,19 @@ bool SongLibrary::Refresh(std::string& message,
             indexed.indexedFileSize = bytes;
             indexed.indexedContentFingerprint = contentFingerprint;
         }
-        const fs::path audioFile = fs::canonical(indexed.audioFile, ec);
+        // A Song Set can contain thousands of charts referencing the SAME
+        // audio file. Canonicalizing it through the OS per chart dominates a
+        // warm scan; resolve each distinct source path only once. Revalidate
+        // the shared manifest audio at the end, guarding against an external
+        // symlink/junction replacement during this potentially long scan.
+        fs::path audioFile;
+        const auto resolved = canonicalAudioCache.find(indexed.audioFile);
+        if (resolved == canonicalAudioCache.end()) {
+            ++stats.resolvedAudioPaths;
+            audioFile = fs::canonical(indexed.audioFile, ec);
+        } else {
+            audioFile = resolved->second;
+        }
         if (ec || (!CanonicalChildOf(root, audioFile) &&
                    !Inside(root, audioFile))) {
             ++skipped;
@@ -171,6 +184,8 @@ bool SongLibrary::Refresh(std::string& message,
             reusedFiles.erase(path);
             continue;
         }
+        if (resolved == canonicalAudioCache.end())
+            canonicalAudioCache.emplace(indexed.audioFile, audioFile);
         indexed.audioFile = audioFile;
 
         const fs::path expected = path.parent_path() /
@@ -241,6 +256,13 @@ bool SongLibrary::Refresh(std::string& message,
             timing.previewStartMs != song.previewStartMs ||
             timing.backgroundFile != artwork) {
             message = "Song Set metadata changed during scan; retry refresh.";
+            return false;
+        }
+        const fs::path expectedAudio = song.folder / fs::u8path(timing.audioFile);
+        const fs::path currentAudio = fs::canonical(expectedAudio, ec);
+        if (ec || (currentAudio != song.audioFile &&
+                   (!fs::equivalent(currentAudio, song.audioFile, ec) || ec))) {
+            message = "Song Set audio location changed during scan; retry refresh.";
             return false;
         }
         song.bpm = *timing.bpm;
