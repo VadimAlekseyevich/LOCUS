@@ -92,6 +92,13 @@ int main() {
                 "manifestless charts are ignored before expensive parsing");
     fs::remove_all(orphan, ec);
 
+    // Never move an external file to library Trash, including through a
+    // junction or a valid-looking but lexically foreign path.
+    ok &= Check(!TrashLibraryItem(root, easy, error) &&
+                fs::exists(easy) && Read(easy).find("\"title\":\"Easy\"") !=
+                    std::string::npos,
+                "Trash rejects files outside canonical Songs boundary");
+
     // A final name may appear after a preflight existence check, including
     // across processes. The publish operation must preserve BOTH paths.
     {

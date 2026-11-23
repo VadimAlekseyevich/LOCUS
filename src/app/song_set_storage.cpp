@@ -1,5 +1,6 @@
 #include "app/song_set_storage.h"
 #include "app/atomic_move.h"
+#include "app/path_containment.h"
 #include "app/atomic_text_file.h"
 #include "core/tempo_map.h"
 #include "core/utf8.h"
@@ -424,10 +425,15 @@ bool TrashLibraryItem(const fs::path& libraryRoot,
         error = "The selected library item no longer exists.";
         return false;
     }
-    const fs::path relative = item.lexically_relative(libraryRoot);
-    if (relative.empty() || relative.is_absolute() ||
-        relative.native().rfind(L"..", 0) == 0) {
+    // Require actual canonical containment, not a textual '..' prefix.
+    // Reparse points/junctions and symlinks may resolve outside this root.
+    if (!IsPathWithinDirectory(libraryRoot, item)) {
         error = "Cannot trash an item outside the library.";
+        return false;
+    }
+    const fs::path relative = item.lexically_relative(libraryRoot);
+    if (relative.empty() || relative.is_absolute()) {
+        error = "Cannot construct a safe Trash recovery path.";
         return false;
     }
     const fs::path trash = libraryRoot.parent_path() / L"Trash";
@@ -480,9 +486,12 @@ bool RestoreLatestTrashItem(const fs::path& libraryRoot,
     std::vector<fs::path> entries;
     for (fs::directory_iterator it(trash, ec), end; !ec && it != end;
          it.increment(ec)) {
+        if (it->is_symlink(ec)) continue;
+        if (ec) break;
+        const fs::path payload = it->path() / L"payload";
         if (it->is_directory(ec) &&
             it->path().filename().wstring().rfind(L"item-", 0) == 0 &&
-            fs::exists(it->path() / L"payload", ec))
+            fs::exists(payload, ec) && !fs::is_symlink(payload, ec))
             entries.push_back(it->path());
     }
     if (ec) { error = "Cannot inspect Trash."; return false; }
@@ -510,6 +519,10 @@ bool RestoreLatestTrashItem(const fs::path& libraryRoot,
         if (ec) { error = "Cannot inspect restore destination."; return false; }
         fs::create_directories(destination.parent_path(), ec);
         if (ec) { error = "Cannot prepare restore folder."; return false; }
+        if (!IsPathWithinDirectory(libraryRoot, destination)) {
+            error = "Trash restore destination resolves outside the library.";
+            return false;
+        }
         MovePathNoReplace(entry / L"payload", destination, ec);
         if (ec) {
             error = "Cannot restore from Trash: " + ec.message();
