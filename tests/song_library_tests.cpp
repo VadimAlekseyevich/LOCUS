@@ -1,5 +1,6 @@
 #include "app/song_library.h"
 #include "app/song_set_storage.h"
+#include "app/atomic_move.h"
 #include "app/chart_file.h"
 #include "app/song_library_internal.h"
 
@@ -90,6 +91,26 @@ int main() {
                 library.LastRefreshStats().reusedCharts == 0,
                 "manifestless charts are ignored before expensive parsing");
     fs::remove_all(orphan, ec);
+
+    // A final name may appear after a preflight existence check, including
+    // across processes. The publish operation must preserve BOTH paths.
+    {
+        const fs::path stage = folder / "move-source.tmp";
+        const fs::path destination = folder / "move-destination.tmp";
+        Write(stage, "new bytes");
+        Write(destination, "other writer's bytes");
+        std::error_code moveError;
+        ok &= Check(!MovePathNoReplace(stage, destination, moveError) &&
+                    Read(stage) == "new bytes" &&
+                    Read(destination) == "other writer's bytes",
+                    "atomic no-replace refuses existing file without data loss");
+        fs::remove(destination, ec);
+        ok &= Check(MovePathNoReplace(stage, destination, moveError) &&
+                    !fs::exists(stage) &&
+                    Read(destination) == "new bytes",
+                    "atomic no-replace publishes staged file after conflict clears");
+        fs::remove(destination, ec);
+    }
 
     // Removing old-format loading must not allow a new import to silently
     // adopt an existing legacy folder or overwrite its contents.
@@ -530,6 +551,12 @@ int main() {
     ok &= Check(library.TrashDifficulty(duplicate, error) &&
                 !fs::exists(duplicate) && library.ChartCount() == 3,
                 "deleting a difficulty preserves other difficulties and audio");
+    Write(duplicate, "external writer must survive");
+    ok &= Check(!library.RestoreLastDeleted(error) &&
+                Read(duplicate) == "external writer must survive" &&
+                library.ChartCount() == 3,
+                "Trash recovery refuses to overwrite externally created chart");
+    fs::remove(duplicate, ec);
     ok &= Check(library.RestoreLastDeleted(error) &&
                 fs::exists(duplicate) && library.ChartCount() == 4,
                 "recover deleted difficulty from durable local Trash");
@@ -538,6 +565,13 @@ int main() {
     ok &= Check(library.TrashSongSet(managedFolder, error) &&
                 !fs::exists(managedFolder) && library.Songs().empty(),
                 "deleting Song Set moves entire folder to Trash");
+    fs::create_directory(managedFolder, ec);
+    Write(managedFolder / "external.txt", "foreign folder must survive");
+    ok &= Check(!library.RestoreLastDeleted(error) &&
+                Read(managedFolder / "external.txt") == "foreign folder must survive" &&
+                library.Songs().empty(),
+                "Trash recovery refuses to overwrite externally created Song Set folder");
+    fs::remove_all(managedFolder, ec);
     ok &= Check(library.RestoreLastDeleted(error) &&
                 fs::exists(managedFolder) && library.ChartCount() == 4,
                 "restore complete Song Set with all shared content");

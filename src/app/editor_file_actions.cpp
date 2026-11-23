@@ -11,6 +11,7 @@
 #include "app/song_library.h"
 #include "app/song_set_storage.h"
 #include "app/path_containment.h"
+#include "app/atomic_move.h"
 #include "core/chart_editor.h"
 #include "core/chart_json.h"
 
@@ -299,7 +300,7 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
         }
         const bool moved = destination != current;
         if (moved) {
-            std::filesystem::rename(current, destination, ec);
+            MovePathNoReplace(current, destination, ec);
             if (ec) {
                 context_.status = "SAVE FAILED: CANNOT RENAME CHART: " + ec.message();
                 return false;
@@ -311,7 +312,7 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
                              false, error, pickers_.chooseSave, true)) {
             if (moved) {
                 std::error_code rollback;
-                std::filesystem::rename(destination, current, rollback);
+                MovePathNoReplace(destination, current, rollback);
                 if (rollback) error += " (rename rollback failed: " +
                                        rollback.message() + ")";
             }

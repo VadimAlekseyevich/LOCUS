@@ -1,4 +1,5 @@
 #include "app/song_set_storage.h"
+#include "app/atomic_move.h"
 #include "app/atomic_text_file.h"
 #include "core/tempo_map.h"
 #include "core/utf8.h"
@@ -66,23 +67,9 @@ std::wstring UniqueSuffix() {
 
 bool PublishNewFile(const fs::path& staged, const fs::path& dest,
                     std::string& error) {
-#ifdef _WIN32
-    if (MoveFileExW(staged.c_str(), dest.c_str(), MOVEFILE_WRITE_THROUGH))
-        return true;
-    error = "Cannot publish the new file (Windows error " +
-            std::to_string(GetLastError()) + ").";
-#else
-    // Same-directory hard link is an atomic no-replace operation. rename()
-    // would silently overwrite a different process's shared audio on POSIX.
     std::error_code ec;
-    fs::create_hard_link(staged, dest, ec);
-    if (!ec) {
-        std::error_code cleanup;
-        fs::remove(staged, cleanup); // Destination is already committed.
-        return true;
-    }
-    error = "Cannot publish the new file: " + ec.message();
-#endif
+    if (MovePathNoReplace(staged, dest, ec)) return true;
+    error = "Cannot publish the new file without overwrite: " + ec.message();
     return false;
 }
 
@@ -476,7 +463,7 @@ bool TrashLibraryItem(const fs::path& libraryRoot,
             return false;
         }
     }
-    fs::rename(item, entry / L"payload", ec);
+    MovePathNoReplace(item, entry / L"payload", ec);
     if (ec) {
         const auto why = ec.message();
         fs::remove_all(entry, ec);
@@ -528,7 +515,7 @@ bool RestoreLatestTrashItem(const fs::path& libraryRoot,
         if (ec) { error = "Cannot inspect restore destination."; return false; }
         fs::create_directories(destination.parent_path(), ec);
         if (ec) { error = "Cannot prepare restore folder."; return false; }
-        fs::rename(entry / L"payload", destination, ec);
+        MovePathNoReplace(entry / L"payload", destination, ec);
         if (ec) {
             error = "Cannot restore from Trash: " + ec.message();
             return false;

@@ -3,6 +3,7 @@
 #include "app/song_archive.h"
 #include "app/chart_file.h"
 #include "app/song_set_storage.h"
+#include "app/atomic_move.h"
 #include "app/image_asset_file.h"
 #include <algorithm>
 #include <chrono>
@@ -135,7 +136,7 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
         error = "Song Set destination already exists; nothing was overwritten.";
         return fail();
     }
-    fs::rename(stage, target, ec);
+    MovePathNoReplace(stage, target, ec);
     if (ec) {
         error = "Cannot publish Song Set package: " + ec.message();
         return fail();
