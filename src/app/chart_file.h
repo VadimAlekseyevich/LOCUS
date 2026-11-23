@@ -19,13 +19,17 @@ bool OpenChartWithAudioPath(const std::wstring& chartFile,
                             std::wstring& absoluteAudioPath,
                             std::string& error);
 
-// Atomic on-volume Windows save: serialize, write a temporary file and
-// replace the destination only after the new bytes have been flushed.
-// Audio must lie in the selected chart folder or its descendants.
+// Replace updates an existing chart after a recoverable backup. CreateNew
+// publishes a difficulty without ever overwriting another writer's file.
+enum class ChartWriteMode { Replace, CreateNew };
+
+// Atomic on-volume Windows save. Audio must lie in the selected chart folder
+// or its descendants. An exclusive staging file is flushed before publish.
 bool SaveChartWithAudioPath(const std::wstring& chartFile,
                             const std::wstring& audioFile,
                             const core::LoadedChart& draft,
                             std::string& error,
-                            bool folderLockAlreadyHeld = false);
+                            bool folderLockAlreadyHeld = false,
+                            ChartWriteMode mode = ChartWriteMode::Replace);
 
 } // namespace locus::app

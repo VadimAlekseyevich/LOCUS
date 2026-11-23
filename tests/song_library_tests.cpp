@@ -540,6 +540,29 @@ int main() {
     }
     ok &= Check(!ec && backupFound, "previous chart can be recovered from backup");
 
+    // Creating a NEW difficulty never turns into an overwrite if a file
+    // appears at the target name between filename allocation and publication.
+    // The legacy replace path still keeps its recoverable backup separately.
+    {
+        const std::string original = Read(easyInstalled);
+        newChart.title = "Should Not Replace";
+        ok &= Check(!SaveChartWithAudioPath(
+                        easyInstalled.wstring(), sharedAudio.wstring(),
+                        newChart, error, true, ChartWriteMode::CreateNew) &&
+                    Read(easyInstalled) == original &&
+                    error.find("already exists") != std::string::npos,
+                    "create-new chart publication refuses an occupied filename");
+        const fs::path freshFile = easyInstalled.parent_path() /
+            "new-create-only.locus.json";
+        ok &= Check(SaveChartWithAudioPath(
+                        freshFile.wstring(), sharedAudio.wstring(),
+                        newChart, error, true, ChartWriteMode::CreateNew) &&
+                    fs::exists(freshFile) &&
+                    Read(freshFile).find("Should Not Replace") != std::string::npos,
+                    "create-new chart publishes a complete JSON exactly once");
+        fs::remove(freshFile, ec);
+    }
+
     // Writer lock must be exclusive across simultaneous editors/importers.
     {
         FolderWriteLock firstLock, secondLock;

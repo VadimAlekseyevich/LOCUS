@@ -1,6 +1,7 @@
 #include "app/chart_file.h"
 #include "app/song_set_storage.h"
 #include "app/path_containment.h"
+#include "app/atomic_text_file.h"
 
 #include <filesystem>
 #include <string>
@@ -18,7 +19,8 @@ bool SaveChartWithAudioPath(const std::wstring& chartFile,
                             const std::wstring& audioFile,
                             const core::LoadedChart& draft,
                             std::string& error,
-                            bool folderLockAlreadyHeld) {
+                            bool folderLockAlreadyHeld,
+                            ChartWriteMode mode) {
 #ifdef _WIN32
     namespace fs = std::filesystem;
     const fs::path destination(chartFile);
@@ -57,37 +59,20 @@ bool SaveChartWithAudioPath(const std::wstring& chartFile,
     FolderWriteLock folderLock;
     if (!folderLockAlreadyHeld && !folderLock.Acquire(folder, error))
         return false;
-    const std::wstring temporary = chartFile + L".tmp-" +
-        std::to_wstring(GetCurrentProcessId()) + L"-" +
-        std::to_wstring(GetTickCount64());
-    HANDLE handle = CreateFileW(temporary.c_str(), GENERIC_WRITE, 0,
-                                nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (handle == INVALID_HANDLE_VALUE) {
-        error = "Cannot create the temporary chart file. Check folder permissions.";
+    if (mode == ChartWriteMode::Replace &&
+        !BackUpChartBeforeReplace(destination, error))
+        return false;
+    const auto status = AtomicWriteTextFile(
+        destination, encoded,
+        mode == ChartWriteMode::CreateNew
+            ? AtomicTextWriteMode::CreateNew
+            : AtomicTextWriteMode::Replace,
+        error);
+    if (status == AtomicTextWriteStatus::AlreadyExists) {
+        error = "Chart filename already exists; another difficulty was not overwritten.";
         return false;
     }
-    DWORD count = 0;
-    const bool wrote = WriteFile(handle, encoded.data(),
-                                 static_cast<DWORD>(encoded.size()),
-                                 &count, nullptr) != 0 &&
-                       count == encoded.size() &&
-                       FlushFileBuffers(handle) != 0;
-    CloseHandle(handle);
-    if (!wrote) {
-        DeleteFileW(temporary.c_str());
-        error = "Could not finish writing the chart. Existing file was not changed.";
-        return false;
-    }
-    if (!BackUpChartBeforeReplace(destination, error)) {
-        DeleteFileW(temporary.c_str());
-        return false;
-    }
-    if (!MoveFileExW(temporary.c_str(), chartFile.c_str(),
-                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        DeleteFileW(temporary.c_str());
-        error = "Could not replace the chart file. Existing file was not changed.";
-        return false;
-    }
+    if (status != AtomicTextWriteStatus::Published) return false;
     error.clear();
     return true;
 #else
@@ -95,6 +80,7 @@ bool SaveChartWithAudioPath(const std::wstring& chartFile,
     (void)audioFile;
     (void)draft;
     (void)folderLockAlreadyHeld;
+    (void)mode;
     error = "Saving charts requires Windows.";
     return false;
 #endif

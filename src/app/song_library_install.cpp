@@ -158,7 +158,8 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
             return false;
         }
         if (!SaveChartWithAudioPath(result.wstring(), audio.wstring(),
-                                    installed, error, true)) {
+                                    installed, error, true,
+                                    ChartWriteMode::CreateNew)) {
             if (!exists) RollBackUnpublishedSet(audio, {}, error);
             return false;
         }
