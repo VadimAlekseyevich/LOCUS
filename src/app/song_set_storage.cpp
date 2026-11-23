@@ -443,25 +443,20 @@ bool TrashLibraryItem(const fs::path& libraryRoot,
          std::to_wstring(sequence.fetch_add(1)) + UniqueSuffix());
     fs::create_directory(entry, ec);
     if (ec) { error = "Cannot allocate a Trash entry."; return false; }
-    {
-        const nlohmann::json record = {
-            {"formatVersion", 1},
-            {"original", relative.generic_u8string()}
-        };
-        std::ofstream journal(entry / "origin.json", std::ios::binary);
-        if (!journal) {
-            fs::remove_all(entry, ec);
-            error = "Cannot write Trash recovery metadata.";
-            return false;
-        }
-        journal << record.dump(2) << '\n';
-        journal.flush();
-        if (!journal) {
-            journal.close();
-            fs::remove_all(entry, ec);
-            error = "Cannot finish Trash recovery metadata.";
-            return false;
-        }
+    // The recovery journal must be durable BEFORE payload is moved.
+    // A plain ofstream::flush only reaches the OS cache, not necessarily
+    // stable storage; reuse the same flushed, exclusive atomic writer.
+    const nlohmann::json record = {
+        {"formatVersion", 1},
+        {"original", relative.generic_u8string()}
+    };
+    std::string journalError;
+    if (AtomicCreateTextFile(entry / "origin.json",
+                             record.dump(2) + "\n", journalError) !=
+        AtomicTextWriteStatus::Published) {
+        fs::remove_all(entry, ec);
+        error = "Cannot persist Trash recovery metadata: " + journalError;
+        return false;
     }
     MovePathNoReplace(item, entry / L"payload", ec);
     if (ec) {
