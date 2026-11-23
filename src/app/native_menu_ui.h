@@ -2,6 +2,7 @@
 
 #include "app/rml_raylib_renderer.h"
 #include "app/menu_controller.h"
+#include "app/library_virtual_list.h"
 #include "app/native_settings_ui.h"
 #include "app/native_editor_ui.h"
 #include "app/native_results_ui.h"
@@ -9,6 +10,7 @@
 #include <RmlUi/Core/EventListener.h>
 
 #include <string>
+#include <vector>
 
 namespace Rml {
 class Context;
@@ -111,6 +113,10 @@ private:
     // gesture begun on native editor chrome, even when the pointer moves.
     bool editorChromePressActive_ = false;
     std::string lastTreeSignature_, lastResultSignature_, lastSummarySignature_;
+    std::vector<LibraryTreeEntry> treeEntries_;
+    std::vector<float> treeOffsets_;
+    std::size_t treeFirst_ = static_cast<std::size_t>(-1);
+    std::size_t treeEnd_ = static_cast<std::size_t>(-1);
 };
 
 } // namespace locus::app

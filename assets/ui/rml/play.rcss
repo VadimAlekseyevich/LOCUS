@@ -71,6 +71,7 @@
 #tree-scroll { flex:1; min-height:0; overflow-y:auto;
   padding:0 10dp 2dp; }
 #tree { display:flex; flex-direction:column; gap:6dp; }
+.tree-spacer { flex-shrink:0; width:1dp; }
 .song-row { display:flex; flex-direction:row; align-items:center;
   width:100%; min-height:45dp; height:45dp; text-align:left;
   background-color:#303750; border:1dp #535979; padding:5dp 12dp;

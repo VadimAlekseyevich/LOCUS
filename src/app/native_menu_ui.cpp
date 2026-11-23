@@ -297,6 +297,9 @@ void NativeMenuUi::Shutdown() {
     editorChromePressActive_ = false;
     currentUi_ = nullptr;
     currentLibrary_ = nullptr;
+    treeEntries_.clear();
+    treeOffsets_.clear();
+    treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
 }
 
 void NativeMenuUi::Activate(Page page) {
@@ -322,6 +325,7 @@ void NativeMenuUi::Activate(Page page) {
     } else if (page == Page::Play && document_) {
         document_->Show();
         lastTreeSignature_.clear();
+        treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
         lastSummarySignature_.clear();
         lastResultSignature_.clear();
     } else if (page == Page::Settings && settingsDocument_) {
@@ -459,7 +463,10 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
         if (auto* search = dynamic_cast<Rml::ElementFormControlInput*>(target)) {
             currentUi_->search = search->GetValue();
             currentUi_->treeScroll = 0;
-            RebuildRows(*currentLibrary_, *currentUi_);
+            if (auto* scroll = document_->GetElementById("tree-scroll"))
+                scroll->SetScrollTop(0);
+            lastTreeSignature_.clear();
+            Rebuild(*currentLibrary_, *currentUi_);
         }
         return;
     }
@@ -552,9 +559,14 @@ void NativeMenuUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
     if (!rows) return;
     auto* scroll = document_->GetElementById("tree-scroll");
     const float oldScroll = scroll ? scroll->GetScrollTop() : 0;
-    const auto entries = LibraryTreeRows(library, ui);
+    const auto view = VisibleLibraryRows(treeOffsets_,
+        scroll ? scroll->GetScrollTop() : 0.0f);
     std::ostringstream html;
-    for (const auto& item : entries) {
+    if (view.before > 0.0f)
+        html << "<div class='tree-spacer' style='height:"
+             << view.before << "dp;flex:0 0 " << view.before << "dp'></div>";
+    for (std::size_t index = view.first; index < view.end; ++index) {
+        const auto& item = treeEntries_[index];
         const bool isChart = item.chart >= 0;
         const bool active = item.song == ui.selectedSong &&
             (isChart ? ui.treeChartFocused && item.chart == ui.selectedChart
@@ -597,9 +609,14 @@ void NativeMenuUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
         }
         html << "</button>";
     }
-    if (entries.empty()) html << "<div class='empty'>NO MATCHING SONGS</div>";
+    if (view.after > 0.0f)
+        html << "<div class='tree-spacer' style='height:"
+             << view.after << "dp;flex:0 0 " << view.after << "dp'></div>";
+    if (treeEntries_.empty()) html << "<div class='empty'>NO MATCHING SONGS</div>";
     rows->SetInnerRML(html.str());
     if (scroll) scroll->SetScrollTop(oldScroll);
+    treeFirst_ = view.first;
+    treeEnd_ = view.end;
     SetText("set-count", std::to_string(library.Songs().size() + 1));
 }
 
@@ -639,9 +656,16 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
          << ui.selectedChart << ':' << ui.treeChartFocused << ':'
          << ui.search;
     if (tree.str() != lastTreeSignature_) {
-        RebuildRows(library, ui);
+        treeEntries_ = LibraryTreeRows(library, ui);
+        treeOffsets_ = LibraryRowOffsets(treeEntries_);
         lastTreeSignature_ = tree.str();
+        treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
     }
+    const auto* scroll = document_->GetElementById("tree-scroll");
+    const auto window = VisibleLibraryRows(treeOffsets_,
+        scroll ? scroll->GetScrollTop() : 0.0f);
+    if (window.first != treeFirst_ || window.end != treeEnd_)
+        RebuildRows(library, ui);
     // Status text may change without a selection/index change. Updating it
     // must never recreate all rows or drop scroll position/focus.
     std::ostringstream summary;

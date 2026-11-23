@@ -1,5 +1,6 @@
 #include "app/library_browser.h"
 #include "app/library_file_actions.h"
+#include "app/library_virtual_list.h"
 #include "app/library_launch_actions.h"
 #include "app/song_set_storage.h"
 
@@ -105,6 +106,43 @@ int main() {
                 ui.selectedChart == 1 && ui.Selected(library) &&
                 ui.Selected(library)->data.title == "Hard",
                 "second import selects a different difficulty in same song");
+    // Virtual RML list draws a bounded number of actual buttons even for
+    // thousands of rows. Prefix heights preserve 45dp Song and 42dp chart
+    // layout, plus the existing 6dp RmlUi gap.
+    {
+        std::vector<LibraryTreeEntry> synthetic(10000);
+        for (std::size_t i = 0; i < synthetic.size(); ++i)
+            synthetic[i] = {static_cast<int>(i), i % 3 ? -1 : 0};
+        const auto offsets = LibraryRowOffsets(synthetic);
+        const auto first = VisibleLibraryRows(offsets, 0.0f);
+        const auto middle = VisibleLibraryRows(offsets, offsets[5000]);
+        const auto last = VisibleLibraryRows(offsets, offsets.back());
+        ok &= Check(offsets.size() == synthetic.size() + 1 &&
+                    first.first == 0 && first.end <= 40 &&
+                    middle.first <= 5000 && middle.end > 5000 &&
+                    middle.end - middle.first <= 40 &&
+                    middle.before > 0 && middle.after > 0 &&
+                    last.first < synthetic.size() &&
+                    last.end == synthetic.size(),
+                    "RML browser bounds live rows independent of collection size");
+        const auto height = [&](const LibraryRowWindow& view) {
+            float rows = 0;
+            for (std::size_t i = view.first; i < view.end; ++i)
+                rows += (synthetic[i].chart >= 0 ? 42.0f : 45.0f);
+            const float virtualSpaces =
+                (view.first ? view.before : 0.0f) +
+                (view.end < synthetic.size() ? view.after : 0.0f);
+            const auto elements = (view.end - view.first) +
+                (view.first ? 1 : 0) +
+                (view.end < synthetic.size() ? 1 : 0);
+            return rows + virtualSpaces + (elements - 1) * 6.0f;
+        };
+        const float expected = offsets.back() - 6.0f;
+        ok &= Check(height(first) == expected &&
+                    height(middle) == expected &&
+                    height(last) == expected,
+                    "virtual spacers preserve scroll height across window swaps");
+    }
     const auto expanded = LibraryTreeRows(library, ui);
     ok &= Check(expanded.size() == 4 &&
                 expanded[0].song == 0 && expanded[0].chart == -1 &&
