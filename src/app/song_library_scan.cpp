@@ -10,8 +10,8 @@
 #include <cctype>
 #include <cstdint>
 #include <filesystem>
-#include <map>
-#include <set>
+#include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -61,23 +61,33 @@ bool SongLibrary::RefreshImpl(std::string& message,
     // File reuse requires size, timestamp AND a content fingerprint, so an
     // external same-size / same-mtime edit cannot silently reuse stale notes.
     // Song Set timing remains authoritative in the manifest.
-    std::map<fs::path, LibraryChart*> previous;
-    std::map<fs::path, const LibrarySong*> previousSets;
+    std::unordered_map<fs::path, LibraryChart*> previous;
+    std::unordered_map<fs::path, const LibrarySong*> previousSets;
+    std::size_t knownChartCount = 0;
+    for (const auto& song : songs_) knownChartCount += song.charts.size();
+    previous.reserve(knownChartCount);
+    previousSets.reserve(songs_.size());
     for (auto& song : songs_) {
         previousSets.emplace(song.folder, &song);
         for (auto& chart : song.charts)
             previous.emplace(chart.file, &chart);
     }
     LibraryRefreshStats stats;
-    std::set<fs::path> reusedFiles;
-    std::map<fs::path, SongSetManifest> manifestCache;
-    std::map<fs::path, fs::path> canonicalAudioCache;
+    std::unordered_set<fs::path> reusedFiles;
+    std::unordered_map<fs::path, SongSetManifest> manifestCache;
+    std::unordered_map<fs::path, fs::path> canonicalAudioCache;
     std::vector<LibrarySong> next;
-    std::map<fs::path, std::size_t> byAudio; // Logical song, not specific revision.
-    std::map<std::string, fs::path> setIdOwners;
-    // One ordered set per pack: collision checks stay O(log N) rather than
-    // rescanning every earlier chart in a 1,000+ difficulty Song Set.
-    std::map<fs::path, std::set<std::string>> difficultyIds;
+    std::unordered_map<fs::path, std::size_t> byAudio;
+    std::unordered_map<std::string, fs::path> setIdOwners;
+    // Expected constant-time duplicate-ID checks, even for very large sets.
+    std::unordered_map<fs::path, std::unordered_set<std::string>> difficultyIds;
+    reusedFiles.reserve(knownChartCount);
+    manifestCache.reserve(songs_.size());
+    canonicalAudioCache.reserve(songs_.size());
+    next.reserve(songs_.size());
+    byAudio.reserve(songs_.size());
+    setIdOwners.reserve(songs_.size());
+    difficultyIds.reserve(songs_.size());
     std::size_t skipped = 0;
     // An unreadable subtree is not an ignorable invalid chart: silently
     // skipping it would publish an incomplete library as authoritative.
