@@ -112,6 +112,28 @@ int main() {
                 expanded[2].song == 1 && expanded[2].chart == 0 &&
                 expanded[3].song == 1 && expanded[3].chart == 1,
                 "Song Library displays charts indented directly beneath selected song");
+    // Search keys are normalized with full Unicode casefold and canonical
+    // composition, not a hand-written ASCII-only lowercase conversion.
+    ok &= Check(library.SetSongMetadata(
+                    0, u8"Ёлка", u8"Café", u8"Straße", {}, error),
+                "fixture can update searchable UTF-8 Song Set metadata");
+    ui.search = u8"ёлка";
+    ok &= Check(LibraryTreeRows(library, ui).size() == 3,
+                "Cyrillic Ё/ё search matches both cases and displays children");
+    ui.search = u8"Cafe\u0301"; // decomposed e + combining acute.
+    ok &= Check(LibraryTreeRows(library, ui).size() == 3,
+                "Unicode normalization matches decomposed and composed accents");
+    ui.search = "STRASSE";
+    ok &= Check(LibraryTreeRows(library, ui).size() == 3,
+                "Unicode full casefold maps German sharp-S to ss");
+    ok &= Check(library.SetSongMetadata(
+                    0, "zz-song", "", "", {}, error),
+                "search fixture restores original Song Set metadata");
+    ui.search = u8"ёлка";
+    ok &= Check(LibraryTreeRows(library, ui).empty(),
+                "search cache invalidates when Song Set metadata revision changes");
+    ui.search.clear();
+
     // The native PLAY browser now filters song and difficulty titles. A
     // difficulty-name hit must not expose unrelated sibling difficulties.
     ui.search = "Hard";

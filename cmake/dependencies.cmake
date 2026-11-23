@@ -29,6 +29,17 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(raylib nlohmann_json)
+
+# UTF-8 NFKC case folding for language-independent library search.
+# utf8proc 2.12.0 (MIT); immutable v2.12.0 release commit.
+set(UTF8PROC_INSTALL OFF CACHE BOOL "Do not install utf8proc separately" FORCE)
+set(UTF8PROC_ENABLE_TESTING OFF CACHE BOOL "Use LOCUS tests instead" FORCE)
+FetchContent_Declare(
+    utf8proc
+    GIT_REPOSITORY https://github.com/JuliaStrings/utf8proc.git
+    GIT_TAG 79cdd5ab40c79afa559f689ffc13b76812dee1ac
+)
+FetchContent_MakeAvailable(utf8proc)
 # raylib 6 disables JPEG by default, while LOCUS allows JPEG song artwork.
 # Set this on the decoder's actual library target, not just our game executable.
 target_compile_definitions(raylib PRIVATE SUPPORT_FILEFORMAT_JPG=1)

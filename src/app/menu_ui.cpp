@@ -1,6 +1,7 @@
 #include "app/menu_ui.h"
 #include "core/chart_difficulty.h"
 #include "core/utf8.h"
+#include "core/unicode_search.h"
 #include "app/ui_button.h"
 #include "app/ui_widgets.h"
 #include "app/ui_text.h"
@@ -98,64 +99,85 @@ Rectangle SettingsFullscreenButton() { return {297, 421, 100, 36}; }
 Rectangle MenuBackButton() { return {794, 78, 110, 37}; }
 
 namespace {
-bool SearchMatches(const std::string& text, const std::string& query) {
-    if (query.empty()) return true;
-    std::string value = text;
-    std::string needle = query;
-    // ASCII case-insensitivity; non-ASCII UTF-8 is preserved byte for byte.
-    const auto fold = [](std::string& str) {
-        for (char& c : str) {
-            if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
-        }
-    };
-    fold(value);
-    fold(needle);
-    return value.find(needle) != std::string::npos;
+bool ContainsSearchKey(const std::string& normalized, const std::string& needle) {
+    return normalized.find(needle) != std::string::npos;
 }
-bool SongMatches(const SongLibrary& library, int index,
-                 const std::string& query) {
-    if (query.empty()) return true;
-    if (index == 0)
-        return SearchMatches("BUILT-IN DEMO ORIGINAL", query);
-    const auto& song = library.Songs()[static_cast<std::size_t>(index - 1)];
-    if (SearchMatches(song.title, query) ||
-        SearchMatches(song.artist, query) ||
-        SearchMatches(song.mapper, query)) return true;
-    for (const auto& tag : song.tags)
-        if (SearchMatches(tag, query)) return true;
-    for (const auto& chart : song.charts)
-        if (SearchMatches(chart.data.title, query)) return true;
-    return false;
+void AppendSearchField(std::string& key, const std::string& field) {
+    if (!key.empty()) key.push_back('\0');
+    key += core::NormalizedSearchKey(field);
 }
 } // namespace
+
+void LibrarySearchCache::Refresh(const SongLibrary& library) {
+    if (source == &library && sourceRevision == library.Revision())
+        return;
+    // Build from the new authoritative snapshot before publishing its keys.
+    // No gameplay/score data is copied; only normalized display/search fields.
+    std::vector<std::string> nextMetadata;
+    std::vector<std::vector<std::string>> nextTitles;
+    nextMetadata.reserve(library.Songs().size());
+    nextTitles.reserve(library.Songs().size());
+    for (const auto& song : library.Songs()) {
+        std::string key;
+        AppendSearchField(key, song.title);
+        AppendSearchField(key, song.artist);
+        AppendSearchField(key, song.mapper);
+        for (const auto& tag : song.tags) AppendSearchField(key, tag);
+        nextMetadata.push_back(std::move(key));
+        auto& titles = nextTitles.emplace_back();
+        titles.reserve(song.charts.size());
+        for (const auto& chart : song.charts)
+            titles.push_back(core::NormalizedSearchKey(chart.data.title));
+    }
+    metadata.swap(nextMetadata);
+    chartTitles.swap(nextTitles);
+    source = &library;
+    sourceRevision = library.Revision();
+}
 
 std::vector<LibraryTreeEntry> LibraryTreeRows(const SongLibrary& songs,
                                                const SongSelectUi& ui) {
     std::vector<LibraryTreeEntry> entries;
     const int count = static_cast<int>(songs.Songs().size()) + 1;
     entries.reserve(static_cast<std::size_t>(count + 20));
+    const bool searching = !ui.search.empty();
+    std::string needle;
+    if (searching) {
+        ui.searchCache.Refresh(songs);
+        needle = core::NormalizedSearchKey(ui.search);
+    }
     for (int song = 0; song < count; ++song) {
-        if (!SongMatches(songs, song, ui.search)) continue;
-        entries.push_back({song, -1});
-        if (song == ui.selectedSong) {
-            const int difficulties = song == 0 ? 1
-                : static_cast<int>(songs.Songs()[
-                    static_cast<std::size_t>(song - 1)].charts.size());
-            const bool showAll = ui.search.empty() || song == 0 ||
-                SearchMatches(songs.Songs()[static_cast<std::size_t>(song - 1)].title, ui.search) ||
-                SearchMatches(songs.Songs()[static_cast<std::size_t>(song - 1)].artist, ui.search) ||
-                SearchMatches(songs.Songs()[static_cast<std::size_t>(song - 1)].mapper, ui.search) ||
-                std::any_of(songs.Songs()[static_cast<std::size_t>(song - 1)].tags.begin(),
-                            songs.Songs()[static_cast<std::size_t>(song - 1)].tags.end(),
-                            [&](const std::string& tag) {
-                                return SearchMatches(tag, ui.search);
-                            });
-            for (int chart = 0; chart < difficulties; ++chart) {
-                if (showAll || SearchMatches(
-                    songs.Songs()[static_cast<std::size_t>(song - 1)]
-                        .charts[static_cast<std::size_t>(chart)].data.title, ui.search))
-                    entries.push_back({song, chart});
+        bool metadataMatch = !searching;
+        bool difficultyMatch = !searching;
+        if (searching && song == 0) {
+            static const std::string demoKey =
+                core::NormalizedSearchKey("BUILT-IN DEMO ORIGINAL");
+            metadataMatch = ContainsSearchKey(demoKey, needle);
+            difficultyMatch = metadataMatch;
+        } else if (searching) {
+            const std::size_t index = static_cast<std::size_t>(song - 1);
+            metadataMatch = ContainsSearchKey(ui.searchCache.metadata[index], needle);
+            if (!metadataMatch) {
+                for (const auto& title : ui.searchCache.chartTitles[index]) {
+                    if (ContainsSearchKey(title, needle)) {
+                        difficultyMatch = true;
+                        break;
+                    }
+                }
             }
+        }
+        if (!metadataMatch && !difficultyMatch) continue;
+        entries.push_back({song, -1});
+        if (song != ui.selectedSong) continue;
+        const int difficulties = song == 0 ? 1
+            : static_cast<int>(songs.Songs()[
+                static_cast<std::size_t>(song - 1)].charts.size());
+        for (int chart = 0; chart < difficulties; ++chart) {
+            const bool visible = !searching || song == 0 || metadataMatch ||
+                ContainsSearchKey(ui.searchCache.chartTitles[
+                    static_cast<std::size_t>(song - 1)][static_cast<std::size_t>(chart)],
+                    needle);
+            if (visible) entries.push_back({song, chart});
         }
     }
     return entries;

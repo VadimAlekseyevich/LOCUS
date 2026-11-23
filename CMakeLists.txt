@@ -21,9 +21,10 @@ add_library(locus_core STATIC
     src/core/chart_json.cpp
     src/core/chart_editor.cpp
     src/core/chart_difficulty.cpp
+    src/core/unicode_search.cpp
 )
 target_compile_features(locus_core PUBLIC cxx_std_17)
-target_link_libraries(locus_core PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(locus_core PRIVATE nlohmann_json::nlohmann_json utf8proc::utf8proc)
 set_target_properties(locus_core PROPERTIES
     CXX_EXTENSIONS OFF
 )

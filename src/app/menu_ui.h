@@ -10,6 +10,8 @@
 
 #include <string>
 #include <cstdint>
+#include <limits>
+#include <vector>
 
 namespace locus::app {
 
@@ -18,6 +20,17 @@ enum class LibraryDeletePending { None, Difficulty, SongSet };
 struct LibraryTreeEntry {
     int song = 0; // 0 is the built-in demo.
     int chart = -1; // -1 is the parent Song row.
+};
+
+// Cached Unicode-normalized fields for the currently published catalog.
+// The index is refreshed by generation, not rebuilt on every search keypress
+// or drawing frame. It never owns a copy of the heavy chart note vectors.
+struct LibrarySearchCache {
+    const SongLibrary* source = nullptr;
+    std::uint64_t sourceRevision = std::numeric_limits<std::uint64_t>::max();
+    std::vector<std::string> metadata;
+    std::vector<std::vector<std::string>> chartTitles;
+    void Refresh(const SongLibrary& library);
 };
 
 struct SongSelectUi {
@@ -30,6 +43,7 @@ struct SongSelectUi {
     bool treeChartFocused = false;
     std::string search;
     bool editingSearch = false;
+    mutable LibrarySearchCache searchCache;
     RunKey resultKey;
     std::string resultGameplayRevision;
     std::vector<RunResult> results;
