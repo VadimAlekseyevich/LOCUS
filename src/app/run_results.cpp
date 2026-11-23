@@ -214,17 +214,24 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
     if (key.Empty()) return records;
     const fs::path dir = Directory(key);
     std::error_code ec;
-    if (!fs::exists(dir, ec)) {
-        if (ec) error = "Could not access saved results.";
+    // One non-following status probe distinguishes missing history from a
+    // regular file, a symlink, or an inaccessible directory. Combining
+    // exists() + is_directory() can lose the actual error between probes
+    // on Windows and follows links before validating their location.
+    const fs::file_status state = fs::symlink_status(dir, ec);
+    if (state.type() == fs::file_type::not_found &&
+        (!ec || ec == std::errc::no_such_file_or_directory))
+        return records; // A difficulty with no attempts is ordinary.
+    if (ec) {
+        error = "Cannot inspect saved results: " + ec.message();
         return records;
     }
-    // Missing history is normal; an unreadable folder or failed directory
-    // traversal is NOT an empty history. Never publish a partial result list
-    // when an iterator fails partway through enumeration.
-    if (!fs::is_directory(dir, ec) || ec) {
+    if (state.type() != fs::file_type::directory) {
         error = "Saved results path is not an accessible directory.";
         return records;
     }
+    // An unreadable folder or failed traversal is NOT an empty history.
+    // Never publish an incomplete result list after an iterator failure.
     fs::directory_iterator current(dir, fs::directory_options::none, ec);
     if (ec) {
         error = "Could not list saved results: " + ec.message();
