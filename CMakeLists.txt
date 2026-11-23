@@ -9,6 +9,7 @@ option(LOCUS_ENABLE_RMLUI "Use responsive RmlUi for non-gameplay UI screens" ON)
 
 # Pinned raylib and JSON dependencies.
 include(cmake/dependencies.cmake)
+find_package(Threads REQUIRED)
 
 add_library(locus_core STATIC
     src/core/route.cpp
@@ -45,6 +46,7 @@ set(LOCUS_SONG_LIBRARY_SOURCES
 
 add_executable(locus
     src/app/main.cpp
+    src/app/async_library_refresh.cpp
     src/app/app_runtime_policy.cpp
     src/app/play_screen_actions.cpp
     src/app/play_presentation.cpp
@@ -164,7 +166,7 @@ add_dependencies(locus locus_ui_assets)
 install(TARGETS locus RUNTIME DESTINATION ".")
 install(DIRECTORY "${LOCUS_UI_SOURCE_DIR}/" DESTINATION "assets/ui")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
-target_link_libraries(locus PRIVATE locus_core raylib locus_soundtouch nlohmann_json::nlohmann_json)
+target_link_libraries(locus PRIVATE locus_core raylib locus_soundtouch nlohmann_json::nlohmann_json Threads::Threads)
 if(WIN32)
     target_link_libraries(locus PRIVATE comdlg32 user32)
 endif()
@@ -656,6 +658,7 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_library_browser_tests
         tests/library_browser_tests.cpp
         src/app/library_browser.cpp
+        src/app/async_library_refresh.cpp
         src/app/library_file_actions.cpp
         src/app/menu_ui.cpp
         src/app/run_results.cpp
@@ -670,7 +673,7 @@ if(LOCUS_BUILD_TESTS)
 )
     target_compile_features(locus_library_browser_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_library_browser_tests PRIVATE
-        locus_core raylib nlohmann_json::nlohmann_json)
+        locus_core raylib nlohmann_json::nlohmann_json Threads::Threads)
     add_test(NAME locus_library_browser_selection COMMAND locus_library_browser_tests)
 
     add_executable(locus_song_library_tests

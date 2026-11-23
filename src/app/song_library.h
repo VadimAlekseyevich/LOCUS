@@ -4,6 +4,7 @@
 #include "core/chart_difficulty.h"
 #include "core/tempo_map.h"
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -60,7 +61,11 @@ class SongLibrary {
 public:
     explicit SongLibrary(std::filesystem::path root) : root_(std::move(root)) {}
 
-    bool Refresh(std::string& message);
+    bool Refresh(std::string& message,
+                 const std::atomic<bool>* cancelled = nullptr);
+    // Publish an isolated scan only on the main thread, once its original
+    // catalog generation was validated by the caller.
+    bool PublishScannedIndex(SongLibrary&& scanned);
     // Import stages shared Song Set audio, then atomically saves the chart JSON.
     // Repeat imports update a difficulty without modifying any other chart's
     // audio; multiple revisions still appear under one logical song.

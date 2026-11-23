@@ -98,6 +98,14 @@ std::filesystem::path UserDataDirectory() {
     return (ec ? fs::path(".") : dir) / "LOCUS_Data";
 }
 
+bool SongLibrary::PublishScannedIndex(SongLibrary&& scanned) {
+    if (root_ != scanned.root_) return false;
+    songs_.swap(scanned.songs_);
+    lastRefreshStats_ = scanned.lastRefreshStats_;
+    ++revision_;
+    return true;
+}
+
 std::size_t SongLibrary::ChartCount() const noexcept {
     std::size_t count = 0;
     for (const auto& song : songs_) count += song.charts.size();

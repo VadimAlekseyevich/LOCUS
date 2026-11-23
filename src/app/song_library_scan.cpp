@@ -18,7 +18,8 @@
 namespace locus::app {
 namespace fs = std::filesystem;
 using namespace detail;
-bool SongLibrary::Refresh(std::string& message) {
+bool SongLibrary::Refresh(std::string& message,
+                          const std::atomic<bool>* cancelled) {
     std::error_code ec;
     fs::create_directories(root_, ec);
     if (ec) {
@@ -60,6 +61,10 @@ bool SongLibrary::Refresh(std::string& message) {
     // Never publish a truncated catalog as a successful refresh. Historical
     // backups are not playable difficulties and should not consume scan time.
     while (entry != end) {
+        if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+            message = "Library scan cancelled.";
+            return false;
+        }
         const fs::directory_entry current = *entry;
         const fs::path path = current.path();
         if (path.filename() == L".locus-history" &&
@@ -194,6 +199,10 @@ bool SongLibrary::Refresh(std::string& message) {
         next[index].charts.push_back(std::move(indexed));
     }
     for (auto& song : next) {
+        if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+            message = "Library scan cancelled.";
+            return false;
+        }
         SongSetManifest timing;
         std::string problem;
         if (!LoadSongSetManifest(song.folder / L"set.locus.json",
@@ -253,6 +262,10 @@ bool SongLibrary::Refresh(std::string& message) {
                   if (a.title != b.title) return a.title < b.title;
                   return a.audioFile < b.audioFile;
               });
+    if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+        message = "Library scan cancelled.";
+        return false;
+    }
     songs_ = std::move(next);
     ++revision_;
     lastRefreshStats_ = stats;
