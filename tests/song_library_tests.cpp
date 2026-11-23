@@ -544,6 +544,29 @@ int main() {
                     copiedLibrary.Songs()[0].id == library.Songs()[0].id,
                     "package transfer preserves every chart ID and parent Song Set ID");
     }
+    // A Song Set installed in a nested directory is equally authoritative.
+    // A package import must not publish a colliding set merely because the
+    // existing manifest is deeper than one directory below Songs/.
+    {
+        const fs::path nestedRoot = folder / "nested-identity-check" / "Songs";
+        const fs::path nestedSet = nestedRoot / "Albums" / "Existing";
+        fs::create_directories(nestedSet.parent_path(), ec);
+        if (!ec) fs::copy(importedFolder, nestedSet,
+                         fs::copy_options::recursive, ec);
+        SongLibrary nestedLibrary(nestedRoot);
+        std::string nestedNotice;
+        fs::path duplicateDestination;
+        const bool scanReady = !ec && nestedLibrary.Refresh(nestedNotice) &&
+            nestedLibrary.ChartCount() == 4;
+        const bool rejected = scanReady &&
+            !nestedLibrary.ImportPackage(packageFile, duplicateDestination, error) &&
+            error.find("already installed") != std::string::npos &&
+            duplicateDestination.empty() && nestedLibrary.ChartCount() == 4;
+        ok &= Check(rejected,
+                    "package import rejects duplicate setId inside nested Songs folder");
+        fs::remove_all(folder / "nested-identity-check", ec);
+        ec.clear();
+    }
     // Package import runs library rating before audio duration is decoded.
     // Every imported difficulty (including sparse ones) must be rated.
     ok &= Check(copiedLibrary.Songs().size() == 1 &&

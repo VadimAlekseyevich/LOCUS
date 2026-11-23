@@ -129,22 +129,37 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
         error = "Package contains no valid difficulties.";
         return fail();
     }
-    // Check authoritative folders under the root lock, not a potentially
-    // stale in-memory catalog: even a re-titled pack must not reuse a setId.
-    for (fs::directory_iterator it(root, ec), end; !ec && it != end;
-         it.increment(ec)) {
-        if (!it->is_directory(ec) || ec) continue;
-        const fs::path otherManifest = it->path() / L"set.locus.json";
-        if (!fs::is_regular_file(otherManifest, ec)) { ec.clear(); continue; }
+    // Refresh indexes nested Song Sets as well as immediate children of
+    // Songs/. Enforce exactly the same identity domain BEFORE publishing the
+    // imported directory, even if the in-memory index is stale.
+    for (fs::recursive_directory_iterator it(root, ec), end;
+         !ec && it != end; it.increment(ec)) {
+        const fs::path candidate = it->path();
+        if (candidate.filename() != L"set.locus.json") continue;
+        if (it->is_symlink(ec)) {
+            if (ec) break;
+            error = "Existing Song Set manifest is a symlink; cannot verify IDs.";
+            return fail();
+        }
+        if (!it->is_regular_file(ec)) {
+            if (ec) break;
+            continue;
+        }
         SongSetManifest other;
         std::string ignored;
-        if (LoadSongSetManifest(otherManifest, other, ignored) &&
-            other.id == metadata.id) {
+        if (!LoadSongSetManifest(candidate, other, ignored)) {
+            error = "Cannot verify existing Song Set identity: " + ignored;
+            return fail();
+        }
+        if (other.id == metadata.id) {
             error = "Song Set ID is already installed in another folder.";
             return fail();
         }
     }
-    if (ec) { error = "Cannot inspect existing Song Set identities."; return fail(); }
+    if (ec) {
+        error = "Cannot enumerate installed Song Set identities: " + ec.message();
+        return fail();
+    }
     const fs::path target = root /
         (FilenamePart(metadata.title) + "-pack-" +
          HashSetId(metadata.id));
