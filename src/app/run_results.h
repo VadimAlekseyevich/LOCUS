@@ -26,6 +26,9 @@ struct RunResult {
     int notesJudged = 0;
     double accuracyPercent = 0.0;
     double practiceRate = 1.0;
+    // The saved rate is the FINAL rate. True means one or more earlier
+    // segments were played at another rate; it is not a fixed-rate result.
+    bool variablePracticeRate = false;
 };
 
 struct RunKey {
@@ -91,6 +94,7 @@ struct CompletedRunContext {
     std::size_t scorableCount = 0;
     double practiceRate = 1.0;
     std::string gameplayRevision;
+    bool variablePracticeRate = false;
 };
 
 // Returns true only after a durable result is written. On ineligible calls

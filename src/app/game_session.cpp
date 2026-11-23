@@ -9,6 +9,7 @@
 namespace locus::app {
 
 void GameSession::Start(bool customChart, double now) {
+    variablePracticeRate_ = false;
     hitFlash_.Reset();
     audioEndedAt_ = -1.0;
     audioEndSongSeconds_ = 0.0;
@@ -55,7 +56,10 @@ void GameSession::TogglePause(bool customChart, double now) {
 }
 
 void GameSession::SetPracticeSpeed(bool customChart, double speed, double now) {
-    if (customChart) local_.SetSpeed(speed, now);
+    if (!customChart) return;
+    const double previous = local_.Speed();
+    local_.SetSpeed(speed, now);
+    if (local_.Speed() != previous) variablePracticeRate_ = true;
 }
 
 void GameSession::Update(bool customChart, double now, const ArrowInput& arrows) {

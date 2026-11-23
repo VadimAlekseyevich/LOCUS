@@ -210,7 +210,12 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay,
     DrawTextLabel(font, TextFormat("%d / %d NOTES JUDGED",
                   counts.Resolved(), total),
                   {94, 319}, 15, muted);
-    if (saved && saved->practiceRate < 0.999)
+    if (saved && saved->variablePracticeRate)
+        DrawTextLabel(font,
+                      TextFormat("VARIABLE RATE / LAST %.0f%%",
+                                 saved->practiceRate * 100),
+                      {94, 346}, 13, sky);
+    else if (saved && saved->practiceRate < 0.999)
         DrawTextLabel(font,
                       TextFormat("PRACTICE %.0f%%", saved->practiceRate * 100),
                       {94, 346}, 13, sky);

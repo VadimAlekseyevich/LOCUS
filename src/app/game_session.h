@@ -45,6 +45,9 @@ public:
     void Stop(bool customChart);
     void TogglePause(bool customChart, double now);
     void SetPracticeSpeed(bool customChart, double speed, double now);
+    // Sticky within a scored attempt. Returning to the starting speed cannot
+    // disguise a variable-rate practice run as a constant-rate score.
+    bool VariablePracticeRate() const noexcept { return variablePracticeRate_; }
     void SetGlobalOffsetMs(int milliseconds) noexcept {
         globalOffsetMs_ = milliseconds;
     }
@@ -64,6 +67,7 @@ private:
     std::optional<EditorTestOrigin> testOrigin_;
     HitFlash hitFlash_;
     int globalOffsetMs_ = 0;
+    bool variablePracticeRate_ = false;
 
     // Audio is allowed to end before the last note's late 180ms window.
     // In that case, scoring continues for a brief SILENT tail using the

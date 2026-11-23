@@ -226,6 +226,19 @@ int main(int argc, char** argv) {
     }
 #endif
 
+    RunResult variable = first;
+    variable.id.clear();
+    variable.completedAtMs += 7000;
+    variable.practiceRate = 1.0;
+    variable.variablePracticeRate = true;
+    const bool variableSaved = store.Save(variable, error);
+    const auto variableHistory = store.Load({"set-123", kEasyId}, error);
+    ok &= Check(variableSaved && error.empty() &&
+                !variableHistory.empty() &&
+                variableHistory.front().variablePracticeRate &&
+                variableHistory.front().practiceRate == 1.0,
+                "mixed-rate run remains distinguishable after returning to 100%");
+
     RunResult invalid = first;
     invalid.id.clear();
     invalid.grades.miss = -1;

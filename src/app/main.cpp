@@ -948,7 +948,8 @@ int main(int argc, char** argv) {
                     true, gameSession.IsEditorTest(), playCameFromEditor,
                     playedRunKey, playedSongTitle, chartTitle, judge.Counts(),
                     judge.ScorableCount(), playActions.Transport(now).practiceSpeed,
-                    playedGameplayRevision
+                    playedGameplayRevision,
+                    gameSession.VariablePracticeRate()
                 };
                 locus::app::RunResult record;
                 std::string error;

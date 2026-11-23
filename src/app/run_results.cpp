@@ -57,7 +57,8 @@ Json Encode(const RunResult& r) {
         {"bad", r.grades.bad}, {"miss", r.grades.miss},
         {"notesJudged", r.notesJudged},
         {"accuracyPercent", r.accuracyPercent},
-        {"practiceRate", r.practiceRate}
+        {"practiceRate", r.practiceRate},
+        {"variablePracticeRate", r.variablePracticeRate}
     };
 }
 
@@ -81,6 +82,9 @@ bool Decode(const Json& obj, RunResult& out) {
         r.notesJudged = obj.at("notesJudged").get<int>();
         r.accuracyPercent = obj.at("accuracyPercent").get<double>();
         r.practiceRate = obj.at("practiceRate").get<double>();
+        // v2 records created before variable-rate tracking represented a
+        // single nominal speed. New records always persist this explicit flag.
+        r.variablePracticeRate = obj.value("variablePracticeRate", false);
         if (!ValidRunResult(r)) return false;
         out = std::move(r);
         return true;
@@ -139,6 +143,7 @@ bool CaptureCompletedRun(const RunResultsStore& store,
     record.grades = completion.grades;
     record.notesJudged = static_cast<int>(completion.scorableCount);
     record.practiceRate = completion.practiceRate;
+    record.variablePracticeRate = completion.variablePracticeRate;
     if (!store.Save(record, error)) return false;
     saved = std::move(record);
     return true;

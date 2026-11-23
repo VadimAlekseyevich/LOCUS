@@ -82,9 +82,14 @@ void NativeResultsUi::Sync() {
     SetText("results-good", std::to_string(grades_->good));
     SetText("results-bad", std::to_string(grades_->bad));
     SetText("results-miss", std::to_string(grades_->miss));
-    std::string detail = selected_ && selected_->practiceRate < 0.999
-        ? "PRACTICE " + std::to_string(static_cast<int>(
-            selected_->practiceRate * 100 + 0.5)) + "%" : "";
+    std::string detail;
+    if (selected_ && selected_->variablePracticeRate) {
+        detail = "VARIABLE RATE / LAST " + std::to_string(static_cast<int>(
+            selected_->practiceRate * 100 + 0.5)) + "%";
+    } else if (selected_ && selected_->practiceRate < 0.999) {
+        detail = "PRACTICE " + std::to_string(static_cast<int>(
+            selected_->practiceRate * 100 + 0.5)) + "%";
+    }
     if (selected_) {
         const auto revision = CompareRunRevision(
             *selected_, history_->resultGameplayRevision);
