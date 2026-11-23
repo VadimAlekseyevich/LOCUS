@@ -119,7 +119,7 @@ int main() {
         SongLibrary abortLibrary(folder / "abort-user" / "Songs");
         const fs::path abortAudio = source / "abort-audio.wav";
         Write(abortAudio, firstBytes);
-        core::LoadedChart malformed = fresh;
+        locus::core::LoadedChart malformed = fresh;
         malformed.title.clear(); // invalid only at chart serialization
         const fs::path pendingFolder = abortLibrary.Root() /
             (detail::FilenamePart(abortAudio.stem().u8string()) + "-" +
