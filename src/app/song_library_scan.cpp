@@ -18,6 +18,20 @@
 namespace locus::app {
 namespace fs = std::filesystem;
 using namespace detail;
+namespace {
+// Both inputs were canonicalized by the OS. Fast path for ordinary installed
+// files: component prefix comparison is sufficient to establish containment
+// without re-opening each ancestor directory for every difficulty. Unusual
+// case/UNC spelling variants still use the existing identity-based fallback.
+bool CanonicalChildOf(const fs::path& parent, const fs::path& child) {
+    auto a = parent.begin(), b = child.begin();
+    for (; a != parent.end(); ++a, ++b) {
+        if (b == child.end() || *a != *b) return false;
+    }
+    return b != child.end();
+}
+}
+
 bool SongLibrary::Refresh(std::string& message,
                           const std::atomic<bool>* cancelled) {
     std::error_code ec;
@@ -87,8 +101,12 @@ bool SongLibrary::Refresh(std::string& message,
         const fs::path manifestPath = path.parent_path() / L"set.locus.json";
         // Unsupported folders are not part of the active library.
         // Check the manifest before expensive chart I/O or fingerprints.
-        const bool managed = fs::exists(manifestPath, ec);
-        if (ec || !managed) { ++skipped; ec.clear(); continue; }
+        // Check manifest existence only on the first chart in a set; the
+        // cached manifest is revalidated at the end of the full scan.
+        if (manifestCache.find(manifestPath) == manifestCache.end()) {
+            const bool managed = fs::exists(manifestPath, ec);
+            if (ec || !managed) { ++skipped; ec.clear(); continue; }
+        }
         // One manifest per Song Set: borrow the parsed tempo map and tags
         // rather than copying them for each difficulty in a large pack.
         auto manifest = manifestCache.find(manifestPath);
@@ -146,7 +164,8 @@ bool SongLibrary::Refresh(std::string& message,
             indexed.indexedContentFingerprint = contentFingerprint;
         }
         const fs::path audioFile = fs::canonical(indexed.audioFile, ec);
-        if (ec || !Inside(root, audioFile)) {
+        if (ec || (!CanonicalChildOf(root, audioFile) &&
+                   !Inside(root, audioFile))) {
             ++skipped;
             ec.clear();
             reusedFiles.erase(path);
@@ -156,7 +175,10 @@ bool SongLibrary::Refresh(std::string& message,
 
         const fs::path expected = path.parent_path() /
             fs::u8path(metadata.audioFile);
-        if (!fs::equivalent(expected, audioFile, ec) || ec) {
+        // The usual relative chart audio path resolves to exactly the shared
+        // filename. Keep equivalent() for hardlinks/alias edge cases only.
+        if (expected.lexically_normal() != audioFile &&
+            (!fs::equivalent(expected, audioFile, ec) || ec)) {
             ++skipped;
             ec.clear();
             continue;
