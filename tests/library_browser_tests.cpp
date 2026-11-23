@@ -146,6 +146,12 @@ int main() {
                     "foreground edits can advance the index during a scan");
         ok &= Check(worker.Request(library, scanStatus),
                     "rapid second F5 coalesces with the active worker scan");
+        const auto stableIndexRevision = library.Revision();
+        const auto priorDiskEpoch = library.DiskMutationEpoch();
+        library.MarkDiskMutation();
+        ok &= Check(library.Revision() == stableIndexRevision &&
+                    library.DiskMutationEpoch() == priorDiskEpoch + 1,
+                    "disk commit invalidates worker independently of UI revision");
         auto result = AsyncLibraryRefresh::PollState::Pending;
         const auto deadline = std::chrono::steady_clock::now() +
             std::chrono::seconds(15);
