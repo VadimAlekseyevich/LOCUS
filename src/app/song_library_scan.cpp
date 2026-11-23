@@ -34,6 +34,17 @@ bool CanonicalChildOf(const fs::path& parent, const fs::path& child) {
 
 bool SongLibrary::Refresh(std::string& message,
                           const std::atomic<bool>* cancelled) {
+    return RefreshImpl(message, cancelled, false);
+}
+
+bool SongLibrary::RefreshDetached(std::string& message,
+                                  const std::atomic<bool>* cancelled) {
+    return RefreshImpl(message, cancelled, true);
+}
+
+bool SongLibrary::RefreshImpl(std::string& message,
+                             const std::atomic<bool>* cancelled,
+                             bool transferCache) {
     std::error_code ec;
     fs::create_directories(root_, ec);
     if (ec) {
@@ -50,10 +61,13 @@ bool SongLibrary::Refresh(std::string& message,
     // File reuse requires size, timestamp AND a content fingerprint, so an
     // external same-size / same-mtime edit cannot silently reuse stale notes.
     // Song Set timing remains authoritative in the manifest.
-    std::map<fs::path, const LibraryChart*> previous;
-    for (const auto& song : songs_)
-        for (const auto& chart : song.charts)
+    std::map<fs::path, LibraryChart*> previous;
+    std::map<fs::path, const LibrarySong*> previousSets;
+    for (auto& song : songs_) {
+        previousSets.emplace(song.folder, &song);
+        for (auto& chart : song.charts)
             previous.emplace(chart.file, &chart);
+    }
     LibraryRefreshStats stats;
     std::set<fs::path> reusedFiles;
     std::map<fs::path, SongSetManifest> manifestCache;
@@ -142,7 +156,16 @@ bool SongLibrary::Refresh(std::string& message,
             old->second->indexedFileSize == bytes &&
             old->second->indexedContentFingerprint == contentFingerprint;
         if (reuse) {
-            indexed = *old->second;
+            if (transferCache) {
+                // Only the detached worker owns this index. Transferring
+                // ownership avoids reallocating every note on a warm F5.
+                // On scan failure the detached cache is discarded; the UI's
+                // published snapshot was never accessed or modified.
+                indexed = std::move(*old->second);
+                ++stats.transferredCharts;
+            } else {
+                indexed = *old->second;
+            }
             reusedFiles.insert(path);
             ++stats.reusedCharts;
         } else {
@@ -282,10 +305,16 @@ bool SongLibrary::Refresh(std::string& message,
             // ApplySongTiming above has already overwritten the in-memory
             // values, so compare with the pre-scan cached version instead.
             const auto previousChart = previous.find(difficulty.file);
-            const bool oldTimingMatches = previousChart != previous.end() &&
-                core::EffectiveTempoMap(
-                    previousChart->second->data.route,
-                    previousChart->second->data.offsetSeconds) == song.tempoMap;
+            const auto previousSet = previousSets.find(song.folder);
+            const bool oldTimingMatches = transferCache
+                // A detached scan may have moved the old note vectors out.
+                // The set's published timing remains intact and authoritative.
+                ? (previousSet != previousSets.end() &&
+                   previousSet->second->tempoMap == song.tempoMap)
+                : (previousChart != previous.end() &&
+                   core::EffectiveTempoMap(
+                       previousChart->second->data.route,
+                       previousChart->second->data.offsetSeconds) == song.tempoMap);
             // Refresh invalid or stale difficulty cache entries without
             // recomputing scores for identical note data.
             const bool invalidCachedRating = !difficulty.data.route.turns.empty() &&

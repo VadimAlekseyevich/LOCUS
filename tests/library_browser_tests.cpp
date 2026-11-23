@@ -180,8 +180,10 @@ int main() {
         }
         ok &= Check(result == AsyncLibraryRefresh::PollState::Published &&
                     library.LastRefreshStats().reusedCharts == 2 &&
+                    library.LastRefreshStats().transferredCharts == 2 &&
+                    library.LastRefreshStats().calculatedDifficulties == 0 &&
                     library.LastRefreshStats().parsedCharts == 0,
-                    "background rescan reuses unchanged chart parses and ratings");
+                    "detached background rescan transfers cached note vectors and ratings");
         worker.CancelAndJoin();
         ok &= Check(!worker.Busy(), "shutdown drains and invalidates scanner future");
         // Cancellation never discards or replaces the last published index.

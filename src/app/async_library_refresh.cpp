@@ -31,7 +31,7 @@ bool AsyncLibraryRefresh::Start(const SongLibrary& current,
                 result.index = seed && seed->Root() == root
                     ? std::move(seed) : std::make_unique<SongLibrary>(root);
                 try {
-                    result.success = result.index->Refresh(
+                    result.success = result.index->RefreshDetached(
                         result.status, stop.get());
                 } catch (const std::exception& e) {
                     result.status = std::string("Scan failed: ") + e.what();
@@ -92,8 +92,10 @@ AsyncLibraryRefresh::PollState AsyncLibraryRefresh::Poll(
     }
     status = std::move(result.status);
     if (!result.success || !result.index) {
-        // Failed/cancelled Refresh leaves its previous SongLibrary unchanged.
-        reuseIndex_ = std::move(result.index);
+        // The isolated scan may have consumed old chart vectors before
+        // detecting a bad file or cancellation. Never cache this potentially
+        // moved-from index; the live published catalog remains intact.
+        reuseIndex_.reset();
         return PollState::Failed;
     }
     if (!current.PublishScannedIndex(std::move(*result.index))) {

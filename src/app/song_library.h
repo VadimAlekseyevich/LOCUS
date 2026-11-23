@@ -51,6 +51,9 @@ struct LibrarySong {
 struct LibraryRefreshStats {
     std::size_t parsedCharts = 0;
     std::size_t reusedCharts = 0;
+    // Reused without copying the potentially large note vector. Only a
+    // detached worker cache can transfer previously parsed chart ownership.
+    std::size_t transferredCharts = 0;
     std::size_t calculatedDifficulties = 0;
     // OS canonicalization probes for shared audio during the chart walk.
     // Should scale with distinct audio files, not difficulty count.
@@ -60,7 +63,10 @@ struct LibraryRefreshStats {
 // On-disk Songs folders are authoritative. The index is kept in RAM and
 // rescanned only at startup / import / explicit refresh, not every play.
 // Audio is decoded lazily by LocalMusic when the user starts one difficulty.
+class AsyncLibraryRefresh;
+
 class SongLibrary {
+    friend class AsyncLibraryRefresh;
 public:
     explicit SongLibrary(std::filesystem::path root) : root_(std::move(root)) {}
 
@@ -135,6 +141,13 @@ public:
     std::size_t ChartCount() const noexcept;
 
 private:
+    // Never used on the UI-owned library: a cancelled scan may consume its
+    // cache, so destructive transfer is allowed only in an isolated worker.
+    bool RefreshDetached(std::string& message,
+                         const std::atomic<bool>* cancelled);
+    bool RefreshImpl(std::string& message,
+                     const std::atomic<bool>* cancelled,
+                     bool transferCache);
     std::filesystem::path root_;
     std::vector<LibrarySong> songs_;
     LibraryRefreshStats lastRefreshStats_{};
