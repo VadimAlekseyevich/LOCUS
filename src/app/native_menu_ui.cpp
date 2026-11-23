@@ -731,6 +731,10 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
         resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
         resultRowStep_ = 43.0f;
         lastResultSignature_ = history;
+        // Selecting a different difficulty is a new history, not another
+        // window of the previous scroll position.
+        if (auto* scroll = document_->GetElementById("results-scroll"))
+            scroll->SetScrollTop(0);
     }
     // Infer the real height from RmlUi layout after the previous frame.
     // Padding/borders can change at high DPI; a fixed CSS assumption would
