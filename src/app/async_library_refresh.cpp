@@ -91,7 +91,7 @@ void AsyncLibraryRefresh::CancelAndJoin() noexcept {
     if (cancellation_)
         cancellation_->store(true, std::memory_order_relaxed);
     if (worker_.valid()) {
-        try { worker_.wait(); }
+        try { (void)worker_.get(); }
         catch (...) {}
     }
     cancellation_.reset();

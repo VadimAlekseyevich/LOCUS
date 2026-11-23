@@ -5,6 +5,7 @@
 #include "app/library_launch_actions.h"
 #include "app/song_set_storage.h"
 
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -135,6 +136,21 @@ int main() {
                     library.ChartCount() == 2 && !worker.Busy(),
                     "stale worker index is discarded and latest snapshot published");
         worker.CancelAndJoin();
+        ok &= Check(!worker.Busy(), "shutdown drains and invalidates scanner future");
+        // Cancellation never discards or replaces the last published index.
+        const auto publishedRevision = library.Revision();
+        const auto publishedCount = library.ChartCount();
+        std::atomic<bool> alreadyCancelled{true};
+        ok &= Check(!library.Refresh(scanStatus, &alreadyCancelled) &&
+                    scanStatus.find("cancelled") != std::string::npos &&
+                    library.Revision() == publishedRevision &&
+                    library.ChartCount() == publishedCount,
+                    "cancelled scan preserves every published library entry");
+        SongLibrary foreign(installed / "foreign-root");
+        ok &= Check(!library.PublishScannedIndex(std::move(foreign)) &&
+                    library.Revision() == publishedRevision &&
+                    library.ChartCount() == publishedCount,
+                    "worker cannot publish scan from another library root");
     }
     // Virtual RML list draws a bounded number of actual buttons even for
     // thousands of rows. Prefix heights preserve 45dp Song and 42dp chart
