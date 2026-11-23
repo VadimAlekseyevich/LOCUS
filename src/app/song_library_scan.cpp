@@ -44,6 +44,7 @@ bool SongLibrary::Refresh(std::string& message) {
     std::map<fs::path, SongSetManifest> manifestCache;
     std::vector<LibrarySong> next;
     std::map<fs::path, std::size_t> byAudio; // Logical song, not specific revision.
+    std::map<std::string, fs::path> setIdOwners;
     std::size_t skipped = 0;
     std::size_t scanned = 0;
     fs::recursive_directory_iterator entry(
@@ -146,10 +147,21 @@ bool SongLibrary::Refresh(std::string& message) {
             ec.clear();
             continue;
         }
+        // Missing IDs are pre-release charts which cannot safely join a
+        // filename-independent results history. Do not index them as playable.
+        if (!core::ValidDifficultyId(indexed.data.difficultyId)) {
+            ++skipped;
+            continue;
+        }
         const fs::path logicalAudio = path.parent_path();
         const auto found = byAudio.find(logicalAudio);
         std::size_t index = 0;
         if (found == byAudio.end()) {
+            const auto owner = setIdOwners.emplace(metadata.id, logicalAudio);
+            if (!owner.second && owner.first->second != logicalAudio) {
+                message = "Duplicate Song Set ID in multiple folders: " + metadata.id;
+                return false;
+            }
             index = next.size();
             byAudio.emplace(logicalAudio, index);
             next.push_back({audioFile, metadata.title, {}});
@@ -164,6 +176,15 @@ bool SongLibrary::Refresh(std::string& message) {
                 ? path.parent_path() / fs::u8path(metadata.backgroundFile) : fs::path{};
         } else {
             index = found->second;
+        }
+        const auto& chartId = indexed.data.difficultyId;
+        const auto& siblings = next[index].charts;
+        if (std::any_of(siblings.begin(), siblings.end(),
+                        [&](const LibraryChart& other) {
+                            return other.data.difficultyId == chartId;
+                        })) {
+            message = "Multiple files in a Song Set claim the same difficultyId: " + chartId;
+            return false;
         }
         next[index].charts.push_back(std::move(indexed));
     }

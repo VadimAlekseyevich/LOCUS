@@ -2,6 +2,7 @@
 #include "app/song_set_storage.h"
 #include "app/atomic_move.h"
 #include "app/chart_file.h"
+#include "app/song_archive.h"
 #include "app/song_library_internal.h"
 
 #include <algorithm>
@@ -188,6 +189,19 @@ int main() {
     ok &= Check(locus::core::ValidDifficultyId(easyId) &&
                 locus::core::ValidDifficultyId(hardId) && easyId != hardId,
                 "installed difficulties receive distinct persistent identities");
+    {
+        // A second file with the same ID must not silently merge two
+        // independent charts (and therefore their saved results).
+        const auto duplicateIdFile = easyInstalled.parent_path() /
+            "same-id-different-file.locus.json";
+        fs::copy_file(easyInstalled, duplicateIdFile, ec);
+        SongLibrary indexProbe(root);
+        const bool rejected = !ec && !indexProbe.Refresh(note) &&
+            note.find("same difficultyId") != std::string::npos;
+        ok &= Check(rejected,
+                    "scan rejects duplicate chart IDs without publishing an index");
+        fs::remove(duplicateIdFile, ec);
+    }
     ok &= Check(library.Revision() == 4,
                 "successful imports each advance the library revision");
     const fs::path sharedAudio = library.Songs()[0].audioFile;
@@ -497,6 +511,26 @@ int main() {
                 Read(copiedLibrary.Songs()[0].backgroundImage) == Read(sourceCover) &&
                 Read(importedFolder / "song.wav") == firstBytes,
                 "ZIP import restores manifest, audio and four difficulties");
+    {
+        // Construct a syntactically valid package with two separate JSON
+        // filenames but one repeated persistent ID; reject before publishing.
+        const fs::path duplicateFile = easyInstalled.parent_path() /
+            "copied-id.locus.json";
+        const fs::path duplicateArchive = folder / "duplicate-identity.locuspack";
+        fs::copy_file(easyInstalled, duplicateFile, ec);
+        const bool built = !ec && ExportSongSetArchive(
+            easyInstalled.parent_path(), {easyInstalled, duplicateFile},
+            duplicateArchive, error);
+        SongLibrary target(folder / "reject-duplicate-id" / "Songs");
+        fs::path rejectedTarget;
+        ok &= Check(built &&
+                    !target.ImportPackage(duplicateArchive, rejectedTarget, error) &&
+                    error.find("duplicate difficultyId") != std::string::npos &&
+                    rejectedTarget.empty() && target.ChartCount() == 0,
+                    "package import rejects colliding difficulty IDs before publish");
+        fs::remove(duplicateFile, ec);
+        fs::remove(duplicateArchive, ec);
+    }
     // Package import runs library rating before audio duration is decoded.
     // Every imported difficulty (including sparse ones) must be rated.
     ok &= Check(copiedLibrary.Songs().size() == 1 &&

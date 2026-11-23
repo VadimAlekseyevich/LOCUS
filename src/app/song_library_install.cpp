@@ -144,6 +144,30 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
         // Each newly authored/duplicated difficulty gets its own identity,
         // regardless of the source draft or selected displayed title.
         installed.difficultyId = NewDifficultyId();
+        for (int attempt = 0; attempt < 8; ++attempt) {
+            bool used = false;
+            for (fs::directory_iterator it(folder, ec), end; !ec && it != end;
+                 it.increment(ec)) {
+                if (it->path().extension() != L".json" ||
+                    it->path().filename() == L"set.locus.json") continue;
+                core::LoadedChart peer;
+                std::wstring peerAudio;
+                std::string ignored;
+                if (OpenChartWithAudioPath(it->path().wstring(), peer,
+                                           peerAudio, ignored) &&
+                    peer.difficultyId == installed.difficultyId) {
+                    used = true;
+                    break;
+                }
+            }
+            if (ec) { error = "Cannot inspect existing difficulty identities."; return false; }
+            if (!used) break;
+            if (attempt == 7) {
+                error = "Cannot allocate a unique difficulty identity.";
+                return false;
+            }
+            installed.difficultyId = NewDifficultyId();
+        }
         if (!ApplySongTiming(installed, metadata.tempoMap, error)) return false;
         const fs::path audio = folder / fs::u8path(metadata.audioFile);
         if (!InstallSharedSongAudio(source, audio, error)) return false;

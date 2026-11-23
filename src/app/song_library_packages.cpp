@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <set>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -93,6 +94,7 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
         return fail();
     }
     std::size_t difficultyCount = 0;
+    std::set<std::string> incomingDifficultyIds;
     for (fs::directory_iterator it(stage, ec), end; !ec && it != end;
          it.increment(ec)) {
         const fs::path path = it->path();
@@ -116,19 +118,33 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
             error = "Package difficulty does not use shared audio.";
             return fail();
         }
+        if (!core::ValidDifficultyId(parsed.difficultyId) ||
+            !incomingDifficultyIds.insert(parsed.difficultyId).second) {
+            error = "Package has a missing or duplicate difficultyId.";
+            return fail();
+        }
         ++difficultyCount;
     }
     if (ec || difficultyCount == 0) {
         error = "Package contains no valid difficulties.";
         return fail();
     }
-    // Same setId means the source is already installed. Never replace it.
-    for (const auto& installed : songs_) {
-        if (installed.managed && installed.id == metadata.id) {
-            error = "This Song Set is already installed; import a difficulty instead.";
+    // Check authoritative folders under the root lock, not a potentially
+    // stale in-memory catalog: even a re-titled pack must not reuse a setId.
+    for (fs::directory_iterator it(root, ec), end; !ec && it != end;
+         it.increment(ec)) {
+        if (!it->is_directory(ec) || ec) continue;
+        const fs::path otherManifest = it->path() / L"set.locus.json";
+        if (!fs::is_regular_file(otherManifest, ec)) { ec.clear(); continue; }
+        SongSetManifest other;
+        std::string ignored;
+        if (LoadSongSetManifest(otherManifest, other, ignored) &&
+            other.id == metadata.id) {
+            error = "Song Set ID is already installed in another folder.";
             return fail();
         }
     }
+    if (ec) { error = "Cannot inspect existing Song Set identities."; return fail(); }
     const fs::path target = root /
         (FilenamePart(metadata.title) + "-pack-" +
          HashSetId(metadata.id));
