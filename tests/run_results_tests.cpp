@@ -144,7 +144,12 @@ int main(int argc, char** argv) {
         if (fs::is_directory(item.path())) {
             bool containsEasy = false;
             for (const auto& file : fs::directory_iterator(item.path())) {
-                if (file.path().filename() == (first.id + ".json"))
+                // Result filenames need only be unique within one
+                // difficulty. The first and the separate Hard result use
+                // the same timestamp-based ID, so matching first.id here
+                // can select the WRONG history directory on Windows.
+                // second.id was saved only for the Easy difficulty.
+                if (file.path().filename() == (second.id + ".json"))
                     containsEasy = true;
             }
             if (containsEasy) easyFolder = item.path();
