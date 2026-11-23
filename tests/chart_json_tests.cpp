@@ -1,4 +1,5 @@
 #include "core/chart_json.h"
+#include "core/chart_revision.h"
 #include "core/utf8.h"
 #include "core/route.h"
 
@@ -96,6 +97,21 @@ int main() {
                        "\"difficultyId\": \"BAD\", \"title\": \"Absolute Directions\"",
                        "difficultyId"),
                  "malformed difficulty identity cannot be loaded");
+    LoadedChart equivalent = parsed;
+    const auto baselineRevision = ChartGameplayRevision(parsed);
+    equivalent.title = "Changed visible title";
+    equivalent.difficultyId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    equivalent.audioPath = "other/same-audio.mp3";
+    ok &= Expect(ChartGameplayRevision(equivalent) == baselineRevision &&
+                 baselineRevision.size() == 32,
+                 "filename, title and persistent ID do not alter gameplay revision");
+    equivalent.route.turns[0].direction = Heading::Down;
+    ok &= Expect(ChartGameplayRevision(equivalent) != baselineRevision,
+                 "judged note directions change gameplay revision");
+    equivalent = parsed;
+    equivalent.route.tempoMap.push_back({3000, 145.0});
+    ok &= Expect(ChartGameplayRevision(equivalent) != baselineRevision,
+                 "song-wide BPM timing changes gameplay revision");
     LoadedChart localized = parsed;
     localized.title = u8"Сложность: Ёжик, Café 日本語 🎵";
     std::string localizedJson;
