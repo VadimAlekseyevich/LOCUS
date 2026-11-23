@@ -908,7 +908,7 @@ int main() {
             };
             std::cout << "SONG_SET_SCAN_SCALE charts=" << kLargeChartCount
                       << " cold_ms=" << ms(warmStart - coldStart)
-                      << " warm_ms=" << ms(finish - warmStart) << '\\n';
+                      << " warm_ms=" << ms(finish - warmStart) << '\n';
             ok &= Check(complete && reused,
                         "8193 charts scan completely and reuse the warm cache");
         } else {
@@ -920,6 +920,6 @@ int main() {
 
     fs::remove_all(folder, ec);
     if (!ok) return 1;
-    std::cout << "SONG_SET_PASS shared-audio=1 copies=1 backups=1 trash=1\\n";
+    std::cout << "SONG_SET_PASS shared-audio=1 copies=1 backups=1 trash=1\n";
     return 0;
 }
