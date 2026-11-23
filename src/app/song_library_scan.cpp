@@ -49,8 +49,9 @@ bool SongLibrary::Refresh(std::string& message) {
     // rescanning every earlier chart in a 1,000+ difficulty Song Set.
     std::map<fs::path, std::set<std::string>> difficultyIds;
     std::size_t skipped = 0;
-    fs::recursive_directory_iterator entry(
-        root, fs::directory_options::skip_permission_denied, ec);
+    // An unreadable subtree is not an ignorable invalid chart: silently
+    // skipping it would publish an incomplete library as authoritative.
+    fs::recursive_directory_iterator entry(root, fs::directory_options::none, ec);
     const fs::recursive_directory_iterator end;
     if (ec) {
         message = "Cannot enumerate Songs folder: " + ec.message();
@@ -67,8 +68,9 @@ bool SongLibrary::Refresh(std::string& message) {
         ec.clear();
         entry.increment(ec);
         if (ec) {
-            ++skipped;
-            ec.clear();
+            message = "Songs directory traversal failed; previous library index "
+                      "was preserved: " + ec.message();
+            return false;
         }
         if (path.extension() != L".json" ||
             path.filename() == L"set.locus.json") continue;
