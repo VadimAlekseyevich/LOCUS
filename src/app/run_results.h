@@ -18,7 +18,7 @@ struct RunResult {
     std::string songSetId;
     std::string difficultyId;
     std::string gameplayRevision;
-    int judgementVersion = 1;
+    int judgementVersion = core::kJudgementRulesVersion;
     std::string songTitle;
     std::string chartTitle;
     std::int64_t completedAtMs = 0; // UTC Unix milliseconds.
@@ -48,7 +48,7 @@ struct RunKey {
 
 // Increment when gameplay judgement windows, grade semantics or scoring
 // rules change. Keep historical scores visible but never mark them current.
-inline constexpr int kJudgementRulesVersion = 1;
+inline constexpr int kJudgementRulesVersion = core::kJudgementRulesVersion;
 
 enum class RunRevisionState { Current, OlderChart, OlderRules, Unknown };
 

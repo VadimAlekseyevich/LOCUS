@@ -38,6 +38,8 @@ v2 record fields:
 }
 ```
 
+The `judgementVersion` is authored once next to the actual scoring windows and grade rules in `core/judgement.h`, not independently in the UI or results writer. Bumping that constant marks old records as earned under previous judging rules.
+
 The score uses the game's existing weighted accuracy formula: `(100*Perfect + 75*Good + 50*Bad) / notesJudged`. Timestamps are stored as UTC Unix milliseconds and rendered as UTC.
 
 Difficulty history is keyed by **Song Set ID + permanent 128-bit difficultyId**, not its filename or display title. Authoring-only metadata (difficulty title, editor snap, preview lead) does not change the gameplay revision. Each attempt also records a stable gameplay-content fingerprint and the judgement rules version so old and updated authored revisions remain distinguishable without losing history. The Library results list and historical Results page label attempts from **OLDER CHART REVISION** or **OLDER JUDGEMENT RULES**; practice speed remains explicit. Different practice rates remain separate values inside attempts. `variablePracticeRate` is a sticky flag when playback speed changed during the run; `practiceRate` then means the *last* speed, not a uniform speed. Both Results screens label such runs **VARIABLE RATE**, even if playback returned to 100%. Restart resets the flag. This adds an explicit field to pre-release v2 records; earlier v2 records without it are treated as fixed-rate. Deleted files do not automatically delete result records.

@@ -63,6 +63,9 @@ int main(int argc, char** argv) {
     fs::create_directories(root, ec);
     if (ec) return 1;
     bool ok = true;
+    ok &= Check(RunResult{}.judgementVersion ==
+                locus::core::kJudgementRulesVersion,
+                "new score records inherit the authoritative judgement revision");
     RunResultsStore store(root / "Results");
     std::string error;
     RunResult first;

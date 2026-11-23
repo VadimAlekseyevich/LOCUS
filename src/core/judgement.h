@@ -8,6 +8,11 @@
 
 namespace locus::core {
 
+// The single authoritative scoring-rule revision. Bump this when timing
+// windows, diagonal resolution, grade weights or other judging rules change.
+// Completed results retain the revision at which they were earned.
+inline constexpr int kJudgementRulesVersion = 1;
+
 // Provisional, symmetric timing windows for the first playable demo.
 // These are gameplay defaults, not measured device latency or calibration.
 constexpr double kPerfectWindowSeconds = 0.050;
