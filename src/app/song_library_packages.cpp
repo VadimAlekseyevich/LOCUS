@@ -73,6 +73,7 @@ bool SongLibrary::ExportPackage(const fs::path& setFolder,
 bool SongLibrary::ImportPackage(const fs::path& archive,
                                 fs::path& installedSet,
                                 std::string& error) {
+    MarkDiskMutation();
     installedSet.clear();
     std::error_code ec;
     fs::create_directories(root_, ec);

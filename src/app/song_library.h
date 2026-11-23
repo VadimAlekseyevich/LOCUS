@@ -125,6 +125,10 @@ public:
     // Monotonically changes whenever the in-memory library index is modified.
     // Presenters use this in place of inspecting all song/chart strings every frame.
     std::uint64_t Revision() const noexcept { return revision_; }
+    // Separate from UI/index revision. Mark before any potential write, even
+    // when a disk commit can succeed but the subsequent rescan fails.
+    void MarkDiskMutation() noexcept { ++diskMutationEpoch_; }
+    std::uint64_t DiskMutationEpoch() const noexcept { return diskMutationEpoch_; }
     std::size_t ChartCount() const noexcept;
 
 private:
@@ -132,6 +136,7 @@ private:
     std::vector<LibrarySong> songs_;
     LibraryRefreshStats lastRefreshStats_{};
     std::uint64_t revision_ = 0;
+    std::uint64_t diskMutationEpoch_ = 0;
 };
 
 } // namespace locus::app

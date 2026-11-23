@@ -71,6 +71,7 @@ bool SongLibrary::SetSongTiming(int songIndex, double bpm, int offsetMs,
 bool SongLibrary::SetSongTempoMap(
     int songIndex, const std::vector<core::TempoMarker>& markers,
     const core::LoadedChart* currentDraft, std::string& error) {
+    MarkDiskMutation();
     if (songIndex < 0 || songIndex >= static_cast<int>(songs_.size()) ||
         !songs_[static_cast<std::size_t>(songIndex)].managed) {
         error = "Choose a managed Song Set before editing BPM markers.";
@@ -130,6 +131,7 @@ bool SongLibrary::SetSongMetadata(
     int songIndex, const std::string& title, const std::string& artist,
     const std::string& mapper, const std::vector<std::string>& tags,
     std::string& error) {
+    MarkDiskMutation();
     if (songIndex < 0 || songIndex >= static_cast<int>(songs_.size()) ||
         !songs_[static_cast<std::size_t>(songIndex)].managed) {
         error = "Select a managed Song Set before editing metadata.";
@@ -180,6 +182,7 @@ bool SongLibrary::SetSongMetadata(
 
 bool SongLibrary::SetPreviewStartMs(int songIndex, int timeMs,
                                     std::string& error) {
+    MarkDiskMutation();
     if (songIndex < 0 || songIndex >= static_cast<int>(songs_.size()) ||
         !songs_[static_cast<std::size_t>(songIndex)].managed ||
         timeMs < 0 || timeMs > kMaxSongPreviewStartMs) {
@@ -205,6 +208,7 @@ bool SongLibrary::SetPreviewStartMs(int songIndex, int timeMs,
 
 bool SongLibrary::SetBackgroundImage(int songIndex, const fs::path& source,
                                      std::string& error) {
+    MarkDiskMutation();
     if (songIndex < 0 || songIndex >= static_cast<int>(songs_.size()) ||
         !songs_[static_cast<std::size_t>(songIndex)].managed) {
         error = "Choose a managed Song Set before setting artwork.";

@@ -13,13 +13,15 @@ bool AsyncLibraryRefresh::Start(const SongLibrary& current,
                                 std::string& status) {
     const auto root = current.Root();
     const auto revision = current.Revision();
+    const auto diskEpoch = current.DiskMutationEpoch();
     const auto ticket = requested_;
     auto stop = std::make_shared<std::atomic<bool>>(false);
     try {
         worker_ = std::async(std::launch::async,
-            [root, revision, ticket, stop]() -> Outcome {
+            [root, revision, diskEpoch, ticket, stop]() -> Outcome {
                 Outcome result;
                 result.launchedRevision = revision;
+                result.launchedDiskEpoch = diskEpoch;
                 result.ticket = ticket;
                 result.index = std::make_unique<SongLibrary>(root);
                 try {
@@ -74,7 +76,8 @@ AsyncLibraryRefresh::PollState AsyncLibraryRefresh::Poll(
     }
     cancellation_.reset();
     if (result.ticket != requested_ ||
-        result.launchedRevision != current.Revision()) {
+        result.launchedRevision != current.Revision() ||
+        result.launchedDiskEpoch != current.DiskMutationEpoch()) {
         if (result.ticket == requested_) ++requested_;
         return Start(current, status) ? PollState::Pending : PollState::Failed;
     }

@@ -218,6 +218,9 @@ std::filesystem::path EditorFileActions::ActiveSetFolder() const {
 }
 
 bool EditorFileActions::Save(bool saveAs, double& now) {
+    // Invalidate an in-flight disk snapshot before any chart transaction;
+    // a later Refresh failure must not allow an earlier scan to publish.
+    context_.library.MarkDiskMutation();
     // LISTEN and library PLAY share this decoder. Never validate or save an
     // old editor document against a different song's duration after TEST.
     if (context_.audioPath != context_.loadedAudioPath) {

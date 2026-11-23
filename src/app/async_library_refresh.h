@@ -32,6 +32,7 @@ private:
         std::unique_ptr<SongLibrary> index;
         std::string status;
         std::uint64_t launchedRevision = 0;
+        std::uint64_t launchedDiskEpoch = 0;
         std::uint64_t ticket = 0;
         bool success = false;
     };

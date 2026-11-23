@@ -16,6 +16,7 @@ namespace fs = std::filesystem;
 using namespace detail;
 bool SongLibrary::TrashDifficulty(const fs::path& chart,
                                   std::string& error) {
+    MarkDiskMutation();
     int song = -1, index = -1;
     if (!FindChart(chart, song, index)) {
         error = "Difficulty is not in the library.";
@@ -46,6 +47,7 @@ bool SongLibrary::TrashDifficulty(const fs::path& chart,
 
 bool SongLibrary::TrashSongSet(const fs::path& folder,
                                std::string& error) {
+    MarkDiskMutation();
     const auto set = std::find_if(songs_.begin(), songs_.end(),
         [&](const LibrarySong& song) {
             return song.folder == folder && song.managed;
@@ -71,6 +73,7 @@ bool SongLibrary::TrashSongSet(const fs::path& folder,
 }
 
 bool SongLibrary::RestoreLastDeleted(std::string& error) {
+    MarkDiskMutation();
     std::error_code ec;
     fs::create_directories(root_, ec);
     if (ec) { error = "Cannot access Songs library."; return false; }

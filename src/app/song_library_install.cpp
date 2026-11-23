@@ -118,6 +118,7 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
                                    fs::path& installedChart,
                                    std::string& error,
                                    const fs::path& targetSet) {
+    MarkDiskMutation();
     installedChart.clear();
     std::error_code ec;
     const fs::path source = fs::canonical(sourceAudio, ec);
@@ -232,6 +233,7 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
 
 bool SongLibrary::Import(const fs::path& sourceChart,
                          fs::path& installedChart, std::string& error) {
+    MarkDiskMutation();
     installedChart.clear(); // Assigned only after a confirmed disk commit.
     core::LoadedChart source;
     std::wstring audio;
