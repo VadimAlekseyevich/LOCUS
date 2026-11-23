@@ -45,6 +45,9 @@ bool SongLibrary::Refresh(std::string& message) {
     std::vector<LibrarySong> next;
     std::map<fs::path, std::size_t> byAudio; // Logical song, not specific revision.
     std::map<std::string, fs::path> setIdOwners;
+    // One ordered set per pack: collision checks stay O(log N) rather than
+    // rescanning every earlier chart in a 1,000+ difficulty Song Set.
+    std::map<fs::path, std::set<std::string>> difficultyIds;
     std::size_t skipped = 0;
     std::size_t scanned = 0;
     fs::recursive_directory_iterator entry(
@@ -178,11 +181,7 @@ bool SongLibrary::Refresh(std::string& message) {
             index = found->second;
         }
         const auto& chartId = indexed.data.difficultyId;
-        const auto& siblings = next[index].charts;
-        if (std::any_of(siblings.begin(), siblings.end(),
-                        [&](const LibraryChart& other) {
-                            return other.data.difficultyId == chartId;
-                        })) {
+        if (!difficultyIds[logicalAudio].insert(chartId).second) {
             message = "Multiple files in a Song Set claim the same difficultyId: " + chartId;
             return false;
         }
