@@ -218,17 +218,31 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
         if (ec) error = "Could not access saved results.";
         return records;
     }
-    fs::directory_iterator current(dir, fs::directory_options::skip_permission_denied, ec);
-    if (ec) {
-        error = "Could not list saved results.";
+    // Missing history is normal; an unreadable folder or failed directory
+    // traversal is NOT an empty history. Never publish a partial result list
+    // when an iterator fails partway through enumeration.
+    if (!fs::is_directory(dir, ec) || ec) {
+        error = "Saved results path is not an accessible directory.";
         return records;
     }
-    for (const auto& entry : current) {
+    fs::directory_iterator current(dir, fs::directory_options::none, ec);
+    if (ec) {
+        error = "Could not list saved results: " + ec.message();
+        return records;
+    }
+    const fs::directory_iterator end;
+    while (current != end) {
         if (cancelled && cancelled->load(std::memory_order_relaxed)) {
             error = "History loading cancelled.";
             return {};
         }
-        if (!entry.is_regular_file(ec) ||
+        const fs::directory_entry entry = *current;
+        current.increment(ec);
+        if (ec) {
+            error = "Saved results directory traversal failed: " + ec.message();
+            return {};
+        }
+        if (entry.is_symlink(ec) || !entry.is_regular_file(ec) ||
             entry.path().extension() != ".json" ||
             entry.file_size(ec) > 16384 || ec) {
             ec.clear();
@@ -245,7 +259,7 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
                 entry.path().stem().string() != record.id) continue;
             records.push_back(std::move(record));
         } catch (const std::exception&) {
-            // A corrupt/partial old file never hides other completed runs.
+            // A corrupt or incomplete record never hides independent runs.
         }
     }
     if (cancelled && cancelled->load(std::memory_order_relaxed)) {

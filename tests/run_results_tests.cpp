@@ -292,6 +292,26 @@ int main(int argc, char** argv) {
                 locus::app::FormatRunTimestamp(first.completedAtMs).find("UTC") !=
                     std::string::npos,
                 "accuracy and UTC timestamp preserve completed-run values");
+    // A corrupt Results path is a hard failure, not an empty score history.
+    // The data is restored intact after the check, even on Windows.
+    if (!easyFolder.empty()) {
+        const fs::path held = easyFolder.string() + ".temporarily-held";
+        fs::rename(easyFolder, held, ec);
+        const bool parked = !ec;
+        if (parked) {
+            std::ofstream(easyFolder, std::ios::binary) << "not a directory";
+            std::string failure;
+            const auto inaccessible = store.Load({"set-123", kEasyId}, failure);
+            ok &= Check(inaccessible.empty() &&
+                        failure.find("not an accessible directory") !=
+                            std::string::npos,
+                        "inaccessible results storage is not reported as no scores");
+            fs::remove(easyFolder, ec);
+            fs::rename(held, easyFolder, ec);
+        }
+        ok &= Check(parked && !ec && fs::exists(easyFolder),
+                    "saved results survive a temporary directory obstruction");
+    }
     // These records are result summaries, not playbacks: no timeline events.
     fs::remove_all(root, ec);
     return ok ? 0 : 1;
