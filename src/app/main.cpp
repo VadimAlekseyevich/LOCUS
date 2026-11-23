@@ -368,17 +368,22 @@ int main(int argc, char** argv) {
         // Publish the worker result only from the main thread. Any import or
         // editor Save that advanced the catalog revision while scanning
         // invalidates the worker snapshot and queues a fresh scan.
-        const auto bookmark = locus::app::CaptureLibrarySelection(
-            library, libraryUi);
-        std::string scanNotice;
-        const auto scanned = libraryRefresh.Poll(library, scanNotice);
-        if (scanned == locus::app::AsyncLibraryRefresh::PollState::Published) {
-            locus::app::RestoreLibrarySelection(
-                library, libraryUi, bookmark, std::move(scanNotice), menuStatus);
-        } else if (scanned == locus::app::AsyncLibraryRefresh::PollState::Failed) {
-            libraryUi.notice = "LIBRARY SCAN FAILED: " + scanNotice;
-            menuStatus = libraryUi.notice;
-            std::cerr << "LIBRARY_SCAN_FAIL " << scanNotice << '\n';
+        if (libraryRefresh.Busy()) {
+            // Selection bookmarks allocate strings/paths. Capturing one on
+            // every gameplay frame when no scan is active is unnecessary;
+            // the current selection is needed only at the publish boundary.
+            const auto bookmark = locus::app::CaptureLibrarySelection(
+                library, libraryUi);
+            std::string scanNotice;
+            const auto scanned = libraryRefresh.Poll(library, scanNotice);
+            if (scanned == locus::app::AsyncLibraryRefresh::PollState::Published) {
+                locus::app::RestoreLibrarySelection(
+                    library, libraryUi, bookmark, std::move(scanNotice), menuStatus);
+            } else if (scanned == locus::app::AsyncLibraryRefresh::PollState::Failed) {
+                libraryUi.notice = "LIBRARY SCAN FAILED: " + scanNotice;
+                menuStatus = libraryUi.notice;
+                std::cerr << "LIBRARY_SCAN_FAIL " << scanNotice << '\n';
+            }
         }
         const bool wasQuitConfirmation = state.quitConfirmation;
         const bool wasLevelExitConfirmation = state.levelExitConfirmation;
