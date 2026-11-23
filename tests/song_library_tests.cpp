@@ -854,8 +854,72 @@ int main() {
         ok &= Check(false, "external timing cache fixture has a valid Song Set");
     }
 
+    // A large valid Song Set used to be silently truncated after the first
+    // 8192 JSON candidates while Refresh still returned success. Exercise
+    // one chart beyond that exact boundary and verify warm-cache reuse.
+    {
+        constexpr int kLargeChartCount = 8193;
+        const fs::path scaleRoot = folder / "large-library" / "Songs";
+        const fs::path scaleSet = scaleRoot / "large-set";
+        fs::create_directories(scaleSet, ec);
+        if (!ec) Write(scaleSet / "song.wav", firstBytes);
+        SongSetManifest largeManifest;
+        largeManifest.id = "stress-8193-set";
+        largeManifest.title = "Large Collection";
+        largeManifest.audioFile = "song.wav";
+        largeManifest.bpm = 120.0;
+        largeManifest.offsetMs = 0;
+        largeManifest.tempoMap = {{0, 120.0}};
+        const bool metadataReady = !ec && WriteNewSongSetManifest(
+            scaleSet / "set.locus.json", largeManifest, error);
+        if (metadataReady) {
+            const std::string prefix =
+                R"({"formatVersion":4,"title":"Stress","difficultyId":")";
+            const std::string suffix =
+                R"(","audioPath":"song.wav","bpm":120,"offsetMs":0,)"
+                R"("tempoMap":[{"timeMs":0,"bpm":120}],"grid":{"width":8,)"
+                R"("height":8},"start":{"x":3,"y":3,"heading":"r"},)"
+                R"("previewLeadBeats":4,"turns":[]})";
+            for (int index = 0; index < kLargeChartCount; ++index) {
+                const std::string n = std::to_string(index);
+                const std::string id(32 - n.size(), '0');
+                Write(scaleSet / ("stress-" + n + ".locus.json"),
+                      prefix + id + n + suffix);
+            }
+            SongLibrary largeLibrary(scaleRoot);
+            std::string summary;
+            const auto coldStart = std::chrono::steady_clock::now();
+            const bool complete = largeLibrary.Refresh(summary) &&
+                largeLibrary.ChartCount() == kLargeChartCount &&
+                largeLibrary.Songs().size() == 1 &&
+                largeLibrary.LastRefreshStats().parsedCharts ==
+                    kLargeChartCount &&
+                summary.find("SKIPPED") == std::string::npos;
+            const auto warmStart = std::chrono::steady_clock::now();
+            const bool reused = complete && largeLibrary.Refresh(summary) &&
+                largeLibrary.ChartCount() == kLargeChartCount &&
+                largeLibrary.LastRefreshStats().reusedCharts ==
+                    kLargeChartCount &&
+                largeLibrary.LastRefreshStats().parsedCharts == 0;
+            const auto finish = std::chrono::steady_clock::now();
+            const auto ms = [](auto duration) {
+                return std::chrono::duration_cast<std::chrono::milliseconds>(
+                    duration).count();
+            };
+            std::cout << "SONG_SET_SCAN_SCALE charts=" << kLargeChartCount
+                      << " cold_ms=" << ms(warmStart - coldStart)
+                      << " warm_ms=" << ms(finish - warmStart) << '\\n';
+            ok &= Check(complete && reused,
+                        "8193 charts scan completely and reuse the warm cache");
+        } else {
+            ok &= Check(false, "large Song Set can create valid manifest");
+        }
+        fs::remove_all(folder / "large-library", ec);
+        ec.clear();
+    }
+
     fs::remove_all(folder, ec);
     if (!ok) return 1;
-    std::cout << "SONG_SET_PASS shared-audio=1 copies=1 backups=1 trash=1\n";
+    std::cout << "SONG_SET_PASS shared-audio=1 copies=1 backups=1 trash=1\\n";
     return 0;
 }
