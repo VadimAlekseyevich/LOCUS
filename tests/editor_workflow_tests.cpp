@@ -24,6 +24,8 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -338,6 +340,51 @@ int main() {
 #endif
     ok &= Check(files.SaveAll(now) && !files.AnyDirty(),
                 "Save All retries remaining dirty document without duplicating first");
+
+    // Force a real failure AFTER a chart file has been renamed but BEFORE
+    // the new JSON can publish: the backup destination is replaced by a
+    // regular file. The original filename, bytes and dirty draft must survive.
+    {
+        const fs::path history = installedEasy.parent_path() / ".locus-history";
+        const fs::path heldHistory = installedEasy.parent_path() /
+            ".locus-history-test-held";
+        std::error_code ec;
+        ok &= Check(fs::is_directory(history, ec) && !ec,
+                    "first Save All created recoverable chart backups");
+        if (!ec && fs::is_directory(history, ec)) {
+            fs::rename(history, heldHistory, ec);
+            ok &= Check(!ec, "backup folder can be temporarily occupied");
+            if (!ec) {
+                {
+                    std::ofstream blocker(history, std::ios::binary);
+                    blocker << "not a directory";
+                }
+                const auto read = [](const fs::path& file) {
+                    std::ifstream in(file, std::ios::binary);
+                    return std::string(std::istreambuf_iterator<char>(in),
+                                       std::istreambuf_iterator<char>());
+                };
+                const std::string unchanged = read(installedEasy);
+                const fs::path renamed = installedEasy.parent_path() /
+                    "Rollback Probe.locus.json";
+                editor.SetTitle("Rollback Probe");
+                ok &= Check(!files.Save(false, now) &&
+                            chartPath == installedEasy.wstring() &&
+                            editor.Dirty() && fs::exists(installedEasy) &&
+                            !fs::exists(renamed) &&
+                            read(installedEasy) == unchanged,
+                            "post-rename backup failure restores original filename and bytes");
+                fs::remove(history, ec);
+                ec.clear();
+                fs::rename(heldHistory, history, ec);
+                ok &= Check(!ec, "original backup history survives failed Save");
+                editor.SetTitle("Easy");
+                ok &= Check(files.Save(false, now) && !editor.Dirty() &&
+                            chartPath == installedEasy.wstring(),
+                            "retry after backup failure saves the retained draft");
+            }
+        }
+    }
 
     // A saved difficulty may have a new filename while the library still
     // holds its old index. Saving it must first rescan, not create a copy.
