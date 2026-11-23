@@ -495,6 +495,20 @@ int main() {
     const fs::path traversalFile = folder / "traversal.locuspack";
     fs::path importedFolder;
     SongLibrary copiedLibrary(copiedRoot);
+    // Export must never silently omit a new difficulty added after the
+    // indexed catalog was built. It is a data-loss-like partial success even
+    // though the archive is technically a valid ZIP.
+    const fs::path unindexedChart = easyInstalled.parent_path() /
+        "externally-added.locus.json";
+    fs::copy_file(easyInstalled, unindexedChart, ec);
+    ok &= Check(!ec &&
+                !library.ExportPackage(easyInstalled.parent_path(),
+                                       packageFile, error) &&
+                error.find("changed on disk") != std::string::npos &&
+                !fs::exists(packageFile),
+                "stale Song Set index cannot export a partial ZIP package");
+    fs::remove(unindexedChart, ec);
+    ec.clear();
     ok &= Check(library.ExportPackage(easyInstalled.parent_path(),
                                      packageFile, error) &&
                 Read(packageFile).substr(0, 4) == std::string("PK\x03\x04", 4),

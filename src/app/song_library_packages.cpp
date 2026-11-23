@@ -36,6 +36,19 @@ bool SongLibrary::ExportPackage(const fs::path& setFolder,
     FolderWriteLock libraryLock, setLock;
     if (!libraryLock.Acquire(root, error) ||
         !setLock.Acquire(setFolder, error)) return false;
+    if (!SameSongSetFiles(*selected, error)) return false;
+    // Never export a cached set identity against a changed manifest. The
+    // authoritative timing and shared audio must match the indexed charts.
+    SongSetManifest published;
+    if (!LoadSongSetManifest(setFolder / L"set.locus.json", published, error))
+        return false;
+    if (published.id != selected->id ||
+        published.audioFile != selected->audioFile.filename().u8string() ||
+        published.tempoMap != selected->tempoMap) {
+        error = "Song Set manifest changed on disk; refresh before exporting.";
+        return false;
+    }
+    std::set<std::string> exportedIds;
     std::vector<fs::path> charts;
     for (const auto& chart : selected->charts) {
         core::LoadedChart parsed;
@@ -44,6 +57,12 @@ bool SongLibrary::ExportPackage(const fs::path& setFolder,
             return false;
         if (!fs::equivalent(fs::path(audio), selected->audioFile, ec) || ec) {
             error = "Song Set has a difficulty using different audio.";
+            return false;
+        }
+        if (!core::ValidDifficultyId(parsed.difficultyId) ||
+            parsed.difficultyId != chart.data.difficultyId ||
+            !exportedIds.insert(parsed.difficultyId).second) {
+            error = "Song Set chart IDs changed on disk; refresh before exporting.";
             return false;
         }
         charts.push_back(chart.file);

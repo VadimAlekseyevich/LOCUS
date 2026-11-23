@@ -20,13 +20,13 @@ namespace locus::app {
 namespace fs = std::filesystem;
 using namespace detail;
 
-namespace {
+namespace detail {
 // Recheck the authoritative on-disk difficulties under the Song Set lock
 // before publishing new shared BPM/offset. No cached validation may be
 // applied to a chart replaced by another editor since the last refresh.
 bool SameSongSetFiles(const LibrarySong& song, std::string& error) {
     const auto stale = [&]() {
-        error = "Song Set files changed on disk; refresh the library before editing timing.";
+        error = "Song Set files changed on disk; refresh the library before modifying or exporting it.";
         return false;
     };
     std::set<fs::path> indexed;
@@ -59,7 +59,7 @@ bool SameSongSetFiles(const LibrarySong& song, std::string& error) {
     if (ec) return stale();
     return true;
 }
-} // namespace
+} // namespace detail
 
 bool SongLibrary::SetSongTiming(int songIndex, double bpm, int offsetMs,
                                 const core::LoadedChart* currentDraft,
