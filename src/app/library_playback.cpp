@@ -12,8 +12,8 @@ namespace locus::app {
 
 bool PrepareLibraryDifficulty(const LibraryChart& selected, double audioDuration,
                               core::LoadedChart& prepared, std::string& error) {
-    if (selected.audioFile.empty()) {
-        error = "Selected difficulty does not reference an audio file.";
+    if (selected.audioFile.empty() || !selected.data) {
+        error = "Selected difficulty does not have validated chart data or audio.";
         return false;
     }
     core::LoadedChart candidate = *selected.data;

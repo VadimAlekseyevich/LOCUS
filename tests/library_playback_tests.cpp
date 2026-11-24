@@ -24,6 +24,15 @@ bool Check(bool condition, const char* message) {
 
 int main() {
     bool ok = true;
+    app::LibraryChart incomplete;
+    incomplete.audioFile = L"song/song.wav";
+    core::LoadedChart untouched;
+    untouched.title = "UNCHANGED";
+    std::string badError;
+    ok &= Check(!app::PrepareLibraryDifficulty(incomplete, 30.0,
+                                               untouched, badError) &&
+                untouched.title == "UNCHANGED" && !badError.empty(),
+                "unpublished metadata cannot be prepared as a playable chart");
     app::LibraryChart difficulty;
     difficulty.file = L"song/easy.locus.json";
     difficulty.audioFile = L"song/song.wav";

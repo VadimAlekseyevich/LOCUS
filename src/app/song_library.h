@@ -22,8 +22,9 @@ struct LibraryChart {
     // Immutable authored gameplay content. Old and new catalog snapshots
     // share one allocation for unchanged difficulties, including note arrays.
     // Readers borrow the payload; a BPM edit publishes a new instance.
-    std::shared_ptr<const core::LoadedChart> data =
-        std::make_shared<const core::LoadedChart>();
+    // Null only for a not-yet-populated scanning scratch item; every
+    // published difficulty has a validated non-null payload.
+    std::shared_ptr<const core::LoadedChart> data;
     std::filesystem::path audioFile; // Actual revision for this difficulty.
     // Calculated once from validated gameplay, reused across library views.
     // Display title, file rename or metadata-only editor changes do not alter it.
