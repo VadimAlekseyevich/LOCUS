@@ -126,6 +126,15 @@ endif()
 # RML/RCSS files never depends on a relink or a full application rebuild.
 set(LOCUS_UI_SOURCE_DIR "${PROJECT_SOURCE_DIR}/assets/ui")
 include(cmake/ui_assets_manifest.cmake)
+# Compile the same manifest into the no-GPU packaged asset check.
+set(LOCUS_ASSET_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/locus_required_assets.h")
+set(LOCUS_ASSET_HEADER_TEXT "#pragma once\ninline constexpr const char* kLocusRequiredUiAssets[] = {\n")
+foreach(relative IN LISTS LOCUS_REQUIRED_UI_ASSETS)
+    string(APPEND LOCUS_ASSET_HEADER_TEXT "    \"${relative}\",\n")
+endforeach()
+string(APPEND LOCUS_ASSET_HEADER_TEXT "};\n")
+file(GENERATE OUTPUT "${LOCUS_ASSET_HEADER}" CONTENT "${LOCUS_ASSET_HEADER_TEXT}")
+target_include_directories(locus PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 foreach(relative IN LISTS LOCUS_REQUIRED_UI_ASSETS)
     if(NOT EXISTS "${LOCUS_UI_SOURCE_DIR}/${relative}")
         message(FATAL_ERROR "Missing required LOCUS UI asset: ${relative}")
@@ -680,6 +689,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/menu_ui.cpp
         src/app/run_results.cpp
         src/app/home_brand_assets.cpp
+        src/app/executable_directory.cpp
         src/app/game_settings.cpp
             ${LOCUS_SONG_LIBRARY_SOURCES}
         src/app/song_archive.cpp

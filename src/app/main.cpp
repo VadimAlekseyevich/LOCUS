@@ -16,6 +16,8 @@
 #include "app/screen_fade_transition.h"
 #include "app/app_smoke_checks.h"
 #include "app/executable_directory.h"
+#include "locus_required_assets.h"
+#include <fstream>
 #include <exception>
 #include "app/app_frame_renderer.h"
 #include "app/image_asset_texture.h"
@@ -127,11 +129,24 @@ int main(int argc, char** argv) try {
         return 0;
     }
 
+    if (HasArgument(argc, argv, "--asset-check")) {
+        const auto root = locus::app::ExecutableDirectory() / "assets" / "ui";
+        for (const auto* name : kLocusRequiredUiAssets) {
+            const auto path = root / name;
+            std::ifstream file(path, std::ios::binary);
+            if (!file || file.peek() == std::char_traits<char>::eof()) {
+                std::cerr << "ASSET_CHECK_FAIL " << path.u8string() << std::endl;
+                return 1;
+            }
+        }
+        std::cout << "ASSET_CHECK_PASS" << std::endl;
+        return 0;
+    }
     const bool smokeWindow = HasArgument(argc, argv, "--window-smoke");
     const bool debugScreens = HasArgument(argc, argv, "--debug-screens");
     if (argc != 1 && !smokeWindow && !debugScreens) {
         std::cerr << "Usage: locus.exe [--loop-check | --screen-check | "
-                     "--session-check | --window-smoke | --debug-screens]\n";
+                     "--session-check | --asset-check | --window-smoke | --debug-screens]\n";
         return 2;
     }
 

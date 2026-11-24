@@ -153,6 +153,12 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or -not ($result -match "SCREEN_STATE_PASS")) {
             throw "Distribution ZIP executable check failed"
           }
+          # Deliberately run from an unrelated working directory. This uses
+          # the production executable-directory resolver, not a test stub.
+          $assetResult = & (Join-Path $unpacked "locus.exe") --asset-check
+          if ($LASTEXITCODE -ne 0 -or -not ($assetResult -match "ASSET_CHECK_PASS")) {
+            throw "Unicode executable-relative asset check failed: $assetResult"
+          }
           Write-Output "PORTABLE_UI_PACKAGE_PASS"
 
       - name: Verify Windows font fallback prerequisites
