@@ -187,7 +187,7 @@ bool SongLibrary::RefreshImpl(std::string& message,
                 continue;
             }
             indexed.file = path;
-            indexed.data = std::move(chart);
+            indexed.data = std::make_shared<const core::LoadedChart>(std::move(chart));
             indexed.audioFile = fs::path(audio);
             ++stats.parsedCharts;
         }
@@ -233,7 +233,7 @@ bool SongLibrary::RefreshImpl(std::string& message,
         }
         // Missing IDs are pre-release charts which cannot safely join a
         // filename-independent results history. Do not index them as playable.
-        if (!core::ValidDifficultyId(indexed.data.difficultyId)) {
+        if (!core::ValidDifficultyId(indexed.data->difficultyId)) {
             ++skipped;
             continue;
         }
@@ -261,7 +261,7 @@ bool SongLibrary::RefreshImpl(std::string& message,
         } else {
             index = found->second;
         }
-        const auto& chartId = indexed.data.difficultyId;
+        const auto& chartId = indexed.data->difficultyId;
         if (!difficultyIds[logicalAudio].insert(chartId).second) {
             message = "Multiple files in a Song Set claim the same difficultyId: " + chartId;
             return false;
@@ -302,39 +302,35 @@ bool SongLibrary::RefreshImpl(std::string& message,
         song.offsetMs = *timing.offsetMs;
         song.tempoMap = timing.tempoMap;
         for (auto& difficulty : song.charts) {
-            if (!ApplySongTiming(difficulty.data, song.tempoMap,
-                                 problem)) {
-                message = "Song Set " + song.title + ": " + problem;
-                return false;
-            }
-        }
-        for (auto& difficulty : song.charts) {
-            // The cached difficulty belongs to a particular audio timing,
-            // not just to the original JSON bytes. A changed manifest BPM
-            // or offset may reproject every note of this Song Set.
-            // ApplySongTiming above has already overwritten the in-memory
-            // values, so compare with the pre-scan cached version instead.
-            const auto previousChart = previous.find(difficulty.file);
-            const auto previousSet = previousSets.find(song.folder);
-            const bool oldTimingMatches = transferCache
-                // A detached scan may have moved the old note vectors out.
-                // The set's published timing remains intact and authoritative.
-                ? (previousSet != previousSets.end() &&
-                   previousSet->second->tempoMap == song.tempoMap)
-                : (previousChart != previous.end() &&
-                   core::EffectiveTempoMap(
-                       previousChart->second->data.route,
-                       previousChart->second->data.offsetSeconds) == song.tempoMap);
-            // Refresh invalid or stale difficulty cache entries without
-            // recomputing scores for identical note data.
-            const bool invalidCachedRating = !difficulty.data.route.turns.empty() &&
-                (difficulty.difficulty.notes != difficulty.data.route.turns.size() ||
+            // A reused chart with unchanged authoritative tempo already owns
+            // fully projected, immutable content. Keep the shared allocation
+            // instead of deep-copying every turn on each background refresh.
+            const auto priorSet = previousSets.find(song.folder);
+            const auto priorChart = previous.find(difficulty.file);
+            const bool reused = reusedFiles.count(difficulty.file) != 0;
+            const bool oldTimingMatches = reused &&
+                (transferCache
+                    ? (priorSet != previousSets.end() &&
+                       priorSet->second->tempoMap == song.tempoMap)
+                    : (priorChart != previous.end() &&
+                       core::EffectiveTempoMap(
+                           priorChart->second->data->route,
+                           priorChart->second->data->offsetSeconds) ==
+                           song.tempoMap));
+            const bool invalidCachedRating = !difficulty.data->route.turns.empty() &&
+                (difficulty.difficulty.notes != difficulty.data->route.turns.size() ||
                  !std::isfinite(difficulty.difficulty.overall) ||
                  difficulty.difficulty.overall <= 0.0);
-            if (!oldTimingMatches || reusedFiles.count(difficulty.file) == 0 ||
-                invalidCachedRating) {
+            if (!oldTimingMatches || invalidCachedRating) {
+                core::LoadedChart projected = *difficulty.data;
+                if (!ApplySongTiming(projected, song.tempoMap, problem)) {
+                    message = "Song Set " + song.title + ": " + problem;
+                    return false;
+                }
                 difficulty.difficulty = core::CalculateChartDifficulty(
-                    difficulty.data.route, difficulty.data.offsetSeconds);
+                    projected.route, projected.offsetSeconds);
+                difficulty.data = std::make_shared<const core::LoadedChart>(
+                    std::move(projected));
                 ++stats.calculatedDifficulties;
             }
         }

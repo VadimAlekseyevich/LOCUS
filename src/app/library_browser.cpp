@@ -11,7 +11,7 @@ LibrarySelectionBookmark CaptureLibrarySelection(
     LibrarySelectionBookmark result;
     if (const auto* selected = ui.Selected(library)) {
         result.file = selected->file;
-        result.difficultyId = selected->data.difficultyId;
+        result.difficultyId = selected->data->difficultyId;
         if (ui.selectedSong > 0 &&
             ui.selectedSong <= static_cast<int>(library.Songs().size()))
             result.songSetId = library.Songs()[
@@ -33,7 +33,7 @@ void RestoreLibrarySelection(SongLibrary& library, SongSelectUi& ui,
             const auto& set = library.Songs()[s];
             if (set.id != bookmark.songSetId) continue;
             for (std::size_t c = 0; c < set.charts.size(); ++c) {
-                if (set.charts[c].data.difficultyId == bookmark.difficultyId) {
+                if (set.charts[c].data->difficultyId == bookmark.difficultyId) {
                     song = static_cast<int>(s);
                     chart = static_cast<int>(c);
                     break;

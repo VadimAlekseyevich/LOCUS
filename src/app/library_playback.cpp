@@ -16,7 +16,7 @@ bool PrepareLibraryDifficulty(const LibraryChart& selected, double audioDuration
         error = "Selected difficulty does not reference an audio file.";
         return false;
     }
-    core::LoadedChart candidate = selected.data;
+    core::LoadedChart candidate = *selected.data;
     if (!core::PrepareChartForSong(candidate, audioDuration, error))
         return false;
     prepared = std::move(candidate);

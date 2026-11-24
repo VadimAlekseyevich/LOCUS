@@ -127,7 +127,7 @@ void LibrarySearchCache::Refresh(const SongLibrary& library) {
         auto& titles = nextTitles.emplace_back();
         titles.reserve(song.charts.size());
         for (const auto& chart : song.charts)
-            titles.push_back(core::NormalizedSearchKey(chart.data.title));
+            titles.push_back(core::NormalizedSearchKey(chart.data->title));
     }
     metadata.swap(nextMetadata);
     chartTitles.swap(nextTitles);
@@ -351,14 +351,14 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     DrawLine(28, 166, 350, 166, line);
 
     Label(font, "DIFFICULTY", 28, 174, 11, lilac);
-    fit(selected ? selected->data.title : "ORIGINAL",
+    fit(selected ? selected->data->title : "ORIGINAL",
         28, 190, 246, 17, theme.foreground);
     const auto score = selected
         ? selected->difficulty
         : core::CalculateChartDifficulty(core::MakeDemoChart());
     Label(font, TextFormat("%.1f", score.overall), 288, 184, 27, sky);
     const int turns = selected
-        ? static_cast<int>(selected->data.route.turns.size())
+        ? static_cast<int>(selected->data->route.turns.size())
         : static_cast<int>(core::MakeDemoChart().turns.size());
     Label(font, TextFormat("%d TURNS", turns), 28, 213, 11, faint);
 
@@ -433,7 +433,7 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
         const std::string title = child
             ? (item.song > 0
                 ? library.Songs()[static_cast<std::size_t>(item.song - 1)]
-                      .charts[static_cast<std::size_t>(item.chart)].data.title
+                      .charts[static_cast<std::size_t>(item.chart)].data->title
                 : "ORIGINAL")
             : (item.song > 0
                 ? library.Songs()[static_cast<std::size_t>(item.song - 1)].title

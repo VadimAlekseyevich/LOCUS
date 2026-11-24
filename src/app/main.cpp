@@ -357,7 +357,7 @@ int main(int argc, char** argv) {
         const auto* chart = libraryUi.Selected(library);
         if (!chart) return {};
         return {library.Songs()[static_cast<std::size_t>(index)].id,
-                chart->data.difficultyId};
+                chart->data->difficultyId};
     };
     locus::app::ListenSession listener{
         localSong, loadedAudioPath, musicError,
@@ -403,7 +403,7 @@ int main(int argc, char** argv) {
                         locus::core::ChartGameplayRevision(demoSnapshot);
                 } else if (const auto* picked = libraryUi.Selected(library)) {
                     selectedGameplayRevision =
-                        locus::core::ChartGameplayRevision(picked->data);
+                        locus::core::ChartGameplayRevision(*picked->data);
                 }
             }
             if (key != libraryUi.resultKey ||
@@ -925,9 +925,9 @@ int main(int argc, char** argv) {
                             static_cast<std::size_t>(songIndex)];
                         playedBackgroundPath = song.backgroundImage;
                         playedRunKey = {song.id,
-                            song.charts[static_cast<std::size_t>(difficultyIndex)].data.difficultyId};
+                            song.charts[static_cast<std::size_t>(difficultyIndex)].data->difficultyId};
                         playedGameplayRevision = locus::core::ChartGameplayRevision(
-                            song.charts[static_cast<std::size_t>(difficultyIndex)].data);
+                            *song.charts[static_cast<std::size_t>(difficultyIndex)].data);
                         playedSongTitle = song.title;
                     }
                 }

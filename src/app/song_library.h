@@ -7,6 +7,7 @@
 #include <atomic>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -18,7 +19,11 @@ std::filesystem::path UserDataDirectory();
 
 struct LibraryChart {
     std::filesystem::path file;
-    core::LoadedChart data; // Cached across unchanged library rescans.
+    // Immutable authored gameplay content. Old and new catalog snapshots
+    // share one allocation for unchanged difficulties, including note arrays.
+    // Readers borrow the payload; a BPM edit publishes a new instance.
+    std::shared_ptr<const core::LoadedChart> data =
+        std::make_shared<const core::LoadedChart>();
     std::filesystem::path audioFile; // Actual revision for this difficulty.
     core::ChartDifficulty difficulty; // Reused while file and timing are unchanged.
     // Transient index fingerprint, not serialized with charts or Song Sets.

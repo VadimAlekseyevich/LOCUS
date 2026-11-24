@@ -83,13 +83,14 @@ bool SongLibrary::SetSongTempoMap(
         error.clear();
         return true;
     }
-    std::vector<core::LoadedChart> adjusted;
+    std::vector<std::shared_ptr<const core::LoadedChart>> adjusted;
     adjusted.reserve(song.charts.size());
     for (const auto& difficulty : song.charts) {
-        core::LoadedChart candidate = difficulty.data;
+        core::LoadedChart candidate = *difficulty.data;
         if (!ApplySongTiming(candidate, markers, error))
             return false;
-        adjusted.push_back(std::move(candidate));
+        adjusted.push_back(std::make_shared<const core::LoadedChart>(
+            std::move(candidate)));
     }
     if (currentDraft) {
         core::LoadedChart candidate = *currentDraft;
@@ -117,9 +118,9 @@ bool SongLibrary::SetSongTempoMap(
     song.bpm = markers.front().bpm;
     song.offsetMs = static_cast<int>(markers.front().timeMs);
     for (std::size_t i = 0; i < adjusted.size(); ++i) {
-        song.charts[i].data = std::move(adjusted[i]);
         song.charts[i].difficulty = core::CalculateChartDifficulty(
-            song.charts[i].data.route, song.charts[i].data.offsetSeconds);
+            adjusted[i]->route, adjusted[i]->offsetSeconds);
+        song.charts[i].data = std::move(adjusted[i]);
     }
     SortChartDifficulties(song.charts);
     ++revision_;

@@ -108,7 +108,7 @@ bool SongLibrary::DuplicateDifficulty(const fs::path& original,
     }
     const auto& set = songs_[static_cast<std::size_t>(song)];
     const auto& selected = set.charts[static_cast<std::size_t>(index)];
-    core::LoadedChart copy = selected.data;
+    core::LoadedChart copy = *selected.data;
     copy.title += " Copy";
     return CreateDifficulty(selected.audioFile, copy, copied, error, set.folder);
 }
