@@ -3,6 +3,7 @@
 #include "app/song_set_storage.h"
 #include "app/chart_file_fingerprint.h"
 #include "app/song_timing.h"
+#include "core/chart_revision.h"
 #include "core/utf8.h"
 #include "app/image_asset_file.h"
 #include <algorithm>
@@ -120,6 +121,7 @@ bool SongLibrary::SetSongTempoMap(
     for (std::size_t i = 0; i < adjusted.size(); ++i) {
         song.charts[i].difficulty = core::CalculateChartDifficulty(
             adjusted[i]->route, adjusted[i]->offsetSeconds);
+        song.charts[i].gameplayRevision = core::ChartGameplayRevision(*adjusted[i]);
         song.charts[i].data = std::move(adjusted[i]);
     }
     SortChartDifficulties(song.charts);

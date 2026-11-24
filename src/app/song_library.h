@@ -25,6 +25,9 @@ struct LibraryChart {
     std::shared_ptr<const core::LoadedChart> data =
         std::make_shared<const core::LoadedChart>();
     std::filesystem::path audioFile; // Actual revision for this difficulty.
+    // Calculated once from validated gameplay, reused across library views.
+    // Display title, file rename or metadata-only editor changes do not alter it.
+    std::string gameplayRevision;
     core::ChartDifficulty difficulty; // Reused while file and timing are unchanged.
     // Transient index fingerprint, not serialized with charts or Song Sets.
     std::uintmax_t indexedFileSize = 0;

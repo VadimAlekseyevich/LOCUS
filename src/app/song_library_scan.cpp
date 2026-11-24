@@ -4,6 +4,7 @@
 #include "app/chart_file_fingerprint.h"
 #include "app/song_set_storage.h"
 #include "app/song_timing.h"
+#include "core/chart_revision.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -329,6 +330,7 @@ bool SongLibrary::RefreshImpl(std::string& message,
                 }
                 difficulty.difficulty = core::CalculateChartDifficulty(
                     projected.route, projected.offsetSeconds);
+                difficulty.gameplayRevision = core::ChartGameplayRevision(projected);
                 difficulty.data = std::make_shared<const core::LoadedChart>(
                     std::move(projected));
                 ++stats.calculatedDifficulties;

@@ -187,6 +187,10 @@ int main() {
                 library.Songs()[0].charts[1].data->title == "Hard",
                 "two difficulties are grouped in one Song Set");
     const auto easyId = library.Songs()[0].charts[0].data->difficultyId;
+    ok &= Check(library.Songs()[0].charts[0].gameplayRevision ==
+                    locus::core::ChartGameplayRevision(
+                        *library.Songs()[0].charts[0].data),
+                "gameplay revision is cached alongside validated difficulty");
     const auto hardId = library.Songs()[0].charts[1].data->difficultyId;
     ok &= Check(locus::core::ValidDifficultyId(easyId) &&
                 locus::core::ValidDifficultyId(hardId) && easyId != hardId,
