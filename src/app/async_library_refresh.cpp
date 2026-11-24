@@ -31,7 +31,7 @@ bool AsyncLibraryRefresh::Start(const SongLibrary& current,
                 result.index = seed && seed->Root() == root
                     ? std::move(seed) : std::make_unique<SongLibrary>(root);
                 try {
-                    result.success = result.index->RefreshDetached(
+                    result.success = result.index->Refresh(
                         result.status, stop.get());
                 } catch (const std::exception& e) {
                     result.status = std::string("Scan failed: ") + e.what();
@@ -84,21 +84,17 @@ AsyncLibraryRefresh::PollState AsyncLibraryRefresh::Poll(
     if (result.ticket != requested_ ||
         result.launchedRevision != current.Revision() ||
         result.launchedDiskEpoch != current.DiskMutationEpoch()) {
-        // A superseded SUCCESSFUL scan can still seed a newer worker after
-        // fingerprints are rechecked. A cancelled or failed detached scan
-        // may have moved chart note vectors out of its cache, so retaining
-        // it would incorrectly reuse empty/moved-from chart data.
-        if (result.success) reuseIndex_ = std::move(result.index);
-        else reuseIndex_.reset();
+        // A cancelled/non-published scan preserves its previous immutable
+        // contents, so it can safely seed a newer scan without re-parsing.
+        reuseIndex_ = std::move(result.index);
         if (result.ticket == requested_) ++requested_;
         return Start(current, status) ? PollState::Pending : PollState::Failed;
     }
     status = std::move(result.status);
     if (!result.success || !result.index) {
-        // The isolated scan may have consumed old chart vectors before
-        // detecting a bad file or cancellation. Never cache this potentially
-        // moved-from index; the live published catalog remains intact.
-        reuseIndex_.reset();
+        // Non-destructive Refresh leaves the previous index intact even
+        // when the filesystem traversal or its cancellation fails.
+        reuseIndex_ = std::move(result.index);
         return PollState::Failed;
     }
     if (!current.PublishScannedIndex(std::move(*result.index))) {

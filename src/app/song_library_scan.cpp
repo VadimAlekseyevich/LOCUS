@@ -35,17 +35,6 @@ bool CanonicalChildOf(const fs::path& parent, const fs::path& child) {
 
 bool SongLibrary::Refresh(std::string& message,
                           const std::atomic<bool>* cancelled) {
-    return RefreshImpl(message, cancelled, false);
-}
-
-bool SongLibrary::RefreshDetached(std::string& message,
-                                  const std::atomic<bool>* cancelled) {
-    return RefreshImpl(message, cancelled, true);
-}
-
-bool SongLibrary::RefreshImpl(std::string& message,
-                             const std::atomic<bool>* cancelled,
-                             bool transferCache) {
     std::error_code ec;
     fs::create_directories(root_, ec);
     if (ec) {
@@ -63,16 +52,12 @@ bool SongLibrary::RefreshImpl(std::string& message,
     // external same-size / same-mtime edit cannot silently reuse stale notes.
     // Song Set timing remains authoritative in the manifest.
     std::unordered_map<fs::path, LibraryChart*> previous;
-    std::unordered_map<fs::path, const LibrarySong*> previousSets;
     std::size_t knownChartCount = 0;
     for (const auto& song : songs_) knownChartCount += song.charts.size();
     previous.reserve(knownChartCount);
-    previousSets.reserve(songs_.size());
-    for (auto& song : songs_) {
-        previousSets.emplace(song.folder, &song);
+    for (auto& song : songs_)
         for (auto& chart : song.charts)
             previous.emplace(chart.file, &chart);
-    }
     LibraryRefreshStats stats;
     std::unordered_set<fs::path> reusedFiles;
     std::unordered_map<fs::path, SongSetManifest> manifestCache;
@@ -167,16 +152,11 @@ bool SongLibrary::RefreshImpl(std::string& message,
             old->second->indexedFileSize == bytes &&
             old->second->indexedContentFingerprint == contentFingerprint;
         if (reuse) {
-            if (transferCache) {
-                // Only the detached worker owns this index. Transferring
-                // ownership avoids reallocating every note on a warm F5.
-                // On scan failure the detached cache is discarded; the UI's
-                // published snapshot was never accessed or modified.
-                indexed = std::move(*old->second);
-                ++stats.transferredCharts;
-            } else {
-                indexed = *old->second;
-            }
+            // Copy only small metadata and one shared_ptr reference. The
+            // potentially massive immutable note array remains in exactly
+            // one allocation shared by both in-memory generations. Unlike
+            // destructive transfer, cancellation cannot damage this cache.
+            indexed = *old->second;
             reusedFiles.insert(path);
             ++stats.reusedCharts;
         } else {
@@ -306,18 +286,13 @@ bool SongLibrary::RefreshImpl(std::string& message,
             // A reused chart with unchanged authoritative tempo already owns
             // fully projected, immutable content. Keep the shared allocation
             // instead of deep-copying every turn on each background refresh.
-            const auto priorSet = previousSets.find(song.folder);
             const auto priorChart = previous.find(difficulty.file);
             const bool reused = reusedFiles.count(difficulty.file) != 0;
             const bool oldTimingMatches = reused &&
-                (transferCache
-                    ? (priorSet != previousSets.end() &&
-                       priorSet->second->tempoMap == song.tempoMap)
-                    : (priorChart != previous.end() &&
-                       core::EffectiveTempoMap(
-                           priorChart->second->data->route,
-                           priorChart->second->data->offsetSeconds) ==
-                           song.tempoMap));
+                priorChart != previous.end() &&
+                core::EffectiveTempoMap(
+                    priorChart->second->data->route,
+                    priorChart->second->data->offsetSeconds) == song.tempoMap;
             const bool invalidCachedRating = !difficulty.data->route.turns.empty() &&
                 (difficulty.difficulty.notes != difficulty.data->route.turns.size() ||
                  !std::isfinite(difficulty.difficulty.overall) ||
