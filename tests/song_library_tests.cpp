@@ -5,6 +5,7 @@
 #include "app/chart_file.h"
 #include "app/song_archive.h"
 #include "app/song_library_internal.h"
+#include "app/song_difficulty_import.h"
 
 #include <algorithm>
 #include <chrono>
@@ -759,6 +760,33 @@ int main() {
                 !copiedLibrary.ImportPackage(traversalFile, duplicatePackage, error) &&
                 copiedLibrary.ChartCount() == 4,
                 "path traversal in ZIP entry names is rejected");
+
+    // T07: fail publication of the second prepared item after the first
+    // replacement. The original chart and an independently created file
+    // must survive, and retrying with a free name must succeed.
+    {
+        const auto batchFolder = folder / "import-rollback";
+        fs::create_directories(batchFolder, ec);
+        const auto first = batchFolder / "first.locus.json";
+        const auto second = batchFolder / "second.locus.json";
+        Write(first, "old chart");
+        Write(second, "independent file");
+        std::vector<detail::DifficultyImportWrite> writes{
+            {first, "old chart", "updated chart", true},
+            {second, {}, "new chart", false}};
+        const bool rejected = !detail::PublishDifficultyImports(writes, error);
+        ok &= Check(rejected && Read(first) == "old chart" &&
+                    Read(second) == "independent file",
+                    "failed second import publication rolls back first replacement");
+        writes[1].destination = batchFolder / "available.locus.json";
+        ok &= Check(detail::PublishDifficultyImports(writes, error) &&
+                    Read(first) == "updated chart" &&
+                    Read(writes[1].destination) == "new chart" &&
+                    Read(second) == "independent file",
+                    "retry after rollback publishes both intended changes");
+        fs::remove_all(batchFolder, ec);
+        ec.clear();
+    }
 
     // Normal Ctrl+S equivalent: overwrite chart and verify its previous bytes
     // were backed up before atomic publication.

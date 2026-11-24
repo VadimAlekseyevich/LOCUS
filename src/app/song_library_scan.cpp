@@ -284,6 +284,12 @@ bool SongLibrary::Refresh(std::string& message,
         song.offsetMs = *timing.offsetMs;
         song.tempoMap = timing.tempoMap;
         for (auto& difficulty : song.charts) {
+            // A set may contain thousands of expensive ratings. Cancellation
+            // must not be deferred until the next Song Set or end of scan.
+            if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+                message = "Library scan cancelled.";
+                return false;
+            }
             // A reused chart with unchanged authoritative tempo already owns
             // fully projected, immutable content. Keep the shared allocation
             // instead of deep-copying every turn on each background refresh.
