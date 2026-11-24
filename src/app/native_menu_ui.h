@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/rml_raylib_renderer.h"
+#include "app/rml_native_files.h"
 #include "app/menu_controller.h"
 #include "app/library_virtual_list.h"
 #include "app/native_settings_ui.h"
@@ -87,6 +88,7 @@ private:
     void SetText(const char* id, const std::string& value);
     bool IsSearchFocused() const;
 
+    RmlNativeFiles files_;
     RmlRaylibSystem system_;
     RmlRaylibRenderer renderer_;
     Rml::Context* context_ = nullptr;

@@ -15,10 +15,11 @@ Double-click **`build_and_run.bat`** in the repository folder. It checks for Git
 | `build_and_run.bat` | Build and run LOCUS |
 | `build_and_run.bat build` | Build without launching |
 | `build_and_run.bat test` | Build and run the game’s CTest suite |
+| `build_and_run.bat package` | Build and create a portable Windows ZIP in the build directory’s `dist/` |
 
 A local log folder is created under `.locus-runs/` (Git-ignored). Logs are not uploaded. CI runs the same production CMake build and tests on Windows.
 
-A portable Windows build is available as the **`locus-windows-x64`** [GitHub Actions artifact](https://github.com/VadimAlekseyevich/LOCUS/actions): unzip it anywhere and run `locus.exe`. The complete `assets/ui` directory and `examples` ship beside the executable; CI diagnostics are a separate artifact. For the same portable layout locally, use `cmake --install build/windows --config Release --prefix build/windows/portable` after building. Required resources are declared in [`cmake/ui_assets_manifest.cmake`](cmake/ui_assets_manifest.cmake).
+A portable Windows build is available as the **`locus-windows-x64`** [GitHub Actions artifact](https://github.com/VadimAlekseyevich/LOCUS/actions): download the contained `LOCUS-windows-x64.zip`, extract all files and run `Start LOCUS.bat` (or `locus.exe`). The launcher records startup output and the exit code in a temporary log and prints its path on failure. The complete `assets/ui` directory and `examples` ship beside the executable; CI diagnostics are a separate artifact. For the same portable layout locally, use `cmake --install build/windows --config Release --prefix build/windows/portable` after building. Required resources are declared in [`cmake/ui_assets_manifest.cmake`](cmake/ui_assets_manifest.cmake).
 
 The audio offset is stored as an optional `globalOffsetMs` integer in the current `settings.json` v3; existing key bindings and saved charts are preserved. No chart, skin or Song Set file format changes.
 

@@ -1,5 +1,8 @@
 #include "app/home_brand_assets.h"
 #include "app/ui_theme.h"
+#include "app/executable_directory.h"
+#include "app/image_asset_decode.h"
+#include <iostream>
 
 #include <filesystem>
 #include <string>
@@ -7,11 +10,8 @@
 namespace locus::app {
 namespace {
 
-std::string AssetPath(const char* file) {
-    // Assets are copied alongside the executable by CMake, so launching
-    // LOCUS from a shortcut or another working directory still works.
-    return (std::filesystem::u8path(GetApplicationDirectory()) /
-            "assets" / "ui" / file).u8string();
+std::filesystem::path AssetPath(const char* file) {
+    return ExecutableDirectory() / "assets" / "ui" / file;
 }
 
 void DrawTextureIn(Texture2D texture, Rectangle bounds) {
@@ -26,21 +26,21 @@ void DrawTextureIn(Texture2D texture, Rectangle bounds) {
 
 void HomeBrandAssets::Load() {
     Unload();
-    const std::string wordmarkPath = AssetPath("wordmark.png");
-    if (FileExists(wordmarkPath.c_str())) {
-        wordmark_ = LoadTexture(wordmarkPath.c_str());
+    std::string error;
+    Image image{};
+    if (DecodeImageAssetFile(AssetPath("wordmark.png"), image, error)) {
+        wordmark_ = LoadTextureFromImage(image);
+        UnloadImage(image);
         if (IsTextureValid(wordmark_))
             SetTextureFilter(wordmark_, TEXTURE_FILTER_BILINEAR);
+    } else {
+        std::cerr << "UI_WORDMARK_UNAVAILABLE " << error << '\n';
     }
-    const std::string iconPath = AssetPath("app-icon.png");
-    if (FileExists(iconPath.c_str())) {
-        Image image = LoadImage(iconPath.c_str());
-        if (IsImageValid(image)) {
-            // Runtime titlebar/taskbar icon. The packaged EXE resource can
-            // be updated separately without changing these menu textures.
-            SetWindowIcon(image);
-            UnloadImage(image);
-        }
+    if (DecodeImageAssetFile(AssetPath("app-icon.png"), image, error)) {
+        SetWindowIcon(image);
+        UnloadImage(image);
+    } else {
+        std::cerr << "UI_ICON_UNAVAILABLE " << error << '\n';
     }
 }
 

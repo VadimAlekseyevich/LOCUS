@@ -1,4 +1,5 @@
 #include "app/native_menu_ui.h"
+#include "app/executable_directory.h"
 
 #include "app/menu_ui.h"
 #include "app/viewport.h"
@@ -172,6 +173,7 @@ NativeMenuUi::~NativeMenuUi() { Shutdown(); }
 bool NativeMenuUi::Initialize() {
     if (Available()) return true;
     if (GetScreenWidth() <= 0 || GetScreenHeight() <= 0) return false;
+    Rml::SetFileInterface(&files_);
     Rml::SetSystemInterface(&system_);
     Rml::SetRenderInterface(&renderer_);
     if (!Rml::Initialise()) return false;
@@ -188,11 +190,11 @@ bool NativeMenuUi::Initialize() {
         return false;
     }
     const std::filesystem::path file =
-        std::filesystem::u8path(GetApplicationDirectory()) /
+        ExecutableDirectory() /
         "assets" / "ui" / "rml" / "play.rml";
-    document_ = context_->LoadDocument(file.u8string());
+    document_ = context_->LoadDocument(file.generic_u8string());
     if (!document_) {
-        std::cerr << "Could not load PLAY RmlUi file: " << file.u8string() << '\n';
+        std::cerr << "Could not load PLAY RmlUi file: " << file.generic_u8string() << '\n';
         Rml::RemoveContext("locus-menu");
         context_ = nullptr;
         Rml::Shutdown();
@@ -200,7 +202,7 @@ bool NativeMenuUi::Initialize() {
     }
     // Home is optional: a bad document must not disable working PLAY.
     homeDocument_ = context_->LoadDocument(
-        (file.parent_path() / "home.rml").u8string());
+        (file.parent_path() / "home.rml").generic_u8string());
     if (homeDocument_) {
         homeDocument_->AddEventListener("click", this);
         homeDocument_->Hide();
@@ -208,7 +210,7 @@ bool NativeMenuUi::Initialize() {
         std::cerr << "Could not load HOME RmlUi; using legacy HOME UI.\n";
     }
     settingsDocument_ = context_->LoadDocument(
-        (file.parent_path() / "settings.rml").u8string());
+        (file.parent_path() / "settings.rml").generic_u8string());
     if (settingsDocument_) {
         settingsDocument_->AddEventListener("click", this);
         settingsDocument_->Hide();
@@ -217,7 +219,7 @@ bool NativeMenuUi::Initialize() {
         std::cerr << "Could not load SETTINGS RmlUi; using legacy settings.\n";
     }
     editorDocument_ = context_->LoadDocument(
-        (file.parent_path() / "editor.rml").u8string());
+        (file.parent_path() / "editor.rml").generic_u8string());
     if (editorDocument_) {
         editorDocument_->AddEventListener("click", this);
         editorDocument_->AddEventListener("change", this);
@@ -234,7 +236,7 @@ bool NativeMenuUi::Initialize() {
         std::cerr << "Could not load editor chrome; using raylib editor UI.\n";
     }
     resultsDocument_ = context_->LoadDocument(
-        (file.parent_path() / "results.rml").u8string());
+        (file.parent_path() / "results.rml").generic_u8string());
     if (resultsDocument_) {
         resultsDocument_->AddEventListener("click", this);
         resultsDocument_->Hide();
@@ -243,7 +245,7 @@ bool NativeMenuUi::Initialize() {
         std::cerr << "Could not load RESULTS RmlUi; using raylib results UI.\n";
     }
     skinDocument_ = context_->LoadDocument(
-        (file.parent_path() / "skins.rml").u8string());
+        (file.parent_path() / "skins.rml").generic_u8string());
     if (skinDocument_) {
         for (const char* type : {"click", "input", "change"})
             skinDocument_->AddEventListener(type, this);

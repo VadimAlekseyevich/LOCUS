@@ -79,7 +79,7 @@ bool ImportLibraryChart(SongLibrary& library, SongSelectUi& ui,
     if (!library.Import(sourceChart, installed, error)) {
         ui.notice = installed.empty() ? "IMPORT FAILED: " + error
             : "CHART SAVED; REFRESH LIBRARY (F5): " + error;
-        menuStatus = ui.notice;
+        if (!installed.empty()) menuStatus = ui.notice;
         return false;
     }
     int song = -1, chart = -1;
@@ -103,7 +103,7 @@ bool ImportLibraryChartToSet(SongLibrary& library, SongSelectUi& ui,
     if (!library.ImportIntoSet(sourceChart, setFolder, installed, error)) {
         ui.notice = installed.empty() ? "IMPORT INTO SONG SET FAILED: " + error
             : "DIFFICULTY SAVED; REFRESH LIBRARY (F5): " + error;
-        menuStatus = ui.notice;
+        if (!installed.empty()) menuStatus = ui.notice;
         return false;
     }
     int song = -1, chart = -1;

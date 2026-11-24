@@ -15,6 +15,8 @@
 #include "app/play_presentation.h"
 #include "app/screen_fade_transition.h"
 #include "app/app_smoke_checks.h"
+#include "app/executable_directory.h"
+#include <exception>
 #include "app/app_frame_renderer.h"
 #include "app/image_asset_texture.h"
 #include "app/results_background.h"
@@ -99,7 +101,7 @@ bool HasArgument(int argc, char** argv, const char* argument) {
  
 } // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) try {
     if (HasArgument(argc, argv, "--loop-check")) {
         if (!locus::app::CheckLoopState()) {
             std::cerr << "LOOP_STATE_FAIL\n";
@@ -149,16 +151,21 @@ int main(int argc, char** argv) {
         CloseWindow();
         return 1;
     }
+    std::cerr << "LOCUS_STARTUP executable_directory=" << locus::app::ExecutableDirectory().u8string() << '\n';
+    std::cerr << "LOCUS_STARTUP ui_font\n";
     UiFont uiFont = LoadUiFont();
     locus::app::HomeBrandAssets homeBrand;
+    std::cerr << "LOCUS_STARTUP brand_assets\n";
     homeBrand.Load();
     locus::app::HomeMenuUi homeUi;
 #ifdef LOCUS_WITH_RMLUI
     locus::app::NativeMenuUi nativeMenu;
+    std::cerr << "LOCUS_STARTUP rml_ui\n";
     if (!nativeMenu.Initialize())
         std::cerr << "RMLUI_UNAVAILABLE_FALLING_BACK_TO_LEGACY_UI\n";
 #endif
-    std::cout << "LOCUS_WINDOW_OPEN\n";
+    std::cout << "LOCUS_WINDOW_OPEN" << std::endl;
+    std::cerr << "LOCUS_STARTUP user_data\n";
 
     const auto userData = locus::app::UserDataDirectory();
     locus::app::GameSettings settings;
@@ -292,6 +299,7 @@ int main(int argc, char** argv) {
         {state, gameSession, judge, transport, chartPlayback,
          customChart, sessionCompleted, activeChart, presentation.Outro()}
     };
+    std::cerr << "LOCUS_STARTUP audio\n";
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
@@ -1195,4 +1203,10 @@ int main(int argc, char** argv) {
         std::cout << "WINDOW_SMOKE_PASS frames=" << state.frames << '\n';
     }
     return 0;
+} catch (const std::exception& error) {
+    std::cerr << "LOCUS_FATAL " << error.what() << std::endl;
+    return 1;
+} catch (...) {
+    std::cerr << "LOCUS_FATAL unknown exception" << std::endl;
+    return 1;
 }

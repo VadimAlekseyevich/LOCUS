@@ -7,6 +7,7 @@
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/StyleTypes.h>
 #include "app/rml_ui_text.h"
+#include "app/rml_native_files.h"
 
 #include <algorithm>
 #include <array>
@@ -136,7 +137,12 @@ bool LabelCentered(Rml::Element* button, float tolerance = 3.0f) {
 
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    const auto root = std::filesystem::current_path();
+    (void)argc; (void)argv;
+    const auto uiPath = [&](const char* file) { return (root / "assets/ui/rml" / file).generic_u8string(); };
+    locus::app::RmlNativeFiles files;
+    Rml::SetFileInterface(&files);
     NullRenderer renderer;
     Rml::SetRenderInterface(&renderer);
     if (!Rml::Initialise()) return 1;
@@ -146,7 +152,7 @@ int main() {
     ok &= Check(TestFontAvailable(), "RmlUi can load an installed font face");
     auto* context = Rml::CreateContext("headless-layout", {1280, 720});
     if (!context) { Rml::Shutdown(); return 1; }
-    const std::string path = "assets/ui/rml/play.rml";
+    const std::string path = uiPath("play.rml");
     auto* document = context->LoadDocument(path);
     ok &= Check(document != nullptr, "native PLAY document parses");
     if (document) {
@@ -205,7 +211,7 @@ int main() {
                         "search has focusable layout; results can scroll");
     }
     // HOME uses the shared context and adaptive buttons, not fixed hitboxes.
-    auto* home = context->LoadDocument("assets/ui/rml/home.rml");
+    auto* home = context->LoadDocument(uiPath("home.rml"));
     ok &= Check(home != nullptr, "native HOME document parses");
     if (home) {
         if (document) document->Hide();
@@ -291,7 +297,7 @@ int main() {
         }
     }
     // SETTINGS shares the same context, with independent scrolling bindings.
-    auto* settingsDoc = context->LoadDocument("assets/ui/rml/settings.rml");
+    auto* settingsDoc = context->LoadDocument(uiPath("settings.rml"));
     ok &= Check(settingsDoc != nullptr, "native SETTINGS document parses");
     if (settingsDoc) {
         if (home) home->Hide();
@@ -353,7 +359,7 @@ int main() {
         }
     }
     // Editor shell follows the 960x540 raylib viewport exactly.
-    auto* editorDoc = context->LoadDocument("assets/ui/rml/editor.rml");
+    auto* editorDoc = context->LoadDocument(uiPath("editor.rml"));
     ok &= Check(editorDoc != nullptr, "EDITOR shell parses");
     if (editorDoc) {
         if (settingsDoc) settingsDoc->Hide();
@@ -445,7 +451,7 @@ int main() {
                         "1536x960: editor shell respects letterboxing");
         }
     }
-    auto* resultsDoc = context->LoadDocument("assets/ui/rml/results.rml");
+    auto* resultsDoc = context->LoadDocument(uiPath("results.rml"));
     ok &= Check(resultsDoc != nullptr, "native RESULTS document parses");
     if (resultsDoc) {
         if (editorDoc) editorDoc->Hide();
@@ -465,7 +471,7 @@ int main() {
         ok &= Check(retry && retry->GetAbsoluteLeft() + retry->GetOffsetWidth()
                     <= 800.1f, "800x450 RESULTS actions fit");
     }
-    auto* skinDoc = context->LoadDocument("assets/ui/rml/skins.rml");
+    auto* skinDoc = context->LoadDocument(uiPath("skins.rml"));
     ok &= Check(skinDoc != nullptr, "native SKINS document parses");
     if (skinDoc) {
         if (resultsDoc) resultsDoc->Hide();

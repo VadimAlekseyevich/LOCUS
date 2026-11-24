@@ -46,6 +46,7 @@ set(LOCUS_SONG_LIBRARY_SOURCES
 
 add_executable(locus
     src/app/main.cpp
+    src/app/executable_directory.cpp
     src/app/async_library_refresh.cpp
     src/app/async_result_history.cpp
     src/app/app_runtime_policy.cpp
@@ -167,6 +168,19 @@ add_dependencies(locus locus_ui_assets)
 install(TARGETS locus RUNTIME DESTINATION ".")
 install(DIRECTORY "${LOCUS_UI_SOURCE_DIR}/" DESTINATION "assets/ui")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
+if(WIN32)
+    install(FILES "${PROJECT_SOURCE_DIR}/cmake/portable/Start LOCUS.bat" DESTINATION ".")
+    # App-local release CRT. Use the toolchain's redistributable DLLs rather
+    # than requiring Visual Studio or a system-wide installation.
+    if(MSVC)
+        set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION ".")
+        include(InstallRequiredSystemLibraries)
+    endif()
+    set(CPACK_GENERATOR "ZIP")
+    set(CPACK_PACKAGE_FILE_NAME "LOCUS-windows-x64")
+    set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+    include(CPack)
+endif()
 target_link_libraries(locus PRIVATE locus_core raylib locus_soundtouch nlohmann_json::nlohmann_json Threads::Threads)
 if(WIN32)
     target_link_libraries(locus PRIVATE comdlg32 user32)

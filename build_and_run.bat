@@ -29,7 +29,8 @@ if "%MODE%"=="" set "MODE=run"
 if /I "%MODE%"=="run" goto :valid
 if /I "%MODE%"=="build" goto :valid
 if /I "%MODE%"=="test" goto :valid
-echo Usage: build_and_run.bat [run ^| build ^| test]
+if /I "%MODE%"=="package" goto :valid
+echo Usage: build_and_run.bat [run ^| build ^| test ^| package]
 exit /b 2
 
 :valid
@@ -140,6 +141,15 @@ if not exist "%GAME_EXE%" (
 for %%F in ("%GAME_EXE%") do >> "%LOG_DIR%\run-info.txt" echo exe_size_bytes=%%~zF
 echo [LOCUS] Ready: %GAME_EXE%
 if /I "%MODE%"=="build" goto :success
+if /I "%MODE%"=="package" (
+    cpack --config "%BUILD%\CPackConfig.cmake" -C Release -B "%BUILD%\dist" > "%LOG_DIR%\package.log" 2>&1
+    if errorlevel 1 (
+        call :show_log "package.log"
+        goto :failed
+    )
+    echo [LOCUS] Share this ZIP: "%BUILD%\dist\LOCUS-windows-x64.zip"
+    goto :success
+)
 pushd "%LOG_DIR%"
 "%GAME_EXE%" > "%LOG_DIR%\game-console.log" 2>&1
 set "GAME_EXIT=%ERRORLEVEL%"
