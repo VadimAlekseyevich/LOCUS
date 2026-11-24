@@ -139,6 +139,7 @@ int main() {
         AsyncLibraryRefresh worker;
         std::string scanStatus;
         const auto initialGeneration = library.Revision();
+        const auto retainedGameplay = library.Songs()[0].charts[0].data;
         ok &= Check(worker.Request(library, scanStatus) && worker.Busy(),
                     "background catalog scan starts without blocking the caller");
         ok &= Check(library.Refresh(scanStatus) &&
@@ -181,8 +182,9 @@ int main() {
         ok &= Check(result == AsyncLibraryRefresh::PollState::Published &&
                     library.LastRefreshStats().reusedCharts == 2 &&
                     library.LastRefreshStats().calculatedDifficulties == 0 &&
-                    library.LastRefreshStats().parsedCharts == 0,
-                    "background rescan shares immutable note payloads without recalculation");
+                    library.LastRefreshStats().parsedCharts == 0 &&
+                    library.Songs()[0].charts[0].data == retainedGameplay,
+                    "background rescan shares immutable note payload across generations");
         worker.CancelAndJoin();
         ok &= Check(!worker.Busy(), "shutdown drains and invalidates scanner future");
         // Cancellation never discards or replaces the last published index.

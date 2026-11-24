@@ -747,13 +747,18 @@ int main() {
                     sorted.front().difficulty.overall,
                 "Song Set difficulties default to ascending calculated difficulty");
 
-    // A no-op rescan must reuse the cached difficulty and chart parse.
+    // A published chart's authored content belongs to a shared immutable
+    // snapshot, not to a generation's internal note-vector allocation.
+    const auto sharedGameplayBefore = library.Songs()[0].charts[0].data;
+    const auto sharedRevisionBefore = library.Songs()[0].charts[0].gameplayRevision;
     const std::size_t chartTotal = library.ChartCount();
     ok &= Check(library.Refresh(note) &&
                 library.LastRefreshStats().parsedCharts == 0 &&
                 library.LastRefreshStats().reusedCharts == chartTotal &&
-                library.LastRefreshStats().calculatedDifficulties == 0,
-                "unchanged library refresh reuses every chart and difficulty");
+                library.LastRefreshStats().calculatedDifficulties == 0 &&
+                library.Songs()[0].charts[0].data == sharedGameplayBefore &&
+                library.Songs()[0].charts[0].gameplayRevision == sharedRevisionBefore,
+                "warm refresh reuses exact immutable note payload and revision");
 
     ok &= Check(library.SetPreviewStartMs(0, 21000, error) &&
                 library.Refresh(note) &&
@@ -849,6 +854,13 @@ int main() {
                     library.LastRefreshStats().reusedCharts == chartTotal &&
                     library.LastRefreshStats().calculatedDifficulties == chartTotal,
                     "external shared BPM change invalidates each rating but not chart parses");
+        // Metadata timing updates publish a NEW immutable chart payload;
+        // earlier frame/editor readers can safely keep the prior one alive.
+        const auto oldTempoPayload = sharedGameplayBefore;
+        const bool replacedPayload = library.Songs()[0].charts[0].data !=
+            oldTempoPayload && oldTempoPayload->route.bpm == savedBpm;
+        ok &= Check(replacedPayload,
+                    "BPM changes publish new chart objects without mutating old readers");
         externalTiming.bpm = savedBpm;
         externalTiming.tempoMap.front().bpm = savedBpm;
         ok &= Check(ReplaceSongSetManifest(finalManifest, externalTiming, error) &&
