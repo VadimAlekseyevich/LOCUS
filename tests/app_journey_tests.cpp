@@ -86,23 +86,23 @@ int main() {
     const auto* hardChart = selected && selected->charts.size() >= 2
         ? &selected->charts[1] : nullptr;
     ok &= Check(hardChart &&
-                hardChart->data.title == "Hard" &&
-                hardChart->data.route.tempoMap.size() == 2 &&
-                hardChart->data.route.tempoMap[1].timeMs == 2000 &&
-                hardChart->data.route.tempoMap[1].bpm == 180.0 &&
-                hardChart->data.route.turns.size() == 2 &&
-                hardChart->data.route.turns[0].direction == core::Heading::UpRight &&
-                hardChart->data.route.turns[1].timeMs == 3000 &&
+                hardChart->data->title == "Hard" &&
+                hardChart->data->route.tempoMap.size() == 2 &&
+                hardChart->data->route.tempoMap[1].timeMs == 2000 &&
+                hardChart->data->route.tempoMap[1].bpm == 180.0 &&
+                hardChart->data->route.turns.size() == 2 &&
+                hardChart->data->route.turns[0].direction == core::Heading::UpRight &&
+                hardChart->data->route.turns[1].timeMs == 3000 &&
                 selected->charts[0].audioFile == hardChart->audioFile,
                 "Play > selected difficulty uses absolute notes and shared tempo map");
     if (!hardChart) return 1;
-    const core::Chart chart = hardChart->data.route;
+    const core::Chart chart = hardChart->data->route;
     core::TurnJudge judge(chart);
     const app::RunKey key{
-        selected->id, hardChart->data.difficultyId};
+        selected->id, hardChart->data->difficultyId};
     app::CompletedRunContext completion;
     completion.key = key;
-    completion.gameplayRevision = core::ChartGameplayRevision(hardChart->data);
+    completion.gameplayRevision = core::ChartGameplayRevision(*hardChart->data);
     completion.songTitle = u8"Тестовая песня";
     completion.chartTitle = u8"Сложная";
     completion.practiceRate = 0.5;
@@ -168,7 +168,7 @@ int main() {
                 captured.notesJudged == static_cast<int>(judge.ScorableCount()) &&
                 captured.grades.Resolved() == captured.notesJudged &&
                 captured.practiceRate == 0.5 &&
-                captured.difficultyId == hardChart->data.difficultyId &&
+                captured.difficultyId == hardChart->data->difficultyId &&
                 captured.gameplayRevision == completion.gameplayRevision,
                 "Play > final judgement persists exactly one complete attempt");
 

@@ -183,11 +183,11 @@ int main() {
     const bool importedHard = library.Import(hard, hardInstalled, error);
     ok &= Check(importedHard && library.Songs().size() == 1 &&
                 library.ChartCount() == 2 &&
-                library.Songs()[0].charts[0].data.title == "Easy" &&
-                library.Songs()[0].charts[1].data.title == "Hard",
+                library.Songs()[0].charts[0].data->title == "Easy" &&
+                library.Songs()[0].charts[1].data->title == "Hard",
                 "two difficulties are grouped in one Song Set");
-    const auto easyId = library.Songs()[0].charts[0].data.difficultyId;
-    const auto hardId = library.Songs()[0].charts[1].data.difficultyId;
+    const auto easyId = library.Songs()[0].charts[0].data->difficultyId;
+    const auto hardId = library.Songs()[0].charts[1].data->difficultyId;
     ok &= Check(locus::core::ValidDifficultyId(easyId) &&
                 locus::core::ValidDifficultyId(hardId) && easyId != hardId,
                 "installed difficulties receive distinct persistent identities");
@@ -344,14 +344,14 @@ int main() {
     ok &= Check(library.SetSongTiming(0, 150.0, 175, nullptr, error) &&
                 library.Songs()[0].bpm == 150.0 &&
                 library.Songs()[0].offsetMs == 175 &&
-                library.Songs()[0].charts[0].data.route.bpm == 150.0 &&
-                library.Songs()[0].charts[1].data.route.bpm == 150.0 &&
-                library.Songs()[0].charts[0].data.offsetSeconds == 0.175 &&
-                library.Songs()[0].charts[1].data.offsetSeconds == 0.175 &&
+                library.Songs()[0].charts[0].data->route.bpm == 150.0 &&
+                library.Songs()[0].charts[1].data->route.bpm == 150.0 &&
+                library.Songs()[0].charts[0].data->offsetSeconds == 0.175 &&
+                library.Songs()[0].charts[1].data->offsetSeconds == 0.175 &&
                 locus::core::EventTimeMs(
-                    library.Songs()[0].charts[0].data.route,
-                    library.Songs()[0].charts[0].data.route.turns[0],
-                    library.Songs()[0].charts[0].data.offsetSeconds) == 1000 &&
+                    library.Songs()[0].charts[0].data->route,
+                    library.Songs()[0].charts[0].data->route.turns[0],
+                    library.Songs()[0].charts[0].data->offsetSeconds) == 1000 &&
                 Read(easyInstalled) == originalChartBytes,
                 "shared BPM and offset preserve note times and authored files");
     ok &= Check(LoadSongSetManifest(
@@ -397,7 +397,7 @@ int main() {
     fs::path repeated;
     ok &= Check(library.Import(easy, repeated, error) &&
                 repeated == easyInstalled && library.ChartCount() == 2 &&
-                library.Songs()[0].charts[0].data.difficultyId == easyId,
+                library.Songs()[0].charts[0].data->difficultyId == easyId,
                 "repeated import updates same difficulty instead of duplicating");
 
     // A change to source audio must NOT silently replace bytes referenced
@@ -410,7 +410,7 @@ int main() {
                 "changed audio is rejected without touching existing set");
     Write(audio, firstBytes);
 
-    const locus::core::LoadedChart copiedChart = library.Songs()[0].charts[0].data;
+    const locus::core::LoadedChart copiedChart = *library.Songs()[0].charts[0].data;
     locus::core::LoadedChart newChart = copiedChart;
     newChart.title = "Insane";
     fs::path thirdInstalled;
@@ -430,7 +430,7 @@ int main() {
                              library.Songs()[0].charts.end(),
                              [&](const LibraryChart& candidate) {
                                  return candidate.file == duplicate &&
-                                     candidate.data.difficultyId == easyId;
+                                     candidate.data->difficultyId == easyId;
                              }),
                 "duplicate difficulty uses shared audio and a separate JSON");
 
@@ -483,7 +483,7 @@ int main() {
         {175, 150.0}, {30000, 180.0}};
     ok &= Check(library.SetSongTempoMap(0, multiTempo, nullptr, error) &&
                 library.Songs()[0].tempoMap == multiTempo &&
-                library.Songs()[0].charts[0].data.route.tempoMap == multiTempo &&
+                library.Songs()[0].charts[0].data->route.tempoMap == multiTempo &&
                 Read(easyInstalled) == beforeArtworkBytes,
                 "multi-BPM map persists in Song Set without rewriting notes");
 
@@ -552,9 +552,9 @@ int main() {
     {
         std::set<std::string> originals, transferred;
         for (const auto& difficulty : library.Songs()[0].charts)
-            originals.insert(difficulty.data.difficultyId);
+            originals.insert(difficulty.data->difficultyId);
         for (const auto& difficulty : copiedLibrary.Songs()[0].charts)
-            transferred.insert(difficulty.data.difficultyId);
+            transferred.insert(difficulty.data->difficultyId);
         ok &= Check(originals == transferred && originals.size() == 4 &&
                     copiedLibrary.Songs()[0].id == library.Songs()[0].id,
                     "package transfer preserves every chart ID and parent Song Set ID");
@@ -588,9 +588,9 @@ int main() {
                 std::all_of(copiedLibrary.Songs()[0].charts.begin(),
                             copiedLibrary.Songs()[0].charts.end(),
                             [](const LibraryChart& chart) {
-                                return !chart.data.route.turns.empty() &&
+                                return !chart.data->route.turns.empty() &&
                                     chart.difficulty.notes ==
-                                        chart.data.route.turns.size() &&
+                                        chart.data->route.turns.size() &&
                                     chart.difficulty.overall > 0.0;
                             }),
                 "imported package charts retain nonzero ratings before play");
@@ -819,7 +819,7 @@ int main() {
                 });
             ok &= Check(rejected && refreshed &&
                         changed != library.Songs()[0].charts.end() &&
-                        changed->data.title.find("renamed Externally") !=
+                        changed->data->title.find("renamed Externally") !=
                             std::string::npos &&
                         library.LastRefreshStats().parsedCharts == 1 &&
                         library.LastRefreshStats().reusedCharts == chartTotal - 1 &&

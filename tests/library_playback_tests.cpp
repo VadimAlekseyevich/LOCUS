@@ -10,6 +10,7 @@
 #include <cmath>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <string>
 
 using namespace locus;
@@ -26,9 +27,11 @@ int main() {
     app::LibraryChart difficulty;
     difficulty.file = L"song/easy.locus.json";
     difficulty.audioFile = L"song/song.wav";
-    difficulty.data.route = core::MakeDemoChart();
-    difficulty.data.title = "Selected difficulty";
-    difficulty.data.audioPath = "song.wav";
+    core::LoadedChart authored;
+    authored.route = core::MakeDemoChart();
+    authored.title = "Selected difficulty";
+    authored.audioPath = "song.wav";
+    difficulty.data = std::make_shared<const core::LoadedChart>(std::move(authored));
 
     core::LoadedChart prepared;
     prepared.title = "UNCHANGED";
@@ -44,7 +47,10 @@ int main() {
                 "invalid duration cannot partly replace prepared chart");
 
     app::LibraryChart outOfRange = difficulty;
-    outOfRange.data.route.turns.push_back({500000, core::Heading::UpRight});
+    core::LoadedChart invalidTiming = *difficulty.data;
+    invalidTiming.route.turns.push_back({500000, core::Heading::UpRight});
+    outOfRange.data = std::make_shared<const core::LoadedChart>(
+        std::move(invalidTiming));
     ok &= Check(!app::PrepareLibraryDifficulty(outOfRange, 30.0, prepared, error) &&
                 prepared.title == previousTitle && !error.empty(),
                 "events outside actual song duration are rejected without mutation");
