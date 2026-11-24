@@ -144,7 +144,8 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
             error = "Package has a missing or duplicate difficultyId.";
             return fail();
         }
-        incomingCharts.emplace(parsed.difficultyId, InstalledDifficulty{path, std::move(parsed)});
+        const auto id = parsed.difficultyId;
+        incomingCharts.emplace(id, InstalledDifficulty{path, std::move(parsed)});
     }
     if (ec || incomingCharts.empty()) {
         error = "Package contains no valid difficulties.";
@@ -157,6 +158,11 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
     for (fs::recursive_directory_iterator it(root, ec), end;
          !ec && it != end; it.increment(ec)) {
         const fs::path candidate = it->path();
+        if (candidate.filename() == L".locus-history" &&
+            it->is_directory(ec) && !ec) {
+            it.disable_recursion_pending();
+            continue;
+        }
         if (candidate.filename() != L"set.locus.json") continue;
         if (it->is_symlink(ec)) {
             if (ec) break;
@@ -199,6 +205,11 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
             return fail();
         }
     } else {
+        const auto resolvedTarget = fs::canonical(target, ec);
+        if (ec || !Inside(root, resolvedTarget)) {
+            error = "Installed Song Set resolves outside the library.";
+            return fail();
+        }
         FolderWriteLock setLock;
         if (!setLock.Acquire(target, error)) return fail();
         SongSetManifest installed;

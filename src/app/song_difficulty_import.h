@@ -13,6 +13,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <utility>
 
 namespace locus::app::detail {
 namespace fs = std::filesystem;
@@ -121,16 +122,16 @@ inline bool PrepareDifficultyImport(
     }
     destination = match ? match->file : preferred;
     const auto reserved = [&](const fs::path& path) {
-        // New package destinations use their stable ASCII ID below when the
-        // preferred name collides; case-insensitive comparison matches Windows.
-        auto lower = [](std::wstring name) {
-            for (auto& ch : name)
-                if (ch >= L'A' && ch <= L'Z') ch += L'a' - L'A';
-            return name;
-        };
-        for (const auto& write : writes)
-            if (lower(write.destination.filename().wstring()) ==
-                lower(path.filename().wstring())) return true;
+        for (const auto& write : writes) {
+#ifdef _WIN32
+            const auto a = write.destination.filename().wstring();
+            const auto b = path.filename().wstring();
+            if (CompareStringOrdinal(a.c_str(), -1, b.c_str(), -1, TRUE) == CSTR_EQUAL)
+                return true;
+#else
+            if (write.destination == path) return true;
+#endif
+        }
         return false;
     };
     if (match && reserved(destination)) {
@@ -158,7 +159,8 @@ inline bool PrepareDifficultyImport(
         if (comparable == write.after) return true;
         std::ifstream file(destination, std::ios::binary);
         if (!file) { error = "Cannot read installed difficulty for recovery."; return false; }
-        write.before.assign(std::istreambuf_iterator<char>(file), {});
+        write.before.assign(std::istreambuf_iterator<char>(file),
+                            std::istreambuf_iterator<char>());
         if (file.bad() || write.before.empty()) {
             error = "Cannot read installed difficulty for recovery.";
             return false;

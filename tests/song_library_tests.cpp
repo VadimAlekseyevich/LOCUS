@@ -686,6 +686,45 @@ int main() {
         ok &= Check(copiedLibrary.Refresh(note) && copiedLibrary.ChartCount() == 4,
                     "refresh after removing test-only difficulty");
     }
+    {
+        // Simulate the pre-ID library which originally triggered the report.
+        const auto legacyRoot = folder / "legacy-repair" / "Songs";
+        const auto legacyFolder = legacyRoot / "old-set";
+        fs::create_directories(legacyRoot, ec);
+        if (!ec) fs::copy(importedFolder, legacyFolder, fs::copy_options::recursive, ec);
+        SongLibrary legacyLibrary(legacyRoot);
+        bool prepared = !ec;
+        if (prepared) {
+            for (const auto& entry : fs::directory_iterator(legacyFolder)) {
+                const auto path = entry.path();
+                if (path.extension() != L".json" || path.filename() == L"set.locus.json")
+                    continue;
+                locus::core::LoadedChart parsed;
+                std::wstring resolved;
+                if (!OpenChartWithAudioPath(path.wstring(), parsed, resolved, error)) {
+                    prepared = false; break;
+                }
+                // Package filenames are unchanged; restore original title if
+                // the previous test edited this chart.
+                for (const auto& original : library.Songs()[0].charts)
+                    if (original.metadata.difficultyId == parsed.difficultyId)
+                        parsed.title = original.metadata.title;
+                parsed.difficultyId.clear();
+                std::string encoded;
+                if (!locus::core::SerializeChartJson(parsed, encoded, error)) {
+                    prepared = false; break;
+                }
+                Write(path, encoded);
+            }
+        }
+        fs::path repaired;
+        ok &= Check(prepared && legacyLibrary.Refresh(note) && legacyLibrary.ChartCount() == 0 &&
+                    legacyLibrary.ImportPackage(packageFile, repaired, error) &&
+                    repaired == legacyFolder && legacyLibrary.ChartCount() == 4,
+                    "reimport repairs old ID-less charts in the existing Song Set");
+        fs::remove_all(folder / "legacy-repair", ec);
+        ec.clear();
+    }
     std::string zipBytes = Read(packageFile);
     const auto payload = zipBytes.find(firstBytes);
     if (payload != std::string::npos) zipBytes[payload] ^= 1;
