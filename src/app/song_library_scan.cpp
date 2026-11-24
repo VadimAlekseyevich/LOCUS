@@ -169,6 +169,7 @@ bool SongLibrary::Refresh(std::string& message,
             }
             indexed.file = path;
             indexed.data = std::make_shared<const core::LoadedChart>(std::move(chart));
+            indexed.RefreshMetadata();
             indexed.audioFile = fs::path(audio);
             ++stats.parsedCharts;
         }
@@ -214,7 +215,7 @@ bool SongLibrary::Refresh(std::string& message,
         }
         // Missing IDs are pre-release charts which cannot safely join a
         // filename-independent results history. Do not index them as playable.
-        if (!core::ValidDifficultyId(indexed.data->difficultyId)) {
+        if (!core::ValidDifficultyId(indexed.metadata.difficultyId)) {
             ++skipped;
             continue;
         }
@@ -242,7 +243,7 @@ bool SongLibrary::Refresh(std::string& message,
         } else {
             index = found->second;
         }
-        const auto& chartId = indexed.data->difficultyId;
+        const auto& chartId = indexed.metadata.difficultyId;
         if (!difficultyIds[logicalAudio].insert(chartId).second) {
             message = "Multiple files in a Song Set claim the same difficultyId: " + chartId;
             return false;
@@ -308,6 +309,7 @@ bool SongLibrary::Refresh(std::string& message,
                 difficulty.gameplayRevision = core::ChartGameplayRevision(projected);
                 difficulty.data = std::make_shared<const core::LoadedChart>(
                     std::move(projected));
+                difficulty.RefreshMetadata();
                 ++stats.calculatedDifficulties;
             }
         }

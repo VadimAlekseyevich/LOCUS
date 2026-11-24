@@ -70,8 +70,8 @@ void SortChartDifficulties(std::vector<LibraryChart>& charts) {
               [](const LibraryChart& a, const LibraryChart& b) {
                   if (a.difficulty.overall != b.difficulty.overall)
                       return a.difficulty.overall < b.difficulty.overall;
-                  if (a.data->title != b.data->title)
-                      return a.data->title < b.data->title;
+                  if (a.metadata.title != b.metadata.title)
+                      return a.metadata.title < b.metadata.title;
                   return a.file < b.file;
               });
 }

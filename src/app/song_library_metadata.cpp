@@ -123,6 +123,7 @@ bool SongLibrary::SetSongTempoMap(
             adjusted[i]->route, adjusted[i]->offsetSeconds);
         song.charts[i].gameplayRevision = core::ChartGameplayRevision(*adjusted[i]);
         song.charts[i].data = std::move(adjusted[i]);
+        song.charts[i].RefreshMetadata();
     }
     SortChartDifficulties(song.charts);
     ++revision_;

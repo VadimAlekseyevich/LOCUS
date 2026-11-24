@@ -57,6 +57,18 @@ bool WriteChart(const fs::path& file, const std::string& name) {
     Write(file, json);
     return fs::exists(file) && Read(file) == json;
 }
+bool HasConsistentCatalogMetadata(const SongLibrary& library) {
+    for (const auto& song : library.Songs()) {
+        for (const auto& chart : song.charts) {
+            if (!chart.data ||
+                chart.metadata.title != chart.data->title ||
+                chart.metadata.difficultyId != chart.data->difficultyId ||
+                chart.metadata.noteCount != chart.data->route.turns.size())
+                return false;
+        }
+    }
+    return true;
+}
 } // namespace
 
 int main() {
@@ -187,6 +199,8 @@ int main() {
                 library.Songs()[0].charts[0].data->title == "Easy" &&
                 library.Songs()[0].charts[1].data->title == "Hard",
                 "two difficulties are grouped in one Song Set");
+    ok &= Check(HasConsistentCatalogMetadata(library),
+                "import publishes standalone chart metadata for UI and search");
     const auto easyId = library.Songs()[0].charts[0].data->difficultyId;
     ok &= Check(library.Songs()[0].charts[0].gameplayRevision ==
                     locus::core::ChartGameplayRevision(
@@ -359,6 +373,8 @@ int main() {
                     library.Songs()[0].charts[0].data->offsetSeconds) == 1000 &&
                 Read(easyInstalled) == originalChartBytes,
                 "shared BPM and offset preserve note times and authored files");
+    ok &= Check(HasConsistentCatalogMetadata(library),
+                "tempo projection keeps UI metadata and payload in sync");
     ok &= Check(LoadSongSetManifest(
                     easyInstalled.parent_path() / "set.locus.json",
                     metadata, error) && metadata.bpm &&
@@ -760,6 +776,8 @@ int main() {
                 library.Songs()[0].charts[0].data == sharedGameplayBefore &&
                 library.Songs()[0].charts[0].gameplayRevision == sharedRevisionBefore,
                 "warm refresh reuses exact immutable note payload and revision");
+    ok &= Check(HasConsistentCatalogMetadata(library),
+                "warm scan preserves title, difficulty ID and note count");
 
     ok &= Check(library.SetPreviewStartMs(0, 21000, error) &&
                 library.Refresh(note) &&
@@ -829,12 +847,14 @@ int main() {
                 });
             ok &= Check(rejected && refreshed &&
                         changed != library.Songs()[0].charts.end() &&
-                        changed->data->title.find("renamed Externally") !=
+                        changed->metadata.title.find("renamed Externally") !=
                             std::string::npos &&
                         library.LastRefreshStats().parsedCharts == 1 &&
                         library.LastRefreshStats().reusedCharts == chartTotal - 1 &&
                         library.LastRefreshStats().calculatedDifficulties == 1,
                         "same-size/same-time edited chart cannot poison cache or tempo writes");
+            ok &= Check(HasConsistentCatalogMetadata(library),
+                        "same-size/same-mtime edit refreshes catalog metadata");
         }
     }
 

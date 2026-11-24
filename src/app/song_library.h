@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <cstddef>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -17,7 +18,16 @@ namespace locus::app {
 // changes and application restarts. On Windows: %LOCALAPPDATA%/LOCUS.
 std::filesystem::path UserDataDirectory();
 
+// UI-facing catalog record, owned independently of the heavy gameplay payload.
+// This boundary allows lazy chart loading without redesigning menu presenters.
+struct LibraryChartMetadata {
+    std::string title;
+    std::string difficultyId;
+    std::size_t noteCount = 0;
+};
+
 struct LibraryChart {
+    LibraryChartMetadata metadata;
     std::filesystem::path file;
     // Immutable authored gameplay content. Old and new catalog snapshots
     // share one allocation for unchanged difficulties, including note arrays.
@@ -25,6 +35,13 @@ struct LibraryChart {
     // Null only for a not-yet-populated scanning scratch item; every
     // published difficulty has a validated non-null payload.
     std::shared_ptr<const core::LoadedChart> data;
+    // Invoke on parse and every payload replacement, never from the UI.
+    void RefreshMetadata() {
+        metadata = data
+            ? LibraryChartMetadata{data->title, data->difficultyId,
+                                   data->route.turns.size()}
+            : LibraryChartMetadata{};
+    }
     std::filesystem::path audioFile; // Actual revision for this difficulty.
     // Calculated once from validated gameplay, reused across library views.
     // Display title, file rename or metadata-only editor changes do not alter it.

@@ -60,7 +60,7 @@ bool SongLibrary::ExportPackage(const fs::path& setFolder,
             return false;
         }
         if (!core::ValidDifficultyId(parsed.difficultyId) ||
-            parsed.difficultyId != chart.data->difficultyId ||
+            parsed.difficultyId != chart.metadata.difficultyId ||
             !exportedIds.insert(parsed.difficultyId).second) {
             error = "Song Set chart IDs changed on disk; refresh before exporting.";
             return false;

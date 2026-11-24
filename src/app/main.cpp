@@ -357,7 +357,7 @@ int main(int argc, char** argv) {
         const auto* chart = libraryUi.Selected(library);
         if (!chart) return {};
         return {library.Songs()[static_cast<std::size_t>(index)].id,
-                chart->data->difficultyId};
+                chart->metadata.difficultyId};
     };
     locus::app::ListenSession listener{
         localSong, loadedAudioPath, musicError,
@@ -924,7 +924,7 @@ int main(int argc, char** argv) {
                             static_cast<std::size_t>(songIndex)];
                         playedBackgroundPath = song.backgroundImage;
                         playedRunKey = {song.id,
-                            song.charts[static_cast<std::size_t>(difficultyIndex)].data->difficultyId};
+                            song.charts[static_cast<std::size_t>(difficultyIndex)].metadata.difficultyId};
                         playedGameplayRevision = song.charts[
                             static_cast<std::size_t>(difficultyIndex)].gameplayRevision;
                         playedSongTitle = song.title;

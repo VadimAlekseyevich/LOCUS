@@ -520,7 +520,7 @@ void NativeMenuUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     const auto rating = chart ? chart->difficulty :
         core::CalculateChartDifficulty(core::MakeDemoChart());
     const int count = chart
-        ? static_cast<int>(chart->data->route.turns.size())
+        ? static_cast<int>(chart->metadata.noteCount)
         : static_cast<int>(core::MakeDemoChart().turns.size());
     // Initial library-index telemetry is not a user-facing notification.
     SetText("notice", ui.notice.rfind("LIBRARY:", 0) == 0
@@ -543,7 +543,7 @@ void NativeMenuUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
         }
     }
     SetText("song-tags", tags);
-    SetText("chart-title", chart ? chart->data->title : "ORIGINAL");
+    SetText("chart-title", chart ? chart->metadata.title : "ORIGINAL");
     SetText("rating", Rating(rating.overall));
     SetText("chart-notes", std::to_string(count) + " TURNS");
     SetText("metric-speed", Rating(rating.speed));
@@ -590,7 +590,7 @@ void NativeMenuUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
             else {
                 const auto& chart = song.charts[
                     static_cast<std::size_t>(item.chart)];
-                name = chart.data->title;
+                name = chart.metadata.title;
                 difficulty = chart.difficulty.overall;
             }
         }
