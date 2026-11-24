@@ -52,7 +52,9 @@ void LibraryFileActions::Import(bool intoSelectedSet, double& now) {
     if (chosen.extension() == L".locuspack") {
         fs::path installedSet;
         if (!library_.ImportPackage(chosen, installedSet, error_)) {
-            ui_.notice = "PACKAGE IMPORT FAILED: " + error_;
+            ui_.notice = installedSet.empty() ? "PACKAGE IMPORT FAILED: " + error_
+                : "PACKAGE SAVED; REFRESH LIBRARY (F5): " + error_;
+            menuStatus_ = ui_.notice;
             return;
         }
         // The library was rescanned. Never retain stale LibrarySong pointers.

@@ -595,9 +595,12 @@ int main() {
         const bool scanReady = !ec && nestedLibrary.Refresh(nestedNotice) &&
             nestedLibrary.ChartCount() == 4;
         const bool merged = scanReady &&
-            nestedLibrary.ImportPackage(packageFile, duplicateDestination, error) &&
-            duplicateDestination == nestedSet && nestedLibrary.ChartCount() == 4;
-        ok &= Check(merged,
+            nestedLibrary.ImportPackage(packageFile, duplicateDestination, error);
+        const bool sameFolder = merged && fs::equivalent(duplicateDestination, nestedSet, ec) && !ec;
+        if (!scanReady || !merged || !sameFolder)
+            std::cerr << "NESTED_IMPORT_ERROR " << error << " scan=" << nestedNotice
+                      << " fs=" << ec.message() << '\n';
+        ok &= Check(merged && sameFolder && nestedLibrary.ChartCount() == 4,
                     "package reimport locates the existing nested Song Set");
         fs::remove_all(folder / "nested-identity-check", ec);
         ec.clear();
@@ -687,13 +690,14 @@ int main() {
                     "refresh after removing test-only difficulty");
     }
     {
-        // Simulate the pre-ID library which originally triggered the report.
+        // Simulate the pre-ID library directly from the package fixture.
+        // Do not copy lock files, backups, or previously edited charts.
         const auto legacyRoot = folder / "legacy-repair" / "Songs";
         const auto legacyFolder = legacyRoot / "old-set";
-        fs::create_directories(legacyRoot, ec);
-        if (!ec) fs::copy(importedFolder, legacyFolder, fs::copy_options::recursive, ec);
+        fs::create_directories(legacyFolder, ec);
+        bool prepared = !ec && ExtractSongSetArchive(packageFile, legacyFolder, error);
         SongLibrary legacyLibrary(legacyRoot);
-        bool prepared = !ec;
+        std::vector<fs::path> oldFiles;
         if (prepared) {
             for (const auto& entry : fs::directory_iterator(legacyFolder)) {
                 const auto path = entry.path();
@@ -704,24 +708,33 @@ int main() {
                 if (!OpenChartWithAudioPath(path.wstring(), parsed, resolved, error)) {
                     prepared = false; break;
                 }
-                // Package filenames are unchanged; restore original title if
-                // the previous test edited this chart.
-                for (const auto& original : library.Songs()[0].charts)
-                    if (original.metadata.difficultyId == parsed.difficultyId)
-                        parsed.title = original.metadata.title;
                 parsed.difficultyId.clear();
                 std::string encoded;
                 if (!locus::core::SerializeChartJson(parsed, encoded, error)) {
                     prepared = false; break;
                 }
                 Write(path, encoded);
+                oldFiles.push_back(path);
             }
         }
         fs::path repaired;
-        ok &= Check(prepared && legacyLibrary.Refresh(note) && legacyLibrary.ChartCount() == 0 &&
-                    legacyLibrary.ImportPackage(packageFile, repaired, error) &&
-                    repaired == legacyFolder && legacyLibrary.ChartCount() == 4,
-                    "reimport repairs old ID-less charts in the existing Song Set");
+        const bool emptyIndex = prepared && oldFiles.size() == 4 &&
+            legacyLibrary.Refresh(note) && legacyLibrary.ChartCount() == 0;
+        const bool imported = emptyIndex &&
+            legacyLibrary.ImportPackage(packageFile, repaired, error);
+        const bool sameFolder = imported && fs::equivalent(repaired, legacyFolder, ec) && !ec;
+        if (!sameFolder)
+            std::cerr << "LEGACY_IMPORT_ERROR " << error << " scan=" << note
+                      << " fs=" << ec.message() << '\n';
+        bool sameFiles = sameFolder;
+        for (const auto& path : oldFiles) {
+            locus::core::LoadedChart chart;
+            std::wstring resolved;
+            sameFiles &= OpenChartWithAudioPath(path.wstring(), chart, resolved, error) &&
+                locus::core::ValidDifficultyId(chart.difficultyId);
+        }
+        ok &= Check(sameFolder && sameFiles && legacyLibrary.ChartCount() == 4,
+                    "reimport repairs old ID-less charts in place");
         fs::remove_all(folder / "legacy-repair", ec);
         ec.clear();
     }

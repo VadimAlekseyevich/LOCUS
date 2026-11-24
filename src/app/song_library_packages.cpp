@@ -144,6 +144,10 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
             error = "Package has a missing or duplicate difficultyId.";
             return fail();
         }
+        // Validate the authoritative timing before either a new set is
+        // published or an existing one is merged.
+        auto projected = parsed;
+        if (!ApplySongTiming(projected, metadata.tempoMap, error)) return fail();
         const auto id = parsed.difficultyId;
         incomingCharts.emplace(id, InstalledDifficulty{path, std::move(parsed)});
     }
@@ -253,9 +257,21 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
         [&](const LibrarySong& song) {
             return song.managed && song.folder == target;
         });
-    if (present == songs_.end() || present->charts.empty()) {
+    if (present == songs_.end()) {
         error = "Package installed on disk, but library index omitted it: " + notice;
         return false;
+    }
+    // Refresh can succeed with skipped files. Check EVERY incoming ID,
+    // not merely that at least one old chart remains visible.
+    std::set<std::string> publishedIds;
+    for (const auto& chart : present->charts)
+        publishedIds.insert(chart.metadata.difficultyId);
+    for (const auto& id : incomingDifficultyIds) {
+        if (publishedIds.count(id) == 0) {
+            error = "Package installed on disk, but library index omitted difficulty " +
+                    id + ": " + notice;
+            return false;
+        }
     }
     error.clear();
     return true;

@@ -77,7 +77,9 @@ bool ImportLibraryChart(SongLibrary& library, SongSelectUi& ui,
     std::filesystem::path installed;
     std::string error;
     if (!library.Import(sourceChart, installed, error)) {
-        ui.notice = "IMPORT FAILED: " + error;
+        ui.notice = installed.empty() ? "IMPORT FAILED: " + error
+            : "CHART SAVED; REFRESH LIBRARY (F5): " + error;
+        menuStatus = ui.notice;
         return false;
     }
     int song = -1, chart = -1;
@@ -99,7 +101,9 @@ bool ImportLibraryChartToSet(SongLibrary& library, SongSelectUi& ui,
     std::filesystem::path installed;
     std::string error;
     if (!library.ImportIntoSet(sourceChart, setFolder, installed, error)) {
-        ui.notice = "IMPORT INTO SONG SET FAILED: " + error;
+        ui.notice = installed.empty() ? "IMPORT INTO SONG SET FAILED: " + error
+            : "DIFFICULTY SAVED; REFRESH LIBRARY (F5): " + error;
+        menuStatus = ui.notice;
         return false;
     }
     int song = -1, chart = -1;
@@ -107,7 +111,7 @@ bool ImportLibraryChartToSet(SongLibrary& library, SongSelectUi& ui,
         ui.SelectSong(song + 1, library);
         ui.SelectChart(chart, library);
     }
-    ui.notice = "DIFFICULTY ADDED TO SONG SET";
+    ui.notice = "DIFFICULTY IMPORTED INTO SONG SET";
     menuStatus = "LIBRARY: " + std::to_string(library.Songs().size()) +
                  " SONGS / " + std::to_string(library.ChartCount()) + " CHARTS";
     return true;

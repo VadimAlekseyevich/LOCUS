@@ -722,19 +722,30 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
             const fs::path source(picked.path);
             if (source.extension() == L".locuspack") {
                 fs::path importedSet;
-                if (!ctx_.library.ImportPackage(source, importedSet, error)) break;
+                if (!ctx_.library.ImportPackage(source, importedSet, error)) {
+                    if (!importedSet.empty())
+                        error = "PACKAGE SAVED; REFRESH PLAY LIBRARY: " + error;
+                    break;
+                }
                 Notice("SONG SET IMPORTED; OPEN IT IN PLAY LIBRARY");
                 return true;
             }
             if (!song) {
                 fs::path installed;
-                if (!ctx_.library.Import(source, installed, error)) break;
+                if (!ctx_.library.Import(source, installed, error)) {
+                    if (!installed.empty())
+                        error = "CHART SAVED; REFRESH PLAY LIBRARY: " + error;
+                    break;
+                }
                 Notice("CHART IMPORTED; OPEN ITS SET IN PLAY LIBRARY");
                 return true;
             }
             fs::path installed;
-            if (!ctx_.library.ImportIntoSet(source, folder, installed, error))
+            if (!ctx_.library.ImportIntoSet(source, folder, installed, error)) {
+                if (!installed.empty())
+                    error = "DIFFICULTY SAVED; REFRESH PLAY LIBRARY: " + error;
                 break;
+            }
             Notice("DIFFICULTY IMPORTED; SELECT IT IN THE LIST");
             return true;
         }
