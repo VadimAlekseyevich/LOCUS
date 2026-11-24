@@ -33,8 +33,8 @@ bool RequiresLibraryAudioLoad(const LibraryChart& selected,
 bool ActivateLibraryDifficulty(const LibraryChart& selected,
                                const LibraryPlaybackContext& context,
                                double now, std::string& error) {
-    if (selected.audioFile.empty()) {
-        error = "Selected difficulty does not reference an audio file.";
+    if (selected.audioFile.empty() || !selected.data) {
+        error = "Selected difficulty has no validated chart data or audio.";
         return false;
     }
     const std::wstring audioPath = selected.audioFile.wstring();
