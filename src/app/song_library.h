@@ -162,6 +162,9 @@ public:
     std::size_t ChartCount() const noexcept;
 
 private:
+    bool ImportChart(const std::filesystem::path& sourceChart,
+                     const std::filesystem::path& targetSet,
+                     std::filesystem::path& installedChart, std::string& error);
     std::filesystem::path root_;
     std::vector<LibrarySong> songs_;
     LibraryRefreshStats lastRefreshStats_{};

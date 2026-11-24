@@ -5,6 +5,7 @@
 #include "app/song_set_storage.h"
 #include "app/song_timing.h"
 #include "app/difficulty_identity.h"
+#include "app/song_difficulty_import.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -91,12 +92,7 @@ bool SongLibrary::ImportIntoSet(const fs::path& sourceChart,
                                  const fs::path& targetSet,
                                  fs::path& installedChart,
                                  std::string& error) {
-    core::LoadedChart source;
-    std::wstring audio;
-    if (!OpenChartWithAudioPath(sourceChart.wstring(), source, audio, error))
-        return false;
-    return CreateDifficulty(fs::path(audio), source, installedChart,
-                            error, targetSet);
+    return ImportChart(sourceChart, targetSet, installedChart, error);
 }
 
 bool SongLibrary::DuplicateDifficulty(const fs::path& original,
@@ -233,6 +229,12 @@ bool SongLibrary::CreateDifficulty(const fs::path& sourceAudio,
 
 bool SongLibrary::Import(const fs::path& sourceChart,
                          fs::path& installedChart, std::string& error) {
+    return ImportChart(sourceChart, {}, installedChart, error);
+}
+
+bool SongLibrary::ImportChart(const fs::path& sourceChart,
+                              const fs::path& targetSet,
+                              fs::path& installedChart, std::string& error) {
     MarkDiskMutation();
     installedChart.clear(); // Assigned only after a confirmed disk commit.
     core::LoadedChart source;
@@ -248,7 +250,7 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     if (!libraryLock.Acquire(root, error)) return false;
     const auto actualChart = fs::canonical(sourceChart, ec);
     if (ec) { error = "Cannot resolve source chart path."; return false; }
-    if (Inside(root, actualChart)) {
+    if (targetSet.empty() && Inside(root, actualChart)) {
         std::string notice;
         if (!Refresh(notice)) { error = notice; return false; }
         int s = -1, c = -1;
@@ -266,8 +268,58 @@ bool SongLibrary::Import(const fs::path& sourceChart,
         error = "Cannot access song audio for importing.";
         return false;
     }
-    const auto folder = root /
+    auto folder = root /
         (FilenamePart(sourceAudio.stem().u8string()) + "-" + HashText(sourceAudio));
+    if (!targetSet.empty()) {
+        folder = fs::canonical(targetSet, ec);
+        if (ec || !Inside(root, folder)) {
+            error = "Selected Song Set is outside the installed library.";
+            return false;
+        }
+    } else {
+        // If the source carries a manifest, resolve its set identity first.
+        // Otherwise a persistent difficulty ID can identify its installed
+        // owner even after the source was moved or renamed.
+        SongSetManifest sourceSet;
+        std::string ignored;
+        const bool hasSet = LoadSongSetManifest(actualChart.parent_path() /
+            L"set.locus.json", sourceSet, ignored);
+        fs::path owner;
+        if (hasSet || !source.difficultyId.empty()) {
+            for (fs::recursive_directory_iterator it(root, ec), end;
+                 !ec && it != end; it.increment(ec)) {
+                if (it->path().filename() == L".locus-history" &&
+                    it->is_directory(ec) && !ec) {
+                    it.disable_recursion_pending();
+                    continue;
+                }
+                const auto path = it->path();
+                if (path.filename() != L"set.locus.json" || it->is_symlink(ec))
+                    continue;
+                SongSetManifest candidate;
+                if (!LoadSongSetManifest(path, candidate, ignored)) continue;
+                bool matches = hasSet && candidate.id == sourceSet.id;
+                if (!hasSet) {
+                    const auto candidateAudio = path.parent_path() / fs::u8path(candidate.audioFile);
+                    std::vector<InstalledDifficulty> entries;
+                    if (!ReadInstalledDifficulties(path.parent_path(), candidateAudio, entries, error))
+                        return false;
+                    matches = std::any_of(entries.begin(), entries.end(),
+                        [&](const InstalledDifficulty& entry) {
+                            return entry.chart.difficultyId == source.difficultyId;
+                        });
+                }
+                if (!matches) continue;
+                if (!owner.empty() && owner != path.parent_path()) {
+                    error = "Imported identity matches multiple Song Sets; select a target Set.";
+                    return false;
+                }
+                owner = path.parent_path();
+            }
+            if (ec) { error = "Cannot inspect installed Song Set identities."; return false; }
+        }
+        if (!owner.empty()) folder = owner;
+    }
     fs::create_directories(folder, ec);
     if (ec) { error = "Cannot create song folder: " + ec.message(); return false; }
 
@@ -282,6 +334,10 @@ bool SongLibrary::Import(const fs::path& sourceChart,
     if (existingSet) {
         if (!LoadSongSetManifest(manifestPath, metadata, error)) return false;
     } else {
+        if (!targetSet.empty()) {
+            error = "The selected folder has no managed Song Set.";
+            return false;
+        }
         if (!EnsureFreshSongSetFolder(folder, error)) return false;
         metadata.id = HashText(sourceAudio) + HashText(folder);
         metadata.title = SongDisplayTitle(sourceAudio);
@@ -294,49 +350,30 @@ bool SongLibrary::Import(const fs::path& sourceChart,
             ? std::vector<core::TempoMarker>{{*metadata.offsetMs, *metadata.bpm}}
             : source.route.tempoMap;
     }
-    if (metadata.audioFile != sourceAudio.filename().u8string()) {
-        error = "Existing Song Set uses a different audio filename. "
-                "Import as a new set rather than changing other difficulties.";
-        return false;
-    }
     destinationAudio = folder / fs::u8path(metadata.audioFile);
-    if (!InstallSharedSongAudio(sourceAudio, destinationAudio, error)) return false;
-
-    // File identity is based on its source path, not a mutable difficulty name.
-    const std::string difficulty = FilenamePart(actualChart.stem().u8string());
-    const fs::path destinationChart = folder /
-        (difficulty + "-" + HashText(actualChart) + ".locus.json");
-    // Reimporting the SAME source into its assigned path is an update, not
-    // a new difficulty. Never silently change the installed difficulty ID.
-    if (fs::exists(destinationChart, ec)) {
-        core::LoadedChart previous;
-        std::wstring previousAudio;
-        if (!OpenChartWithAudioPath(destinationChart.wstring(), previous,
-                                    previousAudio, error)) return false;
-        if (!previous.difficultyId.empty() &&
-            !source.difficultyId.empty() &&
-            previous.difficultyId != source.difficultyId) {
-            error = "Imported source has a different identity from the installed difficulty.";
+    if (existingSet) {
+        bool identical = false;
+        if (!SameFileBytes(sourceAudio, destinationAudio, identical, error)) return false;
+        if (!identical) {
+            error = "This Song Set already has different audio. Import was stopped "
+                    "to protect other difficulties.";
             return false;
         }
-        source.difficultyId = previous.difficultyId;
-    }
-    if (ec) { error = "Cannot inspect imported difficulty destination."; return false; }
-    if (source.difficultyId.empty()) source.difficultyId = NewDifficultyId();
-    // One Song Set cannot contain two different files claiming one ID.
-    bool identityTaken = false;
-    if (!DifficultyIdTaken(folder, source.difficultyId, destinationChart,
-                           identityTaken, error)) return false;
-    if (identityTaken) {
-        error = "Another difficulty in the Song Set already uses this difficultyId.";
-        return false;
-    }
-    if (!ApplySongTiming(source, metadata.tempoMap, error)) {
+    } else if (!InstallSharedSongAudio(sourceAudio, destinationAudio, error)) return false;
+
+    std::vector<InstalledDifficulty> existing;
+    if (!ReadInstalledDifficulties(folder, destinationAudio, existing, error)) {
         if (!existingSet) RollBackUnpublishedSet(destinationAudio, {}, error);
         return false;
     }
-    if (!SaveChartWithAudioPath(destinationChart.wstring(),
-                                destinationAudio.wstring(), source, error, true)) {
+    const std::string difficulty = FilenamePart(actualChart.stem().u8string());
+    const auto preferred = folder /
+        (difficulty + "-" + HashText(actualChart) + ".locus.json");
+    fs::path destinationChart;
+    std::vector<DifficultyImportWrite> writes;
+    if (!PrepareDifficultyImport(folder, metadata, existing, preferred,
+            source, false, writes, destinationChart, error) ||
+        !PublishDifficultyImports(writes, error)) {
         if (!existingSet) RollBackUnpublishedSet(destinationAudio, {}, error);
         return false;
     }

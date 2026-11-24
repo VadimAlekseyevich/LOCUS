@@ -581,8 +581,8 @@ int main() {
                     "package transfer preserves every chart ID and parent Song Set ID");
     }
     // A Song Set installed in a nested directory is equally authoritative.
-    // A package import must not publish a colliding set merely because the
-    // existing manifest is deeper than one directory below Songs/.
+    // A package update must find the installed set even when its manifest
+    // is deeper than one directory below Songs/.
     {
         const fs::path nestedRoot = folder / "nested-identity-check" / "Songs";
         const fs::path nestedSet = nestedRoot / "Albums" / "Existing";
@@ -594,12 +594,11 @@ int main() {
         fs::path duplicateDestination;
         const bool scanReady = !ec && nestedLibrary.Refresh(nestedNotice) &&
             nestedLibrary.ChartCount() == 4;
-        const bool rejected = scanReady &&
-            !nestedLibrary.ImportPackage(packageFile, duplicateDestination, error) &&
-            error.find("already installed") != std::string::npos &&
-            duplicateDestination.empty() && nestedLibrary.ChartCount() == 4;
-        ok &= Check(rejected,
-                    "package import rejects duplicate setId inside nested Songs folder");
+        const bool merged = scanReady &&
+            nestedLibrary.ImportPackage(packageFile, duplicateDestination, error) &&
+            duplicateDestination == nestedSet && nestedLibrary.ChartCount() == 4;
+        ok &= Check(merged,
+                    "package reimport locates the existing nested Song Set");
         fs::remove_all(folder / "nested-identity-check", ec);
         ec.clear();
     }
@@ -623,9 +622,70 @@ int main() {
                 Read(importedFolder / "song.wav") == firstBytes,
                 "removing background cleans its owned copy without affecting the song");
     fs::path duplicatePackage;
-    ok &= Check(!copiedLibrary.ImportPackage(packageFile, duplicatePackage, error) &&
-                copiedLibrary.ChartCount() == 4,
-                "same package cannot overwrite already installed Song Set");
+    ok &= Check(copiedLibrary.ImportPackage(packageFile, duplicatePackage, error) &&
+                duplicatePackage == importedFolder && copiedLibrary.ChartCount() == 4 &&
+                copiedLibrary.Songs()[0].backgroundImage.empty(),
+                "same package merges without duplicates or replacing local metadata");
+    {
+        // A renamed external chart still updates the existing persistent ID.
+        const auto editedSource = folder / "edited-source";
+        fs::create_directories(editedSource, ec);
+        Write(editedSource / "song.wav", firstBytes);
+        auto edited = *copiedLibrary.Songs()[0].charts[0].data;
+        const auto originalFile = copiedLibrary.Songs()[0].charts[0].file;
+        const auto oldBytes = Read(originalFile);
+        edited.title = "Updated imported difficulty";
+        edited.audioPath = "song.wav";
+        std::string encoded;
+        const auto external = editedSource / "renamed.locus.json";
+        const bool encodedOk = locus::core::SerializeChartJson(edited, encoded, error);
+        if (encodedOk) Write(external, encoded);
+        fs::path updated;
+        ok &= Check(encodedOk && copiedLibrary.Import(external, updated, error) &&
+                    updated == originalFile && copiedLibrary.ChartCount() == 4 &&
+                    Read(originalFile) != oldBytes,
+                    "standalone reimport resolves persistent ID across source paths");
+        const auto changedBytes = Read(originalFile);
+        const auto history = importedFolder / ".locus-history";
+        const auto backupCount = [&]() {
+            std::size_t count = 0;
+            for (const auto& entry : fs::directory_iterator(history))
+                if (entry.is_regular_file()) ++count;
+            return count;
+        };
+        const auto backups = backupCount();
+        ok &= Check(copiedLibrary.ImportIntoSet(external, importedFolder, updated, error) &&
+                    updated == originalFile && Read(originalFile) == changedBytes &&
+                    backupCount() == backups && copiedLibrary.ChartCount() == 4,
+                    "identical selected-set import does not write or create backups");
+
+        // Export only the changed chart and one new ID. Missing difficulties
+        // in an update are not deletions; the installed manifest remains local.
+        const auto updateArchive = folder / "partial-update.locuspack";
+        const auto extraSource = easyInstalled.parent_path() / "update-new.locus.json";
+        auto extra = edited;
+        extra.difficultyId = "1234567890abcdef1234567890abcdef";
+        extra.title = "Additional difficulty";
+        std::string extraBytes;
+        const bool extraOk = locus::core::SerializeChartJson(extra, extraBytes, error);
+        if (extraOk) Write(extraSource, extraBytes);
+        const bool partialBuilt = extraOk && ExportSongSetArchive(
+            easyInstalled.parent_path(), {easyInstalled, extraSource}, updateArchive, error);
+        fs::remove(extraSource, ec);
+        ec.clear();
+        ok &= Check(partialBuilt && copiedLibrary.ImportPackage(updateArchive, updated, error) &&
+                    updated == importedFolder && copiedLibrary.ChartCount() == 5,
+                    "partial package adds a new ID and retains unmentioned difficulties");
+        // Restore the four-chart test fixture for subsequent corruption tests.
+        for (const auto& chart : copiedLibrary.Songs()[0].charts) {
+            if (chart.metadata.difficultyId == extra.difficultyId) {
+                fs::remove(chart.file, ec);
+                break;
+            }
+        }
+        ok &= Check(copiedLibrary.Refresh(note) && copiedLibrary.ChartCount() == 4,
+                    "refresh after removing test-only difficulty");
+    }
     std::string zipBytes = Read(packageFile);
     const auto payload = zipBytes.find(firstBytes);
     if (payload != std::string::npos) zipBytes[payload] ^= 1;

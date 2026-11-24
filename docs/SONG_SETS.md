@@ -103,11 +103,21 @@ SKIN -> MY SKINS -> OPEN FOLDER opens the personal Profiles directory.
 5. **Share a complete set:** EDIT -> SET -> EXPORT creates a
    `.locuspack` archive. This is a standard store-only ZIP, with metadata,
    shared audio, optional background art and all chart JSONs. EDIT -> SET -> IMPORT installs `.locuspack` archives as whole
-   Song Sets. LOCUS refuses to overwrite an already-installed set with the
-   same setId.
+   Song Sets. An existing `setId` merges into its installed folder:
+   matching `difficultyId` values update in place, new IDs add difficulties,
+   and missing IDs in the package do not delete installed difficulties.
+   Identical charts are not rewritten. Existing set metadata, shared tempo
+   and audio remain authoritative; different audio bytes are rejected.
+   A current chart without an installed ID may be repaired at the exact
+   matching package filename and title inside the same set.
 6. **Import charts:** EDIT -> SET -> IMPORT creates/finds a managed Song Set
    or adds a difficulty to the current Set if its audio bytes match.
-   Reimporting the same source chart updates that difficulty, not a duplicate.
+   A persistent difficulty ID resolves its installed chart even after
+   renaming or moving the source; an ID-less draft uses its original source
+   path. Reimport updates rather than duplicating; explicit COPY still
+   creates a new identity. If an ID matches multiple sets, select the target.
+   Changed files are backed up; batches are validated before writing and
+   attempt rollback on a publication failure.
 7. **Delete:** EDIT -> SET has separate DELETE (selected difficulty) and
    DELETE SET (entire song) buttons. Y confirms, N/Esc cancels. You cannot
    delete the final difficulty alone: delete the whole Set instead.

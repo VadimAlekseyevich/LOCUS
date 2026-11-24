@@ -5,6 +5,7 @@
 #include "app/song_set_storage.h"
 #include "app/atomic_move.h"
 #include "app/image_asset_file.h"
+#include "app/song_difficulty_import.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -113,7 +114,7 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
         error = "Package is missing the shared audio file.";
         return fail();
     }
-    std::size_t difficultyCount = 0;
+    std::map<std::string, InstalledDifficulty> incomingCharts;
     std::set<std::string> incomingDifficultyIds;
     for (fs::directory_iterator it(stage, ec), end; !ec && it != end;
          it.increment(ec)) {
@@ -143,12 +144,13 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
             error = "Package has a missing or duplicate difficultyId.";
             return fail();
         }
-        ++difficultyCount;
+        incomingCharts.emplace(parsed.difficultyId, InstalledDifficulty{path, std::move(parsed)});
     }
-    if (ec || difficultyCount == 0) {
+    if (ec || incomingCharts.empty()) {
         error = "Package contains no valid difficulties.";
         return fail();
     }
+    fs::path existingSet;
     // Refresh indexes nested Song Sets as well as immediate children of
     // Songs/. Enforce exactly the same identity domain BEFORE publishing the
     // imported directory, even if the in-memory index is stale.
@@ -172,27 +174,63 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
             return fail();
         }
         if (other.id == metadata.id) {
-            error = "Song Set ID is already installed in another folder.";
-            return fail();
+            if (!existingSet.empty()) {
+                error = "Multiple installed Song Sets claim the same setId.";
+                return fail();
+            }
+            existingSet = candidate.parent_path();
         }
     }
     if (ec) {
         error = "Cannot enumerate installed Song Set identities: " + ec.message();
         return fail();
     }
-    const fs::path target = root /
-        (FilenamePart(metadata.title) + "-pack-" +
-         HashSetId(metadata.id));
-    if (fs::exists(target, ec) || ec) {
-        error = "Song Set destination already exists; nothing was overwritten.";
-        return fail();
+    const fs::path target = existingSet.empty() ? root /
+        (FilenamePart(metadata.title) + "-pack-" + HashSetId(metadata.id))
+        : existingSet;
+    if (existingSet.empty()) {
+        if (fs::exists(target, ec) || ec) {
+            error = "Song Set destination already exists; nothing was overwritten.";
+            return fail();
+        }
+        MovePathNoReplace(stage, target, ec);
+        if (ec) {
+            error = "Cannot publish Song Set package: " + ec.message();
+            return fail();
+        }
+    } else {
+        FolderWriteLock setLock;
+        if (!setLock.Acquire(target, error)) return fail();
+        SongSetManifest installed;
+        if (!LoadSongSetManifest(target / L"set.locus.json", installed, error))
+            return fail();
+        if (installed.id != metadata.id) {
+            error = "Installed Song Set identity changed during import.";
+            return fail();
+        }
+        const auto sharedAudio = target / fs::u8path(installed.audioFile);
+        bool identical = false;
+        if (!SameFileBytes(audio, sharedAudio, identical, error)) return fail();
+        if (!identical) {
+            error = "This Song Set already has different audio. Import was stopped "
+                    "to protect other difficulties.";
+            return fail();
+        }
+        std::vector<InstalledDifficulty> existing;
+        if (!ReadInstalledDifficulties(target, sharedAudio, existing, error)) return fail();
+        std::vector<DifficultyImportWrite> writes;
+        for (const auto& item : incomingCharts) {
+            const auto& entry = item.second;
+            fs::path destination;
+            if (!PrepareDifficultyImport(target, installed, existing,
+                    target / entry.file.filename(), entry.chart, true,
+                    writes, destination, error)) return fail();
+        }
+        if (!PublishDifficultyImports(writes, error)) return fail();
+        fs::remove_all(stage, ec);
+        ec.clear(); // An abandoned staging folder is outside the live library.
     }
-    MovePathNoReplace(stage, target, ec);
-    if (ec) {
-        error = "Cannot publish Song Set package: " + ec.message();
-        return fail();
-    }
-    // The rename is the disk commit point. Keep the actual installed
+    // Publication or merge completed. Keep the actual installed
     // location even if the in-memory index cannot be refreshed immediately.
     installedSet = target;
     std::string notice;
