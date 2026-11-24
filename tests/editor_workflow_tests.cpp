@@ -587,7 +587,7 @@ int main() {
                 afterRename.Songs()[static_cast<std::size_t>(renamedSong)]
                     .charts[static_cast<std::size_t>(renamedChart)]
                     .data->difficultyId == playedDifficultyId &&
-                core::ChartGameplayRevision(afterRename.Songs()[
+                core::ChartGameplayRevision(*afterRename.Songs()[
                     static_cast<std::size_t>(renamedSong)].charts[
                     static_cast<std::size_t>(renamedChart)].data) == playedRevision &&
                 results.Load({songs[0].id, playedDifficultyId}, error).size() == 1,
