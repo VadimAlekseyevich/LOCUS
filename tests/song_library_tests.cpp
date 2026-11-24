@@ -1,4 +1,5 @@
 #include "app/song_library.h"
+#include "core/chart_revision.h"
 #include "app/song_set_storage.h"
 #include "app/atomic_move.h"
 #include "app/chart_file.h"
