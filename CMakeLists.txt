@@ -51,7 +51,9 @@ if(LOCUS_BUILD_BENCHMARKS)
     target_link_libraries(locus_editor_bench PRIVATE locus_core)
 endif()
 
+include(cmake/verify_source_ownership.cmake)
 if(NOT LOCUS_BUILD_APP)
+    locus_verify_source_ownership()
     return()
 endif()
 
@@ -60,38 +62,26 @@ find_package(Threads REQUIRED)
 include(cmake/storage_targets.cmake)
 include(cmake/runtime_targets.cmake)
 include(cmake/editor_targets.cmake)
+include(cmake/application_targets.cmake)
 
 add_executable(locus
     src/app/main.cpp
-    src/app/executable_directory.cpp
-    src/app/async_library_refresh.cpp
-    src/app/app_runtime_policy.cpp
-    src/app/play_screen_actions.cpp
-    src/app/play_presentation.cpp
     src/app/app_smoke_checks.cpp
     src/app/app_frame_renderer.cpp
-    src/app/home_brand_assets.cpp
     src/app/image_asset_texture.cpp
     src/app/app_input.cpp
     src/app/menu_controller.cpp
     src/app/gameplay_ui.cpp
-    src/app/screen_flow.cpp
-    src/app/session_transition.cpp
-    src/app/quit_media.cpp
     src/app/native_close.cpp
-    src/app/native_key_capture.cpp
     src/app/window_mode.cpp
     src/app/menu_music_preview.cpp
     src/app/editor_screen_actions.cpp
     src/app/listen_session.cpp
-    src/app/library_playback.cpp
-    src/app/library_browser.cpp
-    src/app/library_file_actions.cpp
     src/app/library_launch_actions.cpp
     src/app/skin_profile_actions.cpp
     src/app/skin_menu_draw.cpp
-    src/app/menu_ui.cpp
 )
+target_link_libraries(locus PRIVATE locus_screen_flow locus_session_actions locus_play_presentation locus_library_activation locus_library_browser locus_brand_assets locus_menu_canvas locus_native_input)
 target_link_libraries(locus PRIVATE locus_platform_dialogs locus_game_settings locus_skin_model locus_editor_comparison locus_editor_controls locus_editor_canvas locus_editor_document locus_editor_workspace locus_editor_session locus_editor_discard)
 target_link_libraries(locus PRIVATE locus_transport locus_game_session locus_result_store locus_path_mesh locus_route_renderer)
 target_link_libraries(locus PRIVATE locus_song_library locus_file_io locus_chart_storage locus_library_selection)
@@ -222,7 +212,8 @@ if(LOCUS_BUILD_TESTS)
         # adapter without requiring a desktop or physical keyboard.
         add_executable(locus_win32_direction_events_tests
             tests/win32_direction_events_tests.cpp
-            src/app/native_key_capture.cpp)
+        )
+        target_link_libraries(locus_win32_direction_events_tests PRIVATE locus_native_input)
         target_compile_features(locus_win32_direction_events_tests PRIVATE cxx_std_17)
         target_link_libraries(locus_win32_direction_events_tests PRIVATE
             locus_core user32)
@@ -245,8 +236,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_app_journey_tests
         tests/app_journey_tests.cpp
-        src/app/screen_flow.cpp
     )
+    target_link_libraries(locus_app_journey_tests PRIVATE locus_screen_flow)
     target_link_libraries(locus_app_journey_tests PRIVATE locus_result_store)
     target_link_libraries(locus_app_journey_tests PRIVATE locus_song_library locus_file_io locus_chart_storage)
     target_compile_features(locus_app_journey_tests PRIVATE cxx_std_17)
@@ -353,12 +344,8 @@ if(LOCUS_BUILD_TESTS)
     # only the sound device, file-dialog result and clock are injected.
     add_executable(locus_editor_workflow_tests
         tests/editor_workflow_tests.cpp
-        src/app/library_playback.cpp
-        src/app/play_screen_actions.cpp
-        src/app/app_runtime_policy.cpp
-        src/app/session_transition.cpp
-        src/app/screen_flow.cpp
     )
+    target_link_libraries(locus_editor_workflow_tests PRIVATE locus_screen_flow locus_session_actions locus_library_activation)
     target_link_libraries(locus_editor_workflow_tests PRIVATE locus_platform_dialogs locus_game_settings locus_editor_comparison locus_editor_controls locus_editor_canvas locus_editor_document locus_editor_workspace locus_editor_session locus_editor_discard)
     target_link_libraries(locus_editor_workflow_tests PRIVATE locus_transport locus_game_session locus_result_store locus_path_mesh locus_route_renderer)
     target_link_libraries(locus_editor_workflow_tests PRIVATE locus_song_library locus_file_io locus_chart_storage)
@@ -402,11 +389,8 @@ if(LOCUS_BUILD_TESTS)
     # The pure navigation policy remains in screen_flow.
     add_executable(locus_session_transition_tests
         tests/session_transition_tests.cpp
-        src/app/play_screen_actions.cpp
-        src/app/app_runtime_policy.cpp
-        src/app/screen_flow.cpp
-        src/app/session_transition.cpp
     )
+    target_link_libraries(locus_session_transition_tests PRIVATE locus_screen_flow locus_session_actions)
     target_link_libraries(locus_session_transition_tests PRIVATE locus_transport locus_game_session)
     target_link_libraries(locus_session_transition_tests PRIVATE locus_file_io)
     target_compile_features(locus_session_transition_tests PRIVATE cxx_std_17)
@@ -428,8 +412,8 @@ if(LOCUS_BUILD_TESTS)
     # manipulate the scored transport.
     add_executable(locus_play_presentation_tests
         tests/play_presentation_tests.cpp
-        src/app/play_presentation.cpp
     )
+    target_link_libraries(locus_play_presentation_tests PRIVATE locus_play_presentation)
     target_compile_features(locus_play_presentation_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_play_presentation_tests PRIVATE locus_core raylib)
     add_test(NAME locus_play_presentation_lifecycle COMMAND locus_play_presentation_tests)
@@ -468,8 +452,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_quit_media_tests
         tests/quit_media_tests.cpp
-        src/app/quit_media.cpp
     )
+    target_link_libraries(locus_quit_media_tests PRIVATE locus_session_actions)
     target_link_libraries(locus_quit_media_tests PRIVATE locus_transport locus_game_session)
     target_link_libraries(locus_quit_media_tests PRIVATE locus_file_io)
     target_compile_features(locus_quit_media_tests PRIVATE cxx_std_17)
@@ -525,8 +509,8 @@ if(LOCUS_BUILD_TESTS)
     # failure and validate route timing before publishing selected difficulty.
     add_executable(locus_library_playback_tests
         tests/library_playback_tests.cpp
-        src/app/library_playback.cpp
     )
+    target_link_libraries(locus_library_playback_tests PRIVATE locus_library_activation)
     target_link_libraries(locus_library_playback_tests PRIVATE locus_transport locus_game_session)
     target_link_libraries(locus_library_playback_tests PRIVATE locus_file_io locus_chart_storage locus_song_library)
     target_compile_features(locus_library_playback_tests PRIVATE cxx_std_17)
@@ -538,13 +522,8 @@ if(LOCUS_BUILD_TESTS)
     # failed imports keep the prior view, not a half-updated menu selection.
     add_executable(locus_library_browser_tests
         tests/library_browser_tests.cpp
-        src/app/library_browser.cpp
-        src/app/async_library_refresh.cpp
-        src/app/library_file_actions.cpp
-        src/app/menu_ui.cpp
-        src/app/home_brand_assets.cpp
-        src/app/executable_directory.cpp
     )
+    target_link_libraries(locus_library_browser_tests PRIVATE locus_library_browser locus_brand_assets locus_menu_canvas)
     target_link_libraries(locus_library_browser_tests PRIVATE locus_game_settings)
     target_link_libraries(locus_library_browser_tests PRIVATE locus_result_store)
     target_link_libraries(locus_library_browser_tests PRIVATE locus_song_library locus_file_io locus_chart_storage locus_library_selection)
@@ -635,3 +614,5 @@ if(LOCUS_BUILD_TESTS)
     endif()
 
 endif()
+
+locus_verify_source_ownership()
