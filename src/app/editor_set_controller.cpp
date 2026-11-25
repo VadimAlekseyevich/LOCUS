@@ -325,7 +325,7 @@ bool EditorSetController::EnterChart(double& now) {
         Notice("ATTACH AUDIO FIRST", true);
         return false;
     }
-    if (ctx_.files.ActiveSetFolder().empty() && ctx_.chartPath.empty()) {
+    if (ctx_.files.ActiveSetFolder().empty()) {
         if (!ctx_.files.Save(false, now)) {
             Notice("CANNOT CREATE SONG SET - CHECK AUDIO AND TRY AGAIN", true);
             return false;

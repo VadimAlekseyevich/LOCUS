@@ -63,7 +63,7 @@ int main() {
     core::ChartEditor editor;
     editor.SetTitle("UNSAVED CHART");
     app::EditorUiState ui;
-    ui.tab = app::EditorTab::Audio;
+    ui.tab = app::EditorTab::Set;
     app::LocalMusic song;
     app::ChartPlayback playback(song);
     std::wstring chartPath = L"original.locus.json";
@@ -148,8 +148,8 @@ int main() {
     ok &= Check(!editor.Dirty() && editor.Data().title != "UNSAVED CHART" &&
                 !song.Ready() && chartPath.empty() && audioPath.empty() &&
                 loadedAudioPath.empty() && previewBeat == 0 &&
-                status == "NEW CHART - CLICK LOAD SONG" &&
-                ui.tab == app::EditorTab::Route &&
+                status == "SONG SETUP - ATTACH AUDIO TO BEGIN" &&
+                ui.tab == app::EditorTab::Set &&
                 ui.rangeFirst == -1 && ui.rangeLast == -1 &&
                 ui.comparisonFiles.empty() &&
                 ui.clipboard.notes.size() == 1 &&
@@ -167,7 +167,7 @@ int main() {
     ok &= Check(!failed.OpenFromLibrary(
                     L"missing-library-chart.locus.json", error) &&
                 editor.Data().title == "SECOND DRAFT" && editor.Dirty() &&
-                chartPath.empty() && status == "NEW CHART - CLICK LOAD SONG",
+                chartPath.empty() && status == "SONG SETUP - ATTACH AUDIO TO BEGIN",
                 "failed library edit retains the current unsaved draft");
     app::EditorSetController setControl{
         {library, failed, editor, ui, chartPath, status, libraryUi, menuStatus},
@@ -247,7 +247,7 @@ int main() {
                     "active Song Set is available on SET and ROUTE");
         app::EditorControls clickDifficulty;
         clickDifficulty.mouseClick = true;
-        clickDifficulty.mouse = {650.0f, 270.0f}; // Hard difficulty row
+        clickDifficulty.mouse = {700.0f, 308.0f}; // Hard difficulty row
         managedSet.HandleControls(clickDifficulty);
         ok &= Check(managedSet.HasPending() && editor.Dirty() &&
                     activePath == installedEasy.wstring(),
@@ -261,11 +261,11 @@ int main() {
 
         // The controller (not just the pure helper) must commit AUDIO
         // table edits to the actual Song Set manifest and all difficulties.
-        ui.tab = app::EditorTab::Audio;
+        ui.tab = app::EditorTab::Set;
         ok &= Check(editor.SetSongDuration(10.0), "tempo edit has audio duration");
         app::EditorControls tempoClick;
         tempoClick.mouseClick = true;
-        tempoClick.mouse = {660.0f, 256.0f};
+        tempoClick.mouse = {510.0f, 293.0f};
         managedSet.HandleControls(tempoClick);
         ok &= Check(ui.tempoEditingRow == 0 && ui.tempoEditingBpm,
                     "managed AUDIO BPM cell enters editing");
@@ -281,7 +281,7 @@ int main() {
                     editor.Data().route.bpm == 170.5,
                     "editing BPM updates whole pack and current draft");
         editor.SelectBeat(4);
-        tempoClick.mouse = {454.0f, 441.0f};
+        tempoClick.mouse = {480.0f, 445.0f};
         managedSet.HandleControls(tempoClick);
         const auto& twoTempo = managedLibrary.Songs()[0].tempoMap;
         ok &= Check(twoTempo.size() == 2 &&

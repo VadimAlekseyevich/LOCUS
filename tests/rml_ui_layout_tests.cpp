@@ -368,7 +368,7 @@ int main(int argc, char** argv) {
         context->SetDensityIndependentPixelRatio(1.0f);
         context->Update();
         auto* canvas = editorDoc->GetElementById("editor-canvas");
-        for (const char* id : {"editor-back", "editor-tab-route",
+        for (const char* id : {"editor-back",
                                "editor-tool-mirror-h", "editor-tool-mirror-v",
                                "editor-tool-rotate-ccw", "editor-tool-rotate-cw",
                                "editor-tool-test", "editor-pad-7",
@@ -393,9 +393,9 @@ int main(int argc, char** argv) {
                     "EDITOR header and transport labels produce glyph geometry");
 
         auto* header = editorDoc->GetElementById("editor-header");
-        auto* set = editorDoc->GetElementById("editor-tab-set");
-        auto* route = editorDoc->GetElementById("editor-tab-route");
-        auto* audio = editorDoc->GetElementById("editor-tab-audio");
+        auto* set = editorDoc->GetElementById("editor-set-ui");
+        auto* route = editorDoc->GetElementById("editor-route-ui");
+        auto* enterEditor = editorDoc->GetElementById("editor-setup-enter");
         auto* footer = editorDoc->GetElementById("editor-footer-playback");
         auto* rate = editorDoc->GetElementById("editor-preview-rate");
         ok &= Check(rate && rate->GetTagName() == "input" &&
@@ -430,9 +430,9 @@ int main(int argc, char** argv) {
         auto* time = editorDoc->GetElementById("editor-preview-time");
         auto* compass = editorDoc->GetElementById("editor-route-pad");
         auto* toolrail = editorDoc->GetElementById("editor-route-tools");
-        ok &= Check(canvas && header && set && route && audio &&
+        ok &= Check(canvas && header && set && route && enterEditor &&
                     footer && rate && time && compass && toolrail,
-                    "EDITOR has native tabs and transport controls");
+                    "EDITOR has separate setup/authoring views and transport controls");
         if (header && footer && canvas) {
             ok &= Check(compass && toolrail &&
                 compass->GetOffsetWidth() > 170.0f &&
@@ -442,6 +442,19 @@ int main(int argc, char** argv) {
             ok &= Check(std::abs(header->GetAbsoluteTop() - 65.0f) < 2.0f &&
                         std::abs(footer->GetAbsoluteTop() - 485.0f) < 2.0f,
                         "960x540: editor shell aligns with raylib viewport");
+            if (set && route) {
+                set->SetProperty("display", "block");
+                route->SetProperty("display", "none");
+                context->Update();
+                auto* metadata = editorDoc->GetElementById("editor-set-metadata");
+                auto* difficulties = editorDoc->GetElementById("editor-set-difficulties");
+                auto* name = editorDoc->GetElementById("editor-difficulty-title");
+                ok &= Check(metadata && difficulties && name &&
+                    metadata->GetAbsoluteLeft()+metadata->GetOffsetWidth() <= 350.0f &&
+                    difficulties->GetAbsoluteLeft() >= 647.0f &&
+                    LabelCentered(enterEditor),
+                    "SONG SETUP panels leave central audio/timing region clear");
+            }
             context->SetDimensions({1536, 960});
             context->SetDensityIndependentPixelRatio(1.6f);
             canvas->SetProperty("top", "30dp");

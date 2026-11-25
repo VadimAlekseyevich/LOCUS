@@ -35,9 +35,9 @@ EditorControls Type(const char* text) {
 
 int main() {
     bool ok = true;
-    ok &= Check(detail::ClickedSetAction({180, 447}) ==
+    ok &= Check(detail::ClickedSetAction({120, 424}) ==
                 EditorSetAction::OpenFolder &&
-                detail::ClickedSetAction({350, 374}) ==
+                detail::ClickedSetAction({260, 348}) ==
                 EditorSetAction::RemoveBackground,
                 "Set folder shortcut owns an isolated clickable hitbox");
     // A focused RmlUi text field must not accidentally change screens when
@@ -139,8 +139,8 @@ int main() {
                 "three equal preview panes fit in available route workspace");
 
     // Audio settings are no longer stacked on top of the route grid.
-    ApplyEditorControls(chart, ui, Click(780, 89));
-    ok &= Check(ui.tab == EditorTab::Audio, "Audio tab opens");
+    ui.tab = EditorTab::Set;
+    ok &= Check(ui.tab == EditorTab::Set, "Song Setup contains audio controls");
     // BPM/offset editing is owned by the shared tempo table, not
     // the old single-difficulty numeric text fields.
     const auto noOldField = ApplyEditorControls(chart, ui, Click(145, 312));
@@ -156,7 +156,7 @@ int main() {
     };
     EditorControls enter;
     enter.enter = true;
-    HandleTempoTable(ui, Click(665, 256), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(510, 293), currentTempo(), chart, applyTempo);
     ok &= Check(ui.tempoEditingRow == 0 && ui.tempoEditingBpm,
                 "AUDIO tempo table opens BPM cell");
     HandleTempoTable(ui, Type("400,5"), currentTempo(), chart, applyTempo);
@@ -165,19 +165,19 @@ int main() {
                 std::abs(chart.Data().route.bpm - 400.5) < 1e-9,
                 "tempo table accepts decimal BPM");
 
-    HandleTempoTable(ui, Click(450, 256), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(405, 293), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, Type("-175"), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, enter, currentTempo(), chart, applyTempo);
     ok &= Check(std::abs(chart.Data().offsetSeconds + 0.175) < 1e-10 &&
                 currentTempo().size() == 1,
                 "first tempo marker defines shared signed offset and initial BPM");
 
-    ApplyEditorControls(chart, ui, Click(145, 235));
+    ApplyEditorControls(chart, ui, Click(785, 169));
     ApplyEditorControls(chart, ui, Type("My rhythm chart"));
     ApplyEditorControls(chart, ui, enter);
     ok &= Check(chart.Data().title == "My rhythm chart",
-                "chart title can be typed in Audio tab");
-    ApplyEditorControls(chart, ui, Click(145, 235));
+                "difficulty title can be typed in Song Setup");
+    ApplyEditorControls(chart, ui, Click(785, 169));
     ApplyEditorControls(chart, ui, Type(u8"Новый чарт 🎵"));
     EditorControls backspaceUtf8;
     backspaceUtf8.backspace = true;
@@ -192,8 +192,7 @@ int main() {
     ok &= Check(audioEmpty.speedIndex == -1,
                 "practice speed buttons are no longer in the Audio tab");
 
-    ApplyEditorControls(chart, ui, Click(500, 89));
-    ok &= Check(ui.tab == EditorTab::Set, "Song Set management tab opens");
+    ok &= Check(ui.tab == EditorTab::Set, "Song Setup contains difficulty management");
     const auto titleBeforeSet = chart.Data().title;
     EditorControls noModification;
     noModification.removeTurn = true;
@@ -202,33 +201,30 @@ int main() {
     ApplyEditorControls(chart, ui, noModification);
     ok &= Check(chart.Data().title == titleBeforeSet && ui.tab == EditorTab::Set,
                 "SET tab does not mutate chart from editing shortcuts");
-    ok &= Check(detail::ClickedSetAction({630, 193}) ==
+    ok &= Check(detail::ClickedSetAction({700, 242}) ==
                     EditorSetAction::NewDifficulty &&
-                detail::ClickedSetAction({630, 440}) ==
+                detail::ClickedSetAction({700, 445}) ==
                     EditorSetAction::DeleteDifficulty &&
-                detail::ClickedSetAction({390, 447}) ==
+                detail::ClickedSetAction({260, 424}) ==
                     EditorSetAction::Restore,
                 "Song Set action buttons have distinct hitboxes");
-    ok &= Check(detail::kAudioPreviewMs.x <= 160 &&
-                detail::kAudioPreviewMs.y <= 325 &&
-                detail::kAudioPreviewMs.x + detail::kAudioPreviewMs.width > 160 &&
-                detail::kAudioPreviewMs.y + detail::kAudioPreviewMs.height > 325 &&
-                detail::ClickedSetAction({168, 280}) == EditorSetAction::None,
+    ok &= Check(detail::Hit(detail::kAudioPreviewMs,{480,224}) &&
+                detail::ClickedSetAction({480,224}) == EditorSetAction::None,
                 "song preview lives in AUDIO and has no increment buttons");
-    ok &= Check(detail::ClickedSetAction({85, 374}) ==
+    ok &= Check(detail::ClickedSetAction({120, 348}) ==
                     EditorSetAction::AttachBackground &&
-                detail::ClickedSetAction({350, 374}) ==
+                detail::ClickedSetAction({260, 348}) ==
                     EditorSetAction::RemoveBackground,
                 "background actions remain in SET");
-    ok &= Check(detail::ClickedSetMetadataField({160, 211}) ==
+    ok &= Check(detail::ClickedSetMetadataField({160, 170}) ==
                     EditorSetField::Title &&
-                detail::ClickedSetMetadataField({150, 265}) ==
+                detail::ClickedSetMetadataField({150, 215}) ==
                     EditorSetField::Artist &&
-                detail::ClickedSetMetadataField({350, 265}) ==
+                detail::ClickedSetMetadataField({150, 260}) ==
                     EditorSetField::Mapper &&
-                detail::ClickedSetMetadataField({180, 319}) ==
+                detail::ClickedSetMetadataField({180, 305}) ==
                     EditorSetField::Tags &&
-                detail::ClickedSetAction({180, 319}) ==
+                detail::ClickedSetAction({180, 305}) ==
                     EditorSetAction::None,
                 "SET metadata owns distinct text-field hitboxes");
     ChartEditor ruler;
@@ -244,7 +240,7 @@ int main() {
                 timeCopyUi.feedback=="2250 MS COPIED",
                 "copy time is a pure clipboard intent");
     // FIELD is removed from navigation; START belongs to ROUTE now.
-    ApplyEditorControls(chart,ui,Click(625,89));
+    ui.tab = EditorTab::Route;
     ok &= Check(ui.tab==EditorTab::Route,"Route tab has start heading");
     const auto oldGrid=chart.Data().route.gridWidth;
     const auto previousHeading=chart.Data().route.initialHeading;
@@ -263,20 +259,20 @@ int main() {
                 "loading audio derives timeline length");
     // Map UI: select the song position, add a segment, edit its BPM,
     // reject a conflicting offset, and delete it without modifying notes.
-    ui.tab = EditorTab::Audio;
+    ui.tab = EditorTab::Set;
     chart.SelectBeat(20);
     const auto beforeAdd = currentTempo();
-    HandleTempoTable(ui, Click(455, 441), beforeAdd, chart, applyTempo);
+    HandleTempoTable(ui, Click(480, 445), beforeAdd, chart, applyTempo);
     ok &= Check(currentTempo().size() == 2 &&
                 currentTempo()[1].bpm == currentTempo()[0].bpm,
                 "AUDIO add marker uses selected audio position and prior BPM");
-    HandleTempoTable(ui, Click(665, 295), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(510, 322), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, Type("255.5"), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, enter, currentTempo(), chart, applyTempo);
     ok &= Check(currentTempo().size() == 2 &&
                 currentTempo()[1].bpm == 255.5,
                 "second BPM table row commits a tempo change");
-    HandleTempoTable(ui, Click(450, 295), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(405, 322), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, Type("-175"), currentTempo(), chart, applyTempo);
     HandleTempoTable(ui, enter, currentTempo(), chart, applyTempo);
     ok &= Check(ui.tempoEditingRow == 1 &&
@@ -285,11 +281,11 @@ int main() {
     EditorControls cancelTempo;
     cancelTempo.escape = true;
     HandleTempoTable(ui, cancelTempo, currentTempo(), chart, applyTempo);
-    HandleTempoTable(ui, Click(850, 295), currentTempo(), chart, applyTempo);
+    HandleTempoTable(ui, Click(590, 322), currentTempo(), chart, applyTempo);
     ok &= Check(currentTempo().size() == 1 &&
                 !ui.EditingText(),
                 "AUDIO delete removes only the chosen later BPM marker");
-    ui.tab = EditorTab::Audio;
+    ui.tab = EditorTab::Set;
 
     // Multiple BPM segments preserve absolute note times, including undo.
     const double initialBpm = chart.Data().route.bpm;
@@ -356,14 +352,14 @@ int main() {
                 "previous-bar navigation returns to the exact BPM marker");
 
     // The audio attachment lives in AUDIO; bottom transport is shared.
-    ui.tab=EditorTab::Audio;
-    const auto audioAttach=ApplyEditorControls(chart,ui,Click(184,428));
+    ui.tab=EditorTab::Set;
+    const auto audioAttach=ApplyEditorControls(chart,ui,Click(480,166));
     const auto play=ApplyEditorControls(chart,ui,Click(73,504));
     const auto restart=ApplyEditorControls(chart,ui,Click(116,504));
     ok &= Check(audioAttach.chooseAudio&&play.previewToggle&&
                 restart.previewRestart,
                 "Audio attachment and shared footer transport work");
-    ApplyEditorControls(chart,ui,Click(625,89));
+    ui.tab = EditorTab::Route;
     ok &= Check(ui.tab==EditorTab::Route,"Route tab restores grid");
     const auto opened=ApplyEditorControls(chart,ui,Click(756,504));
     const auto normal=ApplyEditorControls(chart,ui,Click(765,355));
@@ -377,7 +373,7 @@ int main() {
     // exclusively handles that click instead of editing the hidden BPM.
     ChartEditor rateDraft;
     EditorUiState rateUi;
-    rateUi.tab = EditorTab::Audio;
+    rateUi.tab = EditorTab::Set;
     rateUi.rateDropdownOpen = true;
     const auto rateOption = ApplyEditorControls(rateDraft,rateUi,Click(763,410));
     ok &= Check(rateOption.speedIndex == 2 && !rateOption.changedChart &&
