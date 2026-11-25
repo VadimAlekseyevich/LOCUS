@@ -12,11 +12,12 @@ namespace locus::app {
 
 bool PrepareLibraryDifficulty(const LibraryChart& selected, double audioDuration,
                               core::LoadedChart& prepared, std::string& error) {
-    if (selected.audioFile.empty() || !selected.data) {
-        error = "Selected difficulty does not have validated chart data or audio.";
+    if (selected.audioFile.empty()) {
+        error = "Selected difficulty has no audio.";
         return false;
     }
-    core::LoadedChart candidate = *selected.data;
+    core::LoadedChart candidate;
+    if (!selected.CopyPayload(candidate,error)) return false;
     if (!core::PrepareChartForSong(candidate, audioDuration, error))
         return false;
     prepared = std::move(candidate);
@@ -33,7 +34,7 @@ bool RequiresLibraryAudioLoad(const LibraryChart& selected,
 bool ActivateLibraryDifficulty(const LibraryChart& selected,
                                const LibraryPlaybackContext& context,
                                double now, std::string& error) {
-    if (selected.audioFile.empty() || !selected.data) {
+    if (selected.audioFile.empty() || !selected.HasPayload()) {
         error = "Selected difficulty has no validated chart data or audio.";
         return false;
     }

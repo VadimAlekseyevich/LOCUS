@@ -55,18 +55,21 @@ void EditorFileActions::NewDraft() {
 bool EditorFileActions::OpenFromLibrary(const std::wstring& chartFile,
                                         std::string& error) {
     int songIndex = -1, difficultyIndex = -1;
-    const core::LoadedChart* canonical = nullptr;
+    core::LoadedChart canonical;
+    bool managed = false;
     if (context_.library.FindChart(std::filesystem::path(chartFile),
                                    songIndex, difficultyIndex)) {
-        canonical = context_.library.Songs()[
+        const auto& selected = context_.library.Songs()[
             static_cast<std::size_t>(songIndex)].charts[
-            static_cast<std::size_t>(difficultyIndex)].data.get();
+            static_cast<std::size_t>(difficultyIndex)];
+        if (!selected.CopyPayload(canonical,error)) return false;
+        managed = true;
     }
     // One commit point: failed audio or Song Set timing cannot erase a draft.
     context_.preview.Stop();
     if (!LoadDraftFromDisk(
             chartFile, context_.editor, context_.music,
-            context_.chartPath, context_.audioPath, error, canonical))
+            context_.chartPath, context_.audioPath, error, managed ? &canonical : nullptr))
         return false;
     DiscardParked();
     newDifficultySet_.clear();
@@ -299,7 +302,7 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
             static_cast<std::size_t>(songIndex)].charts[
             static_cast<std::size_t>(chartIndex)];
         std::error_code ec;
-        if (checked.title != stored.data->title) {
+        if (checked.title != stored.metadata.title) {
             destination = RenamedChartFilePath(current, checked.title, ec);
             if (ec || destination.empty()) {
                 context_.status = "SAVE FAILED: CANNOT ALLOCATE CHART FILENAME";
@@ -542,8 +545,9 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
         // The library has parsed and validated every difficulty. Preparing
         // the target against the already decoded duration avoids loading the
         // SAME MP3 on every focus click or restarting the audio device.
-        core::LoadedChart candidate = *set.charts[
-            static_cast<std::size_t>(toChart)].data;
+        core::LoadedChart candidate;
+        if (!set.charts[static_cast<std::size_t>(toChart)].CopyPayload(candidate,error))
+            return false;
         if (!core::PrepareChartForSong(candidate,
                                        context_.music.DurationSeconds(), error))
             return false;

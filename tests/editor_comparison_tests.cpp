@@ -45,11 +45,26 @@ int main() {
     LoadedChart third = Reference("HARD", Heading::Left, 1000);
     LoadedChart fourth = Reference("EXTRA", Heading::UpRight, 1250);
     view.comparisonOptions = {
-        {"/songs/set/current.json", "CURRENT SAVED", &original},
-        {"/songs/set/easy.json", "EASY", &first},
-        {"/songs/set/normal.json", "NORMAL", &second},
-        {"/songs/set/hard.json", "HARD", &third},
-        {"/songs/set/extra.json", "EXTRA", &fourth}
+        {"/songs/set/current.json", "CURRENT SAVED", true},
+        {"/songs/set/easy.json", "EASY", true},
+        {"/songs/set/normal.json", "NORMAL", true},
+        {"/songs/set/hard.json", "HARD", true},
+        {"/songs/set/extra.json", "EXTRA", true}
+    };
+    const std::array<const LoadedChart*,5> payloads = {
+        &original,&first,&second,&third,&fourth};
+    const auto identities = view.comparisonOptions;
+    int loadCalls = 0;
+    bool failLoad = false;
+    view.loadComparison = [&](const std::filesystem::path& file,
+                              LoadedChart& output,std::string& error) {
+        ++loadCalls;
+        for (std::size_t i=0;i<identities.size();++i) {
+            if (identities[i].file != file) continue;
+            if (failLoad) { error="fixture load failed"; return false; }
+            output=*payloads[i]; error.clear(); return true;
+        }
+        error="fixture not found"; return false;
     };
 
     // Regression: FocusChart must translate the CURRENT SONG TIMESTAMP,
@@ -258,7 +273,10 @@ int main() {
                 "active chart plus two optional references is the hard limit");
 
     EditorComparisonCache cache;
+    const int loadsBefore = loadCalls;
     const auto three = cache.Prepare(editor, ui, view, 10.0, 0.75, 1200.0f);
+    ok &= Check(loadCalls==loadsBefore+2,
+                "only two selected references materialize payloads");
     ok &= Check(three.directionPressCounts == std::array<int, 8>{} &&
                 three.count == 3 &&
                 three.panes[0].editable &&
@@ -283,8 +301,9 @@ int main() {
                 Near(at2.x, 1.5) && Near(at2.y, 0.0),
                 "reference charts use their own absolute note timestamps");
     const auto before = cache.Prepare(editor, ui, view, 10.0);
-    ok &= Check(before.panes[1].route == three.panes[1].route,
-                "unchanged Song Set references reuse compiled routes");
+    ok &= Check(before.panes[1].route == three.panes[1].route &&
+                loadCalls==loadsBefore+2,
+                "unchanged Song Set references reuse compiled routes without loading");
 
     editor.SelectBeat(2);
     editor.SetOutgoingHeading(Heading::Left);
@@ -302,8 +321,22 @@ int main() {
     first.route.turns[0] = {2, Heading::Up, 1000};
     ++view.comparisonOptions[1].fileSize;
     const auto revised = cache.Prepare(editor, ui, view, 10.0);
-    ok &= Check(Near(revised.panes[1].route->Turns()[0].songSeconds, 1.0),
+    ok &= Check(revised.panes[1].route &&
+                Near(revised.panes[1].route->Turns()[0].songSeconds, 1.0) &&
+                loadCalls==loadsBefore+3,
                 "library change invalidates only the modified reference");
+    failLoad = true;
+    ++view.comparisonOptions[1].contentFingerprint;
+    const auto unavailable = cache.Prepare(editor,ui,view,10.0);
+    ok &= Check(!unavailable.panes[1].route && unavailable.panes[2].route &&
+                loadCalls==loadsBefore+4,
+                "failed reference never displays stale route or invalidates peer");
+    cache.Prepare(editor,ui,view,10.0);
+    ok &= Check(loadCalls==loadsBefore+4,"failed reference does not reload every frame");
+    failLoad = false;
+    ++view.comparisonOptions[1].contentFingerprint;
+    ok &= Check(cache.Prepare(editor,ui,view,10.0).panes[1].route &&
+                loadCalls==loadsBefore+5,"new catalog revision retries failed reference");
 
     ChartEditor parked;
     parked.Load(first);

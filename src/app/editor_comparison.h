@@ -110,12 +110,14 @@ private:
     struct Cached {
         core::TimedRoute route;
         std::filesystem::path file;
-        const core::LoadedChart* source = nullptr;
+        const core::ChartEditor* parked = nullptr;
         std::uint64_t draftRevision = 0;
         std::uintmax_t fileSize = 0;
         std::filesystem::file_time_type modified{};
-        double bpm = 0.0, offsetSeconds = 0.0, duration = 0.0;
-        std::vector<core::TempoMarker> tempoMap;
+        std::uint64_t contentFingerprint = 0;
+        std::string gameplayRevision;
+        double duration = 0.0;
+        bool attempted = false;
         bool ready = false;
     };
     Cached active_;

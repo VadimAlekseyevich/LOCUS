@@ -7,6 +7,7 @@
 #include "raylib.h"
 
 #include <limits>
+#include <functional>
 #include <optional>
 #include <filesystem>
 #include <vector>
@@ -87,9 +88,11 @@ enum class EditorSetAction {
 struct EditorComparisonOption {
     std::filesystem::path file;
     std::string title;
-    const core::LoadedChart* chart = nullptr; // Borrowed from SongLibrary for this frame.
+    bool available = false;
     std::uintmax_t fileSize = 0;
     std::filesystem::file_time_type modified{};
+    std::string gameplayRevision;
+    std::uint64_t contentFingerprint = 0;
 };
 
 struct EditorSetView {
@@ -108,6 +111,10 @@ struct EditorSetView {
     std::vector<std::string> difficulties;
     std::vector<std::string> difficultyIds;
     std::vector<EditorComparisonOption> comparisonOptions;
+    // Materialize only chosen references. The view never exposes note
+    // storage or retains pointers into a catalog snapshot.
+    std::function<bool(const std::filesystem::path&,core::LoadedChart&,
+                       std::string&)> loadComparison;
     int current = -1, selected = -1, firstVisible = 0;
 };
 enum class EditorField { None, Title, Bpm, OffsetMs };

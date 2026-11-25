@@ -59,7 +59,7 @@ bool ToggleEditorComparison(EditorUiState& ui, const EditorSetView& set,
         return false;
     const auto& option = set.comparisonOptions[
         static_cast<std::size_t>(optionIndex)];
-    if (!option.chart || option.file.empty() ||
+    if (!option.available || option.file.empty() ||
         optionIndex == set.current)
         return false; // Never duplicate the editable chart.
     const auto selected = std::find(ui.comparisonFiles.begin(),
@@ -95,7 +95,7 @@ void ReconcileEditorComparisons(EditorUiState& ui,
         const auto found = std::find_if(set.comparisonOptions.begin(),
             set.comparisonOptions.end(),
             [&](const EditorComparisonOption& option) {
-                return option.file == file && option.chart;
+                return option.file == file && option.available;
             });
         if (found == set.comparisonOptions.end() ||
             found - set.comparisonOptions.begin() == set.current ||
@@ -116,7 +116,7 @@ int EditorComparisonIndex(const EditorSetView& set,
     if (file.empty()) return -1;
     const auto found = std::find_if(set.comparisonOptions.begin(),
         set.comparisonOptions.end(), [&](const EditorComparisonOption& option) {
-            return option.file == file && option.chart;
+            return option.file == file && option.available;
         });
     return found == set.comparisonOptions.end() ? -1 :
         static_cast<int>(found - set.comparisonOptions.begin());
@@ -125,7 +125,7 @@ int EditorComparisonIndex(const EditorSetView& set,
 bool CanOpenEditorComparison(const EditorSetView& set) noexcept {
     if (!set.managed) return false;
     for (std::size_t i=0; i<set.comparisonOptions.size(); ++i)
-        if (static_cast<int>(i) != set.current && set.comparisonOptions[i].chart &&
+        if (static_cast<int>(i) != set.current && set.comparisonOptions[i].available &&
             !set.comparisonOptions[i].file.empty()) return true;
     return false;
 }
@@ -234,7 +234,7 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             const auto found = std::find_if(set.comparisonOptions.begin(),
                 set.comparisonOptions.end(),
                 [&](const EditorComparisonOption& option) {
-                    return option.file == file && option.chart;
+                    return option.file == file && option.available;
                 });
             if (found == set.comparisonOptions.end() ||
                 static_cast<int>(found - set.comparisonOptions.begin()) ==
@@ -256,44 +256,50 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
         const auto& file = option.file;
         const core::ChartEditor* parked = parkedDraft
             ? parkedDraft(file) : nullptr;
-        const core::LoadedChart* source = parked
-            ? &parked->Data() : option.chart;
         const std::uint64_t revision = parked ? parked->RouteRevision() : 0;
         auto& cached = reference_[static_cast<std::size_t>(i)];
-        const bool changed = !cached.ready || cached.file != file ||
-            cached.source != source || cached.draftRevision != revision ||
+        const bool changed = !cached.attempted || cached.file != file ||
+            cached.parked != parked || cached.draftRevision != revision ||
             cached.fileSize != option.fileSize ||
             cached.modified != option.modified ||
-            cached.bpm != source->route.bpm ||
-            cached.tempoMap != source->route.tempoMap ||
-            cached.offsetSeconds != source->offsetSeconds ||
+            cached.contentFingerprint != option.contentFingerprint ||
+            cached.gameplayRevision != option.gameplayRevision ||
             cached.duration != songDurationSeconds;
         if (changed) {
             cached.ready = false;
+            cached.attempted = true;
             cached.file = file;
-            cached.source = source;
+            cached.parked = parked;
             cached.draftRevision = revision;
             cached.fileSize = option.fileSize;
             cached.modified = option.modified;
-            cached.bpm = source->route.bpm;
-            cached.tempoMap = source->route.tempoMap;
-            cached.offsetSeconds = source->offsetSeconds;
+            cached.contentFingerprint = option.contentFingerprint;
+            cached.gameplayRevision = option.gameplayRevision;
             cached.duration = songDurationSeconds;
-            // Compile only a copy of library data or parked editor data.
-            core::LoadedChart prepared = *source;
+            core::LoadedChart prepared;
             std::string error;
-            if (core::PrepareChartForSong(prepared, songDurationSeconds, error))
+            // Unsaved documents win over disk. A saved reference is loaded
+            // only when its identity/revision changes, never on render ticks.
+            const bool loaded = parked
+                ? (prepared = parked->Data(),true)
+                : set.loadComparison && set.loadComparison(file,prepared,error);
+            if (loaded &&
+                core::PrepareChartForSong(prepared,songDurationSeconds,error))
                 cached.ready = cached.route.Compile(
-                    prepared.route, prepared.offsetSeconds);
+                    prepared.route,prepared.offsetSeconds);
         }
         const int paneSlot = ComparisonDisplaySlotForReference(i, focusedSlot);
         auto& paneFrame = previewFrames_[static_cast<std::size_t>(paneSlot)];
         if (cached.ready)
             PrepareRoutePreview(cached.route, songSeconds, lookaheadMs, paneFrame);
         frame.panes[static_cast<std::size_t>(paneSlot)] = {
-            cached.ready ? &cached.route : nullptr, source->title, false,
+            cached.ready ? &cached.route : nullptr,
+            parked ? parked->Data().title : option.title, false,
             cached.ready ? &paneFrame : nullptr, parked && parked->Dirty()};
     }
+    // A closed pane releases compiled route storage and failed attempts.
+    for (std::size_t i=visible.size();i<reference_.size();++i)
+        if (reference_[i].attempted) reference_[i] = Cached{};
     return frame;
 }
 

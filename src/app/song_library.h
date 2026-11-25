@@ -36,6 +36,18 @@ struct LibraryChart {
     // published difficulty has a validated non-null payload.
     std::shared_ptr<const core::LoadedChart> data;
     // Invoke on parse and every payload replacement, never from the UI.
+    // Explicit materialization boundary: callers own the working copy.
+    // Catalog storage is still resident until the compact scan migration.
+    bool CopyPayload(core::LoadedChart& result, std::string& error) const {
+        if (!data) {
+            error = "Selected difficulty has no validated chart payload.";
+            return false;
+        }
+        result = *data;
+        error.clear();
+        return true;
+    }
+    bool HasPayload() const noexcept { return static_cast<bool>(data); }
     void RefreshMetadata() {
         metadata = data
             ? LibraryChartMetadata{data->title, data->difficultyId,

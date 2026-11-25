@@ -155,7 +155,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
             const bool included = HasEditorComparison(ui,option.file);
             if (auto* row = document_->GetElementById(id)) {
                 row->SetClass("selected",included || active);
-                if (active || !option.chart || option.file.empty() ||
+                if (active || !option.available || option.file.empty() ||
                     (!included && ui.comparisonFiles.size()>=2))
                     row->SetAttribute("disabled","");
                 else row->RemoveAttribute("disabled");

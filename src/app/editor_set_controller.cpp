@@ -123,6 +123,19 @@ EditorSetView EditorSetController::View() const {
     view.tempoMap = set->tempoMap;
     view.hasBackground = !set->backgroundImage.empty();
     view.backgroundPath = set->backgroundImage;
+    // Resolve by identity against the current library, not a captured
+    // pointer to an entry that may be replaced by a background refresh.
+    view.loadComparison = [library=&ctx_.library, folder](
+            const fs::path& file,core::LoadedChart& result,std::string& error) {
+        int song=-1,chart=-1;
+        if (!library->FindChart(file,song,chart) ||
+            library->Songs()[static_cast<std::size_t>(song)].folder != folder) {
+            error = "Comparison difficulty is no longer in this Song Set.";
+            return false;
+        }
+        return library->Songs()[static_cast<std::size_t>(song)].charts[
+            static_cast<std::size_t>(chart)].CopyPayload(result,error);
+    };
     for (std::size_t i = 0; i < set->charts.size(); ++i) {
         const auto& entry = set->charts[i];
         const auto* parked = ctx_.files.ParkedEditor(entry.file);
@@ -130,9 +143,9 @@ EditorSetView EditorSetController::View() const {
             ? ctx_.editor.Data().title : parked ? parked->Data().title : entry.metadata.title);
         view.difficultyIds.push_back(entry.metadata.difficultyId);
         view.comparisonOptions.push_back({
-            set->charts[i].file, set->charts[i].metadata.title,
-            set->charts[i].data.get(), set->charts[i].indexedFileSize,
-            set->charts[i].indexedWriteTime});
+            entry.file,entry.metadata.title,entry.HasPayload(),
+            entry.indexedFileSize,entry.indexedWriteTime,entry.gameplayRevision,
+            entry.indexedContentFingerprint});
         if (!ctx_.chartPath.empty() &&
             set->charts[i].file == fs::path(ctx_.chartPath))
             view.current = static_cast<int>(i);
