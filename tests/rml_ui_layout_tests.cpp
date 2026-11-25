@@ -7,6 +7,7 @@
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/StyleTypes.h>
 #include "app/rml_ui_text.h"
+#include "app/ui_scale.h"
 #include "app/rml_modal_focus.h"
 #include "app/rml_confirmation.h"
 #include "app/rml_native_files.h"
@@ -287,13 +288,19 @@ int main(int argc, char** argv) {
                         exit->GetAbsoluteLeft() + exit->GetOffsetWidth() <= 800.1f,
                         "800x450: HOME actions fit");
             context->SetDimensions({1536, 960});
-            context->SetDensityIndependentPixelRatio(1.6f);
+            context->SetDensityIndependentPixelRatio(locus::app::NativeUiDensity(1536,960,1));
             context->Update();
             ok &= Check(play->GetOffsetHeight() >= 120.0f &&
                         wordmark->GetOffsetWidth() >= 550.0f &&
                         wordmark->GetAbsoluteTop() + wordmark->GetOffsetHeight() <=
                             play->GetAbsoluteTop() - 70.0f,
-                        "1536x960: Nightbloom controls and wordmark scale together");
+                        "1536x960 at OS DPI 100%: real UI scale keeps Home readable");
+            context->SetDimensions({1920,1200});
+            context->SetDensityIndependentPixelRatio(locus::app::NativeUiDensity(1920,1200,1));
+            context->Update();
+            ok &= Check(play->GetOffsetHeight() >= 155.0f && wordmark->GetOffsetWidth() >= 720.0f &&
+                        LabelCentered(play),
+                        "1920x1200 at OS DPI 100%: Home controls remain proportional");
             context->SetDimensions({1920, 810});
             context->SetDensityIndependentPixelRatio(1.5f);
             context->Update();
@@ -488,12 +495,18 @@ int main(int argc, char** argv) {
 
             }
             context->SetDimensions({1536, 960});
-            context->SetDensityIndependentPixelRatio(1.6f);
-
+            context->SetDensityIndependentPixelRatio(locus::app::NativeUiDensity(1536,960,1));
             context->Update();
+            auto* setupName = editorDoc->GetElementById("editor-difficulty-title");
+            auto* attachAudio = editorDoc->GetElementById("editor-attach-audio");
+            auto* transportPlay = editorDoc->GetElementById("editor-preview-play");
             ok &= Check(footer->GetAbsoluteTop() < 960.0f &&
-                        audio->GetAbsoluteTop() < 75.0f,
-                        "1536x960: editor shell uses window without letterboxing");
+                        audio->GetAbsoluteTop() < 75.0f &&
+                        setupName && setupName->GetOffsetHeight() >= 42.0f &&
+                        attachAudio && attachAudio->GetOffsetHeight() >= 47.0f &&
+                        transportPlay && transportPlay->GetOffsetHeight() >= 63.0f &&
+                        LabelCentered(attachAudio) && LabelCentered(transportPlay),
+                        "1536x960 at OS DPI 100%: setup fields and transport are readable");
             set->SetProperty("display", "none");
             route->SetProperty("display", "flex");
             if (auto* status = editorDoc->GetElementById("editor-status-slot"))
@@ -523,13 +536,15 @@ int main(int argc, char** argv) {
                         e->GetAbsoluteLeft() >= -1.0f && e->GetAbsoluteTop() >= -1.0f &&
                         right(e) <= width+1.0f && bottom(e) <= height+1.0f;
                 };
-                struct Sample { int width, height; float density; bool stacked; };
-                for (const auto& sample : std::array<Sample,5>{{
+                struct Sample { int width, height; float monitorDpi; bool stacked; };
+                for (const auto& sample : std::array<Sample,8>{{
                     {800,450,1.0f,false}, {1920,810,1.0f,false},
-                    {1536,960,1.5f,false}, {800,450,1.125f,false},
-                    {900,1200,1.40625f,true}}}) {
+                    {1536,960,1.0f,false}, {1920,1200,1.0f,false},
+                    {1920,1080,1.0f,false}, {2560,1080,1.0f,false},
+                    {800,450,2.0f,false}, {900,1200,2.0f,true}}}) {
                     context->SetDimensions({sample.width,sample.height});
-                    context->SetDensityIndependentPixelRatio(sample.density);
+                    context->SetDensityIndependentPixelRatio(locus::app::NativeUiDensity(
+                        sample.width,sample.height,sample.monitorDpi));
                     context->Update();
                     auto* compare = editorDoc->GetElementById("editor-tool-compare");
                     auto* options = editorDoc->GetElementById("editor-route-options");
@@ -543,6 +558,14 @@ int main(int argc, char** argv) {
                         bottom(ruler) <= slot->GetAbsoluteTop()+1.0f &&
                         bottom(slot) <= overview->GetAbsoluteTop()+1.0f,
                         "editor canvases and tools stay inside the viewport at each density/aspect");
+                    if (sample.width >= 1536) {
+                        auto* pad = editorDoc->GetElementById("editor-pad-4");
+                        ok &= Check(compare && compare->GetOffsetHeight() >= 60.0f &&
+                            pad && pad->GetOffsetHeight() >= 80.0f &&
+                            ruler->GetOffsetHeight() >= 68.0f &&
+                            slot->GetOffsetHeight() > sample.height*.65f,
+                            "large 100%-DPI editor has readable tools and a large remaining canvas");
+                    }
                     if (sample.stacked)
                         ok &= Check(bottom(toolrail) <= slot->GetAbsoluteTop()+1.0f &&
                             bottom(slot) <= compass->GetAbsoluteTop()+1.0f &&
@@ -673,7 +696,7 @@ int main(int argc, char** argv) {
             "unchanged confirmation does not invalidate layout");
         for (const auto& size : std::array<Rml::Vector2i,5>{{{800,450},{1920,810},{900,1200},{640,400},{1536,960}}}) {
             context->SetDimensions(size);
-            context->SetDensityIndependentPixelRatio(size.x==900?1.4f:1.0f);
+            context->SetDensityIndependentPixelRatio(locus::app::NativeUiDensity(size.x,size.y,size.x==900?2.0f:1.0f));
             context->Update();
             auto* panel = global.Panel();
             ok &= Check(panel && panel->GetAbsoluteLeft()>=0 && panel->GetAbsoluteTop()>=0 &&

@@ -23,14 +23,24 @@ bool Near(float lhs, float rhs, float tolerance = 0.015f) {
 
 int main() {
     bool ok = true;
-    // Density is a display/accessibility policy, independent of aspect ratio.
+    // Regression: a 100%-DPI fullscreen window must not use 1px/dp.
     ok &= Check(Near(NativeUiDensity(960,540,1),1) &&
-                Near(NativeUiDensity(2560,1080,1),1) &&
-                Near(NativeUiDensity(1536,960,1.5f),1.5f) &&
+                Near(NativeUiDensity(1536,960,1),1.6f) &&
+                Near(NativeUiDensity(1920,1200,1),2) &&
+                Near(NativeUiDensity(1920,1080,0),2) &&
+                Near(NativeUiDensity(2560,1080,1),2) &&
+                Near(NativeUiDensity(3840,2160,1),3) &&
                 Near(NativeUiDensity(800,450,2),1.125f) &&
                 Near(NativeUiDensity(900,1200,2),900.0f/640.0f) &&
-                Near(NativeUiDensity(1920,1080,0),1),
-                "native UI density follows monitor scale with a usable-area bound");
+                Near(NativeUiDensity(1280,720,1.5f),1.5f) &&
+                Near(NativeUiDensity(640,400,3),1),
+                "shared UI scale grows on large 100%-DPI windows and respects usable area");
+    const auto landscape = NativeUiDensity(1920,1080,1);
+    const auto ultrawide = NativeUiDensity(2560,1080,1);
+    ok &= Check(Near(landscape,ultrawide) &&
+                2560/ultrawide > 1920/landscape &&
+                3840/NativeUiDensity(3840,2160,1) > 1920/landscape,
+                "larger or wider displays expose actual layout space, not letterboxing");
     const auto native = ViewportTransform::NativeUi(1.5f);
     const auto measured = native.ToVirtualBounds({300,150,900,450});
     const auto cursor = native.ToVirtual({750,375});

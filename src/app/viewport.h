@@ -1,6 +1,7 @@
 #pragma once
 
 #include "raylib.h"
+#include "app/ui_scale.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,17 +14,6 @@ inline constexpr int kVirtualHeight = 540;
 // Native UI uses density-independent units and the full client area.
 // The old 960x540 transform is retained only for legacy drawing and modal
 // hitboxes; gameplay keeps its own square coordinate system.
-inline float NativeUiDensity(int width, int height, float monitorScale) noexcept {
-    if (!std::isfinite(monitorScale) || monitorScale <= 0.0f)
-        monitorScale = 1.0f;
-    const float desired = std::clamp(monitorScale, 0.75f, 3.0f);
-    // A constrained window must keep a usable logical area even on a
-    // high-DPI display. These are minimum usable dimensions, not a canvas
-    // resolution: larger windows at the same DPI expose more space.
-    if (width <= 0 || height <= 0) return desired;
-    const float usableScale = std::min(width / 640.0f, height / 400.0f);
-    return std::max(0.05f, std::min(desired, usableScale));
-}
 struct PixelRect { int x = 0, y = 0, width = 0, height = 0; };
 
 struct ViewportTransform {

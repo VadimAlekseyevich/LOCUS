@@ -9,7 +9,7 @@
   align-items:stretch; gap:8dp; }
 #editor-footer-playback { display:flex; flex-direction:row; gap:5dp; pointer-events:auto; }
 #editor-footer-playback button { width:39dp; height:40dp; padding:1dp;
-  font-size:10dp; font-weight:800; border-radius:8dp; }
+  font-size:12dp; font-weight:800; border-radius:8dp; }
 #editor-footer-rate-time { display:flex; flex-direction:row; gap:9dp; pointer-events:auto; }
 #editor-footer-rate-time button { height:40dp; border-radius:9dp;
   padding:2dp 3dp; font-weight:750; font-size:12dp; }
@@ -45,8 +45,8 @@
 #editor-route-pad button.selected { background-color:#585281; border-color:#b5a4f3; }
 #editor-route-options { display:flex; flex-direction:column; flex:0 0 auto; gap:5dp; min-width:0; }
 #editor-route-speed, #editor-route-path { width:184dp; height:31dp; flex:0 0 31dp; pointer-events:auto; display:flex; flex-direction:row; align-items:center; gap:4dp; }
-.editor-option-label { display:block; font-size:11dp; color:#bac5dc; width:47dp; }
-.editor-option-value { display:block; font-size:10dp; color:#a2d8ee; overflow:hidden; white-space:nowrap; width:50dp; }
+.editor-option-label { display:block; font-size:12dp; color:#bac5dc; width:47dp; }
+.editor-option-value { display:block; font-size:11dp; color:#a2d8ee; overflow:hidden; white-space:nowrap; width:50dp; }
 #editor-route-speed button, #editor-route-path button { width:36dp; flex:0 0 36dp; height:28dp; padding:0; font-size:15dp; }
 
 /* All SET fields and action layout live in RCSS; the SongLibrary retains
@@ -56,9 +56,9 @@
   border:1dp #565d7b; border-radius:10dp; background-color:#252d45;
   display:flex; flex-direction:column; pointer-events:auto; }
 #editor-set-metadata { overflow-y:auto; }
-#editor-attach-audio, #editor-tempo-add { flex:0 0 30dp; height:30dp; padding:0; font-size:11dp; }
+#editor-attach-audio, #editor-tempo-add { flex:0 0 30dp; height:30dp; padding:0; font-size:12dp; }
 #editor-attach-audio { margin-bottom:4dp; }
-.editor-setup-caption { display:block; color:#a6bad9; font-size:9dp; white-space:nowrap;
+.editor-setup-caption { display:block; color:#a6bad9; font-size:11dp; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; margin:3dp 0 6dp; }
 .editor-tempo-heading { margin-top:7dp; margin-bottom:3dp; }
 .editor-tempo-row { display:flex; flex-direction:row; align-items:center; gap:4dp; flex:0 0 27dp; height:27dp; }
@@ -74,7 +74,7 @@
   margin-bottom:6dp; letter-spacing:1dp; }
 .editor-set-field { display:flex; flex-direction:column; flex:0 0 auto;
   gap:3dp; margin-bottom:3dp; }
-.editor-set-field div { display:block; font-size:10dp; color:#a6bad9; }
+.editor-set-field div { display:block; font-size:11dp; color:#a6bad9; }
 .editor-set-input { display:block; width:100%; height:27dp;
   background-color:#1c263e; border:1dp #606c92; border-radius:6dp;
   color:#edf1fc; font-family:Locus; font-size:13dp; padding:3dp 7dp; }
@@ -82,11 +82,11 @@
 #editor-set-manage { display:flex; flex-direction:row; flex-wrap:wrap;
   gap:4dp; margin-top:auto; }
 #editor-set-manage button { flex:0 0 48%; height:25dp; padding:0;
-  font-size:9dp; }
+  font-size:11dp; }
 .editor-set-quick { display:flex; flex-direction:row; gap:5dp;
   margin-bottom:6dp; }
 .editor-set-quick button { flex:1; height:30dp; min-width:0;
-  padding:0; font-size:10dp; }
+  padding:0; font-size:12dp; }
 #editor-set-list { display:flex; flex-direction:column; flex:1;
   gap:5dp; overflow-y:auto; min-height:0; }
 .editor-set-row { display:block; flex:0 0 30dp; width:100%; min-height:30dp; height:30dp; padding:2dp 5dp; font-size:12dp; }

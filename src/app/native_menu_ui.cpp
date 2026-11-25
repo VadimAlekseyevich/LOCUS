@@ -775,8 +775,8 @@ bool NativeMenuUi::RefreshLayoutMetrics() {
             confirmationContext_->SetDimensions({std::max(1,width),std::max(1,height)});
         lastWidth_ = width; lastHeight_ = height;
     }
-    // Every native screen shares the same DPI policy. Resizing changes
-    // available layout space, not text size, except below the usable minimum.
+    // Both native contexts and custom canvases share a readable UI scale.
+    // Window size contributes to density, never to fixed element coordinates.
     const float density = NativeUiDensity(width, height, GetWindowScaleDPI().x);
     if (std::abs(density - lastDensity_) > 0.01f) {
         context_->SetDensityIndependentPixelRatio(density);
