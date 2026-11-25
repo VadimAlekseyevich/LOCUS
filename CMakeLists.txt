@@ -388,6 +388,16 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_editor_ui_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
     add_test(NAME locus_editor_controls COMMAND locus_editor_ui_tests)
+    if(LOCUS_ENABLE_RMLUI)
+        target_sources(locus_editor_ui_tests PRIVATE
+            tests/native_editor_ui_tests.cpp
+            src/app/native_editor_ui.cpp)
+        target_compile_definitions(locus_editor_ui_tests PRIVATE LOCUS_TEST_NATIVE_EDITOR=1)
+        target_link_libraries(locus_editor_ui_tests PRIVATE RmlUi::Core)
+        add_dependencies(locus_editor_ui_tests locus_ui_assets)
+        set_tests_properties(locus_editor_controls PROPERTIES
+            WORKING_DIRECTORY "$<TARGET_FILE_DIR:locus>")
+    endif()
 
     add_executable(locus_editor_comparison_tests
         tests/editor_comparison_tests.cpp

@@ -33,8 +33,15 @@ EditorControls Type(const char* text) {
 }
 }
 
+#ifdef LOCUS_TEST_NATIVE_EDITOR
+bool TestNativeEditorVirtualLists();
+#endif
+
 int main() {
     bool ok = true;
+#ifdef LOCUS_TEST_NATIVE_EDITOR
+    ok &= TestNativeEditorVirtualLists();
+#endif
     ok &= Check(detail::ClickedSetAction({120, 424}) ==
                 EditorSetAction::OpenFolder &&
                 detail::ClickedSetAction({260, 348}) ==
