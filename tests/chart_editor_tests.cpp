@@ -326,6 +326,22 @@ int main() {
                 SampleRouteStep(compass.Data().route, 1).heading == Heading::Down,
                 "changing initial heading leaves absolute authored notes unchanged");
 
+    ChartEditor repeatEditor;
+    repeatEditor.NewDraft();
+    repeatEditor.SelectBeat(2);
+    ok &= Check(repeatEditor.SetOutgoingHeading(Heading::Right) &&
+                repeatEditor.SelectedTurn() &&
+                repeatEditor.SelectedTurn()->direction == Heading::Right &&
+                SampleRouteStep(repeatEditor.Data().route, 2).heading == Heading::Right,
+                "same incoming direction creates a scored straight note");
+    repeatEditor.SelectBeat(3);
+    ok &= Check(repeatEditor.SetOutgoingHeading(Heading::Right) &&
+                !repeatEditor.SetOutgoingHeading(Heading::Right) &&
+                repeatEditor.Data().route.turns.size() == 2 &&
+                repeatEditor.RemoveTurn() && repeatEditor.Undo() &&
+                repeatEditor.Data().route.turns.size() == 2,
+                "successive straight notes are distinct; DEL and undo are explicit");
+
     ChartEditor reverseEditor;
     reverseEditor.NewDraft();
     ok &= Check(reverseEditor.SelectBeat(2) &&

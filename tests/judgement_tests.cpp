@@ -450,6 +450,18 @@ int main() {
                 reversalJudge.Counts().miss == 1,
                 "continuing straight is wrong when chart requires a reverse");
 
+    Chart repeated;
+    repeated.initialHeading = Heading::Right;
+    repeated.turns = {{2, Heading::Right, 1000}, {3, Heading::Right, 1500},
+                      {4, Heading::Right, 2000}};
+    TurnJudge repeatedJudge(repeated);
+    ok &= Check(repeatedJudge.ScorableCount() == 3 &&
+                Is(repeatedJudge.PressHeading(Heading::Right, 1.0), Grade::Perfect, 2) &&
+                Is(repeatedJudge.PressHeading(Heading::Right, 1.5), Grade::Perfect, 3) &&
+                Is(repeatedJudge.PressHeading(Heading::Right, 2.0), Grade::Perfect, 4) &&
+                repeatedJudge.AllScorableJudged(),
+                "straight repeated notes each require their own press");
+
     if (!ok) return 1;
     std::cout << "JUDGEMENT_PASS turns=9 perfect-good-bad-miss no-fail=true\n";
     return 0;

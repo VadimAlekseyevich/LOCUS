@@ -558,18 +558,6 @@ void ChartEditor::RotateHeading45(int eighthTurns) {
 
 bool ChartEditor::SetOutgoingHeading(Heading heading) {
     if (!ValidHeading(heading)) return false;
-    Heading incoming = IncomingHeadingAt(chart_.route, selectedBeat_);
-    if (selectedTurnTimeMs_) {
-        // In one tick, the later event's incoming direction is the
-        // previous event's outgoing direction, not the grid-cell origin.
-        incoming = chart_.route.initialHeading;
-        for (const auto& event : chart_.route.turns) {
-            if (EventTimeMs(chart_.route, event, chart_.offsetSeconds) >=
-                *selectedTurnTimeMs_) break;
-            incoming = event.direction;
-        }
-    }
-    if (heading == incoming) return RemoveTurn(); // Straight means no note.
     if (SelectedTurn() && SelectedTurn()->direction == heading) return false;
     PutTurn(heading);
     return true;

@@ -158,7 +158,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     if (ui.tab == EditorTab::Route && input.placeHeading) {
         const bool changed = placeHeading(*input.placeHeading);
         action.changedChart = changed;
-        if (!changed) notice("NO CHANGE - ALREADY HEADING THAT WAY", true);
+        if (!changed) notice("NO CHANGE - NOTE ALREADY EXISTS", true);
         return action;
     }
     if (ui.tab == EditorTab::Route && input.rotateStartHeading) {
@@ -247,7 +247,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                         const bool changed = placeHeading(*heading);
                         action.changedChart |= changed;
                         if (!changed) notice(
-                            "NO CHANGE - ALREADY HEADING THAT WAY", true);
+                            "NO CHANGE - NOTE ALREADY EXISTS", true);
                     } else {
                         commands.deleteTurns = true;
                     }
