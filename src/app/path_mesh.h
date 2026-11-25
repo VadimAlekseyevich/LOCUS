@@ -19,6 +19,22 @@ struct PathRibbonRow {
     bool startsRun = false;    // true at start and at 180-degree reversals
 };
 
+// Render-owner scratch, reused across sequential draws and frames.
+// Never retain row references after the next Prepare call.
+struct PathRibbonWorkspace {
+    struct Sample {
+        core::GridPoint position{};
+        double tick=0.0;
+        float halfWidth=0.0f;
+        float opacity=0.0f;
+    };
+    std::vector<Sample> samples;
+    std::vector<PathRibbonRow> rows;
+};
+
+void PrepareScoredPathRibbon(const RoutePreviewFrame& preview,
+    RouteCanvas canvas,const Skin& skin,PathRibbonWorkspace& workspace);
+
 // Raylib's 2D projected Y axis points down. For its quad indices
 // (0,1,2 and 0,2,3), vertices must trace the same front-facing outline
 // as DrawRectangle/DrawLineEx. Reverse winding makes the GPU cull the

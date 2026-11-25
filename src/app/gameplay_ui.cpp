@@ -1,4 +1,5 @@
 #include "app/gameplay_ui.h"
+#include "app/path_mesh.h"
 #include "core/utf8.h"
 
 #include "app/visual_style.h"
@@ -17,7 +18,8 @@ void DrawTextLabel(Font font, const char* message, Vector2 position,
 }
 } // namespace
 
-void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
+void DrawPlayGrid(Font font,const GameplayView& gameplay,double now,
+                  PathRibbonWorkspace* ribbon) {
     // Both route and marker use the SAME camera transform. The follower
     // only uses the player's current position and is updated by
     // PlayPresentation, not during rendering. Freeze during the outro.
@@ -56,8 +58,9 @@ void DrawPlayGrid(Font font, const GameplayView& gameplay, double now) {
 
     // PLAY and editor TEST: the camera gently trails player motion,
     // including turns. No predictive aiming, past trail, grid or debug UI.
-    Vector2 marker = locus::app::DrawTimedRouteTrajectory(
-        preview, canvas, gameplay.skin);
+    PathRibbonWorkspace standaloneRibbon;
+    Vector2 marker=DrawTimedRouteTrajectory(preview,canvas,gameplay.skin,
+        ribbon?*ribbon:standaloneRibbon);
     locus::app::DrawTimedRouteJunctions(
         preview, canvas, gameplay.skin);
     if (gameplay.outro.active) {

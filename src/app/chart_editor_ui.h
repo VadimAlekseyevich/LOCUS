@@ -206,6 +206,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const EditorSetView& set = {},
                        const struct EditorComparisonFrame* comparisons = nullptr,
                        double previewSeconds = 0.0,
-                       bool nativeShell = false);
+                       bool nativeShell = false,
+                       struct PathRibbonWorkspace* ribbon = nullptr);
 
 } // namespace locus::app

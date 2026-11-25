@@ -102,8 +102,9 @@ void DrawScoredPath(const core::Chart& chart, double beat,
 }
 
 void DrawScoredPath(const RoutePreviewFrame& preview,
-                    RouteCanvas canvas, const Skin& skin) {
-    const auto rows = BuildScoredPathRibbon(preview, canvas, skin);
+                    RouteCanvas canvas,const Skin& skin,PathRibbonWorkspace& workspace) {
+    PrepareScoredPathRibbon(preview,canvas,skin,workspace);
+    const auto& rows=workspace.rows;
     if (rows.size() < 2) return;
     DrawRibbonLayer(rows, skin.outline, skin.outlineScale);
     DrawRibbonLayer(rows, skin.trajectory, 1.0f);
@@ -283,10 +284,16 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
 
 // PLAY/TEST use absolute song time; the musical grid is editor-only.
 Vector2 DrawTimedRouteTrajectory(const RoutePreviewFrame& preview,
-                                 RouteCanvas canvas, const Skin& skin) {
+    RouteCanvas canvas,const Skin& skin,PathRibbonWorkspace& workspace) {
     if (!preview.ready) return canvas.Position({});
-    DrawScoredPath(preview, canvas, skin);
+    DrawScoredPath(preview,canvas,skin,workspace);
     return canvas.Position(preview.marker);
+}
+
+Vector2 DrawTimedRouteTrajectory(const RoutePreviewFrame& preview,
+                                 RouteCanvas canvas,const Skin& skin) {
+    PathRibbonWorkspace workspace;
+    return DrawTimedRouteTrajectory(preview,canvas,skin,workspace);
 }
 
 void DrawTimedRouteJunctions(const RoutePreviewFrame& preview,

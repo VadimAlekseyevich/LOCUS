@@ -5,16 +5,12 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <utility>
 
 namespace locus::app {
 namespace {
 
-struct PathSample {
-    core::GridPoint position{};
-    double tick = 0.0;
-    float halfWidth = 0.0f;
-    float opacity = 0.0f;
-};
+using PathSample=PathRibbonWorkspace::Sample;
 
 struct Direction {
     double x = 1.0;
@@ -46,20 +42,19 @@ PathRibbonRow MakeRow(const PathSample& sample, RouteCanvas canvas,
     };
 }
 
-std::vector<PathRibbonRow> MakeRows(const std::vector<PathSample>& samples,
-                                    RouteCanvas canvas) {
-    std::vector<PathRibbonRow> rows;
-    if (samples.size() < 2) return rows;
-    rows.reserve(samples.size() + 8);
+void MakeRows(const std::vector<PathSample>& samples,
+              RouteCanvas canvas,std::vector<PathRibbonRow>& rows) {
+    rows.clear();
+    if (samples.size() < 2) return;
+    // At most two rows per sample (reverse/bevel), no growth mid-build.
+    rows.reserve(samples.size()*2);
     constexpr double kReverseDot = -0.9999;
     constexpr double kMiterLimit = 2.75; // Covers a 135-degree turn (2.613).
+    Direction next=UnitDirection(samples[0].position,samples[1].position);
     for (std::size_t i = 0; i < samples.size(); ++i) {
-        const Direction previous = i > 0
-            ? UnitDirection(samples[i - 1].position, samples[i].position)
-            : UnitDirection(samples[i].position, samples[i + 1].position);
-        const Direction next = i + 1 < samples.size()
-            ? UnitDirection(samples[i].position, samples[i + 1].position)
-            : previous;
+        const Direction previous=next;
+        if (i>0 && i+1<samples.size())
+            next=UnitDirection(samples[i].position,samples[i+1].position);
         const Direction prevNormal = Normal(previous);
         const Direction nextNormal = Normal(next);
 
@@ -98,7 +93,6 @@ std::vector<PathRibbonRow> MakeRows(const std::vector<PathSample>& samples,
             rows.push_back(MakeRow(samples[i], canvas, bisector, miter, false));
         }
     }
-    return rows;
 }
 
 } // namespace
@@ -149,30 +143,30 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
                 step.from.x + (step.to.x - step.from.x) * progress,
                 step.from.y + (step.to.y - step.from.y) * progress};
             const double ahead = time - tick;
-            const float opacity = ScoredPathOpacity(
-                ahead, horizon, skin.fadePower) * skin.pathOpacity;
-            const float halfWidth = ScoredPathWidth(
-                ahead, horizon, skin.pathWidth, skin.fadePower) * 0.5f;
+            const float proximity=ScoredPathOpacity(ahead,horizon,skin.fadePower);
+            const float opacity=proximity*skin.pathOpacity;
+            const float halfWidth=ScoredPathWidthFromOpacity(proximity,skin.pathWidth)*0.5f;
             samples.push_back({point, time, halfWidth, opacity});
         }
     }
-    return MakeRows(samples, canvas);
+    MakeRows(samples,canvas,rows);
+    return rows;
 }
 
 // Gameplay-only sampling: authored exact times are the segment boundaries.
 // The renderer never rounds a song timestamp back onto the editing grid.
-std::vector<PathRibbonRow> BuildScoredPathRibbon(
-    const RoutePreviewFrame& preview,
-    RouteCanvas canvas, const Skin& skin) {
+void PrepareScoredPathRibbon(const RoutePreviewFrame& preview,
+        RouteCanvas canvas,const Skin& skin,PathRibbonWorkspace& workspace) {
+    auto& samples=workspace.samples;
+    samples.clear();
+    workspace.rows.clear();
     if (!preview.ready || !std::isfinite(canvas.step) ||
-        canvas.step <= 0.0f || preview.horizonSeconds <= 0.0)
-        return {};
-    const double horizon = preview.horizonSeconds;
-    const auto& spans = preview.spans;
-    if (spans.empty()) return {};
-
-    std::vector<PathSample> samples;
-    samples.reserve(spans.size() * 2 + 33);
+        canvas.step <= 0.0f || !std::isfinite(preview.horizonSeconds) ||
+        preview.horizonSeconds <= 0.0) return;
+    const double horizon=preview.horizonSeconds;
+    const auto& spans=preview.spans;
+    if (spans.empty()) return;
+    samples.reserve(spans.size()*2+33);
     for (const auto& span : spans) {
         const double duration = span.toSeconds - span.fromSeconds;
         const int slices = std::max(1, static_cast<int>(
@@ -186,14 +180,20 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
                 span.from.x + (span.to.x - span.from.x) * fraction,
                 span.from.y + (span.to.y - span.from.y) * fraction};
             const double ahead = at - preview.songSeconds;
-            const float opacity = ScoredPathOpacity(
-                ahead, horizon, skin.fadePower) * skin.pathOpacity;
-            const float halfWidth = ScoredPathWidth(
-                ahead, horizon, skin.pathWidth, skin.fadePower) * 0.5f;
+            const float proximity=ScoredPathOpacity(ahead,horizon,skin.fadePower);
+            const float opacity=proximity*skin.pathOpacity;
+            const float halfWidth=ScoredPathWidthFromOpacity(proximity,skin.pathWidth)*0.5f;
             samples.push_back({position, at, halfWidth, opacity});
         }
     }
-    return MakeRows(samples, canvas);
+    MakeRows(samples,canvas,workspace.rows);
+}
+
+std::vector<PathRibbonRow> BuildScoredPathRibbon(
+    const RoutePreviewFrame& preview,RouteCanvas canvas,const Skin& skin) {
+    PathRibbonWorkspace workspace;
+    PrepareScoredPathRibbon(preview,canvas,skin,workspace);
+    return std::move(workspace.rows);
 }
 
 std::vector<PathRibbonRow> BuildScoredPathRibbon(

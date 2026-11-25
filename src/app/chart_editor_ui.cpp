@@ -1,4 +1,5 @@
 #include "app/chart_editor_ui.h"
+#include "app/path_mesh.h"
 #include "core/tempo_map.h"
 #include "app/editor_comparison.h"
 #include "core/utf8.h"
@@ -112,7 +113,7 @@ void DrawTextField(Font font, Rectangle rect, const char* label,
 void DrawComparisonPreviews(Font font, const EditorUiState& ui,
                             const EditorComparisonFrame& comparison,
                             double songSeconds, float pixelsPerSongSecond,
-                            const Skin& skin) {
+                            const Skin& skin,PathRibbonWorkspace& ribbon) {
     const int count = std::clamp(comparison.count, 1, 3);
     for (int index = 0; index < count; ++index) {
         const auto& pane = comparison.panes[static_cast<std::size_t>(index)];
@@ -146,7 +147,7 @@ void DrawComparisonPreviews(Font font, const EditorUiState& ui,
                 GetScreenWidth(), GetScreenHeight()).Scissor(bounds);
             BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
             const Vector2 marker = DrawTimedRouteTrajectory(
-                preview, canvas, skin);
+                preview,canvas,skin,ribbon);
             DrawTimedRouteJunctions(preview, canvas, skin);
             const float radius = std::min(10.0f, bounds.width * 0.04f);
             DrawCircleV(marker, radius * 1.65f,
@@ -491,7 +492,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                        const GameSettings& settings, const Skin& skin,
                        const EditorSetView& set,
                        const EditorComparisonFrame* comparisons,
-                       double previewSeconds, bool nativeShell) {
+                       double previewSeconds,bool nativeShell,
+                       PathRibbonWorkspace* ribbon) {
     const auto& chart = draft.Data().route;
     const auto& theme = ApprovedUiTheme();
     const bool running = previewPlaying && !previewPaused;
@@ -533,8 +535,9 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                                     10,1,theme.divider);
         Skin editorSkin=skin;
         editorSkin.lookaheadMs=settings.editorPreviewLengthMs;
+        PathRibbonWorkspace standaloneRibbon;
         DrawComparisonPreviews(font,ui,*comparisons,previewSeconds,
-            settings.editorPreviewSpeed, editorSkin);
+            settings.editorPreviewSpeed,editorSkin,ribbon?*ribbon:standaloneRibbon);
         const int focused=std::clamp(ui.comparisonFocusedSlot,0,
                                     std::max(0, comparisons->count-1));
         const Rectangle focusedBounds=ComparisonPreviewBounds(

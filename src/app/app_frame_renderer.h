@@ -3,6 +3,7 @@
 #include "app/screen_flow.h"
 #include "app/run_results.h"
 #include "app/gameplay_ui.h"
+#include "app/path_mesh.h"
 #include "app/image_asset_texture.h"
 #include "app/chart_editor_ui.h"
 #include "app/editor_discard_guard.h"
@@ -46,6 +47,7 @@ struct EditorRenderClock {
 void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::core::Chart& demo,
                  const GameplayView& gameplay,
+                 PathRibbonWorkspace& ribbon,
                  const locus::app::LocalMusic& localSong,
                  const locus::core::ChartEditor& editor,
                  const locus::app::EditorUiState& editorUi,

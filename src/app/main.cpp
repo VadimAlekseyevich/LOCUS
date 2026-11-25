@@ -311,6 +311,7 @@ int main(int argc, char** argv) try {
          locus::app::ChooseSongBackgroundFile}
     };
     locus::app::PlayPresentation presentation;
+    locus::app::PathRibbonWorkspace ribbonWorkspace;
     locus::app::PlayScreenActions playActions{
         {state, gameSession, judge, transport, chartPlayback,
          customChart, sessionCompleted, activeChart, presentation.Outro()}
@@ -1239,7 +1240,7 @@ int main(int argc, char** argv) try {
         nativeMenu.SyncConfirmation(activeConfirmation);
 #endif
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
-                    gameplay, localSong, editor, editorUi, editorClock,
+                    gameplay, ribbonWorkspace, localSong, editor, editorUi, editorClock,
                     editorStatus, editorDiscard.Pending(),
                     editorSetView, comparisonFrame, editorSet.Pending(),
                     editorFiles.PendingClose(), editorFiles.AnyDirty(),

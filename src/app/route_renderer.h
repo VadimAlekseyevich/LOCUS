@@ -46,7 +46,10 @@ void DrawRouteJunctions(const core::Chart& chart, double fractionalBeat,
                         RouteCanvas canvas, RouteRenderMode mode,
                         const Skin& skin = Skin{});
 
+struct PathRibbonWorkspace;
 // PLAY/TEST and comparison panes consume one prepared route window.
+Vector2 DrawTimedRouteTrajectory(const RoutePreviewFrame& preview,
+    RouteCanvas canvas,const Skin& skin,PathRibbonWorkspace& workspace);
 Vector2 DrawTimedRouteTrajectory(const RoutePreviewFrame& preview,
                                  RouteCanvas canvas, const Skin& skin = Skin{});
 void DrawTimedRouteJunctions(const RoutePreviewFrame& preview,

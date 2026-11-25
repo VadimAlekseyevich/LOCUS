@@ -172,6 +172,7 @@ static void DrawLocalMusicScreen(Font font, const locus::app::LocalMusic& song,
 void RenderFrame(const AppState& state, bool debugScreens, Font font,
                  const locus::core::Chart& demo,
                  const GameplayView& gameplay,
+                 PathRibbonWorkspace& ribbon,
                  const locus::app::LocalMusic& localSong,
                  const locus::core::ChartEditor& editor,
                  const locus::app::EditorUiState& editorUi,
@@ -267,7 +268,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::Listen) {
         DrawLocalMusicScreen(font, localSong, now, musicError);
     } else if (state.screen == Screen::Play) {
-        DrawPlayGrid(font, gameplay, now);
+        DrawPlayGrid(font,gameplay,now,&ribbon);
         if (gameplay.paused) {
             DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
                           Color{12, 14, 22, 204});
@@ -322,7 +323,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                                      gameplay.bindings, gameplay.skin,
                                      editorSetView, &comparisons,
                                      editorClock.songSeconds,
-                                     hasNativeEditorShell);
+                                     hasNativeEditorShell,&ribbon);
         if (editorUi.tab == EditorTab::Set) {
             const auto status = hasNativeEditorShell
                 ? editorUi.layout.status : Rectangle{52,472,880,14};

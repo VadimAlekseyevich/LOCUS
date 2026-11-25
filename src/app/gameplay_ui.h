@@ -100,7 +100,8 @@ struct GameplayCamera {
 };
 
 
-void DrawPlayGrid(Font font, const GameplayView& gameplay, double now);
+void DrawPlayGrid(Font font,const GameplayView& gameplay,double now,
+                  PathRibbonWorkspace* ribbon=nullptr);
 void DrawResultsScreen(Font font, const GameplayView& gameplay,
                        const RunResult* saved = nullptr,
                        bool historical = false);

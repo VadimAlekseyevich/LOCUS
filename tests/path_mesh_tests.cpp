@@ -321,6 +321,39 @@ int main() {
                     "time-based preview spans precisely 800ms");
     }
 
+    // Exercise the exact production workspace with moving camera, skin
+    // changes, seeks and a cleared window. Capacity must stabilize.
+    app::PathRibbonWorkspace workspace;
+    const auto frame=app::MakeRoutePreview(compiledRoute,1.25,800.0f);
+    app::PrepareScoredPathRibbon(frame,canvas,defaults,workspace);
+    const auto sampleCapacity=workspace.samples.capacity();
+    const auto rowCapacity=workspace.rows.capacity();
+    bool equivalent=true;
+    for(int i=0;i<128;++i) {
+        auto moved=canvas;
+        moved.left+=i*0.125f;
+        auto styled=defaults;
+        styled.pathOpacity=(i%2)?0.5f:1.0f;
+        styled.fadePower=(i%3)?1.0f:2.0f;
+        app::PrepareScoredPathRibbon(frame,moved,styled,workspace);
+        const auto expected=app::BuildScoredPathRibbon(frame,moved,styled);
+        equivalent &= expected.size()==workspace.rows.size() &&
+            workspace.samples.capacity()==sampleCapacity &&
+            workspace.rows.capacity()==rowCapacity;
+        for(std::size_t j=0;j<expected.size() && j<workspace.rows.size();++j) {
+            const auto& a=expected[j]; const auto& b=workspace.rows[j];
+            equivalent &= a.tick==b.tick && a.startsRun==b.startsRun &&
+                a.center.x==b.center.x && a.center.y==b.center.y &&
+                a.offset.x==b.offset.x && a.offset.y==b.offset.y &&
+                a.opacity==b.opacity;
+        }
+    }
+    app::PrepareScoredPathRibbon({},canvas,skin,workspace);
+    ok &= Check(equivalent && workspace.rows.empty() && workspace.samples.empty() &&
+                workspace.samples.capacity()==sampleCapacity &&
+                workspace.rows.capacity()==rowCapacity,
+                "ribbon workspace reuses buffers, preserves exact rows, clears stale output");
+
     if (!ok) return 1;
     std::cout << "PATH_MESH_PASS joined=90,135 reverse=180 dense=24 continuous=1\n";
     return 0;

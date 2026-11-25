@@ -102,13 +102,17 @@ inline ScoredPathInterval ScoredPathVisibleInterval(
     return {begin, std::max(begin, end)};
 }
 
+inline float ScoredPathWidthFromOpacity(float opacity,float thickness) noexcept {
+    return opacity <= 0.0f ? 0.0f
+        : thickness * (0.7f / 6.0f + (5.3f / 6.0f) * opacity);
+}
+
 inline float ScoredPathWidth(double ahead,
                              double length = kScoredPathLengthBeats,
                              float thickness = 6.0f,
                              float fadePower = 1.0f) noexcept {
-    const float opacity = ScoredPathOpacity(ahead, length, fadePower);
-    return opacity <= 0.0f ? 0.0f
-        : thickness * (0.7f / 6.0f + (5.3f / 6.0f) * opacity);
+    return ScoredPathWidthFromOpacity(
+        ScoredPathOpacity(ahead,length,fadePower),thickness);
 }
 
 inline Color WithOpacity(Color color, float opacity) noexcept {
