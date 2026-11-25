@@ -76,11 +76,11 @@ add_executable(locus
     src/app/window_mode.cpp
     src/app/menu_music_preview.cpp
     src/app/editor_screen_actions.cpp
-    src/app/listen_session.cpp
     src/app/library_launch_actions.cpp
-    src/app/skin_profile_actions.cpp
     src/app/skin_menu_draw.cpp
 )
+target_link_libraries(locus PRIVATE locus_skin_profiles)
+target_link_libraries(locus PRIVATE locus_listen_session)
 target_link_libraries(locus PRIVATE locus_screen_flow locus_session_actions locus_play_presentation locus_library_activation locus_library_browser locus_brand_assets locus_menu_canvas locus_native_input)
 target_link_libraries(locus PRIVATE locus_platform_dialogs locus_game_settings locus_skin_model locus_editor_comparison locus_editor_controls locus_editor_canvas locus_editor_document locus_editor_workspace locus_editor_session locus_editor_discard)
 target_link_libraries(locus PRIVATE locus_transport locus_game_session locus_result_store locus_path_mesh locus_route_renderer)
@@ -318,8 +318,8 @@ if(LOCUS_BUILD_TESTS)
     # identity, and all transport actions use post-dialog monotonic time.
     add_executable(locus_listen_session_tests
         tests/listen_session_tests.cpp
-        src/app/listen_session.cpp
     )
+    target_link_libraries(locus_listen_session_tests PRIVATE locus_listen_session)
     target_link_libraries(locus_listen_session_tests PRIVATE locus_transport)
     target_link_libraries(locus_listen_session_tests PRIVATE locus_file_io)
     target_compile_features(locus_listen_session_tests PRIVATE cxx_std_17)
@@ -582,8 +582,8 @@ if(LOCUS_BUILD_TESTS)
     # and canceled native profile dialogs must preserve active appearance.
     add_executable(locus_skin_profile_actions_tests
         tests/skin_profile_actions_tests.cpp
-        src/app/skin_profile_actions.cpp
     )
+    target_link_libraries(locus_skin_profile_actions_tests PRIVATE locus_skin_profiles)
     target_link_libraries(locus_skin_profile_actions_tests PRIVATE locus_platform_dialogs locus_skin_model)
     target_link_libraries(locus_skin_profile_actions_tests PRIVATE locus_chart_storage)
     target_compile_features(locus_skin_profile_actions_tests PRIVATE cxx_std_17)

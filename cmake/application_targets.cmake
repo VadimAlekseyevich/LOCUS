@@ -48,10 +48,16 @@ add_library(locus_native_input STATIC
 )
 target_link_libraries(locus_native_input PUBLIC locus_core)
 
+add_library(locus_listen_session STATIC src/app/listen_session.cpp)
+target_link_libraries(locus_listen_session PUBLIC locus_transport locus_screen_flow)
+
+add_library(locus_skin_profiles STATIC src/app/skin_profile_actions.cpp)
+target_link_libraries(locus_skin_profiles PUBLIC locus_skin_model locus_chart_storage locus_platform_dialogs)
+
 if(WIN32)
     target_link_libraries(locus_native_input PRIVATE user32)
 endif()
-foreach(module IN ITEMS locus_screen_flow locus_session_actions locus_play_presentation locus_library_activation locus_library_browser locus_brand_assets locus_menu_canvas locus_native_input)
+foreach(module IN ITEMS locus_screen_flow locus_session_actions locus_play_presentation locus_library_activation locus_library_browser locus_brand_assets locus_menu_canvas locus_native_input locus_listen_session locus_skin_profiles)
     set_target_properties(${module} PROPERTIES CXX_EXTENSIONS OFF)
     if(MSVC)
         target_compile_options(${module} PRIVATE /W4 /permissive- /utf-8)
