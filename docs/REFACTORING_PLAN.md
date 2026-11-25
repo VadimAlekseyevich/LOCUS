@@ -163,6 +163,8 @@
 
 **Сделать.** Начать с PLAY browser как отдельного presenter. Общий хост отвечает за resize, жизненный цикл документа и маршрутизацию события. Оставить типизированные действия страниц и общие элементы для текста, кнопки, списка, ошибки и модального подтверждения. Завести таблицу «команда → контекст → биндинг → подпись» на основе существующих GameAction и ShortcutAction. Проверять конфликт с учётом фактического контекста. Для каждого уже перенесённого экрана отдельно решить судьбу fallback по списку паритета и тестам запуска при недоступном RML.
 
+**25.11.2026 — T08/T12: PLAY virtual scroll.** Prefix sums, viewport queries and generated spacers now share dp units; RmlUi pixel scroll offsets and measured result row heights are converted at the boundary. A DPI change restores the previous logical scroll position. Tests cover 100/125/150/200/250% density on 10 000 library entries and 25 000 results. Windows CI and interactive scrolling remain required.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>

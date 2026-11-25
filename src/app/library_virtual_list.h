@@ -9,6 +9,21 @@
 
 namespace locus::app {
 
+// RmlUi scroll positions and measured element bounds are physical pixels;
+// CSS heights, gaps and generated spacer markup are density-independent.
+// The virtual list uses dp exclusively, including its prefix sums.
+inline float LibraryScrollDp(float pixels, float density) noexcept {
+    return pixels / (std::isfinite(density) && density > 0.0f ? density : 1.0f);
+}
+
+inline float LibraryScrollPixels(float dp, float density) noexcept {
+    return dp * (std::isfinite(density) && density > 0.0f ? density : 1.0f);
+}
+
+inline float LibraryResultRowStepDp(float measuredHeightPixels, float density) noexcept {
+    return LibraryScrollDp(measuredHeightPixels,density) + 5.0f;
+}
+
 // Pure layout model shared by RmlUi and headless tests. Each row retains its
 // exact original Rml height; no arbitrary uniform-height approximation.
 inline std::vector<float> LibraryRowOffsets(
@@ -54,7 +69,7 @@ inline LibraryRowWindow VisibleLibraryRows(
 }
 
 // Completed-run rows have uniform height (date labels never wrap).
-// The row step is measured from a live RmlUi element after layout, not
+// The row step is measured in dp from a live RmlUi element after layout, not
 // guessed from a CSS min-height that may include padding and borders.
 inline LibraryRowWindow VisibleResultRows(
     std::size_t count, float scrollTop, float measuredRowStep,

@@ -210,6 +210,15 @@ int main() {
         const auto first = VisibleResultRows(total, 0.0f, step);
         const auto middle = VisibleResultRows(total, 13000.0f * step, step);
         const auto last = VisibleResultRows(total, total * step, step);
+        for (const float density : {1.0f, 1.25f, 1.5f, 2.0f, 2.5f}) {
+            const float pixels = LibraryScrollPixels(13000.0f * step,density);
+            const float measured = LibraryResultRowStepDp((step-5.0f)*density,density);
+            const auto scaled = VisibleResultRows(total,LibraryScrollDp(pixels,density),measured);
+            ok &= Check(scaled.first == middle.first && scaled.end == middle.end &&
+                        std::abs(scaled.before-middle.before) < 0.1f &&
+                        std::abs(scaled.after-middle.after) < 0.1f,
+                        "virtual result window and dp spacers invariant across DPI");
+        }
         const auto height = [&](const LibraryRowWindow& view) {
             const auto elements = (view.end - view.first) +
                 (view.first > 0 ? 1 : 0) + (view.end < total ? 1 : 0);
@@ -237,6 +246,14 @@ int main() {
         const auto first = VisibleLibraryRows(offsets, 0.0f);
         const auto middle = VisibleLibraryRows(offsets, offsets[5000]);
         const auto last = VisibleLibraryRows(offsets, offsets.back());
+        for (const float density : {1.0f, 1.25f, 1.5f, 2.0f, 2.5f}) {
+            const float dp = offsets[5000] + 1.0f;
+            const auto scaled = VisibleLibraryRows(offsets,
+                LibraryScrollDp(LibraryScrollPixels(dp,density),density));
+            ok &= Check(scaled.first == middle.first && scaled.end == middle.end &&
+                        scaled.before == middle.before && scaled.after == middle.after,
+                        "virtual library window and dp spacers invariant across DPI");
+        }
         ok &= Check(offsets.size() == synthetic.size() + 1 &&
                     first.first == 0 && first.end <= 40 &&
                     middle.first <= 5000 && middle.end > 5000 &&

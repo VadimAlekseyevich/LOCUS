@@ -568,7 +568,7 @@ void NativeMenuUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
     auto* scroll = document_->GetElementById("tree-scroll");
     const float oldScroll = scroll ? scroll->GetScrollTop() : 0;
     const auto view = VisibleLibraryRows(treeOffsets_,
-        scroll ? scroll->GetScrollTop() : 0.0f);
+        scroll ? LibraryScrollDp(scroll->GetScrollTop(),lastDensity_) : 0.0f);
     std::ostringstream html;
     if (view.before > 0.0f)
         html << "<div class='tree-spacer' style='height:"
@@ -635,7 +635,7 @@ void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
     const float oldScroll = scroll ? scroll->GetScrollTop() : 0;
     SetText("result-count", std::to_string(ui.results.size()));
     const auto window = VisibleResultRows(
-        ui.results.size(), oldScroll, resultRowStep_);
+        ui.results.size(), LibraryScrollDp(oldScroll,lastDensity_), resultRowStep_);
     std::ostringstream html;
     if (window.before > 0.0f)
         html << "<div class='result-spacer' style='height:"
@@ -705,20 +705,20 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
                         selected - treeEntries_.begin());
                     const float start = treeOffsets_[index];
                     const float bottom = treeOffsets_[index + 1] - 6.0f;
-                    const float viewportStart = scroll->GetScrollTop();
-                    const float viewportEnd =
-                        viewportStart + scroll->GetClientHeight();
+                    const float viewportStart = LibraryScrollDp(scroll->GetScrollTop(),lastDensity_);
+                    const float viewportHeight = LibraryScrollDp(scroll->GetClientHeight(),lastDensity_);
+                    const float viewportEnd = viewportStart + viewportHeight;
                     if (start < viewportStart)
-                        scroll->SetScrollTop(start);
+                        scroll->SetScrollTop(LibraryScrollPixels(start,lastDensity_));
                     else if (bottom > viewportEnd)
-                        scroll->SetScrollTop(bottom - scroll->GetClientHeight());
+                        scroll->SetScrollTop(LibraryScrollPixels(bottom - viewportHeight,lastDensity_));
                 }
             }
         }
     }
     auto* scroll = document_->GetElementById("tree-scroll");
     const auto window = VisibleLibraryRows(treeOffsets_,
-        scroll ? scroll->GetScrollTop() : 0.0f);
+        scroll ? LibraryScrollDp(scroll->GetScrollTop(),lastDensity_) : 0.0f);
     if (window.first != treeFirst_ || window.end != treeEnd_)
         RebuildRows(library, ui);
     // Status text may change without a selection/index change. Updating it
@@ -748,7 +748,7 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
             auto* child = list->GetChild(i);
             if (child && child->IsClassSet("result") &&
                 child->GetOffsetHeight() > 0.0f) {
-                const float step = child->GetOffsetHeight() + 5.0f;
+                const float step = LibraryResultRowStepDp(child->GetOffsetHeight(),lastDensity_);
                 if (std::abs(step - resultRowStep_) > 0.5f) {
                     resultRowStep_ = step;
                     resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
@@ -759,7 +759,7 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
     }
     auto* historyScroll = document_->GetElementById("results-scroll");
     const auto visible = VisibleResultRows(ui.results.size(),
-        historyScroll ? historyScroll->GetScrollTop() : 0.0f,
+        historyScroll ? LibraryScrollDp(historyScroll->GetScrollTop(),lastDensity_) : 0.0f,
         resultRowStep_);
     if (visible.first != resultFirst_ || visible.end != resultEnd_)
         RebuildResults(ui);
@@ -1061,6 +1061,20 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
     currentLibrary_ = &library;
     currentUi_ = &ui;
     pending_ = {};
+    // Resolve density before evaluating scroll windows. On a resize preserve
+    // the logical dp position, not the previous physical-pixel offset.
+    auto* treeScroll = document_->GetElementById("tree-scroll");
+    auto* historyScroll = document_->GetElementById("results-scroll");
+    const float oldDensity = lastDensity_;
+    const float treeTopDp = treeScroll ? LibraryScrollDp(treeScroll->GetScrollTop(),oldDensity) : 0.0f;
+    const float historyTopDp = historyScroll ? LibraryScrollDp(historyScroll->GetScrollTop(),oldDensity) : 0.0f;
+    if (RefreshLayoutMetrics()) {
+        context_->Update();
+        if (oldDensity > 0.0f && oldDensity != lastDensity_) {
+            if (treeScroll) treeScroll->SetScrollTop(LibraryScrollPixels(treeTopDp,lastDensity_));
+            if (historyScroll) historyScroll->SetScrollTop(LibraryScrollPixels(historyTopDp,lastDensity_));
+        }
+    }
     Rebuild(library, ui);
     PumpInput();
     if (auto* focus = context_->GetFocusElement();
