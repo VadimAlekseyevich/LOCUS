@@ -280,6 +280,8 @@
 
 **26.11.2026 — T15: shared storage targets.** Extracted device-independent `locus_file_io`, `locus_chart_storage`, `locus_song_library`, `locus_library_selection` static targets into cmake/storage_targets.cmake. Production and all existing test executables consume the same implementations; low-level byte IO remains separately linkable by audio. Chart storage links shell32 on Windows. No source/format behavior changes. Source assignment audit: 93 previous translation-unit instances become 13 shared instances (80 redundant compile assignments eliminated for the all-tests configuration). Windows CI required; wall-clock clean/incremental build measurements not yet collected.
 
+**26.11.2026 — T15: shared runtime targets.** `locus_transport` owns LocalMusic, SoundTouch integration, demo transport, device and chart playback. `locus_game_session` consumes it. `locus_result_store` owns results/history, without graphics. `locus_path_mesh` is separately linkable by CPU geometry tests/benchmark; `locus_route_renderer` owns GPU submission. Existing injected MusicOutputBackend remains the test seam. 62 previous source assignments (including the repeated pitch-preserving source loop) become 10 shared instances (52 fewer). No gameplay/format changes. Windows CI and measured build time pending.
+
 **Приёмка.** Чистая и повторная Windows Release сборки с тестами и BAT, Linux-сборка явно обозначенного переносимого набора, наличие прежних тестов в ctest -N. Зафиксировать время и количество повторных компиляций на одной машине. Таблица экранов в архитектуре соответствует инициализации в NativeMenuUi и путям fallback. Документы объясняют источник времени, локальную сильную долю и текущую скорость предпросмотра. Примеры читаются текущими парсерами.
 
 <a id="t16"></a>

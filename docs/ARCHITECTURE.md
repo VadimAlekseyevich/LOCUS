@@ -127,6 +127,8 @@ for a transactional filesystem or a cryptographic authenticity check.
 The storage targets in `cmake/storage_targets.cmake` share production code with tests:
 `locus_file_io` (byte reads) → `locus_chart_storage` (chart and manifest transactions, archives) → `locus_song_library` (catalog/metadata/materialization) → `locus_library_selection` (headless tree/search model). All depend on the independently linkable `locus_core`; none require raylib or RmlUi. Low-level byte IO is also used by audio without linking the catalog. The application owns orchestration, while tests link only the modules they exercise.
 
+`cmake/runtime_targets.cmake` defines `locus_transport` (device/decoder/clock and pitch-preserving playback), `locus_game_session` (scored session consuming transport), `locus_result_store` (persistent and async result history, no graphics), and separate `locus_path_mesh` / `locus_route_renderer` targets (CPU geometry vs GPU submission). Transport tests inject the existing MusicOutputBackend rather than compiling an alternative implementation. The CPU ribbon profiler links the mesh target without the GPU renderer.
+
 The Windows CI and headless domain tests are valuable, but cannot establish
 actual motion readability, acoustic sync or screen-tearing behavior.
 The optional headless `locus_route_preview_bench` executable profiles

@@ -34,12 +34,12 @@ target_include_directories(locus_core PUBLIC
 )
 
 include(cmake/storage_targets.cmake)
+include(cmake/runtime_targets.cmake)
 
 add_executable(locus
     src/app/main.cpp
     src/app/executable_directory.cpp
     src/app/async_library_refresh.cpp
-    src/app/async_result_history.cpp
     src/app/app_runtime_policy.cpp
     src/app/play_screen_actions.cpp
     src/app/play_presentation.cpp
@@ -58,11 +58,7 @@ add_executable(locus
     src/app/native_key_capture.cpp
     src/app/open_folder.cpp
     src/app/window_mode.cpp
-    src/app/demo_transport.cpp
-    src/app/audio_device.cpp
     src/app/menu_music_preview.cpp
-    src/app/local_music.cpp
-    src/app/pitch_preserving_stream.cpp
     src/app/music_picker.cpp
     src/app/editor_document.cpp
     src/app/editor_session.cpp
@@ -71,9 +67,6 @@ add_executable(locus
     src/app/editor_comparison.cpp
     src/app/editor_screen_actions.cpp
     src/app/listen_session.cpp
-    src/app/chart_playback.cpp
-    src/app/game_session.cpp
-    src/app/run_results.cpp
     src/app/library_playback.cpp
     src/app/library_browser.cpp
     src/app/library_file_actions.cpp
@@ -91,9 +84,8 @@ add_executable(locus
     src/app/editor_pattern_actions.cpp
     src/app/editor_text_fields.cpp
     src/app/editor_input.cpp
-    src/app/route_renderer.cpp
-    src/app/path_mesh.cpp
 )
+target_link_libraries(locus PRIVATE locus_transport locus_game_session locus_result_store locus_path_mesh locus_route_renderer)
 target_link_libraries(locus PRIVATE locus_song_library locus_file_io locus_chart_storage locus_library_selection)
 if(LOCUS_ENABLE_RMLUI)
     target_sources(locus PRIVATE
@@ -198,7 +190,8 @@ endif()
 if(LOCUS_BUILD_BENCHMARKS)
     add_executable(locus_route_preview_bench
         benchmarks/route_preview_bench.cpp
-        src/app/path_mesh.cpp)
+    )
+    target_link_libraries(locus_route_preview_bench PRIVATE locus_path_mesh)
     target_compile_features(locus_route_preview_bench PRIVATE cxx_std_17)
     target_link_libraries(locus_route_preview_bench PRIVATE locus_core raylib)
     add_executable(locus_editor_bench benchmarks/editor_bench.cpp)
@@ -244,12 +237,8 @@ if(LOCUS_BUILD_TESTS)
     # pause/rate changes, seek, finished audio and missing output device.
     add_executable(locus_clock_contract_tests
         tests/clock_contract_tests.cpp
-        src/app/game_session.cpp
-        src/app/demo_transport.cpp
-        src/app/chart_playback.cpp
-        src/app/local_music.cpp
-        src/app/pitch_preserving_stream.cpp
     )
+    target_link_libraries(locus_clock_contract_tests PRIVATE locus_transport locus_game_session)
     target_link_libraries(locus_clock_contract_tests PRIVATE locus_file_io)
     target_compile_features(locus_clock_contract_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_clock_contract_tests PRIVATE
@@ -265,9 +254,9 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_app_journey_tests
         tests/app_journey_tests.cpp
-        src/app/run_results.cpp
         src/app/screen_flow.cpp
     )
+    target_link_libraries(locus_app_journey_tests PRIVATE locus_result_store)
     target_link_libraries(locus_app_journey_tests PRIVATE locus_song_library locus_file_io locus_chart_storage)
     target_compile_features(locus_app_journey_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_app_journey_tests PRIVATE
@@ -276,8 +265,8 @@ if(LOCUS_BUILD_TESTS)
              COMMAND locus_app_journey_tests)
     add_executable(locus_run_results_tests
         tests/run_results_tests.cpp
-        src/app/run_results.cpp
-        src/app/async_result_history.cpp)
+    )
+    target_link_libraries(locus_run_results_tests PRIVATE locus_result_store)
     target_compile_features(locus_run_results_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_run_results_tests PRIVATE
         locus_core nlohmann_json::nlohmann_json Threads::Threads)
@@ -362,9 +351,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/editor_text_fields.cpp
         src/app/editor_input.cpp
         src/app/game_settings.cpp
-        src/app/route_renderer.cpp
-        src/app/path_mesh.cpp
     )
+    target_link_libraries(locus_editor_ui_tests PRIVATE locus_path_mesh locus_route_renderer)
     target_compile_features(locus_editor_ui_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_ui_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
@@ -407,8 +395,8 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_listen_session_tests
         tests/listen_session_tests.cpp
         src/app/listen_session.cpp
-        src/app/local_music.cpp
     )
+    target_link_libraries(locus_listen_session_tests PRIVATE locus_transport)
     target_link_libraries(locus_listen_session_tests PRIVATE locus_file_io)
     target_compile_features(locus_listen_session_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_listen_session_tests PRIVATE locus_core raylib)
@@ -422,9 +410,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/open_folder.cpp
         src/app/editor_document.cpp
         src/app/music_picker.cpp
-        src/app/local_music.cpp
-        src/app/chart_playback.cpp
     )
+    target_link_libraries(locus_editor_file_actions_tests PRIVATE locus_transport)
     target_link_libraries(locus_editor_file_actions_tests PRIVATE locus_song_library locus_file_io locus_chart_storage)
     target_compile_features(locus_editor_file_actions_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_file_actions_tests PRIVATE
@@ -452,21 +439,14 @@ if(LOCUS_BUILD_TESTS)
         src/app/editor_pattern_actions.cpp
         src/app/editor_text_fields.cpp
         src/app/editor_input.cpp
-        src/app/route_renderer.cpp
-        src/app/path_mesh.cpp
-        src/app/chart_playback.cpp
-        src/app/game_session.cpp
-        src/app/demo_transport.cpp
         src/app/play_screen_actions.cpp
         src/app/app_runtime_policy.cpp
         src/app/session_transition.cpp
         src/app/screen_flow.cpp
-        src/app/local_music.cpp
-        src/app/pitch_preserving_stream.cpp
         src/app/open_folder.cpp
         src/app/music_picker.cpp
-        src/app/run_results.cpp
     )
+    target_link_libraries(locus_editor_workflow_tests PRIVATE locus_transport locus_game_session locus_result_store locus_path_mesh locus_route_renderer)
     target_link_libraries(locus_editor_workflow_tests PRIVATE locus_song_library locus_file_io locus_chart_storage)
     target_compile_features(locus_editor_workflow_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_workflow_tests PRIVATE
@@ -487,14 +467,9 @@ if(LOCUS_BUILD_TESTS)
         src/app/editor_pattern_actions.cpp
         src/app/editor_text_fields.cpp
         src/app/editor_input.cpp
-        src/app/route_renderer.cpp
-        src/app/path_mesh.cpp
         src/app/game_settings.cpp
-        src/app/chart_playback.cpp
-        src/app/game_session.cpp
-        src/app/demo_transport.cpp
-        src/app/local_music.cpp
     )
+    target_link_libraries(locus_editor_session_tests PRIVATE locus_transport locus_game_session locus_path_mesh locus_route_renderer)
     target_link_libraries(locus_editor_session_tests PRIVATE locus_file_io)
     target_compile_features(locus_editor_session_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_session_tests PRIVATE
@@ -504,9 +479,9 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_editor_document_tests
         tests/editor_document_tests.cpp
         src/app/editor_document.cpp
-        src/app/local_music.cpp
         src/app/music_picker.cpp
     )
+    target_link_libraries(locus_editor_document_tests PRIVATE locus_transport)
     target_link_libraries(locus_editor_document_tests PRIVATE locus_file_io locus_chart_storage)
     target_compile_features(locus_editor_document_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_document_tests PRIVATE
@@ -526,11 +501,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/app_runtime_policy.cpp
         src/app/screen_flow.cpp
         src/app/session_transition.cpp
-        src/app/game_session.cpp
-        src/app/chart_playback.cpp
-        src/app/demo_transport.cpp
-        src/app/local_music.cpp
     )
+    target_link_libraries(locus_session_transition_tests PRIVATE locus_transport locus_game_session)
     target_link_libraries(locus_session_transition_tests PRIVATE locus_file_io)
     target_compile_features(locus_session_transition_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_session_transition_tests PRIVATE locus_core raylib)
@@ -592,11 +564,8 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_quit_media_tests
         tests/quit_media_tests.cpp
         src/app/quit_media.cpp
-        src/app/game_session.cpp
-        src/app/chart_playback.cpp
-        src/app/demo_transport.cpp
-        src/app/local_music.cpp
     )
+    target_link_libraries(locus_quit_media_tests PRIVATE locus_transport locus_game_session)
     target_link_libraries(locus_quit_media_tests PRIVATE locus_file_io)
     target_compile_features(locus_quit_media_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_quit_media_tests PRIVATE locus_core raylib)
@@ -604,9 +573,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_audio_lifecycle_tests
         tests/audio_lifecycle_tests.cpp
-        src/app/audio_device.cpp
-        src/app/demo_transport.cpp
     )
+    target_link_libraries(locus_audio_lifecycle_tests PRIVATE locus_transport)
     target_compile_features(locus_audio_lifecycle_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_audio_lifecycle_tests PRIVATE locus_core raylib)
     add_test(NAME locus_audio_device_lifecycle COMMAND locus_audio_lifecycle_tests)
@@ -631,8 +599,8 @@ if(LOCUS_BUILD_TESTS)
     # Regression checks cover bends, fractional playheads and reversals.
     add_executable(locus_path_mesh_tests
         tests/path_mesh_tests.cpp
-        src/app/path_mesh.cpp
     )
+    target_link_libraries(locus_path_mesh_tests PRIVATE locus_path_mesh)
     target_compile_features(locus_path_mesh_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_path_mesh_tests PRIVATE locus_core raylib)
     add_test(NAME locus_continuous_path_mesh COMMAND locus_path_mesh_tests)
@@ -653,11 +621,8 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_library_playback_tests
         tests/library_playback_tests.cpp
         src/app/library_playback.cpp
-        src/app/chart_playback.cpp
-        src/app/game_session.cpp
-        src/app/demo_transport.cpp
-        src/app/local_music.cpp
     )
+    target_link_libraries(locus_library_playback_tests PRIVATE locus_transport locus_game_session)
     target_link_libraries(locus_library_playback_tests PRIVATE locus_file_io locus_chart_storage locus_song_library)
     target_compile_features(locus_library_playback_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_library_playback_tests PRIVATE
@@ -672,11 +637,11 @@ if(LOCUS_BUILD_TESTS)
         src/app/async_library_refresh.cpp
         src/app/library_file_actions.cpp
         src/app/menu_ui.cpp
-        src/app/run_results.cpp
         src/app/home_brand_assets.cpp
         src/app/executable_directory.cpp
         src/app/game_settings.cpp
     )
+    target_link_libraries(locus_library_browser_tests PRIVATE locus_result_store)
     target_link_libraries(locus_library_browser_tests PRIVATE locus_song_library locus_file_io locus_chart_storage locus_library_selection)
     target_compile_features(locus_library_browser_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_library_browser_tests PRIVATE
@@ -771,18 +736,4 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_judgement_tests PRIVATE locus_core)
     add_test(NAME locus_turn_judgement COMMAND locus_judgement_tests)
 
-    # Test executables compile LocalMusic directly to mock the audio device.
-    # Keep its pitch-preserving backend linked in all those same targets.
-    foreach(test_target IN ITEMS
-            locus_listen_session_tests
-            locus_editor_file_actions_tests
-            locus_editor_session_tests
-            locus_editor_document_tests
-            locus_session_transition_tests
-            locus_quit_media_tests
-            locus_library_playback_tests)
-        target_sources(${test_target} PRIVATE
-            src/app/pitch_preserving_stream.cpp)
-        target_link_libraries(${test_target} PRIVATE locus_soundtouch)
-    endforeach()
 endif()
