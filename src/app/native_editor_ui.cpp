@@ -6,6 +6,7 @@
 #include "app/editor_comparison.h"
 #include "app/game_settings.h"
 #include "app/rml_ui_text.h"
+#include "app/rml_modal_focus.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -133,8 +134,11 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         else toggle->SetAttribute("disabled","");
     }
     if (showCompare != compareVisible_) {
-        if (!showCompare && CompareFocusActive())
-            if (auto* focus = document_->GetContext()->GetFocusElement()) focus->Blur();
+        if (!showCompare) {
+            auto* focus = document_->GetContext()->GetFocusElement();
+            if (RmlFocusWithin(document_->GetElementById("editor-compare-panel"),focus))
+                focus->Blur();
+        }
         if (auto* layer = document_->GetElementById("editor-compare-layer"))
             layer->SetProperty("display",showCompare ? "flex" : "none");
         compareVisible_ = showCompare;
@@ -285,35 +289,6 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         }
     }
 }
-bool NativeEditorUi::CompareFocusActive() const {
-    if (!document_) return false;
-    const auto* panel = document_->GetElementById("editor-compare-panel");
-    if (!panel) return false;
-    for (auto* element = document_->GetContext()->GetFocusElement();
-         element; element = element->GetParentNode())
-        if (element == panel) return true;
-    return false;
-}
-
-void NativeEditorUi::MoveCompareFocus(bool backwards) {
-    if (!document_ || !compareVisible_) return;
-    std::vector<Rml::Element*> buttons;
-    if (auto* list = document_->GetElementById("editor-compare-list"))
-        for (int i=0; i<list->GetNumChildren(); ++i) {
-            auto* row = list->GetChild(i);
-            if (row && !row->HasAttribute("disabled")) buttons.push_back(row);
-        }
-    if (auto* done = document_->GetElementById("editor-compare-done"))
-        buttons.push_back(done);
-    if (buttons.empty()) return;
-    const auto found = std::find(buttons.begin(),buttons.end(),
-        document_->GetContext()->GetFocusElement());
-    const auto n = static_cast<int>(buttons.size());
-    int next = found==buttons.end() ? (backwards?n-1:0) :
-        (static_cast<int>(found-buttons.begin())+(backwards?n-1:1))%n;
-    buttons[static_cast<std::size_t>(next)]->Focus();
-}
-
 void NativeEditorUi::CancelFocusedField() {
     if (!document_) return;
     if (auto* field = dynamic_cast<Rml::ElementFormControlInput*>(document_->GetContext()->GetFocusElement())) {

@@ -27,11 +27,11 @@
   </div>
  </div>
  <div id="skin-notice"></div>
- <div id="skin-delete-modal" style="display:none;">
-  <div class="skin-modal-panel">
-   <div id="skin-delete-title" class="skins-title">DELETE SKIN?</div>
+ <div id="skin-delete-modal" class="ui-modal-layer" style="display:none;">
+  <div id="skin-delete-panel" class="ui-modal-panel">
+   <div id="skin-delete-title" class="ui-modal-heading">DELETE SKIN?</div>
    <div>Selected profile moves to recoverable Trash.</div>
-   <div class="skin-modal-actions">
+   <div class="ui-modal-actions">
     <button class="primary" data-action="delete-confirm"><span class="button-label">DELETE</span></button>
     <button class="quiet" data-action="delete-cancel"><span class="button-label">CANCEL</span></button>
    </div>

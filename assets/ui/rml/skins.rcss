@@ -58,14 +58,9 @@
 #skin-notice { display:block; flex:0 0 20dp; height:20dp;
   color:#a2d8ee; padding:1dp 15dp; font-size:10dp; }
 #skin-notice.error { color:#ecc3d1; }
-#skin-delete-modal { position:absolute; top:0; left:0; width:100%;
-  height:100%; align-items:center; justify-content:center;
-  background-color:#0a0e19f0; z-index:30; }
-.skin-modal-panel { width:56%; padding:25dp; background-color:#292c46;
-  border:1dp #b5a4f3; border-radius:14dp; display:flex;
-  flex-direction:column; gap:16dp; }
-.skin-modal-actions { display:flex; flex-direction:row; gap:12dp; }
-.skin-modal-actions button { flex:1; height:42dp; }
+#skin-delete-modal { background-color:#0a0e19d0; }
+#skin-delete-panel { max-width:500dp; }
+
 @media (max-width:730dp) {
   .skins-columns { padding:0 7dp 5dp; gap:7dp; }
   .skins-left, .skins-right { padding:7dp; }

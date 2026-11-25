@@ -26,8 +26,6 @@ public:
               const EditorSetView* setView = nullptr);
     void EndFrame() noexcept;
     void CancelFocusedField();
-    void MoveCompareFocus(bool backwards);
-    bool CompareFocusActive() const;
 private:
     void SetText(const char* id, const std::string& value);
     Rml::ElementDocument* document_ = nullptr;

@@ -5,6 +5,7 @@
 #include "app/viewport.h"
 #include "app/rml_ui_text.h"
 #include "app/rml_layout_geometry.h"
+#include "app/rml_modal_focus.h"
 #include "app/skin_controls.h"
 #include "core/utf8.h"
 
@@ -875,15 +876,12 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
             context_->GetFocusElement()->Blur();
     }
     if (ui.comparisonPickerOpen) {
+        auto* panel = editorDocument_->GetElementById("editor-compare-panel");
         if (IsKeyPressed(KEY_TAB))
-            editorPresenter_.MoveCompareFocus(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
-        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-            if (!editorPresenter_.CompareFocusActive())
-                editorPresenter_.MoveCompareFocus(false);
-            else if (auto* focus = context_->GetFocusElement();
-                     focus && focus->GetTagName()=="button" && !focus->HasAttribute("disabled"))
-                focus->Click();
-        }
+            MoveRmlModalFocus(panel,context_->GetFocusElement(),
+                IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))
+            ActivateRmlModalButton(panel,context_->GetFocusElement());
     } else if (!ui.EditingText() && !nativeTyping) {
         if (IsKeyPressed(KEY_TAB)) {
             // Tab belongs to native focus traversal, not the old
@@ -1083,11 +1081,31 @@ MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
     SuppressGlobalMenuShortcuts(input);
     skinPresenter_.BeginFrame(draft, ui, input, events);
     skinPresenter_.Sync();
-    PumpInput();
+    const bool modalWasOpen = !ui.pendingDeleteProfile.empty();
+    auto* modal = skinDocument_->GetElementById("skin-delete-panel");
+    if (modalWasOpen) {
+        auto* focus = context_->GetFocusElement();
+        if (focus && !RmlFocusWithin(modal,focus)) focus->Blur();
+    }
+    PumpInput(!modalWasOpen);
     skinPresenter_.UpdatePointer(SkinColorWheelBounds());
     auto* focus = context_->GetFocusElement();
     const bool editing = focus && focus->GetTagName() == "input";
-    if (editing && IsKeyPressed(KEY_ESCAPE)) {
+    if (modalWasOpen || !ui.pendingDeleteProfile.empty()) {
+        // The confirmation is exclusive, including keyboard activation.
+        if (modalWasOpen && !ui.pendingDeleteProfile.empty()) {
+            if (IsKeyPressed(KEY_Y)) events.skinCommand = SkinCommand::DeleteProfile;
+            else if (IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE)) {
+                ui.pendingDeleteProfile.clear();
+                ui.notice = "SKIN DELETION CANCELED";
+                ui.noticeError = false;
+            } else if (IsKeyPressed(KEY_TAB))
+                MoveRmlModalFocus(modal,focus,
+                    IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+            else if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))
+                ActivateRmlModalButton(modal,focus);
+        }
+    } else if (editing && IsKeyPressed(KEY_ESCAPE)) {
         if (auto* text = dynamic_cast<Rml::ElementFormControlInput*>(focus)) {
             const std::string kind = text->GetAttribute<Rml::String>("data-kind", "");
             if (kind == "name") text->SetValue(draft.name);
@@ -1101,14 +1119,6 @@ MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
     } else if (editing && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
         focus->Blur();
     } else if (!editing) {
-        if (!ui.pendingDeleteProfile.empty()) {
-            if (IsKeyPressed(KEY_Y)) events.skinCommand = SkinCommand::DeleteProfile;
-            if (IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE)) {
-                ui.pendingDeleteProfile.clear();
-                ui.notice = "SKIN DELETION CANCELED";
-                ui.noticeError = false;
-            }
-        } else {
             if (IsKeyPressed(KEY_ESCAPE)) input.backPressed = true;
             if (focus && focus->GetTagName() == "button" &&
                 (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
@@ -1120,7 +1130,6 @@ MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
             if (ctrl && IsKeyPressed(KEY_S))
                 events.skinCommand = shift ? SkinCommand::SaveAs : SkinCommand::Save;
             if (ctrl && IsKeyPressed(KEY_O)) events.skinCommand = SkinCommand::Load;
-        }
     }
     skinPresenter_.Sync();
     context_->Update();

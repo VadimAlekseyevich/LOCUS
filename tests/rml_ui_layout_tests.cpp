@@ -7,6 +7,7 @@
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/StyleTypes.h>
 #include "app/rml_ui_text.h"
+#include "app/rml_modal_focus.h"
 #include "app/rml_native_files.h"
 
 #include <algorithm>
@@ -563,6 +564,22 @@ int main(int argc, char** argv) {
                             bottom(list) <= done->GetAbsoluteTop()+1.0f &&
                             list->GetScrollHeight()>list->GetClientHeight(),
                             "native compare modal stays inside viewport with scrollable rows");
+                        list->SetInnerRML(
+                            "<button id='compare-disabled' disabled=''><span class='button-label'>EDIT</span></button>"
+                            "<button id='compare-add'><span class='button-label'>ADD</span></button>");
+                        context->Update();
+                        auto* add = editorDoc->GetElementById("compare-add");
+                        ok &= Check(add && locus::app::MoveRmlModalFocus(panel,toolrail,false) &&
+                            context->GetFocusElement()==add &&
+                            locus::app::MoveRmlModalFocus(panel,add,false) &&
+                            context->GetFocusElement()==done &&
+                            locus::app::MoveRmlModalFocus(panel,done,false) &&
+                            context->GetFocusElement()==add &&
+                            locus::app::MoveRmlModalFocus(panel,add,true) &&
+                            context->GetFocusElement()==done &&
+                            !locus::app::RmlFocusWithin(panel,toolrail),
+                            "shared modal focus wraps, skips disabled controls and excludes background");
+                        if (auto* focus = context->GetFocusElement()) focus->Blur();
                         layer->SetProperty("display","none");
                         context->Update();
                     } else ok &= Check(false,"native compare modal exists");

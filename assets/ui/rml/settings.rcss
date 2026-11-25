@@ -47,21 +47,13 @@
 #settings-notice { flex:0 0 22dp; min-height:22dp;
   font-size:11dp; color:#acb6cb; padding:1dp 15dp; }
 #settings-notice.error { color:#ecc3d1; }
-#settings-calibration { position:absolute; left:0; top:0;
-  width:100%; height:100%; z-index:20;
-  background-color:#0a0e19ef; align-items:center; justify-content:center; }
-.calibration-panel { width:65%; max-width:620dp;
-  display:flex; flex-direction:column; padding:24dp; gap:14dp;
-  background-color:#252d43; border:2dp #a2d8ee;
-  border-radius:15dp; }
-.calibration-heading { font-size:20dp; color:#a2d8ee; font-weight:800; }
+#settings-calibration { background-color:#0a0e19ef; }
+.calibration-panel { max-width:620dp; overflow-y:auto; }
 .calibration-hint { font-size:12dp; color:#acb6cb; }
 #calibration-progress { font-size:28dp; font-weight:850;
   text-align:center; color:#d0c7fa; padding:20dp 0; }
 #calibration-feedback { min-height:22dp; color:#acb6cb;
   font-size:13dp; text-align:center; }
-.calibration-actions { display:flex; flex-direction:row; gap:8dp; }
-.calibration-actions button { flex:1; height:42dp; }
 @media (max-width:730dp) {
   #settings-panels { gap:7dp; padding:7dp; }
   .settings-fields { padding:8dp; }

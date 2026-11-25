@@ -38,14 +38,14 @@
     </div>
   </div>
   <div id="settings-notice"></div>
-  <div id="settings-calibration" style="display:none;">
-    <div class="calibration-panel">
-      <div class="calibration-heading">GLOBAL OFFSET CALIBRATION</div>
+  <div id="settings-calibration" class="ui-modal-layer" style="display:none;">
+    <div class="ui-modal-panel calibration-panel">
+      <div class="ui-modal-heading">GLOBAL OFFSET CALIBRATION</div>
       <div class="calibration-hint">100 BPM METRONOME - TAP BOUND DIRECTION KEYS</div>
       <div class="calibration-hint">Start on any beat and tap every click.</div>
       <div id="calibration-progress">0 / 18 TAPS</div>
       <div id="calibration-feedback"></div>
-      <div class="calibration-actions">
+      <div class="ui-modal-actions">
         <button id="calibration-apply" data-action="calibration-apply" class="primary"><span class="button-label">APPLY</span></button>
         <button data-action="calibration-retry" class="secondary"><span class="button-label">RETRY</span></button>
         <button data-action="calibration-cancel" class="quiet"><span class="button-label">CANCEL</span></button>
