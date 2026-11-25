@@ -103,6 +103,7 @@ bool EditorSetNeedsConfirmation(const EditorSetRequest& request) noexcept {
 
 EditorSetView EditorSetController::View() const {
     EditorSetView view;
+    view.catalogRevision=ctx_.library.Revision();
     const fs::path folder = ctx_.files.ActiveSetFolder();
     const LibrarySong* set = FindSet(ctx_.library, folder);
     view.hasAudio = ctx_.editor.HasSongDuration();

@@ -7,6 +7,7 @@
 #include "raylib.h"
 
 #include <limits>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <filesystem>
@@ -116,6 +117,9 @@ struct EditorSetView {
     std::function<bool(const std::filesystem::path&,core::LoadedChart&,
                        std::string&)> loadComparison;
     int current = -1, selected = -1, firstVisible = 0;
+    // A published catalog refresh permits a retry of failed lazy loads
+    // even if the difficulty's content fingerprint is unchanged.
+    std::uint64_t catalogRevision = 0;
 };
 enum class EditorField { None, Title, Bpm, OffsetMs };
 enum class EditorSetField { None, Title, Artist, Mapper, Tags };

@@ -333,10 +333,15 @@ int main() {
                 "failed reference never displays stale route or invalidates peer");
     cache.Prepare(editor,ui,view,10.0);
     ok &= Check(loadCalls==loadsBefore+4,"failed reference does not reload every frame");
-    failLoad = false;
-    ++view.comparisonOptions[1].contentFingerprint;
+    failLoad=false;
+    ++view.catalogRevision;
     ok &= Check(cache.Prepare(editor,ui,view,10.0).panes[1].route &&
-                loadCalls==loadsBefore+5,"new catalog revision retries failed reference");
+                loadCalls==loadsBefore+5,
+                "refresh retries failed reference even with identical content");
+    ++view.catalogRevision;
+    cache.Prepare(editor,ui,view,10.0);
+    ok &= Check(loadCalls==loadsBefore+5,
+                "catalog refresh retains successful unchanged references");
 
     ChartEditor parked;
     parked.Load(first);

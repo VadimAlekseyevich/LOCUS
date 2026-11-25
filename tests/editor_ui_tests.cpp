@@ -1231,7 +1231,7 @@ int main() {
     // Late-chart frame projection must agree with scalar time mapping;
     // select only the intersecting local BPM segments, including preroll.
     {
-        std::vector<core::TempoMarker> markers;
+        std::vector<locus::core::TempoMarker> markers;
         for(int i=0;i<256;++i) markers.push_back({250+i*1375LL,120.0+i%7});
         using Range=std::pair<std::size_t,std::size_t>;
         ok &= Check(detail::TimelineTempoSegments(markers,-2.0,-1.0)==Range{0,1} &&
@@ -1240,12 +1240,12 @@ int main() {
                     detail::TimelineTempoSegments(markers,400,401)==Range{255,256} &&
                     detail::TimelineTempoSegments(markers,1,1)==Range{0,0},
                     "visible tempo interval search preserves boundary ownership");
-        core::LoadedChart loaded;
+        locus::core::LoadedChart loaded;
         loaded.route.tempoMap=markers;
         loaded.route.ticksPerBeat=24;
         loaded.route.lengthBeats=25000;
         loaded.offsetSeconds=.25;
-        core::ChartEditor projected;
+        locus::core::ChartEditor projected;
         projected.Load(loaded);
         EditorUiState ruler;
         const auto anchor=17321.25;
@@ -1254,7 +1254,7 @@ int main() {
         for(int i=-512;i<512;++i) {
             const double seconds=transform.anchorSeconds+i*.025;
             const float expected=detail::PlayheadX(ruler)+static_cast<float>(
-                (seconds-core::TempoSecondsAtTick(loaded.route,loaded.offsetSeconds,anchor))*
+                (seconds-locus::core::TempoSecondsAtTick(loaded.route,loaded.offsetSeconds,anchor))*
                 detail::TimelinePixelsPerSongSecond(ruler,loaded.route));
             equivalent &= transform.XAtSeconds(seconds)==expected &&
                 std::abs(transform.SecondsAtX(expected)-seconds)<.00001;

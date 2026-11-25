@@ -223,8 +223,9 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
     frame.directionPressCounts = activeDirectionPressCounts_;
     // Build the visual slots from file identities, not from which chart is
     // currently being edited. A click only moves the EDIT marker, never a pane.
-    std::vector<const EditorComparisonOption*> visible;
-    int focusedSlot = 0;
+    std::array<const EditorComparisonOption*,2> visible{};
+    std::size_t visibleCount=0;
+    int focusedSlot=0;
     if (set.managed && std::isfinite(songDurationSeconds) &&
         songDurationSeconds > 0.0) {
         const int oldFocus = std::clamp(ui.comparisonFocusedSlot, 0,
@@ -239,19 +240,19 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             if (found == set.comparisonOptions.end() ||
                 static_cast<int>(found - set.comparisonOptions.begin()) ==
                     set.current ||
-                visible.size() >= 2) continue;
-            if (static_cast<int>(i) < oldFocus) ++focusedSlot;
-            visible.push_back(&*found);
+                visibleCount>=visible.size()) continue;
+            if (static_cast<int>(i)<oldFocus) ++focusedSlot;
+            visible[visibleCount++]=&*found;
         }
     }
-    frame.count = 1 + static_cast<int>(visible.size());
+    frame.count=1+static_cast<int>(visibleCount);
     auto& activePreview = previewFrames_[static_cast<std::size_t>(focusedSlot)];
     PrepareRoutePreview(active_.route, songSeconds, lookaheadMs, activePreview);
     frame.panes[static_cast<std::size_t>(focusedSlot)] = {
         active_.ready ? &active_.route : nullptr,
         draft.Data().title, true, &activePreview, draft.Dirty()};
 
-    for (int i = 0; i < static_cast<int>(visible.size()); ++i) {
+    for (int i=0;i<static_cast<int>(visibleCount);++i) {
         const auto& option = *visible[static_cast<std::size_t>(i)];
         const auto& file = option.file;
         const core::ChartEditor* parked = parkedDraft
@@ -264,10 +265,13 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             cached.modified != option.modified ||
             cached.contentFingerprint != option.contentFingerprint ||
             cached.gameplayRevision != option.gameplayRevision ||
-            cached.duration != songDurationSeconds;
+            cached.duration != songDurationSeconds ||
+            (!parked && !cached.ready &&
+             cached.attemptedCatalogRevision!=set.catalogRevision);
         if (changed) {
             cached.ready = false;
             cached.attempted = true;
+            cached.attemptedCatalogRevision=set.catalogRevision;
             cached.file = file;
             cached.parked = parked;
             cached.draftRevision = revision;
@@ -298,7 +302,7 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
             cached.ready ? &paneFrame : nullptr, parked && parked->Dirty()};
     }
     // A closed pane releases compiled route storage and failed attempts.
-    for (std::size_t i=visible.size();i<reference_.size();++i)
+    for (std::size_t i=visibleCount;i<reference_.size();++i)
         if (reference_[i].attempted) reference_[i] = Cached{};
     return frame;
 }

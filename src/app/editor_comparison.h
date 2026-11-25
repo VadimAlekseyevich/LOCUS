@@ -117,6 +117,7 @@ private:
         std::uint64_t contentFingerprint = 0;
         std::string gameplayRevision;
         double duration = 0.0;
+        std::uint64_t attemptedCatalogRevision = 0;
         bool attempted = false;
         bool ready = false;
     };
