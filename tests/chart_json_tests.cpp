@@ -200,6 +200,39 @@ int main() {
                  Reject(source, "\"bpm\": 120",
                        "\"bpm\": 120, \"secret\": 1", "unknown field"),
                  "duplicate and unknown properties are not silently accepted");
+    ok &= Expect(Reject(source, R"("heading": "ru")",
+                       R"("heading": "ru", "\u0068eading": "u")",
+                       "duplicate JSON key") &&
+                 Reject(source, R"("timeMs": 250, "bpm": 120)",
+                       R"("timeMs": 250, "bpm": 120, "bpm": 130)",
+                       "duplicate JSON key"),
+                 "SAX uniqueness checks decoded keys in nested objects");
+    // At the full supported event count, distinct sibling objects may
+    // repeat the same field names. A duplicate in the final object must
+    // still reject the entire document without publishing a partial chart.
+    {
+        std::string maximum=source.substr(0,source.find("\"turns\": [")+10);
+        constexpr int count=65536;
+        for(int i=0;i<count;++i) {
+            if(i) maximum+=',';
+            maximum+="{\"timeMs\":"+std::to_string(250+i)+",\"heading\":\"u\"}";
+        }
+        maximum+="]}";
+        LoadedChart full;
+        ok &= Expect(ParseChartJson(maximum,full,error) &&
+                     full.route.turns.size()==count &&
+                     full.route.turns.back().timeMs==250+count-1,
+                     "full-size chart parses with strict sibling keys");
+        const auto revision=ChartGameplayRevision(full);
+        const auto last=maximum.rfind("\"heading\":\"u\"");
+        if(last!=std::string::npos)
+            maximum.insert(last+std::string("\"heading\":\"u\"").size(),
+                           ",\"heading\":\"r\"");
+        ok &= Expect(last!=std::string::npos && !ParseChartJson(maximum,full,error) &&
+                     error.find("duplicate JSON key")!=std::string::npos &&
+                     ChartGameplayRevision(full)==revision,
+                     "late duplicate key rejects atomically at full chart size");
+    }
     ok &= Expect(!ValidChartAudioPath("../song.mp3") &&
                  ValidChartAudioPath("audio/song.mp3"),
                  "only normalized relative audio references are accepted");

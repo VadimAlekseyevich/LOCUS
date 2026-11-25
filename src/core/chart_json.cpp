@@ -17,6 +17,49 @@ namespace locus::core {
 namespace {
 using Json = nlohmann::json;
 
+// The pinned JSON 3.12 callback DOM parser scans its parent array at
+// every end_object (including when the callback always returns true).
+// For the turns array that makes strict duplicate checking quadratic.
+// Use the public streaming interface to validate unique decoded keys,
+// then the ordinary linear DOM parser to feed the existing schema checks.
+// No private library internals, schema duplication or permissive fallback.
+class UniqueKeysSax final : public nlohmann::json_sax<Json> {
+public:
+    explicit UniqueKeysSax(std::string& error) : error_(error) {}
+    bool null() override { return true; }
+    bool boolean(bool) override { return true; }
+    bool number_integer(number_integer_t) override { return true; }
+    bool number_unsigned(number_unsigned_t) override { return true; }
+    bool number_float(number_float_t,const string_t&) override { return true; }
+    bool string(string_t&) override { return true; }
+    bool binary(binary_t&) override { return true; }
+    bool start_array(std::size_t) override { return true; }
+    bool end_array() override { return true; }
+    bool start_object(std::size_t) override {
+        members_.emplace_back();
+        return true;
+    }
+    bool key(string_t& value) override {
+        if (!members_.back().insert(value).second) {
+            error_="JSON: duplicate JSON key: "+value;
+            return false;
+        }
+        return true;
+    }
+    bool end_object() override {
+        members_.pop_back();
+        return true;
+    }
+    bool parse_error(std::size_t,const std::string&,
+                     const Json::exception& exception) override {
+        error_=std::string("JSON: ")+exception.what();
+        return false;
+    }
+private:
+    std::string& error_;
+    std::vector<std::set<std::string>> members_;
+};
+
 bool HasExactMembers(const Json& value, std::initializer_list<const char*> names,
                      const std::string& field, std::string& error) {
     if (!value.is_object()) {
@@ -101,19 +144,9 @@ bool ValidChartAudioPath(std::string_view path) noexcept {
 
 bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& error) {
     try {
-        // nlohmann/json otherwise silently keeps the last of duplicate keys.
-        std::vector<std::set<std::string>> memberStack;
-        const auto checkDuplicates = [&](int, Json::parse_event_t event, Json& value) {
-            if (event == Json::parse_event_t::object_start) memberStack.emplace_back();
-            if (event == Json::parse_event_t::key) {
-                const auto key = value.get<std::string>();
-                if (!memberStack.back().insert(key).second)
-                    throw std::runtime_error("duplicate JSON key: " + key);
-            }
-            if (event == Json::parse_event_t::object_end) memberStack.pop_back();
-            return true;
-        };
-        const Json document = Json::parse(text.begin(), text.end(), checkDuplicates);
+        UniqueKeysSax uniqueKeys(error);
+        if (!Json::sax_parse(text.begin(),text.end(),&uniqueKeys)) return false;
+        const Json document = Json::parse(text.begin(),text.end());
         if (!document.is_object()) {
             error = "chart: expected an object";
             return false;
