@@ -115,15 +115,6 @@ bool HandleTempoTable(EditorUiState& ui, const EditorControls& input,
     }
     if (!input.mouseClick) return false;
     const Vector2 mouse = input.mouse;
-    if (detail::Hit(detail::kTempoPrev, mouse)) {
-        ui.tempoFirstVisible = std::max(0, ui.tempoFirstVisible - 5);
-        return true;
-    }
-    if (detail::Hit(detail::kTempoNext, mouse)) {
-        ui.tempoFirstVisible = std::min(std::max(0, count - 5),
-                                        ui.tempoFirstVisible + 5);
-        return true;
-    }
     if (detail::Hit(detail::kTempoAdd, mouse)) {
         if (count >= 256 || !draft.HasSongDuration()) {
             error("LOAD AUDIO BEFORE ADDING BPM MARKERS");

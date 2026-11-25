@@ -194,8 +194,9 @@ void DrawComparisonPicker(Font font, const EditorUiState& ui,
                                : Color{164, 186, 224, 255},
             editable || checked);
     }
-    CompactButton(font, kComparePickerPrev, "PREV", Color{148, 163, 193, 255});
-    CompactButton(font, kComparePickerNext, "NEXT", Color{148, 163, 193, 255});
+    if (count > 5)
+        Label(font, "SCROLL", kComparePopup.x + 10, kComparePopup.y + 182,
+              11.0f, Color{183, 202, 216, 255});
     Label(font, TextFormat("%d / %d",
         std::min(count, ui.comparisonPickerFirst + 5), count),
         kComparePopup.x + 107, kComparePopup.y + 182, 11.0f, Color{183, 202, 216, 255});
@@ -640,8 +641,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             ?set.tempoMap
             :core::EffectiveTempoMap(chart,draft.Data().offsetSeconds);
         Label(font,"SONG TEMPO MAP",384,186,17,violet);
-        CompactButton(font,kTempoPrev,"PREV",violet);
-        CompactButton(font,kTempoNext,"NEXT",sky);
+
         Label(font,"OFFSET / MS",384,220,12,muted);
         Label(font,"BPM",590,220,12,muted);
         const int count=static_cast<int>(changes.size());

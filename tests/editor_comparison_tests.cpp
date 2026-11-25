@@ -202,8 +202,8 @@ int main() {
                     view.comparisonOptions[1].file,
                 "picker row adds a different difficulty by one click");
     HandleEditorComparisonControls(popup, view, choose);
-    ok &= Check(popup.comparisonFiles.empty(),
-                "picker row toggles a selected reference off");
+    ok &= Check(popup.comparisonFiles.empty() && popup.comparisonPickerOpen,
+                "picker row toggles a reference off without closing picker");
     EditorControls dismiss;
     dismiss.mouseClick = true;
     dismiss.mouse = {748.0f, 405.0f}; // outside picker

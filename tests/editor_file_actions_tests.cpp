@@ -247,12 +247,12 @@ int main() {
                     "active Song Set is available on SET and ROUTE");
         app::EditorControls clickDifficulty;
         clickDifficulty.mouseClick = true;
-        clickDifficulty.mouse = {548.0f, 252.0f}; // Hard difficulty row
+        clickDifficulty.mouse = {650.0f, 270.0f}; // Hard difficulty row
         managedSet.HandleControls(clickDifficulty);
-        ok &= Check(!managedSet.HasPending() && editor.Dirty() &&
-                    activePath == installedEasy.wstring() &&
-                    status.find("SET FAILED: ") == 0,
-                    "SET focus refuses to replace dirty draft without loaded audio");
+        ok &= Check(managedSet.HasPending() && editor.Dirty() &&
+                    activePath == installedEasy.wstring(),
+                    "SET opens a standalone difficulty only after dirty-draft confirmation");
+        managedSet.Confirm(false, true);
         // No side effect or hidden draft should be created by that failure.
         ok &= Check(managedFiles.AnyDirty() &&
                     !managedFiles.ParkedEditor(installedEasy) &&

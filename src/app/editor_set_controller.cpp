@@ -293,14 +293,7 @@ bool EditorSetController::FocusDifficulty(int index) {
         index >= static_cast<int>(view.comparisonOptions.size()))
         return false;
     ctx_.ui.setSelected = index;
-    if (index == view.current) return true;
-    std::string problem;
-    if (!ctx_.files.FocusChart(
-            view.comparisonOptions[static_cast<std::size_t>(index)].file,
-            problem)) {
-        Notice(problem, true);
-        return false;
-    }
+    Request(EditorSetAction::Open);
     return true;
 }
 
@@ -345,7 +338,6 @@ void EditorSetController::HandleControls(const EditorControls& input) {
                         static_cast<std::size_t>(index)].file;
                     if (HasEditorComparison(ui, file)) {
                         ctx_.files.RequestCloseComparison(file);
-                        ui.comparisonPickerOpen = false;
                         return;
                     }
                     break;
@@ -496,16 +488,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         const int index = view.firstVisible + row;
         if (index >= count) break;
         if (CheckCollisionPointRec(mouse, detail::SetDifficultyRow(row))) {
-            ctx_.ui.setSelected = index;
-            // A row click changes focus within this shared Song Set.
-            // Dirty drafts remain parked and are not discarded.
-            if (index != view.current) {
-                std::string problem;
-                const fs::path file = view.comparisonOptions[
-                    static_cast<std::size_t>(index)].file;
-                if (!ctx_.files.FocusChart(file, problem))
-                    Notice(problem, true);
-            }
+            FocusDifficulty(index);
             return;
         }
     }
@@ -537,11 +520,7 @@ void EditorSetController::Request(EditorSetAction action) {
         }
         request.chart = song->charts[static_cast<std::size_t>(
             view.selected)].file;
-        if (action == EditorSetAction::Open &&
-            request.chart == fs::path(ctx_.chartPath)) {
-            Notice("THIS DIFFICULTY IS ALREADY OPEN");
-            return;
-        }
+
     }
     const bool affectsCurrent = request.action == EditorSetAction::DeleteDifficulty &&
                                 request.chart == fs::path(ctx_.chartPath);
@@ -549,9 +528,11 @@ void EditorSetController::Request(EditorSetAction action) {
     const bool deletesUnsaved = action == EditorSetAction::DeleteDifficulty &&
         ((affectsCurrent && ctx_.editor.Dirty()) ||
          (parked && parked->Dirty()));
+    const bool switching = action == EditorSetAction::Open &&
+        request.chart != fs::path(ctx_.chartPath);
     request.discardsDraft = deletesUnsaved ||
         (ctx_.files.AnyDirty() &&
-         (ReplacesDraft(action) || affectsCurrent));
+         (ReplacesDraft(action) || affectsCurrent || switching));
     if (EditorSetNeedsConfirmation(request)) {
         pending_ = std::move(request);
         return;
@@ -630,9 +611,14 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
             return true;
         }
         case EditorSetAction::Open: {
-            if (!ctx_.files.FocusChart(request.chart, error)) break;
+            if (request.chart != fs::path(ctx_.chartPath) &&
+                !ctx_.files.OpenFromLibrary(request.chart.wstring(), error)) break;
             ctx_.ui.setSelected = -1;
-            Notice("DIFFICULTY FOCUSED - CTRL+S SAVES ONLY THIS CHART");
+            ctx_.ui.tab = EditorTab::Route;
+            ctx_.ui.comparisonFiles.clear();
+            ctx_.ui.comparisonFocusedSlot = 0;
+            ctx_.ui.comparisonPickerOpen = false;
+            Notice("DIFFICULTY OPENED - CTRL+S SAVES THIS CHART");
             return true;
         }
         case EditorSetAction::NewDifficulty: {

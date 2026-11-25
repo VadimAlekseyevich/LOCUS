@@ -119,8 +119,15 @@ void HandleEditorComparisonControls(EditorUiState& ui,
         ui.comparisonPickerOpen = false;
         return;
     }
-    if (!input.mouseClick) return;
     const Vector2 mouse = input.mouse;
+    if (ui.comparisonPickerOpen && input.mouseWheel != 0.0f &&
+        detail::Hit(detail::kComparePopup, mouse)) {
+        ui.comparisonPickerFirst = std::clamp(ui.comparisonPickerFirst +
+            (input.mouseWheel > 0.0f ? -1 : 1), 0,
+            std::max(0, static_cast<int>(set.comparisonOptions.size()) - 5));
+        return;
+    }
+    if (!input.mouseClick) return;
     if (detail::Hit(detail::kCompareToggle, mouse)) {
         const bool alternatives = set.managed &&
             std::any_of(set.comparisonOptions.begin(),
@@ -142,15 +149,6 @@ void HandleEditorComparisonControls(EditorUiState& ui,
     }
     if (!ui.comparisonPickerOpen) return;
     const int count = static_cast<int>(set.comparisonOptions.size());
-    if (detail::Hit(detail::kComparePickerPrev, mouse)) {
-        ui.comparisonPickerFirst = std::max(0, ui.comparisonPickerFirst - 5);
-        return;
-    }
-    if (detail::Hit(detail::kComparePickerNext, mouse)) {
-        ui.comparisonPickerFirst = std::min(std::max(0, count - 5),
-                                           ui.comparisonPickerFirst + 5);
-        return;
-    }
     for (int row = 0; row < 5; ++row) {
         const int index = ui.comparisonPickerFirst + row;
         if (index >= count) break;

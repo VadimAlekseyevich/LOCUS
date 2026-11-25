@@ -169,20 +169,6 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
                 list->SetInnerRML(html.str());
         }
     }
-    const bool textEditing = ui.EditingText();
-    if (lastTextEditing_ != static_cast<int>(textEditing)) {
-        for (const char* id : {"editor-back", "editor-tab-set",
-                               "editor-tab-route",
-                               "editor-tab-audio", "editor-preview-play",
-                               "editor-preview-restart", "editor-preview-rate",
-                               "editor-preview-time"}) {
-            if (auto* element = document_->GetElementById(id)) {
-                if (textEditing) element->SetAttribute("disabled", "");
-                else element->RemoveAttribute("disabled");
-            }
-        }
-        lastTextEditing_ = static_cast<int>(textEditing);
-    }
 }
 void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     if (!ui_ || !input_ || suppressClick_) return;
@@ -235,7 +221,6 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     const std::string action = target->GetAttribute<Rml::String>("data-action", "");
     if (action.empty()) return;
     consumedPointer_ = true;
-    if (ui_->EditingText()) return;
     if (action == "back") {
         input_->backPressed = true;
     } else if (action == "tab-set" || action == "tab-route" ||

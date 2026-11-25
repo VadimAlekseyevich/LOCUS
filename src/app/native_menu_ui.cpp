@@ -855,11 +855,28 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     // events. The legacy chart controller receives no text that frame.
     const bool nativeTyping = EditorTextFocused();
     if (nativeTyping) {
+        // Text owns keyboard only. Pointer presses must still reach
+        // the clicked control or the canvas on the same gesture.
+        const auto pointer = input.editor;
         input.editor = EditorControls{};
         input.editor.nativeChrome = true;
+        input.editor.mouse = pointer.mouse;
+        input.editor.mouseClick = pointer.mouseClick;
+        input.editor.mouseHeld = pointer.mouseHeld;
+        input.editor.mouseReleased = pointer.mouseReleased;
+        input.editor.mouseWheel = pointer.mouseWheel;
         SuppressGlobalMenuShortcuts(input);
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            if (auto* focus = context_->GetFocusElement()) {
+                const auto mouse = GetMousePosition();
+                const float x = focus->GetAbsoluteLeft(), y = focus->GetAbsoluteTop();
+                if (mouse.x < x || mouse.x >= x + focus->GetOffsetWidth() ||
+                    mouse.y < y || mouse.y >= y + focus->GetOffsetHeight())
+                    focus->Blur();
+            }
+        }
     }
-    PumpInput(nativeTyping);
+    PumpInput(nativeTyping && EditorTextFocused());
     // Numeric preview rate owns Enter/Escape while focused: commit or undo
     // without leaking these keys into editor navigation.
     if (nativeTyping) {

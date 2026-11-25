@@ -612,6 +612,8 @@ bool EditorFileActions::SaveParked(const std::filesystem::path& file,
 bool EditorFileActions::ResolveClose(bool save, bool discard, double& now) {
     if (pendingClose_.empty()) return false;
     const auto file = pendingClose_;
+    const bool pickerWasOpen = context_.ui.comparisonPickerOpen;
+    const int pickerFirst = context_.ui.comparisonPickerFirst;
     if (!save && !discard) {
         pendingClose_.clear();
         return true;
@@ -633,7 +635,8 @@ bool EditorFileActions::ResolveClose(bool save, bool discard, double& now) {
     removeReference(file);
     removeReference(savedPath);
     pendingClose_.clear();
-    context_.ui.comparisonPickerOpen = false;
+    context_.ui.comparisonPickerOpen = pickerWasOpen;
+    context_.ui.comparisonPickerFirst = pickerFirst;
     context_.status = save ? "CHART SAVED AND CLOSED"
                            : "CHART CLOSED WITHOUT SAVING";
     return true;
