@@ -472,14 +472,16 @@ int main(int argc, char** argv) try {
         };
 #ifdef LOCUS_WITH_RMLUI
         const bool nativeConfirmation = nativeMenu.ConfirmationAvailable();
+        const bool nativeResults = nativeMenu.ResultsAvailable();
 #else
         const bool nativeConfirmation = false;
+        const bool nativeResults = false;
 #endif
         FrameInput input = locus::app::PollFrameInput(
             debugScreens, state, settings, inputNow,
             state.screen == Screen::Play &&
                 (customChart ? chartPlayback.Paused() : transport.Paused()),
-            nativeEditorTextInput, nativeConfirmation);
+            nativeEditorTextInput, nativeConfirmation, nativeResults);
         auto globalChoice = locus::app::ConfirmationChoice::None;
 #ifdef LOCUS_WITH_RMLUI
         if (nativeConfirmation && wasAnyModal)

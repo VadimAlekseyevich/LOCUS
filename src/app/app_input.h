@@ -94,6 +94,7 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
                           double eventTimeSeconds,
                           bool playPaused = false,
                           bool nativeEditorTextInput = false,
-                          bool nativeConfirmation = false);
+                          bool nativeConfirmation = false,
+                          bool nativeResults = false);
 
 } // namespace locus::app

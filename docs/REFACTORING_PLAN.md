@@ -173,6 +173,8 @@
 
 **25.11.2026 — T11: keyboard ownership in PLAY.** PollInput собирает navigation deltas, RefreshLibrary/OpenEditor из GameSettings и Enter (включая numpad). NativePlayUi и fallback потребляют один FrameInput, без повторной проверки E/F5; фокус поиска поглощает команды, Enter на кнопке не запускает параллельно PLAY. Интеграционная регрессия NativePlayUi проверяет shortcut flags, focused EDIT и search. Windows CI требуется.
 
+**25.11.2026 — T11: RESULTS input ownership.** При доступном RmlUi PollFrameInput больше не проверяет legacy RESULTS hitboxes. ResultsKeyboardIntent отделяет собранные настройки Back/Home/Retry/Edit/Enter от DOM-команд: последнее слово у native action, затем Back, Edit, Retry; историческая попытка не допускает Retry/Edit. Добавлены проверки в ui_foundation_tests; Windows CI требуется.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>

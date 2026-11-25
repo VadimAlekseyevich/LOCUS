@@ -5,6 +5,7 @@
 #include "app/ui_widgets.h"
 #include "app/home_menu.h"
 #include "app/viewport.h"
+#include "app/results_keyboard_input.h"
 
 #include <cmath>
 #include <iostream>
@@ -23,6 +24,39 @@ bool Near(float lhs, float rhs, float tolerance = 0.015f) {
 
 int main() {
     bool ok = true;
+    {
+        FrameInput input;
+        input.startPressed = true;
+        input.openEditorPressed = true;
+        input.restartPressed = true;
+        input.closeRequested = true;
+        const auto keyboard = TakeResultsKeyboard(input);
+        ok &= Check(!input.startPressed && !input.openEditorPressed &&
+                    !input.restartPressed && input.closeRequested,
+                    "RESULTS separates collected commands without swallowing OS close");
+        input.openEditorPressed = true; // Native focused EDIT or pointer action.
+        ApplyResultsKeyboard(input,keyboard,false,true);
+        ok &= Check(input.openEditorPressed && !input.startPressed &&
+                    !input.restartPressed,
+                    "RESULTS native command wins over other keyboard commands");
+        input = {};
+        ApplyResultsKeyboard(input,keyboard,false,false);
+        ok &= Check(input.openEditorPressed && !input.startPressed &&
+                    !input.restartPressed,
+                    "RESULTS configured Edit shortcut has one deterministic owner");
+        input = {};
+        ApplyResultsKeyboard(input,{true,true,false,false},false,false);
+        ok &= Check(input.restartPressed && !input.startPressed,
+                    "RESULTS accepts configured Retry shortcut");
+        input = {};
+        ApplyResultsKeyboard(input,{true,true,true,false},true,false);
+        ok &= Check(!input.startPressed && !input.restartPressed && !input.openEditorPressed,
+                    "historical result never starts or edits a live chart");
+        ApplyResultsKeyboard(input,{true,true,true,true},true,false);
+        ok &= Check(input.backPressed && !input.startPressed &&
+                    !input.restartPressed && !input.openEditorPressed,
+                    "historical result preserves configured Back/Home");
+    }
     // Regression: a 100%-DPI fullscreen window must not use 1px/dp.
     ok &= Check(Near(NativeUiDensity(960,540,1),1) &&
                 Near(NativeUiDensity(1536,960,1),1.6f) &&

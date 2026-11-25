@@ -6,6 +6,7 @@
 #include "app/rml_ui_text.h"
 #include "app/rml_layout_geometry.h"
 #include "app/rml_modal_focus.h"
+#include "app/results_keyboard_input.h"
 #include "app/skin_controls.h"
 #include "core/utf8.h"
 
@@ -799,16 +800,21 @@ MenuEvents NativeMenuUi::UpdateResults(FrameInput& input,
     MenuEvents events;
     if (!ResultsAvailable()) return events;
     Activate(Page::Results);
-    SuppressGlobalMenuShortcuts(input);
+    const auto keyboard = TakeResultsKeyboard(input);
     resultsPresenter_.BeginFrame(selected, grades, total, chartTitle,
                                  historical, history, input, events);
     resultsPresenter_.Sync();
     PumpInput();
-    if (auto* focus = context_->GetFocusElement();
-        focus && focus->GetTagName() == "button" &&
-        (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
-        focus->Click();
-    if (IsKeyPressed(KEY_ESCAPE)) input.backPressed = true;
+    bool consumed = input.startPressed || input.openEditorPressed ||
+                    events.viewResultIndex >= 0;
+    if (!consumed && keyboard.activate) {
+        if (auto* focus = context_->GetFocusElement();
+            focus && focus->GetTagName() == "button") {
+            consumed = true;
+            if (!focus->HasAttribute("disabled")) focus->Click();
+        }
+    }
+    ApplyResultsKeyboard(input,keyboard,historical,consumed);
     context_->Update();
     resultsPresenter_.EndFrame();
     return events;

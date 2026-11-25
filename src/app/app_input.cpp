@@ -113,7 +113,8 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
 FrameInput PollFrameInput(bool debugScreens, const AppState& state,
                           const GameSettings& settings,
                           double eventTimeSeconds, bool playPaused,
-                          bool nativeEditorTextInput, bool nativeConfirmation) {
+                          bool nativeEditorTextInput, bool nativeConfirmation,
+                          bool nativeResults) {
     if (state.quitConfirmation) {
         // Repeated native X presses cannot bypass an already-open modal.
         ConsumeNativeCloseRequest();
@@ -161,7 +162,10 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
         else if (PlayButtonHit(kPlayLeaveButton, mouse, width, height))
             input.leaveRequested = true;
     }
-    if ((state.screen == Screen::Listen || state.screen == Screen::Results) &&
+    // When native RESULTS is available, its DOM owns the whole pointer
+    // gesture. Never test invisible legacy hitboxes in that screen.
+    if ((state.screen == Screen::Listen ||
+         (state.screen == Screen::Results && !nativeResults)) &&
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         const Vector2 pointer = GetMousePosition();
         const int width = GetScreenWidth(), height = GetScreenHeight();
