@@ -52,14 +52,16 @@ void DirectionButton(Font font, Rectangle rect, const char* count,
 
 void EditorIconButton(Rectangle bounds, EditorIcon icon,
                       Color color, bool selected=false) {
+    if (!HasLayoutArea(bounds)) return;
     auto style = EditorButtonStyle(color);
     style.roundness = UiRoundness(bounds,9);
     DrawUiButtonChrome(bounds,style,selected);
     EditorGlyph(bounds,icon,color);
 }
-void EditorToolTip(Font font, Rectangle button, const std::string& caption) {
-    const Vector2 mouse = EditorVirtualMouse(
-        GetMousePosition(),GetScreenWidth(),GetScreenHeight());
+void EditorToolTip(Font font, const EditorUiState& ui, Rectangle button,
+                   const std::string& caption) {
+    const Vector2 mouse = ui.layout.Coordinates(
+        GetScreenWidth(),GetScreenHeight()).ToVirtual(GetMousePosition());
     if (!Hit(button,mouse)) return;
     const float width=MeasureTextEx(font,caption.c_str(),12,1).x+22;
     const Rectangle popup{button.x+button.width+9,button.y+6,width,29};
@@ -115,6 +117,7 @@ void DrawComparisonPreviews(Font font, const EditorUiState& ui,
     for (int index = 0; index < count; ++index) {
         const auto& pane = comparison.panes[static_cast<std::size_t>(index)];
         const Rectangle bounds = ComparisonPreviewBounds(ui, count, index);
+        if (!HasLayoutArea(bounds)) continue;
         DrawRectangleRounded(bounds, 0.05f, 5, Color{23, 30, 43, 242});
         const Color accent = pane.editable
             ? Color{111, 221, 198, 255}
@@ -139,7 +142,7 @@ void DrawComparisonPreviews(Font font, const EditorUiState& ui,
                 bounds.y + bounds.height * 0.5f,
                 step, preview.marker};
             // Scissor coordinates are physical pixels, not virtual UI units.
-            const auto clip = ViewportTransform::Menu(
+            const auto clip = ui.layout.Coordinates(
                 GetScreenWidth(), GetScreenHeight()).Scissor(bounds);
             BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
             const Vector2 marker = DrawTimedRouteTrajectory(
@@ -172,6 +175,7 @@ void DrawComparisonPicker(Font font, const EditorUiState& ui,
                           const EditorSetView& set) {
     if (!ui.comparisonPickerOpen) return;
     const auto popup = ComparePopupBounds(ui);
+    if (!HasLayoutArea(popup)) return;
     DrawRectangleRounded(popup, 0.08f, 6,
                          Color{21, 29, 44, 253});
     DrawRectangleRoundedLinesEx(popup, 0.08f, 6, 1.5f,
@@ -422,6 +426,7 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
 void DrawSongOverview(Font font, const core::ChartEditor& draft,
                       const EditorSetView& set, const EditorUiState& ui, double songSeconds) {
     const Rectangle bounds = OverviewBounds(ui);
+    if (!HasLayoutArea(bounds)) return;
     DrawRectangleRounded(bounds,UiRoundness(bounds,8),8,Color{30,38,60,255});
     DrawRectangleRoundedLinesEx(bounds,UiRoundness(bounds,8),8,1,
                                 ApprovedUiTheme().divider);
@@ -511,6 +516,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         }
 
         const Rectangle previewArea = PreviewBounds(ui);
+        if (HasLayoutArea(previewArea)) {
         DrawRectangleRounded(previewArea,UiRoundness(previewArea,12),10,
                              Color{25,33,53,235});
         DrawRectangleRoundedLinesEx(previewArea,UiRoundness(previewArea,12),
@@ -535,6 +541,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Label(font,TextFormat("%.1f",draft.Difficulty().overall),
               focusedBounds.x+focusedBounds.width-43,
               focusedBounds.y+23,12,sky);
+        }
 
         if (!nativeShell) {
         // Only the compass buttons place notes; diagonal counts also
@@ -733,19 +740,19 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         // Only fallback controls use the legacy hitboxes. Native controls
         // own their own geometry and tooltip metadata.
         if (!nativeShell) {
-        EditorToolTip(font,kMirrorHorizontal,
+        EditorToolTip(font,ui,kMirrorHorizontal,
             "Flip horizontally  /  "+
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorMirrorH)));
-        EditorToolTip(font,kMirrorVertical,
+        EditorToolTip(font,ui,kMirrorVertical,
             "Flip vertically  /  "+
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorMirrorV)));
-        EditorToolTip(font,kRotateCounterclockwise,"Rotate 90 left");
-        EditorToolTip(font,kRotateClockwise,"Rotate 90 right");
-        EditorToolTip(font,kRouteTest,
+        EditorToolTip(font,ui,kRotateCounterclockwise,"Rotate 90 left");
+        EditorToolTip(font,ui,kRotateClockwise,"Rotate 90 right");
+        EditorToolTip(font,ui,kRouteTest,
             "Test chart  /  "+
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorTest)));
         }
-        EditorToolTip(font,CompareToggleBounds(ui),"Compare charts");
+        EditorToolTip(font,ui,CompareToggleBounds(ui),"Compare charts");
     }
     if(ui.rateDropdownOpen && !nativeShell) {
         DrawRectangleRounded(kEditorRatePopup,UiRoundness(kEditorRatePopup,9),

@@ -79,6 +79,7 @@ public:
 private:
     enum class Page { None, Home, Play, Settings, Editor, Results, Skin };
     void Activate(Page page);
+    bool RefreshLayoutMetrics();
     void PumpInput(bool dispatchKeyboard = true, bool forceLayout = false);
     void ReadEditorLayout(EditorUiState& ui) const noexcept;
     void ProcessEvent(Rml::Event& event) override;

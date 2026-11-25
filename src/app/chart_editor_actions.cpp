@@ -114,8 +114,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
 
     // The native AUDIO marker table handles its own clicks after this pass.
     // Dropdown popup options overlap that table visually and take priority.
-    if ((ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio) && input.mouseClick &&
-        (Hit(kTempoTable, input.mouse) || Hit(kTempoAdd, input.mouse))) return action;
+    if (!input.nativeChrome && (ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio) &&
+        input.mouseClick && (Hit(kTempoTable, input.mouse) || Hit(kTempoAdd, input.mouse))) return action;
 
     // RmlUi time button and legacy time hitbox share one exact clock action.
     if (input.copySongTime) {
@@ -202,7 +202,8 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             ui.tab = nextTab;
             return action;
         }
-        const EditorField selected = editor_text::ClickedField(mouse, ui.tab);
+        const EditorField selected = input.nativeChrome ? EditorField::None :
+            editor_text::ClickedField(mouse, ui.tab);
         if (selected != EditorField::None) {
             editor_text::BeginField(ui, draft, selected);
             return action;

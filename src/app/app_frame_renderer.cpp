@@ -231,10 +231,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     const auto transform = state.screen == Screen::Play
         ? locus::app::ViewportTransform::Gameplay(GetScreenWidth(), GetScreenHeight())
         : locus::app::ViewportTransform::Menu(GetScreenWidth(), GetScreenHeight());
-    Camera2D camera{};
-    camera.offset = Vector2{transform.offsetX, transform.offsetY};
-    camera.target = Vector2{0.0f, 0.0f};
-    camera.zoom = transform.scale;
+    const Camera2D camera = transform.Camera();
     BeginMode2D(camera);
 
     if (state.screen == Screen::Home) {
@@ -301,10 +298,17 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         // the decoder between the ruler and the route.
         const bool hasNativeEditorShell =
 #ifdef LOCUS_WITH_RMLUI
-            nativeMenu && nativeMenu->ShowingEditor();
+            nativeMenu && nativeMenu->EditorAvailable() && editorUi.layout.native;
 #else
             false;
 #endif
+        // Custom editor canvases use exactly the native UI's dp-to-window
+        // transform. Legacy modal controls below retain their own transform
+        // until the modal migration; gameplay is unaffected.
+        if (hasNativeEditorShell) {
+            EndMode2D();
+            BeginMode2D(editorUi.layout.coordinates.Camera());
+        }
         locus::app::RenderChartEditor(font, editor, editorUi,
                                      localSong.DisplayName(), localSong.Ready(),
                                      editorClock.playing, editorClock.paused,
@@ -314,19 +318,24 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                                      editorClock.songSeconds,
                                      hasNativeEditorShell);
         if (editorUi.tab == EditorTab::Set) {
-            const auto status = hasNativeEditorShell && HasLayoutArea(editorUi.layout.status)
+            const auto status = hasNativeEditorShell
                 ? editorUi.layout.status : Rectangle{52,472,880,14};
             const auto capacity = static_cast<std::size_t>(std::max(1.0f, status.width / 6.0f));
-            DrawTextLabel(font, core::utf8::Truncate(
+            if (HasLayoutArea(status)) DrawTextLabel(font, core::utf8::Truncate(
                 editorUi.feedback.empty() ? editorStatus : editorUi.feedback, capacity).c_str(),
                 {status.x,status.y}, 10, editorUi.feedbackError ? Color{250,165,152,255}
                                                     : Color{162,216,238,255});
         }
-        // Editor and preview statuses must not be painted over file buttons.
-        // Keep status for workflows, but not as an overlay in the action row.
+        if (hasNativeEditorShell) {
+            EndMode2D();
+            BeginMode2D(camera);
+        }
+        // Modal controls still use the legacy centered transform, but their
+        // backdrop covers the actual window, not just the old 16:9 rectangle.
         if (editorSetPending && editorPending == EditorPending::None) {
-            DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
-                          Color{10, 13, 21, 225});
+            DrawRectangleRec(transform.ToVirtualBounds(
+                {0,0,static_cast<float>(GetScreenWidth()),static_cast<float>(GetScreenHeight())}),
+                Color{10, 13, 21, 225});
             const bool wholeSet =
                 editorSetPending->action == locus::app::EditorSetAction::DeleteSongSet;
             const bool deleteDifficulty =
@@ -364,8 +373,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         if (editorPending != EditorPending::None ||
             !editorClosePending.empty()) {
             const bool closingPane = !editorClosePending.empty();
-            DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
-                          Color{10, 13, 21, 218});
+            DrawRectangleRec(transform.ToVirtualBounds(
+                {0,0,static_cast<float>(GetScreenWidth()),static_cast<float>(GetScreenHeight())}),
+                Color{10, 13, 21, 218});
             DrawTextLabel(font, "UNSAVED CHART CHANGES", {193.0f, 187.0f},
                           32.0f, Color{245, 216, 165, 255});
             DrawTextLabel(font, closingPane

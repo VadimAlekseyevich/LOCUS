@@ -145,6 +145,13 @@ int main() {
                 detail::PlayheadX(responsive) == -120.0f + 1100.0f/3.0f &&
                 std::abs(detail::SongOverviewSeconds(420, 120, detail::OverviewBounds(responsive))-60) < .001,
                 "measured regions determine square size, ruler anchor and overview mapping");
+    EditorUiState hiddenNative;
+    hiddenNative.layout.native = true;
+    ok &= Check(!HasLayoutArea(detail::TimelineBounds(hiddenNative)) &&
+                !HasLayoutArea(detail::OverviewBounds(hiddenNative)) &&
+                !HasLayoutArea(detail::ComparisonPreviewBounds(hiddenNative,1,0)) &&
+                !detail::Hit(detail::CompareToggleBounds(hiddenNative),{0,0}),
+                "hidden native slots never resurrect legacy geometry");
     const auto referenceSquare = detail::ComparisonPreviewBounds(3, 0);
     ok &= Check(referenceSquare.width > 200.0f &&
                 referenceSquare.width < 210.0f &&

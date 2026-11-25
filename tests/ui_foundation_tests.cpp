@@ -4,6 +4,7 @@
 #include "app/ui_theme.h"
 #include "app/ui_widgets.h"
 #include "app/home_menu.h"
+#include "app/viewport.h"
 
 #include <cmath>
 #include <iostream>
@@ -22,6 +23,24 @@ bool Near(float lhs, float rhs, float tolerance = 0.015f) {
 
 int main() {
     bool ok = true;
+    // Density is a display/accessibility policy, independent of aspect ratio.
+    ok &= Check(Near(NativeUiDensity(960,540,1),1) &&
+                Near(NativeUiDensity(2560,1080,1),1) &&
+                Near(NativeUiDensity(1536,960,1.5f),1.5f) &&
+                Near(NativeUiDensity(800,450,2),1.125f) &&
+                Near(NativeUiDensity(900,1200,2),900.0f/640.0f) &&
+                Near(NativeUiDensity(1920,1080,0),1),
+                "native UI density follows monitor scale with a usable-area bound");
+    const auto native = ViewportTransform::NativeUi(1.5f);
+    const auto measured = native.ToVirtualBounds({300,150,900,450});
+    const auto cursor = native.ToVirtual({750,375});
+    const auto clip = native.Scissor(measured);
+    ok &= Check(Near(native.offsetX,0) && Near(native.offsetY,0) &&
+                Near(measured.x,200) && Near(measured.y,100) &&
+                Near(measured.width,600) && Near(measured.height,300) &&
+                Near(cursor.x,500) && Near(cursor.y,250) &&
+                clip.x==300 && clip.y==150 && clip.width==900 && clip.height==450,
+                "native measured bounds, pointer and render scissor use one origin and scale");
     const auto& theme = ApprovedUiTheme();
     ok &= Check(theme.background.r == 28 && theme.background.g == 33 &&
                 theme.softBlue.r == 162 && theme.softBlue.g == 216 &&

@@ -16,8 +16,8 @@ constexpr float kGridMaxSpan = 240.0f;
 constexpr float kTimelineX = 52.0f, kTimelineY = 17.0f;
 constexpr float kTimelineWidth = 660.0f, kTimelineHeight = 47.0f;
 inline Rectangle TimelineBounds(const EditorUiState& ui) noexcept {
-    return HasLayoutArea(ui.layout.timeline) ? ui.layout.timeline :
-        Rectangle{kTimelineX, kTimelineY, kTimelineWidth, kTimelineHeight};
+    return ResolveEditorRegion(ui.layout, ui.layout.timeline,
+        {kTimelineX, kTimelineY, kTimelineWidth, kTimelineHeight});
 }
 inline float PlayheadX(const EditorUiState& ui) noexcept {
     const auto bounds = TimelineBounds(ui);
@@ -27,7 +27,7 @@ constexpr Rectangle kEditorPreviewPlay{52, 485, 39, 40};
 constexpr Rectangle kEditorPreviewRestart{96, 485, 39, 40};
 constexpr Rectangle kSongOverview{145, 485, 570, 40};
 inline Rectangle OverviewBounds(const EditorUiState& ui) noexcept {
-    return HasLayoutArea(ui.layout.overview) ? ui.layout.overview : kSongOverview;
+    return ResolveEditorRegion(ui.layout, ui.layout.overview, kSongOverview);
 }
 constexpr Rectangle kEditorRateDropdown{725, 485, 93, 40};
 constexpr Rectangle kEditorRatePopup{725, 341, 93, 140};
@@ -206,7 +206,7 @@ constexpr Rectangle kLegacyPreviewArea{
     kPreviewLeft, kPreviewTop, kPreviewRight - kPreviewLeft,
     kSongOverview.y - kPreviewTop - 26.0f};
 inline Rectangle PreviewBounds(const EditorUiState& ui) noexcept {
-    return HasLayoutArea(ui.layout.preview) ? ui.layout.preview : kLegacyPreviewArea;
+    return ResolveEditorRegion(ui.layout, ui.layout.preview, kLegacyPreviewArea);
 }
 inline Rectangle ComparisonPreviewBounds(const EditorUiState& ui, int count, int index) noexcept {
     return SquarePreviewPane(PreviewBounds(ui), count, index, kPreviewGap);
@@ -215,19 +215,26 @@ inline Rectangle ComparisonPreviewBounds(int count, int index) noexcept {
     return SquarePreviewPane(kLegacyPreviewArea, count, index, kPreviewGap);
 }
 inline Rectangle CompareToggleBounds(const EditorUiState& ui) noexcept {
-    return HasLayoutArea(ui.layout.compareToggle) ? ui.layout.compareToggle : kCompareToggle;
+    return ResolveEditorRegion(ui.layout, ui.layout.compareToggle, kCompareToggle);
 }
 inline Rectangle ComparePopupBounds(const EditorUiState& ui) noexcept {
-    if (!HasLayoutArea(ui.layout.compareToggle)) return kComparePopup;
+    if (!ui.layout.native && !HasLayoutArea(ui.layout.compareToggle)) return kComparePopup;
     const auto button = CompareToggleBounds(ui);
     const auto area = PreviewBounds(ui);
-    return {button.x + button.width + 10.0f,
-            std::clamp(button.y, area.y, std::max(area.y, area.y + area.height-kComparePopup.height)),
-            kComparePopup.width, kComparePopup.height};
+    if (!HasLayoutArea(button) || !HasLayoutArea(area)) return {};
+    const float width = std::min(area.width, kComparePopup.width);
+    // Anchor the popup to its button but keep it inside the preview slot,
+    // including after the toolbar reflows into a horizontal row.
+    return {std::clamp(button.x + button.width + 10.0f,
+                       area.x, area.x + area.width - width),
+            std::clamp(button.y, area.y,
+                       std::max(area.y, area.y + area.height-kComparePopup.height)),
+            width, kComparePopup.height};
 }
 inline Rectangle ComparePickerRow(const EditorUiState& ui, int row) noexcept {
     const auto popup = ComparePopupBounds(ui);
-    return {popup.x+10.0f,popup.y+23.0f+row*29.0f,popup.width-20.0f,25.0f};
+    if (!HasLayoutArea(popup)) return {};
+    return {popup.x+10.0f,popup.y+23.0f+row*29.0f,std::max(0.0f,popup.width-20.0f),25.0f};
 }
 constexpr Rectangle kEditorSpeedMinus{852, 408, 36, 28};
 constexpr Rectangle kEditorSpeedPlus{894, 408, 36, 28};
@@ -362,7 +369,9 @@ inline Rectangle RouteSpeedBounds(int index) {
     return EditorRateOption(index);
 }
 
-inline bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(pos, bounds); }
+inline bool Hit(Rectangle bounds, Vector2 pos) {
+    return HasLayoutArea(bounds) && CheckCollisionPointRec(pos, bounds);
+}
 
 // Navigation is an explicit workspace transition, not a tab hitbox.
 inline EditorTab ClickedTab(Vector2, EditorTab previous) { return previous; }

@@ -30,8 +30,10 @@ namespace {
 // but not discard the pattern copied from the previous difficulty.
 void ResetDocumentUi(EditorUiState& ui) {
     auto clipboard = std::move(ui.clipboard);
+    const auto layout = ui.layout;
     ui = EditorUiState{};
     ui.clipboard = std::move(clipboard);
+    ui.layout = layout;
 }
 } // namespace
 
@@ -505,6 +507,7 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
             ? context_.ui.focusSongSeconds
             : context_.editor.AudioSecondsAtBeat(context_.editor.SelectedBeat());
     const int timelineZoom = context_.ui.timelineZoomIndex;
+    const auto layout = context_.ui.layout;
 
     // Comparison editing shares exactly one decoder and one Song Set.
     int fromSong = -1, fromChart = -1, toSong = -1, toChart = -1;
@@ -568,6 +571,7 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
     ParkedDocument old;
     old.editor = std::move(context_.editor);
     old.ui = std::move(context_.ui);
+    old.ui.layout = {}; // geometry belongs to the live workspace, not parked charts
     old.chartPath = std::move(context_.chartPath);
     old.audioPath = std::move(context_.audioPath);
     old.loadedAudioPath = std::move(context_.loadedAudioPath);
@@ -579,6 +583,7 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
     parked_.insert_or_assign(current, std::move(old));
     context_.editor = std::move(target.editor);
     context_.ui = std::move(target.ui);
+    context_.ui.layout = layout;
     context_.ui.focusSongSeconds = songSeconds;
     context_.ui.timelineZoomIndex = timelineZoom;
     context_.ui.draggingTimeline = false;

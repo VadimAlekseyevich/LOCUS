@@ -292,6 +292,8 @@ void NativeMenuUi::Shutdown() {
         renderer_.ReleaseAllTextures();
     }
     visiblePage_ = Page::None;
+    lastWidth_ = lastHeight_ = -1;
+    lastDensity_ = -1.0f;
     pendingHomeAction_ = -1;
     editorChromePressActive_ = false;
     currentUi_ = nullptr;
@@ -736,7 +738,7 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
         RebuildResults(ui);
 }
 
-void NativeMenuUi::PumpInput(bool dispatchKeyboard, bool forceLayout) {
+bool NativeMenuUi::RefreshLayoutMetrics() {
     const int width = GetScreenWidth(), height = GetScreenHeight();
     bool layoutChanged = false;
     if (width != lastWidth_ || height != lastHeight_) {
@@ -744,22 +746,20 @@ void NativeMenuUi::PumpInput(bool dispatchKeyboard, bool forceLayout) {
         context_->SetDimensions({std::max(1,width),std::max(1,height)});
         lastWidth_ = width; lastHeight_ = height;
     }
-    // DPI can change when the window moves between monitors.
-    // Match the 960x540 approved design rather than monitor DPI. Extra
-    // ultrawide space is handled by the responsive flex container.
-    const float density = visiblePage_ == Page::Editor
-        ? std::max(0.05f, ViewportTransform::Menu(width, height).scale)
-        : std::clamp(std::min(
-            width / 960.0f, height / 540.0f), 0.7f, 3.0f);
+    // Every native screen shares the same DPI policy. Resizing changes
+    // available layout space, not text size, except below the usable minimum.
+    const float density = NativeUiDensity(width, height, GetWindowScaleDPI().x);
     if (std::abs(density - lastDensity_) > 0.01f) {
         context_->SetDensityIndependentPixelRatio(density);
         lastDensity_ = density;
         layoutChanged = true;
     }
-    // Calculate hitboxes at the NEW DPI/viewport before forwarding physical
-    // mouse coordinates. Otherwise the first click after resizing can land
-    // on the stale layout from the previous window geometry.
-    if (layoutChanged || forceLayout) context_->Update();
+    return layoutChanged;
+}
+
+void NativeMenuUi::PumpInput(bool dispatchKeyboard, bool forceLayout) {
+    // Resolve new dimensions and DPI before dispatching pointer events.
+    if (RefreshLayoutMetrics() || forceLayout) context_->Update();
     const int mods = Modifiers();
     const auto mouse = GetMousePosition();
     context_->ProcessMouseMove(static_cast<int>(mouse.x),
@@ -932,6 +932,7 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                           &draft, &settings, &setView);
     context_->Update();
     ReadEditorLayout(ui);
+    input.editor.mouse = ui.layout.coordinates.ToVirtual(GetMousePosition());
     if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         editorPresenter_.ReleaseClickSuppression();
         editorChromePressActive_ = false;
@@ -939,16 +940,19 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     editorPresenter_.EndFrame();
 }
 void NativeMenuUi::ReadEditorLayout(EditorUiState& ui) const noexcept {
-    const auto transform = ViewportTransform::Menu(GetScreenWidth(), GetScreenHeight());
+    EditorLayoutSnapshot snapshot;
+    snapshot.native = true;
+    snapshot.coordinates = ViewportTransform::NativeUi(lastDensity_);
     const auto slot = [&](const char* id) -> Rectangle {
-        return transform.ToVirtualBounds(
+        return snapshot.coordinates.ToVirtualBounds(
             RmlElementBounds(editorDocument_->GetElementById(id)));
     };
-    ui.layout.overview = slot("editor-overview-slot");
-    ui.layout.status = ui.tab == EditorTab::Set ? slot("editor-status-slot") : Rectangle{};
-    ui.layout.timeline = ui.tab == EditorTab::Route ? slot("editor-note-ruler") : Rectangle{};
-    ui.layout.preview = ui.tab == EditorTab::Route ? slot("editor-preview-slot") : Rectangle{};
-    ui.layout.compareToggle = ui.tab == EditorTab::Route ? slot("editor-route-compare-gap") : Rectangle{};
+    snapshot.overview = slot("editor-overview-slot");
+    snapshot.status = ui.tab == EditorTab::Set ? slot("editor-status-slot") : Rectangle{};
+    snapshot.timeline = ui.tab == EditorTab::Route ? slot("editor-note-ruler") : Rectangle{};
+    snapshot.preview = ui.tab == EditorTab::Route ? slot("editor-preview-slot") : Rectangle{};
+    snapshot.compareToggle = ui.tab == EditorTab::Route ? slot("editor-route-compare-gap") : Rectangle{};
+    ui.layout = snapshot;
 }
 
 void NativeMenuUi::SyncEditor(EditorUiState& ui,
@@ -959,6 +963,7 @@ void NativeMenuUi::SyncEditor(EditorUiState& ui,
                               const GameSettings& settings,
                               const EditorSetView& setView) {
     if (!ShowingEditor() || !EditorAvailable()) return;
+    RefreshLayoutMetrics(); // also refresh during modal/transition-only frames
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
                           &draft, &settings, &setView);
     context_->Update();

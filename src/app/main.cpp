@@ -593,6 +593,7 @@ int main(int argc, char** argv) try {
         if (state.screen == Screen::Editor && !wasQuitConfirmation &&
             !editorSet.HasPending() && editorFiles.PendingClose().empty() &&
             editorDiscard.Pending() == locus::app::EditorPending::None &&
+            !input.editor.nativeChrome &&
             IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && editorUi.EditingText()) {
             double blurNow = MonotonicSeconds();
             editorActions.BlurTextOnPointer(

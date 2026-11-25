@@ -10,8 +10,20 @@ namespace locus::app {
 inline constexpr int kVirtualWidth = 960;
 inline constexpr int kVirtualHeight = 540;
 
-// Logical 960x540 coordinates are independent of physical window pixels.
-// Gameplay fits its 540x540 square to the window's shorter physical side.
+// Native UI uses density-independent units and the full client area.
+// The old 960x540 transform is retained only for legacy drawing and modal
+// hitboxes; gameplay keeps its own square coordinate system.
+inline float NativeUiDensity(int width, int height, float monitorScale) noexcept {
+    if (!std::isfinite(monitorScale) || monitorScale <= 0.0f)
+        monitorScale = 1.0f;
+    const float desired = std::clamp(monitorScale, 0.75f, 3.0f);
+    // A constrained window must keep a usable logical area even on a
+    // high-DPI display. These are minimum usable dimensions, not a canvas
+    // resolution: larger windows at the same DPI expose more space.
+    if (width <= 0 || height <= 0) return desired;
+    const float usableScale = std::min(width / 640.0f, height / 400.0f);
+    return std::max(0.05f, std::min(desired, usableScale));
+}
 struct PixelRect { int x = 0, y = 0, width = 0, height = 0; };
 
 struct ViewportTransform {
@@ -22,6 +34,18 @@ struct ViewportTransform {
                                      height / static_cast<float>(kVirtualHeight));
         return {scale, (width - kVirtualWidth * scale) * 0.5f,
                        (height - kVirtualHeight * scale) * 0.5f};
+    }
+
+    static ViewportTransform NativeUi(float density) noexcept {
+        return {std::isfinite(density) && density > 0.0f ? density : 1.0f,
+                0.0f, 0.0f};
+    }
+
+    Camera2D Camera() const noexcept {
+        Camera2D camera{};
+        camera.offset = {offsetX, offsetY};
+        camera.zoom = scale;
+        return camera;
     }
 
     static ViewportTransform Gameplay(int width, int height) noexcept {
