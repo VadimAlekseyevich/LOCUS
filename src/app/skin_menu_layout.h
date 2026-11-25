@@ -3,6 +3,7 @@
 #include "app/skin_controls.h"
 #include "app/skin_menu.h"
 #include "raylib.h"
+#include <algorithm>
 
 namespace locus::app::skin_detail {
 
@@ -13,15 +14,15 @@ inline bool Hit(Vector2 mouse, Rectangle rect) {
 }
 
 inline Rectangle ColorRow(int row) {
-    // Ten colours must fit above the skin action row at y=473.
+    // Keep the palette above the skin action row at y=473.
     return {70.0f, 194.0f + row * 25.0f, 205.0f, 24.0f};
 }
 inline Rectangle NameField() { return {175, 190, 376, 34}; }
-constexpr float RowPitch(int page) noexcept {
-    return page == 0 ? 31.0f : 36.0f;
+inline float RowPitch(int page) noexcept {
+    return page == 0 ? std::min(31.0f, 276.0f / std::max(1, SkinSettingCount(page))) : 36.0f;
 }
 inline Rectangle SwitchRect(int page, int row) {
-    return {468.0f, 200.0f + row * RowPitch(page), 84.0f, 28.0f};
+    return {468.0f, 200.0f + row * RowPitch(page), 84.0f, std::min(28.0f, RowPitch(page)-2.0f)};
 }
 
 inline const char* RowName(int page, int row) {
@@ -39,8 +40,9 @@ inline void FlipToggle(Skin& skin, int page, int row) {
     FlipSkinToggle(skin, page, row);
 }
 
-inline Rectangle SliderHit(Rectangle rect) {
-    return {rect.x - 7.0f, rect.y - 12.0f, rect.width + 14.0f, 30.0f};
+inline Rectangle SliderHit(Rectangle rect, int page) {
+    const float height = std::min(30.0f, RowPitch(page)-1.0f);
+    return {rect.x - 7.0f, rect.y + (rect.height-height)*0.5f, rect.width + 14.0f, height};
 }
 
 constexpr float kWheelInner = 64.0f;

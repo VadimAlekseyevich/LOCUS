@@ -25,7 +25,11 @@ constexpr SkinSetting kPathSettings[] = {
     {"PATH OPACITY",     {0, 1, 0, 1},           &Skin::pathOpacity},
     {"TURN SIZE",        {3, 18, 1, 64},         &Skin::junctionRadius},
     {"TURN GLOW",        {}, nullptr, &Skin::junctionGlow},
-    {"REVERSE CAP SIZE", {0, 6, 0, 12},          &Skin::reverseCapScale}
+    {"REVERSE CAP SIZE", {0, 6, 0, 12},          &Skin::reverseCapScale},
+    {"HOLD WIDTH",       {1, 20, 0.25, 60},      &Skin::holdWidth},
+    {"HOLD OPACITY",     {0, 1, 0, 1},           &Skin::holdOpacity},
+    {"HOLD HEAD SIZE",   {0.5, 2, 0.25, 4},      &Skin::holdHeadScale},
+    {"HOLD TAIL SIZE",   {0.5, 2, 0.25, 4},      &Skin::holdTailScale}
 };
 constexpr SkinSetting kPlayerSettings[] = {
     {"PLAYER SIZE",      {6, 22, 1, 80},            &Skin::playerRadius},

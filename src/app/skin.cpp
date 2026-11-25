@@ -28,12 +28,12 @@ using Json = nlohmann::ordered_json;
 constexpr const char* kColorNames[kSkinColorCount] = {
     "BACKGROUND", "TRAJECTORY", "OUTLINE", "JUNCTION",
     "PLAYER", "PLAYER CORE", "HUD BACKGROUND", "HUD TEXT", "HIT FLASH",
-    "FIELD BORDER"
+    "FIELD BORDER", "HOLD"
 };
 constexpr const char* kColorKeys[kSkinColorCount] = {
     "background", "trajectory", "outline", "junction",
     "player", "playerCore", "hudBackground", "hudText", "hitFlash",
-    "fieldBorder"
+    "fieldBorder", "hold"
 };
 
 Json EncodeColor(Color color) {
@@ -73,6 +73,7 @@ Color& SkinColor(Skin& skin, int index) noexcept {
         case 6: return skin.hudBackground;
         case 7: return skin.hudText;
         case 8: return skin.hitFlash;
+        case 10: return skin.hold;
         default: return skin.fieldBorder;
     }
 }
@@ -94,6 +95,10 @@ bool Skin::Valid(std::string& error) const {
         {pathOpacity, 0.0f, 1.0f, "Trajectory opacity"},
         {junctionRadius, 1.0f, 64.0f, "Junction radius"},
         {reverseCapScale, 0.0f, 12.0f, "Reverse cap size"},
+        {holdWidth, 0.25f, 60.0f, "Hold width"},
+        {holdOpacity, 0.0f, 1.0f, "Hold opacity"},
+        {holdHeadScale, 0.25f, 4.0f, "Hold head size"},
+        {holdTailScale, 0.25f, 4.0f, "Hold tail size"},
         {playerRadius, 1.0f, 80.0f, "Player radius"},
         {baseSpeedPxPerSecond, kMinBaseSpeed, kMaxBaseSpeed, "Base movement speed"},
         {cameraLagMs, 0.0f, 1500.0f, "Camera lag (ms)"},
@@ -114,7 +119,7 @@ std::string SerializeSkin(const Skin& skin) {
     for (int i = 0; i < kSkinColorCount; ++i)
         colors[kColorKeys[i]] = EncodeColor(SkinColor(skin, i));
     const Json object = {
-        {"version", 2},
+        {"version", 3},
         {"name", skin.name},
         {"path", {
             {"lookaheadMs", skin.lookaheadMs},
@@ -124,7 +129,11 @@ std::string SerializeSkin(const Skin& skin) {
             {"opacity", skin.pathOpacity},
             {"junctionRadius", skin.junctionRadius},
             {"junctionGlow", skin.junctionGlow},
-            {"reverseCapScale", skin.reverseCapScale}
+            {"reverseCapScale", skin.reverseCapScale},
+            {"holdWidth", skin.holdWidth},
+            {"holdOpacity", skin.holdOpacity},
+            {"holdHeadScale", skin.holdHeadScale},
+            {"holdTailScale", skin.holdTailScale}
         }},
         {"player", {
             {"radius", skin.playerRadius},
@@ -147,7 +156,8 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
             error = "Unsupported skin version.";
             return false;
         }
-        if (object.at("version").get<int>() != 2) {
+        const int version = object.at("version").get<int>();
+        if (version != 2 && version != 3) {
             error = "Unsupported skin version.";
             return false;
         }
@@ -162,6 +172,12 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         parsed.junctionRadius = path.at("junctionRadius").get<float>();
         parsed.junctionGlow = path.at("junctionGlow").get<bool>();
         parsed.reverseCapScale = path.at("reverseCapScale").get<float>();
+        if (version == 3) {
+            parsed.holdWidth = path.at("holdWidth").get<float>();
+            parsed.holdOpacity = path.at("holdOpacity").get<float>();
+            parsed.holdHeadScale = path.at("holdHeadScale").get<float>();
+            parsed.holdTailScale = path.at("holdTailScale").get<float>();
+        }
         const auto& player = object.at("player");
         parsed.playerRadius = player.at("radius").get<float>();
         parsed.baseSpeedPxPerSecond = player.at("speedPxPerSecond").get<float>();
@@ -170,11 +186,17 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         parsed.hitFlashScale = player.at("hitFlashScale").get<float>();
         parsed.showHud = object.at("hud").at("visible").get<bool>();
         const auto& colors = object.at("colors");
-        for (int i = 0; i < kSkinColorCount; ++i) {
+        const int colorCount = version == 2 ? kSkinColorCount - 1 : kSkinColorCount;
+        for (int i = 0; i < colorCount; ++i) {
             if (!DecodeColor(colors.at(kColorKeys[i]), SkinColor(parsed, i))) {
                 error = std::string("Invalid RGBA color: ") + kColorKeys[i];
                 return false;
             }
+        }
+        if (version == 2) {
+            // Preserve the prior implicit hold appearance on import.
+            parsed.hold = parsed.playerCore;
+            parsed.holdWidth = parsed.pathWidth * 1.35f;
         }
         if (!parsed.Valid(error)) return false;
         result = std::move(parsed);

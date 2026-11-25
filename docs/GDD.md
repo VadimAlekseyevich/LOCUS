@@ -130,3 +130,5 @@ Remaining work is tracked in [ROADMAP.md](ROADMAP.md).
 
 
 Difficulty v2 estimates each chart on an uncapped scale using exact timestamps, sustained and peak note density, key combinations, rhythm, route readability and stamina. It is displayed in PLAY and EDIT and never written into chart JSON. Full methodology: [CHART_DIFFICULTY.md](CHART_DIFFICULTY.md).
+
+Hold presentation uses the shared tapered antialiased route ribbon and song-time fade, with separate skin width, opacity, head/tail scales and RGBA color. The same renderer is used in PLAY, TEST and the live skin preview. Skin profiles are written as v3; existing v2 profiles retain their original colors and settings.

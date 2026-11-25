@@ -84,6 +84,15 @@ inline float ScoredPathOpacity(double ahead,
     return std::pow(1.0f - smooth, fadePower);
 }
 
+// Hold heads, tails and body must use the same fade at the same song
+// timestamp. Opacity is a local multiplier on the global path visibility.
+inline float ScoredHoldOpacity(float proximity, float pathOpacity,
+                               float holdOpacity) noexcept {
+    return std::clamp(proximity, 0.0f, 1.0f) *
+           std::clamp(pathOpacity, 0.0f, 1.0f) *
+           std::clamp(holdOpacity, 0.0f, 1.0f);
+}
+
 // Clip each authored beat segment against the four-beat lookahead
 // measured from the player's current fractional beat. Nothing behind
 // the player is drawn, and no integer-beat boundaries cause popping.

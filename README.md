@@ -127,3 +127,5 @@ When the service launches, its published Terms of Service and copyright policy s
 - [Completed Results storage (no replay playback)](docs/RESULTS.md)
 
 The Windows CI checks compilation, chart/editor behavior and scoring without a GUI. Physical audio latency and desktop appearance still require real-device testing.
+
+SKINS → PATH includes HOLD WIDTH, HOLD OPACITY, HOLD HEAD SIZE and HOLD TAIL SIZE (marker scales relative to TURN SIZE); COLORS includes an independent HOLD RGBA color. The live route preview includes a hold and repeated notes. Skin JSON v3 saves these settings; v2 profiles load with the previous implicit hold width and color.

@@ -24,6 +24,11 @@ struct Skin {
     // 180-degree junction semicircle, measured relative to the junction radius.
     // Zero suppresses it; colour and glow are shared with the junction.
     float reverseCapScale = kDefaultReverseCapScale;
+    // Hold geometry and palette are independent of ordinary taps.
+    float holdWidth = 8.1f;
+    float holdOpacity = 1.0f;
+    float holdHeadScale = 1.0f;
+    float holdTailScale = 0.9f;
 
     float playerRadius = 12.5f;
     float baseSpeedPxPerSecond = kDefaultBaseSpeed; // all headings
@@ -42,12 +47,13 @@ struct Skin {
     Color hudText{231, 237, 243, 255};
     Color hitFlash{255, 233, 174, 235};
     Color fieldBorder{245, 248, 252, 255}; // Thin square gameplay border.
+    Color hold{245, 253, 255, 255};
 
     bool Valid(std::string& error) const;
 };
 
 // Stable names and indices used by the interactive color editor.
-constexpr int kSkinColorCount = 10;
+constexpr int kSkinColorCount = 11;
 const char* SkinColorLabel(int index) noexcept;
 Color& SkinColor(Skin& skin, int index) noexcept;
 const Color& SkinColor(const Skin& skin, int index) noexcept;

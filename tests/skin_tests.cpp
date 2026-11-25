@@ -67,6 +67,11 @@ int main() {
     original.fieldBorder = Color{39, 207, 255, 196};
     original.junctionGlow = false;
     original.reverseCapScale = 4.75f;
+    original.holdWidth = 11.5f;
+    original.holdOpacity = 0.625f;
+    original.holdHeadScale = 1.5f;
+    original.holdTailScale = 0.75f;
+    original.hold = Color{51, 210, 77, 199};
     original.showHud = false;
     const std::string json = SerializeSkin(original);
     Skin restored;
@@ -83,6 +88,10 @@ int main() {
           restored.fieldBorder.b == 255 &&
           restored.fieldBorder.a == 196 &&
           restored.reverseCapScale == 4.75f &&
+          restored.holdWidth == 11.5f && restored.holdOpacity == 0.625f &&
+          restored.holdHeadScale == 1.5f && restored.holdTailScale == 0.75f &&
+          restored.hold.r == 51 && restored.hold.g == 210 &&
+          restored.hold.b == 77 && restored.hold.a == 199 &&
           !restored.junctionGlow && !restored.showHud,
           "all values round trip");
     Skin localized = original;
@@ -97,7 +106,7 @@ int main() {
     localized.name += std::string("\xED\xA0\x80", 3);
     check(!localized.Valid(localizedError),
           "malformed UTF-8 skin names are rejected");
-    check(kSkinColorCount == 10 &&
+    check(kSkinColorCount == 11 && std::string(SkinColorLabel(10)) == "HOLD" &&
           std::string(SkinColorLabel(9)) == "FIELD BORDER" &&
           SkinColor(original, 9).g == 207,
           "square border is available as tenth editable RGBA colour");
@@ -120,6 +129,24 @@ int main() {
     check(!ParseSkin(missingBorder.dump(), unchanged, error) &&
           unchanged.name == "Keep",
           "missing current color is rejected");
+    auto missingHold = nlohmann::json::parse(json);
+    missingHold["path"].erase("holdWidth");
+    check(!ParseSkin(missingHold.dump(), unchanged, error),
+          "v3 requires all hold fields");
+    auto invalidHold = nlohmann::json::parse(json);
+    invalidHold["path"]["holdOpacity"] = 1.1;
+    check(!ParseSkin(invalidHold.dump(), unchanged, error),
+          "invalid hold opacity rejected");
+    auto legacyHold = nlohmann::json::parse(json);
+    legacyHold["version"] = 2;
+    for (const char* key : {"holdWidth", "holdOpacity", "holdHeadScale", "holdTailScale"})
+        legacyHold["path"].erase(key);
+    legacyHold["colors"].erase("hold");
+    Skin upgraded;
+    check(ParseSkin(legacyHold.dump(), upgraded, error) &&
+          std::abs(upgraded.holdWidth - original.pathWidth * 1.35f) < 1e-5f &&
+          upgraded.hold.r == original.playerCore.r && upgraded.holdOpacity == 1.0f,
+          "v2 skin retains previous hold color and width when upgraded");
     auto oldFile = nlohmann::json::parse(json);
     oldFile["version"] = 1;
     check(!ParseSkin(oldFile.dump(), unchanged, error) &&
@@ -149,7 +176,12 @@ int main() {
     invalid.baseSpeedPxPerSecond = 2001.0f;
     check(!invalid.Valid(error), "reject invalid base speed");
     // The settings catalog binds labels, toggles and ranges to real fields.
-    check(SkinSettingCount(0) == 8 && SkinSettingCount(1) == 6 &&
+    check(GetSkinSetting(0, 8)->number == &Skin::holdWidth &&
+          GetSkinSetting(0, 9)->number == &Skin::holdOpacity &&
+          GetSkinSetting(0, 10)->number == &Skin::holdHeadScale &&
+          GetSkinSetting(0, 11)->number == &Skin::holdTailScale,
+          "hold settings use the shared native catalog");
+    check(SkinSettingCount(0) == 12 && SkinSettingCount(1) == 6 &&
           SkinSettingCount(2) == 0 &&
           std::string(GetSkinSetting(0, 0)->label) == "PREVIEW TIME (MS)" &&
           std::string(GetSkinSetting(1, 5)->label) == "CAMERA LAG (MS)" &&

@@ -127,9 +127,10 @@ void PreviewPath(Font font, const Skin& skin,
     // wave. This uses the same ribbon, fade, turns and material as PLAY.
     static const core::TimedRoute sampleRoute = [] {
         auto chart = core::MakeDemoChart();
-        chart.turns = {{1, core::Heading::UpRight, 200},
+        chart.turns = {{1, core::Heading::UpRight, 200, 250},
                        {2, core::Heading::DownRight, 450},
-                       {3, core::Heading::Right, 650}};
+                       {3, core::Heading::Right, 650},
+                       {4, core::Heading::Right, 750}};
         core::TimedRoute route;
         route.Compile(chart, 0.0);
         return route;
@@ -248,7 +249,7 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     if (ui.page == 0 || ui.page == 1) {
         for (int row = 0; row < RowCount(ui.page); ++row) {
             Label(font, RowName(ui.page, row), 70.0f,
-                   206.0f + row * RowPitch(ui.page),
+                   199.0f + (RowPitch(ui.page)-14.0f)*0.5f + row * RowPitch(ui.page),
                   14.0f, kMuted);
             SkinNumberRange range;
             if (GetSkinNumberRange(ui.page, row, range)) {
