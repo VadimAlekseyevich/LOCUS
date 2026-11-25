@@ -341,7 +341,6 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     };
 
     if (state.screen == Screen::SongSelect) {
-        if (hit(locus::app::LibraryBackButton())) input.backPressed = true;
         if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
         if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
         if (hit(locus::app::LibraryEditButton())) events.editSelected = true;
@@ -384,13 +383,8 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             break;
         }
     } else if (state.screen == Screen::Skin) {
-        if (hit(locus::app::SkinBackButton())) input.backPressed = true;
-        else events.skinCommand = locus::app::SkinMenuClick(mouse, draftSkin, skinUi);
+        events.skinCommand = locus::app::SkinMenuClick(mouse, draftSkin, skinUi);
     } else if (state.screen == Screen::Settings) {
-        if (hit(locus::app::MenuBackButton())) {
-            input.backPressed = true;
-            return events;
-        }
         for (int group = 0; group < 3; ++group) {
             if (!hit(SettingsBindingGroupButton(group))) continue;
             settingsUi.bindingGroup = group;

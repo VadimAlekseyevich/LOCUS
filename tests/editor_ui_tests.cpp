@@ -110,7 +110,7 @@ int main() {
                 "editor opens with 8x8 square view and automatic route origin");
     // Top note ruler, central square previews and the one bottom row
     // must never overlap or shift when comparisons change.
-    ok &= Check(detail::kTimelineY == 117.0f &&
+    ok &= Check(detail::kTimelineY == 17.0f &&
                 detail::kTimelineY+detail::kTimelineHeight <
                     detail::kPreviewTop &&
                 detail::kSongOverview.y == detail::kRouteTimeValue.y &&
@@ -333,7 +333,7 @@ int main() {
     ok &= Check(markerTick == 3 * segmentedChart.ticksPerBeat &&
                 nextTick == 4 * segmentedChart.ticksPerBeat,
                 "marker and following beat hit their exact local grid positions");
-    EditorControls markerClick = Click(xMarker, 140);
+    EditorControls markerClick = Click(xMarker, 40);
     markerClick.timelineViewBeat = 0.0;
     ApplyEditorControls(segmentedRuler, segmentedUi, markerClick);
     segmentedRuler.PutTurn(Heading::Right);
@@ -441,15 +441,15 @@ int main() {
     // The selected beat stays under the fixed playhead after ruler resizing.
     constexpr float cursor = detail::kPlayheadX;
     chart.SelectBeat(15);
-    ApplyEditorControls(chart, ui, Click(cursor + 36, 140));
+    ApplyEditorControls(chart, ui, Click(cursor + 36, 40));
     ok &= Check(chart.SelectedBeat() == 16,
                 "timeline crosses 15/16 without any page jump");
-    ApplyEditorControls(chart, ui, Click(cursor - 36 * 3, 140));
+    ApplyEditorControls(chart, ui, Click(cursor - 36 * 3, 40));
     ok &= Check(chart.SelectedBeat() == 13,
                 "clicking behind the one-third playhead selects a past beat");
 
     chart.SelectBeat(15);
-    EditorControls moving = Click(cursor + 18, 140);
+    EditorControls moving = Click(cursor + 18, 40);
     moving.timelineViewBeat = 15.5;
     ApplyEditorControls(chart, ui, moving);
     ok &= Check(chart.SelectedBeat() == 16,
@@ -461,10 +461,10 @@ int main() {
     ok &= Check(ui.timelineZoomIndex == 4,
                 "zoom hotkey changes pixels per beat");
     chart.SelectBeat(16);
-    ApplyEditorControls(chart, ui, Click(cursor + 52, 140));
+    ApplyEditorControls(chart, ui, Click(cursor + 52, 40));
     ok &= Check(chart.SelectedBeat() == 17,
                 "zoomed ruler maps clicks to nearby beat ticks");
-    ApplyEditorControls(chart, ui, Click(865, 154));
+    ApplyEditorControls(chart, ui, Click(865, 54));
     ok &= Check(ui.timelineZoomIndex == 3,
                 "zoom-out button restores the original scale");
     EditorControls zoomOut;
@@ -474,7 +474,7 @@ int main() {
     for (int n = 0; n < 10; ++n) ApplyEditorControls(chart, ui, zoomIn);
     ok &= Check(ui.timelineZoomIndex == 6, "zoom-in clamps");
     chart.SelectBeat(chart.Data().route.firstBeat);
-    ApplyEditorControls(chart, ui, Click(60, 140));
+    ApplyEditorControls(chart, ui, Click(60, 40));
     ok &= Check(chart.SelectedBeat() == chart.Data().route.firstBeat,
                 "timeline navigation clamps to derived earliest song beat");
 
@@ -554,18 +554,18 @@ int main() {
     chart.PutTurn(Heading::Right);
     chart.SelectBeat(6);
 
-    EditorControls press = Click(cursor, 140);
+    EditorControls press = Click(cursor, 40);
     press.mouseHeld = true;
     press.timelineViewBeat = 6.0;
     ApplyEditorControls(chart, ui, press);
     EditorControls drag;
     drag.mouseHeld = true;
-    drag.mouse = {cursor + 72.0f, 140};
+    drag.mouse = {cursor + 72.0f, 40};
     drag.timelineViewBeat = 8.0;
     ApplyEditorControls(chart, ui, drag);
     EditorControls release;
     release.mouseReleased = true;
-    release.mouse = {cursor + 72.0f, 140};
+    release.mouse = {cursor + 72.0f, 40};
     ApplyEditorControls(chart, ui, release);
     ok &= Check(ui.HasRange() && ui.rangeFirst == 6 &&
                 ui.rangeLast == 8 && chart.SelectedBeat() == 8,
@@ -579,7 +579,7 @@ int main() {
                 ui.clipboard.notes[1].beat == 2,
                 "Ctrl+C copies group using relative beat positions");
 
-    ApplyEditorControls(chart, ui, Click(cursor + 36.0f * 4.0f, 140));
+    ApplyEditorControls(chart, ui, Click(cursor + 36.0f * 4.0f, 40));
     ok &= Check(!ui.HasRange() && chart.SelectedBeat() == 12,
                 "clicking destination clears previous range selection");
     EditorControls paste;
@@ -603,7 +603,7 @@ int main() {
     chart.SelectBeat(12);
 
     // Shift-click builds a range from the currently selected beat.
-    EditorControls extend = Click(cursor + 72, 140);
+    EditorControls extend = Click(cursor + 72, 40);
     extend.shiftHeld = true;
     ApplyEditorControls(chart, ui, extend);
     ok &= Check(ui.HasRange() && ui.rangeFirst == 12 && ui.rangeLast == 14,
@@ -664,13 +664,13 @@ int main() {
                 "long song provides room for drag autoscroll");
     EditorUiState scrollUi;
     longChart.SelectBeat(20);
-    EditorControls beginDrag = Click(cursor, 140);
+    EditorControls beginDrag = Click(cursor, 40);
     beginDrag.mouseHeld = true;
     beginDrag.elapsedSeconds = 1.0f / 60.0f;
     ApplyEditorControls(longChart, scrollUi, beginDrag);
     const int firstVisibleEdge = longChart.SelectedBeat() + 16;
     EditorControls atRightEdge;
-    atRightEdge.mouse = {909, 140};
+    atRightEdge.mouse = {909, 40};
     atRightEdge.mouseHeld = true;
     atRightEdge.elapsedSeconds = 0.05f;
     for (int frame = 0; frame < 80; ++frame)
@@ -681,12 +681,12 @@ int main() {
                 "holding a range at the right edge extends beyond the visible screen");
     EditorControls stopDrag;
     stopDrag.mouseReleased = true;
-    stopDrag.mouse = {909, 140};
+    stopDrag.mouse = {909, 40};
     ApplyEditorControls(longChart, scrollUi, stopDrag);
     const int finishedSelection = longChart.SelectedBeat();
     for (int i = 0; i < 20; ++i) {
         EditorControls idle;
-        idle.mouse = {909, 140};
+        idle.mouse = {909, 40};
         idle.elapsedSeconds = 0.05f;
         ApplyEditorControls(longChart, scrollUi, idle);
     }
@@ -698,7 +698,7 @@ int main() {
     scrollUi = EditorUiState{};
     ApplyEditorControls(longChart, scrollUi, beginDrag);
     EditorControls atLeftEdge;
-    atLeftEdge.mouse = {51, 140};
+    atLeftEdge.mouse = {51, 40};
     atLeftEdge.mouseHeld = true;
     atLeftEdge.elapsedSeconds = 0.05f;
     for (int i = 0; i < 50; ++i)
@@ -839,8 +839,8 @@ int main() {
     snapChart.SelectBeat(5);
     snapChart.PutTurn(Heading::Left);
     const auto originalTime = snapChart.Data().route.turns.front().timeMs;
-    const auto half = ApplyEditorControls(snapChart, snapUi, Click(905, 130));
-    const auto third = ApplyEditorControls(snapChart, snapUi, Click(905, 130));
+    const auto half = ApplyEditorControls(snapChart, snapUi, Click(905, 30));
+    const auto third = ApplyEditorControls(snapChart, snapUi, Click(905, 30));
     ok &= Check(half.changedChart && third.changedChart &&
                 snapChart.Data().route.snapDivision == 3 &&
                 snapChart.Data().route.ticksPerBeat == 6 &&
@@ -848,7 +848,7 @@ int main() {
                 snapChart.Data().route.turns.front().timeMs == originalTime &&
                 snapUi.timelineZoomIndex == 3,
                 "MORE grid button reaches triplets without changing BPM, notes or zoom");
-    const auto coarser = ApplyEditorControls(snapChart, snapUi, Click(865, 130));
+    const auto coarser = ApplyEditorControls(snapChart, snapUi, Click(865, 30));
     ok &= Check(coarser.changedChart &&
                 snapChart.Data().route.snapDivision == 2 &&
                 snapChart.Data().route.turns.front().timeMs == originalTime,

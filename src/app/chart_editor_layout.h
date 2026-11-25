@@ -13,7 +13,7 @@ constexpr float kGridCenterX = 448.0f, kGridCenterY = 282.0f;
 constexpr float kGridMaxSpan = 240.0f;
 // Zoomable, note-bearing ruler sits beneath the editor tabs.
 // The separate full-song overview is always mapped to actual audio seconds.
-constexpr float kTimelineX = 52.0f, kTimelineY = 117.0f;
+constexpr float kTimelineX = 52.0f, kTimelineY = 17.0f;
 constexpr float kTimelineWidth = 660.0f, kTimelineHeight = 47.0f;
 constexpr Rectangle kEditorPreviewPlay{52, 485, 39, 40};
 constexpr Rectangle kEditorPreviewRestart{96, 485, 39, 40};
@@ -32,10 +32,10 @@ constexpr float kDragEdgeZone = 48.0f;
 constexpr float kBarRepeatDelay = 0.23f;
 constexpr float kBarRepeatInterval = 0.075f;
 constexpr float kBarRepeatFastInterval = 0.04f;
-constexpr Rectangle kSnapLess{846, 118, 37, 22};
-constexpr Rectangle kSnapMore{888, 118, 37, 22};
-constexpr Rectangle kZoomOut{846, 143, 37, 22};
-constexpr Rectangle kZoomIn{888, 143, 37, 22};
+constexpr Rectangle kSnapLess{846, 18, 37, 22};
+constexpr Rectangle kSnapMore{888, 18, 37, 22};
+constexpr Rectangle kZoomOut{846, 43, 37, 22};
+constexpr Rectangle kZoomIn{888, 43, 37, 22};
 constexpr int kSnapDivisions[9] = {1, 2, 3, 4, 6, 8, 12, 16, 24};
 
 inline float PixelsPerBeat(const EditorUiState& ui) {
@@ -187,8 +187,8 @@ constexpr Rectangle kComparePickerNext{266, 420, 78, 21};
 // Each preview remains square; shared comparison layouts never shift slots.
 constexpr float kPreviewLeft = 106.0f;
 constexpr float kPreviewRight = 733.0f;
-constexpr float kPreviewTop = 179.0f;
-constexpr float kPreviewMaxSide = 280.0f;
+constexpr float kPreviewTop = 79.0f;
+constexpr float kPreviewMaxSide = 380.0f;
 constexpr float kPreviewGap = 8.0f;
 inline Rectangle ComparisonPreviewBounds(int count, int index) noexcept {
     const int visible = std::clamp(count, 1, 3);

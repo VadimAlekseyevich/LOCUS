@@ -325,8 +325,6 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     // Layout: 352px info/attempts left, 564px scrollable song tree right.
     panel({14, 65, 350, 461});
     panel({382, 65, 564, 461});
-    action(LibraryBackButton(), "BACK", UiButtonVariant::Quiet);
-    Label(font, "PLAY", 139, 17, 22, sky);
 
     const LibrarySong* song = ui.selectedSong > 0 &&
         ui.selectedSong <= static_cast<int>(library.Songs().size())
@@ -478,8 +476,6 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
 
 void DrawSettingsMenu(Font font, const GameSettings& settings,
                       const SettingsUi& ui) {
-    Header(font, "SETTINGS");
-    Button(font, MenuBackButton(), "BACK", kMuted);
 
     // Both columns have explicit boundaries and consistent row spacing;
     // controls no longer sink into a footer or overlap debugging text.

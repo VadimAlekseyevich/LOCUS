@@ -250,11 +250,6 @@ void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
 
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     const auto& theme=ApprovedUiTheme();
-    const Rectangle header{44,69,892,49};
-    DrawRectangleRounded(header,UiRoundness(header,11),9,theme.surface);
-    DrawUiThemedButton(font,SkinBackButton(),"BACK",UiButtonVariant::Quiet,
-                       {},{},theme,14);
-    Label(font,"SKINS",166,84,22,theme.softBlue);
     Label(font,"NAME",650,87,12,kMuted);
     DrawInput(font,NameField(),skin.name,ui.editingName,
               ui.editingName&&ui.nameSelectAll);

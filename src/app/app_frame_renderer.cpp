@@ -128,8 +128,6 @@ static void DrawHomeScreen(Font font, const std::string& message,
 
 static void DrawLocalMusicScreen(Font font, const locus::app::LocalMusic& song,
                           double now, const std::string& musicError) {
-    DrawTextLabel(font, "YOUR MUSIC  /  LISTEN MODE", Vector2{88.0f, 112.0f},
-                  35.0f, Color{163, 233, 228, 255});
     DrawTextLabel(font, song.DisplayName().c_str(), Vector2{89.0f, 187.0f},
                   25.0f, Color{231, 232, 246, 255});
 
@@ -162,8 +160,6 @@ static void DrawLocalMusicScreen(Font font, const locus::app::LocalMusic& song,
                  MenuButtonStyle({183, 166, 243, 255}));
     DrawUiButton(font, kListenChooseButton, "CHOOSE MUSIC",
                  MenuButtonStyle({237, 219, 163, 255}));
-    DrawUiButton(font, kListenHomeButton, "HOME",
-                 MenuButtonStyle({177, 194, 217, 255}));
     DrawTextLabel(font,
                   musicError.empty()
                       ? "NO TURN CHART YET - SONG PREVIEW ONLY"
@@ -240,14 +236,6 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     camera.target = Vector2{0.0f, 0.0f};
     camera.zoom = transform.scale;
     BeginMode2D(camera);
-
-    // No wordmark or global help text during scoring: only field + hits.
-    if (state.screen != Screen::Play && state.screen != Screen::Home &&
-        state.screen != Screen::SongSelect && state.screen != Screen::Settings &&
-        state.screen != Screen::Results) {
-        DrawTextLabel(font, "LOCUS", Vector2{50.0f, 38.0f}, 30.0f,
-                      Color{223, 225, 238, 255});
-    }
 
     if (state.screen == Screen::Home) {
 #ifdef LOCUS_WITH_RMLUI

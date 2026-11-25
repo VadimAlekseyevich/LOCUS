@@ -405,10 +405,10 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     if (ui.tab == EditorTab::Route) {
         const auto& colors = ApprovedUiTheme();
         Label(font, TextFormat("SNAP 1/%d", chart.snapDivision),
-              730, 121, 12, colors.softBlue);
+              730, kTimelineY + 4, 12, colors.softBlue);
         Label(font, TextFormat("ZOOM %d%%",
               static_cast<int>(std::round(PixelsPerBeat(ui)/36.0f*100))),
-              730, 146, 12, colors.secondaryText);
+              730, kTimelineY + 29, 12, colors.secondaryText);
         CompactButton(font, kSnapLess, "-", colors.rose);
         CompactButton(font, kSnapMore, "+", colors.softBlue);
         CompactButton(font, kZoomOut, "-", colors.rose);
@@ -492,17 +492,6 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     const Color sky = theme.softBlue;
     const Color muted = theme.secondaryText;
 
-    // Native editor shell replaces ONLY common chrome, not authoring views.
-    if (!nativeShell) {
-    DrawRectangleRounded({43,65,899,45},.12f,8,theme.surface);
-    DrawUiThemedButton(font,kEditorBack,routeTab?"SONG SETUP":"BACK",
-                       UiButtonVariant::Quiet,{}, {},theme,12);
-    const auto activeTitle = routeTab ? "CHART EDITOR / " + Truncate(draft.Data().title,40)
-                                     : std::string("SONG SETUP");
-    Label(font,activeTitle.c_str(),160,80,16,theme.foreground);
-    if (draft.Dirty()) Label(font,"*",650,79,19,violet);
-    }
-
     if (routeTab) {
         // Unlike the old horizontal button bars, this six-icon vertical
         // rail never reduces the usable height of the playing field.
@@ -545,6 +534,9 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Label(font,TextFormat("%.1f",draft.Difficulty().overall),
               focusedBounds.x+focusedBounds.width-43,
               focusedBounds.y+23,12,sky);
+        if (draft.Dirty())
+            Label(font,"*",focusedBounds.x+focusedBounds.width-14,
+                  focusedBounds.y+4,14,violet);
 
         if (!nativeShell) {
         // Only the compass buttons place notes; diagonal counts also

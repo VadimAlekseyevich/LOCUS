@@ -19,7 +19,9 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     const auto shortcut = [&](ShortcutAction action) {
         return ShortcutPressed(settings, action);
     };
-    const bool back = shortcut(ShortcutAction::Back);
+    const bool back = shortcut(ShortcutAction::Back) ||
+        (currentScreen != Screen::Play && currentScreen != Screen::Home &&
+         IsKeyPressed(KEY_ESCAPE));
     const bool gameplayKeys = currentScreen == Screen::Play ||
                               currentScreen == Screen::Results;
     input.closeRequested = ConsumeNativeCloseRequest() ||
@@ -151,15 +153,6 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
         else if (PlayButtonHit(kPlayLeaveButton, mouse, width, height))
             input.leaveRequested = true;
     }
-    if (state.screen == Screen::Editor && input.editor.mouseClick) {
-        const Vector2 mouse = input.editor.mouse;
-        const auto hit = [&](Rectangle r) {
-            return CheckCollisionPointRec(mouse, r);
-        };
-        if (hit(detail::kEditorBack)) input.backPressed = true;
-        // File operations are keyboard shortcuts (Ctrl+S / Ctrl+Shift+S /
-        // Ctrl+O / Ctrl+N); there are no duplicate footer buttons.
-    }
     if ((state.screen == Screen::Listen || state.screen == Screen::Results) &&
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         const Vector2 pointer = GetMousePosition();
@@ -171,10 +164,8 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
             if (hit(kListenPauseButton)) input.pausePressed = true;
             else if (hit(kListenReplayButton)) input.restartPressed = true;
             else if (hit(kListenChooseButton)) input.chooseMusicPressed = true;
-            else if (hit(kListenHomeButton)) input.homePressed = true;
         } else {
             if (hit(kResultsReplayButton)) input.restartPressed = true;
-            else if (hit(kResultsLibraryButton)) input.homePressed = true;
             else if (hit(kResultsEditorButton)) input.openEditorPressed = true;
         }
     }
