@@ -111,12 +111,51 @@ void ReconcileEditorComparisons(EditorUiState& ui,
         std::max(0, static_cast<int>(set.comparisonOptions.size()) - 5));
 }
 
+int EditorComparisonIndex(const EditorSetView& set,
+                          const std::filesystem::path& file) noexcept {
+    if (file.empty()) return -1;
+    const auto found = std::find_if(set.comparisonOptions.begin(),
+        set.comparisonOptions.end(), [&](const EditorComparisonOption& option) {
+            return option.file == file && option.chart;
+        });
+    return found == set.comparisonOptions.end() ? -1 :
+        static_cast<int>(found - set.comparisonOptions.begin());
+}
+
+bool CanOpenEditorComparison(const EditorSetView& set) noexcept {
+    if (!set.managed) return false;
+    for (std::size_t i=0; i<set.comparisonOptions.size(); ++i)
+        if (static_cast<int>(i) != set.current && set.comparisonOptions[i].chart &&
+            !set.comparisonOptions[i].file.empty()) return true;
+    return false;
+}
+
 void HandleEditorComparisonControls(EditorUiState& ui,
                                     const EditorSetView& set,
                                     const EditorControls& input) {
     ReconcileEditorComparisons(ui, set);
-    if (input.escape && ui.comparisonPickerOpen) {
+    if ((input.escape || input.compareAction == ComparePickerAction::Dismiss) &&
+        ui.comparisonPickerOpen) {
         ui.comparisonPickerOpen = false;
+        return;
+    }
+    if (input.compareAction == ComparePickerAction::Toggle) {
+        const bool alternatives = CanOpenEditorComparison(set);
+        ui.comparisonPickerOpen = alternatives && !ui.comparisonPickerOpen;
+        ui.comparisonPickerFirst = 0;
+        if (!alternatives) {
+            ui.feedback = "OPEN A SONG SET WITH MULTIPLE CHARTS";
+            ui.feedbackError = true;
+        }
+        return;
+    }
+    if (input.compareAction == ComparePickerAction::Select) {
+        if (!ui.comparisonPickerOpen) return;
+        const int index = EditorComparisonIndex(set, input.compareFile);
+        if (!ToggleEditorComparison(ui, set, index)) {
+            ui.feedback = "MAX THREE ROUTES / ACTIVE CHART IS ALREADY SHOWN";
+            ui.feedbackError = true;
+        }
         return;
     }
     const Vector2 mouse = input.mouse;
@@ -129,14 +168,7 @@ void HandleEditorComparisonControls(EditorUiState& ui,
     }
     if (!input.mouseClick) return;
     if (detail::Hit(detail::CompareToggleBounds(ui), mouse)) {
-        const bool alternatives = set.managed &&
-            std::any_of(set.comparisonOptions.begin(),
-                        set.comparisonOptions.end(),
-                        [&](const EditorComparisonOption& option) {
-                            const auto index = &option -
-                                set.comparisonOptions.data();
-                            return option.chart && index != set.current;
-                        });
+        const bool alternatives = CanOpenEditorComparison(set);
         // Always respond to the click: opening a picker with no managed
         // chart is misleading, so leave it closed until a set is selected.
         ui.comparisonPickerOpen = alternatives && !ui.comparisonPickerOpen;

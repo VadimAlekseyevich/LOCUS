@@ -81,7 +81,11 @@ bool HasEditorComparison(const EditorUiState& ui,
 // Drop missing/now-active references after file removal or library refresh.
 void ReconcileEditorComparisons(EditorUiState& ui,
                                 const EditorSetView& set);
-// Handles a ROUTE picker click exclusively, including opening from
+// Resolve an event against the current library, never trust a stale row index.
+int EditorComparisonIndex(const EditorSetView& set,
+                          const std::filesystem::path& file) noexcept;
+bool CanOpenEditorComparison(const EditorSetView& set) noexcept;
+// Handles a ROUTE picker command exclusively, including opening from
 // COMPARE+. The caller must not pass the same click to note/transport input.
 void HandleEditorComparisonControls(EditorUiState& ui,
                                     const EditorSetView& set,

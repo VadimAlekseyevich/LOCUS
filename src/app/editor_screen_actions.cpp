@@ -116,6 +116,7 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     const bool compareInteraction =
         context_.ui.tab == EditorTab::Route &&
         (context_.ui.comparisonPickerOpen || previewFocusClick ||
+         input.editor.compareAction != ComparePickerAction::None ||
          (input.editor.mouseClick &&
           detail::Hit(detail::CompareToggleBounds(context_.ui), input.editor.mouse)));
     if (compareInteraction) {

@@ -226,6 +226,28 @@ int main() {
     ok &= Check(popup.comparisonPickerOpen && popup.comparisonFiles.size() == 1,
                 "compare picker follows its measured anchor after resize");
 
+    EditorUiState nativePicker;
+    EditorControls typed;
+    typed.nativeChrome = true;
+    typed.compareAction = ComparePickerAction::Toggle;
+    HandleEditorComparisonControls(nativePicker,view,typed);
+    ok &= Check(nativePicker.comparisonPickerOpen,"native compare command opens picker without coordinates");
+    typed.compareAction = ComparePickerAction::Select;
+    typed.compareFile = view.comparisonOptions[2].file;
+    auto reordered = view;
+    std::swap(reordered.comparisonOptions[1],reordered.comparisonOptions[2]);
+    HandleEditorComparisonControls(nativePicker,reordered,typed);
+    ok &= Check(nativePicker.comparisonFiles.size()==1 &&
+                nativePicker.comparisonFiles.front()==typed.compareFile &&
+                nativePicker.comparisonPickerOpen,
+                "typed compare resolves file identity after library reorder");
+    typed.compareFile = "/songs/other/missing.json";
+    HandleEditorComparisonControls(nativePicker,reordered,typed);
+    ok &= Check(nativePicker.comparisonFiles.size()==1,"stale native selection cannot toggle another file");
+    typed.compareAction = ComparePickerAction::Dismiss;
+    HandleEditorComparisonControls(nativePicker,reordered,typed);
+    ok &= Check(!nativePicker.comparisonPickerOpen && nativePicker.comparisonFiles.size()==1,
+                "native dismissal preserves selected references");
     const auto revision = editor.RouteRevision();
     ok &= Check(!ToggleEditorComparison(ui, view, 0) &&
                 ToggleEditorComparison(ui, view, 1) &&

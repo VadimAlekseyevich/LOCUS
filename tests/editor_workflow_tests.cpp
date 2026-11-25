@@ -254,6 +254,21 @@ int main() {
                 files.ParkedEditor(installedHard)->Dirty(),
                 "Hard > Focus Easy restores both unsaved histories");
 
+    app::EditorControls compare;
+    compare.nativeChrome = true;
+    compare.compareAction = app::ComparePickerAction::Toggle;
+    sets.HandleControls(compare);
+    compare.compareAction = app::ComparePickerAction::Select;
+    compare.compareFile = installedHard;
+    sets.HandleControls(compare);
+    ok &= Check(editorUi.comparisonPickerOpen && files.PendingClose()==installedHard &&
+                files.HasDirtyParked(),
+                "native minus uses dirty reference guard without closing picker");
+    ok &= Check(files.ResolveClose(false,false,now) && editorUi.comparisonPickerOpen &&
+                files.PendingClose().empty() && files.HasDirtyParked(),
+                "cancel dirty reference removal restores native picker");
+    compare.compareAction = app::ComparePickerAction::Dismiss;
+    sets.HandleControls(compare);
     const auto* parkedHard = files.ParkedEditor(installedHard);
     const int selectedBeforeTest = editor.SelectedBeat();
     ok &= Check(editor.CanUndo() && parkedHard && parkedHard->CanUndo(),

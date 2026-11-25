@@ -385,7 +385,14 @@ void EditorSetController::HandleControls(const EditorControls& input) {
     const bool clicked = input.mouseClick;
     if (ui.tab == EditorTab::Route) {
         if (ui.active != EditorField::None) return;
-        if (input.mouseClick) {
+        if (input.compareAction == ComparePickerAction::Select &&
+            ui.comparisonPickerOpen &&
+            EditorComparisonIndex(View(),input.compareFile) >= 0 &&
+            HasEditorComparison(ui,input.compareFile)) {
+            ctx_.files.RequestCloseComparison(input.compareFile);
+            return;
+        }
+        if (input.mouseClick && input.compareAction == ComparePickerAction::None) {
             const EditorSetView view = View();
             // A preview click changes focus; this frame must not also edit
             // the old chart. The top ruler and controls subsequently use

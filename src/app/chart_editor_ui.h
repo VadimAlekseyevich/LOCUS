@@ -17,6 +17,8 @@ namespace locus::app {
 enum class EditorSetAction;
 enum class EditorSetField;
 
+enum class ComparePickerAction { None, Toggle, Dismiss, Select };
+
 struct EditorControls {
     bool previousBeat = false, nextBeat = false;
     bool previousBar = false, nextBar = false; // Four beats = one 4/4 bar.
@@ -50,6 +52,8 @@ struct EditorControls {
     int rotateStartHeading = 0;
     int previewSpeedDelta = 0;
     int previewLengthDelta = 0;
+    ComparePickerAction compareAction = ComparePickerAction::None;
+    std::filesystem::path compareFile; // Stable file identity, never row index.
     // Typed Set editor operations. No synthetic raylib click coordinates.
     std::optional<EditorSetAction> setRequest;
     int selectedDifficulty = -1;
