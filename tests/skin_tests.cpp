@@ -68,6 +68,7 @@ int main() {
     original.junctionGlow = false;
     original.reverseCapScale = 4.75f;
     original.showHud = false;
+    original.showHitErrorBar = true;
     const std::string json = SerializeSkin(original);
     Skin restored;
     std::string error;
@@ -83,7 +84,7 @@ int main() {
           restored.fieldBorder.b == 255 &&
           restored.fieldBorder.a == 196 &&
           restored.reverseCapScale == 4.75f &&
-          !restored.junctionGlow && !restored.showHud,
+          !restored.junctionGlow && !restored.showHud && restored.showHitErrorBar,
           "all values round trip");
     Skin localized = original;
     localized.name = u8"Мой скин — Café 日本語";
@@ -149,13 +150,14 @@ int main() {
     invalid.baseSpeedPxPerSecond = 2001.0f;
     check(!invalid.Valid(error), "reject invalid base speed");
     // The settings catalog binds labels, toggles and ranges to real fields.
-    check(SkinSettingCount(0) == 8 && SkinSettingCount(1) == 6 &&
+    check(SkinSettingCount(0) == 8 && SkinSettingCount(1) == 7 &&
           SkinSettingCount(2) == 0 &&
           std::string(GetSkinSetting(0, 0)->label) == "PREVIEW TIME (MS)" &&
           std::string(GetSkinSetting(1, 5)->label) == "CAMERA LAG (MS)" &&
           GetSkinSetting(1, 5)->number == &Skin::cameraLagMs &&
           GetSkinSetting(0, 6)->toggle == &Skin::junctionGlow &&
           GetSkinSetting(1, 4)->toggle == &Skin::showHud &&
+          GetSkinSetting(1, 6)->toggle == &Skin::showHitErrorBar &&
           !GetSkinSetting(0, 6)->number &&
           GetSkinSetting(1, 5)->wholeMilliseconds,
           "skin row descriptors are the single source for numeric and toggle widgets");
@@ -164,6 +166,7 @@ int main() {
           !GetSkinToggle(toggleFixture, 0, 6) &&
           FlipSkinToggle(toggleFixture, 1, 2) && !toggleFixture.playerGlow &&
           FlipSkinToggle(toggleFixture, 1, 4) && !toggleFixture.showHud &&
+          FlipSkinToggle(toggleFixture, 1, 6) && toggleFixture.showHitErrorBar &&
           !FlipSkinToggle(toggleFixture, 1, 5) &&
           !FlipSkinToggle(toggleFixture, 2, 0) &&
           !GetSkinSetting(1, 6),

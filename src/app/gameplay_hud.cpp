@@ -30,10 +30,44 @@ constexpr Color kGradeColors[] = {
     {237, 198, 143, 255}, {239, 149, 168, 255}
 };
 
+void DrawHitErrorBar(const GameplayHudLayout& l, const Skin& skin,
+                     const HitErrorHistory* errors, double now) {
+    const auto b = l.hitError;
+    const float u = l.unit;
+    const float center = b.x+b.width*0.5f;
+    const auto xFor = [&](double error) {
+        return center + b.width*0.5f*static_cast<float>(
+            std::clamp(error/core::kBadWindowSeconds,-1.0,1.0));
+    };
+    const float y = b.y+b.height*0.5f;
+    const auto range = [&](double from, double to, Color c) {
+        const float x = xFor(from);
+        DrawRectangleRec({x,y-2.0f*u,xFor(to)-x,4.0f*u},
+                         WithOpacity(c,0.45f*skin.hudText.a/255.0f));
+    };
+    range(-core::kBadWindowSeconds,-core::kGoodWindowSeconds,kGradeColors[2]);
+    range(-core::kGoodWindowSeconds,-core::kPerfectWindowSeconds,kGradeColors[1]);
+    range(-core::kPerfectWindowSeconds,core::kPerfectWindowSeconds,kGradeColors[0]);
+    range(core::kPerfectWindowSeconds,core::kGoodWindowSeconds,kGradeColors[1]);
+    range(core::kGoodWindowSeconds,core::kBadWindowSeconds,kGradeColors[2]);
+    DrawRectangleRec({center-u,y-7.0f*u,2.0f*u,14.0f*u},skin.hudText);
+    if (!errors) return;
+    for (std::size_t i=0; i<errors->Size(); ++i) {
+        const auto& sample=errors->At(i);
+        const float opacity=HitErrorHistory::Opacity(sample,now);
+        if (opacity<=0.0f) continue;
+        const float x=xFor(sample.errorSeconds);
+        const auto c=kGradeColors[static_cast<int>(sample.grade)];
+        DrawRectangleRec({x-u,y-6.0f*u,2.0f*u,12.0f*u},
+                         WithOpacity(c,opacity*skin.hudText.a/255.0f));
+    }
+}
+
 } // namespace
 
 void DrawGameplayHud(Font font, const GameplayHudLayout& l,
-                     const GameplayHudStats& stats, const Skin& skin) {
+                     const GameplayHudStats& stats, const Skin& skin,
+                     const HitErrorHistory* errors, double now) {
     if (!skin.showHud || l.bounds.width <= 0 || l.bounds.height <= 0) return;
     const float u = l.unit;
     const Color text = skin.hudText;
@@ -49,6 +83,7 @@ void DrawGameplayHud(Font font, const GameplayHudLayout& l,
         Text(font,value,l.accuracy,41,12,u,muted,Align::Right);
     }
 
+    if (skin.showHitErrorBar) DrawHitErrorBar(l,skin,errors,now);
     if (l.grades.width <= 0.0f) return;
     const int counts[] = {stats.grades.perfect, stats.grades.good,
                           stats.grades.bad, stats.grades.miss};

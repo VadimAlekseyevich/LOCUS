@@ -31,6 +31,7 @@ struct Skin {
     bool playerGlow = true;
     float hitFlashScale = 1.0f;
     bool showHud = true;
+    bool showHitErrorBar = false; // optional, bottom-center timing feedback
 
     Color background{21, 23, 33, 255};
     Color trajectory{255, 70, 84, 255};

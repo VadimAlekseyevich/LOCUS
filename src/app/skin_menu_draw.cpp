@@ -174,7 +174,11 @@ void PreviewPath(Font font, const Skin& skin,
     GameplayHudStats sample;
     sample.grades = {42, 6, 1, 2};
     sample.combo = 18;
-    DrawGameplayHud(font,LayoutGameplayHud(area,frame),sample,skin);
+    HitErrorHistory errors;
+    errors.Record({core::Grade::Perfect,0,-0.022},0.0);
+    errors.Record({core::Grade::Good,0,0.083},0.2);
+    errors.Record({core::Grade::Perfect,0,0.012},0.4);
+    DrawGameplayHud(font,LayoutGameplayHud(area,frame),sample,skin,&errors,0.5);
 }
 
 void DrawColorPickerWheel(const Skin& skin, const SkinUi& ui) {

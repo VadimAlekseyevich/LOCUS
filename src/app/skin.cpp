@@ -133,7 +133,7 @@ std::string SerializeSkin(const Skin& skin) {
             {"glow", skin.playerGlow},
             {"hitFlashScale", skin.hitFlashScale}
         }},
-        {"hud", {{"visible", skin.showHud}}},
+        {"hud", {{"visible", skin.showHud}, {"hitErrorBar", skin.showHitErrorBar}}},
         {"colors", std::move(colors)}
     };
     return object.dump(2) + "\n";
@@ -169,6 +169,7 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         parsed.playerGlow = player.at("glow").get<bool>();
         parsed.hitFlashScale = player.at("hitFlashScale").get<float>();
         parsed.showHud = object.at("hud").at("visible").get<bool>();
+        parsed.showHitErrorBar = object.at("hud").value("hitErrorBar", false);
         const auto& colors = object.at("colors");
         for (int i = 0; i < kSkinColorCount; ++i) {
             if (!DecodeColor(colors.at(kColorKeys[i]), SkinColor(parsed, i))) {

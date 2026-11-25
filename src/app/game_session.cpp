@@ -116,7 +116,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 direction, CalibratedTime(timestamp, playbackRate));
             if (judgement && !judgement->wrongDirection &&
                 judgement->grade != core::Grade::Miss)
-                hitFlash_.Trigger(judgement->grade, now);
+                hitFlash_.Trigger(*judgement, now);
         };
         if (arrows.precise) {
             if (arrows.events) {

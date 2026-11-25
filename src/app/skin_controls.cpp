@@ -34,7 +34,8 @@ constexpr SkinSetting kPlayerSettings[] = {
     {"PLAYER GLOW",      {}, nullptr, &Skin::playerGlow},
     {"HIT FLASH SIZE",   {0.5, 2, 0.1, 8},          &Skin::hitFlashScale},
     {"SHOW HUD",         {}, nullptr, &Skin::showHud},
-    {"CAMERA LAG (MS)",  {0, 500, 0, 1500},         &Skin::cameraLagMs, nullptr, true}
+    {"CAMERA LAG (MS)",  {0, 500, 0, 1500},         &Skin::cameraLagMs, nullptr, true},
+    {"HIT ERROR BAR",     {}, nullptr, &Skin::showHitErrorBar}
 };
 }
 

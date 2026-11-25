@@ -59,6 +59,25 @@ int main() {
     ok &= Check(flash.Sample(40.05).intensity == 0.0f,
                 "pause, retry and scene exit can clear effects immediately");
 
+    flash.Trigger(Judgement{Grade::Perfect,0,-0.025},50.0);
+    flash.Trigger(Judgement{Grade::Good,0,0.08},50.0);
+    flash.Trigger(Judgement{Grade::Miss,0,0.0,true},50.0);
+    ok &= Check(flash.Errors().Size()==2 &&
+                flash.Errors().At(0).errorSeconds==-0.025 &&
+                flash.Errors().At(1).errorSeconds==0.08,
+                "independent diagonal timing marks survive one input batch");
+    ok &= Check(HitErrorHistory::Opacity(flash.Errors().At(0),50.0)==1.0f &&
+                HitErrorHistory::Opacity(flash.Errors().At(0),52.0)==0.0f,
+                "timing marks expire in wall time");
+    for (int i=0;i<100;++i)
+        flash.Trigger(Judgement{Grade::Perfect,0,0.001*i},53.0);
+    ok &= Check(flash.Errors().Size()==HitErrorHistory::kCapacity &&
+                std::abs(flash.Errors().At(0).errorSeconds-0.036)<1e-9 &&
+                std::abs(flash.Errors().At(63).errorSeconds-0.099)<1e-9,
+                "timing history has fixed capacity and chronological draw order");
+    flash.Reset();
+    ok &= Check(flash.Errors().Size()==0,"reset clears timing marks");
+
     if (!ok) return 1;
     std::cout << "HIT_FLASH_PASS success-only attached pulse, fading and reset\n";
     return 0;

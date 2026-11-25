@@ -145,3 +145,5 @@ When the service launches, its published Terms of Service and copyright policy s
 - [Completed Results and scoring replay storage](docs/RESULTS.md)
 
 The Windows CI checks compilation, chart/editor behavior and scoring without a GUI. Physical audio latency and desktop appearance still require real-device testing.
+
+**Optional timing feedback:** SKIN → PLAYER → HIT ERROR BAR shows early/late successful physical arrow hits on a small bottom-center timing scale (original song-time windows). The newest marks fade after 1.25 seconds of real time, with at most 64 retained marks and no per-hit allocations. SKINS preview uses the same renderer; the bar is disabled by default, hidden with SHOW HUD, and older skin v2 files without `hud.hitErrorBar` default to off.

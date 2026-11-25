@@ -19,7 +19,8 @@
     "cameraLagMs": 180
   },
   "hud": {
-    "visible": true
+    "visible": true,
+    "hitErrorBar": false
   },
   "colors": {
     "background": [

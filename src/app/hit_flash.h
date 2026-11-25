@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/judgement.h"
+#include "app/hit_error_history.h"
 
 #include <cmath>
 
@@ -20,6 +21,7 @@ public:
     void Reset() noexcept {
         startedAt_ = -1.0;
         strength_ = 0.0f;
+        errors_.Reset();
     }
 
     void Trigger(core::Grade grade, double now) noexcept {
@@ -28,6 +30,13 @@ public:
         strength_ = grade == core::Grade::Perfect ? 1.0f
                   : grade == core::Grade::Good ? 0.75f : 0.42f;
     }
+
+    void Trigger(const core::Judgement& hit, double now) noexcept {
+        if (hit.wrongDirection) return;
+        errors_.Record(hit, now);
+        Trigger(hit.grade, now);
+    }
+    const HitErrorHistory& Errors() const noexcept { return errors_; }
 
     HitFlashFrame Sample(double now) const noexcept {
         if (startedAt_ < 0.0 || !std::isfinite(now) || now < startedAt_)
@@ -42,6 +51,7 @@ public:
 private:
     double startedAt_ = -1.0;
     float strength_ = 0.0f;
+    HitErrorHistory errors_;
 };
 
 } // namespace locus::app

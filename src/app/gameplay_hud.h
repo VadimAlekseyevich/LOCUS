@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/skin.h"
+#include "app/hit_error_history.h"
 #include "core/judgement.h"
 #include "raylib.h"
 
@@ -13,7 +14,7 @@ namespace locus::app {
 struct GameplayHudLayout {
     Rectangle bounds{};
     float unit = 1.0f;
-    Rectangle combo{}, accuracy{}, grades{}, notice{};
+    Rectangle combo{}, accuracy{}, grades{}, notice{}, hitError{};
 };
 
 inline GameplayHudLayout LayoutGameplayHud(Rectangle bounds,
@@ -53,6 +54,13 @@ inline GameplayHudLayout LayoutGameplayHud(Rectangle bounds,
                       bounds.y+(bounds.height-kGradeHeight*u)*0.5f,
                       width, kGradeHeight*u};
     }
+    // A narrow, optional bottom-center timing bar. Keep it clear of the
+    // combo corner in square/portrait layouts.
+    const float barWidth = 144.0f*u;
+    out.hitError = {bounds.x+(bounds.width-barWidth)*0.5f,
+                    bottom-18.0f*u,barWidth,18.0f*u};
+    if (out.hitError.x < out.combo.x+out.combo.width+4.0f*u)
+        out.hitError.y = out.combo.y-22.0f*u;
     out.notice = {bounds.x+(bounds.width-260.0f*u)*0.5f,
                   top+66.0f*u,260.0f*u,28.0f*u};
     return out;
@@ -70,7 +78,8 @@ inline GameplayHudStats MakeGameplayHudStats(const core::TurnJudge& judge,
 }
 
 void DrawGameplayHud(Font font, const GameplayHudLayout& layout,
-                     const GameplayHudStats& stats, const Skin& skin);
+                     const GameplayHudStats& stats, const Skin& skin,
+                     const HitErrorHistory* errors = nullptr, double now = 0.0);
 void DrawGameplayNotice(Font font, const GameplayHudLayout& layout,
                         const char* notice, const Skin& skin);
 void DrawGameplayFieldEdges(Rectangle field, Rectangle visible, Color tint);
