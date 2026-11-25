@@ -704,6 +704,16 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_library_browser_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json Threads::Threads)
     add_test(NAME locus_library_browser_selection COMMAND locus_library_browser_tests)
+    if(LOCUS_ENABLE_RMLUI)
+        target_sources(locus_library_browser_tests PRIVATE
+            tests/native_play_ui_tests.cpp
+            src/app/native_play_ui.cpp)
+        target_compile_definitions(locus_library_browser_tests PRIVATE LOCUS_TEST_NATIVE_PLAY=1)
+        target_link_libraries(locus_library_browser_tests PRIVATE RmlUi::Core)
+        add_dependencies(locus_library_browser_tests locus_ui_assets)
+        set_tests_properties(locus_library_browser_selection PROPERTIES
+            WORKING_DIRECTORY "$<TARGET_FILE_DIR:locus>")
+    endif()
 
     add_executable(locus_song_library_tests
         tests/song_library_tests.cpp

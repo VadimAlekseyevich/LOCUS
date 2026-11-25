@@ -15,6 +15,10 @@
 
 using namespace locus::app;
 
+#ifdef LOCUS_TEST_NATIVE_PLAY
+bool TestNativePlayPresenter(const SongLibrary& library);
+#endif
+
 namespace {
 namespace fs = std::filesystem;
 
@@ -109,6 +113,9 @@ int main() {
                 ui.selectedChart == 1 && ui.Selected(library) &&
                 ui.Selected(library)->data->title == "Hard",
                 "second import selects a different difficulty in same song");
+#ifdef LOCUS_TEST_NATIVE_PLAY
+    ok &= TestNativePlayPresenter(library);
+#endif
     // A selected difficulty keeps its permanent ID when its disk file is
     // renamed outside the application. Refresh must not fall back to the
     // difficulty at the old numeric index after resorting.
