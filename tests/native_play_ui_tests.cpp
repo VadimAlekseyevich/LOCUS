@@ -71,12 +71,17 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         ok &= Check(easy && hard && hard->IsClassSet("active"),
                     "installed selected chart has an active real DOM row");
         if (easy) easy->Click();
+        const auto* originalEasy = easy;
+        const auto* originalHard = hard;
         presenter.Sync();
         context->Update();
         easy = ChartRow(tree,1,0);
+        hard = ChartRow(tree,1,1);
         ok &= Check(selection.selectedSong==1 && selection.selectedChart==0 &&
-                    easy && easy->IsClassSet("active"),
-                    "native chart click selects the chart and updates DOM");
+                    easy && easy->IsClassSet("active") && hard &&
+                    !hard->IsClassSet("active") && easy==originalEasy &&
+                    hard==originalHard,
+                    "difficulty click changes active class without replacing DOM nodes");
         auto* start = document->GetElementById("start");
         if (start) start->Click();
         const auto play = presenter.EndFrame();

@@ -29,6 +29,7 @@ private:
     void Rebuild(const SongLibrary& library, SongSelectUi& ui);
     void UpdateSummary(const SongLibrary& library, SongSelectUi& ui);
     void RebuildRows(const SongLibrary& library, SongSelectUi& ui);
+    void SyncTreeSelection(const SongSelectUi& ui);
     void RebuildResults(SongSelectUi& ui);
     void SetText(const char* id, const std::string& value);
     bool IsSearchFocused() const;
@@ -38,8 +39,9 @@ private:
     SongSelectUi* currentUi_ = nullptr;
     MenuEvents pending_;
     float lastDensity_ = 1.0f;
-    std::string lastTreeSignature_, lastResultSignature_, lastSummarySignature_;
-    std::vector<LibraryTreeEntry> treeEntries_;
+    std::string lastResultSignature_, lastSummarySignature_;
+    const LibraryTreeCache* lastTreeCache_ = nullptr; // identity only
+    std::uint64_t lastTreeGeneration_ = 0;
     std::vector<float> treeOffsets_;
     std::size_t treeFirst_ = static_cast<std::size_t>(-1);
     std::size_t treeEnd_ = static_cast<std::size_t>(-1);

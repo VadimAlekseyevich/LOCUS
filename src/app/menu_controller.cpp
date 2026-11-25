@@ -348,7 +348,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         }
         // Songs and their nested difficulties form one vertically scrollable
         // tree. Hit-test the same flattened row identity used for rendering.
-        const auto rows = locus::app::LibraryTreeRows(library, libraryUi);
+        const auto& rows = locus::app::LibraryTreeRows(library, libraryUi);
         for (int row = 0; row < locus::app::kLibraryTreeVisibleRows; ++row) {
             const int index = libraryUi.treeScroll + row;
             if (index >= static_cast<int>(rows.size())) break;

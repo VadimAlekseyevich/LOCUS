@@ -130,8 +130,12 @@ void LibrarySearchCache::Refresh(const SongLibrary& library) {
     sourceRevision = library.Revision();
 }
 
-std::vector<LibraryTreeEntry> LibraryTreeRows(const SongLibrary& songs,
-                                               const SongSelectUi& ui) {
+const std::vector<LibraryTreeEntry>& LibraryTreeRows(const SongLibrary& songs,
+                                                     const SongSelectUi& ui) {
+    auto& cache = ui.treeCache;
+    if (cache.source == &songs && cache.sourceRevision == songs.Revision() &&
+        cache.expandedSong == ui.selectedSong && cache.query == ui.search)
+        return cache.rows;
     std::vector<LibraryTreeEntry> entries;
     const int count = static_cast<int>(songs.Songs().size()) + 1;
     entries.reserve(static_cast<std::size_t>(count + 20));
@@ -175,24 +179,39 @@ std::vector<LibraryTreeEntry> LibraryTreeRows(const SongLibrary& songs,
             if (visible) entries.push_back({song, chart});
         }
     }
-    return entries;
+    cache.rows.swap(entries);
+    cache.source = &songs;
+    cache.sourceRevision = songs.Revision();
+    cache.expandedSong = ui.selectedSong;
+    cache.query = ui.search;
+    ++cache.generation;
+    return cache.rows;
+}
+
+std::size_t FindLibraryTreeRow(const std::vector<LibraryTreeEntry>& rows,
+                               int song, int chart) noexcept {
+    const auto found = std::lower_bound(rows.begin(),rows.end(),
+        LibraryTreeEntry{song,chart},[](const auto& lhs,const auto& rhs) {
+            return lhs.song < rhs.song ||
+                (lhs.song == rhs.song && lhs.chart < rhs.chart);
+        });
+    return found != rows.end() && found->song == song && found->chart == chart
+        ? static_cast<std::size_t>(found-rows.begin()) : rows.size();
 }
 
 namespace {
 void KeepTreeSelectionVisible(SongSelectUi& ui, const SongLibrary& songs) {
-    const auto rows = LibraryTreeRows(songs, ui);
+    const auto& rows = LibraryTreeRows(songs, ui);
     const int maxScroll = std::max(
         0, static_cast<int>(rows.size()) - kLibraryTreeVisibleRows);
     ui.treeScroll = std::clamp(ui.treeScroll, 0, maxScroll);
-    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
-        if (rows[i].song != ui.selectedSong ||
-            rows[i].chart != (ui.treeChartFocused ? ui.selectedChart : -1))
-            continue;
-        if (i < ui.treeScroll) ui.treeScroll = i;
-        if (i >= ui.treeScroll + kLibraryTreeVisibleRows)
-            ui.treeScroll = i - kLibraryTreeVisibleRows + 1;
-        break;
-    }
+    const auto index = FindLibraryTreeRow(rows,ui.selectedSong,
+                                         ui.treeChartFocused ? ui.selectedChart : -1);
+    if (index == rows.size()) return;
+    const int i = static_cast<int>(index);
+    if (i < ui.treeScroll) ui.treeScroll = i;
+    if (i >= ui.treeScroll + kLibraryTreeVisibleRows)
+        ui.treeScroll = i - kLibraryTreeVisibleRows + 1;
 }
 } // namespace
 
@@ -212,6 +231,14 @@ void SongSelectUi::SelectSong(int index, const SongLibrary& songs) {
     selectedChart = 0;
     firstVisibleChart = 0;
     treeChartFocused = false;
+    // A difficulty-title search must not silently select a hidden sibling.
+    if (!search.empty()) {
+        const auto& rows = LibraryTreeRows(songs,*this);
+        const auto parent = FindLibraryTreeRow(rows,selectedSong,-1);
+        if (parent < rows.size() && parent+1 < rows.size() &&
+            rows[parent+1].song == selectedSong)
+            selectedChart = rows[parent+1].chart;
+    }
     KeepTreeSelectionVisible(*this, songs);
 }
 void SongSelectUi::MoveSong(int delta, const SongLibrary& songs) {
@@ -227,26 +254,42 @@ void SongSelectUi::SelectChart(int index, const SongLibrary& songs) {
     KeepTreeSelectionVisible(*this, songs);
 }
 void SongSelectUi::MoveChart(int delta, const SongLibrary& songs) {
-    SelectChart(selectedChart + delta, songs);
+    if (!delta) return;
+    if (search.empty()) {
+        SelectChart(selectedChart + delta,songs);
+        return;
+    }
+    const auto& rows = LibraryTreeRows(songs,*this);
+    const auto parent = FindLibraryTreeRow(rows,selectedSong,-1);
+    if (parent == rows.size() || parent+1 >= rows.size() ||
+        rows[parent+1].song != selectedSong) return;
+    const auto first = parent+1;
+    const auto end = std::upper_bound(rows.begin()+first,rows.end(),selectedSong,
+        [](int song,const LibraryTreeEntry& entry) { return song < entry.song; });
+    const auto last = static_cast<int>(end-rows.begin()-1);
+    const auto current = FindLibraryTreeRow(rows,selectedSong,selectedChart);
+    const int next = current == rows.size()
+        ? (delta > 0 ? static_cast<int>(first) : last)
+        : std::clamp(static_cast<int>(current)+delta,static_cast<int>(first),last);
+    SelectChart(rows[static_cast<std::size_t>(next)].chart,songs);
 }
 void SongSelectUi::MoveTree(int delta, const SongLibrary& songs) {
-    const auto rows = LibraryTreeRows(songs, *this);
-    if (rows.empty()) return;
-    int position = 0;
-    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
-        if (rows[i].song == selectedSong &&
-            rows[i].chart == (treeChartFocused ? selectedChart : -1)) {
-            position = i;
-            break;
-        }
-    }
-    const auto target = rows[static_cast<std::size_t>(std::clamp(
-        position + delta, 0, static_cast<int>(rows.size()) - 1))];
+    const auto& rows = LibraryTreeRows(songs, *this);
+    if (rows.empty() || !delta) return;
+    const auto position = FindLibraryTreeRow(rows,selectedSong,
+        treeChartFocused ? selectedChart : -1);
+    const int next = position == rows.size()
+        ? (delta > 0 ? 0 : static_cast<int>(rows.size())-1)
+        : std::clamp(static_cast<int>(position)+delta,0,static_cast<int>(rows.size())-1);
+    const auto target = rows[static_cast<std::size_t>(next)];
     if (target.chart < 0) SelectSong(target.song, songs);
-    else SelectChart(target.chart, songs);
+    else {
+        if (selectedSong != target.song) SelectSong(target.song,songs);
+        SelectChart(target.chart,songs);
+    }
 }
 void SongSelectUi::ScrollTree(int delta, const SongLibrary& songs) {
-    const auto rows = LibraryTreeRows(songs, *this);
+    const auto& rows = LibraryTreeRows(songs, *this);
     treeScroll = std::clamp(treeScroll + delta, 0,
         std::max(0, static_cast<int>(rows.size()) - kLibraryTreeVisibleRows));
 }
@@ -402,7 +445,7 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     DrawUiTextField(font, search, ui.search, "Search songs...",
                     ui.editingSearch, false, false, theme);
 
-    const auto rows = LibraryTreeRows(library, ui);
+    const auto& rows = LibraryTreeRows(library, ui);
     const int end = std::min(ui.treeScroll + kLibraryTreeVisibleRows,
                              static_cast<int>(rows.size()));
     for (int index = ui.treeScroll; index < end; ++index) {

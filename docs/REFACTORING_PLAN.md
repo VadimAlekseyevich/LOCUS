@@ -185,6 +185,8 @@
 
 **25.11.2026 — T08/T12: responsive PLAY virtualization.** Tree and completed-run DOM working sets use actual viewport dp height + overscan, not fixed 40/32 row limits. Shared viewport helper used by RESULTS. Tests cover compact and 3200dp-high panels. Windows CI required.
 
+**25.11.2026 — T08: cached library tree projection.** Shared LibraryTreeCache keyed by source/revision/query/expanded song; navigation/draw/presenter borrow one projection, binary-search row identity, and difficulty-only changes update active classes without rebuilding offsets or DOM. Filter-aware keyboard navigation avoids invisible siblings; tests verify stable generation/storage, hidden selection, matching child and actual DOM identity. Windows CI required.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>

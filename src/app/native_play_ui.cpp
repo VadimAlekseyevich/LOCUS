@@ -52,10 +52,10 @@ void NativePlayUi::Attach(Rml::ElementDocument* document) noexcept {
     currentLibrary_ = nullptr;
     pending_ = {};
     lastDensity_ = 1.0f;
-    lastTreeSignature_.clear();
+    lastTreeCache_ = nullptr;
+    lastTreeGeneration_ = 0;
     lastSummarySignature_.clear();
     lastResultSignature_.clear();
-    treeEntries_.clear();
     treeOffsets_.clear();
     treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
     resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
@@ -133,7 +133,6 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
             currentUi_->treeScroll = 0;
             if (auto* scroll = document_->GetElementById("tree-scroll"))
                 scroll->SetScrollTop(0);
-            lastTreeSignature_.clear();
             // The host's post-input Sync processes a whole burst of text
             // events once, rather than rebuilding the catalog per character.
         }
@@ -219,12 +218,13 @@ void NativePlayUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
     auto* scroll = document_->GetElementById("tree-scroll");
     const float oldScroll = scroll ? scroll->GetScrollTop() : 0;
     const auto view = TreeViewport(treeOffsets_,scroll,lastDensity_);
+    const auto& entries = LibraryTreeRows(library,ui);
     std::ostringstream html;
     if (view.before > 0.0f)
         html << "<div class='tree-spacer' style='height:"
              << view.before << "dp;flex:0 0 " << view.before << "dp'></div>";
     for (std::size_t index = view.first; index < view.end; ++index) {
-        const auto& item = treeEntries_[index];
+        const auto& item = entries[index];
         const bool isChart = item.chart >= 0;
         const bool active = item.song == ui.selectedSong &&
             (isChart ? ui.treeChartFocused && item.chart == ui.selectedChart
@@ -270,12 +270,25 @@ void NativePlayUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
     if (view.after > 0.0f)
         html << "<div class='tree-spacer' style='height:"
              << view.after << "dp;flex:0 0 " << view.after << "dp'></div>";
-    if (treeEntries_.empty()) html << "<div class='empty'>NO MATCHING SONGS</div>";
+    if (entries.empty()) html << "<div class='empty'>NO MATCHING SONGS</div>";
     rows->SetInnerRML(html.str());
     if (scroll) scroll->SetScrollTop(oldScroll);
     treeFirst_ = view.first;
     treeEnd_ = view.end;
     SetText("set-count", std::to_string(library.Songs().size() + 1));
+}
+
+void NativePlayUi::SyncTreeSelection(const SongSelectUi& ui) {
+    auto* rows = document_->GetElementById("tree");
+    if (!rows) return;
+    for (int i=0; i<rows->GetNumChildren(); ++i) {
+        auto* row=rows->GetChild(i);
+        if (!row || !row->HasAttribute("data-song")) continue;
+        const bool active = row->GetAttribute<int>("data-song",-1)==ui.selectedSong &&
+            row->GetAttribute<int>("data-chart",-1)==
+                (ui.treeChartFocused ? ui.selectedChart : -1);
+        if (row->IsClassSet("active") != active) row->SetClass("active",active);
+    }
 }
 
 void NativePlayUi::RebuildResults(SongSelectUi& ui) {
@@ -317,58 +330,43 @@ void NativePlayUi::RebuildResults(SongSelectUi& ui) {
 }
 
 void NativePlayUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
-    // Only changes that affect tree geometry trigger its expensive DOM rebuild.
-    // Library::Revision is advanced by index refreshes and in-place metadata
-    // changes, so a 10,000-chart library costs O(1) to poll on idle frames.
-    std::ostringstream tree;
-    tree << library.Revision() << ':' << ui.selectedSong << ':'
-         << ui.selectedChart << ':' << ui.treeChartFocused << ':'
-         << ui.search;
-    if (tree.str() != lastTreeSignature_) {
-        const bool selectionChanged =
-            ui.selectedSong != lastSelectedSong_ ||
-            ui.selectedChart != lastSelectedChart_ ||
-            ui.treeChartFocused != lastTreeChartFocused_;
-        treeEntries_ = LibraryTreeRows(library, ui);
-        treeOffsets_ = LibraryRowOffsets(treeEntries_);
-        lastTreeSignature_ = tree.str();
+    // Share the cached structural projection with keyboard and fallback.
+    // Moving between children only changes the active class and scroll.
+    const auto& entries = LibraryTreeRows(library,ui);
+    const bool structureChanged = lastTreeCache_ != &ui.treeCache ||
+        lastTreeGeneration_ != ui.treeCache.generation;
+    const bool selectionChanged = ui.selectedSong != lastSelectedSong_ ||
+        ui.selectedChart != lastSelectedChart_ ||
+        ui.treeChartFocused != lastTreeChartFocused_;
+    if (structureChanged) {
+        treeOffsets_ = LibraryRowOffsets(entries);
+        lastTreeCache_ = &ui.treeCache;
+        lastTreeGeneration_ = ui.treeCache.generation;
         treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
-        lastSelectedSong_ = ui.selectedSong;
-        lastSelectedChart_ = ui.selectedChart;
-        lastTreeChartFocused_ = ui.treeChartFocused;
-        // Keyboard navigation changes the active logical row without any
-        // RmlUi-focused element necessarily existing (offscreen rows have
-        // no DOM node). Scroll the virtual viewport to the selected row.
-        if (selectionChanged) {
-            if (auto* scroll = document_->GetElementById("tree-scroll")) {
-                const auto selected = std::find_if(
-                    treeEntries_.begin(), treeEntries_.end(),
-                    [&](const LibraryTreeEntry& item) {
-                        return item.song == ui.selectedSong &&
-                            item.chart == (ui.treeChartFocused
-                                ? ui.selectedChart : -1);
-                    });
-                if (selected != treeEntries_.end() &&
-                    scroll->GetClientHeight() > 0.0f) {
-                    const auto index = static_cast<std::size_t>(
-                        selected - treeEntries_.begin());
-                    const float start = treeOffsets_[index];
-                    const float bottom = treeOffsets_[index + 1] - 6.0f;
-                    const float viewportStart = LibraryScrollDp(scroll->GetScrollTop(),lastDensity_);
-                    const float viewportHeight = LibraryScrollDp(scroll->GetClientHeight(),lastDensity_);
-                    const float viewportEnd = viewportStart + viewportHeight;
-                    if (start < viewportStart)
-                        scroll->SetScrollTop(LibraryScrollPixels(start,lastDensity_));
-                    else if (bottom > viewportEnd)
-                        scroll->SetScrollTop(LibraryScrollPixels(bottom - viewportHeight,lastDensity_));
-                }
-            }
-        }
     }
     auto* scroll = document_->GetElementById("tree-scroll");
+    if (selectionChanged && scroll && scroll->GetClientHeight() > 0.0f) {
+        const auto index = FindLibraryTreeRow(entries,ui.selectedSong,
+            ui.treeChartFocused ? ui.selectedChart : -1);
+        if (index < entries.size()) {
+            const float start = treeOffsets_[index];
+            const float bottom = treeOffsets_[index+1]-6.0f;
+            const float viewportStart = LibraryScrollDp(scroll->GetScrollTop(),lastDensity_);
+            const float height = LibraryScrollDp(scroll->GetClientHeight(),lastDensity_);
+            if (start < viewportStart)
+                scroll->SetScrollTop(LibraryScrollPixels(start,lastDensity_));
+            else if (bottom > viewportStart+height)
+                scroll->SetScrollTop(LibraryScrollPixels(bottom-height,lastDensity_));
+        }
+    }
     const auto window = TreeViewport(treeOffsets_,scroll,lastDensity_);
     if (window.first != treeFirst_ || window.end != treeEnd_)
-        RebuildRows(library, ui);
+        RebuildRows(library,ui);
+    else if (selectionChanged)
+        SyncTreeSelection(ui);
+    lastSelectedSong_ = ui.selectedSong;
+    lastSelectedChart_ = ui.selectedChart;
+    lastTreeChartFocused_ = ui.treeChartFocused;
     // Status text may change without a selection/index change. Updating it
     // must never recreate all rows or drop scroll position/focus.
     std::ostringstream summary;

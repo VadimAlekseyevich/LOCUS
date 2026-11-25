@@ -33,6 +33,17 @@ struct LibrarySearchCache {
     void Refresh(const SongLibrary& library);
 };
 
+// Flattened rows are a projection of catalog revision, query and expanded
+// song, not of the focused difficulty. All browser consumers borrow it.
+struct LibraryTreeCache {
+    const SongLibrary* source = nullptr;
+    std::uint64_t sourceRevision = 0;
+    std::uint64_t generation = 0;
+    int expandedSong = -1;
+    std::string query;
+    std::vector<LibraryTreeEntry> rows;
+};
+
 struct SongSelectUi {
     // 0 = the built-in demo, 1..N = permanent user Songs.
     int selectedSong = 0;
@@ -44,6 +55,7 @@ struct SongSelectUi {
     std::string search;
     bool editingSearch = false;
     mutable LibrarySearchCache searchCache;
+    mutable LibraryTreeCache treeCache;
     RunKey resultKey;
     std::string resultGameplayRevision;
     std::vector<RunResult> results;
@@ -96,8 +108,13 @@ constexpr int kLibraryResultVisibleRows = 4;
 Rectangle LibraryResultRow(int visibleRow);
 Rectangle LibraryResultPrevButton();
 Rectangle LibraryResultNextButton();
-std::vector<LibraryTreeEntry> LibraryTreeRows(const SongLibrary& songs,
-                                               const SongSelectUi& ui);
+// Borrowed until the next structural projection change. Copy an individual
+// row before changing selection/search/catalog, never keep a row reference.
+const std::vector<LibraryTreeEntry>& LibraryTreeRows(const SongLibrary& songs,
+                                                     const SongSelectUi& ui);
+// Returns rows.size() when the identity is absent.
+std::size_t FindLibraryTreeRow(const std::vector<LibraryTreeEntry>& rows,
+                               int song, int chart) noexcept;
 Rectangle LibraryRefreshButton();
 Rectangle LibraryBackButton();
 Rectangle LibrarySearchField();

@@ -305,6 +305,18 @@ int main() {
                 expanded[2].song == 1 && expanded[2].chart == 0 &&
                 expanded[3].song == 1 && expanded[3].chart == 1,
                 "Song Library displays charts indented directly beneath selected song");
+    {
+        const auto& rows = LibraryTreeRows(library,ui);
+        const auto generation = ui.treeCache.generation;
+        const auto* storage = rows.data();
+        ui.SelectChart(0,library);
+        const auto& same = LibraryTreeRows(library,ui);
+        ok &= Check(same.data()==storage && ui.treeCache.generation==generation &&
+                    FindLibraryTreeRow(same,1,0)==2 &&
+                    FindLibraryTreeRow(same,1,99)==same.size(),
+                    "difficulty-only changes borrow identical tree projection");
+        ui.SelectChart(1,library);
+    }
     std::string unicodeError;
     // Search keys are normalized with full Unicode casefold and canonical
     // composition, not a hand-written ASCII-only lowercase conversion.
@@ -336,6 +348,17 @@ int main() {
                 hardFiltered[0].song == 1 && hardFiltered[0].chart == -1 &&
                 hardFiltered[1].song == 1 && hardFiltered[1].chart == 1,
                 "search isolates matching difficulty with its parent Song Set");
+    {
+        SongSelectUi filtered;
+        filtered.search = "Hard";
+        filtered.MoveTree(1,library);
+        ok &= Check(filtered.selectedSong==1 && filtered.selectedChart==1 &&
+                    !filtered.treeChartFocused,
+                    "navigation from hidden selection enters first matching parent/difficulty");
+        filtered.MoveChart(-1,library);
+        ok &= Check(filtered.selectedChart==1 && filtered.treeChartFocused,
+                    "horizontal navigation cannot select filtered-out sibling");
+    }
     ui.search = "ZZ-SONG";
     const auto songFiltered = LibraryTreeRows(library, ui);
     ok &= Check(songFiltered.size() == 3 &&
