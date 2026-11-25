@@ -213,9 +213,10 @@ endif()
 
 if(LOCUS_BUILD_BENCHMARKS)
     add_executable(locus_route_preview_bench
-        benchmarks/route_preview_bench.cpp)
+        benchmarks/route_preview_bench.cpp
+        src/app/path_mesh.cpp)
     target_compile_features(locus_route_preview_bench PRIVATE cxx_std_17)
-    target_link_libraries(locus_route_preview_bench PRIVATE locus_core)
+    target_link_libraries(locus_route_preview_bench PRIVATE locus_core raylib)
     add_executable(locus_editor_bench benchmarks/editor_bench.cpp)
     target_compile_features(locus_editor_bench PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_bench PRIVATE locus_core)

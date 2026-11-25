@@ -256,6 +256,8 @@
 
 **26.11.2026 — T14: retained ribbon workspace.** The main render loop owns a reusable PathRibbonWorkspace shared sequentially by PLAY and editor comparison panes. Samples and rows clear without releasing capacity. Normalization of each adjacent direction and fade evaluation once per sample replace duplicate math; join/winding/alpha equations unchanged. Standalone API remains for independent previews/tests. Tests verify exact rows on changing skin/camera, stable capacity and empty-window clearing in addition to existing geometric regressions. GPU visual confirmation remains required.
 
+**26.11.2026 — T14: CPU ribbon profiling.** Existing optional route_preview_bench now also runs actual PrepareRoutePreview + PrepareScoredPathRibbon + both-layer MakePathRibbonQuad for 1,200 deterministic frames per scenario, after warming the same sequence. Reports p50/p95/p99 microseconds, max rows, coordinate checksum and frames with scratch capacity growth (must be zero). 1,024/60,000 notes, 4/20 notes per second, 1/4 panes. Linked raylib only for geometry types; no window, GPU submission, junction rasterization, input/audio or renderer driver timing. Captured in existing preview-benchmark.txt, no extra benchmark executable.
+
 **Приёмка.** Для выбранного FPS связывать цифры с реальным бюджетом кадра (например, 6,94 мс при 144 Гц) и базой той же машины. Менять только доказанный источник задержки. Возможные локальные решения — переиспользование буферов mesh, декодирование с отменой, индекс сегментов темпа. Сравнить до/после, контрольные суммы, точность нот, критерии сортировки и метрики сложности. Изменение формулы рейтинга получает собственную версию и отдельные музыкальные примеры.
 
 <a id="t15"></a>

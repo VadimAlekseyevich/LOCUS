@@ -101,6 +101,9 @@ jobs:
           if (($report | Select-String "PREVIEW_BENCH" -AllMatches).Matches.Count -ne 4) {
             throw "Expected one reported timing per headless route scenario"
           }
+          if (($report | Select-String "RIBBON_PROFILE " -AllMatches).Matches.Count -ne 4) {
+            throw "Expected four CPU ribbon geometry profiles"
+          }
 
       - name: Profile editor model on 65536 notes and 256 BPM markers
         run: |
