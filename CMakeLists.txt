@@ -33,17 +33,7 @@ target_include_directories(locus_core PUBLIC
     "${PROJECT_SOURCE_DIR}/src"
 )
 
-# Catalog scanner and disk writers form one cohesive module set. Keep
-# executable/test target dependencies synchronized in exactly one location.
-set(LOCUS_SONG_LIBRARY_SOURCES
-    src/app/library_chart_payload.cpp
-    src/app/song_library.cpp
-    src/app/song_library_scan.cpp
-    src/app/song_library_metadata.cpp
-    src/app/song_library_packages.cpp
-    src/app/song_library_install.cpp
-    src/app/song_library_trash.cpp
-)
+include(cmake/storage_targets.cmake)
 
 add_executable(locus
     src/app/main.cpp
@@ -73,11 +63,7 @@ add_executable(locus
     src/app/menu_music_preview.cpp
     src/app/local_music.cpp
     src/app/pitch_preserving_stream.cpp
-    src/app/local_file_io.cpp
     src/app/music_picker.cpp
-    src/app/chart_file.cpp
-    src/app/chart_save.cpp
-    src/app/song_set_storage.cpp
     src/app/editor_document.cpp
     src/app/editor_session.cpp
     src/app/editor_file_actions.cpp
@@ -88,8 +74,6 @@ add_executable(locus
     src/app/chart_playback.cpp
     src/app/game_session.cpp
     src/app/run_results.cpp
-        ${LOCUS_SONG_LIBRARY_SOURCES}
-    src/app/song_archive.cpp
     src/app/library_playback.cpp
     src/app/library_browser.cpp
     src/app/library_file_actions.cpp
@@ -101,7 +85,6 @@ add_executable(locus
     src/app/skin_menu.cpp
     src/app/skin_menu_draw.cpp
     src/app/menu_ui.cpp
-    src/app/library_selection.cpp
     src/app/chart_editor_ui.cpp
     src/app/chart_editor_actions.cpp
     src/app/editor_timeline_actions.cpp
@@ -111,6 +94,7 @@ add_executable(locus
     src/app/route_renderer.cpp
     src/app/path_mesh.cpp
 )
+target_link_libraries(locus PRIVATE locus_song_library locus_file_io locus_chart_storage locus_library_selection)
 if(LOCUS_ENABLE_RMLUI)
     target_sources(locus PRIVATE
         src/app/rml_raylib_renderer.cpp
@@ -265,7 +249,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_playback.cpp
         src/app/local_music.cpp
         src/app/pitch_preserving_stream.cpp
-        src/app/local_file_io.cpp)
+    )
+    target_link_libraries(locus_clock_contract_tests PRIVATE locus_file_io)
     target_compile_features(locus_clock_contract_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_clock_contract_tests PRIVATE
         locus_core raylib locus_soundtouch)
@@ -282,12 +267,8 @@ if(LOCUS_BUILD_TESTS)
         tests/app_journey_tests.cpp
         src/app/run_results.cpp
         src/app/screen_flow.cpp
-        ${LOCUS_SONG_LIBRARY_SOURCES}
-        src/app/song_archive.cpp
-        src/app/chart_file.cpp
-        src/app/chart_save.cpp
-        src/app/local_file_io.cpp
-        src/app/song_set_storage.cpp)
+    )
+    target_link_libraries(locus_app_journey_tests PRIVATE locus_song_library locus_file_io locus_chart_storage)
     target_compile_features(locus_app_journey_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_app_journey_tests PRIVATE
         locus_core nlohmann_json::nlohmann_json)
@@ -409,11 +390,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_chart_file_tests
         tests/chart_file_tests.cpp
-        src/app/chart_file.cpp
-        src/app/chart_save.cpp
-        src/app/local_file_io.cpp
-        src/app/song_set_storage.cpp
-)
+    )
+    target_link_libraries(locus_chart_file_tests PRIVATE locus_file_io locus_chart_storage)
     target_compile_features(locus_chart_file_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_chart_file_tests PRIVATE locus_core nlohmann_json::nlohmann_json)
     add_test(NAME locus_chart_local_file COMMAND locus_chart_file_tests)
@@ -430,8 +408,8 @@ if(LOCUS_BUILD_TESTS)
         tests/listen_session_tests.cpp
         src/app/listen_session.cpp
         src/app/local_music.cpp
-        src/app/local_file_io.cpp
     )
+    target_link_libraries(locus_listen_session_tests PRIVATE locus_file_io)
     target_compile_features(locus_listen_session_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_listen_session_tests PRIVATE locus_core raylib)
     add_test(NAME locus_listening_picker_lifecycle COMMAND locus_listen_session_tests)
@@ -445,14 +423,9 @@ if(LOCUS_BUILD_TESTS)
         src/app/editor_document.cpp
         src/app/music_picker.cpp
         src/app/local_music.cpp
-        src/app/local_file_io.cpp
-        src/app/chart_file.cpp
-        src/app/chart_save.cpp
         src/app/chart_playback.cpp
-            ${LOCUS_SONG_LIBRARY_SOURCES}
-        src/app/song_archive.cpp
-        src/app/song_set_storage.cpp
-)
+    )
+    target_link_libraries(locus_editor_file_actions_tests PRIVATE locus_song_library locus_file_io locus_chart_storage)
     target_compile_features(locus_editor_file_actions_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_file_actions_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
@@ -490,15 +463,11 @@ if(LOCUS_BUILD_TESTS)
         src/app/screen_flow.cpp
         src/app/local_music.cpp
         src/app/pitch_preserving_stream.cpp
-        src/app/local_file_io.cpp
-        src/app/chart_file.cpp
-        src/app/chart_save.cpp
-        src/app/song_set_storage.cpp
         src/app/open_folder.cpp
         src/app/music_picker.cpp
         src/app/run_results.cpp
-        ${LOCUS_SONG_LIBRARY_SOURCES}
-        src/app/song_archive.cpp)
+    )
+    target_link_libraries(locus_editor_workflow_tests PRIVATE locus_song_library locus_file_io locus_chart_storage)
     target_compile_features(locus_editor_workflow_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_workflow_tests PRIVATE
         locus_core raylib locus_soundtouch nlohmann_json::nlohmann_json)
@@ -525,8 +494,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/game_session.cpp
         src/app/demo_transport.cpp
         src/app/local_music.cpp
-        src/app/local_file_io.cpp
     )
+    target_link_libraries(locus_editor_session_tests PRIVATE locus_file_io)
     target_compile_features(locus_editor_session_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_session_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
@@ -536,12 +505,9 @@ if(LOCUS_BUILD_TESTS)
         tests/editor_document_tests.cpp
         src/app/editor_document.cpp
         src/app/local_music.cpp
-        src/app/local_file_io.cpp
-        src/app/chart_file.cpp
-        src/app/chart_save.cpp
         src/app/music_picker.cpp
-        src/app/song_set_storage.cpp
-)
+    )
+    target_link_libraries(locus_editor_document_tests PRIVATE locus_file_io locus_chart_storage)
     target_compile_features(locus_editor_document_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_document_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
@@ -564,8 +530,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_playback.cpp
         src/app/demo_transport.cpp
         src/app/local_music.cpp
-        src/app/local_file_io.cpp
     )
+    target_link_libraries(locus_session_transition_tests PRIVATE locus_file_io)
     target_compile_features(locus_session_transition_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_session_transition_tests PRIVATE locus_core raylib)
     add_test(NAME locus_session_transition_lifecycle COMMAND locus_session_transition_tests)
@@ -630,8 +596,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/chart_playback.cpp
         src/app/demo_transport.cpp
         src/app/local_music.cpp
-        src/app/local_file_io.cpp
     )
+    target_link_libraries(locus_quit_media_tests PRIVATE locus_file_io)
     target_compile_features(locus_quit_media_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_quit_media_tests PRIVATE locus_core raylib)
     add_test(NAME locus_quit_modal_audio_lifecycle COMMAND locus_quit_media_tests)
@@ -686,16 +652,13 @@ if(LOCUS_BUILD_TESTS)
     # failure and validate route timing before publishing selected difficulty.
     add_executable(locus_library_playback_tests
         tests/library_playback_tests.cpp
-        src/app/library_chart_payload.cpp
-        src/app/chart_file.cpp
-        src/app/song_set_storage.cpp
         src/app/library_playback.cpp
         src/app/chart_playback.cpp
         src/app/game_session.cpp
         src/app/demo_transport.cpp
         src/app/local_music.cpp
-        src/app/local_file_io.cpp
     )
+    target_link_libraries(locus_library_playback_tests PRIVATE locus_file_io locus_chart_storage locus_song_library)
     target_compile_features(locus_library_playback_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_library_playback_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
@@ -709,18 +672,12 @@ if(LOCUS_BUILD_TESTS)
         src/app/async_library_refresh.cpp
         src/app/library_file_actions.cpp
         src/app/menu_ui.cpp
-        src/app/library_selection.cpp
         src/app/run_results.cpp
         src/app/home_brand_assets.cpp
         src/app/executable_directory.cpp
         src/app/game_settings.cpp
-            ${LOCUS_SONG_LIBRARY_SOURCES}
-        src/app/song_archive.cpp
-        src/app/chart_file.cpp
-        src/app/chart_save.cpp
-        src/app/local_file_io.cpp
-        src/app/song_set_storage.cpp
-)
+    )
+    target_link_libraries(locus_library_browser_tests PRIVATE locus_song_library locus_file_io locus_chart_storage locus_library_selection)
     target_compile_features(locus_library_browser_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_library_browser_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json Threads::Threads)
@@ -740,14 +697,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_song_library_tests
         tests/song_library_tests.cpp
-        src/app/library_selection.cpp
-            ${LOCUS_SONG_LIBRARY_SOURCES}
-        src/app/song_archive.cpp
-        src/app/chart_file.cpp
-        src/app/chart_save.cpp
-        src/app/local_file_io.cpp
-        src/app/song_set_storage.cpp
-)
+    )
+    target_link_libraries(locus_song_library_tests PRIVATE locus_song_library locus_file_io locus_chart_storage locus_library_selection)
     target_compile_features(locus_song_library_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_song_library_tests PRIVATE locus_core nlohmann_json::nlohmann_json)
     add_test(NAME locus_persistent_song_library COMMAND locus_song_library_tests)
@@ -784,9 +735,9 @@ if(LOCUS_BUILD_TESTS)
         tests/skin_profile_actions_tests.cpp
         src/app/skin_profile_actions.cpp
         src/app/open_folder.cpp
-        src/app/song_set_storage.cpp
         src/app/skin.cpp
     )
+    target_link_libraries(locus_skin_profile_actions_tests PRIVATE locus_chart_storage)
     target_compile_features(locus_skin_profile_actions_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_skin_profile_actions_tests PRIVATE
         raylib nlohmann_json::nlohmann_json)

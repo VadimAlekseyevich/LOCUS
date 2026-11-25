@@ -29,9 +29,7 @@ its own zoom. The bottom whole-song overview is an independent audio-seconds
 projection over `ChartEditor::SongDurationSeconds()`, supporting fast
 seek without note mutation. All BPM markers read the canonical Song Set
 tempo map (fallback: the current draft), rather than individual chart notes.
-The tempo map is integrated into a continuous beat phase in
-`core/tempo_map.h`; notes keep their exact song `timeMs` when a segment changes. SET opens a difficulty on a single click, retaining
-the unsaved-change confirmation when the active draft would be discarded.
+The tempo map in `core/tempo_map.h` anchors a new local downbeat at each BPM marker; the upper ruler scrolls in fixed song seconds and changes subdivision density locally. Notes retain their exact `timeMs` during reprojection. SET selects a difficulty on the first click and opens it on the second click (or the explicit open command), retaining unsaved-change confirmation.
 TEST borrows a prepared draft without writing it. Library: disk → validated
 Song Set index → explicit chart/audio activation. Audio streams are unloaded
 before the shared audio device; GPU textures before the window.
@@ -73,9 +71,7 @@ song seconds and is independent of snap resolution or BPM. Authoring
 tick-based; they are not a second scoring clock. Saved chart version 4 stores exact timestamps plus an explicit tempo map;
 Song Set manifest v2 is authoritative for every difficulty.
 
-Known limitation: the editor currently rejects two distinct timestamps
-whose snap-grid projections collide. Relaxing that requires a separate
-authoring model migration; it must not regress fast keyboard/snap placement.
+Distinct authored timestamps can occupy one projected editor tick. Exact-time selection, placement, copy/paste and playback preserve both events; duplicate absolute timestamps are not allowed.
 
 ### 3. One read-only route snapshot per frame (implemented)
 
@@ -120,15 +116,16 @@ centering. No build-time experimental switch is needed.
 **and a full-file noncryptographic content fingerprint** match. Song Set
 tempo publication verifies the same bytes under its writer lock, so an
 external same-size/same-timestamp edit cannot silently reuse stale notes.
-Reading chart bytes at refresh has an I/O cost; the JSON parse and
-difficulty calculation still remain cached. Verify refresh performance
-on large libraries rather than assuming this optimization is free.
+Known-new or modified chart files are parsed and fingerprinted from the same bytes; unchanged candidates use a streaming fingerprint to avoid parsing and rating again. The published catalog retains compact metadata rather than note vectors, materializing verified payloads on selection. CI exercises 8,193 charts and a dense 786,432-note catalog.
 
 Continue physical Windows fault testing for permissions, interrupted
 replacement and disk-full recovery. A file fingerprint is not a substitute
 for a transactional filesystem or a cryptographic authenticity check.
 
-### 7. Keep build/QA proportional (medium)
+### 7. Build boundaries and QA (in progress)
+
+The storage targets in `cmake/storage_targets.cmake` share production code with tests:
+`locus_file_io` (byte reads) → `locus_chart_storage` (chart and manifest transactions, archives) → `locus_song_library` (catalog/metadata/materialization) → `locus_library_selection` (headless tree/search model). All depend on the independently linkable `locus_core`; none require raylib or RmlUi. Low-level byte IO is also used by audio without linking the catalog. The application owns orchestration, while tests link only the modules they exercise.
 
 The Windows CI and headless domain tests are valuable, but cannot establish
 actual motion readability, acoustic sync or screen-tearing behavior.

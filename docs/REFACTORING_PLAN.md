@@ -278,6 +278,8 @@
 
 **Сделать.** Собирать общие реализации один раз в небольшие цели по реальным зависимостям (начать с хранения или транспорта). core остаётся независимо линкуемым. Обособить Windows-адаптеры от переносимых тестов. Исправить сравнение компонента пути с родительским каталогом с учётом native-типа платформы. Дать короткий путь сборки переносимых тестов без графического устройства. Синхронизировать документацию с кодом и примерами, обновлять соответствующую страницу в том же коммите, что и контракт. Решить роль дизайна v1 как референса по ссылкам перед удалением файлов.
 
+**26.11.2026 — T15: shared storage targets.** Extracted device-independent `locus_file_io`, `locus_chart_storage`, `locus_song_library`, `locus_library_selection` static targets into cmake/storage_targets.cmake. Production and all existing test executables consume the same implementations; low-level byte IO remains separately linkable by audio. Chart storage links shell32 on Windows. No source/format behavior changes. Source assignment audit: 93 previous translation-unit instances become 13 shared instances (80 redundant compile assignments eliminated for the all-tests configuration). Windows CI required; wall-clock clean/incremental build measurements not yet collected.
+
 **Приёмка.** Чистая и повторная Windows Release сборки с тестами и BAT, Linux-сборка явно обозначенного переносимого набора, наличие прежних тестов в ctest -N. Зафиксировать время и количество повторных компиляций на одной машине. Таблица экранов в архитектуре соответствует инициализации в NativeMenuUi и путям fallback. Документы объясняют источник времени, локальную сильную долю и текущую скорость предпросмотра. Примеры читаются текущими парсерами.
 
 <a id="t16"></a>
