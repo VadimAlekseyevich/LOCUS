@@ -40,7 +40,7 @@ void SeekSongOverview(core::ChartEditor& draft, EditorUiState& ui,
                       float mouseX) {
     if (!draft.HasSongDuration()) return;
     const double songSeconds = SongOverviewSeconds(
-        mouseX, draft.SongDurationSeconds());
+        mouseX, draft.SongDurationSeconds(), OverviewBounds(ui));
     const int tick = SongOverviewTick(draft, songSeconds);
     ui.rangeFirst = ui.rangeLast = -1;
     ui.draggingTimeline = false;
@@ -131,8 +131,9 @@ void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,
     // stable while dragging, except for deliberate edge scrolling.
     if (ui.draggingTimeline && (input.mouseHeld || input.mouseReleased)) {
         if (input.mouseHeld && ui.tab == EditorTab::Route) {
-            const float left = kTimelineX;
-            const float right = kTimelineX + kTimelineWidth;
+            const auto bounds = TimelineBounds(ui);
+            const float left = bounds.x;
+            const float right = bounds.x + bounds.width;
             const float x = input.mouse.x;
             float edge = 0.0f;
             if (x > right - kDragEdgeZone) {
@@ -166,8 +167,8 @@ void UpdateNavigation(core::ChartEditor& draft, EditorUiState& ui,
                     static_cast<double>(chart.lengthBeats - 1));
             }
         }
-        const float x = std::clamp(input.mouse.x, kTimelineX,
-                                    kTimelineX + kTimelineWidth);
+        const auto bounds = TimelineBounds(ui);
+        const float x = std::clamp(input.mouse.x, bounds.x, bounds.x+bounds.width);
         const int beat = TimelineTickAtX(draft, ui, ui.dragViewBeat, x);
         if (beat != ui.dragAnchorBeat) {
             ui.rangeFirst = std::min(ui.dragAnchorBeat, beat);

@@ -102,6 +102,8 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
             static_cast<int>(std::lround(settings->editorPreviewLengthMs))) + " ms");
     }
     if (draft && ui.tab == EditorTab::Route) {
+        SetText("editor-snap-label", "SNAP 1/" + std::to_string(draft->Data().route.snapDivision));
+        SetText("editor-zoom-label", "ZOOM " + std::to_string(static_cast<int>(std::lround(detail::PixelsPerBeat(ui)/36.0f*100))) + "%");
         const auto counts = detail::DirectionPressCounts(draft->Data().route);
         const auto* selected = draft->SelectedTurn();
         for (int index=0; index<8; ++index) {
@@ -115,7 +117,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     }
     if (lastTab_ != static_cast<int>(ui.tab)) {
         if (auto* route = document_->GetElementById("editor-route-ui"))
-            route->SetProperty("display", ui.tab == EditorTab::Route ? "block" : "none");
+            route->SetProperty("display", ui.tab == EditorTab::Route ? "flex" : "none");
         if (auto* set = document_->GetElementById("editor-set-ui"))
             set->SetProperty("display", ui.tab == EditorTab::Set ? "flex" : "none");
         lastTab_ = static_cast<int>(ui.tab);
@@ -327,6 +329,10 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     else if (action == "set-bg") input_->editor.setRequest = EditorSetAction::AttachBackground;
     else if (action == "set-remove-bg") input_->editor.setRequest = EditorSetAction::RemoveBackground;
     else if (action == "set-folder") input_->editor.setRequest = EditorSetAction::OpenFolder;
+    else if (action == "snap-less") input_->editor.snapLess = true;
+    else if (action == "snap-more") input_->editor.snapMore = true;
+    else if (action == "zoom-in") input_->editor.zoomIn = true;
+    else if (action == "zoom-out") input_->editor.zoomOut = true;
     else if (action == "mirror-h") input_->editor.mirrorHorizontal = true;
     else if (action == "mirror-v") input_->editor.mirrorVertical = true;
     else if (action == "rotate-ccw") input_->editor.rotateCounterclockwise = true;

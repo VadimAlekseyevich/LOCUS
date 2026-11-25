@@ -7,6 +7,14 @@
 <body>
 <div id="editor-canvas">
   <div id="editor-route-ui">
+    <div id="editor-ruler-row">
+      <div id="editor-note-ruler" class="editor-canvas-slot"></div>
+      <div id="editor-ruler-controls">
+        <div class="editor-ruler-control"><div id="editor-snap-label" class="editor-option-label">SNAP</div><button data-action="snap-less"><span class="button-label">−</span></button><button data-action="snap-more"><span class="button-label">+</span></button></div>
+        <div class="editor-ruler-control"><div id="editor-zoom-label" class="editor-option-label">ZOOM</div><button data-action="zoom-out"><span class="button-label">−</span></button><button data-action="zoom-in"><span class="button-label">+</span></button></div>
+      </div>
+    </div>
+    <div id="editor-route-workspace">
     <div id="editor-route-tools">
     <button id="editor-tool-mirror-h" data-action="mirror-h" title="MIRROR H"><span class="button-label editor-icon-label">↔</span></button>
     <button id="editor-tool-mirror-v" data-action="mirror-v" title="MIRROR V"><span class="button-label editor-icon-label">↕</span></button>
@@ -15,6 +23,8 @@
     <div id="editor-route-compare-gap" class="editor-tool-gap"></div>
     <button id="editor-tool-test" data-action="test-chart" title="TEST CHART"><span class="button-label editor-icon-label">▶</span></button>
     </div>
+    <div id="editor-preview-slot" class="editor-canvas-slot"></div>
+    <div id="editor-route-inspector">
     <div id="editor-route-pad">
     <button id="editor-pad-7" data-action="note" data-heading="7" title="UP LEFT"><span class="button-label editor-icon-label">↖</span><span id="editor-count-7" class="editor-pad-count">0</span></button>
     <button id="editor-pad-0" data-action="note" data-heading="0" title="UP"><span class="button-label editor-icon-label">↑</span><span id="editor-count-0" class="editor-pad-count">0</span></button>
@@ -28,6 +38,8 @@
     </div>
     <div id="editor-route-speed"><div class="editor-option-label">SPEED</div><div id="editor-speed-label" class="editor-option-value">135 px/s</div><button data-action="speed-minus" ><span class="button-label">−</span></button><button data-action="speed-plus" ><span class="button-label">+</span></button></div>
     <div id="editor-route-path"><div class="editor-option-label">PATH</div><div id="editor-path-label" class="editor-option-value">800 ms</div><button data-action="path-minus" ><span class="button-label">−</span></button><button data-action="path-plus" ><span class="button-label">+</span></button></div>
+    </div>
+    </div>
   </div>
   <div id="editor-set-ui" style="display:none;">
     <div id="editor-set-metadata" class="editor-set-panel">
@@ -63,13 +75,16 @@
       <div class="editor-set-quick"><button data-action="set-delete-chart"><span class="button-label">DELETE CHART</span></button><button data-action="set-delete-set"><span class="button-label">DELETE SET</span></button></div>
     </div>
   </div>
+  <div id="editor-transport">
   <div id="editor-footer-playback">
     <button id="editor-preview-play" class="secondary" data-action="preview-play"><span class="button-label">PLAY</span></button>
     <button id="editor-preview-restart" class="quiet" data-action="preview-restart"><span class="button-label">RST</span></button>
   </div>
+  <div id="editor-overview-slot" class="editor-canvas-slot"></div>
   <div id="editor-footer-rate-time">
     <div id="editor-rate-control"><input id="editor-preview-rate" type="text" value="100" data-kind="preview-rate" maxlength="3"/><span class="editor-rate-unit">%</span></div>
     <button id="editor-preview-time" class="quiet" data-action="time-copy"><span class="button-label">0 MS</span></button>
+  </div>
   </div>
 </div>
 </body>

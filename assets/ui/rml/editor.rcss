@@ -1,14 +1,15 @@
-/* Editor shell aligns to the existing 960x540 editor viewport.
-   Chart preview and timelines remain raylib; all Song Setup panels are RmlUi.
-   No gameplay-related visuals or controls run through RmlUi. */
-#editor-canvas { position:absolute; left:0; top:0;
-  width:960dp; height:540dp; background-color:transparent; }
-#editor-footer-playback { position:absolute; left:52dp; top:485dp;
-  display:flex; flex-direction:row; gap:5dp; }
+/* Native layout owns the entire workspace. Named transparent slots host
+   specialized raylib drawing; its coordinates come from measured boxes. */
+#editor-canvas { position:absolute; left:0; top:0; width:100%; height:100%;
+  display:flex; flex-direction:column; padding:12dp 14dp; gap:8dp;
+  background-color:transparent; pointer-events:none; }
+.editor-canvas-slot { flex:1; min-width:0; min-height:0; pointer-events:none; }
+#editor-transport { display:flex; flex-direction:row; flex:0 0 40dp;
+  align-items:stretch; gap:8dp; }
+#editor-footer-playback { display:flex; flex-direction:row; gap:5dp; pointer-events:auto; }
 #editor-footer-playback button { width:39dp; height:40dp; padding:1dp;
   font-size:10dp; font-weight:800; border-radius:8dp; }
-#editor-footer-rate-time { position:absolute; left:725dp; top:485dp;
-  display:flex; flex-direction:row; gap:9dp; }
+#editor-footer-rate-time { display:flex; flex-direction:row; gap:9dp; pointer-events:auto; }
 #editor-footer-rate-time button { height:40dp; border-radius:9dp;
   padding:2dp 3dp; font-weight:750; font-size:12dp; }
 #editor-rate-control { display:flex; position:relative; width:93dp;
@@ -22,11 +23,18 @@
   line-height:1.1; color:#cfc1fa; font-size:12dp; pointer-events:none; }
 #editor-preview-time { width:105dp; }
 
-#editor-route-ui { position:absolute; left:0; top:0; width:960dp; height:540dp; pointer-events:none; }
-#editor-route-tools { position:absolute; left:52dp; top:181dp; width:42dp; height:272dp; display:flex; flex-direction:column; gap:4dp; pointer-events:auto; }
+#editor-route-ui { flex:1; min-height:0; display:flex; flex-direction:column; gap:8dp; pointer-events:none; }
+#editor-ruler-row { display:flex; flex-direction:row; flex:0 0 47dp; gap:8dp; }
+#editor-ruler-controls { display:flex; flex-direction:column; flex:0 0 184dp; gap:3dp; pointer-events:auto; }
+.editor-ruler-control { display:flex; flex:1; min-height:0; flex-direction:row; align-items:center; gap:4dp; }
+.editor-ruler-control .editor-option-label { flex:1; width:auto; }
+.editor-ruler-control button { flex:0 0 37dp; height:22dp; padding:0; }
+#editor-route-workspace { display:flex; flex-direction:row; flex:1; min-height:0; gap:10dp; align-items:stretch; }
+#editor-route-tools { flex:0 0 42dp; display:flex; flex-direction:column; justify-content:center; gap:4dp; pointer-events:auto; }
+#editor-route-inspector { display:flex; flex-direction:column; justify-content:center; flex:0 0 184dp; gap:5dp; pointer-events:none; }
 #editor-route-tools button, .editor-tool-gap { width:42dp; height:42dp; flex:0 0 42dp; padding:0; font-size:22dp; }
 .editor-tool-gap { pointer-events:none; }
-#editor-route-pad { position:absolute; left:748dp; top:181dp; width:184dp; height:175dp; display:flex; flex-direction:row; flex-wrap:wrap; gap:5dp; pointer-events:auto; }
+#editor-route-pad { width:184dp; height:175dp; flex:0 0 175dp; display:flex; flex-direction:row; flex-wrap:wrap; gap:5dp; pointer-events:auto; }
 #editor-route-pad button { position:relative; flex:0 0 58dp; width:58dp; height:55dp; padding:4dp 2dp; font-size:25dp; color:#d5eeff; }
 #editor-route-pad .button-label { font-size:25dp; }
 #editor-route-tools .button-label { font-size:24dp; }
@@ -35,18 +43,14 @@
 .editor-pad-count { position:absolute; right:5dp; bottom:5dp;
   line-height:1; font-size:10dp; color:#c9bbfa; }
 #editor-route-pad button.selected { background-color:#585281; border-color:#b5a4f3; }
-#editor-route-speed, #editor-route-path { position:absolute; left:748dp; width:184dp; height:31dp; pointer-events:auto; display:flex; flex-direction:row; align-items:center; gap:4dp; }
-#editor-route-speed { top:406dp; }
-#editor-route-path { top:442dp; }
+#editor-route-speed, #editor-route-path { width:184dp; height:31dp; flex:0 0 31dp; pointer-events:auto; display:flex; flex-direction:row; align-items:center; gap:4dp; }
 .editor-option-label { display:block; font-size:11dp; color:#bac5dc; width:47dp; }
 .editor-option-value { display:block; font-size:10dp; color:#a2d8ee; overflow:hidden; white-space:nowrap; width:50dp; }
 #editor-route-speed button, #editor-route-path button { width:36dp; flex:0 0 36dp; height:28dp; padding:0; font-size:15dp; }
 
 /* All SET fields and action layout live in RCSS; the SongLibrary retains
    exclusive ownership of metadata and difficulty identities. */
-#editor-set-ui { position:absolute; left:0; top:12dp; width:960dp; height:458dp;
-  display:flex; flex-direction:row; align-items:stretch; gap:10dp;
-  padding:0 14dp; pointer-events:none; }
+#editor-set-ui { flex:1; min-height:0; display:flex; flex-direction:row; align-items:stretch; gap:10dp; pointer-events:none; }
 .editor-set-panel { flex:1; min-width:0; min-height:0; padding:10dp;
   border:1dp #565d7b; border-radius:10dp; background-color:#252d45;
   display:flex; flex-direction:column; pointer-events:auto; }

@@ -396,7 +396,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
                                                     count - 1);
                 for (int i = 0; i < count; ++i) {
                     if (i == focusedSlot ||
-                        !detail::Hit(detail::ComparisonPreviewBounds(count, i),
+                        !detail::Hit(detail::ComparisonPreviewBounds(ui, count, i),
                                      input.mouse)) continue;
                     const int refIndex = ComparisonReferenceIndexForSlot(
                         i, focusedSlot);
@@ -409,7 +409,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
                 }
             } else {
                 for (int row = 0; row < 5; ++row) {
-                    if (!detail::Hit(detail::ComparePickerRow(row),
+                    if (!detail::Hit(detail::ComparePickerRow(ui, row),
                                      input.mouse)) continue;
                     const int index = ui.comparisonPickerFirst + row;
                     if (index < 0 ||

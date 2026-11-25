@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/game_settings.h"
+#include "app/editor_layout_snapshot.h"
 #include "app/skin.h"
 #include "core/chart_editor.h"
 #include "raylib.h"
@@ -109,6 +110,7 @@ enum class EditorField { None, Title, Bpm, OffsetMs };
 enum class EditorSetField { None, Title, Artist, Mapper, Tags };
 
 struct EditorUiState {
+    EditorLayoutSnapshot layout; // presentation only; refreshed from RmlUi
     EditorField active = EditorField::None;
     EditorTab tab = EditorTab::Route;
     std::string buffer;

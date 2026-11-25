@@ -56,7 +56,7 @@ public:
                       const core::ChartEditor& draft,
                       const GameSettings& settings,
                       const EditorSetView& setView);
-    void SyncEditor(const EditorUiState& ui, const std::string& title,
+    void SyncEditor(EditorUiState& ui, const std::string& title,
                     bool dirty, double rate, bool playing, long long songTimeMs,
                     const core::ChartEditor& draft,
                     const GameSettings& settings,
@@ -80,6 +80,7 @@ private:
     enum class Page { None, Home, Play, Settings, Editor, Results, Skin };
     void Activate(Page page);
     void PumpInput(bool dispatchKeyboard = true);
+    void ReadEditorLayout(EditorUiState& ui) const noexcept;
     void ProcessEvent(Rml::Event& event) override;
     void Rebuild(const SongLibrary& library, SongSelectUi& ui);
     void UpdateSummary(const SongLibrary& library, SongSelectUi& ui);

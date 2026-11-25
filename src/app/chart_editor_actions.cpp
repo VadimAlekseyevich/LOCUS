@@ -55,7 +55,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     // EditorSetController handles the picker after this pure editing pass.
     if (ui.tab == EditorTab::Route &&
         (ui.comparisonPickerOpen ||
-         (input.mouseClick && Hit(kCompareToggle, input.mouse))))
+         (input.mouseClick && Hit(CompareToggleBounds(ui), input.mouse))))
         return action;
 
     // The fixed, whole-song strip owns pointer dragging on every editor tab.
@@ -67,7 +67,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             ui.draggingSongOverview = false;
         return action;
     }
-    if (input.mouseClick && Hit(kSongOverview, input.mouse)) {
+    if (input.mouseClick && Hit(OverviewBounds(ui), input.mouse)) {
         ui.draggingSongOverview = input.mouseHeld;
         editor_timeline::SeekSongOverview(draft, ui, input.mouse.x);
         return action;
@@ -208,15 +208,15 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
             return action;
         }
 
-        if (ui.tab == EditorTab::Route && Hit(kSnapLess, mouse)) { editor_timeline::ChangeSnap(draft, ui, -1, action); return action; }
-        if (ui.tab == EditorTab::Route && Hit(kSnapMore, mouse)) { editor_timeline::ChangeSnap(draft, ui, 1, action); return action; }
+        if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kSnapLess, mouse)) { editor_timeline::ChangeSnap(draft, ui, -1, action); return action; }
+        if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kSnapMore, mouse)) { editor_timeline::ChangeSnap(draft, ui, 1, action); return action; }
         if (ui.tab == EditorTab::Audio && Hit(kSong, mouse))
             action.chooseAudio = true;
         else if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kRouteTest, mouse))
             action.testPlay = true;
-        else if (ui.tab == EditorTab::Route && Hit(kZoomOut, mouse))
+        else if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kZoomOut, mouse))
             ui.timelineZoomIndex = std::max(0, ui.timelineZoomIndex - 1);
-        else if (ui.tab == EditorTab::Route && Hit(kZoomIn, mouse))
+        else if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kZoomIn, mouse))
             ui.timelineZoomIndex = std::min(kZoomMax, ui.timelineZoomIndex + 1);
         else if (ui.tab == EditorTab::Route && !input.nativeChrome && Hit(kMirrorHorizontal, mouse))
             commands.mirrorH = true;
@@ -251,9 +251,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                         commands.deleteTurns = true;
                     }
                 }
-        } else if (mouse.y >= kTimelineY && mouse.y <= kTimelineY + kTimelineHeight &&
-                   mouse.x >= kTimelineX &&
-                   mouse.x <= kTimelineX + kTimelineWidth) {
+        } else if (Hit(TimelineBounds(ui), mouse)) {
             editor_timeline::BeginSelection(draft, ui, input);
         }
     }

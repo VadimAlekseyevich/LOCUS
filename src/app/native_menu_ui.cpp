@@ -774,7 +774,7 @@ void NativeMenuUi::PumpInput(bool dispatchKeyboard) {
     // Calculate hitboxes at the NEW DPI/viewport before forwarding physical
     // mouse coordinates. Otherwise the first click after resizing can land
     // on the stale layout from the previous window geometry.
-    if (layoutChanged) context_->Update();
+    if (layoutChanged || visiblePage_ == Page::Editor) context_->Update();
     const int mods = Modifiers();
     const auto mouse = GetMousePosition();
     context_->ProcessMouseMove(static_cast<int>(mouse.x),
@@ -819,32 +819,8 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     Activate(Page::Editor);
     currentLibrary_ = nullptr;
     currentUi_ = nullptr;
-    const auto viewport = ViewportTransform::Menu(
-        GetScreenWidth(), GetScreenHeight());
-    // The editor's physical letterbox is shared with the raylib viewport,
-    // without inheriting any legacy button hitboxes.
-    if (lastEditorWidth_ != GetScreenWidth() ||
-        lastEditorHeight_ != GetScreenHeight()) {
-        if (auto* canvas = editorDocument_->GetElementById("editor-canvas")) {
-            const float scale = std::max(0.05f, viewport.scale);
-            canvas->SetProperty("left", std::to_string(viewport.offsetX / scale) + "dp");
-            canvas->SetProperty("top", std::to_string(viewport.offsetY / scale) + "dp");
-            // Song Setup is purely native UI. Let its flex columns occupy
-            // the real window width, rather than inherit the chart's
-            // fixed-aspect raylib canvas. Keep the shared audio transport
-            // anchored below the panels in the existing chart viewport.
-            if (auto* setup = editorDocument_->GetElementById("editor-set-ui")) {
-                const float extraX = viewport.offsetX / scale;
-                const float extraY = viewport.offsetY / scale;
-                setup->SetProperty("left", std::to_string(-extraX) + "dp");
-                setup->SetProperty("top", std::to_string(12.0f - extraY) + "dp");
-                setup->SetProperty("width", std::to_string(960.0f + 2.0f * extraX) + "dp");
-                setup->SetProperty("height", std::to_string(458.0f + extraY) + "dp");
-            }
-        }
-        lastEditorWidth_ = GetScreenWidth();
-        lastEditorHeight_ = GetScreenHeight();
-    }
+    // The document now fills the actual context. No per-widget resize
+    // arithmetic or virtual-canvas offsets are written into RCSS.
     input.editor.nativeChrome = true;
     editorPresenter_.BeginFrame(ui, input);
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
@@ -939,7 +915,7 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         const bool chromeArea = over("editor-footer-playback") || transport ||
             (ui.tab == EditorTab::Route &&
                 ((over("editor-route-tools") && !over("editor-route-compare-gap")) ||
-                 over("editor-route-pad") ||
+                 over("editor-ruler-controls") || over("editor-route-pad") ||
                  over("editor-route-speed") || over("editor-route-path"))) ||
             (ui.tab == EditorTab::Set &&
              (over("editor-set-metadata") || over("editor-set-audio") ||
@@ -971,13 +947,29 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
                           &draft, &settings, &setView);
     context_->Update();
+    ReadEditorLayout(ui);
     if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         editorPresenter_.ReleaseClickSuppression();
         editorChromePressActive_ = false;
     }
     editorPresenter_.EndFrame();
 }
-void NativeMenuUi::SyncEditor(const EditorUiState& ui,
+void NativeMenuUi::ReadEditorLayout(EditorUiState& ui) const noexcept {
+    const auto transform = ViewportTransform::Menu(GetScreenWidth(), GetScreenHeight());
+    const auto slot = [&](const char* id) -> Rectangle {
+        auto* element = editorDocument_->GetElementById(id);
+        if (!element || transform.scale <= 0.0f) return {};
+        const auto origin = transform.ToVirtual({element->GetAbsoluteLeft(), element->GetAbsoluteTop()});
+        return {origin.x, origin.y, element->GetOffsetWidth()/transform.scale,
+                element->GetOffsetHeight()/transform.scale};
+    };
+    ui.layout.overview = slot("editor-overview-slot");
+    ui.layout.timeline = ui.tab == EditorTab::Route ? slot("editor-note-ruler") : Rectangle{};
+    ui.layout.preview = ui.tab == EditorTab::Route ? slot("editor-preview-slot") : Rectangle{};
+    ui.layout.compareToggle = ui.tab == EditorTab::Route ? slot("editor-route-compare-gap") : Rectangle{};
+}
+
+void NativeMenuUi::SyncEditor(EditorUiState& ui,
                               const std::string& title, bool dirty,
                               double rate, bool playing,
                               long long songTimeMs,
@@ -988,6 +980,7 @@ void NativeMenuUi::SyncEditor(const EditorUiState& ui,
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
                           &draft, &settings, &setView);
     context_->Update();
+    ReadEditorLayout(ui);
 }
 
 void NativeMenuUi::UpdateSettings(GameSettings& settings, SettingsUi& ui,

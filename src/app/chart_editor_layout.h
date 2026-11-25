@@ -15,9 +15,20 @@ constexpr float kGridMaxSpan = 240.0f;
 // The separate full-song overview is always mapped to actual audio seconds.
 constexpr float kTimelineX = 52.0f, kTimelineY = 17.0f;
 constexpr float kTimelineWidth = 660.0f, kTimelineHeight = 47.0f;
+inline Rectangle TimelineBounds(const EditorUiState& ui) noexcept {
+    return HasLayoutArea(ui.layout.timeline) ? ui.layout.timeline :
+        Rectangle{kTimelineX, kTimelineY, kTimelineWidth, kTimelineHeight};
+}
+inline float PlayheadX(const EditorUiState& ui) noexcept {
+    const auto bounds = TimelineBounds(ui);
+    return bounds.x + bounds.width / 3.0f;
+}
 constexpr Rectangle kEditorPreviewPlay{52, 485, 39, 40};
 constexpr Rectangle kEditorPreviewRestart{96, 485, 39, 40};
 constexpr Rectangle kSongOverview{145, 485, 570, 40};
+inline Rectangle OverviewBounds(const EditorUiState& ui) noexcept {
+    return HasLayoutArea(ui.layout.overview) ? ui.layout.overview : kSongOverview;
+}
 constexpr Rectangle kEditorRateDropdown{725, 485, 93, 40};
 constexpr Rectangle kEditorRatePopup{725, 341, 93, 140};
 inline Rectangle EditorRateOption(int i) noexcept {
@@ -77,7 +88,7 @@ inline float TimelineXAtSeconds(
     const core::ChartEditor& draft, const EditorUiState& ui,
     double anchorTick, double songSeconds) noexcept {
     const double px = TimelinePixelsPerSongSecond(ui, draft.Data().route);
-    return kPlayheadX + static_cast<float>(
+    return PlayheadX(ui) + static_cast<float>(
         (songSeconds - TimelineAnchorSeconds(draft, anchorTick)) * px);
 }
 inline double TimelineSecondsAtX(
@@ -85,7 +96,7 @@ inline double TimelineSecondsAtX(
     double anchorTick, float x) noexcept {
     const double px = TimelinePixelsPerSongSecond(ui, draft.Data().route);
     return TimelineAnchorSeconds(draft, anchorTick) +
-        (static_cast<double>(x) - kPlayheadX) / std::max(px, 1e-6);
+        (static_cast<double>(x) - PlayheadX(ui)) / std::max(px, 1e-6);
 }
 inline int TimelineTickAtX(
     const core::ChartEditor& draft, const EditorUiState& ui,
@@ -102,8 +113,9 @@ inline int TimelineTickAtX(
 inline std::optional<std::int64_t> TimelineNoteTimeAtX(
     const core::ChartEditor& draft, const EditorUiState& ui,
     double anchorTick, float x, float radiusPixels = 7.0f) {
-    if (x < kTimelineX + 8.0f ||
-        x > kTimelineX + kTimelineWidth - 8.0f) return std::nullopt;
+    const auto bounds = TimelineBounds(ui);
+    if (x < bounds.x + 8.0f ||
+        x > bounds.x + bounds.width - 8.0f) return std::nullopt;
     const auto& loaded = draft.Data();
     const auto& route = loaded.route;
     const auto& turns = route.turns;
@@ -184,22 +196,38 @@ constexpr Rectangle ComparePickerRow(int row) noexcept {
 constexpr Rectangle kComparePickerPrev{118, 420, 78, 21};
 constexpr Rectangle kComparePickerNext{266, 420, 78, 21};
 
-// Each preview remains square; shared comparison layouts never shift slots.
+// Fixed legacy bounds are used only by the old non-native renderer and
+// deterministic headless input fixtures. The native path supplies a slot.
 constexpr float kPreviewLeft = 106.0f;
 constexpr float kPreviewRight = 733.0f;
-constexpr float kPreviewTop = 79.0f;
-constexpr float kPreviewMaxSide = 380.0f;
+constexpr float kPreviewTop = kTimelineY + kTimelineHeight + 15.0f;
 constexpr float kPreviewGap = 8.0f;
+inline Rectangle PreviewBounds(const EditorUiState& ui) noexcept {
+    return HasLayoutArea(ui.layout.preview) ? ui.layout.preview :
+        Rectangle{kPreviewLeft, kPreviewTop, kPreviewRight - kPreviewLeft,
+                  kSongOverview.y - kPreviewTop - 26.0f};
+}
+inline Rectangle ComparisonPreviewBounds(const EditorUiState& ui, int count, int index) noexcept {
+    return SquarePreviewPane(PreviewBounds(ui), count, index, kPreviewGap);
+}
 inline Rectangle ComparisonPreviewBounds(int count, int index) noexcept {
-    const int visible = std::clamp(count, 1, 3);
-    if (index < 0 || index >= visible) return {};
-    const float width = kPreviewRight - kPreviewLeft;
-    const float side = std::min(kPreviewMaxSide,
-        (width - (visible - 1) * kPreviewGap) / visible);
-    const float total = side * visible + (visible - 1) * kPreviewGap;
-    return {kPreviewLeft + (width - total) * 0.5f +
-                index * (side + kPreviewGap),
-            kPreviewTop + (kPreviewMaxSide - side) * 0.5f, side, side};
+    return SquarePreviewPane({kPreviewLeft, kPreviewTop, kPreviewRight-kPreviewLeft,
+                              kSongOverview.y-kPreviewTop-26.0f}, count, index, kPreviewGap);
+}
+inline Rectangle CompareToggleBounds(const EditorUiState& ui) noexcept {
+    return HasLayoutArea(ui.layout.compareToggle) ? ui.layout.compareToggle : kCompareToggle;
+}
+inline Rectangle ComparePopupBounds(const EditorUiState& ui) noexcept {
+    if (!HasLayoutArea(ui.layout.compareToggle)) return kComparePopup;
+    const auto button = CompareToggleBounds(ui);
+    const auto area = PreviewBounds(ui);
+    return {button.x + button.width + 10.0f,
+            std::clamp(button.y, area.y, std::max(area.y, area.y + area.height-kComparePopup.height)),
+            kComparePopup.width, kComparePopup.height};
+}
+inline Rectangle ComparePickerRow(const EditorUiState& ui, int row) noexcept {
+    const auto popup = ComparePopupBounds(ui);
+    return {popup.x+10.0f,popup.y+23.0f+row*29.0f,popup.width-20.0f,25.0f};
 }
 constexpr Rectangle kEditorSpeedMinus{852, 408, 36, 28};
 constexpr Rectangle kEditorSpeedPlus{894, 408, 36, 28};
@@ -307,18 +335,19 @@ constexpr double kSpeeds[5] = {1.0, 0.75, 0.5, 0.25, 0.1};
 
 // Conversion helpers for the fixed, song-wide timeline. This scale never
 // depends on note zoom, BPM, snap subdivision or the active difficulty.
-inline float SongOverviewX(double audioSeconds, double durationSeconds) noexcept {
+inline float SongOverviewX(double audioSeconds, double durationSeconds,
+                           Rectangle bounds = kSongOverview) noexcept {
     if (!std::isfinite(durationSeconds) || durationSeconds <= 0.0)
-        return kSongOverview.x;
+        return bounds.x;
     const double progress = std::clamp(audioSeconds / durationSeconds, 0.0, 1.0);
-    return kSongOverview.x +
-        static_cast<float>(progress * kSongOverview.width);
+    return bounds.x + static_cast<float>(progress * bounds.width);
 }
-inline double SongOverviewSeconds(float x, double durationSeconds) noexcept {
+inline double SongOverviewSeconds(float x, double durationSeconds,
+                                  Rectangle bounds = kSongOverview) noexcept {
     if (!std::isfinite(durationSeconds) || durationSeconds <= 0.0)
         return 0.0;
     const double progress = std::clamp(
-        static_cast<double>(x - kSongOverview.x) / kSongOverview.width,
+        static_cast<double>(x - bounds.x) / std::max(1.0f, bounds.width),
         0.0, 1.0);
     return progress * durationSeconds;
 }

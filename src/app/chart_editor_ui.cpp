@@ -107,13 +107,14 @@ void DrawTextField(Font font, Rectangle rect, const char* label,
     }
 }
 
-void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
+void DrawComparisonPreviews(Font font, const EditorUiState& ui,
+                            const EditorComparisonFrame& comparison,
                             double songSeconds, float pixelsPerSongSecond,
                             const Skin& skin) {
     const int count = std::clamp(comparison.count, 1, 3);
     for (int index = 0; index < count; ++index) {
         const auto& pane = comparison.panes[static_cast<std::size_t>(index)];
-        const Rectangle bounds = ComparisonPreviewBounds(count, index);
+        const Rectangle bounds = ComparisonPreviewBounds(ui, count, index);
         DrawRectangleRounded(bounds, 0.05f, 5, Color{23, 30, 43, 242});
         const Color accent = pane.editable
             ? Color{111, 221, 198, 255}
@@ -170,12 +171,13 @@ void DrawComparisonPreviews(Font font, const EditorComparisonFrame& comparison,
 void DrawComparisonPicker(Font font, const EditorUiState& ui,
                           const EditorSetView& set) {
     if (!ui.comparisonPickerOpen) return;
-    DrawRectangleRounded(kComparePopup, 0.08f, 6,
+    const auto popup = ComparePopupBounds(ui);
+    DrawRectangleRounded(popup, 0.08f, 6,
                          Color{21, 29, 44, 253});
-    DrawRectangleRoundedLinesEx(kComparePopup, 0.08f, 6, 1.5f,
+    DrawRectangleRoundedLinesEx(popup, 0.08f, 6, 1.5f,
                                 Color{118, 208, 198, 255});
-    Label(font, "COMPARE / SAME SONG", kComparePopup.x + 10,
-          kComparePopup.y + 6, 12.0f, Color{209, 234, 232, 255});
+    Label(font, "COMPARE / SAME SONG", popup.x + 10,
+          popup.y + 6, 12.0f, Color{209, 234, 232, 255});
     const int count = static_cast<int>(set.comparisonOptions.size());
     for (int row = 0; row < 5; ++row) {
         const int index = ui.comparisonPickerFirst + row;
@@ -184,7 +186,7 @@ void DrawComparisonPicker(Font font, const EditorUiState& ui,
             static_cast<std::size_t>(index)];
         const bool editable = index == set.current;
         const bool checked = HasEditorComparison(ui, option.file);
-        const Rectangle rect = ComparePickerRow(row);
+        const Rectangle rect = ComparePickerRow(ui, row);
         const std::string label =
             (editable ? "EDIT  " : checked ? "[-]  " : "[+]  ") +
             Truncate(option.title, 23);
@@ -195,11 +197,11 @@ void DrawComparisonPicker(Font font, const EditorUiState& ui,
             editable || checked);
     }
     if (count > 5)
-        Label(font, "SCROLL", kComparePopup.x + 10, kComparePopup.y + 182,
+        Label(font, "SCROLL", popup.x + 10, popup.y + 182,
               11.0f, Color{183, 202, 216, 255});
     Label(font, TextFormat("%d / %d",
         std::min(count, ui.comparisonPickerFirst + 5), count),
-        kComparePopup.x + 107, kComparePopup.y + 182, 11.0f, Color{183, 202, 216, 255});
+        popup.x + 107, popup.y + 182, 11.0f, Color{183, 202, 216, 255});
 }
 
 // Zoomable, note-bearing ruler. Its pixel scale never controls the
@@ -208,7 +210,9 @@ void DrawComparisonPicker(Font font, const EditorUiState& ui,
 // Each tempo marker starts its own beat grid at a strong beat; increasing BPM
 // packs lines more tightly instead of changing the ruler's song-time speed.
 void DrawTimeline(Font font, const core::ChartEditor& draft,
-                  const EditorUiState& ui, double previewBeat) {
+                  const EditorUiState& ui, double previewBeat, bool nativeShell) {
+    const auto strip = TimelineBounds(ui);
+    if (!HasLayoutArea(strip)) return;
     const auto& loaded = draft.Data();
     const auto& chart = loaded.route;
     const double anchor = ui.draggingTimeline
@@ -220,25 +224,24 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
         return TimelineXAtSeconds(draft, ui, anchor, songSeconds);
     };
     const double leftTime = TimelineSecondsAtX(
-        draft, ui, anchor, kTimelineX + 5.0f);
+        draft, ui, anchor, strip.x + 5.0f);
     const double rightTime = TimelineSecondsAtX(
-        draft, ui, anchor, kTimelineX + kTimelineWidth - 5.0f);
+        draft, ui, anchor, strip.x + strip.width - 5.0f);
     const double firstChartTime = core::TempoSecondsAtTick(
         chart, loaded.offsetSeconds, chart.firstBeat);
     const double lastChartTime = core::TempoSecondsAtTick(
         chart, loaded.offsetSeconds, chart.lengthBeats);
     const double visibleFrom = std::max(leftTime, firstChartTime);
     const double visibleTo = std::min(rightTime, lastChartTime);
-    const Rectangle strip{kTimelineX, kTimelineY, kTimelineWidth, kTimelineHeight};
-    const float lineY = kTimelineY + 25.0f;
+    const float lineY = strip.y + 25.0f;
 
     DrawRectangleRounded(strip, UiRoundness(strip,8), 8,
                          Color{30, 37, 58, 255});
     DrawRectangleRoundedLinesEx(strip, UiRoundness(strip,8), 8, 1,
                                 ApprovedUiTheme().divider);
-    DrawRectangleRec({kTimelineX + 2.0f, kTimelineY + 2.0f,
-                      kPlayheadX - kTimelineX - 2.0f,
-                      kTimelineHeight - 4.0f}, Color{41, 62, 70, 255});
+    DrawRectangleRec({strip.x + 2.0f, strip.y + 2.0f,
+                      PlayheadX(ui) - strip.x - 2.0f,
+                      strip.height - 4.0f}, Color{41, 62, 70, 255});
 
     if (ui.tab == EditorTab::Route && ui.HasRange()) {
         const double halfStep = 0.5 * chart.ticksPerBeat / chart.snapDivision;
@@ -246,15 +249,15 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
             chart, loaded.offsetSeconds, ui.rangeFirst - halfStep));
         const float lastX = atX(core::TempoSecondsAtTick(
             chart, loaded.offsetSeconds, ui.rangeLast + halfStep));
-        const float x1 = std::max(firstX, kTimelineX + 2.0f);
-        const float x2 = std::min(lastX, kTimelineX + kTimelineWidth - 2.0f);
+        const float x1 = std::max(firstX, strip.x + 2.0f);
+        const float x2 = std::min(lastX, strip.x + strip.width - 2.0f);
         if (x2 > x1)
-            DrawRectangleRec({x1, kTimelineY + 2.0f, x2 - x1,
-                              kTimelineHeight - 4.0f},
+            DrawRectangleRec({x1, strip.y + 2.0f, x2 - x1,
+                              strip.height - 4.0f},
                              Color{187, 160, 231, 96});
     }
-    DrawLineEx({kTimelineX + 4.0f, lineY},
-               {kTimelineX + kTimelineWidth - 4.0f, lineY},
+    DrawLineEx({strip.x + 4.0f, lineY},
+               {strip.x + strip.width - 4.0f, lineY},
                2.0f, Color{98, 125, 150, 255});
 
     // Draw each tempo segment independently in SONG SECONDS. This avoids
@@ -296,15 +299,15 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                         songSeconds >= markers[i+1].timeMs / 1000.0 - 1e-8)
                         break;
                     const float x = atX(songSeconds);
-                    if (x < kTimelineX + 5.0f ||
-                        x > kTimelineX + kTimelineWidth - 5.0f)
+                    if (x < strip.x + 5.0f ||
+                        x > strip.x + strip.width - 5.0f)
                         continue;
                     const bool bar = kind == 2;
                     const bool major = kind == 1;
                     DrawLineEx(
-                        {x, kTimelineY + (bar ? 11.0f
+                        {x, strip.y + (bar ? 11.0f
                                     : major ? 17.0f : 23.0f)},
-                        {x, kTimelineY + 34.0f},
+                        {x, strip.y + 34.0f},
                         bar ? 2.5f : major ? 1.5f : 1.0f,
                         bar ? Color{199, 220, 234, 255}
                             : major ? Color{113, 141, 163, 255}
@@ -328,11 +331,11 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
             const double time = markers[i].timeMs / 1000.0;
             if (time < visibleFrom || time > visibleTo) continue;
             const float x = atX(time);
-            DrawLineEx({x, kTimelineY + 7.0f},
-                       {x, kTimelineY + 39.0f},
+            DrawLineEx({x, strip.y + 7.0f},
+                       {x, strip.y + 39.0f},
                        3.0f, Color{111, 233, 198, 255});
             const char* bpm = TextFormat("%.1f", markers[i].bpm);
-            Label(font, bpm, x + 5.0f, kTimelineY + 1.0f, 10.0f,
+            Label(font, bpm, x + 5.0f, strip.y + 1.0f, 10.0f,
                   Color{160, 236, 211, 255});
         }
     }
@@ -350,8 +353,8 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
             core::EventTimeMs(chart, event, loaded.offsetSeconds) / 1000.0;
         if (songSeconds > rightTime) break;
         const float x = atX(songSeconds);
-        if (x < kTimelineX + 8.0f ||
-            x > kTimelineX + kTimelineWidth - 8.0f)
+        if (x < strip.x + 8.0f ||
+            x > strip.x + strip.width - 8.0f)
             continue;
         const auto next = std::upper_bound(markers.begin(), markers.end(),
             songSeconds * 1000.0,
@@ -368,13 +371,13 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
             : std::min(spacing - 3.0f, 32.0f);
         const Color tint = core::IsDiagonal(event.direction)
             ? Color{175, 155, 236, 255} : Color{111, 214, 202, 255};
-        DrawRectangleRec({x - width * 0.5f, kTimelineY + 29.0f,
+        DrawRectangleRec({x - width * 0.5f, strip.y + 29.0f,
                           width, 12.0f}, tint);
         if (draft.SelectedTurnTimeMs() && draft.SelectedTurn() == &event) {
             // Exact event selection is visible even if another authored
             // note shares this musical grid cell.
             DrawRectangleLinesEx({x - width * 0.5f - 2.0f,
-                                  kTimelineY + 27.0f,
+                                  strip.y + 27.0f,
                                   width + 4.0f, 16.0f},
                                  2.0f, ApprovedUiTheme().foreground);
         }
@@ -385,30 +388,30 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
             const char* label = names[static_cast<int>(event.direction)];
             const float widthText = MeasureTextEx(font, label, 10, 1).x;
             Label(font, label, x - widthText * 0.5f,
-                  kTimelineY + 29.0f, 10, Color{18, 26, 36, 255});
+                  strip.y + 29.0f, 10, Color{18, 26, 36, 255});
         }
     }
     if (ui.pendingExactPlacementTimeMs) {
         const float x = atX(*ui.pendingExactPlacementTimeMs / 1000.0);
-        if (x >= kTimelineX + 6.0f &&
-            x <= kTimelineX + kTimelineWidth - 6.0f) {
-            DrawLineEx({x, kTimelineY + 3.0f},
-                       {x, kTimelineY + 43.0f},
+        if (x >= strip.x + 6.0f &&
+            x <= strip.x + strip.width - 6.0f) {
+            DrawLineEx({x, strip.y + 3.0f},
+                       {x, strip.y + 43.0f},
                        2.0f, Color{255, 190, 112, 255});
         }
     }
-    DrawRectangleRec({kPlayheadX - 3.0f, kTimelineY + 1.0f,
-                      6.0f, kTimelineHeight - 2.0f},
+    DrawRectangleRec({PlayheadX(ui) - 3.0f, strip.y + 1.0f,
+                      6.0f, strip.height - 2.0f},
                      ApprovedUiTheme().softBlue);
-    DrawCircleV({kPlayheadX, lineY}, 5.0f, ApprovedUiTheme().foreground);
+    DrawCircleV({PlayheadX(ui), lineY}, 5.0f, ApprovedUiTheme().foreground);
 
-    if (ui.tab == EditorTab::Route) {
+    if (ui.tab == EditorTab::Route && !nativeShell) {
         const auto& colors = ApprovedUiTheme();
         Label(font, TextFormat("SNAP 1/%d", chart.snapDivision),
-              730, kTimelineY + 4, 12, colors.softBlue);
+              730, strip.y + 4, 12, colors.softBlue);
         Label(font, TextFormat("ZOOM %d%%",
               static_cast<int>(std::round(PixelsPerBeat(ui)/36.0f*100))),
-              730, kTimelineY + 29, 12, colors.secondaryText);
+              730, strip.y + 29, 12, colors.secondaryText);
         CompactButton(font, kSnapLess, "-", colors.rose);
         CompactButton(font, kSnapMore, "+", colors.softBlue);
         CompactButton(font, kZoomOut, "-", colors.rose);
@@ -417,8 +420,8 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
 }
 
 void DrawSongOverview(Font font, const core::ChartEditor& draft,
-                      const EditorSetView& set, double songSeconds) {
-    const Rectangle bounds = kSongOverview;
+                      const EditorSetView& set, const EditorUiState& ui, double songSeconds) {
+    const Rectangle bounds = OverviewBounds(ui);
     DrawRectangleRounded(bounds,UiRoundness(bounds,8),8,Color{30,38,60,255});
     DrawRectangleRoundedLinesEx(bounds,UiRoundness(bounds,8),8,1,
                                 ApprovedUiTheme().divider);
@@ -430,7 +433,7 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
     }
 
     const float right = bounds.x + bounds.width;
-    const float cursor = SongOverviewX(songSeconds, duration);
+    const float cursor = SongOverviewX(songSeconds, duration, bounds);
     const float lineY = bounds.y + 25.0f;
     if (cursor > bounds.x + 2.0f) {
         DrawRectangleRec({bounds.x + 2.0f, lineY - 2.0f,
@@ -448,7 +451,7 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
         : core::EffectiveTempoMap(draft.Data().route, draft.Data().offsetSeconds);
     float previousTextRight = -1000.0f;
     for (const auto& marker : tempoMarkers) {
-        const float x = SongOverviewX(marker.timeMs / 1000.0, duration);
+        const float x = SongOverviewX(marker.timeMs / 1000.0, duration, bounds);
         DrawLineEx({x, bounds.y + 5.0f}, {x, bounds.y + 31.0f},
                    2.0f, Color{128, 223, 210, 255});
         const char* name = TextFormat("%g BPM", marker.bpm);
@@ -501,15 +504,13 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         EditorIconButton(kRotateCounterclockwise,EditorIcon::RotateL,sky);
         EditorIconButton(kRotateClockwise,EditorIcon::RotateR,sky);
         }
-        EditorIconButton(kCompareToggle,EditorIcon::Compare,
+        EditorIconButton(CompareToggleBounds(ui),EditorIcon::Compare,
                          set.managed?sky:muted,ui.comparisonPickerOpen);
         if (!nativeShell) {
         EditorIconButton(kRouteTest,EditorIcon::Play,sky);
         }
 
-        const Rectangle previewArea{
-            kPreviewLeft-3,kPreviewTop-3,
-            kPreviewRight-kPreviewLeft+6,kPreviewMaxSide+6};
+        const Rectangle previewArea = PreviewBounds(ui);
         DrawRectangleRounded(previewArea,UiRoundness(previewArea,12),10,
                              Color{25,33,53,235});
         DrawRectangleRoundedLinesEx(previewArea,UiRoundness(previewArea,12),
@@ -525,12 +526,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         }
         Skin editorSkin=skin;
         editorSkin.lookaheadMs=settings.editorPreviewLengthMs;
-        DrawComparisonPreviews(font,*comparisons,previewSeconds,
+        DrawComparisonPreviews(font,ui,*comparisons,previewSeconds,
             settings.editorPreviewSpeed, editorSkin);
         const int focused=std::clamp(ui.comparisonFocusedSlot,0,
                                     comparisons->count-1);
         const Rectangle focusedBounds=ComparisonPreviewBounds(
-            comparisons->count,focused);
+            ui,comparisons->count,focused);
         Label(font,TextFormat("%.1f",draft.Difficulty().overall),
               focusedBounds.x+focusedBounds.width-43,
               focusedBounds.y+23,12,sky);
@@ -706,8 +707,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
 
     }
 
-    if(routeTab) DrawTimeline(font,draft,ui,previewBeat);
-    DrawSongOverview(font,draft,set,previewSeconds);
+    if(routeTab) DrawTimeline(font,draft,ui,previewBeat,nativeShell);
+    DrawSongOverview(font,draft,set,ui,previewSeconds);
 
     // Timeline and song overview still use raylib; transport chrome is RmlUi.
     const char* speeds[5]={"100%","75%","50%","25%","10%"};
@@ -738,7 +739,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorMirrorV)));
         EditorToolTip(font,kRotateCounterclockwise,"Rotate 90 left");
         EditorToolTip(font,kRotateClockwise,"Rotate 90 right");
-        EditorToolTip(font,kCompareToggle,"Compare charts");
+        EditorToolTip(font,CompareToggleBounds(ui),"Compare charts");
         EditorToolTip(font,kRouteTest,
             "Test chart  /  "+
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorTest)));

@@ -129,11 +129,22 @@ int main() {
                     detail::kSongOverview.width*.25f,120.0)-30.0)<.001,
                 "two independent timeline rows share no hitboxes");
     const auto singlePreview = detail::ComparisonPreviewBounds(1, 0);
-    ok &= Check(singlePreview.width == 380.0f &&
+    ok &= Check(singlePreview.width == detail::PreviewBounds(ui).height &&
                 singlePreview.height == singlePreview.width &&
                 singlePreview.y >= detail::kTimelineY + detail::kTimelineHeight &&
                 singlePreview.y + singlePreview.height < detail::kSongOverview.y,
                 "headerless authoring workspace expands single-chart preview");
+    // Non-16:9 layout values must reach both draw mapping and hit testing.
+    EditorUiState responsive;
+    responsive.layout.preview = {-100, 50, 1000, 600};
+    responsive.layout.timeline = {-120, 10, 1100, 47};
+    responsive.layout.overview = {-80, 700, 1000, 40};
+    const auto widePane = detail::ComparisonPreviewBounds(responsive, 1, 0);
+    ok &= Check(widePane.width == 600 && widePane.height == 600 &&
+                widePane.y == 50 && widePane.x == 100 &&
+                detail::PlayheadX(responsive) == -120.0f + 1100.0f/3.0f &&
+                std::abs(detail::SongOverviewSeconds(420, 120, detail::OverviewBounds(responsive))-60) < .001,
+                "measured regions determine square size, ruler anchor and overview mapping");
     const auto referenceSquare = detail::ComparisonPreviewBounds(3, 0);
     ok &= Check(referenceSquare.width > 200.0f &&
                 referenceSquare.width < 210.0f &&
@@ -416,7 +427,8 @@ int main() {
 
     for(int n=1;n<=3;++n){
         const auto firstPane=detail::ComparisonPreviewBounds(n,0);
-        ok &= Check(firstPane.width>200&&firstPane.width<=280&&
+        ok &= Check(firstPane.width>0&&std::abs(firstPane.width - std::min(detail::PreviewBounds(ui).height,
+                    (detail::PreviewBounds(ui).width-(n-1)*detail::kPreviewGap)/n)) < .01f&&
                     firstPane.width==firstPane.height&&
                     firstPane.x>=106&&firstPane.x+firstPane.width<=733,
                     "preview layout maximizes square playfield");

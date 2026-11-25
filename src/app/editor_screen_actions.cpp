@@ -110,14 +110,14 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
         for (int i = 0; i < count; ++i)
             if (i != focusedSlot)
                 previewFocusClick |= detail::Hit(
-                    detail::ComparisonPreviewBounds(count, i),
+                    detail::ComparisonPreviewBounds(context_.ui, count, i),
                     input.editor.mouse);
     }
     const bool compareInteraction =
         context_.ui.tab == EditorTab::Route &&
         (context_.ui.comparisonPickerOpen || previewFocusClick ||
          (input.editor.mouseClick &&
-          detail::Hit(detail::kCompareToggle, input.editor.mouse)));
+          detail::Hit(detail::CompareToggleBounds(context_.ui), input.editor.mouse)));
     if (compareInteraction) {
         context_.sets.HandleControls(input.editor);
         return false;

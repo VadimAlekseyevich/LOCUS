@@ -121,14 +121,14 @@ void HandleEditorComparisonControls(EditorUiState& ui,
     }
     const Vector2 mouse = input.mouse;
     if (ui.comparisonPickerOpen && input.mouseWheel != 0.0f &&
-        detail::Hit(detail::kComparePopup, mouse)) {
+        detail::Hit(detail::ComparePopupBounds(ui), mouse)) {
         ui.comparisonPickerFirst = std::clamp(ui.comparisonPickerFirst +
             (input.mouseWheel > 0.0f ? -1 : 1), 0,
             std::max(0, static_cast<int>(set.comparisonOptions.size()) - 5));
         return;
     }
     if (!input.mouseClick) return;
-    if (detail::Hit(detail::kCompareToggle, mouse)) {
+    if (detail::Hit(detail::CompareToggleBounds(ui), mouse)) {
         const bool alternatives = set.managed &&
             std::any_of(set.comparisonOptions.begin(),
                         set.comparisonOptions.end(),
@@ -152,14 +152,14 @@ void HandleEditorComparisonControls(EditorUiState& ui,
     for (int row = 0; row < 5; ++row) {
         const int index = ui.comparisonPickerFirst + row;
         if (index >= count) break;
-        if (!detail::Hit(detail::ComparePickerRow(row), mouse)) continue;
+        if (!detail::Hit(detail::ComparePickerRow(ui, row), mouse)) continue;
         if (!ToggleEditorComparison(ui, set, index)) {
             ui.feedback = "MAX THREE ROUTES / ACTIVE CHART IS ALREADY SHOWN";
             ui.feedbackError = true;
         }
         return;
     }
-    if (!detail::Hit(detail::kComparePopup, mouse))
+    if (!detail::Hit(detail::ComparePopupBounds(ui), mouse))
         ui.comparisonPickerOpen = false;
 }
 

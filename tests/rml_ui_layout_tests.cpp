@@ -366,7 +366,7 @@ int main(int argc, char** argv) {
                         "1536x960: SETTINGS scales without overflow");
         }
     }
-    // Editor shell follows the 960x540 raylib viewport exactly.
+    // Editor shell allocates real flex regions for the raylib renderer.
     auto* editorDoc = context->LoadDocument(uiPath("editor.rml"));
     ok &= Check(editorDoc != nullptr, "EDITOR shell parses");
     if (editorDoc) {
@@ -445,8 +445,8 @@ int main(int argc, char** argv) {
                 toolrail->GetAbsoluteLeft() + toolrail->GetOffsetWidth() <
                     compass->GetAbsoluteLeft(),
                 "EDITOR ROUTE native compass and toolrail are separate");
-            ok &= Check(std::abs(footer->GetAbsoluteTop() - 485.0f) < 2.0f,
-                        "960x540: editor shell aligns with raylib viewport");
+            ok &= Check(footer->GetAbsoluteTop() > 470.0f && footer->GetAbsoluteTop()+footer->GetOffsetHeight() <= 540.1f,
+                        "960x540: editor transport stays at the bottom");
             if (set && route) {
                 set->SetProperty("display", "flex");
                 route->SetProperty("display", "none");
@@ -461,7 +461,7 @@ int main(int argc, char** argv) {
                     audio->GetAbsoluteLeft()+audio->GetOffsetWidth() <= difficulties->GetAbsoluteLeft() &&
                     !editorDoc->GetElementById("editor-setup-enter") &&
                     metadata->GetAbsoluteTop() < 20.0f &&
-                    metadata->GetOffsetHeight() > 440.0f,
+                    metadata->GetOffsetHeight() > 430.0f,
                     "SONG SETUP uses three nonoverlapping native panels without an open button");
                 auto* preview = editorDoc->GetElementById("editor-preview-ms");
                 auto* attach = editorDoc->GetElementById("editor-attach-audio");
@@ -475,25 +475,38 @@ int main(int argc, char** argv) {
                 // window adapter supplies on a 1280-wide logical viewport.
                 const float originalWidth = audio->GetOffsetWidth();
                 context->SetDimensions({1280, 540});
-                canvas->SetProperty("left", "160dp");
-                set->SetProperty("left", "-160dp");
-                set->SetProperty("width", "1280dp");
+
                 context->Update();
                 ok &= Check(audio->GetOffsetWidth() > originalWidth + 85.0f &&
                     difficulties->GetAbsoluteLeft()+difficulties->GetOffsetWidth() <= 1280.1f &&
                     metadata->GetAbsoluteLeft() < 20.0f,
                     "ultrawide Song Setup columns grow with actual window width");
-                canvas->SetProperty("left", "0dp");
-                set->SetProperty("left", "0dp");
-                set->SetProperty("width", "960dp");
+
             }
             context->SetDimensions({1536, 960});
             context->SetDensityIndependentPixelRatio(1.6f);
-            canvas->SetProperty("top", "30dp");
+
             context->Update();
             ok &= Check(footer->GetAbsoluteTop() < 960.0f &&
                         audio->GetAbsoluteTop() < 75.0f,
-                        "1536x960: editor shell respects letterboxing");
+                        "1536x960: editor shell uses window without letterboxing");
+            set->SetProperty("display", "none");
+            route->SetProperty("display", "flex");
+            context->SetDensityIndependentPixelRatio(1.0f);
+            context->SetDimensions({960,540});
+            context->Update();
+            auto* slot = editorDoc->GetElementById("editor-preview-slot");
+            auto* ruler = editorDoc->GetElementById("editor-note-ruler");
+            auto* overview = editorDoc->GetElementById("editor-overview-slot");
+            if (slot && ruler && overview) {
+                const float w = slot->GetOffsetWidth(), h = slot->GetOffsetHeight();
+                context->SetDimensions({1280,720});
+                context->Update();
+                ok &= Check(slot->GetOffsetWidth() > w+300 && slot->GetOffsetHeight() > h+160 &&
+                            ruler->GetAbsoluteTop()+ruler->GetOffsetHeight() <= slot->GetAbsoluteTop() &&
+                            slot->GetAbsoluteTop()+slot->GetOffsetHeight() <= overview->GetAbsoluteTop(),
+                            "native canvas slots grow in both dimensions and never overlap");
+            } else ok &= Check(false, "editor exposes all three canvas slots");
         }
     }
     auto* resultsDoc = context->LoadDocument(uiPath("results.rml"));
