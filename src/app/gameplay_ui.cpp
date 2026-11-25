@@ -77,7 +77,7 @@ void DrawPlayGrid(Font font,const GameplayView& gameplay,double now,
             case Heading::DownLeft: direction = {-d, d}; break;
             case Heading::UpLeft: direction = {-d, -d}; break;
         }
-        DrawLineEx(marker,
+        DrawSoftRouteLine(marker,
                    {marker.x + direction.x * 900.0f,
                     marker.y + direction.y * 900.0f},
                    std::max(1.0f, gameplay.skin.pathWidth * 0.7f),

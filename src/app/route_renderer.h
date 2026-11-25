@@ -30,6 +30,9 @@ struct RouteCanvas {
 
 enum class RouteRenderMode { Editor, Gameplay };
 
+// Shared edge-antialiased straight stroke for the outro and skin samples.
+void DrawSoftRouteLine(Vector2 from, Vector2 to, float width, Color tint);
+
 // Shared renderer for PLAY, EDITOR and the live SKIN preview. The
 // semicircle bulges toward incoming motion and does not alter the route.
 void DrawReverseCap(Vector2 point, float junctionRadius, core::Heading outgoing,

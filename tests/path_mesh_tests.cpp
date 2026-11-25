@@ -276,6 +276,39 @@ int main() {
         ok &= Check(visibleQuads > 20,
                     "quad faces the GPU's visible side in all eight headings");
     }
+    // The AA bands use the same front-facing winding in all directions.
+    // A change in camera zoom must not change the physical feather width.
+    for (const auto heading : directions) {
+        straight.initialHeading = heading;
+        const auto aaRows = app::BuildScoredPathRibbon(
+            straight, 1.25, canvas, skin);
+        for (float pixelScale : {0.5f, 1.0f, 2.0f}) {
+            const auto a = app::MakePathRibbonCoverageRow(aaRows[4], 1.0f, pixelScale);
+            const auto b = app::MakePathRibbonCoverageRow(aaRows[5], 1.0f, pixelScale);
+            ok &= Check(a.opacity[0] == 0.0f && a.opacity[3] == 0.0f &&
+                        Near(a.opacity[1], aaRows[4].opacity) &&
+                        Near(std::hypot(a.points[0].x - a.points[1].x,
+                                        a.points[0].y - a.points[1].y) * pixelScale,
+                             1.0, 0.001),
+                        "edge fades over one framebuffer pixel at every zoom");
+            for (int band = 0; band < 3; ++band) {
+                ok &= Check(winding(a.points[band], a.points[band + 1],
+                                    b.points[band + 1]) < 0.0f &&
+                            winding(a.points[band], b.points[band + 1],
+                                    b.points[band]) < 0.0f,
+                            "AA band keeps GPU-facing winding");
+            }
+        }
+    }
+    const app::PathRibbonRow narrow{{10.0f, 20.0f}, {0.0f, 0.125f},
+                                    1.0f, 0.0, false, 0.125f};
+    const auto narrowAA = app::MakePathRibbonCoverageRow(narrow, 1.0f, 1.0f);
+    ok &= Check(Near(narrowAA.points[1].y, 20.0) &&
+                Near(narrowAA.points[2].y, 20.0) &&
+                Near(narrowAA.opacity[1], 0.4) &&
+                Near((narrowAA.points[3].y - 20.0) * narrowAA.opacity[1], 0.25),
+                "subpixel stroke preserves integrated opacity without opaque core");
+
     // Winding is preserved for BOTH outline and foreground stroke widths.
     const auto rows = app::BuildScoredPathRibbon(straight, 2.25, canvas, skin);
     for (float scale : {1.0f, 1.8f}) {

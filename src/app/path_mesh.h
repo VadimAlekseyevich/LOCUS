@@ -17,6 +17,7 @@ struct PathRibbonRow {
     float opacity = 0.0f;
     double tick = 0.0;
     bool startsRun = false;    // true at start and at 180-degree reversals
+    float halfWidth = 0.0f;    // before the miter and outline scale
 };
 
 // Render-owner scratch, reused across sequential draws and frames.
@@ -44,6 +45,17 @@ struct PathRibbonQuad {
 };
 PathRibbonQuad MakePathRibbonQuad(
     const PathRibbonRow& from, const PathRibbonRow& to, float scale) noexcept;
+
+// Four shared cross-section vertices: outer-left, inner-left,
+// inner-right, outer-right. The outer edge has zero alpha, the inner
+// edge has coverage-adjusted alpha. Widths are expressed in draw units.
+struct PathRibbonCoverageRow {
+    Vector2 points[4]{};
+    float opacity[4]{};
+};
+
+PathRibbonCoverageRow MakePathRibbonCoverageRow(
+    const PathRibbonRow& row, float layerScale, float pixelsPerDrawUnit) noexcept;
 
 // Build one continuous tapered ribbon over [playhead, playhead + lookahead].
 // Direction changes of up to 135 degrees use mitered joins. Exact 180-degree

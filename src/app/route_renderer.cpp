@@ -50,8 +50,17 @@ void RibbonVertex(Vector2 point, Color tint, float opacity) {
     rlVertex2f(point.x, point.y);
 }
 
-void DrawRibbonLayer(const std::vector<PathRibbonRow>& rows,
-                     Color tint, float scale) {
+// All current route canvases use a uniform Camera2D zoom. rlgl exposes
+// its actual modelview scale, including native skin-preview transforms.
+float RoutePixelsPerDrawUnit() {
+    const Matrix matrix = rlGetMatrixModelview();
+    const float scale = std::hypot(matrix.m0, matrix.m1);
+    return std::isfinite(scale) && scale > 0.0f ? scale : 1.0f;
+}
+
+void DrawRibbonLayer(const PathRibbonRow* rows, std::size_t count,
+                     Color tint, float scale, float pixelsPerDrawUnit) {
+    if (count < 2 || tint.a == 0) return;
     // Match raylib's DrawRectangleGradientEx exactly: same shape texture,
     // front-face vertex order and UV coordinates, with our own taper/alpha.
     // The previous reversed triangles could be back-face culled, making the
@@ -72,20 +81,29 @@ void DrawRibbonLayer(const std::vector<PathRibbonRow>& rows,
     rlNormal3f(0.0f, 0.0f, 1.0f);
     // Draw far-to-near, as the old renderer did. When a route retraces
     // itself, the part closer to the player should remain visually on top.
-    for (std::size_t i = rows.size() - 1; i > 0; --i) {
+    auto toCoverage = MakePathRibbonCoverageRow(
+        rows[count - 1], scale, pixelsPerDrawUnit);
+    const auto vertex = [&](const PathRibbonCoverageRow& row, int index) {
+        rlTexCoord2f(solidU, solidV);
+        RibbonVertex(row.points[index], tint, row.opacity[index]);
+    };
+    for (std::size_t i = count - 1; i > 0; --i) {
         const auto& from = rows[i - 1];
         const auto& to = rows[i];
-        if (to.startsRun || (from.opacity <= 0.0f && to.opacity <= 0.0f))
-            continue;
-        const PathRibbonQuad quad = MakePathRibbonQuad(from, to, scale);
-        rlTexCoord2f(solidU, solidV);
-        RibbonVertex(quad.vertices[0], tint, from.opacity);
-        rlTexCoord2f(solidU, solidV);
-        RibbonVertex(quad.vertices[1], tint, from.opacity);
-        rlTexCoord2f(solidU, solidV);
-        RibbonVertex(quad.vertices[2], tint, to.opacity);
-        rlTexCoord2f(solidU, solidV);
-        RibbonVertex(quad.vertices[3], tint, to.opacity);
+        const auto fromCoverage = MakePathRibbonCoverageRow(
+            from, scale, pixelsPerDrawUnit);
+        if (!to.startsRun && (from.opacity > 0.0f || to.opacity > 0.0f)) {
+            // Three adjacent quads, same winding and shared vertices as the
+            // original ribbon. No overdraw between the core and its fringes.
+            rlCheckRenderBatchLimit(12);
+            for (int band = 0; band < 3; ++band) {
+                vertex(fromCoverage, band);
+                vertex(fromCoverage, band + 1);
+                vertex(toCoverage, band + 1);
+                vertex(toCoverage, band);
+            }
+        }
+        toCoverage = fromCoverage;
     }
     rlEnd();
     rlSetTexture(0);
@@ -97,8 +115,9 @@ void DrawScoredPath(const core::Chart& chart, double beat,
     if (rows.size() < 2) return;
     // As before, outline is behind trajectory, but both layers now have
     // watertight corners and vertex alpha rather than per-slice alpha jumps.
-    DrawRibbonLayer(rows, skin.outline, skin.outlineScale);
-    DrawRibbonLayer(rows, skin.trajectory, 1.0f);
+    const float pixelScale = RoutePixelsPerDrawUnit();
+    DrawRibbonLayer(rows.data(), rows.size(), skin.outline, skin.outlineScale, pixelScale);
+    DrawRibbonLayer(rows.data(), rows.size(), skin.trajectory, 1.0f, pixelScale);
 }
 
 void DrawScoredPath(const RoutePreviewFrame& preview,
@@ -106,11 +125,26 @@ void DrawScoredPath(const RoutePreviewFrame& preview,
     PrepareScoredPathRibbon(preview,canvas,skin,workspace);
     const auto& rows=workspace.rows;
     if (rows.size() < 2) return;
-    DrawRibbonLayer(rows, skin.outline, skin.outlineScale);
-    DrawRibbonLayer(rows, skin.trajectory, 1.0f);
+    const float pixelScale = RoutePixelsPerDrawUnit();
+    DrawRibbonLayer(rows.data(), rows.size(), skin.outline, skin.outlineScale, pixelScale);
+    DrawRibbonLayer(rows.data(), rows.size(), skin.trajectory, 1.0f, pixelScale);
 }
 
 } // namespace
+
+void DrawSoftRouteLine(Vector2 from, Vector2 to, float width, Color tint) {
+    const float dx = to.x - from.x, dy = to.y - from.y;
+    const float length = std::hypot(dx, dy);
+    if (!std::isfinite(length) || length <= 0.0f ||
+        !std::isfinite(width) || width <= 0.0f) return;
+    const float half = width * 0.5f;
+    const Vector2 offset{-dy / length * half, dx / length * half};
+    const PathRibbonRow rows[] = {
+        {from, offset, 1.0f, 0.0, true, half},
+        {to, offset, 1.0f, 1.0, false, half}
+    };
+    DrawRibbonLayer(rows, 2, tint, 1.0f, RoutePixelsPerDrawUnit());
+}
 
 void DrawReverseCap(Vector2 point, float junctionRadius, core::Heading outgoing,
                     Color color, float opacity, bool glow, float capScale) {

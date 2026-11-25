@@ -122,25 +122,22 @@ void PreviewPath(Font font, const Skin& skin,
     const float lagPx = std::min(
         72.0f, skin.baseSpeedPxPerSecond * skin.cameraLagMs / 1000.0f) *
         frame.width / kVirtualHeight;
-    const auto point = [&](float beats) {
-        const float progress = beats / horizon;
-        return Vector2{687.0f + lagPx + beats * pixelsPerBeat,
-                       335.0f - 46.0f * std::sin(progress * 5.2f)};
-    };
-    for (int i = 95; i >= 0; --i) {
-        const float a = horizon * i / 96.0f;
-        const float b = horizon * (i + 1) / 96.0f;
-        const float ahead = (a + b) * 0.5f;
-        const float opacity = ScoredPathOpacity(ahead, horizon,
-                                               skin.fadePower) * skin.pathOpacity;
-        const float width = ScoredPathWidth(ahead, horizon,
-                                            skin.pathWidth, skin.fadePower);
-        DrawLineEx(point(a), point(b), width * skin.outlineScale,
-                   WithOpacity(skin.outline, opacity));
-        DrawLineEx(point(a), point(b), width,
-                   WithOpacity(skin.trajectory, opacity));
-    }
-    const Vector2 marker = point(0.0f);
+    // Real authored eight-direction route, not a separately drawn sine
+    // wave. This uses the same ribbon, fade, turns and material as PLAY.
+    static const core::TimedRoute sampleRoute = [] {
+        auto chart = core::MakeDemoChart();
+        chart.turns = {{1, core::Heading::UpRight, 200},
+                       {2, core::Heading::DownRight, 450},
+                       {3, core::Heading::Right, 650}};
+        core::TimedRoute route;
+        route.Compile(chart, 0.0);
+        return route;
+    }();
+    const auto preview = MakeRoutePreview(sampleRoute, 0.0, skin.lookaheadMs);
+    const RouteCanvas canvas{687.0f + lagPx, 335.0f, pixelsPerBeat,
+                             preview.marker};
+    const Vector2 marker = DrawTimedRouteTrajectory(preview, canvas, skin);
+    DrawTimedRouteJunctions(preview, canvas, skin);
     const float radius = skin.playerRadius * 0.7f;
     DrawCircleV(marker, std::max(radius + 3.0f, radius * skin.hitFlashScale * 1.5f),
                 WithOpacity(skin.hitFlash, 0.32f));
@@ -157,7 +154,7 @@ void PreviewPath(Font font, const Skin& skin,
     const float opacity = proximity * skin.pathOpacity;
     const float junctionRadius = std::min(11.0f, skin.junctionRadius * 0.7f)
         * ScoredTurnSize(proximity);
-    DrawLineEx({723.0f, turnPoint.y}, turnPoint,
+    DrawSoftRouteLine({723.0f, turnPoint.y}, turnPoint,
                std::max(1.0f, skin.pathWidth * 0.75f),
                WithOpacity(skin.trajectory, opacity));
     DrawReverseCap(turnPoint, junctionRadius, core::Heading::Left,

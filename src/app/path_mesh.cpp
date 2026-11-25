@@ -38,7 +38,7 @@ PathRibbonRow MakeRow(const PathSample& sample, RouteCanvas canvas,
         canvas.Position(sample.position),
         {static_cast<float>(normal.x * sample.halfWidth * miter),
          static_cast<float>(normal.y * sample.halfWidth * miter)},
-        sample.opacity, sample.tick, startsRun
+        sample.opacity, sample.tick, startsRun, sample.halfWidth
     };
 }
 
@@ -201,6 +201,36 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
     RouteCanvas canvas, const Skin& skin) {
     return BuildScoredPathRibbon(
         MakeRoutePreview(route, songSeconds, skin.lookaheadMs), canvas, skin);
+}
+
+PathRibbonCoverageRow MakePathRibbonCoverageRow(
+    const PathRibbonRow& row, float layerScale, float pixelsPerDrawUnit) noexcept {
+    PathRibbonCoverageRow result{};
+    for (auto& point : result.points) point = row.center;
+    if (row.halfWidth <= 0.0f || row.opacity <= 0.0f ||
+        !std::isfinite(layerScale) || layerScale <= 0.0f ||
+        !std::isfinite(pixelsPerDrawUnit) || pixelsPerDrawUnit <= 0.0f)
+        return result;
+
+    // The one-framebuffer-pixel transition straddles the nominal edge.
+    // Offset along the original miter, not its normalized direction:
+    // both adjacent segments then share exactly the same feather vertices.
+    const float halfPixel = 0.5f / pixelsPerDrawUnit;
+    const float halfWidth = row.halfWidth * layerScale;
+    const float inner = std::max(0.0f, halfWidth - halfPixel);
+    const float outer = halfWidth + halfPixel;
+    const float factors[4] = {-outer, -inner, inner, outer};
+    for (int i = 0; i < 4; ++i) {
+        const float factor = factors[i] / row.halfWidth;
+        result.points[i] = {row.center.x + row.offset.x * factor,
+                            row.center.y + row.offset.y * factor};
+    }
+    // Below one physical pixel the opaque interior collapses to the
+    // centerline. Preserve the integrated coverage of the narrow stroke
+    // instead of making it look artificially wider/brighter.
+    const float coverage = std::min(1.0f, 2.0f * halfWidth / outer);
+    result.opacity[1] = result.opacity[2] = row.opacity * coverage;
+    return result;
 }
 
 PathRibbonQuad MakePathRibbonQuad(

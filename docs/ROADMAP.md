@@ -53,6 +53,27 @@ is required before public distribution, but need not block internal prototyping.
 Every code milestone must pass Windows Release, CTest, production diagnostics,
 clean-worktree checks and the actual BAT launcher.
 
+## Gameplay presentation
+
+The next feature-driven milestone focuses on the actual PLAY/TEST scene
+rather than expanding menu/editor functionality. Core route coordinates,
+note timestamps and scoring stay authoritative and unchanged.
+
+- [ ] **G01. Route rendering.** Shared, pixel-scale-aware alpha feathering
+  is implemented for the tapered ribbon and its outline, including editor
+  comparison, skin preview and the outro stroke. Remaining: round outer
+  joins without changing the authored centerline, overlap readability,
+  and physical Windows visual checks at multiple zooms, all headings,
+  reversals and dense patterns.
+- [ ] **G02. Player and junction materials.** Soft radial effects, readable
+  target shapes, shared across gameplay and skin preview.
+- [ ] **G03. Playfield and HUD.** Remove prototype-like framing; responsive,
+  unobtrusive game information and edge treatment.
+- [ ] **G04. Judgement feedback.** Distinct hit effects, timing information,
+  optional hitsounds and combo after scoring semantics are defined.
+- [ ] **G05. Sight-reading and profiling.** Validate overlap/reversal cues,
+  dense patterns, camera motion and GPU frame cost on real hardware.
+
 ## Possible later features
 
 Hold notes, waveform editing, automatic BPM detection and online services
