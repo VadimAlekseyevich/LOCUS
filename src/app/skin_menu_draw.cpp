@@ -127,10 +127,10 @@ void PreviewPath(Font font, const Skin& skin,
     // wave. This uses the same ribbon, fade, turns and material as PLAY.
     static const core::TimedRoute sampleRoute = [] {
         auto chart = core::MakeDemoChart();
-        chart.turns = {{1, core::Heading::UpRight, 200, 250},
-                       {2, core::Heading::DownRight, 450},
-                       {3, core::Heading::Right, 650},
-                       {4, core::Heading::Right, 750}};
+        // Leave a gap so the following tap cannot cover the hold tail.
+        chart.turns = {{1, core::Heading::UpRight, 80, 350},
+                       {2, core::Heading::DownRight, 590},
+                       {3, core::Heading::DownRight, 730}};
         core::TimedRoute route;
         route.Compile(chart, 0.0);
         return route;
