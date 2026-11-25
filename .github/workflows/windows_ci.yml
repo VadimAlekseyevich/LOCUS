@@ -51,8 +51,26 @@ jobs:
 
       - name: Build application and tests (Release)
         run: |
+          $timer = [System.Diagnostics.Stopwatch]::StartNew()
           cmake --build build/windows --config Release --parallel 2
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $timer.Stop()
+          $clean = [math]::Round($timer.Elapsed.TotalMilliseconds)
+          $owned = @(Import-Csv build/windows/locus-source-ownership.csv).Count
+          "phase,elapsed_ms,unique_production_sources,parallel" | Set-Content build/windows/build-profile.csv
+          "clean,$clean,$owned,2" | Add-Content build/windows/build-profile.csv
+          Write-Output "BUILD_PROFILE clean_ms=$clean unique_production_sources=$owned"
+
+      - name: Measure unchanged incremental build on the same runner
+        run: |
+          $timer = [System.Diagnostics.Stopwatch]::StartNew()
+          cmake --build build/windows --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $timer.Stop()
+          $incremental = [math]::Round($timer.Elapsed.TotalMilliseconds)
+          $owned = @(Import-Csv build/windows/locus-source-ownership.csv).Count
+          "unchanged,$incremental,$owned,2" | Add-Content build/windows/build-profile.csv
+          Get-Content build/windows/build-profile.csv
 
       - name: Check staged UI manifest and file parity
         run: |
@@ -256,4 +274,6 @@ jobs:
             build/windows/library-dense-benchmark.csv
             build/windows/library-browser-benchmark.csv
             build/windows/diagnostics.txt
+            build/windows/build-profile.csv
+            build/windows/locus-source-ownership.csv
             build_and_run.bat

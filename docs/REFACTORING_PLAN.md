@@ -288,6 +288,8 @@
 
 **26.11.2026 — T15: finish shared application source ownership.** Shared screen/session actions, presentation, library activation/browser, brand/menu rendering and native input targets. 34 previous source assignments become 14 shared instances (20 removed). Configure-time verification enumerates root targets and rejects repeated src/app or src/core .cpp ownership, exporting source-to-target CSV. Core-only mode checks its subset. No change to production runtime behavior. Windows CI pending.
 
+**26.11.2026 — T15: build measurements and documentation.** Windows CI now records clean build and unchanged incremental build wall-clock time with the same parallelism/runner, excludes dependency configuration from the timing, and uploads build-profile.csv and source ownership CSV. No speed threshold or same-machine historical baseline claimed. Rewrote UI architecture to match native HOME/PLAY/EDIT/SETTINGS/SKINS/RESULTS, canvas ownership and virtualized lists; corrected README selection/rate and roadmap pitch preservation. Windows CI pending.
+
 **Приёмка.** Чистая и повторная Windows Release сборки с тестами и BAT, Linux-сборка явно обозначенного переносимого набора, наличие прежних тестов в ctest -N. Зафиксировать время и количество повторных компиляций на одной машине. Таблица экранов в архитектуре соответствует инициализации в NativeMenuUi и путям fallback. Документы объясняют источник времени, локальную сильную долю и текущую скорость предпросмотра. Примеры читаются текущими парсерами.
 
 <a id="t16"></a>

@@ -55,6 +55,8 @@ clean-worktree checks and the actual BAT launcher.
 
 ## Possible later features
 
-Hold notes, waveform editing, automatic BPM detection,
-pitch-preserving practice speed and online services are not part of
-foundation stabilization. The shared song tempo map is already implemented. Scope each separately after the stable baseline.
+Hold notes, waveform editing, automatic BPM detection and online services
+are outside foundation stabilization. Shared song tempo maps and
+pitch-preserving practice playback are implemented; actual audio-device
+latency, memory use and rate-change quality still require real-device QA.
+Scope new mechanics separately after the stable baseline.
