@@ -41,6 +41,18 @@ bool ValidEvent(const ReplayEvent& event) noexcept {
 }
 } // namespace
 
+const ReplayEvent* ReplayCursor::NextDue(const ReplayTrace& trace,
+                                          double songSeconds, double finishSeconds,
+                                          bool drain) noexcept {
+    if (Done(trace) || !std::isfinite(songSeconds)) return nullptr;
+    const auto& event = trace.events[next_];
+    const double scheduled = event.action == ReplayAction::Finish
+        ? finishSeconds : event.songSeconds;
+    if (!drain && songSeconds < scheduled) return nullptr;
+    ++next_;
+    return &event;
+}
+
 bool ValidReplay(const ReplayTrace& trace) noexcept {
     if (trace.judgementVersion < 1 || trace.judgementVersion > 1000 ||
         !std::isfinite(trace.offsetSeconds) ||
@@ -89,19 +101,21 @@ bool DecodeReplay(std::string_view bytes, ReplayTrace& trace) {
     return true;
 }
 
+std::optional<Judgement> ApplyReplayEvent(TurnJudge& judge, const ReplayEvent& event) {
+    switch (event.action) {
+        case ReplayAction::Advance: judge.Advance(event.songSeconds); break;
+        case ReplayAction::Finish: judge.FinishRemainingMisses(); break;
+        default:
+            return judge.PressHeading(static_cast<Heading>(event.action), event.songSeconds);
+    }
+    return std::nullopt;
+}
+
 bool RejudgeReplay(const ReplayTrace& trace, TurnJudge& judge) {
     if (!ValidReplay(trace) || trace.judgementVersion != kJudgementRulesVersion)
         return false;
     judge.SetOffsetSeconds(trace.offsetSeconds);
-    for (const auto& event : trace.events) {
-        switch (event.action) {
-            case ReplayAction::Advance: judge.Advance(event.songSeconds); break;
-            case ReplayAction::Finish: judge.FinishRemainingMisses(); break;
-            default:
-                judge.PressHeading(static_cast<Heading>(event.action), event.songSeconds);
-                break;
-        }
-    }
+    for (const auto& event : trace.events) ApplyReplayEvent(judge,event);
     return true;
 }
 

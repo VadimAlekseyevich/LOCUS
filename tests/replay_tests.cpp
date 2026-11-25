@@ -48,6 +48,28 @@ int main() {
                 playback.Statistics().meanErrorMs == live.Statistics().meanErrorMs &&
                 playback.Statistics().unstableRate == live.Statistics().unstableRate,
                 "replay reuses actual judge and preserves counts/combo/telemetry");
+    ReplayCursor cursor;
+    TurnJudge spectator(chart);
+    spectator.SetOffsetSeconds(decoded.offsetSeconds);
+    ok &= Check(!cursor.NextDue(decoded,1.0,3.0),
+                "out-of-order earlier input cannot leapfrog a later dispatch");
+    int delivered=0;
+    while (const auto* event=cursor.NextDue(decoded,1.08,3.0)) {
+        ApplyReplayEvent(spectator,*event);
+        ++delivered;
+    }
+    ok &= Check(delivered==2 && spectator.Counts().Resolved()==2,
+                "earlier input follows its predecessor in the same viewer update");
+    while (const auto* event=cursor.NextDue(decoded,10.0,3.0))
+        ApplyReplayEvent(spectator,*event);
+    ok &= Check(cursor.Done(decoded) && spectator.AllScorableJudged() &&
+                spectator.MaxCombo()==live.MaxCombo() &&
+                spectator.Counts().miss==live.Counts().miss,
+                "incremental spectator matches offline replay result");
+    cursor.Reset();
+    ok &= Check(!cursor.Done(decoded) && cursor.NextDue(decoded,0.0,3.0,true),
+                "retry resets cursor; bounded silent tail can drain late operations");
+
     const auto prior = decoded.events.size();
     ok &= Check(!DecodeReplay(std::string_view(bytes).substr(0,bytes.size()-1),decoded) &&
                 decoded.events.size() == prior, "truncated trace leaves output intact");

@@ -33,6 +33,20 @@ struct ReplayTrace {
     std::vector<ReplayEvent> events;
 };
 
+// Frame-independent sequential delivery. Earlier timestamps arriving after
+// later ones are dispatched immediately after their predecessor, never sorted.
+// A Finish operation has no original dispatch timestamp, so the viewer supplies
+// a presentation deadline (normally the final note's late window).
+class ReplayCursor {
+public:
+    void Reset() noexcept { next_ = 0; }
+    const ReplayEvent* NextDue(const ReplayTrace& trace, double songSeconds,
+                               double finishSeconds, bool drain = false) noexcept;
+    bool Done(const ReplayTrace& trace) const noexcept { return next_ >= trace.events.size(); }
+private:
+    std::size_t next_ = 0;
+};
+
 bool ValidReplay(const ReplayTrace& trace) noexcept;
 // Portable little-endian IEEE-754 binary codec; never round timestamps.
 bool EncodeReplay(const ReplayTrace& trace, std::string& bytes);

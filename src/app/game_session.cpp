@@ -14,6 +14,13 @@ void GameSession::Start(bool customChart, double now) {
     audioEndedAt_ = -1.0;
     audioEndSongSeconds_ = 0.0;
     judge_.Reset();
+    if (replay_) {
+        judge_.SetOffsetSeconds(replay_->offsetSeconds);
+        replayCursor_.Reset();
+        replayFinishSeconds_ = chart_.turns.empty() ? 0.0 :
+            core::EventTimeMs(chart_,chart_.turns.back(),replay_->offsetSeconds)/1000.0 +
+                core::kBadWindowSeconds;
+    }
     if (customChart) {
         if (testOrigin_) {
             judge_.ResetFromAudioSeconds(
@@ -30,7 +37,7 @@ void GameSession::Start(bool customChart, double now) {
     } else {
         demo_.Start(now);
     }
-    if (!testOrigin_) judge_.BeginReplayCapture();
+    if (!testOrigin_ && !replay_) judge_.BeginReplayCapture();
 }
 
 void GameSession::Restart(bool customChart, double now) {
@@ -63,7 +70,41 @@ void GameSession::SetPracticeSpeed(bool customChart, double speed, double now) {
     if (local_.Speed() != previous) variablePracticeRate_ = true;
 }
 
+void GameSession::UpdateReplay(bool customChart, double now) {
+    if (customChart ? local_.Paused() : demo_.Paused()) return;
+    if (customChart) local_.Update(now);
+    else demo_.Update(now);
+    const bool finished = customChart ? local_.Finished() : demo_.Finished();
+    const bool playing = customChart ? local_.Playing() : demo_.Playing();
+    if (!playing && !finished) return;
+    const double rate = customChart ? local_.Speed() : 1.0;
+    double songSeconds = customChart ? local_.AudioSeconds(now) : demo_.SongSeconds(now);
+    if (finished) {
+        if (audioEndedAt_ < 0.0) {
+            audioEndedAt_ = now;
+            audioEndSongSeconds_ = songSeconds;
+        }
+        songSeconds = audioEndSongSeconds_ + std::max(0.0,now-audioEndedAt_)*rate;
+    }
+    // Scoring always uses the recorded event time. This clock only decides
+    // when to display its effect, including the same silent tail as PLAY.
+    // A stalled original frame can contain a very late expiry; drain after
+    // the bounded tail rather than trapping a viewer in silence indefinitely.
+    const double cursorSeconds = CalibratedTime(songSeconds,rate);
+    const bool drain = finished && songSeconds-audioEndSongSeconds_ >= 2.0;
+    while (const auto* event = replayCursor_.NextDue(
+               *replay_,cursorSeconds,replayFinishSeconds_,drain)) {
+        const auto hit = core::ApplyReplayEvent(judge_,*event);
+        if (hit && !hit->wrongDirection && hit->grade!=core::Grade::Miss)
+            hitFlash_.Trigger(*hit,now);
+    }
+}
+
 void GameSession::Update(bool customChart, double now, const ArrowInput& arrows) {
+    if (replay_) {
+        UpdateReplay(customChart,now);
+        return;
+    }
     const bool playing = customChart ? local_.Playing() : demo_.Playing();
     const bool paused = customChart ? local_.Paused() : demo_.Paused();
     const bool audioAlreadyFinished = customChart ? local_.Finished() : demo_.Finished();

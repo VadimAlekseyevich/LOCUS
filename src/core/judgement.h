@@ -153,4 +153,7 @@ private:
     bool captureReplay_ = false;
 };
 
+// Shared replay dispatch for both offline verification and live spectator mode.
+std::optional<Judgement> ApplyReplayEvent(TurnJudge& judge, const ReplayEvent& event);
+
 } // namespace locus::core

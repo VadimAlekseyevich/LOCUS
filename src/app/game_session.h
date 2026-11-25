@@ -9,6 +9,7 @@
 
 #include <array>
 #include <optional>
+#include <utility>
 
 namespace locus::app {
 
@@ -39,6 +40,15 @@ public:
     void SetTestOrigin(EditorTestOrigin origin) noexcept { testOrigin_ = origin; }
     void ClearTestOrigin() noexcept { testOrigin_.reset(); }
     bool IsEditorTest() const noexcept { return testOrigin_.has_value(); }
+    // The caller validates replay identity and reproduced result before
+    // activating this mode. Live directions never reach the judge in it.
+    void SetReplay(core::ReplayTrace trace) {
+        replay_ = std::move(trace);
+        replayCursor_.Reset();
+        ClearTestOrigin();
+    }
+    void ClearReplay() noexcept { replay_.reset(); replayCursor_.Reset(); }
+    bool IsReplay() const noexcept { return replay_.has_value(); }
 
     void Start(bool customChart, double now);
     void Restart(bool customChart, double now);
@@ -60,6 +70,7 @@ public:
     const HitFlash& Flash() const noexcept { return hitFlash_; }
 
 private:
+    void UpdateReplay(bool customChart, double now);
     const core::Chart& chart_;
     core::TurnJudge& judge_;
     DemoTransport& demo_;
@@ -68,6 +79,9 @@ private:
     HitFlash hitFlash_;
     int globalOffsetMs_ = 0;
     bool variablePracticeRate_ = false;
+    std::optional<core::ReplayTrace> replay_;
+    core::ReplayCursor replayCursor_;
+    double replayFinishSeconds_ = 0.0;
 
     // Audio is allowed to end before the last note's late 180ms window.
     // In that case, scoring continues for a brief SILENT tail using the
