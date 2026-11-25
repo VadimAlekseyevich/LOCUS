@@ -10,10 +10,10 @@
  </div>
  <div class="skins-columns">
   <div class="panel skins-left">
-   <div id="skin-name-row" class="skin-name-row"><div class="skins-label">SKIN NAME</div><input id="skin-name" class="ui-input skins-name" type="text" data-kind="name" value="Default"/></div>
+   <div id="skin-name-row" class="skin-name-row"><div class="skins-label">SKIN NAME</div><input id="skin-name" class="ui-input ui-input-compact skins-name" type="text" data-kind="name" value="Default"/></div>
    <div id="skin-controls"></div>
    <div id="skin-color-edit" style="display:none;">
-    <input id="skin-hex" type="text" class="ui-input" data-kind="hex" value="#FF4654FF"/>
+    <input id="skin-hex" type="text" class="ui-input ui-input-compact" data-kind="hex" value="#FF4654FF"/>
    </div>
   </div>
   <div class="panel skins-right">

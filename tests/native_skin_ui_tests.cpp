@@ -9,6 +9,8 @@
 #include <RmlUi/Core/Event.h>
 #include <RmlUi/Core/EventListener.h>
 #include <iostream>
+#include <cmath>
+#include "app/ui_scale.h"
 
 namespace {
 using namespace locus::app;
@@ -22,6 +24,23 @@ private:
 bool Check(bool ok,const char* label) {
     if (!ok) std::cerr << "NATIVE_SKIN_FAIL: " << label << '\n';
     return ok;
+}
+// WidgetTextInput positions its first line at the content-box origin.
+// Test the final layout at actual display density, not the style source.
+bool CenteredInput(Rml::Element* field) {
+    if (!field) return false;
+    const auto& box = field->GetBox();
+    const float textCenter = box.GetPosition(Rml::BoxArea::Content).y +
+        std::round(field->GetLineHeight()) * 0.5f;
+    const float fieldCenter = box.GetPosition(Rml::BoxArea::Border).y +
+        box.GetSize(Rml::BoxArea::Border).y * 0.5f;
+    const float delta = textCenter-fieldCenter;
+    if (std::abs(delta)>1.5f) {
+        std::cerr << "NATIVE_SKIN_FAIL: off-center input " << field->GetId()
+                  << " (delta=" << delta << ")\n";
+        return false;
+    }
+    return box.GetSize(Rml::BoxArea::Content).y+1.5f>=field->GetLineHeight();
 }
 void Type(Rml::Context& context,Rml::ElementFormControlInput& field,const std::string& value) {
     field.Focus();
@@ -98,7 +117,10 @@ bool TestNativeSkinTextEditing() {
                 Rml::Shutdown();
                 return false;
             }
+            ok &= Check(CenteredInput(number),"PATH number line is centered");
             Type(*context,*number,"1200");
+            context->Update();
+            ok &= Check(CenteredInput(number),"focus preserves vertical centering");
             ok &= Check(number->GetValue()=="1200" &&
                         GetSkinNumber(skin,0,0,ui.selectedColor)==originalNumber && !ui.dirty,
                         "typing a number cannot mutate model until commit");
@@ -116,8 +138,11 @@ bool TestNativeSkinTextEditing() {
                         number->GetValue()==FormatSkinNumber(1200) && !ui.dirty && ui.noticeError,
                         "invalid blur restores previous value without mutating skin");
             // The shared preview is independent of all left-panel fields.
-            for (const auto size : {Rml::Vector2i{1280,720},Rml::Vector2i{800,450}}) {
+            for (const auto size : {Rml::Vector2i{1280,720},Rml::Vector2i{800,450},
+                                    Rml::Vector2i{1920,1200}}) {
                 context->SetDimensions(size);
+                context->SetDensityIndependentPixelRatio(
+                    NativeUiDensity(size.x,size.y,1.0f));
                 profiles->Click();
                 presenter.Sync();
                 context->Update();
@@ -130,9 +155,20 @@ bool TestNativeSkinTextEditing() {
                     ok &= Check(preview->GetAbsoluteLeft()==x && preview->GetAbsoluteTop()==y &&
                                 preview->GetOffsetWidth()==width && preview->GetOffsetHeight()==height,
                                 "preview geometry identical across every skin tab");
+                    if (ui.page==0 || ui.page==1) {
+                        for (int row=0;row<SkinSettingCount(ui.page);++row) {
+                            const auto* setting=GetSkinSetting(ui.page,row);
+                            if (!setting || !setting->number) continue;
+                            auto* field=document->GetElementById("skin-number-"+std::to_string(row));
+                            ok &= Check(CenteredInput(field),"numeric line centered at native UI density");
+                        }
+                    } else if (ui.page==3) {
+                        ok &= Check(CenteredInput(name),"skin name centered");
+                    }
                     if (ui.page==2) {
                         auto* hex=document->GetElementById("skin-hex");
                         auto* wheel=document->GetElementById("skin-wheel-canvas");
+                        ok &= Check(CenteredInput(hex),"HEX line centered");
                         ok &= Check(hex && wheel && hex->GetAbsoluteTop()>=
                                     wheel->GetAbsoluteTop()+wheel->GetOffsetHeight()-1,
                                     "hex input follows color wheel in left panel");

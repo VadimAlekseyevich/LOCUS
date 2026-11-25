@@ -5,7 +5,7 @@
   align-items:center; padding:1dp 14dp; gap:8dp; min-width:0; }
 .skin-name-row { display:flex; flex-direction:row; align-items:center; gap:8dp; flex:0 0 34dp; min-width:0; margin-bottom:12dp; }
 .skin-name-row .skins-label { flex:0 0 auto; }
-.skins-name { flex:1; min-width:0; width:auto; height:34dp; padding:5dp 8dp; }
+.skins-name { flex:1; min-width:0; width:auto; }
 .skins-tabs { display:flex; flex-direction:row; gap:8dp; padding:10dp 14dp;
   flex:0 0 62dp; align-items:center; }
 .skins-tabs button { flex:1; min-width:0; height:42dp; font-weight:800; }
@@ -34,9 +34,10 @@
   border-radius:7dp; background-color:#e1e9fb; pointer-events:none; }
 .skin-slider:hover .skin-slider-knob { border-color:#c3b7fc;
   background-color:#ffffff; }
-.skin-number { flex:0 0 73dp; width:73dp; height:34dp; background-color:#1b263c;
-  border:1dp #647096; border-radius:6dp; font-family:Locus; font-size:12dp;
-  color:#eef1fb; text-align:center; }
+.skin-number { flex:0 0 73dp; width:73dp; background-color:#1b263c;
+  border-color:#647096; border-radius:6dp; font-size:12dp;
+  text-align:center; }
+.skin-number:focus { border-color:#a2d8ee; }
 .skin-setting-row button { flex:0 0 84dp; width:84dp; height:34dp; }
 .skin-swatches { display:flex; flex-direction:row; flex-wrap:wrap; gap:5dp; }
 .skin-swatch { display:inline-block; position:relative;
@@ -54,7 +55,7 @@
 .skin-profile-actions { display:flex; flex-wrap:wrap; gap:7dp; margin-top:12dp; }
 .skin-profile-actions button { flex:0 0 31%; min-width:0; height:34dp; font-size:11dp; }
 #skin-color-edit { flex:0 0 auto; margin-top:8dp; }
-#skin-hex { height:34dp; text-align:center; }
+#skin-hex { text-align:center; }
 #skin-preview-canvas { flex:1; min-height:80dp; width:100%;
   border:1dp #6a7195; border-radius:9dp; overflow:hidden; }
 .skins-actions { flex:0 0 auto; display:flex; flex-direction:row; gap:6dp; }

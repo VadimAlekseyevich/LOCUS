@@ -88,7 +88,7 @@ void NativeSkinUi::RebuildControls() {
                      << "'><div class='skin-slider-fill' id='skin-slider-fill-" << row
                      << "'></div><div class='skin-slider-knob' id='skin-slider-knob-"
                      << row << "'></div></div></div>"
-                     << "<input type='text' class='skin-number' id='skin-number-"
+                     << "<input type='text' class='ui-input ui-input-compact skin-number' id='skin-number-"
                      << row << "' data-kind='number' data-index='" << row
                      << "' value='" << EscapeRml(FormatSkinNumber(value)) << "' />";
             }

@@ -52,6 +52,14 @@ button:disabled { opacity:0.40; cursor:default; }
   padding:7dp 13dp; transition:border-color 0.12s sine-out; }
 .ui-input:focus { border:2dp #a2d8ee; background-color:#252c43; }
 
+/* Native single-line inputs start their line at the content-box origin.
+   34dp = 2 x 1dp border + 2 x 8dp padding + 16dp line.
+   Keep the border width constant on focus so the caret, selection and
+   text share the same centered line box at every display density. */
+.ui-input.ui-input-compact { height:34dp; line-height:16dp;
+  padding:8dp 8dp; border-width:1dp; }
+.ui-input.ui-input-compact:focus { border-width:1dp; }
+
 /* Scrollbar parts are unstyled/invisible in vanilla RmlUi. */
 scrollbarvertical { width:8dp; margin:3dp 0; }
 scrollbarvertical slidertrack { background-color:#303750; border-radius:4dp; }
