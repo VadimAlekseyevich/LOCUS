@@ -18,6 +18,7 @@ public:
     void BeginFrame(Skin& skin, SkinUi& ui,
                     FrameInput& input, MenuEvents& events) noexcept;
     void ProcessEvent(Rml::Event& event);
+    void FinishFocusedText(bool apply);
     void Sync();
     // Native pointer capture for the model-backed slider / HSV controls.
     void UpdatePointer(Rectangle wheelBounds);
@@ -36,6 +37,8 @@ private:
     int lastProfileSelection_ = -1;
     std::uint64_t lastProfilesRevision_ = ~std::uint64_t(0);
     bool lastModal_ = false;
+    bool cancelingText_ = false;
+    std::string initialText_;
     std::unordered_map<std::string,std::string> cache_;
     std::array<float, 8> sliderRatios_{};
     std::array<std::string, kSkinColorCount> swatchColors_{};

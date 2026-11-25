@@ -218,8 +218,9 @@ bool NativeMenuUi::Initialize() {
     skinDocument_ = context_->LoadDocument(
         (file.parent_path() / "skins.rml").generic_u8string());
     if (skinDocument_) {
-        for (const char* type : {"click", "input", "change"})
-            skinDocument_->AddEventListener(type, this);
+        skinDocument_->AddEventListener("click",this);
+        skinDocument_->AddEventListener("focus",this,true);
+        skinDocument_->AddEventListener("blur",this,true);
         skinDocument_->Hide();
         skinPresenter_.Attach(skinDocument_);
     } else {
@@ -275,9 +276,11 @@ void NativeMenuUi::Shutdown() {
         if (resultsDocument_) resultsDocument_->RemoveEventListener("click", this);
         resultsPresenter_.Attach(nullptr);
         resultsDocument_ = nullptr;
-        if (skinDocument_)
-            for (const char* type : {"click", "input", "change"})
-                skinDocument_->RemoveEventListener(type, this);
+        if (skinDocument_) {
+            skinDocument_->RemoveEventListener("click",this);
+            skinDocument_->RemoveEventListener("focus",this,true);
+            skinDocument_->RemoveEventListener("blur",this,true);
+        }
         skinPresenter_.Attach(nullptr);
         skinDocument_ = nullptr;
         playPresenter_.Attach(nullptr);
@@ -763,18 +766,9 @@ MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
                 ActivateRmlModalButton(modal,focus);
         }
     } else if (editing && IsKeyPressed(KEY_ESCAPE)) {
-        if (auto* text = dynamic_cast<Rml::ElementFormControlInput*>(focus)) {
-            const std::string kind = text->GetAttribute<Rml::String>("data-kind", "");
-            if (kind == "name") text->SetValue(draft.name);
-            else if (kind == "hex")
-                text->SetValue(FormatSkinHex(SkinColor(draft, ui.selectedColor)));
-            else if (kind == "number")
-                text->SetValue(FormatSkinNumber(GetSkinNumber(draft, ui.page,
-                    text->GetAttribute<int>("data-index", -1), ui.selectedColor)));
-            text->Blur();
-        }
+        skinPresenter_.FinishFocusedText(false);
     } else if (editing && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
-        focus->Blur();
+        skinPresenter_.FinishFocusedText(true);
     } else if (!editing) {
         if (focus && focus->GetTagName() == "button" &&
             (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {

@@ -179,6 +179,8 @@
 
 **25.11.2026 — T11/T08: regression from CI.** Windows CI 4d15240/741906e/924cdf1: 51/52, падал реальный поиск PLAY. Закреплённый RmlUi WidgetTextInput::DispatchChangeEvent отправляет change при наборе/удалении/вставке; PLAY ошибочно слушал input. Listener production и теста переведён на change, фильтрация выполняется один раз в post-input Sync вместо каждого символа. Проверка различает значение реального поля, состояние модели и DOM, добавлена очистка Ctrl+A/Backspace. Новый CI требуется.
 
+**25.11.2026 — T11/T13: transactional SKINS fields.** NativeSkinUi commits name/number/hex only on blur (Enter moves focus); Esc cancels edit buffer without changing skin or dirty flag, invalid value restores model representation. Hex commit updates the chip in place. Added actual NativeSkinUi + production skins.rml integration test to locus_skin_tests, covers real typing, cancel, Enter, invalid blur, focus switch. Windows CI required.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>

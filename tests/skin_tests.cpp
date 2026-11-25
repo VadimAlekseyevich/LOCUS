@@ -12,9 +12,15 @@
 #include <string>
 
 using namespace locus::app;
+#ifdef LOCUS_TEST_NATIVE_SKIN
+bool TestNativeSkinTextEditing();
+#endif
 
 int main() {
     bool ok = true;
+#ifdef LOCUS_TEST_NATIVE_SKIN
+    ok &= TestNativeSkinTextEditing();
+#endif
     const auto check = [&](bool pass, const char* what) {
         if (!pass) std::cerr << "SKIN_FAIL " << what << '\n';
         ok &= pass;

@@ -37,6 +37,8 @@ void NativeSkinUi::Attach(Rml::ElementDocument* document) noexcept {
     lastProfileSelection_ = -1;
     lastProfilesRevision_ = ~std::uint64_t(0);
     lastModal_ = false;
+    cancelingText_ = false;
+    initialText_.clear();
     // Attach also runs when returning to an existing hidden document.
     // Reset the real layer along with the cached visibility state.
     if (document_) SetRmlModalVisibility(document_->GetElementById("skin-delete-modal"),false);
@@ -294,10 +296,28 @@ void NativeSkinUi::UpdatePointer(Rectangle wheelBounds) {
     }
 }
 
+void NativeSkinUi::FinishFocusedText(bool apply) {
+    if (!document_ || !skin_ || !ui_) return;
+    auto* element = dynamic_cast<Rml::ElementFormControlInput*>(
+        document_->GetContext()->GetFocusElement());
+    if (!element) return;
+    // Only a blur commits text. Esc discards the buffer before focus leaves,
+    // without touching the authoritative skin or its dirty state.
+    cancelingText_ = !apply;
+    if (!apply) {
+        element->SetValue(initialText_);
+        ui_->notice = "EDIT CANCELED";
+        ui_->noticeError = false;
+    }
+    document_->Focus();
+    cancelingText_ = false;
+}
+
 void NativeSkinUi::CommitText(Rml::ElementFormControlInput& element) {
     if (!skin_ || !ui_) return;
     const std::string kind = element.GetAttribute<Rml::String>("data-kind", "");
     const std::string value = element.GetValue();
+    if (value == initialText_) return;
     if (kind == "name") {
         Skin candidate = *skin_;
         candidate.name = value;
@@ -322,12 +342,12 @@ void NativeSkinUi::CommitText(Rml::ElementFormControlInput& element) {
         SkinColor(*skin_, ui_->selectedColor) = parsed;
         const auto hsv = SkinColorToHsv(parsed);
         if (hsv.s > 0.001f) ui_->pickerHue = hsv.h;
-        // Swatch colors change with the same authoritative RGBA values.
-        RebuildControls();
+        // Sync updates the swatch chip in place, preserving DOM identity.
     } else if (kind == "number") {
         const int row = element.GetAttribute<int>("data-index", -1);
         double parsed = 0.0;
         std::string error;
+        const double previous = GetSkinNumber(*skin_,ui_->page,row,ui_->selectedColor);
         if (!ParseSkinNumber(value, parsed) ||
             !SetSkinNumber(*skin_, ui_->page, row, ui_->selectedColor,
                            parsed, false, error)) {
@@ -335,7 +355,7 @@ void NativeSkinUi::CommitText(Rml::ElementFormControlInput& element) {
             ui_->noticeError = true;
             return;
         }
-        ui_->dirty = true;
+        ui_->dirty |= previous != GetSkinNumber(*skin_,ui_->page,row,ui_->selectedColor);
     } else return;
     ui_->notice = "PREVIEW UPDATED - SAVE TO APPLY";
     ui_->noticeError = false;
@@ -345,12 +365,14 @@ void NativeSkinUi::ProcessEvent(Rml::Event& event) {
     auto* target = event.GetTargetElement();
     if (!target) return;
     const std::string type = event.GetType();
-    if (type == "change" || type == "input") {
-        auto* element = dynamic_cast<Rml::ElementFormControlInput*>(target);
-        if (!element) return;
-        const std::string kind = element->GetAttribute<Rml::String>("data-kind", "");
-        if (type == "change") CommitText(*element);
-        return;
+    if (auto* element = dynamic_cast<Rml::ElementFormControlInput*>(target)) {
+        const auto kind = element->GetAttribute<Rml::String>("data-kind","");
+        if (kind == "name" || kind == "hex" || kind == "number") {
+            if (type == "focus") initialText_ = element->GetValue();
+            else if (type == "blur" && !cancelingText_) CommitText(*element);
+            // RmlUi Change is per character; it is not a commit event.
+            return;
+        }
     }
     if (type != "click") return;
     while (target && !target->HasAttribute("data-action"))

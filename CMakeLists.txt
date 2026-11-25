@@ -779,6 +779,17 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_skin_tests PRIVATE raylib nlohmann_json::nlohmann_json)
     target_include_directories(locus_skin_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
     add_test(NAME locus_independent_skin_json COMMAND locus_skin_tests)
+    if(LOCUS_ENABLE_RMLUI)
+        target_sources(locus_skin_tests PRIVATE
+            tests/native_skin_ui_tests.cpp
+            src/app/native_skin_ui.cpp
+            src/app/skin_menu.cpp)
+        target_compile_definitions(locus_skin_tests PRIVATE LOCUS_TEST_NATIVE_SKIN=1)
+        target_link_libraries(locus_skin_tests PRIVATE RmlUi::Core)
+        add_dependencies(locus_skin_tests locus_ui_assets)
+        set_tests_properties(locus_independent_skin_json PROPERTIES
+            WORKING_DIRECTORY "$<TARGET_FILE_DIR:locus>")
+    endif()
 
     add_executable(locus_judgement_tests tests/judgement_tests.cpp)
     target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)
