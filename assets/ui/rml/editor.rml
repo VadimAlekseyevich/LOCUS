@@ -99,17 +99,5 @@
     <div class="ui-modal-actions"><button id="editor-compare-done" class="secondary" data-action="compare-dismiss"><span class="button-label">DONE</span></button></div>
   </div>
 </div>
-<div id="confirmation-layer" class="ui-modal-layer ui-confirmation-layer" style="display:none;">
-  <div id="confirmation-panel" class="ui-modal-panel">
-    <div id="confirmation-heading" class="ui-modal-heading">UNSAVED CHANGES</div>
-    <div id="confirmation-message" class="subline"></div>
-    <div id="confirmation-notice" class="meta ui-confirmation-notice"></div>
-    <div class="ui-modal-actions">
-      <button id="confirmation-save" class="secondary" data-confirmation="save"><span class="button-label">S / SAVE</span></button>
-      <button id="confirmation-approve" data-confirmation="approve"><span class="button-label">Y / CONFIRM</span></button>
-      <button id="confirmation-cancel" class="quiet" data-confirmation="cancel"><span class="button-label">N / CANCEL</span></button>
-    </div>
-  </div>
-</div>
 </body>
 </rml>

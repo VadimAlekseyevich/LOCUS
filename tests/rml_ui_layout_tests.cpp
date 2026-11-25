@@ -584,52 +584,6 @@ int main(int argc, char** argv) {
                         layer->SetProperty("display","none");
                         context->Update();
                     } else ok &= Check(false,"native compare modal exists");
-                    locus::app::RmlConfirmation confirm;
-                    confirm.Attach(editorDoc);
-                    locus::app::ConfirmationView view;
-                    view.visible = true;
-                    view.canSave = true;
-                    view.heading = "UNSAVED CHART CHANGES";
-                    view.message = "Save changed charts before leaving?";
-                    view.notice = "Failed saves keep unsaved drafts open.";
-                    view.approveLabel = "Y / DISCARD";
-                    ok &= Check(confirm.Sync(view) && !confirm.Sync(view),
-                        "unchanged confirmation does not invalidate layout");
-                    context->Update();
-                    auto* save = editorDoc->GetElementById("confirmation-save");
-                    auto* approve = editorDoc->GetElementById("confirmation-approve");
-                    auto* cancel = editorDoc->GetElementById("confirmation-cancel");
-                    ok &= Check(inside(confirm.Panel(),sample.width,sample.height) &&
-                        inside(save,sample.width,sample.height) &&
-                        inside(approve,sample.width,sample.height) &&
-                        inside(cancel,sample.width,sample.height) &&
-                        LabelCentered(save) && LabelCentered(approve) && LabelCentered(cancel),
-                        "shared confirmation fits all editor viewport sizes");
-                    confirm.FocusCancelIfOutside();
-                    ok &= Check(context->GetFocusElement()==cancel,
-                        "destructive confirmation initially focuses safe cancel");
-                    confirm.Click(toolrail);
-                    ok &= Check(confirm.TakeChoice()==locus::app::ConfirmationChoice::None,
-                        "background cannot dispatch confirmation");
-                    confirm.Click(save);
-                    ok &= Check(confirm.TakeChoice()==locus::app::ConfirmationChoice::Save,
-                        "native save returns a typed choice");
-                    view.canSave = false;
-                    view.approveLabel = "Y / CONFIRM";
-                    confirm.Sync(view);
-                    context->Update();
-                    confirm.Click(save);
-                    ok &= Check(confirm.TakeChoice()==locus::app::ConfirmationChoice::None &&
-                        save->GetDisplay()==Rml::Style::Display::None,
-                        "clean deletion hides and rejects Save");
-                    confirm.Click(approve);
-                    ok &= Check(confirm.TakeChoice()==locus::app::ConfirmationChoice::Approve,
-                        "native approval returns a typed choice");
-                    confirm.Sync({});
-                    context->Update();
-                    ok &= Check(!confirm.Visible() && !locus::app::RmlFocusWithin(
-                        confirm.Panel(),context->GetFocusElement()),
-                        "closing confirmation releases modal focus");
                 }
                 // Portrait Song Setup must remain usable by scrolling the
                 // actual container; no hidden fixed-coordinate inputs.
@@ -715,8 +669,9 @@ int main(int argc, char** argv) {
         auto* save = globalDoc->GetElementById("confirmation-save");
         auto* cancel = globalDoc->GetElementById("confirmation-cancel");
         auto* approve = globalDoc->GetElementById("confirmation-approve");
-        global.Sync(quit);
-        for (const auto& size : std::array<Rml::Vector2i,4>{{{800,450},{1920,810},{900,1200},{640,400}}}) {
+        ok &= Check(global.Sync(quit) && !global.Sync(quit),
+            "unchanged confirmation does not invalidate layout");
+        for (const auto& size : std::array<Rml::Vector2i,5>{{{800,450},{1920,810},{900,1200},{640,400},{1536,960}}}) {
             context->SetDimensions(size);
             context->SetDensityIndependentPixelRatio(size.x==900?1.4f:1.0f);
             context->Update();
@@ -728,7 +683,10 @@ int main(int argc, char** argv) {
                 "global confirmation fits viewport with all three actions");
         }
         global.FocusCancelIfOutside();
-        ok &= Check(context->GetFocusElement()==cancel,"global confirmation defaults to cancel");
+        ok &= Check(context->GetFocusElement()==cancel,"confirmation defaults to cancel");
+        global.Click(skinDoc);
+        ok &= Check(global.TakeChoice()==locus::app::ConfirmationChoice::None,
+            "background cannot dispatch confirmation");
         global.Click(save);
         ok &= Check(global.TakeChoice()==locus::app::ConfirmationChoice::Save,"quit Save is typed");
         global.Sync(skinQuit);
@@ -741,6 +699,36 @@ int main(int argc, char** argv) {
         global.Click(approve);
         ok &= Check(global.TakeChoice()==locus::app::ConfirmationChoice::Approve,
             "leave approval is typed");
+        locus::app::ConfirmationView editorView;
+        editorView.visible = true;
+        editorView.canSave = true;
+        editorView.heading = "UNSAVED CHART CHANGES";
+        editorView.message = "Save changed charts before leaving?";
+        editorView.approveLabel = "Y / DISCARD";
+        ok &= Check(!global.SamePrompt(editorView),
+            "new editor confirmation replaces a different global prompt");
+        global.Sync(editorView);
+        context->Update();
+        global.FocusCancelIfOutside();
+        ok &= Check(context->GetFocusElement()==cancel,"replaced prompt resets safe focus");
+        global.Click(save);
+        ok &= Check(global.TakeChoice()==locus::app::ConfirmationChoice::Save,
+            "editor save uses the same standalone host");
+        editorView.canSave = false;
+        editorView.approveLabel = "Y / CONFIRM";
+        global.Sync(editorView);
+        context->Update();
+        global.Click(save);
+        ok &= Check(global.TakeChoice()==locus::app::ConfirmationChoice::None &&
+            save->GetDisplay()==Rml::Style::Display::None,
+            "clean deletion hides and rejects Save");
+        global.Click(approve);
+        ok &= Check(global.TakeChoice()==locus::app::ConfirmationChoice::Approve,
+            "clean deletion returns typed approval");
+        global.Sync({});
+        context->Update();
+        ok &= Check(!global.Visible() && !locus::app::RmlFocusWithin(global.Panel(),context->GetFocusElement()),
+            "closing confirmation releases modal focus");
     }
     Rml::RemoveContext("headless-layout");
     Rml::Shutdown();

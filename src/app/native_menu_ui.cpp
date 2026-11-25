@@ -254,15 +254,15 @@ bool NativeMenuUi::Initialize() {
     }
     // Global prompts must render above gameplay and native custom canvases,
     // and cannot deliver events to a control in the underlying document.
-    globalConfirmationContext_ = Rml::CreateContext("locus-global-confirmation",
+    confirmationContext_ = Rml::CreateContext("locus-confirmation",
         {GetScreenWidth(), GetScreenHeight()});
-    if (globalConfirmationContext_) {
-        globalConfirmationDocument_ = globalConfirmationContext_->LoadDocument(
+    if (confirmationContext_) {
+        confirmationDocument_ = confirmationContext_->LoadDocument(
             (file.parent_path() / "confirmation.rml").generic_u8string());
-        if (globalConfirmationDocument_) {
-            globalConfirmationDocument_->AddEventListener("click", this);
-            globalConfirmation_.Attach(globalConfirmationDocument_);
-            globalConfirmationDocument_->Hide();
+        if (confirmationDocument_) {
+            confirmationDocument_->AddEventListener("click", this);
+            confirmation_.Attach(confirmationDocument_);
+            confirmationDocument_->Hide();
         }
     }
     document_->AddEventListener("click", this);
@@ -273,15 +273,15 @@ bool NativeMenuUi::Initialize() {
 }
 
 void NativeMenuUi::Shutdown() {
-    globalConfirmation_.Attach(nullptr);
-    if (globalConfirmationContext_) {
-        if (globalConfirmationDocument_) globalConfirmationDocument_->RemoveEventListener("click",this);
-        globalConfirmationContext_->UnloadAllDocuments();
-        Rml::RemoveContext("locus-global-confirmation");
-        globalConfirmationContext_ = nullptr;
-        globalConfirmationDocument_ = nullptr;
+    confirmation_.Attach(nullptr);
+    if (confirmationContext_) {
+        if (confirmationDocument_) confirmationDocument_->RemoveEventListener("click",this);
+        confirmationContext_->UnloadAllDocuments();
+        Rml::RemoveContext("locus-confirmation");
+        confirmationContext_ = nullptr;
+        confirmationDocument_ = nullptr;
     }
-    globalConfirmationPressed_ = false;
+    confirmationPressed_ = false;
     if (context_) {
         if (document_) {
             document_->RemoveEventListener("click", this);
@@ -370,7 +370,6 @@ void NativeMenuUi::Activate(Page page) {
     } else if (page == Page::Editor && editorDocument_) {
         editorDocument_->Show();
         editorPresenter_.Attach(editorDocument_);
-        editorConfirmation_.Attach(editorDocument_);
         lastEditorLayoutTab_ = -1;
     }
     ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
@@ -441,8 +440,8 @@ bool NativeMenuUi::IsSearchFocused() const {
 void NativeMenuUi::ProcessEvent(Rml::Event& event) {
     auto* target = event.GetTargetElement();
     if (!target) return;
-    if (ShowingGlobalConfirmation()) {
-        if (event.GetType()=="click") globalConfirmation_.Click(target);
+    if (ShowingConfirmation()) {
+        if (event.GetType()=="click") confirmation_.Click(target);
         return;
     }
     if (visiblePage_ == Page::Home) {
@@ -464,10 +463,6 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
         return;
     }
     if (visiblePage_ == Page::Editor) {
-        if (editorConfirmation_.Visible()) {
-            if (event.GetType() == "click") editorConfirmation_.Click(target);
-            return;
-        }
         editorPresenter_.ProcessEvent(event);
         return;
     }
@@ -776,8 +771,8 @@ bool NativeMenuUi::RefreshLayoutMetrics() {
     if (width != lastWidth_ || height != lastHeight_) {
         layoutChanged = true;
         context_->SetDimensions({std::max(1,width),std::max(1,height)});
-        if (globalConfirmationContext_)
-            globalConfirmationContext_->SetDimensions({std::max(1,width),std::max(1,height)});
+        if (confirmationContext_)
+            confirmationContext_->SetDimensions({std::max(1,width),std::max(1,height)});
         lastWidth_ = width; lastHeight_ = height;
     }
     // Every native screen shares the same DPI policy. Resizing changes
@@ -785,7 +780,7 @@ bool NativeMenuUi::RefreshLayoutMetrics() {
     const float density = NativeUiDensity(width, height, GetWindowScaleDPI().x);
     if (std::abs(density - lastDensity_) > 0.01f) {
         context_->SetDensityIndependentPixelRatio(density);
-        if (globalConfirmationContext_) globalConfirmationContext_->SetDensityIndependentPixelRatio(density);
+        if (confirmationContext_) confirmationContext_->SetDensityIndependentPixelRatio(density);
         lastDensity_ = density;
         layoutChanged = true;
     }
@@ -833,32 +828,6 @@ void NativeMenuUi::DispatchInput(bool dispatchKeyboard, bool dispatchButtons,
         context_->ProcessTextInput(static_cast<Rml::Character>(codepoint));
 }
 
-void NativeMenuUi::SyncEditorConfirmation(const ConfirmationView& view) {
-    if (!EditorAvailable()) return;
-    if (view.visible) Activate(Page::Editor);
-    if (!ShowingEditor()) return;
-    const bool changed = editorConfirmation_.Visible() != view.visible;
-    if (changed) editorPointerRouter_.Reset();
-    if (editorConfirmation_.Sync(view)) context_->Update();
-}
-
-ConfirmationChoice NativeMenuUi::UpdateEditorConfirmation(const ConfirmationView& view) {
-    SyncEditorConfirmation(view);
-    if (!view.visible || !ShowingEditor()) return ConfirmationChoice::None;
-    PumpInput(false);
-    editorConfirmation_.FocusCancelIfOutside();
-    auto* panel = editorConfirmation_.Panel();
-    auto* focus = context_->GetFocusElement();
-    if (IsKeyPressed(KEY_TAB))
-        MoveRmlModalFocus(panel,focus,IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
-    else if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))
-        ActivateRmlModalButton(panel,focus);
-    const auto keyboard = ChooseConfirmation(view,IsKeyPressed(KEY_S),IsKeyPressed(KEY_Y),
-        IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE));
-    const auto pointer = editorConfirmation_.TakeChoice();
-    return keyboard != ConfirmationChoice::None ? keyboard : pointer;
-}
-
 void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                                 const std::string& title, bool dirty,
                                 double rate, bool playing,
@@ -868,7 +837,6 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                                 const EditorSetView& setView) {
     if (!EditorAvailable()) return;
     Activate(Page::Editor);
-    SyncEditorConfirmation({});
     currentLibrary_ = nullptr;
     currentUi_ = nullptr;
     // The document now fills the actual context. No per-widget resize
@@ -1221,64 +1189,74 @@ MenuEvents NativeMenuUi::UpdateResults(FrameInput& input,
     return events;
 }
 
-void NativeMenuUi::SyncGlobalConfirmation(const ConfirmationView& view) {
-    if (!GlobalConfirmationAvailable()) return;
-    const bool changed = globalConfirmation_.Visible()!=view.visible;
+void NativeMenuUi::SyncConfirmation(const ConfirmationView& view) {
+    if (!ConfirmationAvailable()) return;
+    const bool wasVisible = confirmation_.Visible();
+    const bool changed = !confirmation_.SamePrompt(view);
     if (changed) {
-        globalConfirmationPressed_ = false;
+        confirmationPressed_ = false;
         editorPointerRouter_.Reset();
-        if (view.visible) {
-            // Do not keep keyboard focus on the underlying screen.
-            if (auto* focus = context_->GetFocusElement()) focus->Blur();
-            globalConfirmationDocument_->Show();
+        if (wasVisible) {
+            // Retire the old overlay's pointer capture before its replacement.
+            confirmationContext_->ProcessMouseMove(-1,-1,Modifiers());
+            confirmationContext_->ProcessMouseButtonUp(0,Modifiers());
+            confirmation_.TakeChoice();
         }
+        if (view.visible && !wasVisible) confirmationDocument_->Show();
     }
-    const bool modelChanged = globalConfirmation_.Sync(view);
+    const bool modelChanged = confirmation_.Sync(view);
+    if (view.visible && !wasVisible) {
+        // Cancel a press in the underlying context without losing its text
+        // focus; Cancel on the dialog returns to the same editing control.
+        // ProcessEvent already routes exclusively to the visible overlay.
+        context_->ProcessMouseMove(-1,-1,Modifiers());
+        context_->ProcessMouseButtonUp(0,Modifiers());
+    }
     if (!view.visible) {
-        if (changed) globalConfirmationDocument_->Hide();
+        if (wasVisible) confirmationDocument_->Hide();
         return;
     }
     const bool metricsChanged = RefreshLayoutMetrics();
     if (metricsChanged) context_->Update();
-    if (modelChanged || metricsChanged || changed) globalConfirmationContext_->Update();
-    globalConfirmation_.FocusCancelIfOutside();
+    if (modelChanged || metricsChanged || changed) confirmationContext_->Update();
+    confirmation_.FocusCancelIfOutside();
 }
 
-ConfirmationChoice NativeMenuUi::UpdateGlobalConfirmation(const ConfirmationView& view) {
-    SyncGlobalConfirmation(view);
-    if (!ShowingGlobalConfirmation()) return ConfirmationChoice::None;
+ConfirmationChoice NativeMenuUi::UpdateConfirmation(const ConfirmationView& view) {
+    SyncConfirmation(view);
+    if (!ShowingConfirmation()) return ConfirmationChoice::None;
     const int mods = Modifiers();
     const auto mouse = GetMousePosition();
-    globalConfirmationContext_->ProcessMouseMove(static_cast<int>(mouse.x),static_cast<int>(mouse.y),mods);
+    confirmationContext_->ProcessMouseMove(static_cast<int>(mouse.x),static_cast<int>(mouse.y),mods);
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        globalConfirmationPressed_ = true;
-        globalConfirmationContext_->ProcessMouseButtonDown(0,mods);
+        confirmationPressed_ = true;
+        confirmationContext_->ProcessMouseButtonDown(0,mods);
     }
     // A release belonging to the button that opened the modal is not
     // confirmation input. Require a fresh press in this context.
-    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && globalConfirmationPressed_) {
-        globalConfirmationPressed_ = false;
-        globalConfirmationContext_->ProcessMouseButtonUp(0,mods);
+    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && confirmationPressed_) {
+        confirmationPressed_ = false;
+        confirmationContext_->ProcessMouseButtonUp(0,mods);
     }
     const float wheel = GetMouseWheelMove();
-    if (wheel != 0) globalConfirmationContext_->ProcessMouseWheel(-wheel,mods);
-    auto* panel = globalConfirmation_.Panel();
-    auto* focus = globalConfirmationContext_->GetFocusElement();
+    if (wheel != 0) confirmationContext_->ProcessMouseWheel(-wheel,mods);
+    auto* panel = confirmation_.Panel();
+    auto* focus = confirmationContext_->GetFocusElement();
     if (IsKeyPressed(KEY_TAB))
         MoveRmlModalFocus(panel,focus,IsKeyDown(KEY_LEFT_SHIFT)||IsKeyDown(KEY_RIGHT_SHIFT));
     else if (IsKeyPressed(KEY_ENTER)||IsKeyPressed(KEY_KP_ENTER))
         ActivateRmlModalButton(panel,focus);
     const auto keyboard = ChooseConfirmation(view,IsKeyPressed(KEY_S),IsKeyPressed(KEY_Y),
         IsKeyPressed(KEY_N)||IsKeyPressed(KEY_ESCAPE));
-    const auto pointer = globalConfirmation_.TakeChoice();
-    globalConfirmationContext_->Update();
+    const auto pointer = confirmation_.TakeChoice();
+    confirmationContext_->Update();
     return keyboard != ConfirmationChoice::None ? keyboard : pointer;
 }
 
-void NativeMenuUi::RenderGlobalConfirmation() {
-    if (!ShowingGlobalConfirmation()) return;
+void NativeMenuUi::RenderConfirmation() {
+    if (!ShowingConfirmation()) return;
     BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
-    globalConfirmationContext_->Render();
+    confirmationContext_->Render();
     renderer_.EnableScissorRegion(false);
     EndBlendMode();
 }

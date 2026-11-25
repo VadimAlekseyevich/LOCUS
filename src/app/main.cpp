@@ -471,24 +471,24 @@ int main(int argc, char** argv) try {
                 state.screen == Screen::Editor && editorUi.EditingText(),editorStatus);
         };
 #ifdef LOCUS_WITH_RMLUI
-        const bool nativeGlobalConfirmation = nativeMenu.GlobalConfirmationAvailable();
+        const bool nativeConfirmation = nativeMenu.ConfirmationAvailable();
 #else
-        const bool nativeGlobalConfirmation = false;
+        const bool nativeConfirmation = false;
 #endif
         FrameInput input = locus::app::PollFrameInput(
             debugScreens, state, settings, inputNow,
             state.screen == Screen::Play &&
                 (customChart ? chartPlayback.Paused() : transport.Paused()),
-            nativeEditorTextInput, nativeGlobalConfirmation);
+            nativeEditorTextInput, nativeConfirmation);
         auto globalChoice = locus::app::ConfirmationChoice::None;
 #ifdef LOCUS_WITH_RMLUI
-        if (nativeGlobalConfirmation)
-            globalChoice = nativeMenu.UpdateGlobalConfirmation(globalConfirmation());
+        if (nativeConfirmation && wasAnyModal)
+            globalChoice = nativeMenu.UpdateConfirmation(globalConfirmation());
 #endif
-        if (nativeGlobalConfirmation && wasQuitConfirmation) {
+        if (nativeConfirmation && wasQuitConfirmation) {
             input.quitConfirmed = globalChoice == locus::app::ConfirmationChoice::Approve;
             input.quitCanceled = globalChoice == locus::app::ConfirmationChoice::Cancel;
-        } else if (nativeGlobalConfirmation && wasLevelExitConfirmation) {
+        } else if (nativeConfirmation && wasLevelExitConfirmation) {
             input.levelExitConfirmed = globalChoice == locus::app::ConfirmationChoice::Approve;
             input.levelExitCanceled = globalChoice == locus::app::ConfirmationChoice::Cancel;
         }
@@ -520,7 +520,13 @@ int main(int argc, char** argv) try {
         ConfirmationChoice editorChoice = ConfirmationChoice::None;
         if (!(wasAnyModal || input.closeRequested)) {
 #ifdef LOCUS_WITH_RMLUI
-            if (state.screen == Screen::Home && nativeMenu.HomeAvailable())
+            if (state.screen == Screen::Editor && confirmation.visible) {
+                // Even an unavailable editor document can use the common
+                // confirmation host. Never forward input behind a prompt.
+                nativeEditorConfirmation = nativeConfirmation;
+                if (nativeEditorConfirmation)
+                    editorChoice = nativeMenu.UpdateConfirmation(confirmation);
+            } else if (state.screen == Screen::Home && nativeMenu.HomeAvailable())
                 nativeMenu.UpdateHome(input, menuStatus);
             else if (state.screen == Screen::SongSelect && nativeMenu.Available())
                 menuEvents = nativeMenu.Update(library, libraryUi, input);
@@ -533,11 +539,7 @@ int main(int argc, char** argv) try {
                     displayedResult ? displayedResult->notesJudged :
                         static_cast<int>(judge.ScorableCount()),
                     chartTitle, historicalResult, libraryUi);
-            else if (state.screen == Screen::Editor && nativeMenu.EditorAvailable() &&
-                     confirmation.visible) {
-                nativeEditorConfirmation = true;
-                editorChoice = nativeMenu.UpdateEditorConfirmation(confirmation);
-            } else if (state.screen == Screen::Editor && nativeMenu.EditorAvailable()) {
+            else if (state.screen == Screen::Editor && nativeMenu.EditorAvailable()) {
                 nativeMenu.UpdateEditor(editorUi, input, editor.Data().title,
                     editor.Dirty(), chartPlayback.Speed(),
                     chartPlayback.Playing() && !chartPlayback.Paused(),
@@ -753,7 +755,7 @@ int main(int argc, char** argv) try {
         // documents before confirming quit; Y quits without saving, N stays.
         if (wasQuitConfirmation && editorFiles.AnyDirty() &&
             (globalChoice == ConfirmationChoice::Save ||
-             (!nativeGlobalConfirmation && (IsKeyPressed(KEY_S) ||
+             (!nativeConfirmation && (IsKeyPressed(KEY_S) ||
              (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
               locus::app::EditorQuitSavePointerHit(
                   state.screen, GetMousePosition(),
@@ -1176,10 +1178,6 @@ int main(int argc, char** argv) try {
                 editorClock.playing && !editorClock.paused,
                 locus::app::detail::RouteTimeMs(editor, editorClock.tick),
                 editor, settings, editorSetView);
-            nativeMenu.SyncEditorConfirmation(state.quitConfirmation || state.levelExitConfirmation
-                ? locus::app::ConfirmationView{}
-                : locus::app::EditorConfirmationView(editorSet.Pending(), editorDiscard.Pending(),
-                    !editorFiles.PendingClose().empty(), editorStatus));
         }
 #endif
         if (visibleState.screen == Screen::Editor &&
@@ -1231,9 +1229,13 @@ int main(int argc, char** argv) try {
             visibleState.screen != Screen::Results &&
             visibleState.screen != Screen::Skin) nativeMenu.Hide();
 #endif
-        #ifdef LOCUS_WITH_RMLUI
-        nativeMenu.SyncGlobalConfirmation(globalConfirmation());
-        #endif
+#ifdef LOCUS_WITH_RMLUI
+        auto activeConfirmation = globalConfirmation();
+        if (!activeConfirmation.visible && state.screen == Screen::Editor)
+            activeConfirmation = locus::app::EditorConfirmationView(editorSet.Pending(),
+                editorDiscard.Pending(), !editorFiles.PendingClose().empty(), editorStatus);
+        nativeMenu.SyncConfirmation(activeConfirmation);
+#endif
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, editorClock,
                     editorStatus, editorDiscard.Pending(),

@@ -105,7 +105,7 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
 FrameInput PollFrameInput(bool debugScreens, const AppState& state,
                           const GameSettings& settings,
                           double eventTimeSeconds, bool playPaused,
-                          bool nativeEditorTextInput, bool nativeGlobalConfirmation) {
+                          bool nativeEditorTextInput, bool nativeConfirmation) {
     if (state.quitConfirmation) {
         // Repeated native X presses cannot bypass an already-open modal.
         ConsumeNativeCloseRequest();
@@ -113,7 +113,7 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
         input.quitConfirmed = IsKeyPressed(KEY_Y);
         input.quitCanceled = IsKeyPressed(KEY_N) ||
                              IsKeyPressed(KEY_ESCAPE);
-        if (!nativeGlobalConfirmation && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (!nativeConfirmation && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             const QuitDialogChoice choice = QuitDialogPointerChoice(
                 state.screen, GetMousePosition(),
                 GetScreenWidth(), GetScreenHeight());
@@ -130,7 +130,7 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
         input.levelExitConfirmed = IsKeyPressed(KEY_Y);
         input.levelExitCanceled = IsKeyPressed(KEY_N) ||
                                   IsKeyPressed(KEY_ESCAPE);
-        if (!nativeGlobalConfirmation && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (!nativeConfirmation && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             const Vector2 mouse = GetMousePosition();
             const int width = GetScreenWidth(), height = GetScreenHeight();
             input.levelExitConfirmed |= PlayButtonHit(

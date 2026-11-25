@@ -233,9 +233,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         : locus::app::ViewportTransform::Menu(GetScreenWidth(), GetScreenHeight());
     const Camera2D camera = transform.Camera();
     BeginMode2D(camera);
-    const bool nativeGlobalConfirmation =
+    const bool nativeConfirmation =
 #ifdef LOCUS_WITH_RMLUI
-        nativeMenu && nativeMenu->ShowingGlobalConfirmation();
+        nativeMenu && nativeMenu->ShowingConfirmation();
 #else
         false;
 #endif
@@ -243,7 +243,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     if (state.screen == Screen::Home) {
 #ifdef LOCUS_WITH_RMLUI
         if (!nativeMenu || !nativeMenu->HomeAvailable() ||
-            !nativeMenu->ShowingHome() || (state.quitConfirmation && !nativeGlobalConfirmation))
+            !nativeMenu->ShowingHome() || (state.quitConfirmation && !nativeConfirmation))
 #endif
             DrawHomeScreen(font, menuStatus, homeUi, homeBrand, now);
     } else if (state.screen == Screen::SongSelect) {
@@ -255,13 +255,13 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::Skin) {
 #ifdef LOCUS_WITH_RMLUI
         if (!nativeMenu || !nativeMenu->SkinAvailable() ||
-            !nativeMenu->ShowingSkin() || (state.quitConfirmation && !nativeGlobalConfirmation))
+            !nativeMenu->ShowingSkin() || (state.quitConfirmation && !nativeConfirmation))
 #endif
             locus::app::DrawSkinMenu(font, draftSkin, skinUi);
     } else if (state.screen == Screen::Settings) {
 #ifdef LOCUS_WITH_RMLUI
         if (!nativeMenu || !nativeMenu->SettingsAvailable() ||
-            !nativeMenu->ShowingSettings() || (state.quitConfirmation && !nativeGlobalConfirmation))
+            !nativeMenu->ShowingSettings() || (state.quitConfirmation && !nativeConfirmation))
 #endif
             locus::app::DrawSettingsMenu(font, settings, settingsUi);
     } else if (state.screen == Screen::Listen) {
@@ -291,7 +291,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::Results) {
 #ifdef LOCUS_WITH_RMLUI
         if (!nativeMenu || !nativeMenu->ResultsAvailable() ||
-            !nativeMenu->ShowingResults() || (state.quitConfirmation && !nativeGlobalConfirmation))
+            !nativeMenu->ShowingResults() || (state.quitConfirmation && !nativeConfirmation))
 #endif
             DrawResultsScreen(font, gameplay, displayedResult, historicalResult);
         if (!historicalResult && gameplay.outro.resultBlackOpacity > 0.0f)
@@ -338,7 +338,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         }
         // Only the non-native fallback draws editor confirmations here.
         // RmlConfirmation owns layout and hit-testing in the native editor.
-        if (!hasNativeEditorShell && editorSetPending && editorPending == EditorPending::None) {
+        if (!nativeConfirmation && editorSetPending && editorPending == EditorPending::None) {
             DrawRectangleRec(transform.ToVirtualBounds(
                 {0,0,static_cast<float>(GetScreenWidth()),static_cast<float>(GetScreenHeight())}),
                 Color{10, 13, 21, 225});
@@ -376,7 +376,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                              MenuButtonStyle({130, 226, 215, 255}));
             }
         }
-        if (!hasNativeEditorShell && (editorPending != EditorPending::None ||
+        if (!nativeConfirmation && (editorPending != EditorPending::None ||
             !editorClosePending.empty())) {
             const bool closingPane = !editorClosePending.empty();
             DrawRectangleRec(transform.ToVirtualBounds(
@@ -423,7 +423,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                       Vector2{50.0f, static_cast<float>(kWindowHeight - 65)},
                       22.0f, Color{232, 213, 160, 255});
     }
-    if (!nativeGlobalConfirmation && state.levelExitConfirmation) {
+    if (!nativeConfirmation && state.levelExitConfirmation) {
         DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
                       Color{9, 12, 23, 235});
         DrawRectangleRounded({197, 158, 566, 244}, 0.09f, 8,
@@ -439,9 +439,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         DrawTextLabel(font, "ESC ALSO CANCELS", {383, 386}, 14,
                       Color{192, 207, 229, 255});
     }
-    if (!nativeGlobalConfirmation) DrawQuitConfirmation(font, state, editor, editorUi, skinUi,
+    if (!nativeConfirmation) DrawQuitConfirmation(font, state, editor, editorUi, skinUi,
                          anyEditorDirty);
-    if (!nativeGlobalConfirmation && state.quitConfirmation && anyEditorDirty &&
+    if (!nativeConfirmation && state.quitConfirmation && anyEditorDirty &&
         editorStatus.find("SAVE FAILED") != std::string::npos) {
         const std::string notice = core::utf8::Truncate(editorStatus, 80);
         DrawTextLabel(font, notice.c_str(), {198, 437}, 11,
@@ -451,7 +451,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
 #ifdef LOCUS_WITH_RMLUI
     // The isolated global context is rendered after the menu and its custom
     // canvases; legacy prompts still suppress native content when necessary.
-    if (nativeMenu && (nativeGlobalConfirmation || (!state.quitConfirmation &&
+    if (nativeMenu && (nativeConfirmation || (!state.quitConfirmation &&
         !state.levelExitConfirmation)) &&
         ((state.screen == Screen::SongSelect && nativeMenu->Available() &&
           nativeMenu->ShowingPlay()) ||
@@ -464,7 +464,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
          (state.screen == Screen::Settings && nativeMenu->SettingsAvailable() &&
           nativeMenu->ShowingSettings()) ||
          (state.screen == Screen::Editor && nativeMenu->EditorAvailable() &&
-          nativeMenu->ShowingEditor())))
+          nativeMenu->ShowingEditor() && (nativeConfirmation ||
+              (!editorSetPending && editorPending == EditorPending::None &&
+               editorClosePending.empty())))))
     {
         nativeMenu->Render();
         if (state.screen == Screen::Skin) {
@@ -477,7 +479,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         if (state.screen == Screen::Home)
             homeBrand.DrawAt(font, nativeMenu->HomeWordmarkBounds());
     }
-    if (nativeGlobalConfirmation) nativeMenu->RenderGlobalConfirmation();
+    if (nativeConfirmation) nativeMenu->RenderConfirmation();
 #endif
     if (settings.showFps) {
         // Screen-pixel overlay, separate from the gameplay camera.

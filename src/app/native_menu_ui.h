@@ -58,8 +58,6 @@ public:
                       const core::ChartEditor& draft,
                       const GameSettings& settings,
                       const EditorSetView& setView);
-    ConfirmationChoice UpdateEditorConfirmation(const ConfirmationView& view);
-    void SyncEditorConfirmation(const ConfirmationView& view);
     void SyncEditor(EditorUiState& ui, const std::string& title,
                     bool dirty, double rate, bool playing, long long songTimeMs,
                     const core::ChartEditor& draft,
@@ -79,11 +77,11 @@ public:
                       FrameInput& input);
     void Hide();
     void Render();
-    bool GlobalConfirmationAvailable() const noexcept { return globalConfirmationDocument_ != nullptr; }
-    bool ShowingGlobalConfirmation() const noexcept { return globalConfirmation_.Visible(); }
-    void SyncGlobalConfirmation(const ConfirmationView& view);
-    ConfirmationChoice UpdateGlobalConfirmation(const ConfirmationView& view);
-    void RenderGlobalConfirmation();
+    bool ConfirmationAvailable() const noexcept { return confirmationDocument_ != nullptr; }
+    bool ShowingConfirmation() const noexcept { return confirmation_.Visible(); }
+    void SyncConfirmation(const ConfirmationView& view);
+    ConfirmationChoice UpdateConfirmation(const ConfirmationView& view);
+    void RenderConfirmation();
 
 private:
     enum class Page { None, Home, Play, Settings, Editor, Results, Skin };
@@ -104,10 +102,10 @@ private:
     RmlRaylibSystem system_;
     RmlRaylibRenderer renderer_;
     Rml::Context* context_ = nullptr;
-    Rml::Context* globalConfirmationContext_ = nullptr;
-    Rml::ElementDocument* globalConfirmationDocument_ = nullptr;
-    RmlConfirmation globalConfirmation_;
-    bool globalConfirmationPressed_ = false;
+    Rml::Context* confirmationContext_ = nullptr;
+    Rml::ElementDocument* confirmationDocument_ = nullptr;
+    RmlConfirmation confirmation_;
+    bool confirmationPressed_ = false;
     Rml::ElementDocument* document_ = nullptr;
     Rml::ElementDocument* homeDocument_ = nullptr;
     Rml::ElementDocument* settingsDocument_ = nullptr;
@@ -116,7 +114,6 @@ private:
     Rml::ElementDocument* skinDocument_ = nullptr;
     NativeSettingsUi settingsPresenter_;
     NativeEditorUi editorPresenter_;
-    RmlConfirmation editorConfirmation_;
     NativeResultsUi resultsPresenter_;
     NativeSkinUi skinPresenter_;
     const SongLibrary* currentLibrary_ = nullptr;

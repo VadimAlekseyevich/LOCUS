@@ -19,10 +19,18 @@ public:
             layer->SetProperty("display","none");
     }
 
+    bool SamePrompt(const ConfirmationView& view) const noexcept {
+        // A new prompt may replace an existing one without a hidden frame.
+        // Notice/status updates do not invalidate a user's focus.
+        return view.visible == view_.visible && (!view.visible ||
+            (view.heading == view_.heading && view.message == view_.message &&
+             view.approveLabel == view_.approveLabel));
+    }
+
     bool Sync(const ConfirmationView& view) {
         if (!document_ || view == view_) return false;
         auto* panel = Panel();
-        if (view.visible != view_.visible) {
+        if (!SamePrompt(view)) {
             if (auto* focus = document_->GetContext()->GetFocusElement();
                 focus && (view.visible || RmlFocusWithin(panel,focus)))
                 focus->Blur();
