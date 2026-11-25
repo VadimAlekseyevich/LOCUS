@@ -83,7 +83,9 @@ public:
     void RotateHeading45(int eighthTurns);
     bool SetOutgoingHeading(Heading heading); // compass authoring on ROUTE
     bool SetTitle(const std::string& title);
-    void PutTurn(Heading heading);
+    bool PutTurn(Heading heading);
+    bool SetSelectedHoldMs(std::int64_t durationMs);
+    bool AdjustSelectedHold(int direction); // one snap subdivision at the tail
     // Timestamp-keyed authoring: one tick can hold multiple distinct events.
     bool PutTurnAtTimeMs(std::int64_t timeMs, Heading heading);
     bool RemoveTurn();

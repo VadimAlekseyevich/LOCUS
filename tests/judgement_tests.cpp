@@ -462,6 +462,50 @@ int main() {
                 repeatedJudge.AllScorableJudged(),
                 "straight repeated notes each require their own press");
 
+    Chart holdChart;
+    holdChart.turns = {{2, Heading::UpRight, 1000, 1000},
+                       {4, Heading::Right, 2000}};
+    TurnJudge holdJudge(holdChart);
+    holdJudge.PressHeading(Heading::Up, 1.0);
+    holdJudge.PressHeading(Heading::Right, 1.02);
+    ok &= Check(holdJudge.Counts().Resolved() == 0 &&
+                !holdJudge.AllScorableJudged(),
+                "hold heads defer scoring until the tail");
+    holdJudge.ReleaseHeading(Heading::Up, 1.5);
+    ok &= Check(!holdJudge.PressHeading(Heading::Up, 1.55),
+                "early release cannot be repaired by retriggering");
+    holdJudge.Advance(2.0);
+    ok &= Check(holdJudge.Counts().perfect == 1 && holdJudge.Counts().miss == 1 &&
+                !holdJudge.AllScorableJudged(),
+                "diagonal hold components resolve independently");
+    holdJudge.ReleaseHeading(Heading::Right, 2.0);
+    holdJudge.PressHeading(Heading::Right, 2.0);
+    ok &= Check(holdJudge.AllScorableJudged() && holdJudge.Counts().perfect == 2,
+                "tail and next tap can share a timestamp");
+    holdJudge.Reset();
+    holdJudge.Advance(1.3);
+    ok &= Check(holdJudge.Counts().Resolved() == 0, "missed head waits for tail");
+    holdJudge.Advance(2.0);
+    ok &= Check(holdJudge.Counts().miss == 2, "missed hold resolves at tail");
+    holdJudge.ResetFromAudioSeconds(1.5);
+    ok &= Check(holdJudge.ScorableCount() == 1, "mid-hold editor test skips earlier head");
+    Chart shortHold;
+    shortHold.turns = {{2, Heading::Up, 1000},
+                       {3, Heading::Right, 1050, 50}};
+    TurnJudge shortJudge(shortHold);
+    shortJudge.PressHeading(Heading::Right, 1.05);
+    shortJudge.ReleaseHeading(Heading::Right, 1.10);
+    ok &= Check(shortJudge.Counts().perfect == 1 &&
+                shortJudge.Counts().miss == 0,
+                "short hold tail resolves despite earlier pending tap");
+    shortJudge.Advance(1.181);
+    ok &= Check(shortJudge.AllScorableJudged() &&
+                shortJudge.Counts().miss == 1,
+                "earlier tap expires independently");
+    shortJudge.Reset();
+    ok &= Check(!shortJudge.PressHeading(Heading::Right, 1.11) ||
+                shortJudge.Counts().perfect == 0,
+                "hold head cannot be hit after its tail");
     if (!ok) return 1;
     std::cout << "JUDGEMENT_PASS turns=9 perfect-good-bad-miss no-fail=true\n";
     return 0;

@@ -236,6 +236,25 @@ int main() {
     ok &= Expect(!ValidChartAudioPath("../song.mp3") &&
                  ValidChartAudioPath("audio/song.mp3"),
                  "only normalized relative audio references are accepted");
+    LoadedChart holds;
+    ok &= Expect(ParseChartJson(source, holds, error), "hold fixture");
+    const auto tapRevision = ChartGameplayRevision(holds);
+    holds.route.turns.front().holdMs = 1000;
+    std::string holdJson;
+    LoadedChart decodedHold;
+    ok &= Expect(SerializeChartJson(holds, holdJson, error) &&
+                 holdJson.find("\"formatVersion\": 5") != std::string::npos &&
+                 ParseChartJson(holdJson, decodedHold, error) &&
+                 decodedHold.route.turns.front().holdMs == 1000 &&
+                 ChartGameplayRevision(decodedHold) != tapRevision,
+                 "version 5 round-trips hold duration and changes gameplay revision");
+    holds.route.turns.front().holdMs = 1501;
+    ok &= Expect(!SerializeChartJson(holds, holdJson, error),
+                 "hold cannot overlap the next head");
+    holds.route.turns.front().holdMs = 0;
+    holds.route.turns.back().holdMs = 1000;
+    ok &= Expect(!PrepareChartForSong(holds, 5.0, error),
+                 "hold tail cannot exceed actual audio");
     if (!ok) return 1;
     std::cout << "CHART_JSON_PASS format=4 headings=absolute old_format=rejected\n";
     return 0;

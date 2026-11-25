@@ -216,6 +216,8 @@ constexpr Rectangle kRotateCounterclockwise{52, 273, 42, 42};
 constexpr Rectangle kRotateClockwise{52, 319, 42, 42};
 constexpr Rectangle kCompareToggle{52, 365, 42, 42};
 constexpr Rectangle kRouteTest{52, 411, 42, 42};
+constexpr Rectangle kHoldMinus{52, 457, 20, 25};
+constexpr Rectangle kHoldPlus{74, 457, 20, 25};
 constexpr Rectangle kComparePopup{105, 243, 252, 211};
 constexpr Rectangle ComparePickerRow(int row) noexcept {
     return {115.0f, 266.0f + row * 29.0f, 232.0f, 25.0f};

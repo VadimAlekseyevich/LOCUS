@@ -892,6 +892,27 @@ int main() {
     ok &= Check(compassUi.Data().route.initialHeading == Heading::DownRight,
                 "initial heading rotates only with the ROUTE start control");
 
+    ChartEditor holdUi;
+    EditorUiState holdState;
+    EditorControls holdHead;
+    holdHead.nativeChrome = true;
+    holdHead.placeHeading = Heading::Right;
+    ok &= Check(ApplyEditorControls(holdUi, holdState, holdHead).changedChart,
+                "native compass authors a straight hold head");
+    EditorControls holdExtend;
+    holdExtend.nativeChrome = true;
+    holdExtend.holdLengthDelta = 1;
+    ok &= Check(ApplyEditorControls(holdUi, holdState, holdExtend).changedChart &&
+                holdUi.SelectedTurn()->holdMs == 500, "native hold plus uses snap");
+    EditorControls holdExact;
+    holdExact.nativeChrome = true;
+    holdExact.holdMsValue = "625";
+    ok &= Check(ApplyEditorControls(holdUi, holdState, holdExact).changedChart &&
+                holdUi.SelectedTurn()->holdMs == 625, "exact hold duration command");
+    holdExact.holdMsValue = "invalid";
+    ok &= Check(!ApplyEditorControls(holdUi, holdState, holdExact).changedChart &&
+                holdUi.SelectedTurn()->holdMs == 625, "invalid hold duration rejected");
+
     // A compass direction opposite to the incoming route is an ordinary
     // note, whether clicked or pressed using the game direction binding.
     ChartEditor reverseUi;

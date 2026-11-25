@@ -11,6 +11,24 @@
 #include <utility>
 
 namespace locus::core {
+namespace {
+bool FitsNote(const Chart& route, double offset, double songDuration,
+              std::int64_t time, std::int64_t hold,
+              const TurnEvent* previous, const TurnEvent* next) noexcept {
+    if (!ValidHoldDuration(time, hold) ||
+        (hold > 0 && songDuration > 0.0 &&
+         (time + hold) / 1000.0 > songDuration + 1e-9)) return false;
+    if (previous) {
+        const auto at = EventTimeMs(route, *previous, offset);
+        if (at >= time || previous->holdMs > time - at) return false;
+    }
+    if (next) {
+        const auto at = EventTimeMs(route, *next, offset);
+        if (at <= time || hold > at - time) return false;
+    }
+    return true;
+}
+} // namespace
 
 ChartEditor::ChartEditor() {
     NewDraft();
@@ -106,7 +124,10 @@ bool ChartEditor::TurnRangeFits(int firstBeat, int endBeat) const noexcept {
     // A BPM/offset/audio change may not silently strand authored turns
     // outside the song's editable timeline.
     for (const auto& event : chart_.route.turns)
-        if (event.beat < firstBeat || event.beat >= endBeat) return false;
+        if (event.beat < firstBeat || event.beat >= endBeat ||
+            (event.holdMs > 0 && HasSongDuration() &&
+             (EventTimeMs(chart_.route, event, chart_.offsetSeconds) + event.holdMs) / 1000.0 >
+                 songDurationSeconds_ + 1e-9)) return false;
     return true;
 }
 
@@ -559,8 +580,7 @@ void ChartEditor::RotateHeading45(int eighthTurns) {
 bool ChartEditor::SetOutgoingHeading(Heading heading) {
     if (!ValidHeading(heading)) return false;
     if (SelectedTurn() && SelectedTurn()->direction == heading) return false;
-    PutTurn(heading);
-    return true;
+    return PutTurn(heading);
 }
 
 const TurnEvent* ChartEditor::SelectedTurn() const noexcept {
@@ -586,31 +606,81 @@ const TurnEvent* ChartEditor::SelectedTurn() const noexcept {
         ? &*first : nullptr;
 }
 
-void ChartEditor::PutTurn(Heading heading) {
-    auto& events = chart_.route.turns;
+bool ChartEditor::PutTurn(Heading heading) {
+    if (!ValidHeading(heading)) return false;
+    auto& route = chart_.route;
+    auto& events = route.turns;
     auto found = std::lower_bound(
         events.begin(), events.end(), selectedBeat_,
         [](const TurnEvent& event, int beat) { return event.beat < beat; });
     if (selectedTurnTimeMs_) {
         const auto* selected = SelectedTurn();
-        if (!selected) return; // stale identity: never edit a neighbor
+        if (!selected) return false;
         found = events.begin() + (selected - events.data());
     }
-    if (found != events.end() && found->beat == selectedBeat_) {
-        if (found->direction == heading) return;
-        SaveUndo(selectedBeat_, selectedBeat_);
-        found->direction = heading;
-        if (!selectedTurnTimeMs_) {
-            found->timeMs = static_cast<std::int64_t>(
-                std::llround(AudioSecondsAtBeat(selectedBeat_) * 1000.0));
-        }
-    } else {
-        SaveUndo(selectedBeat_, selectedBeat_);
-        events.insert(found, TurnEvent{
-            selectedBeat_, heading, static_cast<std::int64_t>(
-                std::llround(AudioSecondsAtBeat(selectedBeat_) * 1000.0))});
-    }
+    const bool replacing = found != events.end() && found->beat == selectedBeat_;
+    if (replacing && found->direction == heading) return false;
+    // Editing the direction preserves the selected note's exact time.
+    const auto time = replacing
+        ? EventTimeMs(route, *found, chart_.offsetSeconds)
+        : static_cast<std::int64_t>(std::llround(AudioSecondsAtBeat(selectedBeat_) * 1000.0));
+    const auto after = replacing ? found + 1 : found;
+    if (!FitsNote(route, chart_.offsetSeconds, songDurationSeconds_, time,
+                  replacing ? found->holdMs : 0,
+                  found != events.begin() ? &*(found - 1) : nullptr,
+                  after != events.end() ? &*after : nullptr)) return false;
+    SaveUndo(selectedBeat_, selectedBeat_);
+    if (replacing) found->direction = heading;
+    else events.insert(found, TurnEvent{selectedBeat_, heading, time});
     MarkDirty();
+    return true;
+}
+
+bool ChartEditor::SetSelectedHoldMs(std::int64_t durationMs) {
+    auto& route = chart_.route;
+    auto& notes = route.turns;
+    const auto* selected = SelectedTurn();
+    if (!selected || selected->holdMs == durationMs) return false;
+    const auto i = static_cast<std::size_t>(selected - notes.data());
+    const auto time = EventTimeMs(route, *selected, chart_.offsetSeconds);
+    if (!FitsNote(route, chart_.offsetSeconds, songDurationSeconds_,
+                  time, durationMs, i ? &notes[i - 1] : nullptr,
+                  i + 1 < notes.size() ? &notes[i + 1] : nullptr)) return false;
+    if (!HasSongDuration() && durationMs > 0 &&
+        (time + durationMs) / 1000.0 >
+            TempoSecondsAtTick(route, chart_.offsetSeconds, route.lengthBeats) + 1e-9)
+        return false;
+    SaveUndo(selected->beat, selected->beat);
+    notes[i].holdMs = durationMs;
+    MarkDirty();
+    return true;
+}
+
+bool ChartEditor::AdjustSelectedHold(int direction) {
+    const auto* selected = SelectedTurn();
+    if (!selected || direction == 0) return false;
+    const auto& route = chart_.route;
+    const auto start = EventTimeMs(route, *selected, chart_.offsetSeconds);
+    const auto tail = start + selected->holdMs;
+    const TempoProjection projection(route, chart_.offsetSeconds);
+    const int step = route.ticksPerBeat / route.snapDivision;
+    if (step <= 0) return false;
+    const int near = projection.TickAtMs(tail);
+    long long tick = static_cast<long long>(std::floor(
+        static_cast<double>(near) / step)) * step;
+    if (direction < 0) tick = std::min<long long>(tick + step, route.lengthBeats);
+    if (direction > 0) tick = std::max<long long>(tick, route.firstBeat);
+    for (; tick >= route.firstBeat && tick <= route.lengthBeats;
+         tick += direction > 0 ? step : -step) {
+        const auto seconds = projection.SecondsAtTick(static_cast<int>(tick));
+        if (!std::isfinite(seconds)) continue;
+        const auto candidate = static_cast<std::int64_t>(std::llround(seconds * 1000.0));
+        if (direction > 0 ? candidate <= tail : candidate >= tail) continue;
+        if (tick != route.lengthBeats && TempoSnapTickAtSeconds(
+            route, chart_.offsetSeconds, seconds) != tick) continue;
+        return SetSelectedHoldMs(std::max<std::int64_t>(0, candidate - start));
+    }
+    return direction < 0 && SetSelectedHoldMs(0);
 }
 
 bool ChartEditor::PutTurnAtTimeMs(std::int64_t timeMs, Heading heading) {
@@ -629,8 +699,14 @@ bool ChartEditor::PutTurnAtTimeMs(std::int64_t timeMs, Heading heading) {
         [&](const TurnEvent& event, std::int64_t ms) {
             return EventTimeMs(route, event, chart_.offsetSeconds) < ms;
         });
-    if (at != notes.end() &&
-        EventTimeMs(route, *at, chart_.offsetSeconds) == timeMs) {
+    const bool replacing = at != notes.end() &&
+        EventTimeMs(route, *at, chart_.offsetSeconds) == timeMs;
+    const auto after = replacing ? at + 1 : at;
+    if (!FitsNote(route, chart_.offsetSeconds, songDurationSeconds_, timeMs,
+                  replacing ? at->holdMs : 0,
+                  at != notes.begin() ? &*(at - 1) : nullptr,
+                  after != notes.end() ? &*after : nullptr)) return false;
+    if (replacing) {
         if (at->direction == heading) {
             SelectTurnAtTimeMs(timeMs);
             return false;
@@ -695,10 +771,16 @@ bool ChartEditor::MoveTurn(int beats) {
         selected - turns.data());
     // Two different timestamps may live in one target cell, but the
     // absolute timestamp is unique. Never overwrite another event.
-    for (std::size_t i = 0; i < turns.size(); ++i)
-        if (i != index &&
-            EventTimeMs(route, turns[i], chart_.offsetSeconds) == timestamp)
-            return false;
+    const auto holdMs = selected->holdMs;
+    if (!FitsNote(route, chart_.offsetSeconds, songDurationSeconds_,
+                  timestamp, holdMs, nullptr, nullptr)) return false;
+    for (std::size_t i = 0; i < turns.size(); ++i) {
+        if (i == index) continue;
+        const auto at = EventTimeMs(route, turns[i], chart_.offsetSeconds);
+        if (at == timestamp ||
+            (at < timestamp && turns[i].holdMs > timestamp - at) ||
+            (at > timestamp && holdMs > at - timestamp)) return false;
+    }
 
     const Heading direction = selected->direction;
     SaveUndo(std::min(selectedBeat_, destination),
@@ -709,7 +791,7 @@ bool ChartEditor::MoveTurn(int beats) {
         [&](const TurnEvent& note, std::int64_t timeMs) {
             return EventTimeMs(route, note, chart_.offsetSeconds) < timeMs;
         });
-    turns.insert(slot, {destination, direction, timestamp});
+    turns.insert(slot, {destination, direction, timestamp, holdMs});
     selectedBeat_ = destination;
     selectedTurnTimeMs_ = timestamp;
     MarkDirty();
@@ -742,7 +824,7 @@ ChartEditor::Pattern ChartEditor::CopyTurns(int firstBeat, int lastBeat) const {
         const auto exactMs = EventTimeMs(
             chart_.route, *note, chart_.offsetSeconds);
         result.notes.push_back({
-            note->beat - firstNote, note->direction, exactMs - tickMs
+            note->beat - firstNote, note->direction, exactMs - tickMs, note->holdMs
         });
     }
     return result;
@@ -804,7 +886,7 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
 
         if (!incoming.empty() && ms <= incoming.back().timeMs)
             return false;
-        incoming.push_back({beat,note.direction,ms});
+        incoming.push_back({beat,note.direction,ms,note.holdMs});
     }
 
     // Merge only the affected tick interval. Existing and pasted notes
@@ -833,8 +915,9 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
         } else {
             if (old->beat!=add->beat) return false;
             auto event=*old++;
-            changed |= event.direction!=add->direction;
+            changed |= event.direction!=add->direction || event.holdMs!=add->holdMs;
             event.direction=add->direction;
+            event.holdMs=add->holdMs;
             merged.push_back(event);
             ++add;
         }
@@ -853,6 +936,15 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
         EventTimeMs(route,merged.back(),chart_.offsetSeconds)>=
             EventTimeMs(route,*end,chart_.offsetSeconds))
         return false;
+
+    for (std::size_t i = 0; i < merged.size(); ++i) {
+        const auto& note = merged[i];
+        if (!FitsNote(route, chart_.offsetSeconds, songDurationSeconds_,
+                      EventTimeMs(route, note, chart_.offsetSeconds), note.holdMs,
+                      i ? &merged[i-1] : first != route.turns.begin() ? &*(first-1) : nullptr,
+                      i+1 < merged.size() ? &merged[i+1] :
+                          end != route.turns.end() ? &*end : nullptr)) return false;
+    }
 
     // Commit a single range splice and one history entry. Overwrite the
     // common prefix and shift the untouched suffix at most once (the
@@ -912,10 +1004,12 @@ bool ChartEditor::ShiftTurns(int firstBeat, int lastBeat, int deltaBeats) {
             return EventTimeMs(route, lhs, chart_.offsetSeconds) <
                    EventTimeMs(route, rhs, chart_.offsetSeconds);
         });
-    for (std::size_t i = 1; i < updated.size(); ++i)
-        if (EventTimeMs(route, updated[i - 1], chart_.offsetSeconds) ==
-            EventTimeMs(route, updated[i], chart_.offsetSeconds))
-            return false; // Exact timestamp collision; nothing committed.
+    for (std::size_t i = 0; i < updated.size(); ++i) {
+        if (!FitsNote(route, chart_.offsetSeconds, songDurationSeconds_,
+                      EventTimeMs(route, updated[i], chart_.offsetSeconds), updated[i].holdMs,
+                      i ? &updated[i-1] : nullptr,
+                      i+1 < updated.size() ? &updated[i+1] : nullptr)) return false;
+    }
 
     // Moving a dense group must remain a single reversible transaction.
     // Snapshot the complete touched cell range, including any pre-existing

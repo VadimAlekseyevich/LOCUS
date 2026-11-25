@@ -50,6 +50,13 @@
 - A correctly aimed press is Perfect within **±50 ms**, Good within **±110 ms**, Bad within **±180 ms**; a wrong direction in the hit window or an expired note is Miss. Ignored stray presses do not create extra grades.
 - A **cardinal turn counts as one note**; a **diagonal turn counts as two notes** in Perfect/Good/Bad/Miss statistics, accuracy and Results completion. Hitting one diagonal arrow cannot automatically grade the other: its missing half receives Miss after its own late window. Each physical arrow is judged at most once; holding it or re-pressing an already-scored component cannot farm score. No Fail remains active for all grades.
 
+### Holds
+
+- A hold is an ordinary authored absolute direction with a positive duration in original song milliseconds. It can begin on a straight section or a turn. No additional event may start inside its interval; the next head may coincide with its tail.
+- Press each required key inside the ordinary head window and keep it down until the tail. Releasing before the tail gives Miss; re-pressing cannot repair it. No extra precision-release grade is required. Each physical arrow contributes exactly one grade, committed at the tail, including misses. A diagonal can earn different grades on its two keys. The route continues regardless of input.
+- The ROUTE editor selects a note and adjusts HOLD in snap steps or types its duration in milliseconds (0 = tap). The timeline shows its duration and the exact-time preview draws a distinct bright ribbon with a tail marker.
+- Holds use chart format 5 and scoring rules revision 2; tap-only charts remain format 4. Difficulty V2 currently measures the head input but does not model sustained key strain.
+
 ### 3.1 Accuracy and completion
 
 The accuracy percentage uses **judged arrow notes**, not the number of keyboard presses:
@@ -95,7 +102,7 @@ Show the same four judgement counts plus **final Accuracy** and resolved-note co
 - Chart editor tabs: **SET** (song/difficulty management and artwork), **ROUTE** (grid-free moving preview, nine-direction pad, note and group actions), **AUDIO** (difficulty title, editable shared tempo-map rows and precise manually entered preview milliseconds), **FIELD** (initial heading and read-only SKIN preview values).
 - The zoomable **upper note ruler** is beneath the editor tabs. It follows the selected position, displays authored notes and supports snap, zoom, interval drag selection, keyboard navigation and wheel scrolling. It is separate from the **fixed whole-song overview** at the bottom: this overview spans the complete audio duration in seconds and ignores beat zoom and snap scale. Click/drag it to navigate to the nearest available snap tick anywhere in the song without changing chart data. It shows the Song Set's full shared tempo map (one or many markers), never per-difficulty notes. The first marker defines beat zero; each following marker changes the BPM at an exact song-millisecond timestamp without resetting the beat count. Clicking the TIME readout beside the ROUTE direction pad copies song time in milliseconds.
 - Snap subdivision choices: **1, 2, 3, 4, 6, 8, 12, 16, 24** per musical beat. Snap, zoom and BPM are **different controls**.
-- Chart **v4** only writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
+- Chart **v4/v5** writes each note at its **absolute integer `timeMs` audio timestamp** and the signed integer `offsetMs`. Changing BPM/snap must not silently move existing notes in song time. The editor rejects a projection collision rather than dropping notes.
 - The writer stores an abbreviated absolute `heading` for each note and for the initial route direction. A 180° reversal is detected from the incoming and outgoing headings, not from a special relative note type.
 - Editor can add/edit/cut/copy/paste/mirror horizontally or vertically/rotate a selected pattern by ±90°/shift/undo directions, open JSON and TEST from the selected audio position. The ROUTE comparison workspace shows up to three enlarged, equally sized, synchronized charts; clicking a pane transfers edit focus without losing the other open documents' Undo/Redo or dirty state. ROUTE speed (20–2000 px/s) and visible path length (50–10000 ms) can be changed independently of SKIN and persist in settings.json. Ctrl+S writes the focused chart only. Closing an unsaved pane or exiting Editor offers Save, Discard and Cancel; Save on exit writes all dirty documents, and a failed save blocks closing. Ctrl+Shift+S creates another difficulty. Backwards compatibility before the first release is not guaranteed.
 - Editor preview and scored custom-song play can use **100%, 75%, 50%, 25%, 10%** audio speeds. The present slowdown changes pitch; it is **not** pitch-preserving time stretch. Below 100% the preview timeline follows consumed audio-stream frames rather than extrapolating a separate wall-clock position, preventing accumulating visual/audio drift when buffering fluctuates. In scored practice, screen-space movement speed remains fixed even as playback slows.
@@ -116,7 +123,7 @@ The following areas are not implemented or verified:
 
 - A verified, straightforward Windows distributable/installer independent of local build tools.
 - Hands-on display, keyboard/audio synchronization and accessibility checks on multiple real machines and aspect ratios. Windows CI cannot judge these.
-- Hold notes, richer note mechanics, waveform editing, pitch-preserving slowdown and measured input/audio latency.
+- Richer note mechanics, waveform editing and measured input/audio latency. Physical hold timing and readability still need playtesting.
 - Online hosting/accounts/leaderboards, multiplayer and non-Windows ports.
 
 Remaining work is tracked in [ROADMAP.md](ROADMAP.md).

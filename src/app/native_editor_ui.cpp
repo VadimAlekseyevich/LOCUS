@@ -96,6 +96,19 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         SetText("editor-zoom-label", "ZOOM " + std::to_string(static_cast<int>(std::lround(detail::PixelsPerBeat(ui)/36.0f*100))) + "%");
         const auto& counts=draft->DirectionPressCounts();
         const auto* selected = draft->SelectedTurn();
+        if (auto* field = dynamic_cast<Rml::ElementFormControlInput*>(
+                document_->GetElementById("editor-hold-ms"))) {
+            const std::string duration = selected ? std::to_string(selected->holdMs) : "";
+            if (field != document_->GetContext()->GetFocusElement() &&
+                field->GetValue() != duration) field->SetValue(duration);
+            if (selected) field->RemoveAttribute("disabled");
+            else field->SetAttribute("disabled", "");
+        }
+        for (const char* id : {"editor-hold-minus", "editor-hold-plus"})
+            if (auto* button = document_->GetElementById(id)) {
+                if (selected) button->RemoveAttribute("disabled");
+                else button->SetAttribute("disabled", "");
+            }
         for (int index=0; index<8; ++index) {
             const std::string suffix = std::to_string(index);
             SetText(("editor-count-" + suffix).c_str(),
@@ -357,6 +370,15 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
         }
         return;
     }
+    if (ui_->tab == EditorTab::Route) {
+        if (auto* field = dynamic_cast<Rml::ElementFormControlInput*>(event.GetTargetElement());
+            field && field->GetId() == "editor-hold-ms") {
+            if (event.GetType() == "focus") focusedInitialValue_ = field->GetValue();
+            if (event.GetType() == "blur" && field->GetValue() != focusedInitialValue_)
+                input_->editor.holdMsValue = field->GetValue();
+            return;
+        }
+    }
     if (ui_->tab == EditorTab::Set) {
         if (auto* field = dynamic_cast<Rml::ElementFormControlInput*>(event.GetTargetElement())) {
             const auto kind = field->GetAttribute<Rml::String>("data-kind", "");
@@ -442,6 +464,8 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     else if (action == "rotate-cw") input_->editor.rotateClockwise = true;
     else if (action == "test-chart") input_->editorTest = true;
     else if (action == "remove-note") input_->editor.removeTurn = true;
+    else if (action == "hold-minus" || action == "hold-plus")
+        input_->editor.holdLengthDelta = action == "hold-plus" ? 1 : -1;
     else if (action == "note") {
         const int heading = target->GetAttribute<int>("data-heading", -1);
         if (heading >= 0 && heading < 8)

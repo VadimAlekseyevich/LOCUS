@@ -4,6 +4,7 @@
 #include "app/editor_timeline_actions.h"
 
 #include <algorithm>
+#include <charconv>
 #include <string>
 
 namespace locus::app {
@@ -153,12 +154,35 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         return draft.SetOutgoingHeading(heading);
     };
 
+    // Hold controls edit the selected note through one undoable command.
+    if (ui.tab == EditorTab::Route) {
+        int delta = input.holdLengthDelta;
+        if (!input.nativeChrome && input.mouseClick) {
+            if (Hit(kHoldMinus, input.mouse)) delta = -1;
+            else if (Hit(kHoldPlus, input.mouse)) delta = 1;
+        }
+        if (input.holdMsValue || delta) {
+            if (input.holdMsValue) {
+                const auto& value = *input.holdMsValue;
+                std::int64_t duration = 0;
+                const auto parsed = std::from_chars(value.data(), value.data() + value.size(), duration);
+                if (parsed.ec == std::errc{} && parsed.ptr == value.data() + value.size())
+                    action.changedChart = draft.SetSelectedHoldMs(duration);
+            } else {
+                action.changedChart = draft.AdjustSelectedHold(delta);
+            }
+            notice(action.changedChart ? "HOLD DURATION UPDATED" :
+                   "NO CHANGE - SELECT NOTE / CHECK HOLD BOUNDS", !action.changedChart);
+            return action;
+        }
+    }
+
     // Native direction pad and start-heading controls are pure commands.
     // The core chart editor is the only author of route and undo history.
     if (ui.tab == EditorTab::Route && input.placeHeading) {
         const bool changed = placeHeading(*input.placeHeading);
         action.changedChart = changed;
-        if (!changed) notice("NO CHANGE - NOTE ALREADY EXISTS", true);
+        if (!changed) notice("NO CHANGE - NOTE EXISTS OR HOLD OVERLAP", true);
         return action;
     }
     if (ui.tab == EditorTab::Route && input.rotateStartHeading) {
@@ -247,7 +271,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
                         const bool changed = placeHeading(*heading);
                         action.changedChart |= changed;
                         if (!changed) notice(
-                            "NO CHANGE - NOTE ALREADY EXISTS", true);
+                            "NO CHANGE - NOTE EXISTS OR HOLD OVERLAP", true);
                     } else {
                         commands.deleteTurns = true;
                     }

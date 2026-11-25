@@ -15,6 +15,7 @@ struct TimedTurn {
     GridPoint position{};
     Heading incoming = Heading::Right;
     Heading outgoing = Heading::Right;
+    double holdSeconds = 0.0;
 };
 
 struct TimedRouteSpan {

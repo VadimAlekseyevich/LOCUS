@@ -44,10 +44,11 @@
   line-height:1; font-size:10dp; color:#c9bbfa; }
 #editor-route-pad button.selected { background-color:#585281; border-color:#b5a4f3; }
 #editor-route-options { display:flex; flex-direction:column; flex:0 0 auto; gap:5dp; min-width:0; }
-#editor-route-speed, #editor-route-path { width:184dp; height:31dp; flex:0 0 31dp; pointer-events:auto; display:flex; flex-direction:row; align-items:center; gap:4dp; }
+#editor-route-speed, #editor-route-path, #editor-route-hold { width:184dp; height:31dp; flex:0 0 31dp; pointer-events:auto; display:flex; flex-direction:row; align-items:center; gap:4dp; }
 .editor-option-label { display:block; font-size:12dp; color:#bac5dc; width:47dp; }
+#editor-hold-ms { height:24dp; min-width:0; padding:2dp; }
 .editor-option-value { display:block; font-size:11dp; color:#a2d8ee; overflow:hidden; white-space:nowrap; width:50dp; }
-#editor-route-speed button, #editor-route-path button { width:36dp; flex:0 0 36dp; height:28dp; padding:0; font-size:15dp; }
+#editor-route-speed button, #editor-route-path button, #editor-route-hold button { width:36dp; flex:0 0 36dp; height:28dp; padding:0; font-size:15dp; }
 
 /* All SET fields and action layout live in RCSS; the SongLibrary retains
    exclusive ownership of metadata and difficulty identities. */
@@ -108,7 +109,7 @@
   #editor-route-pad button { flex-basis:46dp; width:46dp; height:44dp; }
   #editor-route-pad .button-label { font-size:20dp; }
   #editor-route-options { gap:3dp; }
-  #editor-route-speed, #editor-route-path { width:148dp; height:27dp; flex-basis:27dp; gap:3dp; }
+  #editor-route-speed, #editor-route-path, #editor-route-hold { width:148dp; height:27dp; flex-basis:27dp; gap:3dp; }
   #editor-route-options .editor-option-label { width:34dp; font-size:10dp; }
   #editor-route-options .editor-option-value { width:40dp; }
   #editor-route-options button { flex-basis:29dp; width:29dp; height:25dp; }

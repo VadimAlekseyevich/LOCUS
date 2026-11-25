@@ -342,6 +342,42 @@ int main() {
                 repeatEditor.Data().route.turns.size() == 2,
                 "successive straight notes are distinct; DEL and undo are explicit");
 
+    ChartEditor holdEditor;
+    holdEditor.NewDraft();
+    holdEditor.SelectBeat(2);
+    ok &= Check(holdEditor.SetOutgoingHeading(Heading::UpRight) &&
+                holdEditor.AdjustSelectedHold(1) &&
+                holdEditor.SelectedTurn()->holdMs == 500 &&
+                holdEditor.AdjustSelectedHold(1) &&
+                holdEditor.SelectedTurn()->holdMs == 1000,
+                "hold grows along the snap grid without moving its head");
+    holdEditor.SelectBeat(3);
+    ok &= Check(!holdEditor.SetOutgoingHeading(Heading::Left),
+                "another note cannot be authored inside a hold");
+    holdEditor.SelectBeat(4);
+    ok &= Check(holdEditor.SetOutgoingHeading(Heading::Left),
+                "next note can start exactly at the hold tail");
+    holdEditor.SelectBeat(2);
+    ok &= Check(!holdEditor.SetSelectedHoldMs(1001) &&
+                holdEditor.SetSelectedHoldMs(750) && holdEditor.Undo() &&
+                holdEditor.SelectedTurn()->holdMs == 1000 &&
+                holdEditor.Redo() && holdEditor.SelectedTurn()->holdMs == 750,
+                "hold edits are validated and undoable");
+    const auto holdPattern = holdEditor.CopyTurns(2, 2);
+    ok &= Check(holdPattern.notes.size() == 1 &&
+                holdPattern.notes.front().holdMs == 750 &&
+                holdEditor.PasteTurns(8, holdPattern) &&
+                holdEditor.Data().route.turns.back().holdMs == 750,
+                "clipboard preserves exact hold duration");
+    holdEditor.SelectBeat(8);
+    ok &= Check(holdEditor.SetSelectedHoldMs(0) &&
+                holdEditor.SelectedTurn()->holdMs == 0 && holdEditor.Undo() &&
+                holdEditor.SelectedTurn()->holdMs == 750,
+                "zero duration converts hold to ordinary tap");
+    ok &= Check(holdEditor.MoveTurn(1) && holdEditor.SelectedTurn()->holdMs == 750 &&
+                holdEditor.ShiftTurns(9, 9, 1) &&
+                holdEditor.Data().route.turns.back().holdMs == 750,
+                "move and shift preserve hold duration");
     ChartEditor reverseEditor;
     reverseEditor.NewDraft();
     ok &= Check(reverseEditor.SelectBeat(2) &&

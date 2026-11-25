@@ -136,7 +136,7 @@ int main(int argc, char** argv) {
                     locus::app::RunRevisionState::OlderChart,
                 "old authored revision remains visible in same difficulty history");
     RunResult oldRules = first;
-    oldRules.judgementVersion = 2;
+    oldRules.judgementVersion = 1;
     ok &= Check(locus::app::CompareRunRevision(oldRules, kRevision) ==
                     locus::app::RunRevisionState::OlderRules,
                 "old scoring rules are shown separately from old chart content");

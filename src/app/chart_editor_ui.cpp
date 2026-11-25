@@ -361,12 +361,21 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
             return core::EventTimeMs(chart, event, loaded.offsetSeconds) < ms;
         });
     const auto* selected=draft.SelectedTurnTimeMs()?draft.SelectedTurn():nullptr;
-    for (auto it = firstVisible; it != chart.turns.end(); ++it) {
+    const auto firstWithHold = firstVisible == chart.turns.begin() ? firstVisible : firstVisible - 1;
+    for (auto it = firstWithHold; it != chart.turns.end(); ++it) {
         const auto& event = *it;
         const double songSeconds =
             core::EventTimeMs(chart, event, loaded.offsetSeconds) / 1000.0;
         if (songSeconds > rightTime) break;
         const float x = atX(songSeconds);
+        if (event.holdMs > 0) {
+            const float tail = atX(songSeconds + event.holdMs / 1000.0);
+            const float left = std::max(strip.x + 8.0f, x);
+            const float right = std::min(strip.x + strip.width - 8.0f, tail);
+            if (right > left)
+                DrawRectangleRec({left, strip.y + 31.0f, right - left, 8.0f},
+                    Color{239, 198, 117, 255});
+        }
         if (x < strip.x + 8.0f ||
             x > strip.x + strip.width - 8.0f)
             continue;
@@ -528,6 +537,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                              set.managed?sky:muted,ui.comparisonPickerOpen);
         if (!nativeShell) {
         EditorIconButton(kRouteTest,EditorIcon::Play,sky);
+        CompactButton(font,kHoldMinus,"−",violet);
+        CompactButton(font,kHoldPlus,"+",sky);
         }
 
         const Rectangle previewArea = PreviewBounds(ui);
@@ -764,6 +775,8 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorMirrorV)));
         EditorToolTip(font,ui,kRotateCounterclockwise,"Rotate 90 left");
         EditorToolTip(font,ui,kRotateClockwise,"Rotate 90 right");
+        EditorToolTip(font,ui,kHoldMinus,"Shorten selected hold by one snap");
+        EditorToolTip(font,ui,kHoldPlus,"Extend selected hold by one snap");
         EditorToolTip(font,ui,kRouteTest,
             "Test chart  /  "+
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorTest)));

@@ -126,6 +126,15 @@ int main() {
                 noFuture.turnsFarToNear.empty(),
                 "zero horizon suppresses route preview but retains marker");
 
+    chart.turns = {{1, core::Heading::Right, 250, 1000}};
+    ok &= Check(revised.Compile(chart, 0.0), "hold route compiles");
+    const auto duringHold = app::MakeRoutePreview(revised, 0.75, 800.0f);
+    ok &= Check(duringHold.turnsFarToNear.empty() &&
+                duringHold.holdsFarToNear.size() == 1 &&
+                Near(duringHold.holdsFarToNear.front().fromSeconds, 0.75) &&
+                Near(duringHold.holdsFarToNear.front().toSeconds, 1.25) &&
+                duringHold.holdsFarToNear.front().tailVisible,
+                "active hold remains visible after its head leaves the window");
     chart.turns = {{1, core::Heading::Left, 500}};
     ok &= Check(revised.Compile(chart, 0.0) &&
                 Near(revised.PositionAt(0.5).x, 1.0) &&

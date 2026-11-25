@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace locus::core {
 
@@ -107,6 +108,7 @@ std::size_t TurnJudge::FindNextArrow(std::size_t from,
 }
 
 void TurnJudge::ResetArrowQueues() noexcept {
+    holdHeads_.fill(std::nullopt);
     for (int i = 0; i < 4; ++i)
         nextByArrow_[i] = FindNextArrow(firstScoredEvent_, 1u << i);
 }
@@ -120,14 +122,35 @@ const TurnEvent* TurnJudge::NextEvent() const noexcept {
     return index < chart_.turns.size() ? &chart_.turns[index] : nullptr;
 }
 
+double TurnJudge::EventSeconds(const TurnEvent& event) const noexcept {
+    return event.timeMs == kNoTimeMs
+        ? offsetSeconds_ + event.beat * 60.0 / (chart_.bpm * chart_.ticksPerBeat)
+        : event.timeMs / 1000.0;
+}
+
 void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
                         Heading arrow) noexcept {
+    const int lane = ArrowIndex(arrow);
+    if (lane < 0 || nextByArrow_[lane] >= chart_.turns.size()) return;
+    const auto& event = chart_.turns[nextByArrow_[lane]];
+    if (event.holdMs > 0) {
+        if (holdHeads_[lane]) return;
+        holdHeads_[lane] = Judgement{grade, event.beat, errorSeconds, wrongDirection, arrow};
+        last_ = holdHeads_[lane]; // head feedback, not a completed score
+        return;
+    }
+    Finalize(grade, errorSeconds, wrongDirection, arrow);
+}
+
+void TurnJudge::Finalize(Grade grade, double errorSeconds, bool wrongDirection,
+                         Heading arrow) noexcept {
     const int lane = ArrowIndex(arrow);
     if (lane < 0) return;
     const std::size_t at = nextByArrow_[lane];
     if (at >= chart_.turns.size()) return;
     last_ = Judgement{grade, chart_.turns[at].beat, errorSeconds,
                       wrongDirection, arrow};
+    holdHeads_[lane].reset();
     nextByArrow_[lane] = FindNextArrow(at + 1, 1u << lane);
     if (grade == Grade::Miss) combo_ = 0;
     else maxCombo_ = std::max(maxCombo_, ++combo_);
@@ -141,19 +164,40 @@ void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
 
 void TurnJudge::Advance(double songSeconds) noexcept {
     if (!std::isfinite(songSeconds)) return;
-    // Expire the oldest unresolved authored turn first. Each of its
-    // remaining arrow components receives its own Miss.
-    while (const TurnEvent* event = NextEvent()) {
-        const double expectedSeconds = event->timeMs == kNoTimeMs
-            ? offsetSeconds_ + event->beat * 60.0 /
-                (chart_.bpm * chart_.ticksPerBeat)
-            : static_cast<double>(event->timeMs) / 1000.0;
-        if (songSeconds <= expectedSeconds + kBadWindowSeconds) break;
-        const auto index = NextEventIndex();
-        for (int i = 0; i < 4; ++i)
-            if (nextByArrow_[i] == index)
-                Resolve(Grade::Miss, 0.0, false, kArrows[i]);
+    // A short hold can finish before an earlier tap's late window closes.
+    // Only four independent key queues need to be inspected.
+    for (;;) {
+        int lane = -1;
+        double deadline = std::numeric_limits<double>::infinity();
+        std::size_t index = chart_.turns.size();
+        for (int i = 0; i < 4; ++i) {
+            const auto at = nextByArrow_[i];
+            if (at >= chart_.turns.size()) continue;
+            const auto& event = chart_.turns[at];
+            const double due = EventSeconds(event) +
+                (event.holdMs > 0 ? event.holdMs / 1000.0 : kBadWindowSeconds);
+            const bool expired = event.holdMs > 0
+                ? songSeconds + 1e-9 >= due : songSeconds > due;
+            if (expired && (due < deadline || (due == deadline && at < index))) {
+                lane = i;
+                deadline = due;
+                index = at;
+            }
+        }
+        if (lane < 0) break;
+        const auto held = holdHeads_[lane].value_or(
+            Judgement{Grade::Miss, chart_.turns[index].beat, 0.0, false, kArrows[lane]});
+        Finalize(held.grade, held.timingErrorSeconds, held.wrongDirection, kArrows[lane]);
     }
+}
+
+void TurnJudge::ReleaseHeading(Heading arrow, double songSeconds) noexcept {
+    const int lane = ArrowIndex(arrow);
+    if (lane < 0 || !std::isfinite(songSeconds) || !holdHeads_[lane]) return;
+    const auto& event = chart_.turns[nextByArrow_[lane]];
+    if (songSeconds + 1e-9 < EventSeconds(event) + event.holdMs / 1000.0)
+        holdHeads_[lane]->grade = Grade::Miss;
+    Advance(songSeconds);
 }
 
 void TurnJudge::FinishRemainingMisses() noexcept {
@@ -161,7 +205,7 @@ void TurnJudge::FinishRemainingMisses() noexcept {
         const auto index = NextEventIndex();
         for (int i = 0; i < 4; ++i)
             if (nextByArrow_[i] == index)
-                Resolve(Grade::Miss, 0.0, false, kArrows[i]);
+                Finalize(Grade::Miss, 0.0, false, kArrows[i]);
     }
 }
 
@@ -170,6 +214,7 @@ std::optional<Judgement> TurnJudge::PressHeading(Heading outgoing,
     const int lane = ArrowIndex(outgoing);
     if (lane < 0 || !std::isfinite(songSeconds)) return std::nullopt;
     Advance(songSeconds);
+    if (holdHeads_[lane]) return std::nullopt;
 
     // First judge the next expected note on this particular key, which may
     // belong to a LATER authored turn while another key has a pending half.
@@ -194,7 +239,8 @@ std::optional<Judgement> TurnJudge::PressHeading(Heading outgoing,
     // penalize a still-pending diagonal half for an unrelated key press.
     const TurnEvent* oldest = NextEvent();
     if (!oldest || IsDiagonal(oldest->direction) ||
-        oldest->direction == outgoing) return std::nullopt;
+        oldest->direction == outgoing || holdHeads_[ArrowIndex(oldest->direction)])
+        return std::nullopt;
     const double expectedSeconds = oldest->timeMs == kNoTimeMs
         ? offsetSeconds_ + oldest->beat * 60.0 /
             (chart_.bpm * chart_.ticksPerBeat)

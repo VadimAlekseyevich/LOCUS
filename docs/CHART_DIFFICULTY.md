@@ -83,3 +83,5 @@ real players, and should be judged by comparing chart examples in-game.
 
 Compare charts by relative rating and breakdown, not by interpreting a fixed
 number as an objective skill level. A score of 12 or 30 is legitimate.
+
+Hold notes currently contribute their physical head presses to V2; sustained holding/release strain is not calibrated or modeled yet.

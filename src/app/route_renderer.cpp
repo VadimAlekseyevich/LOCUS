@@ -333,6 +333,22 @@ Vector2 DrawTimedRouteTrajectory(const RoutePreviewFrame& preview,
 void DrawTimedRouteJunctions(const RoutePreviewFrame& preview,
                              RouteCanvas canvas, const Skin& skin) {
     if (!preview.ready || preview.horizonSeconds <= 0.0) return;
+    // Distinguish sustained notes with a bright inner ribbon and tail.
+    for (const auto& hold : preview.holdsFarToNear) {
+        const float nearOpacity = ScoredPathOpacity(
+            hold.fromSeconds - preview.songSeconds, preview.horizonSeconds, skin.fadePower);
+        const float farOpacity = ScoredPathOpacity(
+            hold.toSeconds - preview.songSeconds, preview.horizonSeconds, skin.fadePower);
+        const float opacity = skin.pathOpacity * (nearOpacity + farOpacity) * 0.5f;
+        const float width = std::max(1.0f, skin.pathWidth * 1.35f);
+        DrawLineEx(canvas.Position(hold.from), canvas.Position(hold.to),
+                   width, WithOpacity(skin.playerCore, opacity));
+        if (hold.tailVisible) {
+            const auto at = canvas.Position(hold.to);
+            DrawCircleV(at, width * 1.1f, WithOpacity(skin.playerCore, farOpacity * skin.pathOpacity));
+            DrawCircleV(at, width * 0.55f, WithOpacity(skin.trajectory, farOpacity * skin.pathOpacity));
+        }
+    }
     // Same-coordinate turns retain their chronological priority: draw the
     // nearest upcoming event LAST, after every farther one.
     for (const auto& turn : preview.turnsFarToNear) {
