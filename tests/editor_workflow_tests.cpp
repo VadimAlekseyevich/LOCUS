@@ -2,6 +2,7 @@
 #include "app/direction_input_events.h"
 #include "app/demo_transport.h"
 #include "app/editor_file_actions.h"
+#include "app/editor_set_controller.h"
 #include "app/editor_discard_guard.h"
 #include "app/editor_session.h"
 #include "app/game_session.h"
@@ -188,6 +189,28 @@ int main() {
                 chartPath == installedEasy.wstring(),
                 "Library > Edit difficulty decodes WAV without a sound device");
     if (!song.Ready()) return 1;
+    app::EditorSetController sets{
+        {library, files, editor, editorUi, chartPath, status, libraryUi, menuStatus},
+        {CancelPick, CancelSave}};
+    const auto indexFor = [&](const fs::path& path) {
+        const auto view = sets.View();
+        for (std::size_t i = 0; i < view.comparisonOptions.size(); ++i)
+            if (view.comparisonOptions[i].file == path) return static_cast<int>(i);
+        return -1;
+    };
+    editorUi.tab = app::EditorTab::Set;
+    editorUi.comparisonFiles.push_back(installedHard);
+    ok &= Check(sets.FocusDifficulty(indexFor(installedHard)) &&
+                !sets.HasPending() && chartPath == installedHard.wstring() &&
+                editorUi.tab == app::EditorTab::Route &&
+                editorUi.comparisonFiles.empty() && !files.ParkedEditor(installedEasy),
+                "Song Setup > Hard opens standalone, not a comparison pane");
+    editorUi.tab = app::EditorTab::Set;
+    ok &= Check(sets.FocusDifficulty(indexFor(installedEasy)) &&
+                chartPath == installedEasy.wstring() &&
+                editorUi.comparisonFiles.empty() &&
+                editorUi.tab == app::EditorTab::Route,
+                "Song Setup > Easy switches standalone chart");
     const bool easyBeatSelected = editor.SelectBeat(3);
     if (easyBeatSelected) editor.PutTurn(core::Heading::DownLeft);
     ok &= Check(easyBeatSelected && editor.Dirty(),
@@ -574,10 +597,15 @@ int main() {
     const std::string playedDifficultyId = finish.key.difficultyId;
     const std::string playedRevision = finish.gameplayRevision;
     ok &= Check(files.OpenFromLibrary(installedHard.wstring(), error) &&
-                editor.Data().difficultyId == playedDifficultyId &&
-                editor.SetTitle("Hard Renamed") &&
-                files.Save(false, now),
-                "Editor Save renames an installed chart after completed PLAY");
+                editor.Data().difficultyId == playedDifficultyId,
+                "Open played difficulty before rename");
+    editorUi.tab = app::EditorTab::Set;
+    sets.RenameDifficulty(indexFor(installedHard));
+    ok &= Check(editorUi.active == app::EditorField::Title &&
+                editorUi.tab == app::EditorTab::Set && !sets.HasPending() &&
+                sets.CommitDifficultyTitle("Hard Renamed", now),
+                "Song Setup > Rename saves installed clean difficulty after completed PLAY");
+    editorUi.active = app::EditorField::None;
     const fs::path renamedHard(chartPath);
     const bool renamed = renamedHard != installedHard;
     app::SongLibrary afterRename(profile.root / "Songs");

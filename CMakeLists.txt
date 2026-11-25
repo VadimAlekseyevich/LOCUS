@@ -451,6 +451,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/game_settings.cpp
         src/app/library_playback.cpp
         src/app/editor_file_actions.cpp
+        src/app/editor_set_controller.cpp
         src/app/editor_discard_guard.cpp
         src/app/editor_comparison.cpp
         src/app/editor_document.cpp
