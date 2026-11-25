@@ -25,12 +25,26 @@ struct LibraryTreeEntry {
 // Cached Unicode-normalized fields for the currently published catalog.
 // The index is refreshed by generation, not rebuilt on every search keypress
 // or drawing frame. It never owns a copy of the heavy chart note vectors.
+struct LibrarySearchMatch {
+    int song = 0;
+    bool allCharts = false; // metadata (or demo) matched, not just a child title
+};
+
 struct LibrarySearchCache {
     const SongLibrary* source = nullptr;
     std::uint64_t sourceRevision = std::numeric_limits<std::uint64_t>::max();
     std::vector<std::string> metadata;
     std::vector<std::vector<std::string>> chartTitles;
+    // Query projection is independent of the expanded Song Set. Only
+    // matching parents are retained; child titles remain in the index.
+    std::vector<LibrarySearchMatch> matches;
+    std::string query;
+    std::string normalizedQuery;
+    bool queryValid = false;
+    std::uint64_t matchGeneration = 0;
     void Refresh(const SongLibrary& library);
+    const std::vector<LibrarySearchMatch>& Match(
+        const SongLibrary& library, const std::string& text);
 };
 
 // Flattened rows are a projection of catalog revision, query and expanded

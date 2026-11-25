@@ -359,6 +359,29 @@ int main() {
         ok &= Check(filtered.selectedChart==1 && filtered.treeChartFocused,
                     "horizontal navigation cannot select filtered-out sibling");
     }
+    {
+        SongSelectUi filtered;
+        filtered.search = "a"; // demo ORIGINAL and Easy/Hard titles match
+        filtered.SelectSong(0,library);
+        const auto generation = filtered.searchCache.matchGeneration;
+        const auto* storage = filtered.searchCache.matches.data();
+        filtered.SelectSong(1,library);
+        ok &= Check(filtered.searchCache.matchGeneration==generation &&
+                    filtered.searchCache.matches.data()==storage &&
+                    FindLibraryTreeRow(LibraryTreeRows(library,filtered),1,1) <
+                        LibraryTreeRows(library,filtered).size(),
+                    "expanding another matching set reuses query projection");
+        filtered.search = "A";
+        LibraryTreeRows(library,filtered);
+        ok &= Check(filtered.searchCache.matchGeneration==generation,
+                    "case-equivalent query does not rescan catalog");
+        filtered.search = "Hard";
+        LibraryTreeRows(library,filtered);
+        ok &= Check(filtered.searchCache.matchGeneration==generation+1 &&
+                    filtered.searchCache.matches.size()==1 &&
+                    filtered.searchCache.matches.front().song==1,
+                    "new normalized query refreshes matching parents");
+    }
     ui.search = "ZZ-SONG";
     const auto songFiltered = LibraryTreeRows(library, ui);
     ok &= Check(songFiltered.size() == 3 &&

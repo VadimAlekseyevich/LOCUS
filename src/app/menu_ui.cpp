@@ -128,6 +128,35 @@ void LibrarySearchCache::Refresh(const SongLibrary& library) {
     chartTitles.swap(nextTitles);
     source = &library;
     sourceRevision = library.Revision();
+    queryValid = false;
+}
+
+const std::vector<LibrarySearchMatch>& LibrarySearchCache::Match(
+        const SongLibrary& library,const std::string& text) {
+    Refresh(library);
+    if (queryValid && query == text) return matches;
+    const auto needle = core::NormalizedSearchKey(text);
+    // A case-only or canonically equivalent query has the same matches.
+    if (queryValid && normalizedQuery == needle) {
+        query = text;
+        return matches;
+    }
+    std::vector<LibrarySearchMatch> next;
+    static const std::string demoKey =
+        core::NormalizedSearchKey("BUILT-IN DEMO ORIGINAL");
+    if (ContainsSearchKey(demoKey,needle)) next.push_back({0,true});
+    for (std::size_t i=0; i<metadata.size(); ++i) {
+        const bool all = ContainsSearchKey(metadata[i],needle);
+        if (all || std::any_of(chartTitles[i].begin(),chartTitles[i].end(),
+                [&](const std::string& title) { return ContainsSearchKey(title,needle); }))
+            next.push_back({static_cast<int>(i)+1,all});
+    }
+    matches.swap(next);
+    query = text;
+    normalizedQuery = needle;
+    queryValid = true;
+    ++matchGeneration;
+    return matches;
 }
 
 const std::vector<LibraryTreeEntry>& LibraryTreeRows(const SongLibrary& songs,
@@ -137,47 +166,30 @@ const std::vector<LibraryTreeEntry>& LibraryTreeRows(const SongLibrary& songs,
         cache.expandedSong == ui.selectedSong && cache.query == ui.search)
         return cache.rows;
     std::vector<LibraryTreeEntry> entries;
-    const int count = static_cast<int>(songs.Songs().size()) + 1;
-    entries.reserve(static_cast<std::size_t>(count + 20));
-    const bool searching = !ui.search.empty();
-    std::string needle;
-    if (searching) {
-        ui.searchCache.Refresh(songs);
-        needle = core::NormalizedSearchKey(ui.search);
-    }
-    for (int song = 0; song < count; ++song) {
-        bool metadataMatch = !searching;
-        bool difficultyMatch = !searching;
-        if (searching && song == 0) {
-            static const std::string demoKey =
-                core::NormalizedSearchKey("BUILT-IN DEMO ORIGINAL");
-            metadataMatch = ContainsSearchKey(demoKey, needle);
-            difficultyMatch = metadataMatch;
-        } else if (searching) {
-            const std::size_t index = static_cast<std::size_t>(song - 1);
-            metadataMatch = ContainsSearchKey(ui.searchCache.metadata[index], needle);
-            if (!metadataMatch) {
-                for (const auto& title : ui.searchCache.chartTitles[index]) {
-                    if (ContainsSearchKey(title, needle)) {
-                        difficultyMatch = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if (!metadataMatch && !difficultyMatch) continue;
-        entries.push_back({song, -1});
-        if (song != ui.selectedSong) continue;
+    // Flatten only matched parents. Expanding another set no longer
+    // performs a catalog-wide text search or renormalizes the query.
+    const auto append = [&](int song,bool allCharts) {
+        entries.push_back({song,-1});
+        if (song != ui.selectedSong) return;
         const int difficulties = song == 0 ? 1
             : static_cast<int>(songs.Songs()[
-                static_cast<std::size_t>(song - 1)].charts.size());
-        for (int chart = 0; chart < difficulties; ++chart) {
-            const bool visible = !searching || song == 0 || metadataMatch ||
-                ContainsSearchKey(ui.searchCache.chartTitles[
-                    static_cast<std::size_t>(song - 1)][static_cast<std::size_t>(chart)],
-                    needle);
-            if (visible) entries.push_back({song, chart});
+                static_cast<std::size_t>(song-1)].charts.size());
+        for (int chart=0; chart<difficulties; ++chart) {
+            if (allCharts || ContainsSearchKey(
+                    ui.searchCache.chartTitles[static_cast<std::size_t>(song-1)]
+                                              [static_cast<std::size_t>(chart)],
+                    ui.searchCache.normalizedQuery))
+                entries.push_back({song,chart});
         }
+    };
+    if (ui.search.empty()) {
+        const int count = static_cast<int>(songs.Songs().size())+1;
+        entries.reserve(static_cast<std::size_t>(count)+20);
+        for (int song=0; song<count; ++song) append(song,true);
+    } else {
+        const auto& matches = ui.searchCache.Match(songs,ui.search);
+        entries.reserve(matches.size()+20);
+        for (const auto& match : matches) append(match.song,match.allCharts);
     }
     cache.rows.swap(entries);
     cache.source = &songs;
