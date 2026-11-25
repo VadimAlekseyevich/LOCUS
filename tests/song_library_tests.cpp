@@ -1101,7 +1101,7 @@ int main() {
                 R"(","audioPath":"song.wav","bpm":120,"offsetMs":0,)"
                 R"("tempoMap":[{"timeMs":0,"bpm":120}],"grid":{"width":8,)"
                 R"("height":8},"start":{"x":3,"y":3,"heading":"r"},)"
-                R"("previewLeadBeats":4,"turns":[]})";
+                R"("previewLeadBeats":4,"turns":[{"timeMs":1000,"heading":"u"}]})";
             for (int index = 0; index < kLargeChartCount; ++index) {
                 const std::string n = std::to_string(index);
                 const std::string id(32 - n.size(), '0');
@@ -1117,6 +1117,13 @@ int main() {
                 largeLibrary.LastRefreshStats().parsedCharts ==
                     kLargeChartCount &&
                 largeLibrary.LastRefreshStats().resolvedAudioPaths == 1 &&
+                largeLibrary.LastRefreshStats().calculatedDifficulties == kLargeChartCount &&
+                largeLibrary.LastRefreshStats().peakParsedNotes == 1 &&
+                std::all_of(largeLibrary.Songs()[0].charts.begin(),
+                    largeLibrary.Songs()[0].charts.end(),[](const LibraryChart& chart) {
+                        return chart.HasPayload() && chart.metadata.noteCount==1 &&
+                               chart.difficulty.notes==1;
+                    }) &&
                 summary.find("SKIPPED") == std::string::npos;
             const auto coldStats = largeLibrary.LastRefreshStats();
             const auto warmStart = std::chrono::steady_clock::now();
@@ -1125,6 +1132,8 @@ int main() {
                 largeLibrary.LastRefreshStats().reusedCharts ==
                     kLargeChartCount &&
                 largeLibrary.LastRefreshStats().parsedCharts == 0 &&
+                largeLibrary.LastRefreshStats().peakParsedNotes == 0 &&
+                largeLibrary.LastRefreshStats().calculatedDifficulties == 0 &&
                 largeLibrary.LastRefreshStats().resolvedAudioPaths == 1;
             const auto finish = std::chrono::steady_clock::now();
             const auto ms = [](auto duration) {
@@ -1156,7 +1165,16 @@ int main() {
                             "scan benchmark CSV saved for CI comparison");
             }
             ok &= Check(complete && reused,
-                        "8193 charts scan completely with one canonical audio probe");
+                        "8193 nonempty charts index compactly with zero warm parses");
+            if (reused) {
+                const auto& chosen=largeLibrary.Songs()[0].charts.back();
+                locus::core::LoadedChart loaded;
+                ok &= Check(chosen.CopyPayload(loaded,error) &&
+                            loaded.route.turns.size()==1 &&
+                            loaded.difficultyId==chosen.metadata.difficultyId &&
+                            locus::core::ChartGameplayRevision(loaded)==chosen.gameplayRevision,
+                            "last chart of large compact catalog materializes on demand");
+            }
         } else {
             ok &= Check(false, "large Song Set can create valid manifest");
         }
