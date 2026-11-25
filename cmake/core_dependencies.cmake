@@ -1,5 +1,6 @@
 # Only dependencies required by the portable rhythm/chart model.
 include(FetchContent)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static dependencies" FORCE)
 set(JSON_BuildTests OFF CACHE BOOL "Do not build third-party JSON tests" FORCE)
 
 # Annotated tag v3.12.0 resolves to commit:

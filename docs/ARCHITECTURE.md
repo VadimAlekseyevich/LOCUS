@@ -129,6 +129,8 @@ The storage targets in `cmake/storage_targets.cmake` share production code with 
 
 `cmake/runtime_targets.cmake` defines `locus_transport` (device/decoder/clock and pitch-preserving playback), `locus_game_session` (scored session consuming transport), `locus_result_store` (persistent and async result history, no graphics), and separate `locus_path_mesh` / `locus_route_renderer` targets (CPU geometry vs GPU submission). Transport tests inject the existing MusicOutputBackend rather than compiling an alternative implementation. The CPU ribbon profiler links the mesh target without the GPU renderer.
 
+Editor targets in `cmake/editor_targets.cmake` separate authoring input/commands, comparison preparation, canvas rendering, document IO, multi-document workspace, and TEST/preview session. Platform picker/folder adapters, settings and skin model are also shared with tests. Native editor, library/results and skin presenters are optional RmlUi targets; no RmlUi dependency flows into document editing, transport or core. The desktop executable retains screen composition.
+
 The portable `LOCUS_BUILD_APP=OFF` configuration fetches only JSON and utf8proc, builds `locus_core` and optionally the same 12 portable tests/editor benchmark as the desktop build. `cmake/core_tests.cmake` is the single registration source for these tests. Linux CI exercises this configuration; it is not a Linux desktop port.
 
 The Windows CI and headless domain tests are valuable, but cannot establish

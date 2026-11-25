@@ -284,6 +284,8 @@
 
 **26.11.2026 — T15: portable core configuration.** `LOCUS_BUILD_APP=OFF` returns after core targets/tests/editor benchmark, before any desktop/audio/font dependency is fetched. JSON and utf8proc pins unchanged and shared by full build. 12 existing portable CTest registrations moved to cmake/core_tests.cmake; desktop retains those names. Linux Ninja Release workflow builds/tests/profiles core without a graphics device. README documents exact commands and scope. Linux/Windows CI pending.
 
+**26.11.2026 — T15: editor/presenter build boundaries.** Shared editor controls, comparison, canvas, document, workspace and preview session targets; shared platform dialogs, settings, skin model, discard guard; optional native editor/library/skin presenters reused by RmlUi integration tests. 75 source assignments → 22 compiled instances (53 fewer). Keep RmlUi out of non-native modules; no source variants or UI/gameplay changes. Explicit platform system libs on dialog adapter. Windows CI pending.
+
 **Приёмка.** Чистая и повторная Windows Release сборки с тестами и BAT, Linux-сборка явно обозначенного переносимого набора, наличие прежних тестов в ctest -N. Зафиксировать время и количество повторных компиляций на одной машине. Таблица экранов в архитектуре соответствует инициализации в NativeMenuUi и путям fallback. Документы объясняют источник времени, локальную сильную долю и текущую скорость предпросмотра. Примеры читаются текущими парсерами.
 
 <a id="t16"></a>

@@ -59,6 +59,7 @@ include(cmake/dependencies.cmake)
 find_package(Threads REQUIRED)
 include(cmake/storage_targets.cmake)
 include(cmake/runtime_targets.cmake)
+include(cmake/editor_targets.cmake)
 
 add_executable(locus
     src/app/main.cpp
@@ -77,50 +78,30 @@ add_executable(locus
     src/app/screen_flow.cpp
     src/app/session_transition.cpp
     src/app/quit_media.cpp
-    src/app/editor_discard_guard.cpp
     src/app/native_close.cpp
     src/app/native_key_capture.cpp
-    src/app/open_folder.cpp
     src/app/window_mode.cpp
     src/app/menu_music_preview.cpp
-    src/app/music_picker.cpp
-    src/app/editor_document.cpp
-    src/app/editor_session.cpp
-    src/app/editor_file_actions.cpp
-    src/app/editor_set_controller.cpp
-    src/app/editor_comparison.cpp
     src/app/editor_screen_actions.cpp
     src/app/listen_session.cpp
     src/app/library_playback.cpp
     src/app/library_browser.cpp
     src/app/library_file_actions.cpp
     src/app/library_launch_actions.cpp
-    src/app/game_settings.cpp
-    src/app/skin.cpp
     src/app/skin_profile_actions.cpp
-    src/app/skin_controls.cpp
-    src/app/skin_menu.cpp
     src/app/skin_menu_draw.cpp
     src/app/menu_ui.cpp
-    src/app/chart_editor_ui.cpp
-    src/app/chart_editor_actions.cpp
-    src/app/editor_timeline_actions.cpp
-    src/app/editor_pattern_actions.cpp
-    src/app/editor_text_fields.cpp
-    src/app/editor_input.cpp
 )
+target_link_libraries(locus PRIVATE locus_platform_dialogs locus_game_settings locus_skin_model locus_editor_comparison locus_editor_controls locus_editor_canvas locus_editor_document locus_editor_workspace locus_editor_session locus_editor_discard)
 target_link_libraries(locus PRIVATE locus_transport locus_game_session locus_result_store locus_path_mesh locus_route_renderer)
 target_link_libraries(locus PRIVATE locus_song_library locus_file_io locus_chart_storage locus_library_selection)
 if(LOCUS_ENABLE_RMLUI)
     target_sources(locus PRIVATE
         src/app/rml_raylib_renderer.cpp
         src/app/native_menu_ui.cpp
-        src/app/native_play_ui.cpp
         src/app/native_settings_ui.cpp
-        src/app/native_editor_ui.cpp
-        src/app/native_results_ui.cpp
-        src/app/native_skin_ui.cpp
     )
+    target_link_libraries(locus PRIVATE locus_native_editor locus_native_library locus_native_skin)
     target_link_libraries(locus PRIVATE RmlUi::Core)
     target_compile_definitions(locus PRIVATE LOCUS_WITH_RMLUI=1)
 endif()
@@ -300,15 +281,8 @@ if(LOCUS_BUILD_TESTS)
     # Editor actions and hitboxes run headlessly; native polling is only linked.
     add_executable(locus_editor_ui_tests
         tests/editor_ui_tests.cpp
-        src/app/editor_comparison.cpp
-        src/app/chart_editor_ui.cpp
-        src/app/chart_editor_actions.cpp
-        src/app/editor_timeline_actions.cpp
-        src/app/editor_pattern_actions.cpp
-        src/app/editor_text_fields.cpp
-        src/app/editor_input.cpp
-        src/app/game_settings.cpp
     )
+    target_link_libraries(locus_editor_ui_tests PRIVATE locus_game_settings locus_editor_comparison locus_editor_controls locus_editor_canvas)
     target_link_libraries(locus_editor_ui_tests PRIVATE locus_path_mesh locus_route_renderer)
     target_compile_features(locus_editor_ui_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_ui_tests PRIVATE
@@ -317,7 +291,8 @@ if(LOCUS_BUILD_TESTS)
     if(LOCUS_ENABLE_RMLUI)
         target_sources(locus_editor_ui_tests PRIVATE
             tests/native_editor_ui_tests.cpp
-            src/app/native_editor_ui.cpp)
+        )
+        target_link_libraries(locus_editor_ui_tests PRIVATE locus_native_editor)
         target_compile_definitions(locus_editor_ui_tests PRIVATE LOCUS_TEST_NATIVE_EDITOR=1)
         target_link_libraries(locus_editor_ui_tests PRIVATE RmlUi::Core)
         add_dependencies(locus_editor_ui_tests locus_ui_assets)
@@ -327,7 +302,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_editor_comparison_tests
         tests/editor_comparison_tests.cpp
-        src/app/editor_comparison.cpp)
+    )
+    target_link_libraries(locus_editor_comparison_tests PRIVATE locus_editor_comparison)
     target_compile_features(locus_editor_comparison_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_comparison_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json)
@@ -361,13 +337,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_editor_file_actions_tests
         tests/editor_file_actions_tests.cpp
-        src/app/editor_file_actions.cpp
-        src/app/editor_set_controller.cpp
-        src/app/editor_comparison.cpp
-        src/app/open_folder.cpp
-        src/app/editor_document.cpp
-        src/app/music_picker.cpp
     )
+    target_link_libraries(locus_editor_file_actions_tests PRIVATE locus_platform_dialogs locus_editor_comparison locus_editor_document locus_editor_workspace)
     target_link_libraries(locus_editor_file_actions_tests PRIVATE locus_transport)
     target_link_libraries(locus_editor_file_actions_tests PRIVATE locus_song_library locus_file_io locus_chart_storage)
     target_compile_features(locus_editor_file_actions_tests PRIVATE cxx_std_17)
@@ -382,27 +353,13 @@ if(LOCUS_BUILD_TESTS)
     # only the sound device, file-dialog result and clock are injected.
     add_executable(locus_editor_workflow_tests
         tests/editor_workflow_tests.cpp
-        src/app/game_settings.cpp
         src/app/library_playback.cpp
-        src/app/editor_file_actions.cpp
-        src/app/editor_set_controller.cpp
-        src/app/editor_discard_guard.cpp
-        src/app/editor_comparison.cpp
-        src/app/editor_document.cpp
-        src/app/editor_session.cpp
-        src/app/chart_editor_ui.cpp
-        src/app/chart_editor_actions.cpp
-        src/app/editor_timeline_actions.cpp
-        src/app/editor_pattern_actions.cpp
-        src/app/editor_text_fields.cpp
-        src/app/editor_input.cpp
         src/app/play_screen_actions.cpp
         src/app/app_runtime_policy.cpp
         src/app/session_transition.cpp
         src/app/screen_flow.cpp
-        src/app/open_folder.cpp
-        src/app/music_picker.cpp
     )
+    target_link_libraries(locus_editor_workflow_tests PRIVATE locus_platform_dialogs locus_game_settings locus_editor_comparison locus_editor_controls locus_editor_canvas locus_editor_document locus_editor_workspace locus_editor_session locus_editor_discard)
     target_link_libraries(locus_editor_workflow_tests PRIVATE locus_transport locus_game_session locus_result_store locus_path_mesh locus_route_renderer)
     target_link_libraries(locus_editor_workflow_tests PRIVATE locus_song_library locus_file_io locus_chart_storage)
     target_compile_features(locus_editor_workflow_tests PRIVATE cxx_std_17)
@@ -416,16 +373,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_editor_session_tests
         tests/editor_session_tests.cpp
-        src/app/editor_session.cpp
-        src/app/editor_comparison.cpp
-        src/app/chart_editor_ui.cpp
-        src/app/chart_editor_actions.cpp
-        src/app/editor_timeline_actions.cpp
-        src/app/editor_pattern_actions.cpp
-        src/app/editor_text_fields.cpp
-        src/app/editor_input.cpp
-        src/app/game_settings.cpp
     )
+    target_link_libraries(locus_editor_session_tests PRIVATE locus_game_settings locus_editor_comparison locus_editor_controls locus_editor_canvas locus_editor_session)
     target_link_libraries(locus_editor_session_tests PRIVATE locus_transport locus_game_session locus_path_mesh locus_route_renderer)
     target_link_libraries(locus_editor_session_tests PRIVATE locus_file_io)
     target_compile_features(locus_editor_session_tests PRIVATE cxx_std_17)
@@ -435,9 +384,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_editor_document_tests
         tests/editor_document_tests.cpp
-        src/app/editor_document.cpp
-        src/app/music_picker.cpp
     )
+    target_link_libraries(locus_editor_document_tests PRIVATE locus_platform_dialogs locus_editor_document)
     target_link_libraries(locus_editor_document_tests PRIVATE locus_transport)
     target_link_libraries(locus_editor_document_tests PRIVATE locus_file_io locus_chart_storage)
     target_compile_features(locus_editor_document_tests PRIVATE cxx_std_17)
@@ -512,8 +460,8 @@ if(LOCUS_BUILD_TESTS)
     # Editor discard confirmation is independent of native keyboard polling.
     add_executable(locus_editor_discard_tests
         tests/editor_discard_tests.cpp
-        src/app/editor_discard_guard.cpp
     )
+    target_link_libraries(locus_editor_discard_tests PRIVATE locus_editor_discard)
     target_compile_features(locus_editor_discard_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_editor_discard_tests PRIVATE locus_core raylib)
     add_test(NAME locus_editor_unsaved_discard_guard COMMAND locus_editor_discard_tests)
@@ -596,8 +544,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/menu_ui.cpp
         src/app/home_brand_assets.cpp
         src/app/executable_directory.cpp
-        src/app/game_settings.cpp
     )
+    target_link_libraries(locus_library_browser_tests PRIVATE locus_game_settings)
     target_link_libraries(locus_library_browser_tests PRIVATE locus_result_store)
     target_link_libraries(locus_library_browser_tests PRIVATE locus_song_library locus_file_io locus_chart_storage locus_library_selection)
     target_compile_features(locus_library_browser_tests PRIVATE cxx_std_17)
@@ -608,8 +556,8 @@ if(LOCUS_BUILD_TESTS)
         target_sources(locus_library_browser_tests PRIVATE
             tests/native_play_ui_tests.cpp
             tests/native_results_ui_tests.cpp
-            src/app/native_play_ui.cpp
-            src/app/native_results_ui.cpp)
+        )
+        target_link_libraries(locus_library_browser_tests PRIVATE locus_native_library)
         target_compile_definitions(locus_library_browser_tests PRIVATE LOCUS_TEST_NATIVE_PLAY=1)
         target_link_libraries(locus_library_browser_tests PRIVATE RmlUi::Core)
         add_dependencies(locus_library_browser_tests locus_ui_assets)
@@ -627,8 +575,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_game_settings_tests
         tests/game_settings_tests.cpp
-        src/app/game_settings.cpp
     )
+    target_link_libraries(locus_game_settings_tests PRIVATE locus_game_settings)
     target_compile_features(locus_game_settings_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_game_settings_tests PRIVATE
         locus_core raylib nlohmann_json::nlohmann_json
@@ -656,9 +604,8 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_skin_profile_actions_tests
         tests/skin_profile_actions_tests.cpp
         src/app/skin_profile_actions.cpp
-        src/app/open_folder.cpp
-        src/app/skin.cpp
     )
+    target_link_libraries(locus_skin_profile_actions_tests PRIVATE locus_platform_dialogs locus_skin_model)
     target_link_libraries(locus_skin_profile_actions_tests PRIVATE locus_chart_storage)
     target_compile_features(locus_skin_profile_actions_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_skin_profile_actions_tests PRIVATE
@@ -669,9 +616,8 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_skin_tests
         tests/skin_tests.cpp
-        src/app/skin.cpp
-        src/app/skin_controls.cpp
     )
+    target_link_libraries(locus_skin_tests PRIVATE locus_skin_model)
     target_compile_features(locus_skin_tests PRIVATE cxx_std_17)
     target_link_libraries(locus_skin_tests PRIVATE raylib nlohmann_json::nlohmann_json)
     target_include_directories(locus_skin_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
@@ -679,8 +625,8 @@ if(LOCUS_BUILD_TESTS)
     if(LOCUS_ENABLE_RMLUI)
         target_sources(locus_skin_tests PRIVATE
             tests/native_skin_ui_tests.cpp
-            src/app/native_skin_ui.cpp
-            src/app/skin_menu.cpp)
+        )
+        target_link_libraries(locus_skin_tests PRIVATE locus_skin_model locus_native_skin)
         target_compile_definitions(locus_skin_tests PRIVATE LOCUS_TEST_NATIVE_SKIN=1)
         target_link_libraries(locus_skin_tests PRIVATE RmlUi::Core)
         add_dependencies(locus_skin_tests locus_ui_assets)
