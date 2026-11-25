@@ -195,6 +195,8 @@
 
 **26.11.2026 — T12/T13: SKINS layout.** SKINS (former MY SKINS) first/default; name field lives only in profile panel, unlabeled editable HEX follows HSV wheel on the left; right preview keeps the same geometry across tabs and receives more space. Dirty status in constant footer. Fallback tab/name hitboxes aligned, toggle and swatch updates in place. Native layout tests compare geometry across tabs and two dimensions.
 
+**26.11.2026 — T08: compact catalog, phase 3.** LibraryChart no longer owns authored notes; scan materializes one file at a time, caches metadata/rating/revision and verifies tempo again at publication. Warm scans avoid all parses; external tempo changes reparse affected files. Shared BPM writes validate one chart at a time under lock and publish derived summaries after manifest commit. Tests explicitly materialize disk payloads and exercise owned snapshots and real playback fixture. peakParsedNotes counts the largest parsed chart, not RSS. Windows CI required.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>

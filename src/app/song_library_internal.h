@@ -4,7 +4,10 @@
 #include <string>
 #include <vector>
 
+namespace locus::app { struct SongSetManifest; }
 namespace locus::app::detail {
+bool MaterializeIndexedChart(const LibraryChart&,const SongSetManifest&,
+                             core::LoadedChart&,std::string& error);
 // Helpers shared across independent catalog scanner and storage operations.
 bool Inside(const std::filesystem::path&, const std::filesystem::path&);
 std::string HashText(const std::filesystem::path&);

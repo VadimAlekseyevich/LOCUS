@@ -51,15 +51,15 @@ bool SongLibrary::Refresh(std::string& message,
     // File reuse requires size, timestamp AND a content fingerprint, so an
     // external same-size / same-mtime edit cannot silently reuse stale notes.
     // Song Set timing remains authoritative in the manifest.
-    std::unordered_map<fs::path, LibraryChart*> previous;
+    struct PriorChart { const LibraryChart* chart; const LibrarySong* song; };
+    std::unordered_map<fs::path,PriorChart> previous;
     std::size_t knownChartCount = 0;
     for (const auto& song : songs_) knownChartCount += song.charts.size();
     previous.reserve(knownChartCount);
-    for (auto& song : songs_)
-        for (auto& chart : song.charts)
-            previous.emplace(chart.file, &chart);
+    for (const auto& song : songs_)
+        for (const auto& chart : song.charts)
+            previous.emplace(chart.file,PriorChart{&chart,&song});
     LibraryRefreshStats stats;
-    std::unordered_set<fs::path> reusedFiles;
     std::unordered_map<fs::path, SongSetManifest> manifestCache;
     std::unordered_map<fs::path, fs::path> canonicalAudioCache;
     std::vector<LibrarySong> next;
@@ -67,7 +67,6 @@ bool SongLibrary::Refresh(std::string& message,
     std::unordered_map<std::string, fs::path> setIdOwners;
     // Expected constant-time duplicate-ID checks, even for very large sets.
     std::unordered_map<fs::path, std::unordered_set<std::string>> difficultyIds;
-    reusedFiles.reserve(knownChartCount);
     manifestCache.reserve(songs_.size());
     canonicalAudioCache.reserve(songs_.size());
     next.reserve(songs_.size());
@@ -132,8 +131,8 @@ bool SongLibrary::Refresh(std::string& message,
                 manifestPath, std::move(parsed)).first;
         }
         const SongSetManifest& metadata = manifest->second;
-        // A filesystem metadata probe is only a cache hint. If the probe
-        // fails, still try parsing the chart normally instead of losing it.
+        // Published metadata must identify exact bytes; failed probes
+        // must not publish a playable but unverifiable difficulty.
         const auto timestamp = current.last_write_time(ec);
         const bool hasTimestamp = !ec;
         ec.clear();
@@ -146,29 +145,25 @@ bool SongLibrary::Refresh(std::string& message,
 
         LibraryChart indexed;
         const auto old = previous.find(path);
-        const bool reuse = hasFingerprint && old != previous.end() &&
-            old->second->indexedFingerprintValid &&
-            old->second->indexedWriteTime == timestamp &&
-            old->second->indexedFileSize == bytes &&
-            old->second->indexedContentFingerprint == contentFingerprint;
+        const auto* prior = old == previous.end() ? nullptr : old->second.chart;
+        const bool reuse = hasFingerprint && prior && prior->HasPayload() &&
+            prior->indexedWriteTime == timestamp &&
+            prior->indexedFileSize == bytes &&
+            prior->indexedContentFingerprint == contentFingerprint &&
+            prior->songSetId == metadata.id &&
+            old->second.song->tempoMap == metadata.tempoMap &&
+            prior->difficulty.notes == prior->metadata.noteCount &&
+            std::isfinite(prior->difficulty.overall) &&
+            (prior->metadata.noteCount == 0 || prior->difficulty.overall > 0.0);
+        core::LoadedChart chart; // scoped to this one file, never put in next
         if (reuse) {
-            // Copy only small metadata and one shared_ptr reference. The
-            // potentially massive immutable note array remains in exactly
-            // one allocation shared by both in-memory generations. Unlike
-            // destructive transfer, cancellation cannot damage this cache.
-            indexed = *old->second;
-            reusedFiles.insert(path);
-            ++stats.reusedCharts;
+            indexed = *prior;
         } else {
-            core::LoadedChart chart;
             std::wstring audio;
             std::string problem;
             std::uint64_t parsedFingerprint = 0;
             const bool opened = OpenChartWithAudioPath(path.wstring(),chart,audio,problem,
                 nullptr,&parsedFingerprint);
-            // A concurrent replacement after the scan's fingerprint read
-            // cannot publish metadata for different bytes. The actual hash
-            // is computed before JSON parsing, including malformed edits.
             if (hasFingerprint && parsedFingerprint != 0 &&
                 parsedFingerprint != contentFingerprint) {
                 message = "Difficulty changed during scan; retry refresh.";
@@ -178,25 +173,21 @@ bool SongLibrary::Refresh(std::string& message,
                 ++skipped;
                 continue;
             }
+            if (!hasFingerprint) {
+                message = "Cannot fingerprint an indexed difficulty; retry refresh.";
+                return false;
+            }
             indexed.file = path;
-            indexed.data = std::make_shared<const core::LoadedChart>(std::move(chart));
-            indexed.RefreshMetadata();
+            indexed.RefreshMetadata(chart);
             indexed.audioFile = fs::path(audio);
             ++stats.parsedCharts;
+            stats.peakParsedNotes=std::max(stats.peakParsedNotes,chart.route.turns.size());
         }
         indexed.songSetId = metadata.id;
-        indexed.indexedFingerprintValid = hasFingerprint;
-        if (hasFingerprint) {
-            indexed.indexedWriteTime = timestamp;
-            indexed.indexedFileSize = bytes;
-            indexed.indexedContentFingerprint = contentFingerprint;
-        }
-        // Never publish a chart whose exact bytes cannot later be verified.
-        // A failed probe is not a malformed difficulty; retain the old index.
-        if (!hasFingerprint) {
-            message = "Cannot fingerprint an indexed difficulty; retry refresh.";
-            return false;
-        }
+        indexed.indexedFingerprintValid = true;
+        indexed.indexedWriteTime = timestamp;
+        indexed.indexedFileSize = bytes;
+        indexed.indexedContentFingerprint = contentFingerprint;
         // A Song Set can contain thousands of charts referencing the SAME
         // audio file. Canonicalizing it through the OS per chart dominates a
         // warm scan; resolve each distinct source path only once. Revalidate
@@ -214,7 +205,6 @@ bool SongLibrary::Refresh(std::string& message,
                    !Inside(root, audioFile))) {
             ++skipped;
             ec.clear();
-            reusedFiles.erase(path);
             continue;
         }
         if (resolved == canonicalAudioCache.end())
@@ -237,6 +227,17 @@ bool SongLibrary::Refresh(std::string& message,
             ++skipped;
             continue;
         }
+        // Derive summaries and release authored notes at iteration end.
+        if (!reuse) {
+            std::string problem;
+            if (!ApplySongTiming(chart,metadata.tempoMap,problem)) {
+                message = "Song Set " + metadata.title + ": " + problem;
+                return false;
+            }
+            indexed.difficulty=core::CalculateChartDifficulty(chart.route,chart.offsetSeconds);
+            indexed.gameplayRevision=core::ChartGameplayRevision(chart);
+            ++stats.calculatedDifficulties;
+        } else ++stats.reusedCharts;
         const fs::path logicalAudio = path.parent_path();
         const auto found = byAudio.find(logicalAudio);
         std::size_t index = 0;
@@ -256,6 +257,9 @@ bool SongLibrary::Refresh(std::string& message,
             next.back().folder = path.parent_path();
             next.back().managed = true;
             next.back().previewStartMs = metadata.previewStartMs;
+            next.back().bpm = *metadata.bpm;
+            next.back().offsetMs = *metadata.offsetMs;
+            next.back().tempoMap = metadata.tempoMap;
             next.back().backgroundImage = !metadata.backgroundFile.empty()
                 ? path.parent_path() / fs::u8path(metadata.backgroundFile) : fs::path{};
         } else {
@@ -287,6 +291,7 @@ bool SongLibrary::Refresh(std::string& message,
             timing.title != song.title || timing.artist != song.artist ||
             timing.mapper != song.mapper || timing.tags != song.tags ||
             timing.previewStartMs != song.previewStartMs ||
+            timing.tempoMap != song.tempoMap ||
             timing.backgroundFile != artwork) {
             message = "Song Set metadata changed during scan; retry refresh.";
             return false;
@@ -297,45 +302,6 @@ bool SongLibrary::Refresh(std::string& message,
                    (!fs::equivalent(currentAudio, song.audioFile, ec) || ec))) {
             message = "Song Set audio location changed during scan; retry refresh.";
             return false;
-        }
-        song.bpm = *timing.bpm;
-        song.offsetMs = *timing.offsetMs;
-        song.tempoMap = timing.tempoMap;
-        for (auto& difficulty : song.charts) {
-            // A set may contain thousands of expensive ratings. Cancellation
-            // must not be deferred until the next Song Set or end of scan.
-            if (cancelled && cancelled->load(std::memory_order_relaxed)) {
-                message = "Library scan cancelled.";
-                return false;
-            }
-            // A reused chart with unchanged authoritative tempo already owns
-            // fully projected, immutable content. Keep the shared allocation
-            // instead of deep-copying every turn on each background refresh.
-            const auto priorChart = previous.find(difficulty.file);
-            const bool reused = reusedFiles.count(difficulty.file) != 0;
-            const bool oldTimingMatches = reused &&
-                priorChart != previous.end() &&
-                core::EffectiveTempoMap(
-                    priorChart->second->data->route,
-                    priorChart->second->data->offsetSeconds) == song.tempoMap;
-            const bool invalidCachedRating = !difficulty.data->route.turns.empty() &&
-                (difficulty.difficulty.notes != difficulty.data->route.turns.size() ||
-                 !std::isfinite(difficulty.difficulty.overall) ||
-                 difficulty.difficulty.overall <= 0.0);
-            if (!oldTimingMatches || invalidCachedRating) {
-                core::LoadedChart projected = *difficulty.data;
-                if (!ApplySongTiming(projected, song.tempoMap, problem)) {
-                    message = "Song Set " + song.title + ": " + problem;
-                    return false;
-                }
-                difficulty.difficulty = core::CalculateChartDifficulty(
-                    projected.route, projected.offsetSeconds);
-                difficulty.gameplayRevision = core::ChartGameplayRevision(projected);
-                difficulty.data = std::make_shared<const core::LoadedChart>(
-                    std::move(projected));
-                difficulty.RefreshMetadata();
-                ++stats.calculatedDifficulties;
-            }
         }
         SortChartDifficulties(song.charts);
     }

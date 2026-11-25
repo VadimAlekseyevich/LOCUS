@@ -84,18 +84,9 @@ bool SongLibrary::SetSongTempoMap(
         error.clear();
         return true;
     }
-    std::vector<std::shared_ptr<const core::LoadedChart>> adjusted;
-    adjusted.reserve(song.charts.size());
-    for (const auto& difficulty : song.charts) {
-        core::LoadedChart candidate = *difficulty.data;
-        if (!ApplySongTiming(candidate, markers, error))
-            return false;
-        adjusted.push_back(std::make_shared<const core::LoadedChart>(
-            std::move(candidate)));
-    }
     if (currentDraft) {
         core::LoadedChart candidate = *currentDraft;
-        if (!ApplySongTiming(candidate, markers, error)) return false;
+        if (!ApplySongTiming(candidate,markers,error)) return false;
     }
     FolderWriteLock lock;
     if (!lock.Acquire(song.folder, error)) return false;
@@ -111,6 +102,19 @@ bool SongLibrary::SetSongTempoMap(
         error = "Song Set timing changed on disk; refresh the library.";
         return false;
     }
+    // Validate one file at a time under the lock. Publish only summaries,
+    // after the shared manifest has been durably written.
+    struct Adjusted { core::ChartDifficulty rating; std::string revision; };
+    std::vector<Adjusted> adjusted;
+    adjusted.reserve(song.charts.size());
+    for (const auto& difficulty : song.charts) {
+        core::LoadedChart candidate;
+        if (!detail::MaterializeIndexedChart(difficulty,manifest,candidate,error) ||
+            !ApplySongTiming(candidate,markers,error)) return false;
+        adjusted.push_back({core::CalculateChartDifficulty(candidate.route,candidate.offsetSeconds),
+                            core::ChartGameplayRevision(candidate)});
+    }
+    if (!SameSongSetFiles(song,error)) return false;
     manifest.bpm = markers.front().bpm;
     manifest.offsetMs = static_cast<int>(markers.front().timeMs);
     manifest.tempoMap = markers;
@@ -119,11 +123,8 @@ bool SongLibrary::SetSongTempoMap(
     song.bpm = markers.front().bpm;
     song.offsetMs = static_cast<int>(markers.front().timeMs);
     for (std::size_t i = 0; i < adjusted.size(); ++i) {
-        song.charts[i].difficulty = core::CalculateChartDifficulty(
-            adjusted[i]->route, adjusted[i]->offsetSeconds);
-        song.charts[i].gameplayRevision = core::ChartGameplayRevision(*adjusted[i]);
-        song.charts[i].data = std::move(adjusted[i]);
-        song.charts[i].RefreshMetadata();
+        song.charts[i].difficulty = adjusted[i].rating;
+        song.charts[i].gameplayRevision = std::move(adjusted[i].revision);
     }
     SortChartDifficulties(song.charts);
     ++revision_;

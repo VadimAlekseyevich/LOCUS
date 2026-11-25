@@ -4,13 +4,18 @@
 #include "app/demo_transport.h"
 #include "app/game_session.h"
 #include "app/local_music.h"
+#include "app/chart_file.h"
+#include "app/song_set_storage.h"
+#include "app/song_timing.h"
+#include "core/chart_revision.h"
 #include "core/judgement.h"
 #include "core/route.h"
 
 #include <cmath>
 #include <filesystem>
 #include <iostream>
-#include <memory>
+#include <chrono>
+#include <fstream>
 #include <string>
 
 using namespace locus;
@@ -33,18 +38,47 @@ int main() {
                                                untouched, badError) &&
                 untouched.title == "UNCHANGED" && !badError.empty(),
                 "unpublished metadata cannot be prepared as a playable chart");
+    // Actual compact indexed fixture; invalid WAV bytes are intentional
+    // to exercise transactional failure without a physical audio device.
+    namespace fs=std::filesystem;
+    const auto root=fs::temp_directory_path()/("locus-playback-"+
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    std::error_code ec;
+    fs::create_directories(root,ec);
+    if (ec) return 1;
+    struct Cleanup { fs::path root; ~Cleanup() { std::error_code e; fs::remove_all(root,e); } } cleanup{root};
+    const auto audio=root/"song.wav";
+    { std::ofstream out(audio,std::ios::binary); out<<"invalid wav"; }
+    const auto chartPath=root/"easy.locus.json";
+    { std::ofstream out(chartPath,std::ios::binary);
+      out<<R"({"formatVersion":4,"difficultyId":"0123456789abcdef0123456789abcdef","title":"Selected difficulty","audioPath":"song.wav","bpm":120,"offsetMs":0,"tempoMap":[{"timeMs":0,"bpm":120}],"ticksPerBeat":1,"snapDivision":1,"grid":{"width":8,"height":8},"start":{"x":3,"y":3,"heading":"r"},"previewLeadBeats":4,"turns":[{"timeMs":1000,"heading":"u"}]})";
+    }
+    app::SongSetManifest manifest;
+    manifest.id="playback-fixture";
+    manifest.title="Song";
+    manifest.audioFile="song.wav";
+    manifest.bpm=120.0;
+    manifest.offsetMs=0;
+    manifest.tempoMap={{0,120.0}};
+    std::string error;
+    if (!Check(app::WriteNewSongSetManifest(root/"set.locus.json",manifest,error),
+               "fixture manifest saved")) return 1;
     app::LibraryChart difficulty;
-    difficulty.file = L"song/easy.locus.json";
-    difficulty.audioFile = L"song/song.wav";
+    difficulty.file=chartPath;
+    difficulty.songSetId=manifest.id;
     core::LoadedChart authored;
-    authored.route = core::MakeDemoChart();
-    authored.title = "Selected difficulty";
-    authored.audioPath = "song.wav";
-    difficulty.data = std::make_shared<const core::LoadedChart>(std::move(authored));
+    std::wstring resolvedAudio;
+    if (!Check(app::OpenChartWithAudioPath(chartPath.wstring(),authored,resolvedAudio,error,
+                    nullptr,&difficulty.indexedContentFingerprint) &&
+               app::ApplySongTiming(authored,manifest.tempoMap,error),
+               "fixture file verified")) return 1;
+    difficulty.audioFile=fs::path(resolvedAudio);
+    difficulty.indexedFingerprintValid=true;
+    difficulty.RefreshMetadata(authored);
+    difficulty.gameplayRevision=core::ChartGameplayRevision(authored);
 
     core::LoadedChart prepared;
     prepared.title = "UNCHANGED";
-    std::string error;
     ok &= Check(app::PrepareLibraryDifficulty(difficulty, 30.0, prepared, error) &&
                 error.empty() && prepared.title == "Selected difficulty" &&
                 prepared.route.lengthBeats >= 32,
@@ -55,12 +89,7 @@ int main() {
                 !error.empty() && prepared.title == previousTitle,
                 "invalid duration cannot partly replace prepared chart");
 
-    app::LibraryChart outOfRange = difficulty;
-    core::LoadedChart invalidTiming = *difficulty.data;
-    invalidTiming.route.turns.push_back({500000, core::Heading::UpRight});
-    outOfRange.data = std::make_shared<const core::LoadedChart>(
-        std::move(invalidTiming));
-    ok &= Check(!app::PrepareLibraryDifficulty(outOfRange, 30.0, prepared, error) &&
+    ok &= Check(!app::PrepareLibraryDifficulty(difficulty, 0.5, prepared, error) &&
                 prepared.title == previousTitle && !error.empty(),
                 "events outside actual song duration are rejected without mutation");
 

@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <cstddef>
 #include <filesystem>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -29,25 +28,13 @@ struct LibraryChartMetadata {
 struct LibraryChart {
     LibraryChartMetadata metadata;
     std::filesystem::path file;
-    // Immutable authored gameplay content. Old and new catalog snapshots
-    // share one allocation for unchanged difficulties, including note arrays.
-    // Readers borrow the payload; a BPM edit publishes a new instance.
-    // Null only for a not-yet-populated scanning scratch item; every
-    // published difficulty has a validated non-null payload.
-    std::shared_ptr<const core::LoadedChart> data;
-    // Invoke on parse and every payload replacement, never from the UI.
-    // Materialize the exact indexed revision, with authoritative Song Set
-    // timing. Output remains unchanged on missing or stale files.
-    bool CopyPayload(core::LoadedChart& result, std::string& error) const;
+    // Catalog records contain no authored note storage.
+    bool CopyPayload(core::LoadedChart& result,std::string& error) const;
     bool HasPayload() const noexcept {
-        return songSetId.empty() ? static_cast<bool>(data) :
-            indexedFingerprintValid && !gameplayRevision.empty();
+        return !songSetId.empty() && indexedFingerprintValid && !gameplayRevision.empty();
     }
-    void RefreshMetadata() {
-        metadata = data
-            ? LibraryChartMetadata{data->title, data->difficultyId,
-                                   data->route.turns.size()}
-            : LibraryChartMetadata{};
+    void RefreshMetadata(const core::LoadedChart& chart) {
+        metadata = {chart.title,chart.difficultyId,chart.route.turns.size()};
     }
     std::filesystem::path audioFile; // Actual revision for this difficulty.
     // Calculated once from validated gameplay, reused across library views.
@@ -79,14 +66,14 @@ struct LibrarySong {
     std::filesystem::path backgroundImage; // Optional Song Set art (not chart timing).
 };
 
-// A refreshed index reuses parsed charts and ratings when filesystem
-// signatures are unchanged. Manifest timing is checked independently, so
-// external Song Set BPM changes invalidate only affected ratings.
+// Reuse compact summaries only when file signatures and authoritative
+// timing are unchanged.
 struct LibraryRefreshStats {
     std::size_t parsedCharts = 0;
     std::size_t reusedCharts = 0;
-    // Reused immutable chart payloads need no note-vector deep copies.
     std::size_t calculatedDifficulties = 0;
+    // Maximum notes in any single parsed chart, not total catalog notes.
+    std::size_t peakParsedNotes = 0;
     // OS canonicalization probes for shared audio during the chart walk.
     // Should scale with distinct audio files, not difficulty count.
     std::size_t resolvedAudioPaths = 0;
@@ -94,7 +81,7 @@ struct LibraryRefreshStats {
 
 // On-disk Songs folders are authoritative. The index is kept in RAM and
 // rescanned only at startup / import / explicit refresh, not every play.
-// Audio is decoded lazily by LocalMusic when the user starts one difficulty.
+// Notes and audio are materialized only for the selected difficulty.
 class SongLibrary {
 public:
     explicit SongLibrary(std::filesystem::path root) : root_(std::move(root)) {}

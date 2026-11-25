@@ -375,7 +375,7 @@ int main() {
     app::RunResultsStore transientResults(profile.root / "Results");
     const app::RunKey testKey{
         library.Songs().front().id,
-        library.Songs().front().charts[0].data->difficultyId};
+        library.Songs().front().charts[0].metadata.difficultyId};
     app::CompletedRunContext finishedTest{
         true, game.IsEditorTest(), true, testKey,
         library.Songs().front().title, editor.Data().title,
@@ -412,8 +412,8 @@ int main() {
             app::SongLibrary partialRestart(profile.root / "Songs");
             ok &= Check(partialRestart.Refresh(note) &&
                         partialRestart.ChartCount() == 2 &&
-                        partialRestart.Songs()[0].charts[0].data->route.turns.size() == 2 &&
-                        partialRestart.Songs()[0].charts[1].data->route.turns.size() == 2,
+                        partialRestart.Songs()[0].charts[0].metadata.noteCount == 2 &&
+                        partialRestart.Songs()[0].charts[1].metadata.noteCount == 2,
                         "first difficulty survives restart; blocked second is unchanged");
         }
     }
@@ -495,24 +495,26 @@ int main() {
         -> const app::LibraryChart* {
         for (const auto& set : songs)
             for (const auto& item : set.charts)
-                if (item.data->title == title) return &item;
+                if (item.metadata.title == title) return &item;
         return nullptr;
     };
     const auto* savedA = findTitle("Easy");
     const auto* savedB = findTitle("Hard");
+    core::LoadedChart savedPayload;
     ok &= Check(savedA && savedB &&
-                savedA->data->route.turns.size() == 2 &&
-                savedB->data->route.turns.size() == 3 &&
-                savedB->data->route.tempoMap.size() == 2 &&
-                savedB->data->route.tempoMap[1].bpm == 180.0,
+                savedA->metadata.noteCount==2 &&
+                savedB->CopyPayload(savedPayload,error) &&
+                savedPayload.route.turns.size()==3 &&
+                savedPayload.route.tempoMap.size()==2 &&
+                savedPayload.route.tempoMap[1].bpm==180.0,
                 "Saved drafts survive restart with shared BPM and both note edits");
-    if (!savedB || songs.empty()) return 1;
+    if (!savedB || songs.empty() || !ok) return 1;
 
     // Start the real scored PlayScreenActions controller, deliver device
     // events at their authored audio timestamps, then traverse the normal
     // post-judgement animation and results boundary.
-    // LibraryChart::data points to validated but UNPREPARED content: chart
-    // length cannot be inferred until its shared audio has been loaded.
+    // The compact catalog holds metadata; chart length cannot be inferred
+    // until the selected chart and its audio have been loaded.
     // Exercise the exact production activation path that prepares duration,
     // transfers the BPM map and updates GameSession's stable chart address.
     core::Chart scored = core::MakeDemoChart();
@@ -556,7 +558,7 @@ int main() {
         const auto& turn = scored.turns[noteIndex];
         app::FrameInput keyDown;
         const double songTime = static_cast<double>(
-            core::EventTimeMs(scored, turn, savedB->data->offsetSeconds)) / 1000.0;
+            core::EventTimeMs(scored, turn, savedPayload.offsetSeconds)) / 1000.0;
         const double frameNow = startAt + songTime;
         const unsigned physicalArrows = core::HeadingArrowMask(turn.direction);
         // Physical diagonal components arrive 7ms apart. No second snapshot
@@ -586,7 +588,7 @@ int main() {
             static_cast<int>(scoredJudge.ScorableCount())) {
         core::TimedRoute debugRoute;
         const bool routeValid = debugRoute.Compile(
-            scored, savedB->data->offsetSeconds);
+            scored, savedPayload.offsetSeconds);
         std::cerr << "EDITOR_WORKFLOW_DIAGNOSTIC routeValid=" << routeValid
                   << " outroActive=" << outro.Active()
                   << " completed=" << scoredCompleted
@@ -604,15 +606,15 @@ int main() {
                   << " miss=" << scoredJudge.Counts().miss
                   << " chartNotes=" << scored.turns.size()
                   << " bpm=" << scored.bpm
-                  << " offset=" << savedB->data->offsetSeconds
+                  << " offset=" << savedPayload.offsetSeconds
                   << " introStart="
-                  << app::ScoredChartStartSeconds(scored, savedB->data->offsetSeconds)
+                  << app::ScoredChartStartSeconds(scored, savedPayload.offsetSeconds)
                   << '\n';
         for (std::size_t i = 0; i < scored.turns.size(); ++i)
             std::cerr << "EDITOR_WORKFLOW_NOTE " << i
                       << " beat=" << scored.turns[i].beat
                       << " ms=" << core::EventTimeMs(
-                          scored, scored.turns[i], savedB->data->offsetSeconds)
+                          scored, scored.turns[i], savedPayload.offsetSeconds)
                       << " audioSampled=" << audioSampledAtPress[i]
                       << " outroAfter=" << outroAfterNote[i]
                       << " heading=" << static_cast<int>(scored.turns[i].direction)
@@ -629,11 +631,11 @@ int main() {
     app::RunResultsStore results(profile.root / "Results");
     app::CompletedRunContext finish{
         scoredCompleted, false, false,
-        {songs[0].id, savedB->data->difficultyId},
-        songs[0].title, savedB->data->title,
+        {songs[0].id, savedPayload.difficultyId},
+        songs[0].title, savedPayload.title,
         scoredJudge.Counts(), scoredJudge.ScorableCount(),
         scoredActions.Transport(startAt + 5.0).practiceSpeed,
-        core::ChartGameplayRevision(*savedB->data)
+        core::ChartGameplayRevision(savedPayload)
     };
     app::RunResult record;
     ok &= Check(app::CaptureCompletedRun(results, finish, record, error) &&
@@ -667,10 +669,9 @@ int main() {
                 afterRename.FindChart(renamedHard, renamedSong, renamedChart) &&
                 afterRename.Songs()[static_cast<std::size_t>(renamedSong)]
                     .charts[static_cast<std::size_t>(renamedChart)]
-                    .data->difficultyId == playedDifficultyId &&
-                core::ChartGameplayRevision(*afterRename.Songs()[
-                    static_cast<std::size_t>(renamedSong)].charts[
-                    static_cast<std::size_t>(renamedChart)].data) == playedRevision &&
+                    .metadata.difficultyId == playedDifficultyId &&
+                afterRename.Songs()[static_cast<std::size_t>(renamedSong)].charts[
+                    static_cast<std::size_t>(renamedChart)].gameplayRevision == playedRevision &&
                 results.Load({songs[0].id, playedDifficultyId}, error).size() == 1,
                 "PLAY result survives actual chart rename and library restart");
     if (renamed) {
@@ -679,11 +680,11 @@ int main() {
         ok &= Check(library.DuplicateDifficulty(renamedHard, copied, error) &&
                     library.FindChart(copied, copySong, copyChart) &&
                     library.Songs()[static_cast<std::size_t>(copySong)].charts[
-                        static_cast<std::size_t>(copyChart)].data->difficultyId !=
+                        static_cast<std::size_t>(copyChart)].metadata.difficultyId !=
                         playedDifficultyId &&
                     results.Load({songs[0].id,
                         library.Songs()[static_cast<std::size_t>(copySong)].charts[
-                        static_cast<std::size_t>(copyChart)].data->difficultyId},
+                        static_cast<std::size_t>(copyChart)].metadata.difficultyId},
                         error).empty(),
                     "Copy difficulty receives independent identity and empty results");
     }

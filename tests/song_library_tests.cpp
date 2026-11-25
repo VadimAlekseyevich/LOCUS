@@ -17,6 +17,7 @@
 #include <iterator>
 #include <string>
 #include <set>
+#include <stdexcept>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -58,13 +59,20 @@ bool WriteChart(const fs::path& file, const std::string& name) {
     Write(file, json);
     return fs::exists(file) && Read(file) == json;
 }
+locus::core::LoadedChart LoadPayload(const LibraryChart& chart) {
+    locus::core::LoadedChart loaded;
+    std::string error;
+    if (!chart.CopyPayload(loaded,error))
+        throw std::runtime_error("Test payload: "+error);
+    return loaded;
+}
 bool HasConsistentCatalogMetadata(const SongLibrary& library) {
     for (const auto& song : library.Songs()) {
         for (const auto& chart : song.charts) {
-            if (!chart.data ||
-                chart.metadata.title != chart.data->title ||
-                chart.metadata.difficultyId != chart.data->difficultyId ||
-                chart.metadata.noteCount != chart.data->route.turns.size())
+            const auto loaded=LoadPayload(chart);
+            if (chart.metadata.title != loaded.title ||
+                chart.metadata.difficultyId != loaded.difficultyId ||
+                chart.metadata.noteCount != loaded.route.turns.size())
                 return false;
         }
     }
@@ -197,21 +205,19 @@ int main() {
     const bool importedHard = library.Import(hard, hardInstalled, error);
     ok &= Check(importedHard && library.Songs().size() == 1 &&
                 library.ChartCount() == 2 &&
-                library.Songs()[0].charts[0].data->title == "Easy" &&
-                library.Songs()[0].charts[1].data->title == "Hard",
+                library.Songs()[0].charts[0].metadata.title == "Easy" &&
+                library.Songs()[0].charts[1].metadata.title == "Hard",
                 "two difficulties are grouped in one Song Set");
     ok &= Check(HasConsistentCatalogMetadata(library),
                 "import publishes standalone chart metadata for UI and search");
-    const auto easyId = library.Songs()[0].charts[0].data->difficultyId;
+    const auto easyId = library.Songs()[0].charts[0].metadata.difficultyId;
     ok &= Check(library.Songs()[0].charts[0].gameplayRevision ==
                     locus::core::ChartGameplayRevision(
-                        *library.Songs()[0].charts[0].data),
+                        LoadPayload(library.Songs()[0].charts[0])),
                 "gameplay revision is cached alongside validated difficulty");
-    // Exercise actual disk materialization WITHOUT the transitional resident
-    // copy. The exact bytes parsed must match the indexed fingerprint.
+    // Exercise actual disk materialization from the compact catalog. The exact bytes parsed must match the indexed fingerprint.
     {
         LibraryChart compact = library.Songs()[0].charts[0];
-        compact.data.reset();
         locus::core::LoadedChart loaded;
         ok &= Check(compact.HasPayload() && compact.CopyPayload(loaded,error) &&
                     loaded.title==compact.metadata.title &&
@@ -252,7 +258,7 @@ int main() {
         ok &= Check(compact.CopyPayload(loaded,error),
                     "restored authoritative timing materializes exact revision");
     }
-    const auto hardId = library.Songs()[0].charts[1].data->difficultyId;
+    const auto hardId = library.Songs()[0].charts[1].metadata.difficultyId;
     ok &= Check(locus::core::ValidDifficultyId(easyId) &&
                 locus::core::ValidDifficultyId(hardId) && easyId != hardId,
                 "installed difficulties receive distinct persistent identities");
@@ -406,18 +412,16 @@ int main() {
     // A song's BPM/offset are single manifest properties. All difficulties
     // are reprojected in memory by exact note timestamps, and raw installed chart
     // files remain byte-for-byte unchanged (recoverable if migration fails).
-    ok &= Check(library.SetSongTiming(0, 150.0, 175, nullptr, error) &&
-                library.Songs()[0].bpm == 150.0 &&
-                library.Songs()[0].offsetMs == 175 &&
-                library.Songs()[0].charts[0].data->route.bpm == 150.0 &&
-                library.Songs()[0].charts[1].data->route.bpm == 150.0 &&
-                library.Songs()[0].charts[0].data->offsetSeconds == 0.175 &&
-                library.Songs()[0].charts[1].data->offsetSeconds == 0.175 &&
-                locus::core::EventTimeMs(
-                    library.Songs()[0].charts[0].data->route,
-                    library.Songs()[0].charts[0].data->route.turns[0],
-                    library.Songs()[0].charts[0].data->offsetSeconds) == 1000 &&
-                Read(easyInstalled) == originalChartBytes,
+    const bool timingUpdated=library.SetSongTiming(0,150.0,175,nullptr,error);
+    const auto timedA=LoadPayload(library.Songs()[0].charts[0]);
+    const auto timedB=LoadPayload(library.Songs()[0].charts[1]);
+    ok &= Check(timingUpdated && library.Songs()[0].bpm==150.0 &&
+                library.Songs()[0].offsetMs==175 &&
+                timedA.route.bpm==150.0 && timedB.route.bpm==150.0 &&
+                timedA.offsetSeconds==0.175 && timedB.offsetSeconds==0.175 &&
+                locus::core::EventTimeMs(timedA.route,timedA.route.turns[0],
+                    timedA.offsetSeconds)==1000 &&
+                Read(easyInstalled)==originalChartBytes,
                 "shared BPM and offset preserve note times and authored files");
     ok &= Check(HasConsistentCatalogMetadata(library),
                 "tempo projection keeps UI metadata and payload in sync");
@@ -464,7 +468,7 @@ int main() {
     fs::path repeated;
     ok &= Check(library.Import(easy, repeated, error) &&
                 repeated == easyInstalled && library.ChartCount() == 2 &&
-                library.Songs()[0].charts[0].data->difficultyId == easyId,
+                library.Songs()[0].charts[0].metadata.difficultyId == easyId,
                 "repeated import updates same difficulty instead of duplicating");
 
     // A change to source audio must NOT silently replace bytes referenced
@@ -477,7 +481,7 @@ int main() {
                 "changed audio is rejected without touching existing set");
     Write(audio, firstBytes);
 
-    const locus::core::LoadedChart copiedChart = *library.Songs()[0].charts[0].data;
+    const locus::core::LoadedChart copiedChart = LoadPayload(library.Songs()[0].charts[0]);
     locus::core::LoadedChart newChart = copiedChart;
     newChart.title = "Insane";
     fs::path thirdInstalled;
@@ -497,7 +501,7 @@ int main() {
                              library.Songs()[0].charts.end(),
                              [&](const LibraryChart& candidate) {
                                  return candidate.file == duplicate &&
-                                     candidate.data->difficultyId == easyId;
+                                     candidate.metadata.difficultyId == easyId;
                              }),
                 "duplicate difficulty uses shared audio and a separate JSON");
 
@@ -550,7 +554,7 @@ int main() {
         {175, 150.0}, {30000, 180.0}};
     ok &= Check(library.SetSongTempoMap(0, multiTempo, nullptr, error) &&
                 library.Songs()[0].tempoMap == multiTempo &&
-                library.Songs()[0].charts[0].data->route.tempoMap == multiTempo &&
+                LoadPayload(library.Songs()[0].charts[0]).route.tempoMap == multiTempo &&
                 Read(easyInstalled) == beforeArtworkBytes,
                 "multi-BPM map persists in Song Set without rewriting notes");
 
@@ -619,9 +623,9 @@ int main() {
     {
         std::set<std::string> originals, transferred;
         for (const auto& difficulty : library.Songs()[0].charts)
-            originals.insert(difficulty.data->difficultyId);
+            originals.insert(difficulty.metadata.difficultyId);
         for (const auto& difficulty : copiedLibrary.Songs()[0].charts)
-            transferred.insert(difficulty.data->difficultyId);
+            transferred.insert(difficulty.metadata.difficultyId);
         ok &= Check(originals == transferred && originals.size() == 4 &&
                     copiedLibrary.Songs()[0].id == library.Songs()[0].id,
                     "package transfer preserves every chart ID and parent Song Set ID");
@@ -657,9 +661,9 @@ int main() {
                 std::all_of(copiedLibrary.Songs()[0].charts.begin(),
                             copiedLibrary.Songs()[0].charts.end(),
                             [](const LibraryChart& chart) {
-                                return !chart.data->route.turns.empty() &&
+                                return chart.metadata.noteCount!=0 &&
                                     chart.difficulty.notes ==
-                                        chart.data->route.turns.size() &&
+                                        chart.metadata.noteCount &&
                                     chart.difficulty.overall > 0.0;
                             }),
                 "imported package charts retain nonzero ratings before play");
@@ -680,7 +684,7 @@ int main() {
         const auto editedSource = folder / "edited-source";
         fs::create_directories(editedSource, ec);
         Write(editedSource / "song.wav", firstBytes);
-        auto edited = *copiedLibrary.Songs()[0].charts[0].data;
+        auto edited = LoadPayload(copiedLibrary.Songs()[0].charts[0]);
         const auto originalFile = copiedLibrary.Songs()[0].charts[0].file;
         const auto oldBytes = Read(originalFile);
         edited.title = "Updated imported difficulty";
@@ -949,18 +953,17 @@ int main() {
                     sorted.front().difficulty.overall,
                 "Song Set difficulties default to ascending calculated difficulty");
 
-    // A published chart's authored content belongs to a shared immutable
-    // snapshot, not to a generation's internal note-vector allocation.
-    const auto sharedGameplayBefore = library.Songs()[0].charts[0].data;
+    // Warm scans reuse compact summaries, not resident notes.
+    const auto sharedGameplayBefore = LoadPayload(library.Songs()[0].charts[0]);
     const auto sharedRevisionBefore = library.Songs()[0].charts[0].gameplayRevision;
     const std::size_t chartTotal = library.ChartCount();
     ok &= Check(library.Refresh(note) &&
                 library.LastRefreshStats().parsedCharts == 0 &&
                 library.LastRefreshStats().reusedCharts == chartTotal &&
                 library.LastRefreshStats().calculatedDifficulties == 0 &&
-                library.Songs()[0].charts[0].data == sharedGameplayBefore &&
+                library.LastRefreshStats().peakParsedNotes == 0 &&
                 library.Songs()[0].charts[0].gameplayRevision == sharedRevisionBefore,
-                "warm refresh reuses exact immutable note payload and revision");
+                "warm refresh reuses summaries without materializing notes");
     ok &= Check(HasConsistentCatalogMetadata(library),
                 "warm scan preserves title, difficulty ID and note count");
 
@@ -978,7 +981,7 @@ int main() {
     if (densePosition == library.Songs()[0].charts.end()) {
         ok &= Check(false, "dense chart remains indexed before cache test");
     } else {
-        locus::core::LoadedChart editedDense = *densePosition->data;
+        locus::core::LoadedChart editedDense = LoadPayload(*densePosition);
         editedDense.title += " Renamed Externally";
         const bool saved = SaveChartWithAudioPath(
             denseInstalled.wstring(), densePosition->audioFile.wstring(),
@@ -1043,8 +1046,8 @@ int main() {
         }
     }
 
-    // Changing only shared BPM on disk must reuse all raw chart parses
-    // but recompute their derived ratings at the new authoritative timing.
+    // External timing changes reparse only affected files: the compact
+    // catalog no longer retains authored notes.
     const fs::path finalManifest =
         easyInstalled.parent_path() / "set.locus.json";
     SongSetManifest externalTiming;
@@ -1056,17 +1059,13 @@ int main() {
         ok &= Check(ReplaceSongSetManifest(finalManifest, externalTiming, error) &&
                     library.Refresh(note) &&
                     library.Songs()[0].bpm == savedBpm + 1.0 &&
-                    library.LastRefreshStats().parsedCharts == 0 &&
-                    library.LastRefreshStats().reusedCharts == chartTotal &&
+                    library.LastRefreshStats().parsedCharts == chartTotal &&
+                    library.LastRefreshStats().reusedCharts == 0 &&
                     library.LastRefreshStats().calculatedDifficulties == chartTotal,
-                    "external shared BPM change invalidates each rating but not chart parses");
-        // Metadata timing updates publish a NEW immutable chart payload;
-        // earlier frame/editor readers can safely keep the prior one alive.
-        const auto oldTempoPayload = sharedGameplayBefore;
-        const bool replacedPayload = library.Songs()[0].charts[0].data !=
-            oldTempoPayload && oldTempoPayload->route.bpm == savedBpm;
-        ok &= Check(replacedPayload,
-                    "BPM changes publish new chart objects without mutating old readers");
+                    "external BPM reprojects affected files into compact summaries");
+        ok &= Check(LoadPayload(library.Songs()[0].charts[0]).route.bpm==savedBpm+1.0 &&
+                    sharedGameplayBefore.route.bpm==savedBpm,
+                    "new tempo materializes without mutating owned chart payload");
         externalTiming.bpm = savedBpm;
         externalTiming.tempoMap.front().bpm = savedBpm;
         ok &= Check(ReplaceSongSetManifest(finalManifest, externalTiming, error) &&

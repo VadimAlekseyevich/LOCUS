@@ -107,12 +107,12 @@ int main() {
     ok &= Check(ImportLibraryChart(library, ui, easy, menuStatus) &&
                 library.Songs().size() == 1 && library.ChartCount() == 1 &&
                 ui.selectedSong == 1 && ui.selectedChart == 0 &&
-                ui.Selected(library) && ui.Selected(library)->data->title == "Easy",
+                ui.Selected(library) && ui.Selected(library)->metadata.title == "Easy",
                 "first import chooses installed difficulty");
     ok &= Check(ImportLibraryChart(library, ui, hard, menuStatus) &&
                 library.ChartCount() == 2 && ui.selectedSong == 1 &&
                 ui.selectedChart == 1 && ui.Selected(library) &&
-                ui.Selected(library)->data->title == "Hard",
+                ui.Selected(library)->metadata.title == "Hard",
                 "second import selects a different difficulty in same song");
 #ifdef LOCUS_TEST_NATIVE_PLAY
     ok &= TestNativePlayPresenter(library);
@@ -124,14 +124,14 @@ int main() {
     {
         const auto* selected = ui.Selected(library);
         const fs::path before = selected ? selected->file : fs::path{};
-        const std::string id = selected ? selected->data->difficultyId : "";
+        const std::string id = selected ? selected->metadata.difficultyId : "";
         const fs::path renamed = before.parent_path() / "zz-renamed.locus.json";
         fs::rename(before, renamed, ec);
         const bool moved = !ec;
         const bool followed = moved &&
             RefreshLibraryBrowser(library, ui, menuStatus) &&
             ui.Selected(library) && ui.Selected(library)->file == renamed &&
-            ui.Selected(library)->data->difficultyId == id;
+            ui.Selected(library)->metadata.difficultyId == id;
         ok &= Check(followed,
                     "external filename rename retains selected difficulty by ID");
         if (moved) {
@@ -148,7 +148,7 @@ int main() {
         AsyncLibraryRefresh worker;
         std::string scanStatus;
         const auto initialGeneration = library.Revision();
-        const auto retainedGameplay = library.Songs()[0].charts[0].data;
+        const auto retainedRevision = library.Songs()[0].charts[0].gameplayRevision;
         ok &= Check(worker.Request(library, scanStatus) && worker.Busy(),
                     "background catalog scan starts without blocking the caller");
         ok &= Check(library.Refresh(scanStatus) &&
@@ -192,8 +192,9 @@ int main() {
                     library.LastRefreshStats().reusedCharts == 2 &&
                     library.LastRefreshStats().calculatedDifficulties == 0 &&
                     library.LastRefreshStats().parsedCharts == 0 &&
-                    library.Songs()[0].charts[0].data == retainedGameplay,
-                    "background rescan shares immutable note payload across generations");
+                    library.LastRefreshStats().peakParsedNotes == 0 &&
+                    library.Songs()[0].charts[0].gameplayRevision == retainedRevision,
+                    "background rescan reuses compact summaries without parsing notes");
         worker.CancelAndJoin();
         ok &= Check(!worker.Busy(), "shutdown drains and invalidates scanner future");
         // Cancellation never discards or replaces the last published index.
@@ -548,7 +549,7 @@ int main() {
     ok &= Check(!ec && RefreshLibraryBrowser(library, ui, menuStatus) &&
                 library.ChartCount() == 2 && ui.selectedSong == 2 &&
                 ui.selectedChart == 0 && ui.Selected(library) &&
-                ui.Selected(library)->data->title == "Easy",
+                ui.Selected(library)->metadata.title == "Easy",
                 "deleted selected difficulty falls back to a valid row");
 
     fs::remove_all(root, ec);
