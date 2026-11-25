@@ -5,6 +5,8 @@
 #include "app/ui_widgets.h"
 #include "app/home_menu.h"
 #include "app/viewport.h"
+#include "app/play_modal_layout.h"
+#include "app/screen_flow.h"
 #include "app/gameplay_hud.h"
 #include "app/results_keyboard_input.h"
 #include "app/menu_controller.h"
@@ -75,6 +77,34 @@ int main() {
         ok &= Check(input.backPressed && !input.startPressed &&
                     !input.restartPressed && !input.openEditorPressed,
                     "historical result preserves configured Back/Home");
+    }
+    {
+        AppState state;
+        state.screen = Screen::Play;
+        ok &= Check(HideGameplayCursor(state,false,true) &&
+                    !HideGameplayCursor(state,true,true) &&
+                    !HideGameplayCursor(state,false,false),
+                    "cursor hides only during focused unpaused gameplay");
+        state.levelExitConfirmation = true;
+        ok &= Check(!HideGameplayCursor(state,false,true),"leave confirmation restores cursor");
+        state.levelExitConfirmation = false;
+        state.quitConfirmation = true;
+        ok &= Check(!HideGameplayCursor(state,false,true),"quit confirmation restores cursor");
+        state.quitConfirmation = false;
+        state.screen = Screen::SongSelect;
+        ok &= Check(!HideGameplayCursor(state,false,true),"library restores cursor");
+        for (const auto size : {Vector2{1536,960},Vector2{2560,1080},
+                                Vector2{900,1200}}) {
+            const int w=static_cast<int>(size.x), h=static_cast<int>(size.y);
+            const auto transform=ViewportTransform::Gameplay(w,h);
+            for (const Rectangle button : {kPlayResumeButton,kPlayRetryButton,kPlayLeaveButton}) {
+                const Vector2 mouse{transform.offsetX+(button.x+button.width*0.5f)*transform.scale,
+                                    transform.offsetY+(button.y+button.height*0.5f)*transform.scale};
+                ok &= Check(PlayButtonHit(button,mouse,w,h) &&
+                            mouse.x>=0 && mouse.x<size.x && mouse.y>=0 && mouse.y<size.y,
+                            "vertical pause buttons use visible shared hitboxes");
+            }
+        }
     }
     // Grades must fit entirely outside the route clip, or be hidden.
     for (const auto size : {Vector2{1920,1080},Vector2{2560,1080},

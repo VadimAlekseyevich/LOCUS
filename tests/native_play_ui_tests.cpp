@@ -127,6 +127,32 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
                     "focused EDIT consumes Enter without launching PLAY");
 
         presenter.BeginFrame(library,selection,1.6f);
+        easy = ChartRow(tree,1,0);
+        ok &= Check(easy && easy->Focus(),"selected difficulty accepts focus");
+        keyboard = {};
+        keyboard.startPressed = true;
+        presenter.ProcessKeyboard(keyboard);
+        const auto enterChart = presenter.EndFrame();
+        ok &= Check(enterChart.playSelected && !enterChart.editSelected &&
+                    !keyboard.startPressed && selection.selectedChart==0,
+                    "Enter on focused chart starts selected difficulty");
+
+        presenter.BeginFrame(library,selection,1.6f);
+        Rml::Element* songRow = nullptr;
+        if (tree) for (int i=0;i<tree->GetNumChildren();++i) {
+            auto* row = tree->GetChild(i);
+            if (row && row->GetAttribute<Rml::String>("data-action","")=="song" &&
+                row->GetAttribute<int>("data-song",-1)==1) { songRow=row; break; }
+        }
+        ok &= Check(songRow && songRow->Focus(),"song row accepts focus");
+        keyboard = {};
+        keyboard.startPressed = true;
+        presenter.ProcessKeyboard(keyboard);
+        const auto enterSong = presenter.EndFrame();
+        ok &= Check(enterSong.playSelected && !enterSong.editSelected,
+                    "Enter on focused song starts selected difficulty");
+
+        presenter.BeginFrame(library,selection,1.6f);
         auto* search = dynamic_cast<Rml::ElementFormControlInput*>(document->GetElementById("search"));
         ok &= Check(search && search->Focus(),"native search can be focused");
         if (search) {

@@ -452,14 +452,15 @@ bool NativeMenuUi::RefreshLayoutMetrics() {
     return layoutChanged;
 }
 
-void NativeMenuUi::PumpInput(bool dispatchKeyboard, bool forceLayout) {
+void NativeMenuUi::PumpInput(bool dispatchKeyboard, bool forceLayout,
+                             bool dispatchEnter) {
     // Resolve new dimensions and DPI before dispatching pointer events.
     if (RefreshLayoutMetrics() || forceLayout) context_->Update();
-    DispatchInput(dispatchKeyboard, true, true);
+    DispatchInput(dispatchKeyboard, true, true, dispatchEnter);
 }
 
 void NativeMenuUi::DispatchInput(bool dispatchKeyboard, bool dispatchButtons,
-                                 bool dispatchWheel) {
+                                 bool dispatchWheel, bool dispatchEnter) {
     const int mods = Modifiers();
     const auto mouse = GetMousePosition();
     context_->ProcessMouseMove(static_cast<int>(mouse.x),
@@ -484,6 +485,7 @@ void NativeMenuUi::DispatchInput(bool dispatchKeyboard, bool dispatchButtons,
         if (IsKeyReleased(key)) context_->ProcessKeyUp(name, mods);
     }
     for (const int key : kUiKeys) {
+        if (!dispatchEnter && (key == KEY_ENTER || key == KEY_KP_ENTER)) continue;
         const auto name = ToRmlKey(key);
         if (IsKeyPressed(key)) context_->ProcessKeyDown(name, mods);
         if (IsKeyReleased(key)) context_->ProcessKeyUp(name, mods);
@@ -723,7 +725,9 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
     }
     playPresenter_.BeginFrame(library,ui,lastDensity_);
     playPresenter_.Sync();
-    PumpInput();
+    // The library presenter owns Enter (including keypad Enter). RmlUi
+    // must not also activate the focused row or action on the same press.
+    PumpInput(true, false, false);
     playPresenter_.ProcessKeyboard(input);
     playPresenter_.Sync();
     context_->Update();

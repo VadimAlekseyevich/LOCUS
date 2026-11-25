@@ -76,7 +76,7 @@ Accuracy (%) = (100 × Perfect + 75 × Good + 50 × Bad)
 - **HUD:** current combo at lower left, accuracy and non-default practice rate at upper right. Perfect, Good, Bad and Miss counts form a compact column strictly outside the right edge of the world clip, hidden when the gutter is too narrow. Perfect, Good and Bad extend combo; any Miss breaks it. Diagonals count per physical arrow. Combo is live-only, not a new score or saved-results field.
 - HUD has no background scrims, progress bar or last-hit readout. The essential corner values remain visible in narrow windows; detailed grades never cover the route. HUD can be hidden in the skin.
 - PLAY hotkeys **[ / ]** or numpad **- / +** adjust base speed by **10 logical px/s**; **, / .** decrease/increase PREVIEW TIME by **50 ms**. Both repeat while held (230 ms initial delay, faster after 1.2 s), never override rebound gameplay keys, and persist to the global skin after a short idle period (or on exit). Changes are shown briefly near the top center, including when the HUD is hidden.
-- A pause overlay offers pause/retry/home information without editing the chart. The built-in demo and local charts use the same gameplay and results presentation.
+- A centered pause dialog offers Resume, Retry and Leave without editing the chart. The mouse cursor is hidden during focused active gameplay and restored for pause, confirmations and other screens. The built-in demo and local charts use the same gameplay and results presentation.
 
 ### 4.2 Results
 

@@ -269,23 +269,43 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         DrawLocalMusicScreen(font, localSong, now, musicError);
     } else if (state.screen == Screen::Play) {
         DrawPlayGrid(font,gameplay,now,&ribbon);
-        if (gameplay.paused) {
-            DrawRectangleRec(transform.ToVirtualBounds(
+        if (gameplay.paused && !state.quitConfirmation &&
+            !state.levelExitConfirmation) {
+            const auto& theme = ApprovedUiTheme();
+            const Rectangle visible = transform.ToVirtualBounds(
                 {0.0f,0.0f,static_cast<float>(GetScreenWidth()),
-                           static_cast<float>(GetScreenHeight())}),
-                Color{12, 14, 22, 204});
-            DrawTextLabel(font, "PAUSED", Vector2{355.0f, 198.0f},
-                          59.0f, Color{240, 246, 247, 255});
-            DrawUiButton(font, kPlayResumeButton, "RESUME",
-                         MenuButtonStyle({130, 226, 215, 255}));
-            DrawUiButton(font, kPlayRetryButton, "RETRY",
-                         MenuButtonStyle({183, 166, 243, 255}));
-            DrawUiButton(font, kPlayLeaveButton, "LEAVE",
-                         MenuButtonStyle({243, 157, 158, 255}));
+                           static_cast<float>(GetScreenHeight())});
+            // Only while paused: a light neutral backdrop and a compact
+            // opaque dialog keep route and menu visually distinct.
+            DrawRectangleRec(visible, Color{10,12,20,112});
+            const Rectangle panel = kPlayPausePanel;
+            DrawRectangleRounded(panel,UiRoundness(panel,theme.panelRadiusPx),
+                                 12,theme.background);
+            DrawRectangleRoundedLinesEx(panel,
+                UiRoundness(panel,theme.panelRadiusPx),12,1.0f,theme.divider);
+            const auto centered = [&](const char* text, float y, float size,
+                                      Color tint) {
+                const Vector2 measured = MeasureTextEx(font,text,size,0.7f);
+                DrawTextEx(font,text,{panel.x+(panel.width-measured.x)*0.5f,y},
+                           size,0.7f,tint);
+            };
+            centered("Paused",panel.y+19.0f,29.0f,theme.foreground);
+            const Vector2 pointer = transform.ToVirtual(GetMousePosition());
+            const auto button = [&](Rectangle bounds, const char* caption,
+                                    UiButtonVariant variant) {
+                // Hover styling only; hitboxes do not move.
+                const bool hover = CheckCollisionPointRec(pointer,bounds);
+                UiMotionFrame appearance{};
+                appearance.hover = hover ? 1.0f : 0.0f;
+                DrawUiThemedButton(font,bounds,caption,variant,{},appearance,
+                                   theme,19.0f);
+            };
+            button(kPlayResumeButton,"Resume",UiButtonVariant::Blue);
+            button(kPlayRetryButton,"Retry",UiButtonVariant::Neutral);
+            button(kPlayLeaveButton,"Leave",UiButtonVariant::Quiet);
             const std::string hint = KeyboardKeyName(
-                gameplay.bindings.Key(GameAction::Pause)) + " PAUSE / RESUME";
-            DrawTextLabel(font, hint.c_str(), {355.0f, 365.0f}, 17.0f,
-                          Color{204, 213, 232, 255});
+                gameplay.bindings.Key(GameAction::Pause)) + " to resume";
+            centered(hint.c_str(),panel.y+244.0f,12.0f,theme.secondaryText);
         }
         if (gameplay.outro.blackOpacity > 0.0f)
             DrawRectangleRec(transform.ToVirtualBounds(

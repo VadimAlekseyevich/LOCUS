@@ -86,8 +86,10 @@ private:
     enum class Page { None, Home, Play, Settings, Editor, Results, Skin };
     void Activate(Page page);
     bool RefreshLayoutMetrics();
-    void PumpInput(bool dispatchKeyboard = true, bool forceLayout = false);
-    void DispatchInput(bool dispatchKeyboard, bool dispatchButtons, bool dispatchWheel);
+    void PumpInput(bool dispatchKeyboard = true, bool forceLayout = false,
+                   bool dispatchEnter = true);
+    void DispatchInput(bool dispatchKeyboard, bool dispatchButtons, bool dispatchWheel,
+                       bool dispatchEnter = true);
     void ReadEditorLayout(EditorUiState& ui) const noexcept;
     void ProcessEvent(Rml::Event& event) override;
     RmlNativeFiles files_;

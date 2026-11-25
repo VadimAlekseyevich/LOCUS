@@ -1240,6 +1240,14 @@ int main(int argc, char** argv) try {
                 editorDiscard.Pending(), !editorFiles.PendingClose().empty(), editorStatus);
         nativeMenu.SyncConfirmation(activeConfirmation);
 #endif
+        // Cursor ownership follows the live interaction state, not a
+        // transient fade frame. Hide without locking or warping the mouse.
+        const bool hidePointer = locus::app::HideGameplayCursor(
+            state, gameplay.paused, IsWindowFocused());
+        if (hidePointer != IsCursorHidden()) {
+            if (hidePointer) HideCursor();
+            else ShowCursor();
+        }
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, ribbonWorkspace, localSong, editor, editorUi, editorClock,
                     editorStatus, editorDiscard.Pending(),

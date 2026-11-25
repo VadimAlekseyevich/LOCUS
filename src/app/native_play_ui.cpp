@@ -423,9 +423,17 @@ void NativePlayUi::ProcessKeyboard(FrameInput& input) {
     }
     if (auto* focus = context->GetFocusElement();
         input.startPressed && focus && focus->GetTagName() == "button") {
-        if (!focus->HasAttribute("disabled")) focus->Click();
-        SuppressGlobalMenuShortcuts(input);
-        return;
+        const auto action = focus->GetAttribute<Rml::String>("data-action", "");
+        // Song/chart rows are selection, not action buttons. Once selected,
+        // Enter starts the active difficulty (also after keyboard navigation).
+        // An explicit action button, such as Edit, still owns its activation.
+        if (action != "song" && action != "chart") {
+            if (!pending_.playSelected && !pending_.editSelected &&
+                pending_.viewResultIndex < 0 && !pending_.import && !pending_.refresh &&
+                !focus->HasAttribute("disabled")) focus->Click();
+            SuppressGlobalMenuShortcuts(input);
+            return;
+        }
     }
     auto& ui = *currentUi_;
     const auto& library = *currentLibrary_;
@@ -435,7 +443,7 @@ void NativePlayUi::ProcessKeyboard(FrameInput& input) {
     // A pointer command already emitted by RmlUi owns this frame. Otherwise
     // resolve the same configured shortcuts as the fallback browser.
     if (!pending_.playSelected && !pending_.editSelected &&
-        pending_.viewResultIndex < 0 && !pending_.import) {
+        pending_.viewResultIndex < 0 && !pending_.import && !pending_.refresh) {
         if (input.openEditorPressed) pending_.editSelected = true;
         else if (input.startPressed) pending_.playSelected = true;
         else if (input.refreshLibraryPressed) pending_.refresh = true;

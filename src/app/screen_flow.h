@@ -18,6 +18,14 @@ struct AppState {
     Screen screen = Screen::Home;
 };
 
+// The pointer remains usable for pause and confirmations, and is restored
+// when leaving gameplay or losing window focus.
+inline bool HideGameplayCursor(const AppState& state, bool paused,
+                               bool focused) noexcept {
+    return state.screen == Screen::Play && !paused && focused &&
+           !state.quitConfirmation && !state.levelExitConfirmation;
+}
+
 // The navigation policy knows nothing about raylib, file dialogs, audio or
 // the chart editor. Those systems only supply the actions for each frame.
 struct NavigationInput {
