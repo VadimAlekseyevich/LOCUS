@@ -250,6 +250,8 @@
 
 **26.11.2026 — T14: editor model profiler.** New optional `locus_editor_bench` exercises 65,536 notes and 256 BPM markers with actual ChartEditor paste/Undo/Redo, cached difficulty, exact-time selection and full tempo reprojection. Reports nearest-rank p50/p95/p99 and checks note counts, exact timestamps and stable route revisions on navigation. CI captures editor-benchmark.txt; no GPU/input/audio or pre-optimization wall-clock baseline. Bench timings are not frame timings.
 
+**26.11.2026 — T14: tempo projection index.** Operation-scoped immutable TempoProjection owns only segment metadata and computes prefix anchors once; binary searches both time and beat axes. JSON parser, SetTempoMap, Song Set projection, clipboard copy/paste and range shift reuse one index per operation. Original scalar math remains reference for one-off calls; regression compares exact rounded ticks and inverse times across 256 markers, preroll, zero-duration gaps and repeated anchors from tiny BPM. No serialized format or timing semantics change. Windows CI required.
+
 **Приёмка.** Для выбранного FPS связывать цифры с реальным бюджетом кадра (например, 6,94 мс при 144 Гц) и базой той же машины. Менять только доказанный источник задержки. Возможные локальные решения — переиспользование буферов mesh, декодирование с отменой, индекс сегментов темпа. Сравнить до/после, контрольные суммы, точность нот, критерии сортировки и метрики сложности. Изменение формулы рейтинга получает собственную версию и отдельные музыкальные примеры.
 
 <a id="t15"></a>

@@ -257,6 +257,8 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             error = "turns: too many events";
             return false;
         }
+        const TempoProjection projection(parsed.route,parsed.offsetSeconds);
+        parsed.route.turns.reserve(turns.size());
         int prior = std::numeric_limits<int>::min();
         std::int64_t previousMs = std::numeric_limits<std::int64_t>::min();
         for (std::size_t i = 0; i < turns.size(); ++i) {
@@ -275,8 +277,7 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 return false;
             }
             previousMs = timeMs;
-            const int beat = TempoTickAtMs(
-                parsed.route, parsed.offsetSeconds, timeMs);
+            const int beat = projection.TickAtMs(timeMs);
             if (beat < -1000000 || beat > 999999) {
                 error = where + ".timeMs: outside tick range";
                 return false;

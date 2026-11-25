@@ -246,6 +246,49 @@ int main() {
                 denseRead.route.turns[1].timeMs == 1010,
                 "Song Set BPM updates preserve both exact notes atomically");
 
+    // Compare the indexed batch path to the original scalar math across
+    // negative preroll, marker boundaries, reserved gaps and the full
+    // 256-marker limit. Exact integer tick identity must not change.
+    {
+        Chart indexed;
+        indexed.bpm=120.0;
+        indexed.ticksPerBeat=24;
+        const double offset=-0.137;
+        bool equivalent=true;
+        for (int mode=0;mode<4;++mode) {
+            indexed.tempoMap.clear();
+            if (mode==1) indexed.tempoMap={{-137,123.45}};
+            if (mode==2) {
+                for(int i=0;i<256;++i)
+                    indexed.tempoMap.push_back({-137+i*1237LL,75.25+(i%11)*17.125});
+            }
+            // Tiny positive BPM is valid; exercise repeated anchor beats
+            // and the original ceil epsilon's overlapping inverse bounds.
+            if (mode==3) indexed.tempoMap={{-137,1e-9},{-136,1e-9},
+                {-135,120.0},{-134,240.0},{1250,90.0}};
+            const TempoProjection projection(indexed,offset);
+            for(int i=-2048;i<20000;++i) {
+                const auto ms=static_cast<std::int64_t>(i)*31;
+                equivalent &= projection.TickAtMs(ms)==TempoTickAtMs(indexed,offset,ms);
+                const double tick=i*0.875;
+                equivalent &= Near(projection.SecondsAtTick(tick),
+                    TempoSecondsAtTick(indexed,offset,tick));
+            }
+            for(const auto& marker:indexed.tempoMap) {
+                for(const auto delta:{-1LL,0LL,1LL}) {
+                    const auto ms=marker.timeMs+delta;
+                    equivalent &= projection.TickAtMs(ms)==TempoTickAtMs(indexed,offset,ms);
+                }
+                const double tick=TempoBeatAtSeconds(indexed,offset,marker.timeMs/1000.0)
+                    *indexed.ticksPerBeat;
+                for(double delta:{-0.000001,0.0,0.000001})
+                    equivalent &= Near(projection.SecondsAtTick(tick+delta),
+                        TempoSecondsAtTick(indexed,offset,tick+delta));
+            }
+        }
+        ok &= Check(equivalent,"indexed projection preserves scalar timing and reserved gaps");
+    }
+
     if (ok) std::cout << "TEMPO_MAP_PASS local_downbeat=1 formats=4\n";
     return ok ? 0 : 1;
 }

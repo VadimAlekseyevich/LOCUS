@@ -404,12 +404,13 @@ bool ChartEditor::SetTempoMap(const std::vector<TempoMarker>& markers) {
                         songDurationSeconds_, first, end, error))
         return false;
 
+    const TempoProjection projection(adjusted,nextOffset);
     std::vector<TurnEvent> remapped = chart_.route.turns;
     int previous = first;
     for (auto& turn : remapped) {
         const std::int64_t ms = EventTimeMs(
             chart_.route, turn, chart_.offsetSeconds);
-        const int tick = TempoTickAtMs(adjusted, nextOffset, ms);
+        const int tick = projection.TickAtMs(ms);
         if (tick < previous || tick < first || tick >= end ||
             tick < -1000000 || tick > 999999)
             return false;
@@ -418,7 +419,7 @@ bool ChartEditor::SetTempoMap(const std::vector<TempoMarker>& markers) {
         previous = tick;
     }
     const int selected = std::clamp(
-        TempoTickAtMs(adjusted, nextOffset,
+        projection.TickAtMs(
             static_cast<std::int64_t>(std::llround(selectedTime * 1000.0))),
         first, end - 1);
 
@@ -707,9 +708,11 @@ ChartEditor::Pattern ChartEditor::CopyTurns(int firstBeat, int lastBeat) const {
     const int lastNote = (end - 1)->beat;
     result.span = lastNote - firstNote + 1;
     result.ticksPerBeat = chart_.route.ticksPerBeat;
+    result.notes.reserve(static_cast<std::size_t>(end-start));
+    const TempoProjection projection(chart_.route,chart_.offsetSeconds);
     for (auto note = start; note != end; ++note) {
         const auto tickMs = static_cast<std::int64_t>(std::llround(
-            AudioSecondsAtBeat(note->beat) * 1000.0));
+            projection.SecondsAtTick(note->beat) * 1000.0));
         const auto exactMs = EventTimeMs(
             chart_.route, *note, chart_.offsetSeconds);
         result.notes.push_back({
@@ -734,6 +737,7 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
         return false;
 
     const auto& route = chart_.route;
+    const TempoProjection projection(route,chart_.offsetSeconds);
     // Validate and project the complete clipboard before touching the draft.
     // Valid projected ticks are monotonic in song time; within one tick the
     // clipboard already requires strictly increasing offsets.
@@ -758,7 +762,7 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
             return false;
         const int beat = static_cast<int>(absolute);
         const auto tickMs = static_cast<std::int64_t>(
-            std::llround(AudioSecondsAtBeat(beat) * 1000.0));
+            std::llround(projection.SecondsAtTick(beat) * 1000.0));
         // Sentinel means a traditional snapped note, offset zero.
         const auto intraTickMs =
             note.timeMs == kNoTimeMs ? 0 : note.timeMs;
@@ -769,7 +773,7 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
             (HasSongDuration() && ms >=
                 songDurationSeconds_ * 1000.0) ||
             (ms < 0 && !(chart_.offsetSeconds < 0.0 && beat >= 0)) ||
-            TempoTickAtMs(route, chart_.offsetSeconds, ms) != beat)
+            projection.TickAtMs(ms) != beat)
             return false;
 
         if (!incoming.empty() && ms <= incoming.back().timeMs)
@@ -834,6 +838,7 @@ bool ChartEditor::ShiftTurns(int firstBeat, int lastBeat, int deltaBeats) {
         lastBeat >= chart_.route.lengthBeats || deltaBeats == 0)
         return false;
     const auto& route = chart_.route;
+    const TempoProjection projection(route,chart_.offsetSeconds);
     std::vector<TurnEvent> updated = route.turns;
     bool moved = false;
     int touchedMin = std::numeric_limits<int>::max();
@@ -848,16 +853,16 @@ bool ChartEditor::ShiftTurns(int firstBeat, int lastBeat, int deltaBeats) {
         const std::int64_t currentMs = EventTimeMs(
             route, event, chart_.offsetSeconds);
         const auto sourceTick = static_cast<std::int64_t>(
-            std::llround(AudioSecondsAtBeat(event.beat) * 1000.0));
+            std::llround(projection.SecondsAtTick(event.beat) * 1000.0));
         const auto targetTick = static_cast<std::int64_t>(
-            std::llround(AudioSecondsAtBeat(destination) * 1000.0));
+            std::llround(projection.SecondsAtTick(destination) * 1000.0));
         const std::int64_t nextMs =
             targetTick + (currentMs - sourceTick);
         if (nextMs < -3600000 || nextMs > 86400000 ||
             (HasSongDuration() && nextMs >= songDurationSeconds_ * 1000.0) ||
             (nextMs < 0 &&
                 !(chart_.offsetSeconds < 0.0 && destination >= 0)) ||
-            TempoTickAtMs(route, chart_.offsetSeconds, nextMs) != destination)
+            projection.TickAtMs(nextMs) != destination)
             return false;
         touchedMin = std::min({touchedMin, event.beat, destination});
         touchedMax = std::max({touchedMax, event.beat, destination});

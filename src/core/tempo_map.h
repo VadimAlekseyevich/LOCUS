@@ -109,6 +109,79 @@ inline double TempoMsAtBeat(const std::vector<TempoMarker>& map,
     return map.back().timeMs;
 }
 
+// Immutable operation-scoped projection of validated chart timing. Build
+// once for a batch of notes, then look up either axis in O(log segments).
+// Owns only tempo metadata, never authored events or a mutable Chart pointer.
+// Keep scalar helpers above as allocation-free single-query/reference paths.
+class TempoProjection {
+public:
+    TempoProjection(const Chart& chart,double offsetSeconds)
+        : bpm_(chart.bpm),offset_(offsetSeconds),ticks_(chart.ticksPerBeat) {
+        const auto& map=chart.tempoMap;
+        segments_.reserve(map.size());
+        double anchor=0.0;
+        double prefixEnd=0.0;
+        for (std::size_t i=0;i<map.size();++i) {
+            Segment s{static_cast<double>(map[i].timeMs),map[i].bpm,anchor,0.0,0.0};
+            if (i+1<map.size()) {
+                const double to=static_cast<double>(map[i+1].timeMs);
+                s.endBeat=anchor+(to-s.fromMs)*s.bpm/60000.0;
+                anchor=TempoMarkerAnchorBeat(s.endBeat);
+                // The original inverse selects the FIRST interval whose
+                // end or reserved gap exceeds the query. Prefix maxima
+                // preserve that ordering even at the ceil epsilon when
+                // extremely small positive BPMs produce equal anchors.
+                prefixEnd=std::max({prefixEnd,s.endBeat,anchor});
+                s.searchEnd=prefixEnd;
+            } else {
+                s.endBeat=s.searchEnd=std::numeric_limits<double>::infinity();
+            }
+            segments_.push_back(s);
+        }
+    }
+
+    double BeatAtSeconds(double seconds) const noexcept {
+        if (segments_.empty()) return (seconds-offset_)*bpm_/60.0;
+        const double ms=seconds*1000.0;
+        if (!std::isfinite(ms)) return 0.0;
+        const auto next=std::upper_bound(segments_.begin(),segments_.end(),ms,
+            [](double time,const Segment& s) { return time<s.fromMs; });
+        const auto& s=next==segments_.begin()?segments_.front():*(next-1);
+        return s.anchor+(ms-s.fromMs)*s.bpm/60000.0;
+    }
+
+    double SecondsAtTick(double tick) const noexcept {
+        if (segments_.empty()) return offset_+tick*60.0/(bpm_*ticks_);
+        const double beat=tick/ticks_;
+        if (!std::isfinite(beat)) return 0.0;
+        if (beat<0.0) {
+            const auto& first=segments_.front();
+            return (first.fromMs+beat*60000.0/first.bpm)/1000.0;
+        }
+        const auto it=std::upper_bound(segments_.begin(),segments_.end(),beat,
+            [](double value,const Segment& s) { return value<s.searchEnd; });
+        if (it==segments_.end()) return segments_.back().fromMs/1000.0;
+        if (beat<it->endBeat)
+            return (it->fromMs+(beat-it->anchor)*60000.0/it->bpm)/1000.0;
+        return (it+1)->fromMs/1000.0; // zero-duration reserved interval
+    }
+
+    int TickAtMs(std::int64_t ms) const noexcept {
+        const double ticks=BeatAtSeconds(ms/1000.0)*ticks_;
+        if (!std::isfinite(ticks)) return 0;
+        return static_cast<int>(std::llround(std::clamp(ticks,
+            static_cast<double>(std::numeric_limits<int>::min()),
+            static_cast<double>(std::numeric_limits<int>::max()))));
+    }
+private:
+    struct Segment {
+        double fromMs,bpm,anchor,endBeat,searchEnd;
+    };
+    std::vector<Segment> segments_;
+    double bpm_,offset_;
+    int ticks_;
+};
+
 // A ruler click snaps in LOCAL song-time, not against a global integer
 // index whose phase can jump at a tempo marker. If a subdivision would
 // cross the next marker, the marker's own downbeat wins. All authored

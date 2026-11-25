@@ -30,10 +30,11 @@ inline bool ApplySongTiming(core::LoadedChart& chart,
     projected.bpm = markers.front().bpm;
     projected.tempoMap = markers;
     const double offsetSeconds = markers.front().timeMs / 1000.0;
+    const core::TempoProjection projection(projected,offsetSeconds);
     int previous = -1000001;
     for (auto& note : projected.turns) {
         const auto ms = core::EventTimeMs(route, note, chart.offsetSeconds);
-        const int tick = core::TempoTickAtMs(projected, offsetSeconds, ms);
+        const int tick = projection.TickAtMs(ms);
         if (tick < previous || tick < -1000000 || tick > 999999) {
             error = "New BPM markers project a note outside valid tick order.";
             return false;
