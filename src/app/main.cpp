@@ -548,7 +548,7 @@ int main(int argc, char** argv) try {
                     chartPlayback.Playing() && !chartPlayback.Paused(),
                     locus::app::detail::RouteTimeMs(editor,
                         static_cast<double>(editor.SelectedBeat())),
-                    editor, settings, editorSet.View());
+                    editor, settings, editorSet.FrameView());
             } else if (state.screen == Screen::Settings &&
                      nativeMenu.SettingsAvailable()) {
                 const bool exclusiveKeyboard =
@@ -1172,8 +1172,9 @@ int main(int argc, char** argv) try {
                     editorClock.songSeconds) * editor.Data().route.ticksPerBeat
                 : static_cast<double>(editor.SelectedBeat());
         }
-        const auto editorSetView = visibleState.screen == Screen::Editor
-            ? editorSet.View() : locus::app::EditorSetView{};
+        const locus::app::EditorSetView emptyEditorSetView;
+        const auto& editorSetView=visibleState.screen==Screen::Editor
+            ? editorSet.FrameView():emptyEditorSetView;
 #ifdef LOCUS_WITH_RMLUI
         if (visibleState.screen == Screen::Editor && nativeMenu.EditorAvailable()) {
             nativeMenu.SyncEditor(editorUi, editor.Data().title, editor.Dirty(),

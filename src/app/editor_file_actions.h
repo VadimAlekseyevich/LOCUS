@@ -3,6 +3,7 @@
 #include "app/music_picker.h"
 #include "app/chart_editor_ui.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <map>
 #include <string>
@@ -72,6 +73,11 @@ public:
     // Managed set of the current installed chart, or a new unsaved difficulty.
     // Empty for an unrelated external chart / an unattached new song.
     std::filesystem::path ActiveSetFolder() const;
+    // Published presentation state of parked documents and new-difficulty
+    // association. Active document identity/title are keyed separately.
+    std::uint64_t WorkspaceViewRevision() const noexcept {
+        return workspaceViewRevision_;
+    }
 
     // The library already selected a specific installed difficulty. No
     // native dialog; caller decides whether to navigate to Editor.
@@ -84,6 +90,8 @@ public:
 private:
     EditorFileContext context_;
     EditorFilePickers pickers_;
+    std::uint64_t workspaceViewRevision_=0;
+    void MarkWorkspaceViewChanged() noexcept { ++workspaceViewRevision_; }
     std::wstring newDifficultySet_; // Empty means create/find a set from attached audio.
     struct ParkedDocument {
         core::ChartEditor editor;

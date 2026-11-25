@@ -101,7 +101,36 @@ bool EditorSetNeedsConfirmation(const EditorSetRequest& request) noexcept {
            request.action == EditorSetAction::DeleteSongSet;
 }
 
-EditorSetView EditorSetController::View() const {
+const EditorSetView& EditorSetController::FrameView() const {
+    auto& cache=viewCache_;
+    const auto catalog=ctx_.library.Revision();
+    const auto workspace=ctx_.files.WorkspaceViewRevision();
+    const auto& title=ctx_.editor.Data().title;
+    const bool hasAudio=ctx_.editor.HasSongDuration();
+    const bool rebuild=!cache.ready || cache.catalogRevision!=catalog ||
+        cache.workspaceRevision!=workspace || cache.chartPath!=ctx_.chartPath ||
+        cache.title!=title || cache.hasAudio!=hasAudio;
+    if (rebuild) {
+        cache.view=BuildView();
+        cache.catalogRevision=catalog;
+        cache.workspaceRevision=workspace;
+        cache.chartPath=ctx_.chartPath;
+        cache.title=title;
+        cache.hasAudio=hasAudio;
+        cache.ready=true;
+    }
+    const auto& ui=ctx_.ui;
+    if (rebuild || cache.selectedId!=ui.setSelectedId ||
+        cache.selected!=ui.setSelected || cache.firstVisible!=ui.setFirstVisible) {
+        UpdateViewSelection(cache.view);
+        cache.selectedId=ui.setSelectedId;
+        cache.selected=ui.setSelected;
+        cache.firstVisible=ui.setFirstVisible;
+    }
+    return cache.view;
+}
+
+EditorSetView EditorSetController::BuildView() const {
     EditorSetView view;
     view.catalogRevision=ctx_.library.Revision();
     const fs::path folder = ctx_.files.ActiveSetFolder();
@@ -137,10 +166,14 @@ EditorSetView EditorSetController::View() const {
         return library->Songs()[static_cast<std::size_t>(song)].charts[
             static_cast<std::size_t>(chart)].CopyPayload(result,error);
     };
+    view.difficulties.reserve(set->charts.size());
+    view.difficultyIds.reserve(set->charts.size());
+    view.comparisonOptions.reserve(set->charts.size());
+    const fs::path active(ctx_.chartPath);
     for (std::size_t i = 0; i < set->charts.size(); ++i) {
         const auto& entry = set->charts[i];
         const auto* parked = ctx_.files.ParkedEditor(entry.file);
-        view.difficulties.push_back(entry.file == fs::path(ctx_.chartPath)
+        view.difficulties.push_back(entry.file == active
             ? ctx_.editor.Data().title : parked ? parked->Data().title : entry.metadata.title);
         view.difficultyIds.push_back(entry.metadata.difficultyId);
         view.comparisonOptions.push_back({
@@ -148,11 +181,17 @@ EditorSetView EditorSetController::View() const {
             entry.indexedFileSize,entry.indexedWriteTime,entry.gameplayRevision,
             entry.indexedContentFingerprint});
         if (!ctx_.chartPath.empty() &&
-            set->charts[i].file == fs::path(ctx_.chartPath))
+            entry.file == active)
             view.current = static_cast<int>(i);
     }
-    const int count = static_cast<int>(view.difficulties.size());
-    if (count == 0) return view;
+    return view;
+}
+
+void EditorSetController::UpdateViewSelection(EditorSetView& view) const {
+    view.selected=-1;
+    view.firstVisible=0;
+    const int count=static_cast<int>(view.difficulties.size());
+    if (count==0) return;
     if (!ctx_.ui.setSelectedId.empty()) {
         const auto at = std::find(view.difficultyIds.begin(), view.difficultyIds.end(),
                                   ctx_.ui.setSelectedId);
@@ -170,7 +209,6 @@ EditorSetView EditorSetController::View() const {
         if (view.selected >= view.firstVisible + 5)
             view.firstVisible = view.selected - 4;
     }
-    return view;
 }
 
 bool EditorSetController::ApplyTempoMap(
@@ -446,7 +484,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
                 }
             }
         }
-        HandleEditorComparisonControls(ui, View(), input);
+        HandleEditorComparisonControls(ui,FrameView(),input);
         return;
     }
     if (ui.tab != EditorTab::Set && ui.tab != EditorTab::Audio) return;
@@ -520,11 +558,13 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         Execute(request);
     }
     if ((ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio) && !ui.editingSetPreview) {
-        const EditorSetView view = View();
-        const auto tempo = view.managed && !view.tempoMap.empty()
-            ? view.tempoMap
-            : core::EffectiveTempoMap(ctx_.editor.Data().route,
-                                       ctx_.editor.Data().offsetSeconds);
+        const auto& view=FrameView();
+        const auto& data=ctx_.editor.Data();
+        const auto fallback=(!view.managed || view.tempoMap.empty()) &&
+            data.route.tempoMap.empty()?core::EffectiveTempoMap(data.route,data.offsetSeconds):
+            std::vector<core::TempoMarker>{};
+        const auto& tempo=view.managed && !view.tempoMap.empty()?view.tempoMap:
+            (data.route.tempoMap.empty()?fallback:data.route.tempoMap);
         if (HandleTempoTable(ui, input, tempo, ctx_.editor,
                              [&](const std::vector<core::TempoMarker>& markers) {
                                  return ApplyTempoMap(markers);
@@ -596,7 +636,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         if (ui.tab == EditorTab::Audio) return;
     }
     if (input.nativeChrome) return;
-    EditorSetView view = View();
+    const auto& view=FrameView();
     const int count = static_cast<int>(view.difficulties.size());
     const float wheel = input.mouseWheel;
     if (wheel != 0.0f && count > 0 && detail::Hit(detail::kSetupDifficultyPanel, mouse)) {

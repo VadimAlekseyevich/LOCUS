@@ -38,6 +38,7 @@ void ResetDocumentUi(EditorUiState& ui) {
 } // namespace
 
 void EditorFileActions::NewDraft() {
+    if (!newDifficultySet_.empty()) MarkWorkspaceViewChanged();
     newDifficultySet_.clear();
     context_.preview.Stop();
     context_.music.Shutdown();
@@ -74,6 +75,7 @@ bool EditorFileActions::OpenFromLibrary(const std::wstring& chartFile,
               context_.chartPath,context_.audioPath,error);
     if (!loaded) return false;
     DiscardParked();
+    if (!newDifficultySet_.empty()) MarkWorkspaceViewChanged();
     newDifficultySet_.clear();
     context_.loadedAudioPath = context_.audioPath;
     ResetDocumentUi(context_.ui);
@@ -108,6 +110,7 @@ void EditorFileActions::Open(double& now, std::string& error) {
         return;
     }
     DiscardParked();
+    if (!newDifficultySet_.empty()) MarkWorkspaceViewChanged();
     newDifficultySet_.clear();
     ResetDocumentUi(context_.ui);
     context_.previewStartBeat = 0;
@@ -207,6 +210,7 @@ bool EditorFileActions::NewDifficultyFromLibrary(
     context_.audioPath = audioFile;
     context_.loadedAudioPath = audioFile;
     context_.previewStartBeat = 0;
+    if (newDifficultySet_!=setFolder) MarkWorkspaceViewChanged();
     newDifficultySet_ = setFolder;
     context_.status = "NEW DIFFICULTY - CTRL+S TO ADD TO SONG SET";
     error.clear();
@@ -365,6 +369,7 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
         context_.chartPath = destination.wstring();
         context_.audioPath = installedAudio;
         context_.loadedAudioPath = installedAudio;
+        if (!newDifficultySet_.empty()) MarkWorkspaceViewChanged();
         newDifficultySet_.clear();
         if (!indexed) {
             context_.status = "CHART SAVED ON DISK; LIBRARY RESCAN FAILED: " +
@@ -404,7 +409,11 @@ bool EditorFileActions::RenameInactiveDifficulty(const std::filesystem::path& fi
     auto parked = parked_.find(file);
     if (parked != parked_.end() && parked->second.editor.Dirty()) {
         auto& draft = parked->second.editor;
-        if (draft.Data().title == title || draft.SetTitle(title)) return true;
+        if (draft.Data().title==title) return true;
+        if (draft.SetTitle(title)) {
+            MarkWorkspaceViewChanged();
+            return true;
+        }
         error = "Invalid difficulty name.";
         return false;
     }
@@ -431,7 +440,10 @@ bool EditorFileActions::RenameInactiveDifficulty(const std::filesystem::path& fi
     }
     stored.title = validation.Data().title;
     if (!SaveChartWithAudioPath(file.wstring(), audio, stored, error, true)) return false;
-    if (parked != parked_.end()) parked_.erase(parked);
+    if (parked!=parked_.end()) {
+        parked_.erase(parked);
+        MarkWorkspaceViewChanged();
+    }
     std::string notice;
     if (!context_.library.Refresh(notice)) {
         error = "Name saved on disk; refresh library: " + notice;
@@ -472,6 +484,7 @@ void EditorFileActions::CloseAllComparisons() noexcept {
 }
 
 void EditorFileActions::DiscardParked() noexcept {
+    if (!parked_.empty()) MarkWorkspaceViewChanged();
     parked_.clear();
     pendingClose_.clear();
 }
@@ -586,7 +599,8 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
 
     // Clipboard and comparison membership are workspace-level values.
     auto clipboard = std::move(old.ui.clipboard);
-    parked_.insert_or_assign(current, std::move(old));
+    parked_.insert_or_assign(current,std::move(old));
+    MarkWorkspaceViewChanged();
     context_.editor = std::move(target.editor);
     context_.ui = std::move(target.ui);
     context_.ui.layout = layout;
@@ -621,14 +635,16 @@ void EditorFileActions::DropCleanParked() noexcept {
     // A Song Set BPM/offset change invalidates the grid projections in
     // cached drafts. Unsaved parked editors must be handled before publish.
     for (auto it = parked_.begin(); it != parked_.end();) {
-        if (!it->second.editor.Dirty()) it = parked_.erase(it);
-        else ++it;
+        if (!it->second.editor.Dirty()) {
+            it=parked_.erase(it);
+            MarkWorkspaceViewChanged();
+        } else ++it;
     }
 }
 
 void EditorFileActions::ForgetChart(
     const std::filesystem::path& file) noexcept {
-    parked_.erase(file);
+    if (parked_.erase(file)) MarkWorkspaceViewChanged();
     auto& comparisons = context_.ui.comparisonFiles;
     const auto found = std::find(comparisons.begin(), comparisons.end(), file);
     if (found != comparisons.end()) {
@@ -650,7 +666,7 @@ bool EditorFileActions::RequestCloseComparison(
         pendingClose_ = file;
         return false;
     }
-    parked_.erase(file);
+    if (parked_.erase(file)) MarkWorkspaceViewChanged();
     if (found - context_.ui.comparisonFiles.begin() <
         context_.ui.comparisonFocusedSlot)
         --context_.ui.comparisonFocusedSlot;
@@ -700,7 +716,7 @@ bool EditorFileActions::ResolveClose(bool save, bool discard, double& now) {
                 --context_.ui.comparisonFocusedSlot;
             references.erase(found);
         }
-        parked_.erase(candidate);
+        if (parked_.erase(candidate)) MarkWorkspaceViewChanged();
     };
     removeReference(file);
     removeReference(savedPath);

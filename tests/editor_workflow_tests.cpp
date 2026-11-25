@@ -213,6 +213,19 @@ int main() {
             if (view.comparisonOptions[i].file == path) return static_cast<int>(i);
         return -1;
     };
+    const auto& initialView=sets.FrameView();
+    const auto* cachedRows=initialView.comparisonOptions.data();
+    const auto initialCatalogRevision=initialView.catalogRevision;
+    bool reused=cachedRows && initialView.comparisonOptions.size()==2;
+    for (int i=0;i<128;++i) {
+        editorUi.setSelected=i%2;
+        const auto& frame=sets.FrameView();
+        reused &= frame.comparisonOptions.data()==cachedRows &&
+            frame.catalogRevision==initialCatalogRevision &&
+            frame.selected==i%2;
+    }
+    editorUi.setSelected=-1;
+    ok &= Check(reused,"frame view reuses catalog rows across cursor and selection changes");
     editorUi.tab = app::EditorTab::Set;
     editorUi.comparisonFiles.push_back(installedHard);
     ok &= Check(sets.FocusDifficulty(indexFor(installedHard)) &&
@@ -268,6 +281,16 @@ int main() {
                 files.ParkedEditor(installedHard) &&
                 files.ParkedEditor(installedHard)->Dirty(),
                 "Hard > Focus Easy restores both unsaved histories");
+
+    // Parked unsaved names are metadata too: no catalog publish is needed
+    // to refresh the view after editing a parked draft.
+    const auto parkedCatalogRevision=sets.FrameView().catalogRevision;
+    ok &= Check(files.RenameInactiveDifficulty(installedHard,"Hard parked probe",error) &&
+                sets.FrameView().catalogRevision==parkedCatalogRevision &&
+                sets.FrameView().difficulties[static_cast<std::size_t>(indexFor(installedHard))]=="Hard parked probe" &&
+                files.RenameInactiveDifficulty(installedHard,"Hard",error) &&
+                sets.FrameView().difficulties[static_cast<std::size_t>(indexFor(installedHard))]=="Hard",
+                "cached view invalidates for parked title edits without catalog refresh");
 
     app::EditorControls compare;
     compare.nativeChrome = true;

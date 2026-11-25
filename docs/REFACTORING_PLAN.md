@@ -264,6 +264,8 @@
 
 **26.11.2026 — T10/T14: shared authored direction counts.** ChartEditor caches physical direction totals by RouteRevision; native controls, fallback and comparison snapshot consume one result instead of scanning the full route twice per rendered frame and maintaining a separate comparison cache. Diagonal key semantics unchanged. Tests cover mutation/Undo/Redo/Load, cursor navigation. Windows CI required.
 
+**26.11.2026 — T10/T14: cached Song Set frame view.** EditorSetController owns its metadata snapshot keyed by published library revision, workspace view revision, active path/title/audio availability. Selection/scroll changes update only scalar state; frame callers borrow the snapshot, commands can retain independent value snapshots. Parked name/membership and new difficulty association changes invalidate the workspace key. Main's two native syncs and renderer reuse the same view; no full-library FindChart or per-difficulty copies on unchanged frames. Workflow regression checks row storage reuse during selection and parked rename invalidation without catalog publication. Windows CI required.
+
 **Приёмка.** Для выбранного FPS связывать цифры с реальным бюджетом кадра (например, 6,94 мс при 144 Гц) и базой той же машины. Менять только доказанный источник задержки. Возможные локальные решения — переиспользование буферов mesh, декодирование с отменой, индекс сегментов темпа. Сравнить до/после, контрольные суммы, точность нот, критерии сортировки и метрики сложности. Изменение формулы рейтинга получает собственную версию и отдельные музыкальные примеры.
 
 <a id="t15"></a>

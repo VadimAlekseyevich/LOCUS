@@ -3,6 +3,7 @@
 #include "app/chart_editor_ui.h"
 #include "app/music_picker.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -49,7 +50,10 @@ public:
     EditorSetController(EditorSetContext context, EditorSetPickers pickers)
         : ctx_(context), pickers_(pickers) {}
 
-    EditorSetView View() const;
+    // Frame-only borrow; invalidated by the next FrameView/View call after
+    // structural changes. Commands that need a stable snapshot use View().
+    const EditorSetView& FrameView() const;
+    EditorSetView View() const { return FrameView(); }
     void HandleControls(const EditorControls& input);
     void Request(EditorSetAction action);
     // The native SET panel and legacy authoring handler share one validated
@@ -74,6 +78,18 @@ public:
     void CancelPending() noexcept { pending_.reset(); }
 
 private:
+    EditorSetView BuildView() const;
+    void UpdateViewSelection(EditorSetView& view) const;
+    struct ViewCache {
+        EditorSetView view;
+        bool ready=false;
+        std::uint64_t catalogRevision=0,workspaceRevision=0;
+        std::wstring chartPath;
+        std::string title,selectedId;
+        bool hasAudio=false;
+        int selected=-1,firstVisible=0;
+    };
+    mutable ViewCache viewCache_;
     bool Execute(const EditorSetRequest& request);
     void Notice(const std::string& message, bool failed = false);
     EditorSetContext ctx_;
