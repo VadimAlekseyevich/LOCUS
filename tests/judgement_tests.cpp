@@ -69,6 +69,39 @@ int main() {
     ok &= Check(comboJudge.Combo()==0 && comboJudge.MaxCombo()==0,
                 "mid-chart practice starts with empty streak");
 
+    // Two independent diagonal hits at -40/+80 ms: mean 20, population
+    // deviation 60 ms, UR 600. Wrong-direction and expiry are not samples.
+    Chart telemetryChart;
+    telemetryChart.turns = {{2, Heading::UpRight, 1000},
+                            {4, Heading::Down, 2000},
+                            {6, Heading::Left, 3000}};
+    TurnJudge telemetry(telemetryChart);
+    telemetry.PressHeading(Heading::Up, 0.96);
+    telemetry.PressHeading(Heading::Right, 1.08);
+    telemetry.PressHeading(Heading::Up, 2.0);
+    telemetry.FinishRemainingMisses();
+    const auto statistics = telemetry.Statistics();
+    ok &= Check(statistics.maxCombo == 2 && statistics.timedHits == 2 &&
+                telemetry.Counts().miss == 2 &&
+                std::abs(statistics.meanErrorMs - 20.0) < 1e-8 &&
+                std::abs(statistics.unstableRate - 600.0) < 1e-8,
+                "timing telemetry counts each successful arrow and excludes misses");
+    telemetry.ResetFromAudioSeconds(2.0);
+    const auto resetStats = telemetry.Statistics();
+    ok &= Check(resetStats.maxCombo == 0 && resetStats.timedHits == 0 &&
+                resetStats.meanErrorMs == 0.0 && resetStats.unstableRate == 0.0,
+                "practice restart clears all timing telemetry");
+    telemetry.PressHeading(Heading::Down, 2.025);
+    ok &= Check(telemetry.Statistics().timedHits == 1 &&
+                std::abs(telemetry.Statistics().meanErrorMs - 25.0) < 1e-8 &&
+                telemetry.Statistics().unstableRate == 0.0,
+                "single sample has zero population variance");
+    telemetry.Reset();
+    telemetry.FinishRemainingMisses();
+    ok &= Check(telemetry.Statistics().timedHits == 0 &&
+                telemetry.Statistics().maxCombo == 0,
+                "all-miss run has no timing sample or combo");
+
     const Chart demo = MakeDemoChart();
     TurnJudge judge(demo);
 

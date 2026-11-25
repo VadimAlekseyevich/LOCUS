@@ -46,7 +46,7 @@ std::int64_t ClockMs() {
 }
 
 Json Encode(const RunResult& r) {
-    return Json{
+    Json result{
         {"version", 2}, {"id", r.id}, {"songSetId", r.songSetId},
         {"difficultyId", r.difficultyId},
         {"gameplayRevision", r.gameplayRevision},
@@ -60,6 +60,14 @@ Json Encode(const RunResult& r) {
         {"practiceRate", r.practiceRate},
         {"variablePracticeRate", r.variablePracticeRate}
     };
+    if (r.statistics) {
+        const auto& s = *r.statistics;
+        result["statistics"] = {{"maxCombo", s.maxCombo},
+                                {"timedHits", s.timedHits},
+                                {"meanErrorMs", s.meanErrorMs},
+                                {"unstableRate", s.unstableRate}};
+    }
+    return result;
 }
 
 bool Decode(const Json& obj, RunResult& out) {
@@ -85,6 +93,14 @@ bool Decode(const Json& obj, RunResult& out) {
         // v2 records created before variable-rate tracking represented a
         // single nominal speed. New records always persist this explicit flag.
         r.variablePracticeRate = obj.value("variablePracticeRate", false);
+        if (obj.contains("statistics")) {
+            const auto& s = obj.at("statistics");
+            if (!s.is_object() || !s.at("maxCombo").is_number_integer() ||
+                !s.at("timedHits").is_number_integer()) return false;
+            r.statistics = core::RunStatistics{
+                s.at("maxCombo").get<int>(), s.at("timedHits").get<int>(),
+                s.at("meanErrorMs").get<double>(), s.at("unstableRate").get<double>()};
+        }
         if (!ValidRunResult(r)) return false;
         out = std::move(r);
         return true;
@@ -115,6 +131,23 @@ bool ValidRunResult(const RunResult& r) noexcept {
         !std::isfinite(r.accuracyPercent) ||
         !std::isfinite(r.practiceRate) ||
         r.practiceRate <= 0.0 || r.practiceRate > 1.0) return false;
+    if (r.statistics) {
+        const auto& s = *r.statistics;
+        const int hits = r.notesJudged - r.grades.miss;
+        // At most miss+1 streaks; a nonempty run needs a nonempty best streak.
+        const int minCombo = (hits + r.grades.miss) / (r.grades.miss + 1);
+        constexpr double limitMs = core::kBadWindowSeconds * 1000.0;
+        // Historical rules may have different windows; only apply the
+        // current window bound to results with the current rules revision.
+        if (s.timedHits != hits || s.maxCombo < minCombo || s.maxCombo > hits ||
+            !std::isfinite(s.meanErrorMs) || !std::isfinite(s.unstableRate) ||
+            s.unstableRate < 0.0 ||
+            (s.timedHits == 0 && s.meanErrorMs != 0.0) ||
+            (s.timedHits < 2 && s.unstableRate != 0.0) ||
+            (r.judgementVersion == core::kJudgementRulesVersion &&
+             (std::abs(s.meanErrorMs) > limitMs + 1e-6 ||
+              s.unstableRate > 10.0 * limitMs + 1e-6))) return false;
+    }
     const double computed = r.grades.AccuracyPercent();
     return std::abs(r.accuracyPercent - computed) <= 0.011;
 }
@@ -144,6 +177,7 @@ bool CaptureCompletedRun(const RunResultsStore& store,
     record.notesJudged = static_cast<int>(completion.scorableCount);
     record.practiceRate = completion.practiceRate;
     record.variablePracticeRate = completion.variablePracticeRate;
+    record.statistics = completion.statistics;
     if (!store.Save(record, error)) return false;
     saved = std::move(record);
     return true;

@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,8 @@ struct RunResult {
     // The saved rate is the FINAL rate. True means one or more earlier
     // segments were played at another rate; it is not a fixed-rate result.
     bool variablePracticeRate = false;
+    // Missing for attempts created before timing telemetry was introduced.
+    std::optional<core::RunStatistics> statistics;
 };
 
 struct RunKey {
@@ -97,6 +100,8 @@ struct CompletedRunContext {
     double practiceRate = 1.0;
     std::string gameplayRevision;
     bool variablePracticeRate = false;
+    // Missing for attempts created before timing telemetry was introduced.
+    std::optional<core::RunStatistics> statistics;
 };
 
 // Returns true only after a durable result is written. On ineligible calls

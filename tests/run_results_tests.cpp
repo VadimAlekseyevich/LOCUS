@@ -246,13 +246,29 @@ int main(int argc, char** argv) {
     variable.completedAtMs += 7000;
     variable.practiceRate = 1.0;
     variable.variablePracticeRate = true;
+    variable.statistics = locus::core::RunStatistics{4, 6, -12.5, 125.0};
     const bool variableSaved = store.Save(variable, error);
     const auto variableHistory = store.Load({"set-123", kEasyId}, error);
     ok &= Check(variableSaved && error.empty() &&
                 !variableHistory.empty() &&
                 variableHistory.front().variablePracticeRate &&
-                variableHistory.front().practiceRate == 1.0,
+                variableHistory.front().practiceRate == 1.0 &&
+                variableHistory.front().statistics &&
+                variableHistory.front().statistics->maxCombo == 4 &&
+                variableHistory.front().statistics->timedHits == 6 &&
+                variableHistory.front().statistics->meanErrorMs == -12.5 &&
+                variableHistory.front().statistics->unstableRate == 125.0 &&
+                !history[0].statistics && !history[1].statistics,
                 "mixed-rate run remains distinguishable after returning to 100%");
+
+    RunResult invalidStats = variable;
+    invalidStats.statistics->timedHits = 7;
+    ok &= Check(!locus::app::ValidRunResult(invalidStats),
+                "timing count must equal successful physical arrow count");
+    invalidStats = variable;
+    invalidStats.statistics->maxCombo = 2;
+    ok &= Check(!locus::app::ValidRunResult(invalidStats),
+                "combo must be feasible given number of misses");
 
     // History loads on a worker and only the latest selected difficulty may
     // publish. Repeated requests must cancel/discard earlier results.

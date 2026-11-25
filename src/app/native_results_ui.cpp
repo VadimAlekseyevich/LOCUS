@@ -74,6 +74,21 @@ void NativeResultsUi::Sync() {
     SetText("results-good", std::to_string(grades_->good));
     SetText("results-bad", std::to_string(grades_->bad));
     SetText("results-miss", std::to_string(grades_->miss));
+    // No inferred combo/zero timing for historical records without telemetry.
+    const auto* statistics = selected_ && selected_->statistics
+        ? &*selected_->statistics : nullptr;
+    SetText("results-max-combo", statistics
+        ? std::to_string(statistics->maxCombo) + "x" : "--");
+    const auto timing = [](double value, bool sign, const char* unit) {
+        std::ostringstream out;
+        if (sign) out << std::showpos;
+        out << std::fixed << std::setprecision(1) << value << unit;
+        return out.str();
+    };
+    SetText("results-mean-error", statistics && statistics->timedHits > 0
+        ? timing(statistics->meanErrorMs, true, " ms") : "--");
+    SetText("results-unstable-rate", statistics && statistics->timedHits > 1
+        ? timing(statistics->unstableRate, false, "") : "--");
     std::string detail;
     if (selected_ && selected_->variablePracticeRate) {
         detail = "VARIABLE RATE / LAST " + std::to_string(static_cast<int>(

@@ -1079,7 +1079,7 @@ int main(int argc, char** argv) try {
                     playedRunKey, playedSongTitle, chartTitle, judge.Counts(),
                     judge.ScorableCount(), playActions.Transport(now).practiceSpeed,
                     playedGameplayRevision,
-                    gameSession.VariablePracticeRate()
+                    gameSession.VariablePracticeRate(), judge.Statistics()
                 };
                 locus::app::RunResult record;
                 std::string error;

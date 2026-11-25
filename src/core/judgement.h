@@ -50,6 +50,15 @@ struct GradeCounts {
     }
 };
 
+// Compact completed-attempt telemetry, in original song milliseconds.
+// Misses (including wrong directions) are not timing samples.
+struct RunStatistics {
+    int maxCombo = 0;
+    int timedHits = 0;
+    double meanErrorMs = 0.0;
+    double unstableRate = 0.0; // 10 * population standard deviation (ms).
+};
+
 const char* GradeName(Grade grade) noexcept;
 const char* DirectionName(Heading heading) noexcept;
 
@@ -89,6 +98,7 @@ public:
     // Live streak of resolved physical arrows; only Miss breaks it.
     int Combo() const noexcept { return combo_; }
     int MaxCombo() const noexcept { return maxCombo_; }
+    RunStatistics Statistics() const noexcept;
     const std::optional<Judgement>& Last() const noexcept { return last_; }
     const TurnEvent* NextEvent() const noexcept;
 
@@ -119,6 +129,9 @@ private:
     GradeCounts counts_;
     int combo_ = 0;
     int maxCombo_ = 0;
+    int timedHits_ = 0;
+    double meanErrorMs_ = 0.0;
+    double errorM2Ms_ = 0.0;
     std::optional<Judgement> last_;
 };
 

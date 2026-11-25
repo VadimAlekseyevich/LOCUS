@@ -33,6 +33,8 @@ void TurnJudge::Reset() noexcept {
     firstScoredEvent_ = 0;
     counts_ = GradeCounts{};
     combo_ = maxCombo_ = 0;
+    timedHits_ = 0;
+    meanErrorMs_ = errorM2Ms_ = 0.0;
     last_.reset();
     RecountScorable();
     ResetArrowQueues();
@@ -130,13 +132,27 @@ void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
                       wrongDirection, arrow};
     nextByArrow_[lane] = FindNextArrow(at + 1, 1u << lane);
     if (grade == Grade::Miss) combo_ = 0;
-    else maxCombo_ = std::max(maxCombo_, ++combo_);
+    else {
+        maxCombo_ = std::max(maxCombo_, ++combo_);
+        // Welford's online variance: no event allocations and stable for
+        // many nearly identical hits. Both diagonal arrows count separately.
+        const double errorMs = errorSeconds * 1000.0;
+        const double delta = errorMs - meanErrorMs_;
+        meanErrorMs_ += delta / ++timedHits_;
+        errorM2Ms_ += delta * (errorMs - meanErrorMs_);
+    }
     switch (grade) {
         case Grade::Perfect: ++counts_.perfect; break;
         case Grade::Good: ++counts_.good; break;
         case Grade::Bad: ++counts_.bad; break;
         case Grade::Miss: ++counts_.miss; break;
     }
+}
+
+RunStatistics TurnJudge::Statistics() const noexcept {
+    return {maxCombo_, timedHits_, meanErrorMs_,
+            timedHits_ == 0 ? 0.0 : 10.0 * std::sqrt(
+                std::max(0.0, errorM2Ms_ / timedHits_))};
 }
 
 void TurnJudge::Advance(double songSeconds) noexcept {
