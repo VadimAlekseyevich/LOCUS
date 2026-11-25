@@ -64,4 +64,14 @@ struct LibraryLaunchContext {
 bool LaunchLibrarySelection(const LibraryLaunchContext& context,
                             const MenuEvents& event, double now);
 
+struct ReplayLaunchInfo {
+    std::filesystem::path chart;
+    std::filesystem::path background;
+};
+// Resolve a saved attempt by stable identity, not the last played or selected
+// difficulty. No active session changes before verification and audio load.
+bool LaunchSavedReplay(const LibraryLaunchContext& context,
+                       const RunResultsStore& store, const RunResult& result,
+                       ReplayLaunchInfo& info, double now);
+
 } // namespace locus::app

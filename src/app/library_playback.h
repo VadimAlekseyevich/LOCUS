@@ -4,11 +4,12 @@
 
 #include <string>
 
-namespace locus::core { class TurnJudge; }
+namespace locus::core { class TurnJudge; struct ReplayTrace; }
 namespace locus::app {
 class LocalMusic;
 class ChartPlayback;
 class GameSession;
+struct RunResult;
 
 // Non-owning lifetime contract: activeChart is the same object referenced by
 // the judge and GameSession. Only its CONTENTS are replaced after validation.
@@ -34,10 +35,16 @@ bool RequiresLibraryAudioLoad(const LibraryChart& selected,
                               const std::wstring& loadedAudioPath,
                               bool audioReady) noexcept;
 
+struct ReplayLaunchValidation {
+    const RunResult& result;
+    const core::ReplayTrace& trace;
+};
+
 // Decode (if required), validate a copy and only THEN replace the current
 // chart/audio/session metadata. Failure must preserve every active reference.
 bool ActivateLibraryDifficulty(const LibraryChart& selected,
                                const LibraryPlaybackContext& context,
-                               double now, std::string& error);
+                               double now, std::string& error,
+                               const ReplayLaunchValidation* replay = nullptr);
 
 } // namespace locus::app

@@ -261,6 +261,11 @@ bool RunResultsStore::Save(RunResult& r, std::string& error,
         const fs::path dest = dir / (fileId + ".json");
         const fs::path replayPath = dir / (fileId + ".locus-replay");
         if (!replayBytes.empty()) {
+            // Avoid briefly attaching a new sidecar to an already committed
+            // score whose original sidecar was removed. Exclusive publication
+            // remains authoritative for concurrent new writers.
+            std::error_code probe;
+            if (fs::exists(dest,probe)) continue;
             // Exclusive sidecar claim before summary publication.
             const auto replayStatus = AtomicCreateTextFile(
                 replayPath, replayBytes, error);

@@ -3,6 +3,8 @@
 #include "app/chart_playback.h"
 #include "app/game_session.h"
 #include "app/local_music.h"
+#include "app/run_results.h"
+#include "core/chart_revision.h"
 #include "core/chart_json.h"
 #include "core/judgement.h"
 
@@ -33,7 +35,8 @@ bool RequiresLibraryAudioLoad(const LibraryChart& selected,
 
 bool ActivateLibraryDifficulty(const LibraryChart& selected,
                                const LibraryPlaybackContext& context,
-                               double now, std::string& error) {
+                               double now, std::string& error,
+                               const ReplayLaunchValidation* replay) {
     if (selected.audioFile.empty() || !selected.HasPayload()) {
         error = "Selected difficulty has no validated chart data or audio.";
         return false;
@@ -58,6 +61,16 @@ bool ActivateLibraryDifficulty(const LibraryChart& selected,
     core::LoadedChart prepared;
     if (!PrepareLibraryDifficulty(selected, duration, prepared, error))
         return false;
+
+    if (replay &&
+        (replay->result.songSetId != selected.songSetId ||
+         replay->result.difficultyId != prepared.difficultyId ||
+         replay->trace.offsetSeconds != prepared.offsetSeconds ||
+         !VerifyRunReplay(replay->result,replay->trace,prepared.route,
+                          core::ChartGameplayRevision(prepared)))) {
+        error = "Replay does not reproduce this difficulty revision.";
+        return false;
+    }
 
     // No visible state is changed until both audio and chart are valid.
     // Keep the Chart object's ADDRESS stable for TurnJudge and GameSession.

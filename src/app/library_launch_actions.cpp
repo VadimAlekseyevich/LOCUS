@@ -5,6 +5,9 @@
 #include "app/library_playback.h"
 #include "app/screen_flow.h"
 #include "core/judgement.h"
+#include "core/chart_revision.h"
+#include "app/run_results.h"
+#include <utility>
 
 namespace locus::app {
 
@@ -79,6 +82,72 @@ bool LaunchLibrarySelection(const LibraryLaunchContext& ctx,
         }
     }
     return false;
+}
+
+bool LaunchSavedReplay(const LibraryLaunchContext& ctx,
+                       const RunResultsStore& store, const RunResult& result,
+                       ReplayLaunchInfo& info, double now) {
+    core::ReplayTrace trace;
+    if (result.judgementVersion != core::kJudgementRulesVersion) {
+        ctx.error = "Replay uses older judgement rules.";
+        return false;
+    }
+    if (!store.LoadReplay(result,trace,ctx.error)) return false;
+    ReplayLaunchInfo preparedInfo;
+    if (result.songSetId=="builtin-demo" &&
+        result.difficultyId=="00000000000000000000000000000001") {
+        core::LoadedChart demo;
+        demo.route=ctx.session.demoChart;
+        if (trace.offsetSeconds!=0.0 ||
+            !VerifyRunReplay(result,trace,demo.route,core::ChartGameplayRevision(demo))) {
+            ctx.error="Replay does not reproduce the current demo.";
+            return false;
+        }
+        ctx.session.customChart=false;
+        ctx.session.activeChart=std::move(demo.route);
+        ctx.session.chartTitle="BUILT-IN DEMO";
+        ctx.session.judge.SetOffsetSeconds(0.0);
+        ctx.ui.SelectSong(0,ctx.library);
+    } else {
+        int songIndex=-1, chartIndex=-1;
+        const auto& songs=ctx.library.Songs();
+        for (std::size_t i=0;i<songs.size() && songIndex<0;++i) {
+            if (songs[i].id!=result.songSetId) continue;
+            for (std::size_t j=0;j<songs[i].charts.size();++j) {
+                if (songs[i].charts[j].metadata.difficultyId!=result.difficultyId) continue;
+                songIndex=static_cast<int>(i);
+                chartIndex=static_cast<int>(j);
+                break;
+            }
+        }
+        if (songIndex<0) {
+            ctx.error="The recorded difficulty is not installed.";
+            return false;
+        }
+        const auto& song=songs[static_cast<std::size_t>(songIndex)];
+        const auto& chart=song.charts[static_cast<std::size_t>(chartIndex)];
+        if (chart.gameplayRevision!=result.gameplayRevision) {
+            ctx.error="The recorded chart revision is not installed.";
+            return false;
+        }
+        const LibraryPlaybackContext playback{
+            ctx.session.song,ctx.loadedAudioPath,ctx.session.activeChart,
+            ctx.session.chartTitle,ctx.session.chartPlayback,ctx.session.judge,
+            ctx.session.gameSession,ctx.session.customChart
+        };
+        const ReplayLaunchValidation validation{result,trace};
+        if (!ActivateLibraryDifficulty(chart,playback,now,ctx.error,&validation))
+            return false;
+        preparedInfo.chart=chart.file;
+        preparedInfo.background=song.backgroundImage;
+        ctx.ui.SelectSong(songIndex+1,ctx.library);
+        ctx.ui.SelectChart(chartIndex,ctx.library);
+    }
+    ctx.session.gameSession.SetReplay(std::move(trace));
+    ctx.app.screen=Screen::Play;
+    info=std::move(preparedInfo);
+    ctx.error.clear();
+    return true;
 }
 
 } // namespace locus::app

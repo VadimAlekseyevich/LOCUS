@@ -22,7 +22,8 @@ target_link_libraries(locus_play_presentation PUBLIC locus_core raylib)
 add_library(locus_library_activation STATIC
     src/app/library_playback.cpp
 )
-target_link_libraries(locus_library_activation PUBLIC locus_song_library locus_game_session)
+target_link_libraries(locus_library_activation PUBLIC locus_song_library locus_game_session
+    PRIVATE locus_result_store)
 
 add_library(locus_library_browser STATIC
     src/app/library_browser.cpp
