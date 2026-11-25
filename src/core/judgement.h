@@ -86,6 +86,9 @@ public:
     std::optional<Judgement> PressHeading(Heading outgoing, double songSeconds);
 
     const GradeCounts& Counts() const noexcept { return counts_; }
+    // Live streak of resolved physical arrows; only Miss breaks it.
+    int Combo() const noexcept { return combo_; }
+    int MaxCombo() const noexcept { return maxCombo_; }
     const std::optional<Judgement>& Last() const noexcept { return last_; }
     const TurnEvent* NextEvent() const noexcept;
 
@@ -114,6 +117,8 @@ private:
     // queues still reference it.
     std::array<std::size_t, 4> nextByArrow_{};
     GradeCounts counts_;
+    int combo_ = 0;
+    int maxCombo_ = 0;
     std::optional<Judgement> last_;
 };
 

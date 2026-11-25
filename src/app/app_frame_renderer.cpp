@@ -270,8 +270,10 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     } else if (state.screen == Screen::Play) {
         DrawPlayGrid(font,gameplay,now,&ribbon);
         if (gameplay.paused) {
-            DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
-                          Color{12, 14, 22, 204});
+            DrawRectangleRec(transform.ToVirtualBounds(
+                {0.0f,0.0f,static_cast<float>(GetScreenWidth()),
+                           static_cast<float>(GetScreenHeight())}),
+                Color{12, 14, 22, 204});
             DrawTextLabel(font, "PAUSED", Vector2{355.0f, 198.0f},
                           59.0f, Color{240, 246, 247, 255});
             DrawUiButton(font, kPlayResumeButton, "RESUME",
@@ -286,9 +288,11 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                           Color{204, 213, 232, 255});
         }
         if (gameplay.outro.blackOpacity > 0.0f)
-            DrawRectangle(0, 0, kWindowWidth, kWindowHeight,
-                          Color{5, 6, 11, static_cast<unsigned char>(
-                              std::lround(gameplay.outro.blackOpacity * 255.0f))});
+            DrawRectangleRec(transform.ToVirtualBounds(
+                {0.0f,0.0f,static_cast<float>(GetScreenWidth()),
+                           static_cast<float>(GetScreenHeight())}),
+                Color{5, 6, 11, static_cast<unsigned char>(
+                    std::lround(gameplay.outro.blackOpacity * 255.0f))});
     } else if (state.screen == Screen::Results) {
 #ifdef LOCUS_WITH_RMLUI
         if (!nativeMenu || !nativeMenu->ResultsAvailable() ||
@@ -484,9 +488,11 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
 #endif
     if (settings.showFps) {
         // Screen-pixel overlay, separate from the gameplay camera.
-        DrawRectangleRounded({8.0f, 8.0f, 100.0f, 30.0f}, 0.18f, 4,
+        const float x = state.screen == Screen::Play
+            ? (GetScreenWidth()-100.0f)*0.5f : 8.0f;
+        DrawRectangleRounded({x, 8.0f, 100.0f, 30.0f}, 0.18f, 4,
                              Color{17, 22, 33, 224});
-        DrawText(TextFormat("FPS %d", GetFPS()), 16, 14, 18,
+        DrawText(TextFormat("FPS %d", GetFPS()), static_cast<int>(x+8), 14, 18,
                  Color{199, 244, 228, 255});
     }
     // Full-window alpha covers every screen including non-16:9 gutters.

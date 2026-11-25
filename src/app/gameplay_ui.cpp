@@ -1,4 +1,5 @@
 #include "app/gameplay_ui.h"
+#include "app/gameplay_hud.h"
 #include "app/path_mesh.h"
 #include "core/utf8.h"
 
@@ -97,89 +98,17 @@ void DrawPlayGrid(Font font,const GameplayView& gameplay,double now,
     }
     EndScissorMode();
 
-    // Draw the frame AFTER all clipped route/player primitives. Alpha is
-    // supplied by the skin and the thin line remains inside the viewport.
-    DrawRectangleLinesEx(
-        {kGameplayWorldViewport.x + 0.75f, kGameplayWorldViewport.y + 0.75f,
-         kGameplayWorldViewport.width - 1.5f,
-         kGameplayWorldViewport.height - 1.5f},
-        1.5f, gameplay.skin.fieldBorder);
-
-    // Keep the entire LEFT side empty. In non-16:9 windows, the virtual
-    // 960px canvas is cropped at both edges: the old LOCUS / LAST HIT /
-    // SONG / SQUARE labels were literally cut in half on the player's
-    // screen. Those labels are no longer part of scored gameplay.
-    // Display speed and preview below the stats, or a brief notice inside
-    // the square when no HUD is available (including portrait windows).
-    const float sideWidth = GameplayRightSidebarWidth(
-        GetScreenWidth(), GetScreenHeight());
-    if (!gameplay.skin.showHud || sideWidth <= 0.0f) {
-        if (now < gameplay.adjustmentNoticeUntil) {
-            const char* value = gameplay.adjustmentNotice;
-            const float size = 17.0f;
-            const Vector2 measured = MeasureTextEx(font, value, size, 1.0f);
-            const Rectangle panel{
-                kGameplayWorldViewport.x +
-                    (kGameplayWorldViewport.width - measured.x) * 0.5f - 12.0f,
-                17.0f, measured.x + 24.0f, 32.0f};
-            DrawRectangleRounded(panel, 0.2f, 4,
-                                 locus::app::WithOpacity(gameplay.skin.hudBackground, 0.87f));
-            DrawTextLabel(font, value, {panel.x + 12.0f, panel.y + 7.0f},
-                          size, gameplay.skin.hudText);
-        }
-        return;
-    }
-
-    const float squareRight = kGameplayWorldViewport.x +
-                              kGameplayWorldViewport.width;
-    DrawRectangleRec({squareRight, 0.0f, sideWidth,
-                      static_cast<float>(kVirtualHeight)},
-                     gameplay.skin.hudBackground);
-
-    const float padding = std::min(24.0f, sideWidth * 0.10f);
-    const float right = squareRight + padding;
-    const float availableTextWidth = sideWidth - padding - 8.0f;
-    if (availableTextWidth < 20.0f) return;
-
-    // Fit each heading/value within the truly visible right sidebar
-    // rather than blindly drawing at positions outside the window.
-    const auto hudText = [&](const char* label, float y, float desiredSize,
-                             Color color) {
-        const float naturalWidth = MeasureTextEx(
-            font, label, desiredSize, 1.0f).x;
-        const float fitted = naturalWidth > availableTextWidth
-            ? desiredSize * availableTextWidth / naturalWidth
-            : desiredSize;
-        DrawTextLabel(font, label, {right, y}, fitted, color);
-    };
-
-    const auto& counts = gameplay.judge.Counts();
-    hudText("ACCURACY", 30.0f, 17.0f, gameplay.skin.hudText);
-    hudText(TextFormat("%.2f%%", counts.AccuracyPercent()),
-            63.0f, 30.0f, gameplay.skin.hudText);
-    DrawLineEx({right, 118.0f},
-               {squareRight + sideWidth - 8.0f, 118.0f}, 1.0f,
-               locus::app::WithOpacity(gameplay.skin.hudText, 0.28f));
-    const struct {
-        const char* label;
-        int count;
-        Color color;
-    } stats[] = {
-        {"PERFECT", counts.perfect, {133, 236, 201, 255}},
-        {"GOOD", counts.good, {143, 208, 239, 255}},
-        {"BAD", counts.bad, {242, 198, 135, 255}},
-        {"MISS", counts.miss, {237, 142, 149, 255}}
-    };
-    for (int i = 0; i < 4; ++i) {
-        const float y = 144.0f + i * 89.0f;
-        hudText(stats[i].label, y, 17.0f, stats[i].color);
-        hudText(TextFormat("%d", stats[i].count), y + 26.0f,
-                28.0f, gameplay.skin.hudText);
-    }
-    hudText(TextFormat("PREVIEW %.0f MS", gameplay.skin.lookaheadMs),
-            480.0f, 14.0f, gameplay.skin.hudText);
-    hudText(TextFormat("SPEED %.0f PX/S", gameplay.skin.baseSpeedPxPerSecond),
-            502.0f, 15.0f, gameplay.skin.hudText);
+    // The world camera and its square remain unchanged. Anchor the HUD
+    // to the full visible window, including narrow and portrait layouts.
+    const Rectangle visible = transform.ToVirtualBounds(
+        {0.0f,0.0f,static_cast<float>(GetScreenWidth()),
+                   static_cast<float>(GetScreenHeight())});
+    DrawGameplayFieldEdges(kGameplayWorldViewport,visible,gameplay.skin.fieldBorder);
+    const auto layout = LayoutGameplayHud(visible);
+    DrawGameplayHud(font,layout,MakeGameplayHudStats(gameplay.judge,gameplay.practiceSpeed),
+                    gameplay.skin);
+    if (now < gameplay.adjustmentNoticeUntil)
+        DrawGameplayNotice(font,layout,gameplay.adjustmentNotice,gameplay.skin);
 }
 
 void DrawResultsScreen(Font font, const GameplayView& gameplay,

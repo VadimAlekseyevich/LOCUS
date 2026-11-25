@@ -72,6 +72,7 @@ add_executable(locus
     src/app/app_input.cpp
     src/app/menu_controller.cpp
     src/app/gameplay_ui.cpp
+    src/app/gameplay_hud.cpp
     src/app/native_close.cpp
     src/app/window_mode.cpp
     src/app/menu_music_preview.cpp

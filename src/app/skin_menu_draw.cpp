@@ -1,4 +1,5 @@
 #include "app/skin_menu.h"
+#include "app/gameplay_hud.h"
 #include "app/skin_menu_layout.h"
 #include "app/skin_hue_geometry.h"
 #include "app/menu_ui.h"
@@ -166,23 +167,17 @@ void PreviewPath(Font font, const Skin& skin,
                 WithOpacity(skin.playerCore, opacity));
     EndScissorMode();
 
-    DrawRectangleLinesEx({frame.x + 0.75f, frame.y + 0.75f,
-                          frame.width - 1.5f, frame.height - 1.5f},
-                         1.5f, skin.fieldBorder);
-    // The preview must also reflect the HUD and hit-flash palette entries,
-    // not only the route and marker, so each color has a visible example.
-    if (skin.showHud) {
-        const Rectangle hud{836, 255, 63, 104};
-        DrawRectangleRounded(hud, 0.1f, 4, skin.hudBackground);
-        Label(font, "ACC", 841, 263, 11, skin.hudText);
-        Label(font, "98.5%", 839, 282, 11, skin.hudText);
-        Label(font, "PERF", 841, 310, 10, skin.hudText);
-        Label(font, "42", 845, 326, 13, skin.hudText);
-    } else {
-        Label(font, "HUD", 839, 280, 11, kMuted);
-        Label(font, "OFF", 840, 296, 11, kMuted);
-    }
-
+    DrawGameplayFieldEdges(frame,area,skin.fieldBorder);
+    // Preview exactly the same HUD layout and palette with illustrative
+    // statistics, rather than maintaining a second UI.
+    GameplayHudStats sample;
+    sample.grades = {42, 6, 1, 2};
+    sample.total = 80;
+    sample.combo = 18;
+    sample.maxCombo = 32;
+    sample.last = core::Judgement{core::Grade::Perfect,0,-0.012,false,
+                                  core::Heading::Right};
+    DrawGameplayHud(font,LayoutGameplayHud(area),sample,skin);
 }
 
 void DrawColorPickerWheel(const Skin& skin, const SkinUi& ui) {

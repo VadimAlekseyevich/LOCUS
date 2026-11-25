@@ -55,6 +55,20 @@ int main() {
     ok &= Check(allMiss.AccuracyPercent() == 0.0,
                 "chart with only misses has 0 percent accuracy");
 
+    Chart comboChart = MakeDemoChart();
+    comboChart.turns = {{2,Heading::UpRight},{5,Heading::Down}};
+    TurnJudge comboJudge(comboChart);
+    comboJudge.PressHeading(Heading::Up,1.0);
+    comboJudge.PressHeading(Heading::Right,1.0);
+    ok &= Check(comboJudge.Combo()==2 && comboJudge.MaxCombo()==2,
+                "diagonal contributes two resolved arrows");
+    comboJudge.Advance(3.0);
+    ok &= Check(comboJudge.Combo()==0 && comboJudge.MaxCombo()==2,
+                "expiry breaks streak");
+    comboJudge.ResetFromBeat(5);
+    ok &= Check(comboJudge.Combo()==0 && comboJudge.MaxCombo()==0,
+                "mid-chart practice starts with empty streak");
+
     const Chart demo = MakeDemoChart();
     TurnJudge judge(demo);
 
@@ -84,12 +98,16 @@ int main() {
     ok &= Check(Is(badEarly, Grade::Bad, 8),
                 "correct key near the outer timing limit gives Bad");
 
+    ok &= Check(judge.Combo() == 3 && judge.MaxCombo() == 3,
+                "Perfect, Good and Bad each increment the live streak");
     const auto wrong = judge.PressHeading(Heading::Left, fourth);
     ok &= Check(Is(wrong, Grade::Miss, 12) && wrong->wrongDirection,
                 "wrong key in the timing window must be Miss");
     ok &= Check(!judge.PressHeading(Heading::Right, fourth + 0.01).has_value(),
                 "wrong first key cannot be overwritten by a second key");
 
+    ok &= Check(judge.Combo() == 0 && judge.MaxCombo() == 3,
+                "wrong direction breaks streak without losing best combo");
     // Missing a chart turn resolves exactly once when its late window ends.
     judge.Advance(8.18);
     ok &= Check(judge.Counts().Resolved() == 4 &&
@@ -109,6 +127,8 @@ int main() {
     ok &= Check(Is(nextPerfect, Grade::Perfect, 19),
                 "input after earlier misses still judges normally");
 
+    ok &= Check(judge.Combo() == 1 && judge.MaxCombo() == 3,
+                "streak restarts after a missed note");
     // All remaining turns are missed if nothing is played.
     judge.Advance(16.0);
     ok &= Check(judge.Counts().perfect == 2 &&

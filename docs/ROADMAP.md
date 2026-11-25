@@ -67,10 +67,12 @@ note timestamps and scoring stay authoritative and unchanged.
   reversals and dense patterns.
 - [ ] **G02. Player and junction materials.** Soft radial effects, readable
   target shapes, shared across gameplay and skin preview.
-- [ ] **G03. Playfield and HUD.** Remove prototype-like framing; responsive,
-  unobtrusive game information and edge treatment.
+- [ ] **G03. Playfield and HUD.** Responsive perimeter HUD, live combo,
+  all grades, note progress and last timing implemented; removed the
+  opaque sidebar and white frame. Shared skin preview; pending real-device
+  visual validation and readability tuning.
 - [ ] **G04. Judgement feedback.** Distinct hit effects, timing information,
-  optional hitsounds and combo after scoring semantics are defined.
+  optional hitsounds and further feedback.
 - [ ] **G05. Sight-reading and profiling.** Validate overlap/reversal cues,
   dense patterns, camera motion and GPU frame cost on real hardware.
 

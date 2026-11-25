@@ -32,6 +32,7 @@ const char* DirectionName(Heading direction) noexcept {
 void TurnJudge::Reset() noexcept {
     firstScoredEvent_ = 0;
     counts_ = GradeCounts{};
+    combo_ = maxCombo_ = 0;
     last_.reset();
     RecountScorable();
     ResetArrowQueues();
@@ -128,6 +129,8 @@ void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
     last_ = Judgement{grade, chart_.turns[at].beat, errorSeconds,
                       wrongDirection, arrow};
     nextByArrow_[lane] = FindNextArrow(at + 1, 1u << lane);
+    if (grade == Grade::Miss) combo_ = 0;
+    else maxCombo_ = std::max(maxCombo_, ++combo_);
     switch (grade) {
         case Grade::Perfect: ++counts_.perfect; break;
         case Grade::Good: ++counts_.good; break;
