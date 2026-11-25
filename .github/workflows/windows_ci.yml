@@ -102,6 +102,17 @@ jobs:
             throw "Expected one reported timing per headless route scenario"
           }
 
+      - name: Profile editor model on 65536 notes and 256 BPM markers
+        run: |
+          & "build/windows/Release/locus_editor_bench.exe" |
+            Tee-Object -FilePath build/windows/editor-benchmark.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $report = Get-Content build/windows/editor-benchmark.txt -Raw
+          if ($report -notmatch "EDITOR_BENCH_PASS notes=65536 markers=256" -or
+              ($report | Select-String "EDITOR_BENCH " -AllMatches).Matches.Count -ne 6) {
+            throw "Expected six editor model benchmark scenarios"
+          }
+
       - name: Run headless production and dependency diagnostics
         run: |
           $release = "build/windows/Release"
@@ -237,6 +248,7 @@ jobs:
             build/windows/ctest-output.txt
             build/windows/ctest.xml
             build/windows/preview-benchmark.txt
+            build/windows/editor-benchmark.txt
             build/windows/library-scan-benchmark.csv
             build/windows/library-dense-benchmark.csv
             build/windows/library-browser-benchmark.csv

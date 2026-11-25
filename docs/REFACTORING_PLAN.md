@@ -248,6 +248,8 @@
 
 **26.11.2026 — T14: batched editor paste.** PasteTurns validates/projects the complete clipboard, merges sorted timestamps within the touched tick range, overwrites the common prefix and shifts the untouched suffix once. Exact-time replacement preserves existing representation; no-op/invalid paste does not touch history. Complexity of vector operations changes from repeated O(N) insertion to O(N+M) (tempo conversion cost separate). Regression covers 16,384 existing + 32,768 incoming records, overlap, identical paste, invalid final note and Undo/Redo. Windows CI required.
 
+**26.11.2026 — T14: editor model profiler.** New optional `locus_editor_bench` exercises 65,536 notes and 256 BPM markers with actual ChartEditor paste/Undo/Redo, cached difficulty, exact-time selection and full tempo reprojection. Reports nearest-rank p50/p95/p99 and checks note counts, exact timestamps and stable route revisions on navigation. CI captures editor-benchmark.txt; no GPU/input/audio or pre-optimization wall-clock baseline. Bench timings are not frame timings.
+
 **Приёмка.** Для выбранного FPS связывать цифры с реальным бюджетом кадра (например, 6,94 мс при 144 Гц) и базой той же машины. Менять только доказанный источник задержки. Возможные локальные решения — переиспользование буферов mesh, декодирование с отменой, индекс сегментов темпа. Сравнить до/после, контрольные суммы, точность нот, критерии сортировки и метрики сложности. Изменение формулы рейтинга получает собственную версию и отдельные музыкальные примеры.
 
 <a id="t15"></a>
