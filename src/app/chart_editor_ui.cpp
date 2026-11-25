@@ -516,26 +516,26 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         }
 
         const Rectangle previewArea = PreviewBounds(ui);
-        if (HasLayoutArea(previewArea)) {
-        DrawRectangleRounded(previewArea,UiRoundness(previewArea,12),10,
-                             Color{25,33,53,235});
-        DrawRectangleRoundedLinesEx(previewArea,UiRoundness(previewArea,12),
-                                    10,1,theme.divider);
         EditorComparisonFrame fallback;
         core::TimedRoute one;
-        if (!comparisons) {
+        if (!comparisons && (HasLayoutArea(previewArea) || !nativeShell)) {
             if (one.Compile(draft.Data().route,draft.Data().offsetSeconds))
                 fallback.panes[0]={&one,draft.Data().title,true};
             fallback.count=1;
             fallback.directionPressCounts=DirectionPressCounts(chart);
             comparisons=&fallback;
         }
+        if (comparisons && HasLayoutArea(previewArea)) {
+        DrawRectangleRounded(previewArea,UiRoundness(previewArea,12),10,
+                             Color{25,33,53,235});
+        DrawRectangleRoundedLinesEx(previewArea,UiRoundness(previewArea,12),
+                                    10,1,theme.divider);
         Skin editorSkin=skin;
         editorSkin.lookaheadMs=settings.editorPreviewLengthMs;
         DrawComparisonPreviews(font,ui,*comparisons,previewSeconds,
             settings.editorPreviewSpeed, editorSkin);
         const int focused=std::clamp(ui.comparisonFocusedSlot,0,
-                                    comparisons->count-1);
+                                    std::max(0, comparisons->count-1));
         const Rectangle focusedBounds=ComparisonPreviewBounds(
             ui,comparisons->count,focused);
         Label(font,TextFormat("%.1f",draft.Difficulty().overall),

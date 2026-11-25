@@ -231,7 +231,12 @@ int main() {
     if (easyBeatSelected) editor.PutTurn(core::Heading::DownLeft);
     ok &= Check(easyBeatSelected && editor.Dirty(),
                 "Easy > author a diagonal note");
+    editorUi.layout.native = true;
+    editorUi.layout.coordinates = app::ViewportTransform::NativeUi(1.5f);
+    editorUi.layout.preview = {15,70,820,450};
     ok &= Check(files.FocusChart(installedHard, error) &&
+                editorUi.layout.native && editorUi.layout.preview.width == 820 &&
+                editorUi.layout.coordinates.scale == 1.5f &&
                 editor.Data().title == "Hard" &&
                 files.ParkedEditor(installedEasy) &&
                 files.ParkedEditor(installedEasy)->Dirty(),
@@ -241,7 +246,9 @@ int main() {
     ok &= Check(hardBeatSelected && editor.Dirty() &&
                 files.AnyDirty() && files.HasDirtyParked(),
                 "Hard > author second unsaved difficulty");
+    editorUi.layout.preview.width = 1000; // the window grew while Easy was parked
     ok &= Check(files.FocusChart(installedEasy, error) &&
+                editorUi.layout.native && editorUi.layout.preview.width == 1000 &&
                 editor.Data().title == "Easy" && editor.Dirty() &&
                 files.ParkedEditor(installedHard) &&
                 files.ParkedEditor(installedHard)->Dirty(),

@@ -44,6 +44,7 @@
 .editor-pad-count { position:absolute; right:5dp; bottom:5dp;
   line-height:1; font-size:10dp; color:#c9bbfa; }
 #editor-route-pad button.selected { background-color:#585281; border-color:#b5a4f3; }
+#editor-route-options { display:flex; flex-direction:column; flex:0 0 auto; gap:5dp; min-width:0; }
 #editor-route-speed, #editor-route-path { width:184dp; height:31dp; flex:0 0 31dp; pointer-events:auto; display:flex; flex-direction:row; align-items:center; gap:4dp; }
 .editor-option-label { display:block; font-size:11dp; color:#bac5dc; width:47dp; }
 .editor-option-value { display:block; font-size:10dp; color:#a2d8ee; overflow:hidden; white-space:nowrap; width:50dp; }
@@ -93,3 +94,36 @@
 .editor-set-row.active { border-color:#a2d8ee; }
 .editor-set-row.selected { background-color:#59527a; border-color:#a2d8ee; }
 #editor-set-hint { white-space:normal; color:#9da8c6; pointer-events:none; }
+
+/* These breakpoints change the container flow, never a chart coordinate.
+   Control dimensions are ergonomic dp sizes; canvases always flex. */
+@media (max-height:460dp) {
+  #editor-canvas { padding:8dp 10dp; gap:6dp; }
+  #editor-route-ui, #editor-route-workspace { gap:6dp; }
+  #editor-route-tools { flex-basis:34dp; gap:3dp; }
+  #editor-route-tools button, .editor-tool-gap { width:34dp; height:34dp; flex-basis:34dp; }
+  #editor-route-tools .button-label { font-size:20dp; }
+  #editor-route-inspector { flex-basis:148dp; gap:4dp; }
+  #editor-route-pad { width:148dp; height:142dp; flex-basis:142dp; gap:4dp; }
+  #editor-route-pad button { flex-basis:46dp; width:46dp; height:44dp; }
+  #editor-route-pad .button-label { font-size:20dp; }
+  #editor-route-options { gap:3dp; }
+  #editor-route-speed, #editor-route-path { width:148dp; height:27dp; flex-basis:27dp; gap:3dp; }
+  #editor-route-options .editor-option-label { width:34dp; font-size:10dp; }
+  #editor-route-options .editor-option-value { width:40dp; }
+  #editor-route-options button { flex-basis:29dp; width:29dp; height:25dp; }
+}
+@media (max-width:740dp) {
+  #editor-set-ui { flex-direction:column; overflow-y:auto; pointer-events:auto; }
+  /* Intrinsic minimum usable panel size; the parent scrolls instead of
+     squeezing labels, fields and difficulty/tempo lists into three slivers. */
+  .editor-set-panel { flex:1 0 340dp; min-height:340dp; }
+}
+@media (max-width:740dp) and (min-height:640dp) {
+  #editor-route-workspace { flex-direction:column; gap:8dp; }
+  #editor-route-tools { flex:0 0 42dp; flex-direction:row; justify-content:center; }
+  #editor-route-inspector { flex:0 0 175dp; flex-direction:row; align-items:center;
+    justify-content:center; gap:10dp; }
+  #editor-route-pad { flex:0 0 184dp; }
+  #editor-route-options { flex:0 0 184dp; }
+}

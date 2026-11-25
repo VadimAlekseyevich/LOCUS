@@ -901,9 +901,7 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                 ((over("editor-route-tools") && !over("editor-route-compare-gap")) ||
                  over("editor-ruler-controls") || over("editor-route-pad") ||
                  over("editor-route-speed") || over("editor-route-path"))) ||
-            (ui.tab == EditorTab::Set &&
-             (over("editor-set-metadata") || over("editor-set-audio") ||
-              over("editor-set-difficulties")));
+            (ui.tab == EditorTab::Set && over("editor-set-ui"));
         if (popupWasOpen && !popupContent && !transport) {
             ui.rateDropdownOpen = false;
             // The release event must dismiss only, not navigate through

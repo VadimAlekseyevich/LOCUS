@@ -510,6 +510,66 @@ int main(int argc, char** argv) {
                             ruler->GetAbsoluteTop()+ruler->GetOffsetHeight() <= slot->GetAbsoluteTop() &&
                             slot->GetAbsoluteTop()+slot->GetOffsetHeight() <= overview->GetAbsoluteTop(),
                             "native canvas slots grow in both dimensions and never overlap");
+                const auto bottom = [](Rml::Element* e) {
+                    return e->GetAbsoluteTop() + e->GetOffsetHeight();
+                };
+                const auto right = [](Rml::Element* e) {
+                    return e->GetAbsoluteLeft() + e->GetOffsetWidth();
+                };
+                const auto inside = [&](Rml::Element* e, int width, int height) {
+                    return e && e->GetOffsetWidth() > 0 && e->GetOffsetHeight() > 0 &&
+                        e->GetAbsoluteLeft() >= -1.0f && e->GetAbsoluteTop() >= -1.0f &&
+                        right(e) <= width+1.0f && bottom(e) <= height+1.0f;
+                };
+                struct Sample { int width, height; float density; bool stacked; };
+                for (const auto& sample : std::array<Sample,5>{{
+                    {800,450,1.0f,false}, {1920,810,1.0f,false},
+                    {1536,960,1.5f,false}, {800,450,1.125f,false},
+                    {900,1200,1.40625f,true}}}) {
+                    context->SetDimensions({sample.width,sample.height});
+                    context->SetDensityIndependentPixelRatio(sample.density);
+                    context->Update();
+                    auto* compare = editorDoc->GetElementById("editor-route-compare-gap");
+                    auto* options = editorDoc->GetElementById("editor-route-options");
+                    ok &= Check(inside(slot,sample.width,sample.height) &&
+                        inside(ruler,sample.width,sample.height) &&
+                        inside(overview,sample.width,sample.height) &&
+                        inside(compass,sample.width,sample.height) &&
+                        inside(toolrail,sample.width,sample.height) &&
+                        inside(compare,sample.width,sample.height) &&
+                        inside(options,sample.width,sample.height) &&
+                        bottom(ruler) <= slot->GetAbsoluteTop()+1.0f &&
+                        bottom(slot) <= overview->GetAbsoluteTop()+1.0f,
+                        "editor canvases and tools stay inside the viewport at each density/aspect");
+                    if (sample.stacked)
+                        ok &= Check(bottom(toolrail) <= slot->GetAbsoluteTop()+1.0f &&
+                            bottom(slot) <= compass->GetAbsoluteTop()+1.0f &&
+                            slot->GetOffsetWidth() > sample.width*.8f,
+                            "portrait editor reflows tools and inspector around the full-width preview");
+                    else
+                        ok &= Check(right(toolrail) <= slot->GetAbsoluteLeft()+1.0f &&
+                            right(slot) <= compass->GetAbsoluteLeft()+1.0f,
+                            "landscape editor keeps independent side rails");
+                }
+                // Portrait Song Setup must remain usable by scrolling the
+                // actual container; no hidden fixed-coordinate inputs.
+                route->SetProperty("display", "none");
+                set->SetProperty("display", "flex");
+                if (auto* status = editorDoc->GetElementById("editor-status-slot"))
+                    status->SetProperty("display", "block");
+                context->Update();
+                auto* meta = editorDoc->GetElementById("editor-set-metadata");
+                auto* difficulties = editorDoc->GetElementById("editor-set-difficulties");
+                ok &= Check(meta && difficulties && bottom(meta) <= audio->GetAbsoluteTop()+1.0f &&
+                    bottom(audio) <= difficulties->GetAbsoluteTop()+1.0f &&
+                    set->GetScrollHeight() > set->GetClientHeight() &&
+                    inside(overview,900,1200),
+                    "narrow Song Setup stacks its panels in a scrollable workspace");
+                set->SetScrollTop(set->GetScrollHeight());
+                context->Update();
+                ok &= Check(set->GetScrollTop() > 0 &&
+                    bottom(difficulties) <= bottom(set)+2.0f,
+                    "scrolling reaches the last difficulty management actions");
             } else ok &= Check(false, "editor exposes all three canvas slots");
         }
     }

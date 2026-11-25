@@ -36,8 +36,10 @@
     <button id="editor-pad-2" data-action="note" data-heading="2" title="DOWN"><span class="button-label editor-icon-label">↓</span><span id="editor-count-2" class="editor-pad-count">0</span></button>
     <button id="editor-pad-5" data-action="note" data-heading="5" title="DOWN RIGHT"><span class="button-label editor-icon-label">↘</span><span id="editor-count-5" class="editor-pad-count">0</span></button>
     </div>
+    <div id="editor-route-options">
     <div id="editor-route-speed"><div class="editor-option-label">SPEED</div><div id="editor-speed-label" class="editor-option-value">135 px/s</div><button data-action="speed-minus" ><span class="button-label">−</span></button><button data-action="speed-plus" ><span class="button-label">+</span></button></div>
     <div id="editor-route-path"><div class="editor-option-label">PATH</div><div id="editor-path-label" class="editor-option-value">800 ms</div><button data-action="path-minus" ><span class="button-label">−</span></button><button data-action="path-plus" ><span class="button-label">+</span></button></div>
+    </div>
     </div>
     </div>
   </div>
