@@ -143,8 +143,7 @@ void NativeResultsUi::ProcessEvent(Rml::Event& event) {
         target = target->GetParentNode();
     if (!target || target->HasAttribute("disabled")) return;
     const std::string action = target->GetAttribute<Rml::String>("data-action", "");
-    if (action == "back") input_->backPressed = true;
-    else if (!historical_ && action == "retry") input_->startPressed = true;
+    if (!historical_ && action == "retry") input_->startPressed = true;
     else if (!historical_ && action == "edit") input_->openEditorPressed = true;
     else if (action == "history") {
         const int index = target->GetAttribute<int>("data-index", -1);

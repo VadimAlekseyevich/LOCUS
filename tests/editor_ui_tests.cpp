@@ -128,6 +128,12 @@ int main() {
                     detail::kSongOverview.x+
                     detail::kSongOverview.width*.25f,120.0)-30.0)<.001,
                 "two independent timeline rows share no hitboxes");
+    const auto singlePreview = detail::ComparisonPreviewBounds(1, 0);
+    ok &= Check(singlePreview.width == 380.0f &&
+                singlePreview.height == singlePreview.width &&
+                singlePreview.y >= detail::kTimelineY + detail::kTimelineHeight &&
+                singlePreview.y + singlePreview.height < detail::kSongOverview.y,
+                "headerless authoring workspace expands single-chart preview");
     const auto referenceSquare = detail::ComparisonPreviewBounds(3, 0);
     ok &= Check(referenceSquare.width > 200.0f &&
                 referenceSquare.width < 210.0f &&

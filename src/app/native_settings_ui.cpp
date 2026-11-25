@@ -187,8 +187,7 @@ void NativeSettingsUi::ProcessEvent(Rml::Event& event) {
         return;
     }
     if (ui_->capturing >= 0 || ui_->editingGlobalOffset) return;
-    if (action == "back") input_->backPressed = true;
-    else if (action == "page-display") ui_->page = SettingsPage::Display;
+    if (action == "page-display") ui_->page = SettingsPage::Display;
     else if (action == "page-audio") ui_->page = SettingsPage::Game;
     else if (action == "group-play" || action == "group-menus" ||
              action == "group-editor") {

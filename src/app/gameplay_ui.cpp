@@ -235,8 +235,6 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay,
         DrawUiThemedButton(font, kResultsEditorButton, "EDIT CHART",
                            UiButtonVariant::Rose);
     }
-    DrawUiThemedButton(font, kResultsLibraryButton, "SONG LIBRARY",
-                       UiButtonVariant::Neutral);
 }
 
 

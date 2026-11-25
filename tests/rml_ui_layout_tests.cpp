@@ -184,6 +184,9 @@ int main(int argc, char** argv) {
                         "PLAY metadata fields must have block layout");
         }
         if (left && right) {
+            ok &= Check(left->GetOffsetHeight() > 680.0f &&
+                        right->GetOffsetHeight() > 680.0f,
+                        "PLAY uses full height without a navigation header");
             const float x0 = left->GetAbsoluteLeft();
             const float x1 = right->GetAbsoluteLeft();
             const float w1 = right->GetOffsetWidth();
@@ -320,6 +323,10 @@ int main(int argc, char** argv) {
         auto* volume = settingsDoc->GetElementById("value-volume");
         ok &= Check(left && right && bindings && modal && volume,
                     "SETTINGS contains Display, Audio, bindings and calibration");
+        if (right)
+            ok &= Check(right->GetAbsoluteTop() < 20.0f &&
+                        right->GetOffsetHeight() > 470.0f,
+                        "SETTINGS uses space reclaimed from navigation header");
         // Reproduce the runtime-generated binding markup: its buttons
         // and action labels must both remain visible and the row must
         // expand to the available right panel width.
@@ -487,7 +494,8 @@ int main(int argc, char** argv) {
         auto* history = resultsDoc->GetElementById("results-history");
         auto* retry = resultsDoc->GetElementById("results-retry");
         ok &= Check(accuracy && history && retry && accuracy->GetOffsetWidth() > 0 &&
-                    history->GetOffsetHeight() > 0,
+                    history->GetOffsetHeight() > 0 &&
+                    history->GetAbsoluteTop()+history->GetOffsetHeight() > 490.0f,
                     "RESULTS has separate score, history and action regions");
         context->SetDimensions({800, 450});
         context->Update();
@@ -505,7 +513,9 @@ int main(int argc, char** argv) {
         auto* controls = skinDoc->GetElementById("skin-controls");
         auto* preview = skinDoc->GetElementById("skin-preview-canvas");
         auto* name = skinDoc->GetElementById("skin-name");
+        auto* pathTab = skinDoc->GetElementById("skin-tab-path");
         ok &= Check(HasButtonLabels(skinDoc) && controls && preview && name &&
+                    pathTab && pathTab->GetAbsoluteTop() < 20.0f &&
                     preview->GetOffsetWidth() > 120.0f &&
                     preview->GetOffsetHeight() > 70.0f,
                     "SKINS contains responsive authoring panel and live preview");

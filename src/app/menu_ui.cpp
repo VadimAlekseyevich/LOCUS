@@ -35,11 +35,6 @@ void Button(Font font, Rectangle area, const std::string& label,
     DrawUiButton(font, area, label.c_str(), MenuButtonStyle(accent), selected);
 }
 
-void Header(Font font, const char* section) {
-    // The app frame already draws the LOCUS wordmark.
-    Label(font, section, 52.0f, 88.0f, 30.0f, kMint);
-}
-
 } // namespace
 
 Rectangle LibrarySongRow(int row) {

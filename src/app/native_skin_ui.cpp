@@ -378,8 +378,7 @@ void NativeSkinUi::ProcessEvent(Rml::Event& event) {
         }
         return;
     }
-    if (action == "back") input_->backPressed = true;
-    else if (action == "tab") {
+    if (action == "tab") {
         ui_->page = std::clamp(target->GetAttribute<int>("data-index", 0), 0, 3);
         ui_->draggingRow = -1;
         ui_->draggingColor = 0;

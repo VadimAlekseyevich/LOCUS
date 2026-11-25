@@ -299,9 +299,7 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     const std::string action = target->GetAttribute<Rml::String>("data-action", "");
     if (action.empty()) return;
     consumedPointer_ = true;
-    if (action == "back") {
-        input_->backPressed = true;
-    } else if (action == "draft-difficulty") {
+    if (action == "draft-difficulty") {
         input_->editor.selectDraft = true;
     } else if (action == "attach-audio") {
         input_->editor.attachAudio = true;

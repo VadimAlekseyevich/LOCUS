@@ -534,9 +534,6 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         Label(font,TextFormat("%.1f",draft.Difficulty().overall),
               focusedBounds.x+focusedBounds.width-43,
               focusedBounds.y+23,12,sky);
-        if (draft.Dirty())
-            Label(font,"*",focusedBounds.x+focusedBounds.width-14,
-                  focusedBounds.y+4,14,violet);
 
         if (!nativeShell) {
         // Only the compass buttons place notes; diagonal counts also
