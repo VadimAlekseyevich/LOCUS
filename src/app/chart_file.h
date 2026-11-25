@@ -3,6 +3,7 @@
 #include "core/chart_json.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 namespace locus::app {
@@ -17,7 +18,9 @@ inline constexpr std::size_t kMaxChartFileBytes = 8U * 1024U * 1024U;
 bool OpenChartWithAudioPath(const std::wstring& chartFile,
                             core::LoadedChart& chart,
                             std::wstring& absoluteAudioPath,
-                            std::string& error);
+                            std::string& error,
+                            const std::uint64_t* expectedFingerprint = nullptr,
+                            std::uint64_t* actualFingerprint = nullptr);
 
 // Replace updates an existing chart after a recoverable backup. CreateNew
 // publishes a difficulty without ever overwriting another writer's file.

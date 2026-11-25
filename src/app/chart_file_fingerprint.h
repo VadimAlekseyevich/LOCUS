@@ -6,8 +6,20 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <string_view>
 
 namespace locus::app {
+
+// Same hash for indexed bytes and the exact buffer parsed by the loader.
+inline void AddChartFingerprintBytes(std::uint64_t& hash,std::string_view bytes) noexcept {
+    for (unsigned char byte : bytes)
+        hash = (hash ^ byte) * 1099511628211ULL;
+}
+inline std::uint64_t ChartContentFingerprint(std::string_view bytes) noexcept {
+    std::uint64_t hash = 14695981039346656037ULL;
+    AddChartFingerprintBytes(hash,bytes);
+    return hash;
+}
 
 // Lightweight NON-cryptographic content fingerprint for detecting accidental
 // external chart edits that preserve file size and last-write timestamp.
@@ -26,10 +38,8 @@ inline bool ChartFileFingerprint(const std::filesystem::path& path,
     while (file) {
         file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         const auto count = file.gcount();
-        for (std::streamsize i = 0; i < count; ++i) {
-            hash ^= static_cast<unsigned char>(buffer[static_cast<std::size_t>(i)]);
-            hash *= 1099511628211ULL;
-        }
+        AddChartFingerprintBytes(hash,std::string_view(
+            buffer.data(),static_cast<std::size_t>(count)));
     }
     if (!file.eof() || file.bad()) return false;
     result = hash;

@@ -163,7 +163,18 @@ bool SongLibrary::Refresh(std::string& message,
             core::LoadedChart chart;
             std::wstring audio;
             std::string problem;
-            if (!OpenChartWithAudioPath(path.wstring(), chart, audio, problem)) {
+            std::uint64_t parsedFingerprint = 0;
+            const bool opened = OpenChartWithAudioPath(path.wstring(),chart,audio,problem,
+                nullptr,&parsedFingerprint);
+            // A concurrent replacement after the scan's fingerprint read
+            // cannot publish metadata for different bytes. The actual hash
+            // is computed before JSON parsing, including malformed edits.
+            if (hasFingerprint && parsedFingerprint != 0 &&
+                parsedFingerprint != contentFingerprint) {
+                message = "Difficulty changed during scan; retry refresh.";
+                return false;
+            }
+            if (!opened) {
                 ++skipped;
                 continue;
             }
@@ -173,11 +184,18 @@ bool SongLibrary::Refresh(std::string& message,
             indexed.audioFile = fs::path(audio);
             ++stats.parsedCharts;
         }
+        indexed.songSetId = metadata.id;
         indexed.indexedFingerprintValid = hasFingerprint;
         if (hasFingerprint) {
             indexed.indexedWriteTime = timestamp;
             indexed.indexedFileSize = bytes;
             indexed.indexedContentFingerprint = contentFingerprint;
+        }
+        // Never publish a chart whose exact bytes cannot later be verified.
+        // A failed probe is not a malformed difficulty; retain the old index.
+        if (!hasFingerprint) {
+            message = "Cannot fingerprint an indexed difficulty; retry refresh.";
+            return false;
         }
         // A Song Set can contain thousands of charts referencing the SAME
         // audio file. Canonicalizing it through the OS per chart dominates a

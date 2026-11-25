@@ -207,6 +207,51 @@ int main() {
                     locus::core::ChartGameplayRevision(
                         *library.Songs()[0].charts[0].data),
                 "gameplay revision is cached alongside validated difficulty");
+    // Exercise actual disk materialization WITHOUT the transitional resident
+    // copy. The exact bytes parsed must match the indexed fingerprint.
+    {
+        LibraryChart compact = library.Songs()[0].charts[0];
+        compact.data.reset();
+        locus::core::LoadedChart loaded;
+        ok &= Check(compact.HasPayload() && compact.CopyPayload(loaded,error) &&
+                    loaded.title==compact.metadata.title &&
+                    loaded.difficultyId==compact.metadata.difficultyId &&
+                    loaded.route.turns.size()==compact.metadata.noteCount &&
+                    locus::core::ChartGameplayRevision(loaded)==compact.gameplayRevision,
+                    "metadata-only record materializes exact indexed chart");
+        const auto original = Read(compact.file);
+        auto edited = original;
+        const auto title = edited.find("Easy");
+        if (title != std::string::npos) edited.replace(title,4,"EDIT");
+        const auto modified = fs::last_write_time(compact.file,ec);
+        Write(compact.file,edited);
+        fs::last_write_time(compact.file,modified,ec);
+        loaded.title="UNCHANGED";
+        ok &= Check(title != std::string::npos &&
+                    !compact.CopyPayload(loaded,error) &&
+                    loaded.title=="UNCHANGED" && !error.empty(),
+                    "same-size same-mtime external edit cannot materialize stale revision");
+        Write(compact.file,original);
+        fs::last_write_time(compact.file,modified,ec);
+        ok &= Check(!ec && compact.CopyPayload(loaded,error),
+                    "restored indexed bytes materialize again");
+        auto manifestPath=compact.file.parent_path()/L"set.locus.json";
+        const auto manifestBytes=Read(manifestPath);
+        SongSetManifest changedTiming;
+        const bool manifestLoaded=LoadSongSetManifest(manifestPath,changedTiming,error);
+        if (manifestLoaded) {
+            changedTiming.bpm=150.0;
+            changedTiming.tempoMap.front().bpm=150.0;
+        }
+        const bool changed=manifestLoaded && ReplaceSongSetManifest(manifestPath,changedTiming,error);
+        loaded.title="UNCHANGED";
+        ok &= Check(changed && !compact.CopyPayload(loaded,error) &&
+                    loaded.title=="UNCHANGED",
+                    "changed authoritative tempo cannot load against old gameplay revision");
+        Write(manifestPath,manifestBytes);
+        ok &= Check(compact.CopyPayload(loaded,error),
+                    "restored authoritative timing materializes exact revision");
+    }
     const auto hardId = library.Songs()[0].charts[1].data->difficultyId;
     ok &= Check(locus::core::ValidDifficultyId(easyId) &&
                 locus::core::ValidDifficultyId(hardId) && easyId != hardId,

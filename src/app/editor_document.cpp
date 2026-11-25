@@ -38,12 +38,19 @@ bool PrepareNewDifficultyDraft(
 // playback. Saving/opening never silently changes the active Play session.
 bool LoadDraftFromDisk(const std::wstring& file, locus::core::ChartEditor& editor,
                        locus::app::LocalMusic& song, std::wstring& chartPath,
-                       std::wstring& audioPath, std::string& error,
-                        const core::LoadedChart* canonical) {
+                       std::wstring& audioPath, std::string& error) {
     locus::core::LoadedChart candidate;
     std::wstring selectedAudio;
     if (!locus::app::OpenChartWithAudioPath(file, candidate, selectedAudio, error))
         return false;
+    return LoadDraftFromPayload(file,std::move(candidate),selectedAudio,editor,
+                                song,chartPath,audioPath,error);
+}
+
+bool LoadDraftFromPayload(const std::wstring& file,core::LoadedChart candidate,
+                          const std::wstring& selectedAudio,core::ChartEditor& editor,
+                          LocalMusic& song,std::wstring& chartPath,
+                          std::wstring& audioPath,std::string& error) {
     // Decode and validate before modifying the open document or its audio.
     locus::app::LocalMusic replacement(song.Backend());
     replacement.SetVolume(song.Volume());
@@ -52,9 +59,6 @@ bool LoadDraftFromDisk(const std::wstring& file, locus::core::ChartEditor& edito
         error = replacement.Error();
         return false;
     }
-    // Managed Song Sets override historical chart BPM/offset. Resolve and
-    // validate the canonical in-memory chart BEFORE replacing this draft.
-    if (canonical) candidate = *canonical;
     if (!locus::core::PrepareChartForSong(
             candidate, replacement.DurationSeconds(), error))
         return false;

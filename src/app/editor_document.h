@@ -24,8 +24,13 @@ bool PrepareNewDifficultyDraft(core::ChartEditor& result,
 // validate. On failure, preserve the entire existing document and song.
 bool LoadDraftFromDisk(const std::wstring& file, core::ChartEditor& editor,
                        LocalMusic& song, std::wstring& chartPath,
-                       std::wstring& audioPath, std::string& error,
-                       const core::LoadedChart* canonical = nullptr);
+                       std::wstring& audioPath, std::string& error);
+// Managed library open already verified the exact indexed bytes and audio.
+// Decode and publish that payload without reopening or reparsing the chart.
+bool LoadDraftFromPayload(const std::wstring& file,core::LoadedChart candidate,
+                          const std::wstring& selectedAudio,core::ChartEditor& editor,
+                          LocalMusic& song,std::wstring& chartPath,
+                          std::wstring& audioPath,std::string& error);
 
 // Atomically persist the chart while retaining selection and Undo/Redo.
 // Save As may request a Windows file dialog; cancellation changes nothing.

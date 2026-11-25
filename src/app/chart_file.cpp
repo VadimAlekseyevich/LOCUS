@@ -1,4 +1,5 @@
 #include "app/chart_file.h"
+#include "app/chart_file_fingerprint.h"
 
 #include "app/local_file_io.h"
 #include "app/path_containment.h"
@@ -37,17 +38,26 @@ bool Utf8ToWide(const std::string& utf8, std::wstring& wide) {
 bool OpenChartWithAudioPath(const std::wstring& chartFile,
                             core::LoadedChart& chart,
                             std::wstring& absoluteAudioPath,
-                            std::string& error) {
+                            std::string& error,
+                            const std::uint64_t* expectedFingerprint,
+                            std::uint64_t* actualFingerprint) {
 #ifdef _WIN32
     std::vector<std::uint8_t> bytes;
     if (!ReadLocalFileBytes(chartFile, bytes, error, kMaxChartFileBytes)) {
         error = "Chart file: " + error;
         return false;
     }
+    const std::string_view contents(reinterpret_cast<const char*>(bytes.data()),bytes.size());
+    if (expectedFingerprint || actualFingerprint) {
+        const auto fingerprint = ChartContentFingerprint(contents);
+        if (actualFingerprint) *actualFingerprint = fingerprint;
+        if (expectedFingerprint && fingerprint != *expectedFingerprint) {
+            error = "Difficulty changed on disk; refresh the library.";
+            return false;
+        }
+    }
     core::LoadedChart parsed;
-    if (!core::ParseChartJson(
-            std::string_view(reinterpret_cast<const char*>(bytes.data()), bytes.size()),
-            parsed, error)) {
+    if (!core::ParseChartJson(contents,parsed,error)) {
         return false;
     }
 
@@ -85,6 +95,8 @@ bool OpenChartWithAudioPath(const std::wstring& chartFile,
     (void)chartFile;
     (void)chart;
     (void)absoluteAudioPath;
+    (void)expectedFingerprint;
+    (void)actualFingerprint;
     error = "Chart files require Windows.";
     return false;
 #endif

@@ -191,6 +191,8 @@
 
 **25.11.2026 — T08/T10: payload boundary, phase 1.** LibraryChart::CopyPayload/HasPayload now mediate gameplay, duplication, managed editor open and focus. EditorSetView comparison options contain metadata/fingerprints only; one identity-resolving loader materializes selected references when revision changes, parked drafts win. Failed reference cannot reuse stale route or reload every frame; closing panes releases compiled storage. Headless tests count loads and check failure/retry. Catalog still retains shared payloads: compact indexing/disk materialization is the next phase. Windows CI required.
 
+**25.11.2026 — T08: payload boundary, phase 2.** Indexed CopyPayload now loads one file on demand and verifies exact parsed bytes against indexed FNV fingerprint, Song Set identity/audio, difficulty metadata and tempo-projected gameplay revision. Managed editor open no longer parses twice. Real fixture tests drop resident payload, check same-size/mtime edit rejection and changed manifest timing. Resident scan payloads remain temporarily for scan/tempo migration and legacy tests; standalone in-memory preparation remains supported. Windows CI required.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>

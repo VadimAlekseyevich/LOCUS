@@ -56,21 +56,23 @@ bool EditorFileActions::OpenFromLibrary(const std::wstring& chartFile,
                                         std::string& error) {
     int songIndex = -1, difficultyIndex = -1;
     core::LoadedChart canonical;
-    bool managed = false;
+    std::wstring indexedAudio;
     if (context_.library.FindChart(std::filesystem::path(chartFile),
                                    songIndex, difficultyIndex)) {
         const auto& selected = context_.library.Songs()[
             static_cast<std::size_t>(songIndex)].charts[
             static_cast<std::size_t>(difficultyIndex)];
         if (!selected.CopyPayload(canonical,error)) return false;
-        managed = true;
+        indexedAudio = selected.audioFile.wstring();
     }
     // One commit point: failed audio or Song Set timing cannot erase a draft.
     context_.preview.Stop();
-    if (!LoadDraftFromDisk(
-            chartFile, context_.editor, context_.music,
-            context_.chartPath, context_.audioPath, error, managed ? &canonical : nullptr))
-        return false;
+    const bool loaded = !indexedAudio.empty()
+        ? LoadDraftFromPayload(chartFile,std::move(canonical),indexedAudio,
+              context_.editor,context_.music,context_.chartPath,context_.audioPath,error)
+        : LoadDraftFromDisk(chartFile,context_.editor,context_.music,
+              context_.chartPath,context_.audioPath,error);
+    if (!loaded) return false;
     DiscardParked();
     newDifficultySet_.clear();
     context_.loadedAudioPath = context_.audioPath;

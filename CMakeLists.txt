@@ -36,6 +36,7 @@ target_include_directories(locus_core PUBLIC
 # Catalog scanner and disk writers form one cohesive module set. Keep
 # executable/test target dependencies synchronized in exactly one location.
 set(LOCUS_SONG_LIBRARY_SOURCES
+    src/app/library_chart_payload.cpp
     src/app/song_library.cpp
     src/app/song_library_scan.cpp
     src/app/song_library_metadata.cpp
@@ -670,6 +671,9 @@ if(LOCUS_BUILD_TESTS)
     # failure and validate route timing before publishing selected difficulty.
     add_executable(locus_library_playback_tests
         tests/library_playback_tests.cpp
+        src/app/library_chart_payload.cpp
+        src/app/chart_file.cpp
+        src/app/song_set_storage.cpp
         src/app/library_playback.cpp
         src/app/chart_playback.cpp
         src/app/game_session.cpp
@@ -678,7 +682,8 @@ if(LOCUS_BUILD_TESTS)
         src/app/local_file_io.cpp
     )
     target_compile_features(locus_library_playback_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_library_playback_tests PRIVATE locus_core raylib)
+    target_link_libraries(locus_library_playback_tests PRIVATE
+        locus_core raylib nlohmann_json::nlohmann_json)
     add_test(NAME locus_library_playback_transaction COMMAND locus_library_playback_tests)
 
     # Library refresh must preserve the selected chart across reordering;

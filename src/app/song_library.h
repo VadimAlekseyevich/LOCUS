@@ -36,18 +36,13 @@ struct LibraryChart {
     // published difficulty has a validated non-null payload.
     std::shared_ptr<const core::LoadedChart> data;
     // Invoke on parse and every payload replacement, never from the UI.
-    // Explicit materialization boundary: callers own the working copy.
-    // Catalog storage is still resident until the compact scan migration.
-    bool CopyPayload(core::LoadedChart& result, std::string& error) const {
-        if (!data) {
-            error = "Selected difficulty has no validated chart payload.";
-            return false;
-        }
-        result = *data;
-        error.clear();
-        return true;
+    // Materialize the exact indexed revision, with authoritative Song Set
+    // timing. Output remains unchanged on missing or stale files.
+    bool CopyPayload(core::LoadedChart& result, std::string& error) const;
+    bool HasPayload() const noexcept {
+        return songSetId.empty() ? static_cast<bool>(data) :
+            indexedFingerprintValid && !gameplayRevision.empty();
     }
-    bool HasPayload() const noexcept { return static_cast<bool>(data); }
     void RefreshMetadata() {
         metadata = data
             ? LibraryChartMetadata{data->title, data->difficultyId,
@@ -58,6 +53,7 @@ struct LibraryChart {
     // Calculated once from validated gameplay, reused across library views.
     // Display title, file rename or metadata-only editor changes do not alter it.
     std::string gameplayRevision;
+    std::string songSetId; // identity of the manifest that authorized this chart
     core::ChartDifficulty difficulty; // Reused while file and timing are unchanged.
     // Transient index fingerprint, not serialized with charts or Song Sets.
     std::uintmax_t indexedFileSize = 0;
