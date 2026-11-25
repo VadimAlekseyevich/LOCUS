@@ -365,10 +365,15 @@ int main(int argc, char** argv) {
         const auto records = store.Load({run.songSetId,run.difficultyId},error);
         locus::core::ReplayTrace decoded;
         ok &= Check(saved && records.size() == 1 && records[0].hasReplay &&
+                    records[0].statistics && records[0].statistics->histogram == run.statistics->histogram &&
                     store.LoadReplay(records[0],decoded,error) &&
                     locus::app::VerifyRunReplay(records[0],decoded,chart,kRevision) &&
                     !locus::app::VerifyRunReplay(records[0],decoded,chart,"old"),
                     "replay round trip and matching chart revision verification");
+        RunResult invalidHistogram=run;
+        ++(*invalidHistogram.statistics->histogram)[0];
+        ok &= Check(!locus::app::ValidRunResult(invalidHistogram),
+                    "histogram sample count must equal actual hits");
         RunResult collision = run;
         collision.id = std::to_string(run.completedAtMs);
         ok &= Check(store.Save(collision,error,trace) &&

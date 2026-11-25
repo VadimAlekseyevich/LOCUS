@@ -33,3 +33,7 @@
   .results-song { font-size:20dp; }
   .results-accuracy { font-size:37dp; }
 }
+
+#results-hit-histogram { display:flex; flex-direction:row; align-items:flex-end; height:40dp; min-height:40dp; gap:1dp; }
+.results-histogram-bin { flex:1; min-width:0; }
+.results-histogram-axis { text-align:center; }

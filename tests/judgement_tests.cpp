@@ -86,11 +86,23 @@ int main() {
                 std::abs(statistics.meanErrorMs - 20.0) < 1e-8 &&
                 std::abs(statistics.unstableRate - 600.0) < 1e-8,
                 "timing telemetry counts each successful arrow and excludes misses");
+    int histogramTotal=0;
+    if (statistics.histogram)
+        for (int count : *statistics.histogram) histogramTotal+=count;
+    ok &= Check(statistics.histogram && histogramTotal==2 &&
+                (*statistics.histogram)[13]+(*statistics.histogram)[14]==1 &&
+                (*statistics.histogram)[25]+(*statistics.histogram)[26]==1,
+                "histogram includes signed timing errors and excludes misses");
     telemetry.ResetFromAudioSeconds(2.0);
     const auto resetStats = telemetry.Statistics();
     ok &= Check(resetStats.maxCombo == 0 && resetStats.timedHits == 0 &&
                 resetStats.meanErrorMs == 0.0 && resetStats.unstableRate == 0.0,
                 "practice restart clears all timing telemetry");
+    int resetHistogramTotal=0;
+    if (resetStats.histogram)
+        for (int count : *resetStats.histogram) resetHistogramTotal+=count;
+    ok &= Check(resetStats.histogram && resetHistogramTotal==0,
+                "practice reset clears all histogram bins");
     telemetry.PressHeading(Heading::Down, 2.025);
     ok &= Check(telemetry.Statistics().timedHits == 1 &&
                 std::abs(telemetry.Statistics().meanErrorMs - 25.0) < 1e-8 &&

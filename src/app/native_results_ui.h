@@ -28,6 +28,7 @@ public:
 private:
     void SetText(const char* id, const std::string& value);
     void SyncHistory();
+    void SyncHistogram();
     Rml::ElementDocument* document_ = nullptr;
     const RunResult* selected_ = nullptr;
     const core::GradeCounts* grades_ = nullptr;
@@ -39,6 +40,9 @@ private:
     int total_ = 0;
     std::uint64_t lastHistoryRevision_ = ~std::uint64_t(0);
     std::string lastSelectedId_;
+    std::string lastHistogramId_;
+    RunKey lastHistogramKey_;
+    bool histogramValid_ = false;
     RunKey lastHistoryKey_;
     std::vector<std::size_t> historyIndices_;
     LibraryRowWindow historyWindow_;

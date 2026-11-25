@@ -37,6 +37,7 @@ void TurnJudge::Reset() noexcept {
     combo_ = maxCombo_ = 0;
     timedHits_ = 0;
     meanErrorMs_ = errorM2Ms_ = 0.0;
+    histogram_.fill(0);
     last_.reset();
     RecountScorable();
     ResetArrowQueues();
@@ -142,6 +143,12 @@ void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
         const double delta = errorMs - meanErrorMs_;
         meanErrorMs_ += delta / ++timedHits_;
         errorM2Ms_ += delta * (errorMs - meanErrorMs_);
+        const double normalized = (errorSeconds+kBadWindowSeconds) /
+                                  (2.0*kBadWindowSeconds);
+        const auto bin = static_cast<std::size_t>(std::clamp(
+            normalized * kHitErrorBinCount,0.0,
+            static_cast<double>(kHitErrorBinCount-1)));
+        ++histogram_[bin];
     }
     switch (grade) {
         case Grade::Perfect: ++counts_.perfect; break;
@@ -154,7 +161,7 @@ void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
 RunStatistics TurnJudge::Statistics() const noexcept {
     return {maxCombo_, timedHits_, meanErrorMs_,
             timedHits_ == 0 ? 0.0 : 10.0 * std::sqrt(
-                std::max(0.0, errorM2Ms_ / timedHits_))};
+                std::max(0.0, errorM2Ms_ / timedHits_)), histogram_};
 }
 
 void TurnJudge::BeginReplayCapture() noexcept {

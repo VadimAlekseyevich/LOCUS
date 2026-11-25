@@ -16,6 +16,9 @@
    <div class="results-muted">MAX COMBO <strong id="results-max-combo">--</strong></div>
    <div class="results-muted">MEAN HIT ERROR (SONG TIME) <strong id="results-mean-error">--</strong></div>
    <div class="results-muted">UNSTABLE RATE (SONG TIME) <strong id="results-unstable-rate">--</strong></div>
+   <div class="results-muted">HIT ERROR DISTRIBUTION</div>
+   <div id="results-hit-histogram"></div>
+   <div id="results-histogram-axis" class="results-muted results-histogram-axis"></div>
    <div id="results-replay-status" class="results-muted"></div>
    <div class="results-actions">
     <button id="results-retry" class="primary" data-action="retry"><span class="button-label">RETRY</span></button>

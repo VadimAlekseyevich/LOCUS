@@ -53,11 +53,17 @@ struct GradeCounts {
 
 // Compact completed-attempt telemetry, in original song milliseconds.
 // Misses (including wrong directions) are not timing samples.
+// 36 equal-width bins covering the complete Bad window, in song time.
+// With current rules each bin is 10 ms. Missing old telemetry is explicit.
+inline constexpr std::size_t kHitErrorBinCount = 36;
+using HitErrorHistogram = std::array<int, kHitErrorBinCount>;
+
 struct RunStatistics {
     int maxCombo = 0;
     int timedHits = 0;
     double meanErrorMs = 0.0;
     double unstableRate = 0.0; // 10 * population standard deviation (ms).
+    std::optional<HitErrorHistogram> histogram;
 };
 
 const char* GradeName(Grade grade) noexcept;
@@ -141,6 +147,7 @@ private:
     int timedHits_ = 0;
     double meanErrorMs_ = 0.0;
     double errorM2Ms_ = 0.0;
+    HitErrorHistogram histogram_{};
     std::optional<Judgement> last_;
     ReplayTrace replay_;
     bool captureReplay_ = false;

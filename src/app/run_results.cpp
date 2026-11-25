@@ -67,6 +67,7 @@ Json Encode(const RunResult& r) {
                                 {"timedHits", s.timedHits},
                                 {"meanErrorMs", s.meanErrorMs},
                                 {"unstableRate", s.unstableRate}};
+        if (s.histogram) result["statistics"]["hitErrorHistogram"] = *s.histogram;
     }
     return result;
 }
@@ -102,6 +103,19 @@ bool Decode(const Json& obj, RunResult& out) {
             r.statistics = core::RunStatistics{
                 s.at("maxCombo").get<int>(), s.at("timedHits").get<int>(),
                 s.at("meanErrorMs").get<double>(), s.at("unstableRate").get<double>()};
+            if (s.contains("hitErrorHistogram")) {
+                const auto& bins = s.at("hitErrorHistogram");
+                if (!bins.is_array() || bins.size()!=core::kHitErrorBinCount)
+                    return false;
+                core::HitErrorHistogram histogram{};
+                for (std::size_t i=0;i<histogram.size();++i) {
+                    if (!bins[i].is_number_integer()) return false;
+                    const auto value = bins[i].get<std::int64_t>();
+                    if (value<0 || value>2000000) return false;
+                    histogram[i]=static_cast<int>(value);
+                }
+                r.statistics->histogram=histogram;
+            }
         }
         if (!ValidRunResult(r)) return false;
         out = std::move(r);
@@ -149,6 +163,14 @@ bool ValidRunResult(const RunResult& r) noexcept {
             (r.judgementVersion == core::kJudgementRulesVersion &&
              (std::abs(s.meanErrorMs) > limitMs + 1e-6 ||
               s.unstableRate > 10.0 * limitMs + 1e-6))) return false;
+        if (s.histogram) {
+            std::int64_t sum=0;
+            for (int count : *s.histogram) {
+                if (count<0 || count>s.timedHits) return false;
+                sum+=count;
+            }
+            if (sum!=s.timedHits) return false;
+        }
     }
     const double computed = r.grades.AccuracyPercent();
     return std::abs(r.accuracyPercent - computed) <= 0.011;
@@ -325,7 +347,8 @@ bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,
         if (actual.maxCombo != expected.maxCombo ||
             actual.timedHits != expected.timedHits ||
             std::abs(actual.meanErrorMs - expected.meanErrorMs) > 1e-6 ||
-            std::abs(actual.unstableRate - expected.unstableRate) > 1e-6)
+            std::abs(actual.unstableRate - expected.unstableRate) > 1e-6 ||
+            (expected.histogram && actual.histogram != expected.histogram))
             return false;
     }
     return true;

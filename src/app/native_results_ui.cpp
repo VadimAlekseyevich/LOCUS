@@ -10,6 +10,8 @@
 #include <iomanip>
 #include <sstream>
 #include <cstddef>
+#include <algorithm>
+#include <cmath>
 
 namespace locus::app {
 namespace {
@@ -24,6 +26,9 @@ void NativeResultsUi::Attach(Rml::ElementDocument* document) noexcept {
     textCache_.clear();
     lastHistoryRevision_ = ~std::uint64_t(0);
     lastSelectedId_.clear();
+    histogramValid_ = false;
+    lastHistogramId_.clear();
+    lastHistogramKey_ = {};
     lastHistoryKey_ = {};
     historyIndices_.clear();
     historyWindowValid_ = false;
@@ -114,7 +119,48 @@ void NativeResultsUi::Sync() {
         if (auto* button = document_->GetElementById(id))
             button->SetProperty("display", historical_ ? "none" : "inline-block");
     }
+    SyncHistogram();
     SyncHistory();
+}
+
+void NativeResultsUi::SyncHistogram() {
+    auto* graph = document_->GetElementById("results-hit-histogram");
+    if (!graph) return;
+    const std::string id = selected_ ? selected_->id : "";
+    const RunKey key = selected_ ? RunKey{selected_->songSetId,selected_->difficultyId}
+                                 : RunKey{};
+    if (histogramValid_ && id==lastHistogramId_ && key==lastHistogramKey_) return;
+    histogramValid_=true;
+    lastHistogramId_=id;
+    lastHistogramKey_=key;
+    const auto* bins = selected_ && selected_->statistics &&
+        selected_->statistics->histogram ? &*selected_->statistics->histogram : nullptr;
+    // Old scoring rules may use a different window. Do not give those bins
+    // current timing labels until a matching renderer is defined.
+    if (!bins || selected_->judgementVersion!=core::kJudgementRulesVersion ||
+        selected_->statistics->timedHits==0) {
+        graph->SetInnerRML("<div class='results-muted'>NO TIMING DISTRIBUTION</div>");
+        SetText("results-histogram-axis","");
+        return;
+    }
+    const int peak=*std::max_element(bins->begin(),bins->end());
+    std::ostringstream html;
+    for (std::size_t i=0;i<bins->size();++i) {
+        const double seconds=core::kBadWindowSeconds*
+            (2.0*(static_cast<double>(i)+0.5)/bins->size()-1.0);
+        const double magnitude=std::abs(seconds);
+        const char* color=magnitude<=core::kPerfectWindowSeconds ? "#8ee2cc"
+            : magnitude<=core::kGoodWindowSeconds ? "#9bcdf5" : "#edc68f";
+        const int height=peak>0 ? ((*bins)[i]*38+peak/2)/peak : 0;
+        html << "<div class='results-histogram-bin' style='height:"
+             << std::max(1,height) << "dp;background-color:" << color
+             << ";opacity:" << ((*bins)[i]>0 ? "1" : "0.18") << "'></div>";
+    }
+    graph->SetInnerRML(html.str());
+    std::ostringstream axis;
+    axis << "-" << core::kBadWindowSeconds*1000.0
+         << " ms   /   0   /   +" << core::kBadWindowSeconds*1000.0 << " ms";
+    SetText("results-histogram-axis",axis.str());
 }
 
 float NativeResultsUi::ReadScrollDp(float density) const {
