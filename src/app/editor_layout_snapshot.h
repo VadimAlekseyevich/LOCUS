@@ -32,6 +32,48 @@ inline Rectangle ResolveEditorRegion(const EditorLayoutSnapshot& layout,
     return layout.native || HasLayoutArea(measured) ? measured : legacy;
 }
 
+// Native controls are the default owner. Only named custom canvas slots
+// (and their exclusive comparison overlay) receive raw raylib gestures.
+// Adding/moving a native control requires no changes to this router.
+inline bool EditorCanvasContains(const EditorLayoutSnapshot& layout,
+                                 Vector2 point) noexcept {
+    for (Rectangle area : {layout.timeline, layout.preview, layout.overview,
+                           layout.compareToggle}) {
+        if (HasLayoutArea(area) && point.x >= area.x && point.y >= area.y &&
+            point.x < area.x+area.width && point.y < area.y+area.height)
+            return true;
+    }
+    return false;
+}
+
+struct EditorPointerDispatch {
+    bool nativeButtons = true;
+    bool nativeWheel = true;
+};
+
+class EditorPointerRouter {
+public:
+    EditorPointerDispatch Route(const EditorLayoutSnapshot& layout, Vector2 point,
+                                bool pressed, bool held, bool released,
+                                bool canvasOverlayOpen) noexcept {
+        const bool nativeHover = !canvasOverlayOpen &&
+            !EditorCanvasContains(layout, point);
+        if (pressed || (held && !captured_)) {
+            captured_ = true;
+            nativeCapture_ = nativeHover;
+        }
+        const EditorPointerDispatch dispatch{
+            captured_ ? nativeCapture_ : nativeHover, nativeHover};
+        if (released || (!held && !pressed)) captured_ = false;
+        return dispatch;
+    }
+
+    void Reset() noexcept { captured_ = false; nativeCapture_ = true; }
+private:
+    bool captured_ = false;
+    bool nativeCapture_ = true;
+};
+
 // Equal square panes; no fixed maximum side or dependency on window size.
 inline Rectangle SquarePreviewPane(Rectangle area, int count, int index,
                                    float gap = 8.0f) noexcept {

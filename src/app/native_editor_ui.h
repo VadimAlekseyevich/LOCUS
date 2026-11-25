@@ -24,10 +24,6 @@ public:
               long long timeMs, const core::ChartEditor* draft = nullptr,
               const GameSettings* settings = nullptr,
               const EditorSetView* setView = nullptr);
-    bool ConsumedPointer() const noexcept { return consumedPointer_; }
-    void SuppressCurrentClick() noexcept { suppressClick_ = true; }
-    bool SuppressingClick() const noexcept { return suppressClick_; }
-    void ReleaseClickSuppression() noexcept { suppressClick_ = false; }
     void EndFrame() noexcept;
     void CancelFocusedField();
 private:
@@ -35,10 +31,6 @@ private:
     Rml::ElementDocument* document_ = nullptr;
     EditorUiState* ui_ = nullptr;
     FrameInput* input_ = nullptr;
-    bool consumedPointer_ = false;
-    // Keeps an outside-popup press from activating the UI underneath on
-    // its later mouse-up (RmlUi dispatches clicks on release).
-    bool suppressClick_ = false;
     std::unordered_map<std::string, std::string> textCache_;
     int lastRatePercent_ = 100;
     std::string focusedInitialValue_;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/rml_raylib_renderer.h"
+#include "app/editor_layout_snapshot.h"
 #include "app/rml_native_files.h"
 #include "app/menu_controller.h"
 #include "app/library_virtual_list.h"
@@ -81,6 +82,7 @@ private:
     void Activate(Page page);
     bool RefreshLayoutMetrics();
     void PumpInput(bool dispatchKeyboard = true, bool forceLayout = false);
+    void DispatchInput(bool dispatchKeyboard, bool dispatchButtons, bool dispatchWheel);
     void ReadEditorLayout(EditorUiState& ui) const noexcept;
     void ProcessEvent(Rml::Event& event) override;
     void Rebuild(const SongLibrary& library, SongSelectUi& ui);
@@ -113,9 +115,7 @@ private:
     int lastWidth_ = -1, lastHeight_ = -1;
     float lastDensity_ = -1.0f;
     int lastEditorLayoutTab_ = -1;
-    // Raylib pointer capture persists across the full press/drag/release
-    // gesture begun on native editor chrome, even when the pointer moves.
-    bool editorChromePressActive_ = false;
+    EditorPointerRouter editorPointerRouter_;
     std::string lastTreeSignature_, lastResultSignature_, lastSummarySignature_;
     std::vector<LibraryTreeEntry> treeEntries_;
     std::vector<float> treeOffsets_;

@@ -152,6 +152,33 @@ int main() {
                 !HasLayoutArea(detail::ComparisonPreviewBounds(hiddenNative,1,0)) &&
                 !detail::Hit(detail::CompareToggleBounds(hiddenNative),{0,0}),
                 "hidden native slots never resurrect legacy geometry");
+    EditorPointerRouter pointerRouter;
+    EditorLayoutSnapshot pointerLayout;
+    pointerLayout.native = true;
+    pointerLayout.timeline = {20,10,500,47};
+    pointerLayout.preview = {70,70,400,300};
+    pointerLayout.overview = {90,390,400,40};
+    pointerLayout.compareToggle = {20,100,42,42};
+    const auto routePointer = [&](Vector2 point, bool down, bool held,
+                                  bool up, bool popup = false) {
+        return pointerRouter.Route(pointerLayout,point,down,held,up,popup);
+    };
+    ok &= Check(routePointer({550,100},true,true,false).nativeButtons &&
+                routePointer({100,30},false,true,false).nativeButtons &&
+                routePointer({100,30},false,false,true).nativeButtons,
+                "native press crossing a canvas remains native through release");
+    ok &= Check(!routePointer({100,30},true,true,false).nativeButtons &&
+                !routePointer({550,100},false,true,false).nativeButtons &&
+                !routePointer({550,100},false,false,true).nativeButtons,
+                "timeline drag crossing native controls keeps canvas capture");
+    ok &= Check(!routePointer({550,100},true,true,false,true).nativeButtons &&
+                !routePointer({550,100},false,false,true,false).nativeButtons &&
+                routePointer({550,100},false,false,false).nativeButtons,
+                "comparison dismissal owns its entire click without activating native UI");
+    ok &= Check(routePointer({550,100},false,false,false).nativeWheel &&
+                !routePointer({100,30},false,false,false).nativeWheel &&
+                !routePointer({550,100},false,false,false,true).nativeWheel,
+                "scroll input belongs to the hovered native area or exclusive canvas overlay");
     const auto referenceSquare = detail::ComparisonPreviewBounds(3, 0);
     ok &= Check(referenceSquare.width > 200.0f &&
                 referenceSquare.width < 210.0f &&

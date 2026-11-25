@@ -295,7 +295,7 @@ void NativeMenuUi::Shutdown() {
     lastWidth_ = lastHeight_ = -1;
     lastDensity_ = -1.0f;
     pendingHomeAction_ = -1;
-    editorChromePressActive_ = false;
+    editorPointerRouter_.Reset();
     currentUi_ = nullptr;
     currentLibrary_ = nullptr;
     treeEntries_.clear();
@@ -309,7 +309,7 @@ void NativeMenuUi::Shutdown() {
 
 void NativeMenuUi::Activate(Page page) {
     if (visiblePage_ == page) return;
-    editorChromePressActive_ = false;
+    editorPointerRouter_.Reset();
     // Never keep keyboard focus in a document that is about to be hidden.
     // Otherwise Enter/Space on the next screen may target stale controls.
     if (context_) {
@@ -760,16 +760,21 @@ bool NativeMenuUi::RefreshLayoutMetrics() {
 void NativeMenuUi::PumpInput(bool dispatchKeyboard, bool forceLayout) {
     // Resolve new dimensions and DPI before dispatching pointer events.
     if (RefreshLayoutMetrics() || forceLayout) context_->Update();
+    DispatchInput(dispatchKeyboard, true, true);
+}
+
+void NativeMenuUi::DispatchInput(bool dispatchKeyboard, bool dispatchButtons,
+                                 bool dispatchWheel) {
     const int mods = Modifiers();
     const auto mouse = GetMousePosition();
     context_->ProcessMouseMove(static_cast<int>(mouse.x),
                                static_cast<int>(mouse.y), mods);
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    if (dispatchButtons && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         context_->ProcessMouseButtonDown(0, mods);
-    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+    if (dispatchButtons && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         context_->ProcessMouseButtonUp(0, mods);
     const float wheel = GetMouseWheelMove();
-    if (wheel != 0) context_->ProcessMouseWheel(-wheel, mods);
+    if (dispatchWheel && wheel != 0) context_->ProcessMouseWheel(-wheel, mods);
     // Exclusive key capture, manual offset and calibration must never leak
     // their keyboard events into RmlUi buttons or navigation.
     if (!dispatchKeyboard) return;
@@ -807,9 +812,22 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     // The document now fills the actual context. No per-widget resize
     // arithmetic or virtual-canvas offsets are written into RCSS.
     input.editor.nativeChrome = true;
+    // Native rate entry has no dropdown. The retired fallback widget must
+    // never participate in routing a native gesture.
+    ui.rateDropdownOpen = false;
     editorPresenter_.BeginFrame(ui, input);
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
                           &draft, &settings, &setView);
+    const bool tabChanged = lastEditorLayoutTab_ != static_cast<int>(ui.tab);
+    if (RefreshLayoutMetrics() || tabChanged) context_->Update();
+    lastEditorLayoutTab_ = static_cast<int>(ui.tab);
+    ReadEditorLayout(ui);
+    const auto pointer = ui.layout.coordinates.ToVirtual(GetMousePosition());
+    const bool pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    const bool held = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+    const bool released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    const auto dispatch = editorPointerRouter_.Route(
+        ui.layout, pointer, pressed, held, released, ui.comparisonPickerOpen);
     if (ui.tab == EditorTab::Set && ui.active == EditorField::Title) {
         if (auto* name = dynamic_cast<Rml::ElementFormControlInput*>(
                 editorDocument_->GetElementById("editor-difficulty-title"))) {
@@ -838,23 +856,25 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if (auto* focus = context_->GetFocusElement()) {
                 const auto mouse = GetMousePosition();
-                const float x = focus->GetAbsoluteLeft(), y = focus->GetAbsoluteTop();
-                if (mouse.x < x || mouse.x >= x + focus->GetOffsetWidth() ||
-                    mouse.y < y || mouse.y >= y + focus->GetOffsetHeight())
+                if (!CheckCollisionPointRec(mouse, RmlElementBounds(focus)))
                     focus->Blur();
             }
         }
     }
-    const bool tabChanged = lastEditorLayoutTab_ != static_cast<int>(ui.tab);
-    PumpInput(nativeTyping && EditorTextFocused(), tabChanged);
-    lastEditorLayoutTab_ = static_cast<int>(ui.tab);
+    if (pressed && !dispatch.nativeButtons && !nativeTyping)
+        if (auto* focus = context_->GetFocusElement()) focus->Blur();
+    // Route the entire physical gesture to one owner BEFORE Rml receives
+    // events. In particular, a comparison-popup dismissal cannot produce
+    // a native click on release, and a native click cannot author a note.
+    DispatchInput(nativeTyping && EditorTextFocused() && !ui.comparisonPickerOpen,
+                  dispatch.nativeButtons, dispatch.nativeWheel);
     // Enter commits any focused field; Esc reverts only that field.
     if (nativeTyping && EditorTextFocused()) {
         if (IsKeyPressed(KEY_ESCAPE)) editorPresenter_.CancelFocusedField();
         else if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))
             context_->GetFocusElement()->Blur();
     }
-    if (!ui.EditingText() && !nativeTyping) {
+    if (!ui.EditingText() && !nativeTyping && !ui.comparisonPickerOpen) {
         if (IsKeyPressed(KEY_TAB)) {
             // Tab belongs to native focus traversal, not the old
             // editor's text-field navigation in the same frame.
@@ -873,68 +893,17 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
             input.editor.enter = false;
         }
     }
-    // RmlUi dispatches a click on mouse release, while the legacy
-    // controller responds on mouse press. Consume the entire native
-    // chrome region on mouse DOWN using the actual RmlUi layout, so the
-    // old BACK and rate hitboxes cannot run before the RmlUi event.
-    bool chromePointer = editorPresenter_.ConsumedPointer() ||
-                         editorPresenter_.SuppressingClick();
-    // A native popup owns its close gesture too. Clicking outside dismisses
-    // it without passing the same press to a tempo/route editing surface.
-    const bool popupWasOpen = ui.rateDropdownOpen;
-    if (ui.rateDropdownOpen && IsKeyPressed(KEY_ESCAPE)) {
-        ui.rateDropdownOpen = false;
-        input.editor.escape = false;
-        input.backPressed = false;
-    }
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        const Vector2 mouse = GetMousePosition();
-        const auto over = [&](const char* id) {
-            auto* element = editorDocument_->GetElementById(id);
-            if (!element) return false;
-            return CheckCollisionPointRec(mouse, RmlElementBounds(element));
-        };
-        const bool popupContent = over("editor-rate-popup");
-        const bool transport = over("editor-footer-rate-time");
-        const bool chromeArea = over("editor-footer-playback") || transport ||
-            (ui.tab == EditorTab::Route &&
-                ((over("editor-route-tools") && !over("editor-route-compare-gap")) ||
-                 over("editor-ruler-controls") || over("editor-route-pad") ||
-                 over("editor-route-speed") || over("editor-route-path"))) ||
-            (ui.tab == EditorTab::Set && over("editor-set-ui"));
-        if (popupWasOpen && !popupContent && !transport) {
-            ui.rateDropdownOpen = false;
-            // The release event must dismiss only, not navigate through
-            // to whatever RmlUi button lies underneath this popup.
-            editorPresenter_.SuppressCurrentClick();
-            chromePointer = true;
-        } else {
-            chromePointer |= chromeArea || (popupWasOpen && popupContent);
-        }
-        if (chromePointer) {
-            input.backPressed = false;
-            editorChromePressActive_ = true;
-        }
-    }
-    // A drag started on a UI button must never author notes after the
-    // pointer leaves that button. Ownership persists through mouse-up.
-    chromePointer |= editorChromePressActive_;
-    if (chromePointer) {
+    if (dispatch.nativeButtons) {
         input.editor.mouseClick = false;
         input.editor.mouseHeld = false;
         input.editor.mouseReleased = false;
-        input.editor.mouseWheel = 0.0f;
-        input.startPressed = false;
+        if (pressed || held || released) input.startPressed = false;
+        if (pressed) input.backPressed = false;
     }
-    editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
-                          &draft, &settings, &setView);
-    context_->Update();
-    ReadEditorLayout(ui);
-    input.editor.mouse = ui.layout.coordinates.ToVirtual(GetMousePosition());
-    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        editorPresenter_.ReleaseClickSuppression();
-        editorChromePressActive_ = false;
-    }
+    if (dispatch.nativeWheel) input.editor.mouseWheel = 0.0f;
+    input.editor.mouse = pointer;
+    // The later SyncEditor call publishes the post-command render
+    // geometry; this input frame uses the pre-dispatch snapshot.
     editorPresenter_.EndFrame();
 }
 void NativeMenuUi::ReadEditorLayout(EditorUiState& ui) const noexcept {

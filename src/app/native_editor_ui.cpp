@@ -50,7 +50,6 @@ bool ParsePercent(const std::string& raw, int& result) noexcept {
 void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     document_ = document;
     textCache_.clear();
-    suppressClick_ = false;
     activeSetId_.clear();
     setListSignature_.clear();
     tempoRows_ = -1;
@@ -60,7 +59,6 @@ void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
 void NativeEditorUi::BeginFrame(EditorUiState& ui, FrameInput& input) noexcept {
     ui_ = &ui;
     input_ = &input;
-    consumedPointer_ = false;
 }
 void NativeEditorUi::EndFrame() noexcept {
     ui_ = nullptr;
@@ -238,7 +236,7 @@ void NativeEditorUi::CancelFocusedField() {
     }
 }
 void NativeEditorUi::ProcessEvent(Rml::Event& event) {
-    if (!ui_ || !input_ || suppressClick_) return;
+    if (!ui_ || !input_) return;
     // RmlUi emits "change" on every keystroke, not just on form commit.
     // Never clamp/rewrite the live value: deleting "100" to type "50" must
     // allow an empty input. Commit only on blur (Enter also blurs).
@@ -250,7 +248,6 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
             // Select after mouse-up as well as on keyboard focus: a
             // mousedown may move the caret and clear an earlier selection.
             control->Select();
-            if (type == "click") consumedPointer_ = true;
         } else if (type == "blur") {
             int percent = 0;
             if (ParsePercent(control->GetValue(), percent)) {
@@ -290,7 +287,6 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
                         }
                     }
                 }
-                if (event.GetType() == "click") consumedPointer_ = true;
                 return;
             }
         }
@@ -302,7 +298,6 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     if (!target || target->HasAttribute("disabled")) return;
     const std::string action = target->GetAttribute<Rml::String>("data-action", "");
     if (action.empty()) return;
-    consumedPointer_ = true;
     if (action == "draft-difficulty") {
         input_->editor.selectDraft = true;
     } else if (action == "attach-audio") {
