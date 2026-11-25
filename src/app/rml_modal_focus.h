@@ -1,6 +1,8 @@
 #pragma once
 
 #include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/StyleTypes.h>
 #include <algorithm>
 #include <vector>
@@ -15,6 +17,16 @@ inline bool RmlFocusWithin(const Rml::Element* panel,
     for (; focus; focus = focus->GetParentNode())
         if (focus == panel) return true;
     return false;
+}
+
+// Element::Blur() focuses the immediate parent in RmlUi; that parent
+// can still belong to the modal. Focus the owning document explicitly.
+inline void ReleaseRmlModalFocus(Rml::Element* panel) {
+    if (!panel) return;
+    auto* document = panel->GetOwnerDocument();
+    if (document && document->GetContext() &&
+        RmlFocusWithin(panel,document->GetContext()->GetFocusElement()))
+        document->Focus();
 }
 
 inline void CollectModalFocus(Rml::Element* element,

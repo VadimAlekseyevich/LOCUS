@@ -31,9 +31,8 @@ public:
         if (!document_ || view == view_) return false;
         auto* panel = Panel();
         if (!SamePrompt(view)) {
-            if (auto* focus = document_->GetContext()->GetFocusElement();
-                focus && (view.visible || RmlFocusWithin(panel,focus)))
-                focus->Blur();
+            if (view.visible) document_->Focus();
+            else ReleaseRmlModalFocus(panel);
             if (auto* layer = Element("confirmation-layer"))
                 layer->SetProperty("display",view.visible ? "flex" : "none");
             choice_ = ConfirmationChoice::None;
@@ -54,7 +53,7 @@ public:
             if (view.canSave != view_.canSave || !view_.visible)
                 if (auto* save = Element("confirmation-save")) {
                     if (!view.canSave && document_->GetContext()->GetFocusElement()==save)
-                        save->Blur();
+                        document_->Focus();
                     save->SetProperty("display",view.canSave ? "inline-block" : "none");
                 }
         }

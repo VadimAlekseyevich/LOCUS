@@ -135,9 +135,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     }
     if (showCompare != compareVisible_) {
         if (!showCompare) {
-            auto* focus = document_->GetContext()->GetFocusElement();
-            if (RmlFocusWithin(document_->GetElementById("editor-compare-panel"),focus))
-                focus->Blur();
+            ReleaseRmlModalFocus(document_->GetElementById("editor-compare-panel"));
         }
         if (auto* layer = document_->GetElementById("editor-compare-layer"))
             layer->SetProperty("display",showCompare ? "flex" : "none");

@@ -748,6 +748,9 @@ int main(int argc, char** argv) {
         global.Click(approve);
         ok &= Check(global.TakeChoice()==locus::app::ConfirmationChoice::Approve,
             "clean deletion returns typed approval");
+        global.FocusCancelIfOutside();
+        ok &= Check(locus::app::RmlFocusWithin(global.Panel(),context->GetFocusElement()),
+            "closing focus regression starts with a focused modal control");
         global.Sync({});
         context->Update();
         ok &= Check(!global.Visible() && !locus::app::RmlFocusWithin(global.Panel(),context->GetFocusElement()),
