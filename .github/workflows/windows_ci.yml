@@ -78,6 +78,15 @@ jobs:
           }
           Get-Content -LiteralPath $env:LOCUS_SCAN_BENCHMARK_OUTPUT
 
+      - name: Profile dense library working set and selected chart latency
+        run: |
+          $report = Join-Path (Get-Location) "build/windows/library-dense-benchmark.csv"
+          & "build/windows/Release/locus_song_library_tests.exe" --dense-benchmark $report
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $report)) {
+            throw "Dense catalog benchmark failed"
+          }
+          Get-Content -LiteralPath $report
+
       - name: Profile compiled route snapshots without GPU
         run: |
           & "build/windows/Release/locus_route_preview_bench.exe" |
@@ -224,5 +233,6 @@ jobs:
             build/windows/ctest.xml
             build/windows/preview-benchmark.txt
             build/windows/library-scan-benchmark.csv
+            build/windows/library-dense-benchmark.csv
             build/windows/diagnostics.txt
             build_and_run.bat

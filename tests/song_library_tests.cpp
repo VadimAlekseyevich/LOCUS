@@ -18,11 +18,14 @@
 #include <string>
 #include <set>
 #include <stdexcept>
+#include <iomanip>
+#include <vector>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <psapi.h>
 #endif
 
 using namespace locus::app;
@@ -78,9 +81,147 @@ bool HasConsistentCatalogMetadata(const SongLibrary& library) {
     }
     return true;
 }
+// Separate process from correctness tests: peak working set is a lifetime
+// high-water mark. Capture a post-fixture baseline, scan cold/warm, then
+// materialize representative selected charts. No GPU or audio decoder.
+#ifdef _WIN32
+struct ProcessMemory {
+    std::uint64_t workingSet=0,peakWorkingSet=0,privateBytes=0;
+};
+bool ReadMemory(ProcessMemory& result) {
+    PROCESS_MEMORY_COUNTERS_EX counters{};
+    counters.cb=sizeof(counters);
+    if (!K32GetProcessMemoryInfo(GetCurrentProcess(),
+        reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),sizeof(counters)))
+        return false;
+    result={counters.WorkingSetSize,counters.PeakWorkingSetSize,counters.PrivateUsage};
+    return true;
+}
+
+int DenseCatalogBenchmark(const fs::path& csvPath) {
+    using Clock=std::chrono::steady_clock;
+    constexpr int count=96,notes=8192,samples=48;
+    const auto folder=fs::temp_directory_path()/("locus-dense-bench-"+
+        std::to_string(Clock::now().time_since_epoch().count()));
+    struct Cleanup {
+        fs::path path;
+        ~Cleanup() { std::error_code ec; fs::remove_all(path,ec); }
+    } cleanup{folder};
+    const auto root=folder/"Songs",set=root/"dense";
+    std::error_code ec;
+    fs::create_directories(set,ec);
+    if (ec) return 1;
+    Write(set/"song.wav","RIFF-diagnostic-no-decoder");
+    SongSetManifest manifest;
+    manifest.id="dense-bench";
+    manifest.title="Dense benchmark";
+    manifest.audioFile="song.wav";
+    manifest.bpm=120.0; manifest.offsetMs=0; manifest.tempoMap={{0,120.0}};
+    std::string error;
+    if (!WriteNewSongSetManifest(set/"set.locus.json",manifest,error)) {
+        std::cerr<<"DENSE_BENCH_ERROR "<<error<<'\n'; return 1;
+    }
+    std::uint64_t sourceBytes=0;
+    // Build one serialized pattern, then stream each file. Fixture generation
+    // deliberately never accumulates every chart in RAM before the baseline.
+    {
+        std::string suffix=R"(","audioPath":"song.wav","bpm":120,"offsetMs":0,"tempoMap":[{"timeMs":0,"bpm":120}],"ticksPerBeat":4,"snapDivision":4,"grid":{"width":8,"height":8},"start":{"x":3,"y":3,"heading":"r"},"previewLeadBeats":4,"turns":[)";
+        for (int n=0;n<notes;++n) {
+            if (n) suffix+=',';
+            suffix+="{\"timeMs\":"+std::to_string((n+1)*50)+
+                ",\"heading\":\""+((n%4==0)?"u":(n%4==1)?"rd":(n%4==2)?"l":"ru")+"\"}";
+        }
+        suffix+="]}";
+        for (int i=0;i<count;++i) {
+            const auto n=std::to_string(i);
+            const auto id=std::string(32-n.size(),'0')+n;
+            const auto bytes=std::string(R"({"formatVersion":4,"title":"Dense )")+n+
+                R"(","difficultyId":")"+id+suffix;
+            const auto file=set/("chart-"+n+".locus.json");
+            Write(file,bytes);
+            const auto size=fs::file_size(file,ec);
+            if (ec || size!=bytes.size()) return 1;
+            sourceBytes+=size;
+        }
+    }
+    const auto elapsed=[](Clock::time_point start) {
+        return std::chrono::duration<double,std::milli>(Clock::now()-start).count();
+    };
+    SongLibrary library(root);
+    ProcessMemory baseline{},coldMemory{},warmMemory{},loadedMemory{};
+    if (!ReadMemory(baseline)) return 1;
+    const auto coldStart=Clock::now();
+    if (!library.Refresh(error) || library.ChartCount()!=count ||
+        library.LastRefreshStats().parsedCharts!=count ||
+        library.LastRefreshStats().peakParsedNotes!=notes) {
+        std::cerr<<"DENSE_BENCH_ERROR cold "<<error<<'\n'; return 1;
+    }
+    const double coldMs=elapsed(coldStart);
+    if (!ReadMemory(coldMemory)) return 1;
+    const auto coldStats=library.LastRefreshStats();
+    const auto warmStart=Clock::now();
+    if (!library.Refresh(error) || library.ChartCount()!=count ||
+        library.LastRefreshStats().parsedCharts!=0 ||
+        library.LastRefreshStats().reusedCharts!=count ||
+        library.LastRefreshStats().calculatedDifficulties!=0) {
+        std::cerr<<"DENSE_BENCH_ERROR warm "<<error<<'\n'; return 1;
+    }
+    const double warmMs=elapsed(warmStart);
+    if (!ReadMemory(warmMemory)) return 1;
+    const auto warmStats=library.LastRefreshStats();
+    std::vector<double> times;
+    times.reserve(samples);
+    std::uint64_t checksum=0;
+    for (int i=0;i<samples;++i) {
+        const auto& selected=library.Songs()[0].charts[(i*37)%count];
+        locus::core::LoadedChart payload;
+        const auto start=Clock::now();
+        if (!selected.CopyPayload(payload,error) || payload.route.turns.size()!=notes) {
+            std::cerr<<"DENSE_BENCH_ERROR materialize "<<error<<'\n';return 1;
+        }
+        times.push_back(elapsed(start));
+        checksum+=payload.route.turns.size();
+        if (i==samples-1 && !ReadMemory(loadedMemory)) return 1;
+    }
+    std::sort(times.begin(),times.end());
+    const auto percentile=[&](std::size_t percent) {
+        return times[(times.size()*percent+99)/100-1];
+    };
+    std::ofstream csv(csvPath,std::ios::binary);
+    csv<<std::fixed<<std::setprecision(3)
+       <<"phase,charts,notes_per_chart,source_bytes,elapsed_ms,parsed,reused,ratings,peak_parsed_notes,working_set_bytes,peak_working_set_bytes,private_bytes,load_samples,p50_ms,p95_ms,p99_ms,checksum\n";
+    const auto row=[&](const char* phase,double ms,const LibraryRefreshStats& stats,
+                       const ProcessMemory& mem,int n,double p50,double p95,double p99,
+                       std::uint64_t sum) {
+        csv<<phase<<','<<count<<','<<notes<<','<<sourceBytes<<','<<ms<<','
+           <<stats.parsedCharts<<','<<stats.reusedCharts<<','<<stats.calculatedDifficulties<<','
+           <<stats.peakParsedNotes<<','<<mem.workingSet<<','<<mem.peakWorkingSet<<','
+           <<mem.privateBytes<<','<<n<<','<<p50<<','<<p95<<','<<p99<<','<<sum<<'\n';
+    };
+    row("baseline",0,{},baseline,0,0,0,0,0);
+    row("cold",coldMs,coldStats,coldMemory,0,0,0,0,0);
+    row("warm",warmMs,warmStats,warmMemory,0,0,0,0,0);
+    row("materialize",0,{},loadedMemory,samples,percentile(50),percentile(95),
+        percentile(99),checksum);
+    csv.flush();
+    if (!csv) return 1;
+    std::cout<<"DENSE_BENCH_PASS charts="<<count<<" notes="<<notes
+             <<" cold_ms="<<coldMs<<" warm_ms="<<warmMs<<" load_p95_ms="<<percentile(95)
+             <<" peak_ws_bytes="<<loadedMemory.peakWorkingSet<<" checksum="<<checksum<<'\n';
+    return 0;
+}
+#endif
 } // namespace
 
-int main() {
+int main(int argc,char** argv) {
+    if (argc!=1) {
+#ifdef _WIN32
+        if (argc==3 && std::string(argv[1])=="--dense-benchmark")
+            return DenseCatalogBenchmark(fs::u8path(argv[2]));
+#endif
+        std::cerr<<"Usage: locus_song_library_tests [--dense-benchmark output.csv]\n";
+        return 1;
+    }
     bool ok = true;
     const auto unique = std::to_string(
         std::chrono::steady_clock::now().time_since_epoch().count());
