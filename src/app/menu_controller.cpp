@@ -272,24 +272,16 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             CheckCollisionPointRec(mouse, LibrarySearchField());
         if (searchClicked) {
             libraryUi.editingSearch = true;
-            input.startPressed = false;
-            input.backPressed = false;
-            input.homePressed = false;
-            input.requestedScreen.reset();
+            SuppressGlobalMenuShortcuts(input);
             return events;
         }
         if (libraryUi.editingSearch) {
             if (mouseClick) {
                 libraryUi.editingSearch = false; // Continue same click.
             } else {
-                input.startPressed = false;
-                input.backPressed = false;
-                input.homePressed = false;
-                input.openPlayPressed = false;
-                input.openEditorPressed = false;
-                input.requestedScreen.reset();
-                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER) ||
-                    IsKeyPressed(KEY_KP_ENTER)) {
+                const bool finishSearch = input.cancelLibrarySearch || input.startPressed;
+                SuppressGlobalMenuShortcuts(input);
+                if (finishSearch) {
                     libraryUi.editingSearch = false;
                 } else {
                     if (IsKeyPressed(KEY_BACKSPACE)) {
@@ -311,11 +303,9 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                 return events;
             }
         }
-        if (IsKeyPressed(KEY_UP)) libraryUi.MoveTree(-1, library);
-        if (IsKeyPressed(KEY_DOWN)) libraryUi.MoveTree(1, library);
-        if (IsKeyPressed(KEY_LEFT)) libraryUi.MoveChart(-1, library);
-        if (IsKeyPressed(KEY_RIGHT)) libraryUi.MoveChart(1, library);
-        if (IsKeyPressed(KEY_F5)) events.refresh = true;
+        if (input.libraryTreeDelta) libraryUi.MoveTree(input.libraryTreeDelta,library);
+        if (input.libraryChartDelta) libraryUi.MoveChart(input.libraryChartDelta,library);
+        if (input.refreshLibraryPressed) events.refresh = true;
         const float wheel = GetMouseWheelMove();
         if (wheel != 0.0f && validMouse) {
             if (CheckCollisionPointRec(mouse, {382, 65, 564, 461})) {
@@ -329,8 +319,11 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                     0, maxScroll);
             }
         }
-        if (input.startPressed) events.playSelected = true;
-        if (IsKeyPressed(KEY_E)) events.editSelected = true;
+        if (input.openEditorPressed) events.editSelected = true;
+        else if (input.startPressed) events.playSelected = true;
+        input.startPressed = false;
+        input.openEditorPressed = false;
+        input.refreshLibraryPressed = false;
     }
 
     // Native Settings reuses only capture/calibration/offset keyboard rules;

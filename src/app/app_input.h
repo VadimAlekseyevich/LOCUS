@@ -26,6 +26,12 @@ struct FrameInput {
     bool openPlayPressed = false;
     bool openSkinPressed = false;
     bool openSettingsPressed = false;
+    // Song browser navigation is collected once, alongside configurable
+    // shortcuts. Text fields can consume the same snapshot without polling.
+    bool refreshLibraryPressed = false;
+    int libraryTreeDelta = 0;
+    int libraryChartDelta = 0;
+    bool cancelLibrarySearch = false;
     bool backPressed = false;
     bool leaveRequested = false;
     bool levelExitConfirmed = false;
@@ -65,6 +71,10 @@ inline void SuppressGlobalMenuShortcuts(FrameInput& input,
     input.openPlayPressed = false;
     input.openSkinPressed = false;
     input.openSettingsPressed = false;
+    input.refreshLibraryPressed = false;
+    input.libraryTreeDelta = 0;
+    input.libraryChartDelta = 0;
+    input.cancelLibrarySearch = false;
     input.editorSave = false;
     input.editorSaveAs = false;
     input.editorOpen = false;

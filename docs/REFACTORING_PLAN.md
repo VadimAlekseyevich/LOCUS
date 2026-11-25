@@ -171,6 +171,8 @@
 
 **25.11.2026 — T11: интеграционная регрессия PLAY.** При включённом RmlUi locus_library_browser_tests загружает production play.rml с настоящим NativePlayUi и ранее установленными fixture-чартами; click/selection, Play/Edit, UTF-8-capable search input и события после EndFrame проверяются без GPU. Общий headless RML test support используется и в layout tests. Windows CI требуется.
 
+**25.11.2026 — T11: keyboard ownership in PLAY.** PollInput собирает navigation deltas, RefreshLibrary/OpenEditor из GameSettings и Enter (включая numpad). NativePlayUi и fallback потребляют один FrameInput, без повторной проверки E/F5; фокус поиска поглощает команды, Enter на кнопке не запускает параллельно PLAY. Интеграционная регрессия NativePlayUi проверяет shortcut flags, focused EDIT и search. Windows CI требуется.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>

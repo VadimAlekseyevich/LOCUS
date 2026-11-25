@@ -36,7 +36,7 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
         else if (IsKeyPressed(KEY_F3)) input.requestedScreen = Screen::Editor;
         else if (IsKeyPressed(KEY_F4)) input.requestedScreen = Screen::Results;
     }
-    input.startPressed = IsKeyPressed(KEY_ENTER);
+    input.startPressed = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER);
     input.pausePressed = gameplayKeys
         ? IsKeyPressed(settings.Key(GameAction::Pause))
         : currentScreen == Screen::Listen &&
@@ -54,6 +54,14 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     input.openPlayPressed = shortcut(ShortcutAction::OpenLibrary);
     input.openSkinPressed = shortcut(ShortcutAction::OpenSkin);
     input.openSettingsPressed = shortcut(ShortcutAction::OpenSettings);
+    if (currentScreen == Screen::SongSelect) {
+        input.refreshLibraryPressed = shortcut(ShortcutAction::RefreshLibrary);
+        input.libraryTreeDelta = static_cast<int>(IsKeyPressed(KEY_DOWN)) -
+                                 static_cast<int>(IsKeyPressed(KEY_UP));
+        input.libraryChartDelta = static_cast<int>(IsKeyPressed(KEY_RIGHT)) -
+                                  static_cast<int>(IsKeyPressed(KEY_LEFT));
+        input.cancelLibrarySearch = IsKeyPressed(KEY_ESCAPE);
+    }
     input.editorSave = shortcut(ShortcutAction::EditorSave);
     input.editorSaveAs = shortcut(ShortcutAction::EditorSaveAs);
     input.editorOpen = shortcut(ShortcutAction::EditorOpen);

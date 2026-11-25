@@ -400,38 +400,36 @@ void NativePlayUi::ProcessKeyboard(FrameInput& input) {
     if (!document_ || !currentUi_ || !currentLibrary_) return;
     auto* context = document_->GetContext();
     if (!context) return;
+    // Resolve ownership before activation, because a click may rebuild the
+    // focused subtree. A single Enter must never fall through to PLAY.
+    if (IsSearchFocused()) {
+        if (input.cancelLibrarySearch || input.startPressed)
+            if (auto* search = document_->GetElementById("search")) search->Blur();
+        SuppressGlobalMenuShortcuts(input);
+        return;
+    }
+    if (auto* focus = context->GetFocusElement();
+        input.startPressed && focus && focus->GetTagName() == "button") {
+        if (!focus->HasAttribute("disabled")) focus->Click();
+        SuppressGlobalMenuShortcuts(input);
+        return;
+    }
     auto& ui = *currentUi_;
     const auto& library = *currentLibrary_;
-    if (auto* focus = context->GetFocusElement();
-        focus && focus->GetTagName() == "button" &&
-        (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
-        focus->Click();
-    const bool typing = IsSearchFocused();
-    if (!typing) {
-        if (IsKeyPressed(KEY_UP)) ui.MoveTree(-1, library);
-        if (IsKeyPressed(KEY_DOWN)) ui.MoveTree(1, library);
-        if (IsKeyPressed(KEY_LEFT)) ui.MoveChart(-1, library);
-        if (IsKeyPressed(KEY_RIGHT)) ui.MoveChart(1, library);
-        // Enter on a focused EDIT button cannot start the chart as well.
-        const auto* focus = context->GetFocusElement();
-        const bool buttonFocused = focus && focus->GetTagName() == "button";
-        if (!buttonFocused && IsKeyPressed(KEY_ENTER))
-            pending_.playSelected = true;
-        if (!buttonFocused && IsKeyPressed(KEY_E))
-            pending_.editSelected = true;
-        if (IsKeyPressed(KEY_ESCAPE)) input.backPressed = true;
-    } else {
-        if (IsKeyPressed(KEY_ESCAPE)) {
-            if (auto* element = document_->GetElementById("search"))
-                element->Blur();
-        }
+    if (input.libraryTreeDelta) ui.MoveTree(input.libraryTreeDelta,library);
+    if (input.libraryChartDelta) ui.MoveChart(input.libraryChartDelta,library);
+
+    // A pointer command already emitted by RmlUi owns this frame. Otherwise
+    // resolve the same configured shortcuts as the fallback browser.
+    if (!pending_.playSelected && !pending_.editSelected &&
+        pending_.viewResultIndex < 0 && !pending_.import) {
+        if (input.openEditorPressed) pending_.editSelected = true;
+        else if (input.startPressed) pending_.playSelected = true;
+        else if (input.refreshLibraryPressed) pending_.refresh = true;
     }
-    if (IsKeyPressed(KEY_F5)) pending_.refresh = true;
-    // Search is a real text input. All global shortcuts, not only
-    // Enter/Escape/E, must be suppressed while it owns keyboard focus.
-    // The application still receives OS window-close requests separately.
-    if (typing) SuppressGlobalMenuShortcuts(input);
-    else input.startPressed = false;
+    input.startPressed = false;
+    input.openEditorPressed = false;
+    input.refreshLibraryPressed = false;
 }
 
 } // namespace locus::app

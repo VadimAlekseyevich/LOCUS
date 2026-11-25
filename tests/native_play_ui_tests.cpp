@@ -93,6 +93,33 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         ok &= Check(edit && editing.editSelected && !editing.playSelected,
                     "native EDIT emits only the typed Edit command");
 
+        // Keyboard uses the same collected shortcut flags as the fallback,
+        // regardless of the physical key configured in GameSettings.
+        presenter.BeginFrame(library,selection,1.6f);
+        FrameInput keyboard;
+        keyboard.openEditorPressed = true;
+        presenter.ProcessKeyboard(keyboard);
+        const auto shortcutEdit = presenter.EndFrame();
+        ok &= Check(shortcutEdit.editSelected && !shortcutEdit.playSelected &&
+                    !keyboard.openEditorPressed,
+                    "configured Edit shortcut becomes one typed action");
+        presenter.BeginFrame(library,selection,1.6f);
+        keyboard = {};
+        keyboard.refreshLibraryPressed = true;
+        presenter.ProcessKeyboard(keyboard);
+        const auto shortcutRefresh = presenter.EndFrame();
+        ok &= Check(shortcutRefresh.refresh && !keyboard.refreshLibraryPressed,
+                    "configured Refresh shortcut is consumed");
+        presenter.BeginFrame(library,selection,1.6f);
+        ok &= Check(edit && edit->Focus(),"EDIT button accepts keyboard focus");
+        keyboard = {};
+        keyboard.startPressed = true;
+        presenter.ProcessKeyboard(keyboard);
+        const auto enterEdit = presenter.EndFrame();
+        ok &= Check(enterEdit.editSelected && !enterEdit.playSelected &&
+                    !keyboard.startPressed,
+                    "focused EDIT consumes Enter without launching PLAY");
+
         presenter.BeginFrame(library,selection,1.6f);
         auto* search = dynamic_cast<Rml::ElementFormControlInput*>(document->GetElementById("search"));
         ok &= Check(search && search->Focus(),"native search can be focused");
@@ -105,9 +132,18 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         ok &= Check(selection.search=="zzzzzzzz" && tree &&
                     !ChartRow(tree,1,0) && !ChartRow(tree,1,1),
                     "native text input filters the real library");
+        keyboard = {};
+        keyboard.startPressed = true;
+        keyboard.openEditorPressed = true;
+        keyboard.refreshLibraryPressed = true;
+        keyboard.backPressed = true;
+        presenter.ProcessKeyboard(keyboard);
         const auto searchOnly = presenter.EndFrame();
-        ok &= Check(!searchOnly.playSelected && !searchOnly.editSelected,
-                    "search input does not emit navigation actions");
+        ok &= Check(!searchOnly.playSelected && !searchOnly.editSelected &&
+                    !searchOnly.refresh && !keyboard.backPressed &&
+                    !keyboard.startPressed && !keyboard.openEditorPressed &&
+                    !keyboard.refreshLibraryPressed,
+                    "search owns activation, rebindable shortcuts and navigation");
         presenter.Attach(nullptr);
         document->RemoveEventListener("click",&listener);
         document->RemoveEventListener("input",&listener);
