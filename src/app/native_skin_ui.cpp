@@ -3,6 +3,7 @@
 #include "app/menu_controller.h"
 #include "app/skin_controls.h"
 #include "app/rml_ui_text.h"
+#include "app/rml_modal_focus.h"
 #include "core/utf8.h"
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -168,9 +169,10 @@ void NativeSkinUi::Sync() {
     if (auto* notice = document_->GetElementById("skin-notice"))
         notice->SetClass("error", ui_->noticeError);
     const bool modal = !ui_->pendingDeleteProfile.empty();
-    if (auto* elem = document_->GetElementById("skin-delete-modal"))
-        elem->SetProperty("display", modal ? "flex" : "none");
-    if (modal != lastModal_) lastModal_ = modal;
+    if (modal != lastModal_) {
+        SetRmlModalVisibility(document_->GetElementById("skin-delete-modal"),modal);
+        lastModal_ = modal;
+    }
     if (modal)
         SetText("skin-delete-title",
             "DELETE " + ui_->pendingDeleteProfile.filename().u8string() + "?");

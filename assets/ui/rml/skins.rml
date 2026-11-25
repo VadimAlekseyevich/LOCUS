@@ -33,7 +33,7 @@
    <div>Selected profile moves to recoverable Trash.</div>
    <div class="ui-modal-actions">
     <button class="primary" data-action="delete-confirm"><span class="button-label">DELETE</span></button>
-    <button class="quiet" data-action="delete-cancel"><span class="button-label">CANCEL</span></button>
+    <button id="skin-delete-cancel" class="quiet" data-action="delete-cancel"><span class="button-label">CANCEL</span></button>
    </div>
   </div>
  </div>

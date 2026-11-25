@@ -3,6 +3,7 @@
 #include "app/menu_controller.h"
 #include "app/menu_ui.h"
 #include "app/rml_ui_text.h"
+#include "app/rml_modal_focus.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -135,9 +136,8 @@ void NativeSettingsUi::Sync() {
         elem->SetClass("error", ui_->noticeError);
     UpdateBindings();
     if (ui_->calibrationOpen != lastCalibration_) {
-        if (auto* modal = document_->GetElementById("settings-calibration"))
-            modal->SetProperty("display",
-                ui_->calibrationOpen ? "flex" : "none");
+        SetRmlModalVisibility(document_->GetElementById("settings-calibration"),
+                              ui_->calibrationOpen);
         lastCalibration_ = ui_->calibrationOpen;
     }
     if (!ui_->calibrationOpen) return;

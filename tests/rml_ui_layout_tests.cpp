@@ -336,6 +336,18 @@ int main(int argc, char** argv) {
             ok &= Check(right->GetAbsoluteTop() < 20.0f &&
                         right->GetOffsetHeight() > 470.0f,
                         "SETTINGS uses space reclaimed from navigation header");
+        if (modal) {
+            auto* apply = settingsDoc->GetElementById("calibration-apply");
+            locus::app::SetRmlModalVisibility(modal,true);
+            context->Update();
+            ok &= Check(apply && apply->Focus() &&
+                        locus::app::RmlFocusWithin(modal,context->GetFocusElement()),
+                        "calibration starts close regression with nested focus");
+            locus::app::SetRmlModalVisibility(modal,false);
+            context->Update();
+            ok &= Check(!locus::app::RmlFocusWithin(modal,context->GetFocusElement()),
+                        "closing calibration releases focus before hiding");
+        }
         // Reproduce the runtime-generated binding markup: its buttons
         // and action labels must both remain visible and the row must
         // expand to the available right panel width.
@@ -663,6 +675,27 @@ int main(int argc, char** argv) {
         auto* preview = skinDoc->GetElementById("skin-preview-canvas");
         auto* name = skinDoc->GetElementById("skin-name");
         auto* pathTab = skinDoc->GetElementById("skin-tab-path");
+        auto* deleteLayer = skinDoc->GetElementById("skin-delete-modal");
+        auto* deletePanel = skinDoc->GetElementById("skin-delete-panel");
+        auto* deleteCancel = skinDoc->GetElementById("skin-delete-cancel");
+        ok &= Check(pathTab && pathTab->Focus() && deleteLayer && deletePanel && deleteCancel,
+                    "skin modal regression has focused background and declared cancel");
+        locus::app::SetRmlModalVisibility(deleteLayer,true);
+        context->Update();
+        locus::app::FocusRmlModalControlIfOutside(deletePanel,deleteCancel);
+        ok &= Check(deleteCancel && context->GetFocusElement()==deleteCancel,
+                    "skin deletion defaults to safe cancel");
+        ok &= Check(locus::app::MoveRmlModalFocus(deletePanel,deleteCancel,false) &&
+                    context->GetFocusElement()!=deleteCancel,
+                    "skin deletion tab reaches the other action");
+        auto* chosen = context->GetFocusElement();
+        locus::app::FocusRmlModalControlIfOutside(deletePanel,deleteCancel);
+        ok &= Check(context->GetFocusElement()==chosen,
+                    "stable modal does not steal chosen focus");
+        locus::app::SetRmlModalVisibility(deleteLayer,false);
+        context->Update();
+        ok &= Check(!locus::app::RmlFocusWithin(deleteLayer,context->GetFocusElement()),
+                    "closing skin deletion releases nested focus");
         ok &= Check(HasButtonLabels(skinDoc) && controls && preview && name &&
                     pathTab && pathTab->GetAbsoluteTop() < 20.0f &&
                     preview->GetOffsetWidth() > 120.0f &&

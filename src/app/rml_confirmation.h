@@ -29,12 +29,9 @@ public:
 
     bool Sync(const ConfirmationView& view) {
         if (!document_ || view == view_) return false;
-        auto* panel = Panel();
         if (!SamePrompt(view)) {
             if (view.visible) document_->Focus();
-            else ReleaseRmlModalFocus(panel);
-            if (auto* layer = Element("confirmation-layer"))
-                layer->SetProperty("display",view.visible ? "flex" : "none");
+            SetRmlModalVisibility(Element("confirmation-layer"),view.visible);
             choice_ = ConfirmationChoice::None;
         }
         if (view.visible) {
@@ -65,8 +62,7 @@ public:
     Rml::Element* Panel() const { return Element("confirmation-panel"); }
     void FocusCancelIfOutside() const {
         if (!document_ || !Visible()) return;
-        if (!RmlFocusWithin(Panel(),document_->GetContext()->GetFocusElement()))
-            if (auto* cancel = Element("confirmation-cancel")) cancel->Focus();
+        FocusRmlModalControlIfOutside(Panel(),Element("confirmation-cancel"));
     }
     void Click(Rml::Element* target) {
         if (!Visible() || !RmlFocusWithin(Panel(),target)) return;

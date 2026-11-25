@@ -1112,9 +1112,10 @@ MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
     skinPresenter_.Sync();
     const bool modalWasOpen = !ui.pendingDeleteProfile.empty();
     auto* modal = skinDocument_->GetElementById("skin-delete-panel");
-    if (modalWasOpen) {
-        auto* focus = context_->GetFocusElement();
-        if (focus && !RmlFocusWithin(modal,focus)) focus->Blur();
+    auto* cancel = skinDocument_->GetElementById("skin-delete-cancel");
+    if (modalWasOpen && !RmlFocusWithin(modal,context_->GetFocusElement())) {
+        context_->Update();
+        FocusRmlModalControlIfOutside(modal,cancel);
     }
     PumpInput(!modalWasOpen);
     skinPresenter_.UpdatePointer(SkinColorWheelBounds());
@@ -1162,6 +1163,8 @@ MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
     }
     skinPresenter_.Sync();
     context_->Update();
+    if (!ui.pendingDeleteProfile.empty())
+        FocusRmlModalControlIfOutside(modal,cancel);
     skinPresenter_.EndFrame();
     return events;
 }

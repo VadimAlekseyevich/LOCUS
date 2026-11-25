@@ -134,11 +134,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         else toggle->SetAttribute("disabled","");
     }
     if (showCompare != compareVisible_) {
-        if (!showCompare) {
-            ReleaseRmlModalFocus(document_->GetElementById("editor-compare-panel"));
-        }
-        if (auto* layer = document_->GetElementById("editor-compare-layer"))
-            layer->SetProperty("display",showCompare ? "flex" : "none");
+        SetRmlModalVisibility(document_->GetElementById("editor-compare-layer"),showCompare);
         compareVisible_ = showCompare;
         if (showCompare) {
             if (auto* list = document_->GetElementById("editor-compare-list"))

@@ -29,6 +29,30 @@ inline void ReleaseRmlModalFocus(Rml::Element* panel) {
         document->Focus();
 }
 
+// The layer owns the entire modal subtree, including the backdrop. Transfer
+// focus before changing display so a hidden child cannot keep keyboard input.
+inline void SetRmlModalVisibility(Rml::Element* layer, bool visible) {
+    if (!layer) return;
+    if (visible) {
+        auto* document = layer->GetOwnerDocument();
+        if (document && document->GetContext() &&
+            !RmlFocusWithin(layer,document->GetContext()->GetFocusElement()))
+            document->Focus();
+    } else {
+        ReleaseRmlModalFocus(layer);
+    }
+    layer->SetProperty("display",visible ? "flex" : "none");
+}
+
+// Call after layout, when the declared safe control is focusable.
+inline void FocusRmlModalControlIfOutside(Rml::Element* panel, Rml::Element* control) {
+    if (!RmlFocusWithin(panel,control)) return;
+    auto* document = panel->GetOwnerDocument();
+    if (document && document->GetContext() &&
+        !RmlFocusWithin(panel,document->GetContext()->GetFocusElement()))
+        control->Focus();
+}
+
 inline void CollectModalFocus(Rml::Element* element,
                               std::vector<Rml::Element*>& controls) {
     if (!element || element->GetDisplay() == Rml::Style::Display::None ||
