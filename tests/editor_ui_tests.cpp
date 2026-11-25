@@ -1228,6 +1228,40 @@ int main() {
                     "PLAY scores two independently authored 10ms-apart notes");
     }
 
+    // Late-chart frame projection must agree with scalar time mapping;
+    // select only the intersecting local BPM segments, including preroll.
+    {
+        std::vector<core::TempoMarker> markers;
+        for(int i=0;i<256;++i) markers.push_back({250+i*1375LL,120.0+i%7});
+        using Range=std::pair<std::size_t,std::size_t>;
+        ok &= Check(detail::TimelineTempoSegments(markers,-2.0,-1.0)==Range{0,1} &&
+                    detail::TimelineTempoSegments(markers,0.25,1.625)==Range{0,1} &&
+                    detail::TimelineTempoSegments(markers,1.625,3.0)==Range{1,2} &&
+                    detail::TimelineTempoSegments(markers,400,401)==Range{255,256} &&
+                    detail::TimelineTempoSegments(markers,1,1)==Range{0,0},
+                    "visible tempo interval search preserves boundary ownership");
+        core::LoadedChart loaded;
+        loaded.route.tempoMap=markers;
+        loaded.route.ticksPerBeat=24;
+        loaded.route.lengthBeats=25000;
+        loaded.offsetSeconds=.25;
+        core::ChartEditor projected;
+        projected.Load(loaded);
+        EditorUiState ruler;
+        const auto anchor=17321.25;
+        const auto transform=detail::MakeTimelineProjection(projected,ruler,anchor);
+        bool equivalent=true;
+        for(int i=-512;i<512;++i) {
+            const double seconds=transform.anchorSeconds+i*.025;
+            const float expected=detail::PlayheadX(ruler)+static_cast<float>(
+                (seconds-core::TempoSecondsAtTick(loaded.route,loaded.offsetSeconds,anchor))*
+                detail::TimelinePixelsPerSongSecond(ruler,loaded.route));
+            equivalent &= transform.XAtSeconds(seconds)==expected &&
+                std::abs(transform.SecondsAtX(expected)-seconds)<.00001;
+        }
+        ok &= Check(equivalent,"one ruler projection preserves exact scalar screen positions");
+    }
+
     if (!ok) return 1;
     std::cout << "EDITOR_UI_PASS route_controls=1 field_heading=1 zoom=1\n";
     return 0;

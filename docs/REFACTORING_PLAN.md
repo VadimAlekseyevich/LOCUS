@@ -258,6 +258,8 @@
 
 **26.11.2026 — T14: CPU ribbon profiling.** Existing optional route_preview_bench now also runs actual PrepareRoutePreview + PrepareScoredPathRibbon + both-layer MakePathRibbonQuad for 1,200 deterministic frames per scenario, after warming the same sequence. Reports p50/p95/p99 microseconds, max rows, coordinate checksum and frames with scratch capacity growth (must be zero). 1,024/60,000 notes, 4/20 notes per second, 1/4 panes. Linked raylib only for geometry types; no window, GPU submission, junction rasterization, input/audio or renderer driver timing. Captured in existing preview-benchmark.txt, no extra benchmark executable.
 
+**26.11.2026 — T14: timeline projection.** Resolve variable-BPM anchor once per draw/hit-test, then use affine song-second transform for all grid/note positions. Binary search intersecting BPM segments and highlighted markers; borrow authored/shared tempo maps; resolve selected exact note once per draw. Preserve local downbeat ownership, negative preroll, fixed song-time scale and existing screen arithmetic. Tests cover 256 markers and boundary/coordinate equivalence. Windows CI required.
+
 **Приёмка.** Для выбранного FPS связывать цифры с реальным бюджетом кадра (например, 6,94 мс при 144 Гц) и базой той же машины. Менять только доказанный источник задержки. Возможные локальные решения — переиспользование буферов mesh, декодирование с отменой, индекс сегментов темпа. Сравнить до/после, контрольные суммы, точность нот, критерии сортировки и метрики сложности. Изменение формулы рейтинга получает собственную версию и отдельные музыкальные примеры.
 
 <a id="t15"></a>

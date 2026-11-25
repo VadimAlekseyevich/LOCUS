@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <utility>
 
 namespace locus::app::detail {
 constexpr float kVirtualWidth = 960.0f, kVirtualHeight = 540.0f;
@@ -84,19 +85,55 @@ inline double TimelineAnchorSeconds(
     return core::TempoSecondsAtTick(
         loaded.route, loaded.offsetSeconds, anchorTick);
 }
+// One affine song-time transform per draw or hit-test. Resolving the
+// anchor through a variable BPM map is independent of every grid line/note.
+struct TimelineProjection {
+    double anchorSeconds=0.0;
+    double pixelsPerSecond=0.0;
+    float playheadX=0.0f;
+    float XAtSeconds(double songSeconds) const noexcept {
+        return playheadX+static_cast<float>(
+            (songSeconds-anchorSeconds)*pixelsPerSecond);
+    }
+    double SecondsAtX(float x) const noexcept {
+        return anchorSeconds+(static_cast<double>(x)-playheadX)/
+            std::max(pixelsPerSecond,1e-6);
+    }
+};
+inline TimelineProjection MakeTimelineProjection(
+    const core::ChartEditor& draft,const EditorUiState& ui,
+    double anchorTick) noexcept {
+    return {TimelineAnchorSeconds(draft,anchorTick),
+        TimelinePixelsPerSongSecond(ui,draft.Data().route),PlayheadX(ui)};
+}
 inline float TimelineXAtSeconds(
-    const core::ChartEditor& draft, const EditorUiState& ui,
-    double anchorTick, double songSeconds) noexcept {
-    const double px = TimelinePixelsPerSongSecond(ui, draft.Data().route);
-    return PlayheadX(ui) + static_cast<float>(
-        (songSeconds - TimelineAnchorSeconds(draft, anchorTick)) * px);
+    const core::ChartEditor& draft,const EditorUiState& ui,
+    double anchorTick,double songSeconds) noexcept {
+    return MakeTimelineProjection(draft,ui,anchorTick).XAtSeconds(songSeconds);
 }
 inline double TimelineSecondsAtX(
-    const core::ChartEditor& draft, const EditorUiState& ui,
-    double anchorTick, float x) noexcept {
-    const double px = TimelinePixelsPerSongSecond(ui, draft.Data().route);
-    return TimelineAnchorSeconds(draft, anchorTick) +
-        (static_cast<double>(x) - PlayheadX(ui)) / std::max(px, 1e-6);
+    const core::ChartEditor& draft,const EditorUiState& ui,
+    double anchorTick,float x) noexcept {
+    return MakeTimelineProjection(draft,ui,anchorTick).SecondsAtX(x);
+}
+
+// Visible segments include the tempo active at the left edge, and exclude
+// the marker exactly at the right edge (it owns no interval in the window).
+// The first marker also extrapolates backwards for negative preroll.
+inline std::pair<std::size_t,std::size_t> TimelineTempoSegments(
+    const std::vector<core::TempoMarker>& markers,double from,double to) {
+    if (markers.empty() || !(to>from)) return {0,0};
+    const auto firstAfter=std::upper_bound(markers.begin(),markers.end(),from,
+        [](double seconds,const core::TempoMarker& marker) {
+            return seconds<marker.timeMs/1000.0;
+        });
+    const auto first=firstAfter==markers.begin()?firstAfter:firstAfter-1;
+    const auto last=std::lower_bound(first,markers.end(),to,
+        [](const core::TempoMarker& marker,double seconds) {
+            return marker.timeMs/1000.0<seconds;
+        });
+    return {static_cast<std::size_t>(first-markers.begin()),
+        std::max(static_cast<std::size_t>(last-markers.begin()),std::size_t{1})};
 }
 inline int TimelineTickAtX(
     const core::ChartEditor& draft, const EditorUiState& ui,
@@ -120,8 +157,8 @@ inline std::optional<std::int64_t> TimelineNoteTimeAtX(
     const auto& route = loaded.route;
     const auto& turns = route.turns;
     if (turns.empty()) return std::nullopt;
-    const double candidateMs = TimelineSecondsAtX(
-        draft, ui, anchorTick, x) * 1000.0;
+    const auto projection=MakeTimelineProjection(draft,ui,anchorTick);
+    const double candidateMs=projection.SecondsAtX(x)*1000.0;
     const auto after = std::lower_bound(
         turns.begin(), turns.end(), candidateMs,
         [&](const core::TurnEvent& turn, double timeMs) {
@@ -132,8 +169,7 @@ inline std::optional<std::int64_t> TimelineNoteTimeAtX(
     const auto consider = [&](const core::TurnEvent& event) {
         const std::int64_t timeMs = core::EventTimeMs(
             route, event, loaded.offsetSeconds);
-        const float at = TimelineXAtSeconds(
-            draft, ui, anchorTick, timeMs / 1000.0);
+        const float at=projection.XAtSeconds(timeMs/1000.0);
         const float delta = std::abs(at - x);
         if (delta <= distance) {
             distance = delta;

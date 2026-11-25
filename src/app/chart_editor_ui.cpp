@@ -222,16 +222,14 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     const auto& chart = loaded.route;
     const double anchor = ui.draggingTimeline
         ? ui.dragViewBeat : ViewBeat(draft, previewBeat);
-    const double pixelsPerSecond = TimelinePixelsPerSongSecond(ui, chart);
-    if (!std::isfinite(pixelsPerSecond) || pixelsPerSecond <= 0.0)
-        return;
-    const auto atX = [&](double songSeconds) {
-        return TimelineXAtSeconds(draft, ui, anchor, songSeconds);
+    const auto projection=MakeTimelineProjection(draft,ui,anchor);
+    const double pixelsPerSecond=projection.pixelsPerSecond;
+    if (!std::isfinite(pixelsPerSecond) || pixelsPerSecond<=0.0) return;
+    const auto atX=[&](double songSeconds) {
+        return projection.XAtSeconds(songSeconds);
     };
-    const double leftTime = TimelineSecondsAtX(
-        draft, ui, anchor, strip.x + 5.0f);
-    const double rightTime = TimelineSecondsAtX(
-        draft, ui, anchor, strip.x + strip.width - 5.0f);
+    const double leftTime=projection.SecondsAtX(strip.x+5.0f);
+    const double rightTime=projection.SecondsAtX(strip.x+strip.width-5.0f);
     const double firstChartTime = core::TempoSecondsAtTick(
         chart, loaded.offsetSeconds, chart.firstBeat);
     const double lastChartTime = core::TempoSecondsAtTick(
@@ -268,9 +266,15 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     // Draw each tempo segment independently in SONG SECONDS. This avoids
     // scanning thousands of offscreen integer ticks or accumulating rounding
     // drift at BPM boundaries. The marker itself is local beat zero.
-    const auto markers = core::EffectiveTempoMap(chart, loaded.offsetSeconds);
+    // Authored maps are borrowed; only the empty-map fallback owns a
+    // synthesized marker. Never copy the chart's tempo vector per frame.
+    const auto fallback=chart.tempoMap.empty()
+        ? core::EffectiveTempoMap(chart,loaded.offsetSeconds)
+        : std::vector<core::TempoMarker>{};
+    const auto& markers=chart.tempoMap.empty()?fallback:chart.tempoMap;
     if (visibleTo > visibleFrom) {
-        for (std::size_t i = 0; i < markers.size(); ++i) {
+        const auto segments=TimelineTempoSegments(markers,visibleFrom,visibleTo);
+        for (std::size_t i=segments.first;i<segments.second;++i) {
             const double origin = markers[i].timeMs / 1000.0;
             const double begin = std::max(visibleFrom,
                 i == 0 ? visibleFrom : origin);
@@ -332,14 +336,18 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
 
         // BPM markers are always highlighted even when nearby subdivisions
         // become too dense to display at the current zoom.
-        for (std::size_t i = 1; i < markers.size(); ++i) {
-            const double time = markers[i].timeMs / 1000.0;
-            if (time < visibleFrom || time > visibleTo) continue;
-            const float x = atX(time);
+        const auto firstMarker=std::lower_bound(markers.begin()+1,markers.end(),visibleFrom,
+            [](const core::TempoMarker& marker,double seconds) {
+                return marker.timeMs/1000.0<seconds;
+            });
+        for(auto it=firstMarker;it!=markers.end();++it) {
+            const double time=it->timeMs/1000.0;
+            if(time>visibleTo) break;
+            const float x=atX(time);
             DrawLineEx({x, strip.y + 7.0f},
                        {x, strip.y + 39.0f},
                        3.0f, Color{111, 233, 198, 255});
-            const char* bpm = TextFormat("%.1f", markers[i].bpm);
+            const char* bpm=TextFormat("%.1f",it->bpm);
             Label(font, bpm, x + 5.0f, strip.y + 1.0f, 10.0f,
                   Color{160, 236, 211, 255});
         }
@@ -352,6 +360,7 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
         [&](const core::TurnEvent& event, double ms) {
             return core::EventTimeMs(chart, event, loaded.offsetSeconds) < ms;
         });
+    const auto* selected=draft.SelectedTurnTimeMs()?draft.SelectedTurn():nullptr;
     for (auto it = firstVisible; it != chart.turns.end(); ++it) {
         const auto& event = *it;
         const double songSeconds =
@@ -378,7 +387,7 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
             ? Color{175, 155, 236, 255} : Color{111, 214, 202, 255};
         DrawRectangleRec({x - width * 0.5f, strip.y + 29.0f,
                           width, 12.0f}, tint);
-        if (draft.SelectedTurnTimeMs() && draft.SelectedTurn() == &event) {
+        if (selected==&event) {
             // Exact event selection is visible even if another authored
             // note shares this musical grid cell.
             DrawRectangleLinesEx({x - width * 0.5f - 2.0f,
@@ -452,9 +461,12 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
     // This is the pack's shared tempo/beat-zero anchor, not a chart note.
     // Additional tempo events can later be supplied through this collection,
     // without changing full-song navigation or the note ruler.
-    const auto tempoMarkers = set.managed && !set.tempoMap.empty()
-        ? set.tempoMap
-        : core::EffectiveTempoMap(draft.Data().route, draft.Data().offsetSeconds);
+    const auto& chart=draft.Data().route;
+    const auto fallback=(!set.managed || set.tempoMap.empty()) && chart.tempoMap.empty()
+        ? core::EffectiveTempoMap(chart,draft.Data().offsetSeconds)
+        : std::vector<core::TempoMarker>{};
+    const auto& tempoMarkers=set.managed && !set.tempoMap.empty()?set.tempoMap:
+        (chart.tempoMap.empty()?fallback:chart.tempoMap);
     float previousTextRight = -1000.0f;
     for (const auto& marker : tempoMarkers) {
         const float x = SongOverviewX(marker.timeMs / 1000.0, duration, bounds);
