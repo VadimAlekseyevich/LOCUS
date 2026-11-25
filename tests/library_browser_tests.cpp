@@ -216,6 +216,15 @@ int main() {
     {
         constexpr std::size_t total = 25000;
         constexpr float step = 54.0f;
+        const auto compact = VirtualRowsForViewport(200.0f,step);
+        const auto tall = VirtualRowsForViewport(3200.0f,step);
+        ok &= Check(compact < 32 && tall > 32 &&
+                    (tall-10)*step >= 3200.0f,
+                    "virtual working set grows with viewport rather than a fixed cap");
+        const auto tallView = VisibleResultRows(total,13000.0f*step,step,tall);
+        ok &= Check(tallView.first <= 13000 &&
+                    tallView.end*step >= 13000.0f*step+3200.0f,
+                    "large viewport fully covered with overscan");
         const auto first = VisibleResultRows(total, 0.0f, step);
         const auto middle = VisibleResultRows(total, 13000.0f * step, step);
         const auto last = VisibleResultRows(total, total * step, step);

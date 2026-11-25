@@ -29,6 +29,21 @@ std::string Accuracy(double value) {
     return stream.str();
 }
 
+// Tree rows have two heights (42/45dp plus a 6dp gap). Use the
+// shortest step to guarantee coverage even if every visible row is a chart.
+LibraryRowWindow TreeViewport(const std::vector<float>& offsets,
+                              Rml::Element* scroll,float density) {
+    const float height = scroll ? LibraryScrollDp(scroll->GetClientHeight(),density) : 0.0f;
+    const float top = scroll ? LibraryScrollDp(scroll->GetScrollTop(),density) : 0.0f;
+    return VisibleLibraryRows(offsets,top,VirtualRowsForViewport(height,48.0f,6),6);
+}
+LibraryRowWindow ResultViewport(std::size_t count,Rml::Element* scroll,
+                                float density,float step) {
+    const float height = scroll ? LibraryScrollDp(scroll->GetClientHeight(),density) : 0.0f;
+    const float top = scroll ? LibraryScrollDp(scroll->GetScrollTop(),density) : 0.0f;
+    return VisibleResultRows(count,top,step,VirtualRowsForViewport(height,step),5);
+}
+
 } // namespace
 
 void NativePlayUi::Attach(Rml::ElementDocument* document) noexcept {
@@ -203,8 +218,7 @@ void NativePlayUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
     if (!rows) return;
     auto* scroll = document_->GetElementById("tree-scroll");
     const float oldScroll = scroll ? scroll->GetScrollTop() : 0;
-    const auto view = VisibleLibraryRows(treeOffsets_,
-        scroll ? LibraryScrollDp(scroll->GetScrollTop(),lastDensity_) : 0.0f);
+    const auto view = TreeViewport(treeOffsets_,scroll,lastDensity_);
     std::ostringstream html;
     if (view.before > 0.0f)
         html << "<div class='tree-spacer' style='height:"
@@ -270,8 +284,7 @@ void NativePlayUi::RebuildResults(SongSelectUi& ui) {
     auto* scroll = document_->GetElementById("results-scroll");
     const float oldScroll = scroll ? scroll->GetScrollTop() : 0;
     SetText("result-count", std::to_string(ui.results.size()));
-    const auto window = VisibleResultRows(
-        ui.results.size(), LibraryScrollDp(oldScroll,lastDensity_), resultRowStep_);
+    const auto window = ResultViewport(ui.results.size(),scroll,lastDensity_,resultRowStep_);
     std::ostringstream html;
     if (window.before > 0.0f)
         html << "<div class='result-spacer' style='height:"
@@ -353,8 +366,7 @@ void NativePlayUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
         }
     }
     auto* scroll = document_->GetElementById("tree-scroll");
-    const auto window = VisibleLibraryRows(treeOffsets_,
-        scroll ? LibraryScrollDp(scroll->GetScrollTop(),lastDensity_) : 0.0f);
+    const auto window = TreeViewport(treeOffsets_,scroll,lastDensity_);
     if (window.first != treeFirst_ || window.end != treeEnd_)
         RebuildRows(library, ui);
     // Status text may change without a selection/index change. Updating it
@@ -394,9 +406,7 @@ void NativePlayUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
         }
     }
     auto* historyScroll = document_->GetElementById("results-scroll");
-    const auto visible = VisibleResultRows(ui.results.size(),
-        historyScroll ? LibraryScrollDp(historyScroll->GetScrollTop(),lastDensity_) : 0.0f,
-        resultRowStep_);
+    const auto visible = ResultViewport(ui.results.size(),historyScroll,lastDensity_,resultRowStep_);
     if (visible.first != resultFirst_ || visible.end != resultEnd_)
         RebuildResults(ui);
 }

@@ -183,6 +183,8 @@
 
 **25.11.2026 — T08/T12: virtual RESULTS history.** NativeResultsUi retains source indices only on history/selection revisions, materializes a viewport-sized overscanned window with dp spacers and validates original run identity on click. Scroll stays logical across density changes; DOM is bounded by visible rows, not count. Integration test loads production results.rml with 25k summaries, checks omission of selected run, last row, click mapping, DPI and expired-frame guard. Windows CI required.
 
+**25.11.2026 — T08/T12: responsive PLAY virtualization.** Tree and completed-run DOM working sets use actual viewport dp height + overscan, not fixed 40/32 row limits. Shared viewport helper used by RESULTS. Tests cover compact and 3200dp-high panels. Windows CI required.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>
