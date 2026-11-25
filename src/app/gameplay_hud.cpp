@@ -30,16 +30,6 @@ constexpr Color kGradeColors[] = {
     {237, 198, 143, 255}, {239, 149, 168, 255}
 };
 
-void Scrims(const GameplayHudLayout& l, const Skin& skin) {
-    const auto b = l.bounds;
-    const float height = 110.0f*l.unit;
-    const Color top = WithOpacity(skin.hudBackground, 0.82f);
-    const Color clear = WithOpacity(skin.hudBackground, 0.0f);
-    DrawRectangleGradientEx({b.x,b.y,b.width,height},top,clear,clear,top);
-    DrawRectangleGradientEx({b.x,b.y+b.height-height,b.width,height},
-                            clear,top,top,clear);
-}
-
 } // namespace
 
 void DrawGameplayHud(Font font, const GameplayHudLayout& l,
@@ -48,54 +38,33 @@ void DrawGameplayHud(Font font, const GameplayHudLayout& l,
     const float u = l.unit;
     const Color text = skin.hudText;
     const Color muted = WithOpacity(text, 0.69f);
-    Scrims(l, skin);
     char value[64];
     std::snprintf(value, sizeof(value), "%dx", stats.combo);
     Text(font,value,l.combo,0,34,u,text);
-    std::snprintf(value, sizeof(value), "Best %dx", stats.maxCombo);
-    Text(font,value,l.combo,41,14,u,muted);
 
     std::snprintf(value, sizeof(value), "%.2f%%", stats.grades.AccuracyPercent());
     Text(font,value,l.accuracy,0,34,u,text,Align::Right);
-    Text(font,"Accuracy",l.accuracy,41,14,u,muted,Align::Right);
     if (stats.practiceRate < 0.999 || stats.practiceRate > 1.001) {
         std::snprintf(value, sizeof(value), "Practice  %.0f%%", stats.practiceRate*100.0);
-        Text(font,value,l.accuracy,60,12,u,muted,Align::Right);
+        Text(font,value,l.accuracy,41,12,u,muted,Align::Right);
     }
 
+    if (l.grades.width <= 0.0f) return;
     const int counts[] = {stats.grades.perfect, stats.grades.good,
                           stats.grades.bad, stats.grades.miss};
     const char* labels[] = {"Perfect","Good","Bad","Miss"};
-    const float cell = l.grades.width / 4.0f;
+    const float rowHeight = l.grades.height / 4.0f;
     for (int i = 0; i < 4; ++i) {
-        const Rectangle slot{l.grades.x+i*cell,l.grades.y,
-                             cell-5.0f*u,l.grades.height};
+        const float y = l.grades.y+i*rowHeight;
+        const float labelWidth = 0.52f*l.grades.width;
+        const Rectangle label{l.grades.x,y,labelWidth,rowHeight};
+        const Rectangle number{l.grades.x+labelWidth+4.0f*u,y,
+                               l.grades.width-labelWidth-4.0f*u,rowHeight};
         const Color accent = WithOpacity(kGradeColors[i],text.a/255.0f);
+        Text(font,labels[i],label,6,14,u,muted);
         std::snprintf(value,sizeof(value),"%d",counts[i]);
-        Text(font,value,slot,0,22,u,accent);
-        Text(font,labels[i],slot,27,12,u,muted);
+        Text(font,value,number,3,21,u,accent,Align::Right);
     }
-
-    std::snprintf(value,sizeof(value),"%d / %d notes",stats.grades.Resolved(),stats.total);
-    Text(font,value,l.progress,0,16,u,text,Align::Right);
-    if (!stats.last) std::snprintf(value,sizeof(value),"Last hit  --");
-    else if (stats.last->grade == core::Grade::Miss)
-        std::snprintf(value,sizeof(value),"%s",
-                      stats.last->wrongDirection ? "Wrong direction" : "Missed");
-    else {
-        const double ms = stats.last->timingErrorSeconds*1000.0;
-        std::snprintf(value,sizeof(value),"Last hit  %+.0f ms",ms);
-    }
-    Text(font,value,l.progress,22,12,u,muted,Align::Right);
-
-    // The thin bar represents resolved physical notes, not audio elapsed.
-    const auto b = l.bounds;
-    const float barHeight = 3.0f*u;
-    const Rectangle track{b.x,b.y+b.height-barHeight,b.width,barHeight};
-    DrawRectangleRec(track,WithOpacity(text,0.12f));
-    if (const float progress=JudgedProgress(stats); progress>0.0f)
-        DrawRectangleRec({track.x,track.y,track.width*progress,track.height},
-                         WithOpacity(text,0.8f));
 }
 
 void DrawGameplayNotice(Font font, const GameplayHudLayout& l,

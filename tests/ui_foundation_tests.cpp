@@ -76,31 +76,35 @@ int main() {
                     !input.restartPressed && !input.openEditorPressed,
                     "historical result preserves configured Back/Home");
     }
-    // HUD must stay present even when the gameplay square fills the screen.
+    // Grades must fit entirely outside the route clip, or be hidden.
     for (const auto size : {Vector2{1920,1080},Vector2{2560,1080},
-                            Vector2{800,450},Vector2{540,540},Vector2{900,1200}}) {
+                            Vector2{800,450},Vector2{1280,1024},
+                            Vector2{540,540},Vector2{900,1200}}) {
         const auto transform = ViewportTransform::Gameplay(
             static_cast<int>(size.x),static_cast<int>(size.y));
         const auto bounds = transform.ToVirtualBounds({0,0,size.x,size.y});
-        const auto l = LayoutGameplayHud(bounds);
+        const Rectangle field{210,0,540,540};
+        const auto l = LayoutGameplayHud(bounds,field);
         const auto fits = [&](Rectangle r) {
             return r.x >= bounds.x-0.01f && r.y >= bounds.y-0.01f &&
                 r.x+r.width <= bounds.x+bounds.width+0.01f &&
                 r.y+r.height <= bounds.y+bounds.height+0.01f;
         };
-        ok &= Check(fits(l.combo) && fits(l.accuracy) && fits(l.grades) &&
-                    fits(l.progress) && fits(l.notice) &&
-                    l.combo.x+l.combo.width < l.accuracy.x &&
-                    l.grades.x+l.grades.width < l.progress.x &&
-                    l.notice.y+l.notice.height < l.grades.y,
-                    "HUD groups fit and remain separate on every aspect ratio");
+        const bool wide = size.x/size.y >= 1.5f;
+        ok &= Check(fits(l.combo) && fits(l.accuracy) && fits(l.notice) &&
+                    l.combo.y > bounds.y+bounds.height*0.5f &&
+                    l.accuracy.y < bounds.y+bounds.height*0.5f &&
+                    (wide ? l.grades.width > 0 && fits(l.grades) &&
+                        l.grades.x >= field.x+field.width &&
+                        l.grades.y >= l.accuracy.y+l.accuracy.height
+                          : l.grades.width == 0),
+                    "HUD corners remain visible; grades never overlap the world");
     }
-    GameplayHudStats hud;
-    hud.total=10; hud.grades={3,1,1,2};
-    ok &= Check(Near(JudgedProgress(hud),0.7f),
-                "note progress includes misses and all resolved components");
-    hud.total=0;
-    ok &= Check(JudgedProgress(hud)==0.0f,"empty chart has no note progress");
+    // The skin preview also passes its actual clipping rectangle.
+    const auto previewHud = LayoutGameplayHud({605,193,298,248},{641,220,191,200});
+    ok &= Check(previewHud.grades.width > 0 && previewHud.grades.x >= 832 &&
+                previewHud.grades.x+previewHud.grades.width <= 903,
+                "skin preview grades remain outside its actual route clip");
     // Regression: a 100%-DPI fullscreen window must not use 1px/dp.
     ok &= Check(Near(NativeUiDensity(960,540,1),1) &&
                 Near(NativeUiDensity(1536,960,1),1.6f) &&

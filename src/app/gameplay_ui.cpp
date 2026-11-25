@@ -104,7 +104,7 @@ void DrawPlayGrid(Font font,const GameplayView& gameplay,double now,
         {0.0f,0.0f,static_cast<float>(GetScreenWidth()),
                    static_cast<float>(GetScreenHeight())});
     DrawGameplayFieldEdges(kGameplayWorldViewport,visible,gameplay.skin.fieldBorder);
-    const auto layout = LayoutGameplayHud(visible);
+    const auto layout = LayoutGameplayHud(visible,kGameplayWorldViewport);
     DrawGameplayHud(font,layout,MakeGameplayHudStats(gameplay.judge,gameplay.practiceSpeed),
                     gameplay.skin);
     if (now < gameplay.adjustmentNoticeUntil)

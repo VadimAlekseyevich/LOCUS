@@ -8,53 +8,65 @@
 
 namespace locus::app {
 
-// Coordinates are local to the current draw transform, not the legacy
-// 960x540 menu canvas. The short edge controls density; the long edge
-// contributes actual space instead of scaling down the entire HUD.
+// Layout uses the actual world clip and visible window. Detailed grades
+// never occupy gameplay pixels, even on narrow windows.
 struct GameplayHudLayout {
     Rectangle bounds{};
     float unit = 1.0f;
-    Rectangle combo{}, accuracy{}, grades{}, progress{}, notice{};
+    Rectangle combo{}, accuracy{}, grades{}, notice{};
 };
 
-inline GameplayHudLayout LayoutGameplayHud(Rectangle bounds) noexcept {
+inline GameplayHudLayout LayoutGameplayHud(Rectangle bounds,
+                                           Rectangle field) noexcept {
     GameplayHudLayout out{};
     out.bounds = bounds;
     if (bounds.width <= 0 || bounds.height <= 0) return out;
     const float u = std::min(bounds.width, bounds.height) / 540.0f;
     out.unit = u;
-    const float left = bounds.x + 20.0f*u;
-    const float right = bounds.x + bounds.width - 20.0f*u;
-    const float top = bounds.y + 15.0f*u;
-    const float bottom = bounds.y + bounds.height - 20.0f*u;
-    out.combo = {left, top, 200.0f*u, 82.0f*u};
-    out.accuracy = {right - 200.0f*u, top, 200.0f*u, 82.0f*u};
-    out.grades = {left, bottom - 52.0f*u, 252.0f*u, 52.0f*u};
-    out.progress = {right - 210.0f*u, bottom - 52.0f*u, 210.0f*u, 52.0f*u};
-    out.notice = {bounds.x + (bounds.width-260.0f*u)*0.5f,
-                  top + 90.0f*u, 260.0f*u, 28.0f*u};
+    const float margin = 16.0f*u;
+    const float left = bounds.x + margin;
+    const float right = bounds.x + bounds.width - margin;
+    const float top = bounds.y + margin;
+    const float bottom = bounds.y + bounds.height - margin;
+    const float fieldRight = field.x + field.width;
+    const float rightGutter = bounds.x + bounds.width - fieldRight;
+    const float leftGutter = field.x - bounds.x;
+
+    // Prefer outside gutters for the two main values too. In square and
+    // portrait windows these essential values stay in the screen corners.
+    const auto cornerWidth = [&](float gutter) {
+        return gutter >= 116.0f*u
+            ? std::min(200.0f*u, gutter-2.0f*margin)
+            : 176.0f*u;
+    };
+    const float comboWidth = cornerWidth(leftGutter);
+    const float accuracyWidth = cornerWidth(rightGutter);
+    out.combo = {left, bottom-45.0f*u, comboWidth, 45.0f*u};
+    out.accuracy = {right-accuracyWidth, top, accuracyWidth, 60.0f*u};
+
+    // Only use the right gutter, with a minimum readable width.
+    constexpr float kGradeWidth = 100.0f;
+    constexpr float kGradeHeight = 152.0f;
+    if (rightGutter >= (kGradeWidth+32.0f)*u) {
+        const float width = std::min(170.0f*u, rightGutter-2.0f*margin);
+        out.grades = {fieldRight+(rightGutter-width)*0.5f,
+                      bounds.y+(bounds.height-kGradeHeight*u)*0.5f,
+                      width, kGradeHeight*u};
+    }
+    out.notice = {bounds.x+(bounds.width-260.0f*u)*0.5f,
+                  top+66.0f*u,260.0f*u,28.0f*u};
     return out;
 }
 
 struct GameplayHudStats {
     core::GradeCounts grades{};
-    int total = 0;
     int combo = 0;
-    int maxCombo = 0;
-    std::optional<core::Judgement> last;
     double practiceRate = 1.0;
 };
 
 inline GameplayHudStats MakeGameplayHudStats(const core::TurnJudge& judge,
-                                               double practiceRate) noexcept {
-    return {judge.Counts(), static_cast<int>(judge.ScorableCount()),
-            judge.Combo(), judge.MaxCombo(), judge.Last(), practiceRate};
-}
-
-inline float JudgedProgress(const GameplayHudStats& stats) noexcept {
-    return stats.total > 0
-        ? std::clamp(static_cast<float>(stats.grades.Resolved()) / stats.total,
-                     0.0f, 1.0f) : 0.0f;
+                                              double practiceRate) noexcept {
+    return {judge.Counts(), judge.Combo(), practiceRate};
 }
 
 void DrawGameplayHud(Font font, const GameplayHudLayout& layout,

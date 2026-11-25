@@ -172,12 +172,8 @@ void PreviewPath(Font font, const Skin& skin,
     // statistics, rather than maintaining a second UI.
     GameplayHudStats sample;
     sample.grades = {42, 6, 1, 2};
-    sample.total = 80;
     sample.combo = 18;
-    sample.maxCombo = 32;
-    sample.last = core::Judgement{core::Grade::Perfect,0,-0.012,false,
-                                  core::Heading::Right};
-    DrawGameplayHud(font,LayoutGameplayHud(area),sample,skin);
+    DrawGameplayHud(font,LayoutGameplayHud(area,frame),sample,skin);
 }
 
 void DrawColorPickerWheel(const Skin& skin, const SkinUi& ui) {
