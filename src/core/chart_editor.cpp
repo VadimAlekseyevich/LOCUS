@@ -368,11 +368,13 @@ bool ChartEditor::SetSnapDivision(int division) {
     const int factor = newTicks / oldTicks;
     int first = chart_.route.firstBeat;
     int end = chart_.route.lengthBeats;
+    std::vector<TurnEvent> remapped;
+    int selected=selectedBeat_*factor;
     if (factor > 1) {
+        Chart projected=chart_.route;
+        projected.ticksPerBeat=newTicks;
         if (HasSongDuration()) {
             std::string error;
-            Chart projected = chart_.route;
-            projected.ticksPerBeat = newTicks;
             if (!TempoTickRange(projected, chart_.offsetSeconds,
                                 songDurationSeconds_, first, end, error)) return false;
         } else {
@@ -383,17 +385,33 @@ bool ChartEditor::SetSnapDivision(int division) {
             first *= factor;
             end *= factor;
         }
-        for (const auto& event : chart_.route.turns) {
-            const long long tick = static_cast<long long>(event.beat) * factor;
-            if (tick < first || tick >= end || tick < -1000000 || tick > 999999)
-                return false;
+        // The previous tick is a rounded projection, not the authored
+        // timestamp. Reproject exact notes directly onto the finer lattice.
+        // Tick-only internal notes retain their exact musical grid location.
+        const TempoProjection projection(projected,chart_.offsetSeconds);
+        int previous=first;
+        if (selectedTurnTimeMs_)
+            selected=projection.TickAtMs(*selectedTurnTimeMs_);
+        for (auto& event:projected.turns) {
+            const long long tick=event.timeMs==kNoTimeMs
+                ? static_cast<long long>(event.beat)*factor
+                : projection.TickAtMs(event.timeMs);
+            if (tick<previous || tick<first || tick>=end ||
+                tick<-1000000 || tick>999999) return false;
+            if (selectedTurnTimeMs_ &&
+                EventTimeMs(chart_.route,event,chart_.offsetSeconds)==*selectedTurnTimeMs_)
+                selected=static_cast<int>(tick);
+            event.beat=static_cast<int>(tick);
+            previous=event.beat;
         }
+        remapped=std::move(projected.turns);
     }
 
-    if (factor > 1) SaveUndoAllTurns();
-    else SaveUndo();
-    for (auto& event : chart_.route.turns) event.beat *= factor;
-    selectedBeat_ = std::clamp(selectedBeat_ * factor, first, end - 1);
+    if (factor>1) {
+        SaveUndoAllTurns();
+        chart_.route.turns=std::move(remapped);
+    } else SaveUndo();
+    selectedBeat_=std::clamp(selected,first,end-1);
     chart_.route.firstBeat = first;
     chart_.route.lengthBeats = end;
     chart_.route.ticksPerBeat = newTicks;
@@ -425,9 +443,9 @@ bool ChartEditor::SetTempoMap(const std::vector<TempoMarker>& markers) {
         return false;
 
     const TempoProjection projection(adjusted,nextOffset);
-    std::vector<TurnEvent> remapped = chart_.route.turns;
+    // Reuse the transaction's existing note copy instead of copying it twice.
     int previous = first;
-    for (auto& turn : remapped) {
+    for (auto& turn : adjusted.turns) {
         const std::int64_t ms = EventTimeMs(
             chart_.route, turn, chart_.offsetSeconds);
         const int tick = projection.TickAtMs(ms);
@@ -444,7 +462,7 @@ bool ChartEditor::SetTempoMap(const std::vector<TempoMarker>& markers) {
         first, end - 1);
 
     SaveUndoAllTurns();
-    chart_.route.turns = std::move(remapped);
+    chart_.route.turns = std::move(adjusted.turns);
     chart_.route.tempoMap = markers;
     chart_.route.bpm = markers.front().bpm;
     chart_.offsetSeconds = nextOffset;
@@ -837,6 +855,16 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
     changed |= add!=incoming.cend();
     merged.insert(merged.end(),add,incoming.cend());
     if (!changed) return false;
+    // Protect the splice boundary even for an inconsistent in-memory
+    // source whose projected tick does not match its authored timestamp.
+    if (first!=route.turns.begin() &&
+        EventTimeMs(route,*(first-1),chart_.offsetSeconds)>=
+            EventTimeMs(route,merged.front(),chart_.offsetSeconds))
+        return false;
+    if (end!=route.turns.end() &&
+        EventTimeMs(route,merged.back(),chart_.offsetSeconds)>=
+            EventTimeMs(route,*end,chart_.offsetSeconds))
+        return false;
 
     // Commit a single range splice and one history entry. Overwrite the
     // common prefix and shift the untouched suffix at most once (the

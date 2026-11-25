@@ -292,6 +292,8 @@
 
 **26.11.2026 — T15: ownership audit correction.** Windows configure 4c2df49 caught duplicate listen_session.cpp. A complete static source-list audit also identified skin_profile_actions.cpp. Both now have shared targets; source ownership check stays enabled. Two more redundant assignments removed; Windows verification pending.
 
+**26.11.2026 — T05/T14: exact snap reprojection and paste boundary.** Increasing ticksPerBeat now projects every timestamped note through the new TempoProjection instead of multiplying a rounded tick; legacy tick-only events retain musical grid coordinates. Exact selection follows the note, whole-range Undo/Redo preserved, invalid order/range rejects atomically. Paste checks both untouched neighbors against merged timestamp bounds. BPM change reuses transaction's note copy. Regression covers 1000/1020ms originally in tick 2 becoming ticks 48/49 at 1/24, exact paste/Undo/Redo and inconsistent cross-range duplicate. Core CI pending, no format change.
+
 **Приёмка.** Чистая и повторная Windows Release сборки с тестами и BAT, Linux-сборка явно обозначенного переносимого набора, наличие прежних тестов в ctest -N. Зафиксировать время и количество повторных компиляций на одной машине. Таблица экранов в архитектуре соответствует инициализации в NativeMenuUi и путям fallback. Документы объясняют источник времени, локальную сильную долю и текущую скорость предпросмотра. Примеры читаются текущими парсерами.
 
 <a id="t16"></a>

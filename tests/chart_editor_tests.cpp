@@ -518,9 +518,52 @@ int main() {
                 dense.Data().route.turns.back().beat == 39996,
                 "changing note resolution is a single reversible whole-range edit");
 
-    // T05 groundwork: two distinct timestamps can project into one
-    // musical tick. Exact-time selection and mutations must never affect
-    // the wrong note, even though chart v4 still rejects such files.
+    // Distinct exact timestamps can share a projected musical tick.
+    // Refining Snap must project from original milliseconds, not multiply
+    // the already rounded old tick.
+    {
+        LoadedChart source;
+        source.route.turns={{2,Heading::Up,1000},{2,Heading::Right,1020},
+                            {3,Heading::Down,1500}};
+        ChartEditor finer;
+        finer.Load(source);
+        ok &= Check(finer.SetSongDuration(4.0) &&
+                    finer.SelectTurnAtTimeMs(1020) &&
+                    finer.SetSnapDivision(24) &&
+                    finer.Data().route.turns[0].beat==48 &&
+                    finer.Data().route.turns[1].beat==49 &&
+                    finer.Data().route.turns[1].timeMs==1020 &&
+                    finer.SelectedBeat()==49 &&
+                    finer.SelectedTurnTimeMs()==1020,
+                    "refining snap separates exact notes without changing time or identity");
+        ok &= Check(finer.Undo() && finer.SelectedBeat()==2 &&
+                    finer.Data().route.turns[1].timeMs==1020 &&
+                    finer.Redo() && finer.SelectedBeat()==49,
+                    "snap reprojection undo redo preserves exact selection");
+        auto pattern=finer.CopyTurns(49,49);
+        ok &= Check(pattern.notes.size()==1 &&
+                    !finer.PasteTurns(49,pattern),
+                    "refined snap clipboard roundtrips exact timestamp");
+        if (!pattern.notes.empty()) {
+            pattern.notes.front().direction=Heading::Left;
+            ok &= Check(finer.PasteTurns(49,pattern) &&
+                        finer.Data().route.turns.size()==3 &&
+                        finer.Data().route.turns[1].timeMs==1020 &&
+                        finer.Data().route.turns[1].direction==Heading::Left,
+                        "paste replaces same timestamp after snap refinement");
+            auto malformed=finer.Data();
+            malformed.route.turns[1].beat=48;
+            ChartEditor inconsistent;
+            inconsistent.Load(malformed);
+            const auto revision=inconsistent.RouteRevision();
+            ok &= Check(!inconsistent.PasteTurns(49,pattern) &&
+                        inconsistent.RouteRevision()==revision &&
+                        inconsistent.Data().route.turns.size()==3,
+                        "paste rejects duplicate timestamp outside touched tick range");
+        }
+    }
+
+    // Exact-time selection and mutations must never affect the wrong note.
     LoadedChart denseSource;
     denseSource.title = "Exact time selection";
     denseSource.audioPath = "song.wav";
