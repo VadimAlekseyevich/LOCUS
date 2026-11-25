@@ -79,7 +79,7 @@ public:
 private:
     enum class Page { None, Home, Play, Settings, Editor, Results, Skin };
     void Activate(Page page);
-    void PumpInput(bool dispatchKeyboard = true);
+    void PumpInput(bool dispatchKeyboard = true, bool forceLayout = false);
     void ReadEditorLayout(EditorUiState& ui) const noexcept;
     void ProcessEvent(Rml::Event& event) override;
     void Rebuild(const SongLibrary& library, SongSelectUi& ui);
@@ -111,7 +111,7 @@ private:
     std::string lastHomeNotice_;
     int lastWidth_ = -1, lastHeight_ = -1;
     float lastDensity_ = -1.0f;
-    int lastEditorWidth_ = -1, lastEditorHeight_ = -1;
+    int lastEditorLayoutTab_ = -1;
     // Raylib pointer capture persists across the full press/drag/release
     // gesture begun on native editor chrome, even when the pointer moves.
     bool editorChromePressActive_ = false;

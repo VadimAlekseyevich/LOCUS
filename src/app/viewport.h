@@ -37,6 +37,12 @@ struct ViewportTransform {
                 (physical.y - offsetY) / scale};
     }
 
+    Rectangle ToVirtualBounds(Rectangle physical) const noexcept {
+        if (scale <= 0.0f) return {};
+        const auto origin = ToVirtual({physical.x, physical.y});
+        return {origin.x, origin.y, physical.width/scale, physical.height/scale};
+    }
+
     // Round transformed edges, not width/height alone. Fractional offsets
     // otherwise cut pixels from the playfield or editor preview.
     PixelRect Scissor(Rectangle bounds) const noexcept {

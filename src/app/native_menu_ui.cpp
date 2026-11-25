@@ -4,6 +4,7 @@
 #include "app/menu_ui.h"
 #include "app/viewport.h"
 #include "app/rml_ui_text.h"
+#include "app/rml_layout_geometry.h"
 #include "app/skin_controls.h"
 #include "core/utf8.h"
 
@@ -344,8 +345,7 @@ void NativeMenuUi::Activate(Page page) {
     } else if (page == Page::Editor && editorDocument_) {
         editorDocument_->Show();
         editorPresenter_.Attach(editorDocument_);
-        lastEditorWidth_ = -1;
-        lastEditorHeight_ = -1;
+        lastEditorLayoutTab_ = -1;
     }
     ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
@@ -376,38 +376,23 @@ bool NativeMenuUi::ShowingSkin() const noexcept {
 }
 Rectangle NativeMenuUi::SkinColorWheelBounds() const noexcept {
     if (!ShowingSkin() || !skinDocument_) return {};
-    if (auto* canvas = skinDocument_->GetElementById("skin-wheel-canvas"))
-        return {canvas->GetAbsoluteLeft(), canvas->GetAbsoluteTop(),
-                static_cast<float>(canvas->GetOffsetWidth()),
-                static_cast<float>(canvas->GetOffsetHeight())};
-    return {};
+    return RmlElementBounds(skinDocument_->GetElementById("skin-wheel-canvas"));
 }
 Rectangle NativeMenuUi::SkinColorWheelClipBounds() const noexcept {
     if (!ShowingSkin() || !skinDocument_) return {};
     if (auto* controls = skinDocument_->GetElementById("skin-controls")) {
-        if (auto* viewport = controls->GetParentNode())
-            return {viewport->GetAbsoluteLeft(), viewport->GetAbsoluteTop(),
-                    static_cast<float>(viewport->GetOffsetWidth()),
-                    static_cast<float>(viewport->GetOffsetHeight())};
+        return RmlElementBounds(controls->GetParentNode());
     }
     return {};
 }
 Rectangle NativeMenuUi::SkinPreviewBounds() const noexcept {
     if (!ShowingSkin() || !skinDocument_) return {};
-    if (auto* preview = skinDocument_->GetElementById("skin-preview-canvas"))
-        return {preview->GetAbsoluteLeft(), preview->GetAbsoluteTop(),
-                static_cast<float>(preview->GetOffsetWidth()),
-                static_cast<float>(preview->GetOffsetHeight())};
-    return {};
+    return RmlElementBounds(skinDocument_->GetElementById("skin-preview-canvas"));
 }
 
 Rectangle NativeMenuUi::HomeWordmarkBounds() const noexcept {
     if (!ShowingHome() || !homeDocument_) return {};
-    if (auto* element = homeDocument_->GetElementById("home-wordmark"))
-        return {element->GetAbsoluteLeft(), element->GetAbsoluteTop(),
-                static_cast<float>(element->GetOffsetWidth()),
-                static_cast<float>(element->GetOffsetHeight())};
-    return {};
+    return RmlElementBounds(homeDocument_->GetElementById("home-wordmark"));
 }
 
 void NativeMenuUi::Hide() {
@@ -751,7 +736,7 @@ void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
         RebuildResults(ui);
 }
 
-void NativeMenuUi::PumpInput(bool dispatchKeyboard) {
+void NativeMenuUi::PumpInput(bool dispatchKeyboard, bool forceLayout) {
     const int width = GetScreenWidth(), height = GetScreenHeight();
     bool layoutChanged = false;
     if (width != lastWidth_ || height != lastHeight_) {
@@ -774,7 +759,7 @@ void NativeMenuUi::PumpInput(bool dispatchKeyboard) {
     // Calculate hitboxes at the NEW DPI/viewport before forwarding physical
     // mouse coordinates. Otherwise the first click after resizing can land
     // on the stale layout from the previous window geometry.
-    if (layoutChanged || visiblePage_ == Page::Editor) context_->Update();
+    if (layoutChanged || forceLayout) context_->Update();
     const int mods = Modifiers();
     const auto mouse = GetMousePosition();
     context_->ProcessMouseMove(static_cast<int>(mouse.x),
@@ -860,7 +845,9 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
             }
         }
     }
-    PumpInput(nativeTyping && EditorTextFocused());
+    const bool tabChanged = lastEditorLayoutTab_ != static_cast<int>(ui.tab);
+    PumpInput(nativeTyping && EditorTextFocused(), tabChanged);
+    lastEditorLayoutTab_ = static_cast<int>(ui.tab);
     // Enter commits any focused field; Esc reverts only that field.
     if (nativeTyping && EditorTextFocused()) {
         if (IsKeyPressed(KEY_ESCAPE)) editorPresenter_.CancelFocusedField();
@@ -905,10 +892,7 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         const auto over = [&](const char* id) {
             auto* element = editorDocument_->GetElementById(id);
             if (!element) return false;
-            const float x = element->GetAbsoluteLeft();
-            const float y = element->GetAbsoluteTop();
-            return mouse.x >= x && mouse.x < x + element->GetOffsetWidth() &&
-                   mouse.y >= y && mouse.y < y + element->GetOffsetHeight();
+            return CheckCollisionPointRec(mouse, RmlElementBounds(element));
         };
         const bool popupContent = over("editor-rate-popup");
         const bool transport = over("editor-footer-rate-time");
@@ -957,13 +941,11 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
 void NativeMenuUi::ReadEditorLayout(EditorUiState& ui) const noexcept {
     const auto transform = ViewportTransform::Menu(GetScreenWidth(), GetScreenHeight());
     const auto slot = [&](const char* id) -> Rectangle {
-        auto* element = editorDocument_->GetElementById(id);
-        if (!element || transform.scale <= 0.0f) return {};
-        const auto origin = transform.ToVirtual({element->GetAbsoluteLeft(), element->GetAbsoluteTop()});
-        return {origin.x, origin.y, element->GetOffsetWidth()/transform.scale,
-                element->GetOffsetHeight()/transform.scale};
+        return transform.ToVirtualBounds(
+            RmlElementBounds(editorDocument_->GetElementById(id)));
     };
     ui.layout.overview = slot("editor-overview-slot");
+    ui.layout.status = ui.tab == EditorTab::Set ? slot("editor-status-slot") : Rectangle{};
     ui.layout.timeline = ui.tab == EditorTab::Route ? slot("editor-note-ruler") : Rectangle{};
     ui.layout.preview = ui.tab == EditorTab::Route ? slot("editor-preview-slot") : Rectangle{};
     ui.layout.compareToggle = ui.tab == EditorTab::Route ? slot("editor-route-compare-gap") : Rectangle{};

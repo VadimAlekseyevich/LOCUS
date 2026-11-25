@@ -467,6 +467,14 @@ int main() {
                 "clicking behind the one-third playhead selects a past beat");
 
     chart.SelectBeat(15);
+    ui.layout.timeline = {-140, -60, 1200, 47};
+    auto resizedRuler = Click(detail::PlayheadX(ui) + 36, -37);
+    resizedRuler.nativeChrome = true;
+    ApplyEditorControls(chart, ui, resizedRuler);
+    ok &= Check(chart.SelectedBeat() == 16,
+                "resized native note ruler uses the measured playhead and hitbox");
+    ui.layout.timeline = {};
+    chart.SelectBeat(15);
     EditorControls moving = Click(cursor + 18, 40);
     moving.timelineViewBeat = 15.5;
     ApplyEditorControls(chart, ui, moving);
@@ -517,6 +525,13 @@ int main() {
                 songWide.Data().route.turns.empty() &&
                 !songWideUi.HasRange() && !songWide.Dirty(),
                 "75 percent of 120-second audio seeks to song second 90");
+    // The same seek action must use the measured slot, including positions
+    // outside the former virtual 960x540 rectangle.
+    songWideUi.layout.overview = {-110, 620, 1200, 40};
+    const auto resizedSeek = ApplyEditorControls(songWide, songWideUi, Click(790, 637));
+    ok &= Check(!resizedSeek.changedChart && songWide.SelectedBeat() == 180,
+                "resized native overview hit testing shares rendered bounds");
+    songWideUi.layout.overview = {};
     songWideUi.timelineZoomIndex = detail::kZoomMax;
     const auto seek25 = ApplyEditorControls(songWide, songWideUi,
         Click(overviewX + overviewWidth * .25f, overviewY));

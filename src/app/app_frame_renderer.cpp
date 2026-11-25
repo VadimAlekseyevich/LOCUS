@@ -313,11 +313,15 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                                      editorSetView, &comparisons,
                                      editorClock.songSeconds,
                                      hasNativeEditorShell);
-        if (editorUi.tab == EditorTab::Set)
+        if (editorUi.tab == EditorTab::Set) {
+            const auto status = hasNativeEditorShell && HasLayoutArea(editorUi.layout.status)
+                ? editorUi.layout.status : Rectangle{52,472,880,14};
+            const auto capacity = static_cast<std::size_t>(std::max(1.0f, status.width / 6.0f));
             DrawTextLabel(font, core::utf8::Truncate(
-                editorUi.feedback.empty() ? editorStatus : editorUi.feedback, 105).c_str(),
-                {52,472}, 10, editorUi.feedbackError ? Color{250,165,152,255}
+                editorUi.feedback.empty() ? editorStatus : editorUi.feedback, capacity).c_str(),
+                {status.x,status.y}, 10, editorUi.feedbackError ? Color{250,165,152,255}
                                                     : Color{162,216,238,255});
+        }
         // Editor and preview statuses must not be painted over file buttons.
         // Keep status for workflows, but not as an overlay in the action row.
         if (editorSetPending && editorPending == EditorPending::None) {

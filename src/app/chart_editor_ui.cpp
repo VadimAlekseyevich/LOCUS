@@ -730,7 +730,9 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
 
     if(routeTab) {
         DrawComparisonPicker(font,ui,set);
-        // Hover hint includes configured shortcuts, not hardcoded defaults.
+        // Only fallback controls use the legacy hitboxes. Native controls
+        // own their own geometry and tooltip metadata.
+        if (!nativeShell) {
         EditorToolTip(font,kMirrorHorizontal,
             "Flip horizontally  /  "+
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorMirrorH)));
@@ -739,10 +741,11 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorMirrorV)));
         EditorToolTip(font,kRotateCounterclockwise,"Rotate 90 left");
         EditorToolTip(font,kRotateClockwise,"Rotate 90 right");
-        EditorToolTip(font,CompareToggleBounds(ui),"Compare charts");
         EditorToolTip(font,kRouteTest,
             "Test chart  /  "+
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorTest)));
+        }
+        EditorToolTip(font,CompareToggleBounds(ui),"Compare charts");
     }
     if(ui.rateDropdownOpen && !nativeShell) {
         DrawRectangleRounded(kEditorRatePopup,UiRoundness(kEditorRatePopup,9),

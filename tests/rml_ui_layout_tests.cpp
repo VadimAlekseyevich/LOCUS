@@ -450,6 +450,8 @@ int main(int argc, char** argv) {
             if (set && route) {
                 set->SetProperty("display", "flex");
                 route->SetProperty("display", "none");
+                if (auto* status = editorDoc->GetElementById("editor-status-slot"))
+                    status->SetProperty("display", "block");
                 context->Update();
                 auto* metadata = editorDoc->GetElementById("editor-set-metadata");
                 auto* difficulties = editorDoc->GetElementById("editor-set-difficulties");
@@ -461,7 +463,7 @@ int main(int argc, char** argv) {
                     audio->GetAbsoluteLeft()+audio->GetOffsetWidth() <= difficulties->GetAbsoluteLeft() &&
                     !editorDoc->GetElementById("editor-setup-enter") &&
                     metadata->GetAbsoluteTop() < 20.0f &&
-                    metadata->GetOffsetHeight() > 430.0f,
+                    metadata->GetOffsetHeight() > 425.0f,
                     "SONG SETUP uses three nonoverlapping native panels without an open button");
                 auto* preview = editorDoc->GetElementById("editor-preview-ms");
                 auto* attach = editorDoc->GetElementById("editor-attach-audio");
@@ -492,6 +494,8 @@ int main(int argc, char** argv) {
                         "1536x960: editor shell uses window without letterboxing");
             set->SetProperty("display", "none");
             route->SetProperty("display", "flex");
+            if (auto* status = editorDoc->GetElementById("editor-status-slot"))
+                status->SetProperty("display", "none");
             context->SetDensityIndependentPixelRatio(1.0f);
             context->SetDimensions({960,540});
             context->Update();

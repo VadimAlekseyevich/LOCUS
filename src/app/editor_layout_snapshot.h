@@ -12,6 +12,7 @@ struct EditorLayoutSnapshot {
     Rectangle preview{};
     Rectangle overview{};
     Rectangle compareToggle{};
+    Rectangle status{};
 };
 
 inline bool HasLayoutArea(Rectangle r) noexcept {

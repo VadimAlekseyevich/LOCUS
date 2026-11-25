@@ -75,6 +75,7 @@
       <div class="editor-set-quick"><button data-action="set-delete-chart"><span class="button-label">DELETE CHART</span></button><button data-action="set-delete-set"><span class="button-label">DELETE SET</span></button></div>
     </div>
   </div>
+  <div id="editor-status-slot" style="display:none;"></div>
   <div id="editor-transport">
   <div id="editor-footer-playback">
     <button id="editor-preview-play" class="secondary" data-action="preview-play"><span class="button-label">PLAY</span></button>

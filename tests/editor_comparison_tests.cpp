@@ -215,6 +215,15 @@ int main() {
     ok &= Check(!popup.comparisonPickerOpen,
                 "COMPARE+ remains closed without managed Song Set");
     view.managed = true;
+    popup.layout.compareToggle = {-150, 40, 42, 42};
+    popup.layout.preview = {-95, 5, 1100, 500};
+    open.mouse = {-129, 61};
+    HandleEditorComparisonControls(popup, view, open);
+    const auto row = detail::ComparePickerRow(popup, 1);
+    choose.mouse = {row.x + row.width/2, row.y + row.height/2};
+    HandleEditorComparisonControls(popup, view, choose);
+    ok &= Check(popup.comparisonPickerOpen && popup.comparisonFiles.size() == 1,
+                "compare picker follows its measured anchor after resize");
 
     const auto revision = editor.RouteRevision();
     ok &= Check(!ToggleEditorComparison(ui, view, 0) &&
