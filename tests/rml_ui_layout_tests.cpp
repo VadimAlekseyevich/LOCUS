@@ -696,6 +696,52 @@ int main(int argc, char** argv) {
         ok &= Check(preview && preview->GetAbsoluteLeft() + preview->GetOffsetWidth()
                     <= 800.1f, "800x450 SKINS preview fits");
     }
+    // The standalone global document uses the same component contract as
+    // the editor confirmation, even when there is no menu document.
+    auto* globalDoc = context->LoadDocument(uiPath("confirmation.rml"));
+    ok &= Check(globalDoc != nullptr,"global confirmation document parses");
+    if (globalDoc) {
+        if (skinDoc) skinDoc->Hide();
+        globalDoc->Show();
+        locus::app::RmlConfirmation global;
+        global.Attach(globalDoc);
+        const auto quit = locus::app::GlobalConfirmationView(true,false,true,false,false,"");
+        const auto skinQuit = locus::app::GlobalConfirmationView(true,false,true,true,false,"");
+        const auto leave = locus::app::GlobalConfirmationView(false,true,true,false,false,"");
+        ok &= Check(quit.canSave && !skinQuit.canSave && !leave.canSave &&
+            quit.approveLabel=="Y / QUIT" && leave.approveLabel=="Y / LEAVE" &&
+            locus::app::ChooseConfirmation(quit,true,true,true)==locus::app::ConfirmationChoice::Cancel,
+            "global prompts preserve save policy and cancel precedence");
+        auto* save = globalDoc->GetElementById("confirmation-save");
+        auto* cancel = globalDoc->GetElementById("confirmation-cancel");
+        auto* approve = globalDoc->GetElementById("confirmation-approve");
+        global.Sync(quit);
+        for (const auto& size : std::array<Rml::Vector2i,4>{{{800,450},{1920,810},{900,1200},{640,400}}}) {
+            context->SetDimensions(size);
+            context->SetDensityIndependentPixelRatio(size.x==900?1.4f:1.0f);
+            context->Update();
+            auto* panel = global.Panel();
+            ok &= Check(panel && panel->GetAbsoluteLeft()>=0 && panel->GetAbsoluteTop()>=0 &&
+                panel->GetAbsoluteLeft()+panel->GetOffsetWidth()<=size.x+1 &&
+                panel->GetAbsoluteTop()+panel->GetOffsetHeight()<=size.y+1 &&
+                save && cancel && approve && LabelCentered(save) && LabelCentered(cancel) && LabelCentered(approve),
+                "global confirmation fits viewport with all three actions");
+        }
+        global.FocusCancelIfOutside();
+        ok &= Check(context->GetFocusElement()==cancel,"global confirmation defaults to cancel");
+        global.Click(save);
+        ok &= Check(global.TakeChoice()==locus::app::ConfirmationChoice::Save,"quit Save is typed");
+        global.Sync(skinQuit);
+        context->Update();
+        global.Click(save);
+        ok &= Check(global.TakeChoice()==locus::app::ConfirmationChoice::None,
+            "quit cannot save charts while unsaved skin would be lost");
+        global.Sync(leave);
+        context->Update();
+        global.Click(approve);
+        ok &= Check(global.TakeChoice()==locus::app::ConfirmationChoice::Approve,
+            "leave approval is typed");
+    }
     Rml::RemoveContext("headless-layout");
     Rml::Shutdown();
     return ok ? 0 : 1;

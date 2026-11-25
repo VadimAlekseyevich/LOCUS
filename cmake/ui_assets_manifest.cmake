@@ -4,6 +4,7 @@ set(LOCUS_REQUIRED_UI_ASSETS
     app-icon.png
     wordmark.png
     rml/common.rcss
+    rml/confirmation.rml
     rml/editor.rcss
     rml/editor.rml
     rml/home.rcss

@@ -462,11 +462,36 @@ int main(int argc, char** argv) try {
 #else
         const bool nativeEditorTextInput = false;
 #endif
+        const auto globalConfirmation = [&]() {
+            if (!state.quitConfirmation && !state.levelExitConfirmation) return locus::app::ConfirmationView{};
+            const bool dirtySkin = state.screen == Screen::Skin &&
+                (skinUi.dirty || skinUi.editingName || skinUi.editingNumberRow >= 0 || skinUi.editingHex);
+            return locus::app::GlobalConfirmationView(state.quitConfirmation,
+                state.levelExitConfirmation, editorFiles.AnyDirty(), dirtySkin,
+                state.screen == Screen::Editor && editorUi.EditingText(),editorStatus);
+        };
+#ifdef LOCUS_WITH_RMLUI
+        const bool nativeGlobalConfirmation = nativeMenu.GlobalConfirmationAvailable();
+#else
+        const bool nativeGlobalConfirmation = false;
+#endif
         FrameInput input = locus::app::PollFrameInput(
             debugScreens, state, settings, inputNow,
             state.screen == Screen::Play &&
                 (customChart ? chartPlayback.Paused() : transport.Paused()),
-            nativeEditorTextInput);
+            nativeEditorTextInput, nativeGlobalConfirmation);
+        auto globalChoice = locus::app::ConfirmationChoice::None;
+#ifdef LOCUS_WITH_RMLUI
+        if (nativeGlobalConfirmation)
+            globalChoice = nativeMenu.UpdateGlobalConfirmation(globalConfirmation());
+#endif
+        if (nativeGlobalConfirmation && wasQuitConfirmation) {
+            input.quitConfirmed = globalChoice == locus::app::ConfirmationChoice::Approve;
+            input.quitCanceled = globalChoice == locus::app::ConfirmationChoice::Cancel;
+        } else if (nativeGlobalConfirmation && wasLevelExitConfirmation) {
+            input.levelExitConfirmed = globalChoice == locus::app::ConfirmationChoice::Approve;
+            input.levelExitCanceled = globalChoice == locus::app::ConfirmationChoice::Cancel;
+        }
 #ifdef _WIN32
         nativeDirectionInput.Configure({
             settings.Key(locus::app::GameAction::Up),
@@ -727,11 +752,12 @@ int main(int argc, char** argv) try {
         // Native window close has its own modal. S saves ALL dirty editor
         // documents before confirming quit; Y quits without saving, N stays.
         if (wasQuitConfirmation && editorFiles.AnyDirty() &&
-            (IsKeyPressed(KEY_S) ||
+            (globalChoice == ConfirmationChoice::Save ||
+             (!nativeGlobalConfirmation && (IsKeyPressed(KEY_S) ||
              (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
               locus::app::EditorQuitSavePointerHit(
                   state.screen, GetMousePosition(),
-                  GetScreenWidth(), GetScreenHeight())))) {
+                  GetScreenWidth(), GetScreenHeight())))))) {
             const bool skinHasEdits = state.screen == Screen::Skin &&
                 (skinUi.dirty || skinUi.editingName ||
                  skinUi.editingNumberRow >= 0 || skinUi.editingHex);
@@ -1205,6 +1231,9 @@ int main(int argc, char** argv) try {
             visibleState.screen != Screen::Results &&
             visibleState.screen != Screen::Skin) nativeMenu.Hide();
 #endif
+        #ifdef LOCUS_WITH_RMLUI
+        nativeMenu.SyncGlobalConfirmation(globalConfirmation());
+        #endif
         RenderFrame(visibleState, debugScreens, uiFont.value, demo,
                     gameplay, localSong, editor, editorUi, editorClock,
                     editorStatus, editorDiscard.Pending(),

@@ -79,6 +79,11 @@ public:
                       FrameInput& input);
     void Hide();
     void Render();
+    bool GlobalConfirmationAvailable() const noexcept { return globalConfirmationDocument_ != nullptr; }
+    bool ShowingGlobalConfirmation() const noexcept { return globalConfirmation_.Visible(); }
+    void SyncGlobalConfirmation(const ConfirmationView& view);
+    ConfirmationChoice UpdateGlobalConfirmation(const ConfirmationView& view);
+    void RenderGlobalConfirmation();
 
 private:
     enum class Page { None, Home, Play, Settings, Editor, Results, Skin };
@@ -99,6 +104,10 @@ private:
     RmlRaylibSystem system_;
     RmlRaylibRenderer renderer_;
     Rml::Context* context_ = nullptr;
+    Rml::Context* globalConfirmationContext_ = nullptr;
+    Rml::ElementDocument* globalConfirmationDocument_ = nullptr;
+    RmlConfirmation globalConfirmation_;
+    bool globalConfirmationPressed_ = false;
     Rml::ElementDocument* document_ = nullptr;
     Rml::ElementDocument* homeDocument_ = nullptr;
     Rml::ElementDocument* settingsDocument_ = nullptr;

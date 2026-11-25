@@ -39,9 +39,16 @@ public:
                 UpdateRmlText(Element("confirmation-notice"),view.notice);
             if (view.approveLabel != view_.approveLabel || !view_.visible)
                 UpdateRmlText(Element("confirmation-approve"),view.approveLabel);
+            if (view.saveLabel != view_.saveLabel || !view_.visible)
+                UpdateRmlText(Element("confirmation-save"),view.saveLabel);
+            if (view.cancelLabel != view_.cancelLabel || !view_.visible)
+                UpdateRmlText(Element("confirmation-cancel"),view.cancelLabel);
             if (view.canSave != view_.canSave || !view_.visible)
-                if (auto* save = Element("confirmation-save"))
+                if (auto* save = Element("confirmation-save")) {
+                    if (!view.canSave && document_->GetContext()->GetFocusElement()==save)
+                        save->Blur();
                     save->SetProperty("display",view.canSave ? "inline-block" : "none");
+                }
         }
         view_ = view;
         return true;
