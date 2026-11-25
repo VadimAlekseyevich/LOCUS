@@ -69,7 +69,7 @@
   overflow:hidden; text-overflow:ellipsis; margin:3dp 0 6dp; }
 .editor-tempo-heading { margin-top:7dp; margin-bottom:3dp; }
 .editor-tempo-row { display:flex; flex-direction:row; align-items:center; gap:4dp; flex:0 0 27dp; height:27dp; }
-.editor-tempo-offset { flex:1.2; min-width:0; }
+.editor-tempo-offset { flex:1; min-width:0; }
 .editor-tempo-bpm { flex:1; min-width:0; }
 .editor-tempo-action { flex:0 0 48dp; width:48dp; }
 .editor-tempo-labels { flex:0 0 15dp; height:15dp; color:#a6bad9; font-size:10dp; }

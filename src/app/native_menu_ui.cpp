@@ -899,7 +899,12 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         if (auto* focus = context_->GetFocusElement();
             focus && focus->GetTagName() == "button" &&
             (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
-            focus->Click();
+            if (ui.tab == EditorTab::Set &&
+                focus->GetAttribute<Rml::String>("data-action", "") == "set-difficulty" &&
+                focus->GetAttribute<Rml::String>("data-id", "") == ui.setSelectedId)
+                input.editor.enterChart = true;
+            else
+                focus->Click();
             input.editor.enter = false;
         }
     }

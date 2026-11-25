@@ -60,6 +60,7 @@ public:
     bool AnyDirty() const noexcept;
     bool HasDirtyParked() const noexcept;
     void DropCleanParked() noexcept;
+    void CloseAllComparisons() noexcept;
     void ForgetChart(const std::filesystem::path& file) noexcept;
     bool RequestCloseComparison(const std::filesystem::path& file);
     const std::filesystem::path& PendingClose() const noexcept { return pendingClose_; }

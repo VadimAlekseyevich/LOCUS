@@ -75,7 +75,7 @@ std::string FieldValue(const EditorSetView& view, EditorSetField field) {
 }
 
 bool ReplacesDraft(EditorSetAction action) {
-    // Open only switches focus and parks the current draft.
+    // Opening a different document is checked separately by identity.
     return action == EditorSetAction::NewDifficulty ||
            action == EditorSetAction::Duplicate ||
            action == EditorSetAction::DeleteSongSet;
@@ -632,7 +632,8 @@ void EditorSetController::Request(EditorSetAction action) {
         request.chart != fs::path(ctx_.chartPath);
     request.discardsDraft = deletesUnsaved ||
         (ctx_.files.AnyDirty() &&
-         (ReplacesDraft(action) || affectsCurrent || switching));
+         (ReplacesDraft(action) || affectsCurrent || switching)) ||
+        (action == EditorSetAction::Open && ctx_.files.HasDirtyParked());
     if (EditorSetNeedsConfirmation(request)) {
         pending_ = std::move(request);
         return;
@@ -713,8 +714,8 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
         case EditorSetAction::Open: {
             if (request.chart != fs::path(ctx_.chartPath) &&
                 !ctx_.files.OpenFromLibrary(request.chart.wstring(), error)) break;
+            ctx_.files.CloseAllComparisons();
             ctx_.ui.setSelected = -1;
-            ctx_.ui.comparisonPickerOpen = false;
             ctx_.ui.setSelectedId.clear();
             ctx_.ui.setupDraftSelected = false;
             ctx_.ui.tab = EditorTab::Route;
@@ -768,6 +769,7 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
                 }
             }
             ctx_.ui.setSelected = -1;
+            ctx_.ui.setSelectedId.clear();
             Notice("DIFFICULTY MOVED TO TRASH - RESTORE LAST TO UNDO");
             return true;
         }

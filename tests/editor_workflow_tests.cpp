@@ -204,6 +204,16 @@ int main() {
                 !sets.HasPending() && chartPath == installedEasy.wstring() &&
                 editorUi.tab == app::EditorTab::Set,
                 "first click selects Hard without opening or changing comparison");
+    // Naming the selected but unopened chart cannot switch documents or
+    // change the current chart. The stable ID survives metadata refresh.
+    const auto selectedId = editorUi.setSelectedId;
+    ok &= Check(sets.CommitDifficultyTitle("Hard selection probe", now) &&
+                chartPath == installedEasy.wstring() && editor.Data().title == "Easy" &&
+                editorUi.setSelectedId == selectedId &&
+                sets.View().difficulties[static_cast<std::size_t>(indexFor(installedHard))] ==
+                    "Hard selection probe" &&
+                sets.CommitDifficultyTitle("Hard", now),
+                "rename selected inactive difficulty without opening or saving current chart");
     ok &= Check(sets.FocusDifficulty(indexFor(installedHard)) &&
                 !sets.HasPending() && chartPath == installedHard.wstring() &&
                 editorUi.tab == app::EditorTab::Route &&

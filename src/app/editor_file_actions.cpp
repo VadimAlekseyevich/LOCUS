@@ -457,6 +457,13 @@ bool EditorFileActions::RestoreWorkspaceAudio(std::string& error) {
     return true;
 }
 
+void EditorFileActions::CloseAllComparisons() noexcept {
+    DiscardParked();
+    context_.ui.comparisonFiles.clear();
+    context_.ui.comparisonFocusedSlot = 0;
+    context_.ui.comparisonPickerOpen = false;
+}
+
 void EditorFileActions::DiscardParked() noexcept {
     parked_.clear();
     pendingClose_.clear();

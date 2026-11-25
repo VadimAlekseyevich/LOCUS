@@ -455,7 +455,15 @@ int main(int argc, char** argv) {
                     audio && audio->GetAbsoluteLeft() >= metadata->GetAbsoluteLeft()+metadata->GetOffsetWidth() &&
                     audio->GetAbsoluteLeft()+audio->GetOffsetWidth() <= difficulties->GetAbsoluteLeft() &&
                     !editorDoc->GetElementById("editor-setup-enter"),
-                    "SONG SETUP panels leave central audio/timing region clear");
+                    "SONG SETUP uses three nonoverlapping native panels without an open button");
+                auto* preview = editorDoc->GetElementById("editor-preview-ms");
+                auto* attach = editorDoc->GetElementById("editor-attach-audio");
+                auto* tempo = editorDoc->GetElementById("editor-tempo-list");
+                auto* add = editorDoc->GetElementById("editor-tempo-add");
+                ok &= Check(preview && preview->GetTagName() == "input" &&
+                    attach && tempo && add && LabelCentered(attach) && LabelCentered(add) &&
+                    tempo->GetAbsoluteTop() + tempo->GetOffsetHeight() <= add->GetAbsoluteTop()+1.0f,
+                    "AUDIO & TIMING uses shared input/button controls and a bounded scroll list");
             }
             context->SetDimensions({1536, 960});
             context->SetDensityIndependentPixelRatio(1.6f);

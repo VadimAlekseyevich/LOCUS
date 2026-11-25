@@ -282,6 +282,23 @@ int main() {
                     firstTempo.size() == 1 && firstTempo[0].bpm == 170.5 &&
                     editor.Data().route.bpm == 170.5,
                     "editing BPM updates whole pack and current draft");
+        app::EditorControls nativeTempo;
+        nativeTempo.nativeChrome = true;
+        nativeTempo.tempoRow = 0;
+        nativeTempo.tempoBpm = true;
+        nativeTempo.tempoValue = "171.25";
+        managedSet.HandleControls(nativeTempo);
+        ok &= Check(ui.tempoEditingRow == -1 &&
+                    managedLibrary.Songs()[0].tempoMap[0].bpm == 171.25 &&
+                    editor.Data().route.bpm == 171.25,
+                    "native tempo field commits through the same shared timing validator");
+        nativeTempo.tempoValue = "not a number";
+        managedSet.HandleControls(nativeTempo);
+        ok &= Check(ui.tempoEditingRow == -1 &&
+                    managedLibrary.Songs()[0].tempoMap[0].bpm == 171.25,
+                    "invalid native tempo value does not modify the set or trap focus");
+        nativeTempo.tempoValue = "170.5";
+        managedSet.HandleControls(nativeTempo);
         editor.SelectBeat(4);
         tempoClick.mouse = {480.0f, 445.0f};
         managedSet.HandleControls(tempoClick);
