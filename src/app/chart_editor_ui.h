@@ -51,8 +51,6 @@ struct EditorControls {
     // Semantic editor actions emitted by RmlUi; never synthesize a click at
     // legacy pixel coordinates to reach the chart editing model.
     std::optional<core::Heading> placeHeading;
-    int holdLengthDelta = 0;
-    std::optional<std::string> holdMsValue;
     int rotateStartHeading = 0;
     int previewSpeedDelta = 0;
     int previewLengthDelta = 0;

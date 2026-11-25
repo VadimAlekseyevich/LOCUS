@@ -44,15 +44,7 @@ struct TurnEvent {
     int beat = 0; // cached tick index for route/editor indexing
     Heading direction = Heading::Up; // Absolute outgoing direction at this tick.
     std::int64_t timeMs = kNoTimeMs; // authoritative song position if specified
-    std::int64_t holdMs = 0; // zero = tap; positive duration in original song milliseconds
 };
-
-// Holds occupy one continuous route segment. A new note may begin at its
-// tail, but not inside it. Bounds also prevent signed overflow.
-inline bool ValidHoldDuration(std::int64_t headMs, std::int64_t holdMs) noexcept {
-    return headMs >= -3600000 && headMs <= 86400000 &&
-           holdMs >= 0 && holdMs <= 86400000 - headMs;
-}
 
 // Grid size is the author-facing number of cells along the square's side.
 // It determines editor-grid and clipped gameplay-camera density, never

@@ -78,7 +78,7 @@ note timestamps and scoring stay authoritative and unchanged.
 
 ## Possible later features
 
-Hold notes, waveform editing, automatic BPM detection and online services
+Waveform editing, automatic BPM detection and online services
 are outside foundation stabilization. Shared song tempo maps and
 pitch-preserving practice playback are implemented; actual audio-device
 latency, memory use and rate-change quality still require real-device QA.

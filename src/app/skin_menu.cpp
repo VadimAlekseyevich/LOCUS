@@ -116,10 +116,10 @@ Rectangle SkinActionButton(int index) {
 }
 Rectangle SkinNumberInputRect(int page, int row) {
     return page == 2 ? Rectangle{814.0f, 248.0f + row * 42.0f, 91.0f, 30.0f}
-                     : Rectangle{438.0f, 199.0f + row * RowPitch(page), 116.0f, std::min(30.0f, RowPitch(page)-1.0f)};
+                     : Rectangle{438.0f, 199.0f + row * RowPitch(page), 116.0f, 30.0f};
 }
 Rectangle SkinSliderRect(int page, int row) {
-    return {224.0f, 199.0f + (RowPitch(page)-6.0f)*0.5f + row * RowPitch(page), 196.0f, 6.0f};
+    return {224.0f, 210.0f + row * RowPitch(page), 196.0f, 6.0f};
 }
 Rectangle SkinHexRect() { return {342, 411, 190, 35}; }
 Rectangle SkinColorSquareRect() { return {388, 274, 82, 82}; }
@@ -210,7 +210,7 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
             SkinNumberRange range;
             if (GetSkinNumberRange(ui.page, row, range)) continue;
             if (Hit(mouse, {69.0f, 199.0f + row * RowPitch(ui.page),
-                            489.0f, std::min(30.0f, RowPitch(ui.page)-1.0f)})) {
+                            489.0f, 30.0f})) {
                 FlipToggle(skin, ui.page, row);
                 ui.dirty = true;
                 return SkinCommand::None;
@@ -225,7 +225,7 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
             StartNumberEdit(skin, ui, row);
             return SkinCommand::None;
         }
-        if (Hit(mouse, SliderHit(SkinSliderRect(ui.page, row), ui.page))) {
+        if (Hit(mouse, SliderHit(SkinSliderRect(ui.page, row)))) {
             ui.draggingRow = row;
             SetSliderAt(mouse, skin, ui);
             ui.notice = "DRAG SLIDER / TYPE IN FIELD FOR EXTENDED VALUES";

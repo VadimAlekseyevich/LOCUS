@@ -333,53 +333,28 @@ Vector2 DrawTimedRouteTrajectory(const RoutePreviewFrame& preview,
 void DrawTimedRouteJunctions(const RoutePreviewFrame& preview,
                              RouteCanvas canvas, const Skin& skin) {
     if (!preview.ready || preview.horizonSeconds <= 0.0) return;
-    // Use the ordinary AA ribbon shader path, with a per-vertex fade
-    // instead of one average alpha across the whole hold.
-    const float pixelScale = RoutePixelsPerDrawUnit();
-    for (const auto& hold : preview.holdsFarToNear) {
-        const auto ribbon = BuildHoldRibbon(hold, preview, canvas, skin);
-        DrawRibbonLayer(ribbon.rows.data(), ribbon.count, skin.hold, 1.0f, pixelScale);
-        if (hold.tailVisible) {
-            const float proximity = ScoredPathOpacity(
-                hold.toSeconds - preview.songSeconds, preview.horizonSeconds, skin.fadePower);
-            const float opacity = ScoredHoldOpacity(proximity, skin.pathOpacity, skin.holdOpacity);
-            const float radius = std::min(skin.junctionRadius,
-                canvas.step * preview.ticksPerBeat * 0.45f) *
-                skin.holdTailScale * ScoredTurnSize(proximity);
-            if (opacity > 0.0005f && radius > 0.0f)
-                DrawRing(canvas.Position(hold.to), radius * 0.55f, radius,
-                         0.0f, 360.0f, 32, WithOpacity(skin.hold, opacity));
-        }
-    }
     // Same-coordinate turns retain their chronological priority: draw the
     // nearest upcoming event LAST, after every farther one.
     for (const auto& turn : preview.turnsFarToNear) {
         const float proximity = ScoredPathOpacity(
             turn.songSeconds - preview.songSeconds,
             preview.horizonSeconds, skin.fadePower);
-        const bool isHold = turn.holdSeconds > 0.0;
-        const Color tint = isHold ? skin.hold : skin.junction;
-        const float opacity = isHold
-            ? ScoredHoldOpacity(proximity, skin.pathOpacity, skin.holdOpacity)
-            : proximity * skin.pathOpacity;
+        const float opacity = proximity * skin.pathOpacity;
         if (opacity <= 0.0005f) continue;
         const Vector2 point = canvas.Position(turn.position);
         const float radius = std::min(
             skin.junctionRadius, canvas.step * preview.ticksPerBeat * 0.45f)
-            * ScoredTurnSize(proximity) * (isHold ? skin.holdHeadScale : 1.0f);
+            * ScoredTurnSize(proximity);
         if (skin.junctionGlow)
             DrawCircleV(point, radius * 1.45f,
-                        WithOpacity(tint, opacity * 0.26f));
+                        WithOpacity(skin.junction, opacity * 0.26f));
         if (NeedsReverseCap(turn.incoming, turn.outgoing))
             DrawReverseCap(point, radius, turn.outgoing,
-                           tint, opacity, skin.junctionGlow,
+                           skin.junction, opacity, skin.junctionGlow,
                            skin.reverseCapScale);
-        DrawCircleV(point, radius, WithOpacity(tint, opacity));
-        // A hold head uses the same material as its body, never a red
-        // tap dot layered over the white ribbon.
-        if (!isHold)
-            DrawCircleV(point, radius * 0.35f,
-                        WithOpacity(skin.playerCore, opacity));
+        DrawCircleV(point, radius, WithOpacity(skin.junction, opacity));
+        DrawCircleV(point, radius * 0.35f,
+                    WithOpacity(skin.playerCore, opacity));
     }
 }
 

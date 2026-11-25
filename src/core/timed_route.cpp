@@ -54,7 +54,6 @@ bool TimedRoute::Compile(const Chart& chart, double offsetSeconds) {
 
     double earliest = gridStart, latest = gridEnd;
     double previousEvent = -std::numeric_limits<double>::infinity();
-    double previousTail = -std::numeric_limits<double>::infinity();
     for (const auto& event : chart.turns) {
         if (!ValidHeading(event.direction) ||
             event.beat < chart.firstBeat ||
@@ -62,12 +61,10 @@ bool TimedRoute::Compile(const Chart& chart, double offsetSeconds) {
         const double at = event.timeMs == kNoTimeMs
             ? TempoSecondsAtTick(chart, offsetSeconds, event.beat)
             : static_cast<double>(event.timeMs) / 1000.0;
-        if (!std::isfinite(at) || at <= previousEvent || at + 1e-9 < previousTail ||
-            !ValidHoldDuration(EventTimeMs(chart, event, offsetSeconds), event.holdMs)) return false;
-        previousTail = at + event.holdMs / 1000.0;
+        if (!std::isfinite(at) || at <= previousEvent) return false;
         previousEvent = at;
         earliest = std::min(earliest, at);
-        latest = std::max({latest, at + secondsPerTick, previousTail});
+        latest = std::max(latest, at + secondsPerTick);
     }
 
     startSeconds_ = earliest;
@@ -89,7 +86,7 @@ bool TimedRoute::Compile(const Chart& chart, double offsetSeconds) {
             position = Advance(position, heading,
                                (at - cursor) * unitsPerSecond_);
         }
-        turns_.push_back({at, position, heading, event.direction, event.holdMs / 1000.0});
+        turns_.push_back({at, position, heading, event.direction});
         heading = event.direction;
         cursor = at;
     }

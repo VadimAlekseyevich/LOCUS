@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 2,
   "name": "Default",
   "path": {
     "lookaheadMs": 800,
@@ -9,11 +9,7 @@
     "opacity": 1,
     "junctionRadius": 9.5,
     "junctionGlow": true,
-    "reverseCapScale": 3.2,
-    "holdWidth": 8.1,
-    "holdOpacity": 1,
-    "holdHeadScale": 1,
-    "holdTailScale": 0.9
+    "reverseCapScale": 3.2
   },
   "player": {
     "radius": 12.5,
@@ -84,12 +80,6 @@
       245,
       248,
       252,
-      255
-    ],
-    "hold": [
-      245,
-      253,
-      255,
       255
     ]
   }

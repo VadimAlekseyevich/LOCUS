@@ -153,38 +153,6 @@ std::vector<PathRibbonRow> BuildScoredPathRibbon(
     return rows;
 }
 
-HoldRibbon BuildHoldRibbon(const HoldPreview& hold, const RoutePreviewFrame& preview,
-                           RouteCanvas canvas, const Skin& skin) noexcept {
-    HoldRibbon ribbon;
-    const auto from = canvas.Position(hold.from);
-    const auto to = canvas.Position(hold.to);
-    const float dx = to.x - from.x, dy = to.y - from.y;
-    const float length = std::hypot(dx, dy);
-    const double duration = hold.toSeconds - hold.fromSeconds;
-    if (!preview.ready || !std::isfinite(preview.horizonSeconds) ||
-        preview.horizonSeconds <= 0.0 || !std::isfinite(duration) || duration <= 0.0 ||
-        !std::isfinite(length) || length <= 0.0f || skin.holdWidth <= 0.0f ||
-        skin.holdOpacity <= 0.0f || skin.pathOpacity <= 0.0f) return ribbon;
-    const int slices = std::clamp(static_cast<int>(std::ceil(
-        std::min(1.0, duration / preview.horizonSeconds) * kScoredPathSlices)),
-        1, kScoredPathSlices);
-    const Vector2 normal{-dy / length, dx / length};
-    for (int i = 0; i <= slices; ++i) {
-        const float fraction = static_cast<float>(i) / slices;
-        const double at = hold.fromSeconds + duration * static_cast<double>(i) / slices;
-        const float proximity = ScoredPathOpacity(at - preview.songSeconds,
-            preview.horizonSeconds, skin.fadePower);
-        const float opacity = ScoredHoldOpacity(proximity, skin.pathOpacity, skin.holdOpacity);
-        const float half = ScoredPathWidthFromOpacity(proximity, skin.holdWidth) * 0.5f;
-        ribbon.rows[static_cast<std::size_t>(i)] = {
-            {from.x + dx * fraction, from.y + dy * fraction},
-            {normal.x * half, normal.y * half}, opacity, at, i == 0, half
-        };
-    }
-    ribbon.count = static_cast<std::size_t>(slices + 1);
-    return ribbon;
-}
-
 // Gameplay-only sampling: authored exact times are the segment boundaries.
 // The renderer never rounds a song timestamp back onto the editing grid.
 void PrepareScoredPathRibbon(const RoutePreviewFrame& preview,

@@ -56,15 +56,6 @@ inline std::string ChartGameplayRevision(const LoadedChart& chart) {
             EventTimeMs(route, turn, chart.offsetSeconds)));
         add64(static_cast<std::uint64_t>(turn.direction));
     }
-    // Preserve the fingerprints of unchanged tap-only charts. Holds add
-    // gameplay-affecting durations in authored order.
-    bool hasHolds = false;
-    for (const auto& turn : route.turns) hasHolds |= turn.holdMs != 0;
-    if (hasHolds) {
-        add64(0x484f4c44ULL); // HOLD extension
-        for (const auto& turn : route.turns)
-            add64(static_cast<std::uint64_t>(turn.holdMs));
-    }
     std::ostringstream text;
     text << std::hex << std::setfill('0')
          << std::setw(16) << first << std::setw(16) << second;

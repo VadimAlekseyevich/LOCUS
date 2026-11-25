@@ -3,9 +3,6 @@
 #include "app/route_renderer.h"
 #include "app/route_preview.h"
 #include "core/timed_route.h"
-#include "app/visual_style.h"
-
-#include <array>
 
 #include <vector>
 
@@ -22,15 +19,6 @@ struct PathRibbonRow {
     bool startsRun = false;    // true at start and at 180-degree reversals
     float halfWidth = 0.0f;    // before the miter and outline scale
 };
-
-// A hold is a straight, clipped authored interval. Reuse the same coverage
-// ribbon as the path, with bounded stack storage and no per-hold heap allocation.
-struct HoldRibbon {
-    std::array<PathRibbonRow, kScoredPathSlices + 1> rows{};
-    std::size_t count = 0;
-};
-HoldRibbon BuildHoldRibbon(const HoldPreview& hold, const RoutePreviewFrame& preview,
-                           RouteCanvas canvas, const Skin& skin) noexcept;
 
 // Render-owner scratch, reused across sequential draws and frames.
 // Never retain row references after the next Prepare call.

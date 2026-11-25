@@ -40,7 +40,7 @@ private:
     bool cancelingText_ = false;
     std::string initialText_;
     std::unordered_map<std::string,std::string> cache_;
-    std::vector<float> sliderRatios_; // sized from the active setting catalog
+    std::array<float, 8> sliderRatios_{};
     std::array<std::string, kSkinColorCount> swatchColors_{};
 };
 } // namespace locus::app

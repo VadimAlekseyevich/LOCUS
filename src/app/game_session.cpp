@@ -106,17 +106,13 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     // During the silent tail, allow late directional input up to the
     // standard judgement window after the final chart note.
     if ((playing && !paused) || audioAlreadyFinished) {
-        const auto score = [&](core::Heading direction, double capturedAt, bool pressed) {
+        const auto score = [&](core::Heading direction, double capturedAt) {
             const double timestamp = audioEndedAt_ >= 0.0
                 ? audioEndSongSeconds_ +
                     std::max(0.0, capturedAt - audioEndedAt_) * playbackRate
                 : inputSongTime.At(capturedAt);
-            const double calibrated = CalibratedTime(timestamp, playbackRate);
-            if (!pressed) {
-                judge_.ReleaseHeading(direction, calibrated);
-                return;
-            }
-            const auto judgement = judge_.PressHeading(direction, calibrated);
+            const auto judgement = judge_.PressHeading(
+                direction, CalibratedTime(timestamp, playbackRate));
             if (judgement && !judgement->wrongDirection &&
                 judgement->grade != core::Grade::Miss)
                 hitFlash_.Trigger(judgement->grade, now);
@@ -125,7 +121,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
             if (arrows.events) {
                 for (std::size_t i = 0; i < arrows.events->size; ++i) {
                     const auto& event = arrows.events->events[i];
-                    score(event.arrow, event.capturedAt, event.pressed);
+                    if (event.pressed) score(event.arrow, event.capturedAt);
                 }
             }
         } else {
@@ -135,16 +131,8 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
             };
             for (std::size_t i = 0; i < arrows.pressed.size(); ++i)
                 if (arrows.pressed[i])
-                    score(directions[i], arrows.capturedAt[i], true);
+                    score(directions[i], arrows.capturedAt[i]);
         }
-        // Reconcile missing key-up edges (focus loss, pause or fallback
-        // platform). Precise native releases above retain their own time.
-        constexpr core::Heading directions[4] = {
-            core::Heading::Up, core::Heading::Right,
-            core::Heading::Down, core::Heading::Left
-        };
-        for (std::size_t i = 0; i < arrows.held.size(); ++i)
-            if (!arrows.held[i]) score(directions[i], now, false);
     }
     if (customChart) local_.Update(now);
     else demo_.Update(now);

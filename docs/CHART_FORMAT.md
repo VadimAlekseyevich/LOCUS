@@ -1,6 +1,6 @@
 # LOCUS — Chart Format
 
-LOCUS saves UTF-8 JSON with **formatVersion 4** for tap-only charts and **formatVersion 5** for charts containing holds. Both are readable by the current game; v4-only older builds cannot read v5. Note times are absolute whole milliseconds from the start of the referenced audio file, and do not change when BPM or editor snap density changes. The supported JSON file size is **8 MiB**, sufficient for the parser's maximum **65,536 events** even with indented serialization.
+LOCUS saves UTF-8 JSON with **formatVersion 4**. Note times are absolute whole milliseconds from the start of the referenced audio file, and do not change when BPM or editor snap density changes. The supported JSON file size is **8 MiB**, sufficient for the parser's maximum **65,536 events** even with indented serialization.
 
 ## Example
 
@@ -34,7 +34,7 @@ The [working sample](../examples/first-song.locus.json) contains nine turns; sup
 
 | Field | Rules |
 | --- | --- |
-| `formatVersion` | **4** for taps, **5** for charts with holds; versions below 4 are rejected |
+| `formatVersion` | **4** on save and load; older versions are rejected |
 | `difficultyId` | Optional for external drafts; installed difficulties receive a permanent 32-character lowercase hex identifier. Rename preserves it; copy/new difficulty generates a new one |
 | `title` | Valid UTF-8, no control characters, at most 1024 bytes; the editor allows 100 Unicode characters |
 | `audioPath` | Nonempty local path **relative to the chart folder**, with forward slashes only |
@@ -47,9 +47,9 @@ The [working sample](../examples/first-song.locus.json) contains nine turns; sup
 | `start.x`, `start.y` | Zero-based internal initial position, within grid dimensions; automatically chosen by the editor |
 | `start.heading` | `u`, `r`, `d`, `l`, `ru`, `rd`, `ld` or `lu` |
 | `previewLeadBeats` | Required finite positive chart metadata retained by the current serializer; ROUTE/PLAY actually use global SKIN PREVIEW TIME (MS) |
-| `turns[]` | Ordered array of at most 65,536 events with `timeMs`, absolute `heading` and optional positive integer `holdMs` in v5 |
+| `turns[]` | Ordered array of at most 65,536 events with `timeMs` and absolute `heading` |
 
-Every event sets the **absolute outgoing direction**, independent of the previous heading: `u` (up), `r` (right), `d` (down), `l` (left), `ru` (right-up), `rd` (right-down), `ld` (left-down), `lu` (left-up). Unchanged travel needs no new event unless a repeated tap or hold is authored. A hold is a single event, e.g. `{"timeMs": 1000, "heading": "ru", "holdMs": 500}`. It keeps that heading until its tail at 1500 ms; no later event may start before the tail. The tail must fit inside the actual audio duration. A zero duration is encoded as an ordinary tap without a `holdMs` field. Copy/paste and shifts preserve duration in milliseconds. An opposite heading is a 180° reversal; its junction gets a semicircular reverse cap without extra JSON fields. **FLIP H** swaps left/right components; **FLIP V** swaps up/down components of notes in the selected pattern without moving their timestamps. Movement is continuous on an unbounded plane; SKIN speed and preview duration determine on-screen spacing and visible future, not the stored grid dimensions.
+Every event sets the **absolute outgoing direction**, independent of the previous heading: `u` (up), `r` (right), `d` (down), `l` (left), `ru` (right-up), `rd` (right-down), `ld` (left-down), `lu` (left-up). Unchanged travel needs no new event unless another press is authored. Successive events with the same heading are distinct notes and do not bend the route. An opposite heading is a 180° reversal; its junction gets a semicircular reverse cap without extra JSON fields. **FLIP H** swaps left/right components; **FLIP V** swaps up/down components of notes in the selected pattern without moving their timestamps. Movement is continuous on an unbounded plane; SKIN speed and preview duration determine on-screen spacing and visible future, not the stored grid dimensions.
 
 Each `timeMs` is a signed whole number between **-3,600,000 and 86,400,000**. Times must be strictly increasing; multiple events may project to the same musical tick as long as their absolute `timeMs` values are distinct. When music is loaded, notes outside playable audio time (except permitted negative-offset preroll) are rejected. Song duration determines the timeline length; there is **no editable length field**.
 

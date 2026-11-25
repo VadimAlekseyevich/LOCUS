@@ -387,37 +387,6 @@ int main() {
                 workspace.rows.capacity()==rowCapacity,
                 "ribbon workspace reuses buffers, preserves exact rows, clears stale output");
 
-    // The actual hold mesh uses chronological opacity at every row.
-    // The head and tail share the exact same fade as the marker renderer.
-    core::Chart holdChart;
-    holdChart.turns = {{1, core::Heading::Right, 100, 500}};
-    core::TimedRoute holdRoute;
-    ok &= Check(holdRoute.Compile(holdChart, 0.0), "compile hold preview");
-    const auto holdFrame = app::MakeRoutePreview(holdRoute, 0.0, 800.0f);
-    ok &= Check(holdFrame.holdsFarToNear.size() == 1, "hold interval visible");
-    if (!holdFrame.holdsFarToNear.empty()) {
-        app::Skin holdSkin;
-        holdSkin.holdWidth = 12.0f;
-        holdSkin.holdOpacity = 0.75f;
-        holdSkin.pathOpacity = 0.8f;
-        const auto mesh = app::BuildHoldRibbon(holdFrame.holdsFarToNear.front(), holdFrame, canvas, holdSkin);
-        bool monotonic = mesh.count > 2;
-        for (std::size_t i = 0; i < mesh.count; ++i) {
-            const auto& row = mesh.rows[i];
-            const float proximity = app::ScoredPathOpacity(row.tick - holdFrame.songSeconds,
-                holdFrame.horizonSeconds, holdSkin.fadePower);
-            monotonic &= Near(row.opacity, app::ScoredHoldOpacity(
-                proximity, holdSkin.pathOpacity, holdSkin.holdOpacity));
-            monotonic &= Near(row.halfWidth, app::ScoredPathWidthFromOpacity(
-                proximity, holdSkin.holdWidth) * 0.5f);
-            if (i) monotonic &= row.opacity <= mesh.rows[i-1].opacity + 1e-6f;
-        }
-        ok &= Check(monotonic && mesh.rows.front().opacity > mesh.rows[mesh.count-1].opacity,
-            "hold is brighter nearer player; no average-alpha reversal");
-        holdSkin.holdOpacity = 0;
-        ok &= Check(app::BuildHoldRibbon(holdFrame.holdsFarToNear.front(),
-            holdFrame, canvas, holdSkin).count == 0, "zero hold opacity hides body");
-    }
     if (!ok) return 1;
     std::cout << "PATH_MESH_PASS joined=90,135 reverse=180 dense=24 continuous=1\n";
     return 0;

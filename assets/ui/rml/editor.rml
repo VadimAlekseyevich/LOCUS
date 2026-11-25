@@ -39,7 +39,6 @@
     <div id="editor-route-options">
     <div id="editor-route-speed"><div class="editor-option-label">SPEED</div><div id="editor-speed-label" class="editor-option-value">135 px/s</div><button data-action="speed-minus" ><span class="button-label">−</span></button><button data-action="speed-plus" ><span class="button-label">+</span></button></div>
     <div id="editor-route-path"><div class="editor-option-label">PATH</div><div id="editor-path-label" class="editor-option-value">800 ms</div><button data-action="path-minus" ><span class="button-label">−</span></button><button data-action="path-plus" ><span class="button-label">+</span></button></div>
-    <div id="editor-route-hold"><div class="editor-option-label" title="Selected note hold duration in milliseconds (0 = tap)">HOLD</div><input id="editor-hold-ms" class="editor-option-value" type="text" maxlength="8" value="" title="Hold duration in ms; 0 = tap"/><button id="editor-hold-minus" data-action="hold-minus" title="Shorten hold by one snap"><span class="button-label">−</span></button><button id="editor-hold-plus" data-action="hold-plus" title="Extend hold by one snap"><span class="button-label">+</span></button></div>
     </div>
     </div>
     </div>

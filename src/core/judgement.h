@@ -11,7 +11,7 @@ namespace locus::core {
 // The single authoritative scoring-rule revision. Bump this when timing
 // windows, diagonal resolution, grade weights or other judging rules change.
 // Completed results retain the revision at which they were earned.
-inline constexpr int kJudgementRulesVersion = 2;
+inline constexpr int kJudgementRulesVersion = 1;
 
 // Provisional, symmetric timing windows for the first playable demo.
 // These are gameplay defaults, not measured device latency or calibration.
@@ -84,8 +84,6 @@ public:
     // One fresh physical arrow key-down; accepts Up/Right/Down/Left only.
     // For a diagonal each expected arrow is resolved once, in any order.
     std::optional<Judgement> PressHeading(Heading outgoing, double songSeconds);
-    // Timestamped key-up: early release breaks that hold component.
-    void ReleaseHeading(Heading arrow, double songSeconds) noexcept;
 
     const GradeCounts& Counts() const noexcept { return counts_; }
     // Live streak of resolved physical arrows; only Miss breaks it.
@@ -105,9 +103,6 @@ public:
 private:
     void Resolve(Grade grade, double errorSeconds, bool wrongDirection,
                  Heading arrow) noexcept;
-    void Finalize(Grade grade, double errorSeconds, bool wrongDirection,
-                  Heading arrow) noexcept;
-    double EventSeconds(const TurnEvent& event) const noexcept;
     void RecountScorable() noexcept;
     void ResetArrowQueues() noexcept;
     std::size_t FindNextArrow(std::size_t from, unsigned bit) const noexcept;
@@ -121,7 +116,6 @@ private:
     // A fully resolved authored turn disappears only when none of the
     // queues still reference it.
     std::array<std::size_t, 4> nextByArrow_{};
-    std::array<std::optional<Judgement>, 4> holdHeads_{};
     GradeCounts counts_;
     int combo_ = 0;
     int maxCombo_ = 0;

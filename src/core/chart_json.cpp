@@ -172,9 +172,9 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 return false;
             }
         int version = 0;
-        if (!IntegerInRange(document["formatVersion"], 4, 5, version,
+        if (!IntegerInRange(document["formatVersion"], 4, 4, version,
                             "formatVersion", error)) {
-            error = "formatVersion: expected version 4 or 5";
+            error = "formatVersion: expected version 4";
             return false;
         }
 
@@ -294,14 +294,9 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
         parsed.route.turns.reserve(turns.size());
         int prior = std::numeric_limits<int>::min();
         std::int64_t previousMs = std::numeric_limits<std::int64_t>::min();
-        std::int64_t previousTail = std::numeric_limits<std::int64_t>::min();
         for (std::size_t i = 0; i < turns.size(); ++i) {
             const std::string where = "turns[" + std::to_string(i) + "]";
-            const bool hasHold = version == 5 && turns[i].contains("holdMs");
-            if (hasHold) {
-                if (!HasExactMembers(turns[i], {"timeMs", "heading", "holdMs"}, where, error))
-                    return false;
-            } else if (!HasExactMembers(turns[i], {"timeMs", "heading"}, where, error))
+            if (!HasExactMembers(turns[i], {"timeMs", "heading"}, where, error))
                 return false;
             const Json& stamp = turns[i]["timeMs"];
             if (!stamp.is_number_integer()) {
@@ -314,16 +309,7 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
                 error = where + ".timeMs: out of range or not increasing";
                 return false;
             }
-            int holdMs = 0;
-            if (hasHold && !IntegerInRange(turns[i]["holdMs"], 1, 90000000,
-                                           holdMs, where + ".holdMs", error))
-                return false;
-            if (!ValidHoldDuration(timeMs, holdMs) || timeMs < previousTail) {
-                error = where + ".holdMs: invalid duration or overlapping hold";
-                return false;
-            }
             previousMs = timeMs;
-            previousTail = timeMs + holdMs;
             const int beat = projection.TickAtMs(timeMs);
             if (beat < -1000000 || beat > 999999) {
                 error = where + ".timeMs: outside tick range";
@@ -347,7 +333,7 @@ bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& err
             for (int j = 0; j < 8; ++j) {
                 if (direction == headingNames[j]) {
                     parsed.route.turns.push_back(
-                        {beat, static_cast<Heading>(j), timeMs, holdMs});
+                        {beat, static_cast<Heading>(j), timeMs});
                     recognized = true;
                     break;
                 }
@@ -372,10 +358,7 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
     try {
         using Ordered = nlohmann::ordered_json;
         Ordered document = Ordered::object();
-        bool hasHolds = false;
-        for (const auto& event : chart.route.turns)
-            hasHolds |= event.holdMs != 0;
-        document["formatVersion"] = hasHolds ? 5 : 4;
+        document["formatVersion"] = 4;
         document["title"] = chart.title;
         if (!chart.difficultyId.empty()) {
             if (!ValidDifficultyId(chart.difficultyId)) {
@@ -428,8 +411,6 @@ bool SerializeChartJson(const LoadedChart& chart, std::string& json,
                 {"timeMs", EventTimeMs(chart.route, event, chart.offsetSeconds)},
                 {"heading", headings[static_cast<int>(event.direction)]}
             });
-            if (event.holdMs != 0)
-                document["turns"].back()["holdMs"] = event.holdMs;
         }
         std::string encoded = document.dump(2, ' ', false,
                                            Ordered::error_handler_t::strict) + "\n";
@@ -486,19 +467,10 @@ bool PrepareChartForSong(LoadedChart& chart, double songDurationSeconds,
         !ValidTempoMap(chart.route.tempoMap, error)) return false;
     if (!TempoTickRange(chart.route, chart.offsetSeconds,
                         songDurationSeconds, first, end, error)) return false;
-    std::int64_t previousTail = std::numeric_limits<std::int64_t>::min();
     for (std::size_t i = 0; i < chart.route.turns.size(); ++i) {
         const auto& event = chart.route.turns[i];
-        const auto timeMs = EventTimeMs(chart.route, event, chart.offsetSeconds);
-        const double timestamp = timeMs / 1000.0;
-        if (!ValidHoldDuration(timeMs, event.holdMs) || timeMs < previousTail ||
-            (event.holdMs > 0 &&
-                (timeMs + event.holdMs) / 1000.0 > songDurationSeconds + 1e-9)) {
-            error = "turns[" + std::to_string(i) +
-                    "].holdMs: overlapping hold or tail outside audio";
-            return false;
-        }
-        previousTail = timeMs + event.holdMs;
+        const double timestamp = static_cast<double>(
+            EventTimeMs(chart.route, event, chart.offsetSeconds)) / 1000.0;
         if (event.beat < first || event.beat >= end ||
             !std::isfinite(timestamp) ||
             (timestamp < 0.0 &&

@@ -130,7 +130,7 @@ void NativeSkinUi::RebuildControls() {
     }
     if (auto* list = document_->GetElementById("skin-controls"))
         list->SetInnerRML(html.str());
-    sliderRatios_.assign(static_cast<std::size_t>(SkinSettingCount(ui_->page)), -1.0f);
+    sliderRatios_.fill(-1.0f);
     swatchColors_.fill("");
 }
 void NativeSkinUi::Sync() {
