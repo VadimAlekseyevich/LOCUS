@@ -141,7 +141,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         if (auto* name = dynamic_cast<Rml::ElementFormControlInput*>(document_->GetElementById("editor-difficulty-title")))
             if (name != focus && name->GetValue() != title) name->SetValue(title);
         SetText("editor-setup-enter", !setView->hasAudio ? "ATTACH AUDIO FIRST" :
-                !setView->managed && (!draft || draft->Data().difficultyId.empty()) ? "CREATE SONG SET" : "OPEN CHART EDITOR");
+                !setView->managed ? "CREATE SONG SET" : "OPEN CHART EDITOR");
         SetText("editor-set-hint", setView->managed ? "" :
                 "CREATE SONG SET TO EDIT SHARED DETAILS");
         std::ostringstream signature;

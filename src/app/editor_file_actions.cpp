@@ -91,6 +91,7 @@ void EditorFileActions::Open(double& now, std::string& error) {
             context_.status = "OPEN FAILED: " + error;
             return;
         }
+        context_.ui.tab = EditorTab::Set;
         return;
     }
     if (!LoadDraftFromDisk(
@@ -104,7 +105,8 @@ void EditorFileActions::Open(double& now, std::string& error) {
     ResetDocumentUi(context_.ui);
     context_.previewStartBeat = 0;
     context_.loadedAudioPath = context_.audioPath;
-    context_.status = "CHART LOADED - SPACE PREVIEW / T TEST";
+    context_.ui.tab = EditorTab::Set;
+    context_.status = "CHART LOADED - SONG SETUP";
 }
 
 void EditorFileActions::AttachAudio(double& now) {

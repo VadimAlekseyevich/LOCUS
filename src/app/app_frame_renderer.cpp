@@ -325,8 +325,9 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                                      editorSetView, &comparisons,
                                      editorClock.songSeconds,
                                      hasNativeEditorShell);
-        if (editorUi.tab == EditorTab::Set && !editorUi.feedback.empty())
-            DrawTextLabel(font, core::utf8::Truncate(editorUi.feedback, 105).c_str(),
+        if (editorUi.tab == EditorTab::Set)
+            DrawTextLabel(font, core::utf8::Truncate(
+                editorUi.feedback.empty() ? editorStatus : editorUi.feedback, 105).c_str(),
                 {52,472}, 10, editorUi.feedbackError ? Color{250,165,152,255}
                                                     : Color{162,216,238,255});
         // Editor and preview statuses must not be painted over file buttons.

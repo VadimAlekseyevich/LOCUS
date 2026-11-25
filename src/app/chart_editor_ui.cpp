@@ -679,7 +679,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                 ui.active==EditorField::Title?ui.buffer:draft.Data().title,
                 ui.active==EditorField::Title);
             DrawUiThemedButton(font,kSetupEnter,!hasAudio?"ATTACH AUDIO FIRST":
-                !set.managed&&draft.Data().difficultyId.empty()?"CREATE SONG SET":"OPEN CHART EDITOR",
+                !set.managed?"CREATE SONG SET":"OPEN CHART EDITOR",
                 UiButtonVariant::Cool,{}, {},theme,12);
             CompactButton(font,kSetNew,"NEW",sky);
             CompactButton(font,kSetDuplicate,"DUPLICATE",violet);

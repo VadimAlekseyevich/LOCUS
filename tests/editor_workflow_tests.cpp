@@ -169,8 +169,9 @@ int main() {
     files.NewDraft();
     ok &= Check(nav.screen == Screen::Editor && !editor.Dirty() &&
                 editor.Data().route.turns.empty() &&
-                chartPath.empty() && audioPath.empty(),
-                "Home > Editor opens a blank document");
+                chartPath.empty() && audioPath.empty() &&
+                editorUi.tab == app::EditorTab::Set,
+                "Home > Editor opens blank Song Setup");
 
     // Canceling the real file action changes neither the selected document
     // nor the underlying library, even after its native dialog callback.

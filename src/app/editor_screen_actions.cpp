@@ -52,6 +52,10 @@ void EditorScreenActions::BlurTextOnPointer(Vector2 mouse, double& now) {
 }
 
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
+    if (input.editor.metadataField) {
+        context_.sets.CommitMetadata(*input.editor.metadataField,
+            input.editor.metadataValue, input.editor.metadataSetId);
+    }
     if (input.editor.difficultyTitle)
         context_.sets.CommitDifficultyTitle(*input.editor.difficultyTitle, now);
     if (context_.ui.active == EditorField::Title &&
@@ -75,10 +79,6 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     }
     // RmlUi SET commands are typed events and take precedence over the
     // legacy pointer path. They are validated by the same domain controller.
-    if (input.editor.metadataField) {
-        context_.sets.CommitMetadata(*input.editor.metadataField,
-            input.editor.metadataValue, input.editor.metadataSetId);
-    }
     if (input.editor.selectedDifficulty >= 0) {
         context_.sets.FocusDifficulty(input.editor.selectedDifficulty);
         return false;

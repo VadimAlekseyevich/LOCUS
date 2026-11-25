@@ -632,6 +632,7 @@ int main(int argc, char** argv) try {
             input.editorTest = false;
         }
         if (state.screen == Screen::Editor && input.backPressed &&
+            !input.closeRequested && !state.quitConfirmation && !wasQuitConfirmation &&
             editorUi.tab == locus::app::EditorTab::Route &&
             !editorUi.EditingText() && !editorSet.HasPending() &&
             editorFiles.PendingClose().empty() &&
