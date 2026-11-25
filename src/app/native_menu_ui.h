@@ -4,7 +4,7 @@
 #include "app/editor_layout_snapshot.h"
 #include "app/rml_native_files.h"
 #include "app/menu_controller.h"
-#include "app/library_virtual_list.h"
+#include "app/native_play_ui.h"
 #include "app/native_settings_ui.h"
 #include "app/native_editor_ui.h"
 #include "app/rml_confirmation.h"
@@ -23,9 +23,8 @@ class Element;
 
 namespace locus::app {
 
-// First native responsive RmlUi screen: PLAY song selection. State and
-// actions remain owned by the existing SongSelectUi / MenuEvents / library.
-// This object draws and routes events; it never loads or saves charts.
+// Shared native UI host: contexts, document lifetime, frame routing and
+// custom-canvas geometry. Screen presenters own their DOM and commands.
 class NativeMenuUi final : private Rml::EventListener {
 public:
     NativeMenuUi() = default;
@@ -91,13 +90,6 @@ private:
     void DispatchInput(bool dispatchKeyboard, bool dispatchButtons, bool dispatchWheel);
     void ReadEditorLayout(EditorUiState& ui) const noexcept;
     void ProcessEvent(Rml::Event& event) override;
-    void Rebuild(const SongLibrary& library, SongSelectUi& ui);
-    void UpdateSummary(const SongLibrary& library, SongSelectUi& ui);
-    void RebuildRows(const SongLibrary& library, SongSelectUi& ui);
-    void RebuildResults(SongSelectUi& ui);
-    void SetText(const char* id, const std::string& value);
-    bool IsSearchFocused() const;
-
     RmlNativeFiles files_;
     RmlRaylibSystem system_;
     RmlRaylibRenderer renderer_;
@@ -116,9 +108,7 @@ private:
     NativeEditorUi editorPresenter_;
     NativeResultsUi resultsPresenter_;
     NativeSkinUi skinPresenter_;
-    const SongLibrary* currentLibrary_ = nullptr;
-    SongSelectUi* currentUi_ = nullptr;
-    MenuEvents pending_;
+    NativePlayUi playPresenter_;
     Page visiblePage_ = Page::None;
     int pendingHomeAction_ = -1;
     std::string lastHomeNotice_;
@@ -126,17 +116,6 @@ private:
     float lastDensity_ = -1.0f;
     int lastEditorLayoutTab_ = -1;
     EditorPointerRouter editorPointerRouter_;
-    std::string lastTreeSignature_, lastResultSignature_, lastSummarySignature_;
-    std::vector<LibraryTreeEntry> treeEntries_;
-    std::vector<float> treeOffsets_;
-    std::size_t treeFirst_ = static_cast<std::size_t>(-1);
-    std::size_t treeEnd_ = static_cast<std::size_t>(-1);
-    int lastSelectedSong_ = -1;
-    int lastSelectedChart_ = -1;
-    bool lastTreeChartFocused_ = false;
-    std::size_t resultFirst_ = static_cast<std::size_t>(-1);
-    std::size_t resultEnd_ = static_cast<std::size_t>(-1);
-    float resultRowStep_ = 43.0f;
 };
 
 } // namespace locus::app

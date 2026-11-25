@@ -30,34 +30,6 @@
 namespace locus::app {
 namespace {
 
-std::string Escape(const std::string& source) {
-    std::string out;
-    out.reserve(source.size());
-    for (char c : source) {
-        switch (c) {
-            case '&': out += "&amp;"; break;
-            case '<': out += "&lt;"; break;
-            case '>': out += "&gt;"; break;
-            case '"': out += "&quot;"; break;
-            case '\'': out += "&#39;"; break;
-            default: out += c; break;
-        }
-    }
-    return out;
-}
-
-std::string Rating(double value) {
-    std::ostringstream stream;
-    stream << std::fixed << std::setprecision(1) << value;
-    return stream.str();
-}
-
-std::string Accuracy(double value) {
-    std::ostringstream stream;
-    stream << std::fixed << std::setprecision(2) << value << "%";
-    return stream.str();
-}
-
 int Modifiers() {
     int result = 0;
     if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
@@ -265,6 +237,7 @@ bool NativeMenuUi::Initialize() {
             confirmationDocument_->Hide();
         }
     }
+    playPresenter_.Attach(document_);
     document_->AddEventListener("click", this);
     document_->AddEventListener("input", this);
     document_->Hide();
@@ -306,6 +279,7 @@ void NativeMenuUi::Shutdown() {
                 skinDocument_->RemoveEventListener(type, this);
         skinPresenter_.Attach(nullptr);
         skinDocument_ = nullptr;
+        playPresenter_.Attach(nullptr);
         document_ = nullptr;
         homeDocument_ = nullptr;
         context_->UnloadAllDocuments();
@@ -319,15 +293,7 @@ void NativeMenuUi::Shutdown() {
     lastDensity_ = -1.0f;
     pendingHomeAction_ = -1;
     editorPointerRouter_.Reset();
-    currentUi_ = nullptr;
-    currentLibrary_ = nullptr;
-    treeEntries_.clear();
-    treeOffsets_.clear();
-    treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
-    resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
-    resultRowStep_ = 43.0f;
-    lastSelectedSong_ = lastSelectedChart_ = -1;
-    lastTreeChartFocused_ = false;
+
 }
 
 void NativeMenuUi::Activate(Page page) {
@@ -352,12 +318,7 @@ void NativeMenuUi::Activate(Page page) {
             notice->SetInnerRML("");
     } else if (page == Page::Play && document_) {
         document_->Show();
-        lastTreeSignature_.clear();
-        treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
-        lastSummarySignature_.clear();
-        lastResultSignature_.clear();
-        resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
-        resultRowStep_ = 43.0f;
+        playPresenter_.Attach(document_);
     } else if (page == Page::Settings && settingsDocument_) {
         settingsDocument_->Show();
         settingsPresenter_.Attach(settingsDocument_);
@@ -423,18 +384,6 @@ Rectangle NativeMenuUi::HomeWordmarkBounds() const noexcept {
 void NativeMenuUi::Hide() {
     if (visiblePage_ == Page::None) return;
     Activate(Page::None);
-    currentUi_ = nullptr;
-    currentLibrary_ = nullptr;
-}
-
-void NativeMenuUi::SetText(const char* id, const std::string& value) {
-    if (document_)
-        UpdateRmlText(document_->GetElementById(id), value);
-}
-
-bool NativeMenuUi::IsSearchFocused() const {
-    if (!context_ || !document_) return false;
-    return context_->GetFocusElement() == document_->GetElementById("search");
 }
 
 void NativeMenuUi::ProcessEvent(Rml::Event& event) {
@@ -474,295 +423,7 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
         skinPresenter_.ProcessEvent(event);
         return;
     }
-    if (visiblePage_ != Page::Play || !currentUi_ || !currentLibrary_)
-        return;
-    if (event.GetType() == "input") {
-        if (target->GetId() != "search") return;
-        if (auto* search = dynamic_cast<Rml::ElementFormControlInput*>(target)) {
-            currentUi_->search = search->GetValue();
-            currentUi_->treeScroll = 0;
-            if (auto* scroll = document_->GetElementById("tree-scroll"))
-                scroll->SetScrollTop(0);
-            lastTreeSignature_.clear();
-            Rebuild(*currentLibrary_, *currentUi_);
-        }
-        return;
-    }
-    if (event.GetType() != "click") return;
-    while (target && !target->HasAttribute("data-action"))
-        target = target->GetParentNode();
-    if (!target) return;
-    const std::string action =
-        target->GetAttribute<Rml::String>("data-action", "");
-    if (action == "play") pending_.playSelected = true;
-    else if (action == "edit") pending_.editSelected = true;
-    else if (action == "rescan") pending_.refresh = true;
-    else if (action == "import") pending_.import = true;
-    else if (action == "song") {
-        const int song = target->GetAttribute<int>("data-song", -1);
-        if (song >= 0) {
-            currentUi_->SelectSong(song, *currentLibrary_);
-            currentUi_->treeChartFocused = false;
-        }
-    } else if (action == "chart") {
-        const int song = target->GetAttribute<int>("data-song", -1);
-        const int chart = target->GetAttribute<int>("data-chart", -1);
-        if (song >= 0 && chart >= 0) {
-            if (currentUi_->selectedSong != song)
-                currentUi_->SelectSong(song, *currentLibrary_);
-            currentUi_->SelectChart(chart, *currentLibrary_);
-            currentUi_->treeChartFocused = true;
-        }
-    } else if (action == "result") {
-        pending_.viewResultIndex = target->GetAttribute<int>("data-index", -1);
-    }
-}
-
-void NativeMenuUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
-    const LibrarySong* song = ui.selectedSong > 0 &&
-        ui.selectedSong <= static_cast<int>(library.Songs().size())
-        ? &library.Songs()[static_cast<std::size_t>(ui.selectedSong - 1)]
-        : nullptr;
-    const LibraryChart* chart = ui.Selected(library);
-    const auto rating = chart ? chart->difficulty :
-        core::CalculateChartDifficulty(core::MakeDemoChart());
-    const int count = chart
-        ? static_cast<int>(chart->metadata.noteCount)
-        : static_cast<int>(core::MakeDemoChart().turns.size());
-    // Initial library-index telemetry is not a user-facing notification.
-    SetText("notice", ui.notice.rfind("LIBRARY:", 0) == 0
-        ? "" : ui.notice);
-    SetText("song-title", song ? song->title : "BUILT-IN DEMO");
-    SetText("song-author", song
-        ? (song->artist.empty() ? "UNKNOWN ARTIST" : song->artist)
-        : "LOCUS");
-    SetText("song-mapper", song && !song->mapper.empty()
-        ? "Mapped by " + song->mapper : "");
-    SetText("song-meta", song
-        ? Rating(song->bpm) + " BPM  /  " +
-          std::to_string(song->charts.size()) + " CHARTS"
-        : "120 BPM  /  1 CHART");
-    std::string tags;
-    if (song) {
-        for (std::size_t i = 0; i < song->tags.size() && i < 3; ++i) {
-            if (!tags.empty()) tags += "  /  ";
-            tags += song->tags[i];
-        }
-    }
-    SetText("song-tags", tags);
-    SetText("chart-title", chart ? chart->metadata.title : "ORIGINAL");
-    SetText("rating", Rating(rating.overall));
-    SetText("chart-notes", std::to_string(count) + " TURNS");
-    SetText("metric-speed", Rating(rating.speed));
-    SetText("metric-rhythm", Rating(rating.rhythm));
-    SetText("metric-coord", Rating(rating.coordination));
-    SetText("metric-reading", Rating(rating.reading));
-    SetText("metric-stamina", Rating(rating.stamina));
-    SetText("metric-peak", Rating(rating.peak));
-
-}
-
-void NativeMenuUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
-    auto* rows = document_->GetElementById("tree");
-    if (!rows) return;
-    auto* scroll = document_->GetElementById("tree-scroll");
-    const float oldScroll = scroll ? scroll->GetScrollTop() : 0;
-    const auto view = VisibleLibraryRows(treeOffsets_,
-        scroll ? LibraryScrollDp(scroll->GetScrollTop(),lastDensity_) : 0.0f);
-    std::ostringstream html;
-    if (view.before > 0.0f)
-        html << "<div class='tree-spacer' style='height:"
-             << view.before << "dp;flex:0 0 " << view.before << "dp'></div>";
-    for (std::size_t index = view.first; index < view.end; ++index) {
-        const auto& item = treeEntries_[index];
-        const bool isChart = item.chart >= 0;
-        const bool active = item.song == ui.selectedSong &&
-            (isChart ? ui.treeChartFocused && item.chart == ui.selectedChart
-                     : !ui.treeChartFocused);
-        std::string name;
-        double difficulty = 0;
-        if (item.song == 0) {
-            name = isChart ? "ORIGINAL" : "BUILT-IN DEMO";
-            difficulty = core::CalculateChartDifficulty(
-                core::MakeDemoChart()).overall;
-        } else {
-            const auto& song = library.Songs()[
-                static_cast<std::size_t>(item.song - 1)];
-            if (!isChart) name = song.title;
-            else {
-                const auto& chart = song.charts[
-                    static_cast<std::size_t>(item.chart)];
-                name = chart.metadata.title;
-                difficulty = chart.difficulty.overall;
-            }
-        }
-        html << "<button class='" << (isChart ? "chart-row" : "song-row")
-             << (active ? " active" : "")
-             << "' data-action='" << (isChart ? "chart" : "song")
-             << "' data-song='" << item.song << "'";
-        if (isChart) html << " data-chart='" << item.chart << "'";
-        html << ">";
-        if (isChart) html << "<span class='chart-marker'></span>";
-        else html << "<span class='row-chevron"
-                  << (item.song == ui.selectedSong ? " expanded" : "")
-                  << "'></span>";
-        html << "<span class='row-label'>" << Escape(name) << "</span>";
-        if (isChart) html << "<span class='row-rating'>"
-                          << Rating(difficulty) << "</span>";
-        else {
-            const std::size_t count = item.song == 0 ? 1 :
-                library.Songs()[static_cast<std::size_t>(item.song - 1)]
-                    .charts.size();
-            html << "<span class='row-count'>" << count << "</span>";
-        }
-        html << "</button>";
-    }
-    if (view.after > 0.0f)
-        html << "<div class='tree-spacer' style='height:"
-             << view.after << "dp;flex:0 0 " << view.after << "dp'></div>";
-    if (treeEntries_.empty()) html << "<div class='empty'>NO MATCHING SONGS</div>";
-    rows->SetInnerRML(html.str());
-    if (scroll) scroll->SetScrollTop(oldScroll);
-    treeFirst_ = view.first;
-    treeEnd_ = view.end;
-    SetText("set-count", std::to_string(library.Songs().size() + 1));
-}
-
-void NativeMenuUi::RebuildResults(SongSelectUi& ui) {
-    auto* rows = document_->GetElementById("results-list");
-    if (!rows) return;
-    auto* scroll = document_->GetElementById("results-scroll");
-    const float oldScroll = scroll ? scroll->GetScrollTop() : 0;
-    SetText("result-count", std::to_string(ui.results.size()));
-    const auto window = VisibleResultRows(
-        ui.results.size(), LibraryScrollDp(oldScroll,lastDensity_), resultRowStep_);
-    std::ostringstream html;
-    if (window.before > 0.0f)
-        html << "<div class='result-spacer' style='height:"
-             << window.before << "dp;flex:0 0 " << window.before << "dp'></div>";
-    for (std::size_t i = window.first; i < window.end; ++i) {
-        const auto& result = ui.results[i];
-        const auto revision = CompareRunRevision(
-            result, ui.resultGameplayRevision);
-        const char* label = revision == RunRevisionState::OlderChart
-            ? "OLD CHART · " : revision == RunRevisionState::OlderRules
-                ? "OLD RULES · " : result.variablePracticeRate
-                    ? "VARIABLE RATE · " : "";
-        html << "<button class='result' data-action='result' data-index='"
-             << i << "'><strong>" << Accuracy(result.accuracyPercent)
-             << "</strong><span class='result-date'>"
-             << label << Escape(FormatRunTimestamp(result.completedAtMs))
-             << "</span><span class='result-arrow'>&gt;</span></button>";
-    }
-    if (window.after > 0.0f)
-        html << "<div class='result-spacer' style='height:"
-             << window.after << "dp;flex:0 0 " << window.after << "dp'></div>";
-    if (ui.results.empty())
-        html << "<div class='empty'>"
-             << (ui.resultsLoading ? "LOADING RESULTS..." : "NO SAVED RESULTS")
-             << "</div>";
-    rows->SetInnerRML(html.str());
-    if (scroll) scroll->SetScrollTop(oldScroll);
-    resultFirst_ = window.first;
-    resultEnd_ = window.end;
-}
-
-void NativeMenuUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
-    // Only changes that affect tree geometry trigger its expensive DOM rebuild.
-    // Library::Revision is advanced by index refreshes and in-place metadata
-    // changes, so a 10,000-chart library costs O(1) to poll on idle frames.
-    std::ostringstream tree;
-    tree << library.Revision() << ':' << ui.selectedSong << ':'
-         << ui.selectedChart << ':' << ui.treeChartFocused << ':'
-         << ui.search;
-    if (tree.str() != lastTreeSignature_) {
-        const bool selectionChanged =
-            ui.selectedSong != lastSelectedSong_ ||
-            ui.selectedChart != lastSelectedChart_ ||
-            ui.treeChartFocused != lastTreeChartFocused_;
-        treeEntries_ = LibraryTreeRows(library, ui);
-        treeOffsets_ = LibraryRowOffsets(treeEntries_);
-        lastTreeSignature_ = tree.str();
-        treeFirst_ = treeEnd_ = static_cast<std::size_t>(-1);
-        lastSelectedSong_ = ui.selectedSong;
-        lastSelectedChart_ = ui.selectedChart;
-        lastTreeChartFocused_ = ui.treeChartFocused;
-        // Keyboard navigation changes the active logical row without any
-        // RmlUi-focused element necessarily existing (offscreen rows have
-        // no DOM node). Scroll the virtual viewport to the selected row.
-        if (selectionChanged) {
-            if (auto* scroll = document_->GetElementById("tree-scroll")) {
-                const auto selected = std::find_if(
-                    treeEntries_.begin(), treeEntries_.end(),
-                    [&](const LibraryTreeEntry& item) {
-                        return item.song == ui.selectedSong &&
-                            item.chart == (ui.treeChartFocused
-                                ? ui.selectedChart : -1);
-                    });
-                if (selected != treeEntries_.end() &&
-                    scroll->GetClientHeight() > 0.0f) {
-                    const auto index = static_cast<std::size_t>(
-                        selected - treeEntries_.begin());
-                    const float start = treeOffsets_[index];
-                    const float bottom = treeOffsets_[index + 1] - 6.0f;
-                    const float viewportStart = LibraryScrollDp(scroll->GetScrollTop(),lastDensity_);
-                    const float viewportHeight = LibraryScrollDp(scroll->GetClientHeight(),lastDensity_);
-                    const float viewportEnd = viewportStart + viewportHeight;
-                    if (start < viewportStart)
-                        scroll->SetScrollTop(LibraryScrollPixels(start,lastDensity_));
-                    else if (bottom > viewportEnd)
-                        scroll->SetScrollTop(LibraryScrollPixels(bottom - viewportHeight,lastDensity_));
-                }
-            }
-        }
-    }
-    auto* scroll = document_->GetElementById("tree-scroll");
-    const auto window = VisibleLibraryRows(treeOffsets_,
-        scroll ? LibraryScrollDp(scroll->GetScrollTop(),lastDensity_) : 0.0f);
-    if (window.first != treeFirst_ || window.end != treeEnd_)
-        RebuildRows(library, ui);
-    // Status text may change without a selection/index change. Updating it
-    // must never recreate all rows or drop scroll position/focus.
-    std::ostringstream summary;
-    summary << library.Revision() << ':' << ui.selectedSong << ':'
-            << ui.selectedChart << ':' << ui.notice;
-    if (summary.str() != lastSummarySignature_) {
-        UpdateSummary(library, ui);
-        lastSummarySignature_ = summary.str();
-    }
-    const std::string history = std::to_string(ui.resultsRevision);
-    if (history != lastResultSignature_) {
-        resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
-        resultRowStep_ = 43.0f;
-        lastResultSignature_ = history;
-        // Selecting a different difficulty is a new history, not another
-        // window of the previous scroll position.
-        if (auto* scroll = document_->GetElementById("results-scroll"))
-            scroll->SetScrollTop(0);
-    }
-    // Infer the real height from RmlUi layout after the previous frame.
-    // Padding/borders can change at high DPI; a fixed CSS assumption would
-    // make virtual spacers shift when scrolling thousands of attempts.
-    if (auto* list = document_->GetElementById("results-list")) {
-        for (int i = 0; i < list->GetNumChildren(); ++i) {
-            auto* child = list->GetChild(i);
-            if (child && child->IsClassSet("result") &&
-                child->GetOffsetHeight() > 0.0f) {
-                const float step = LibraryResultRowStepDp(child->GetOffsetHeight(),lastDensity_);
-                if (std::abs(step - resultRowStep_) > 0.5f) {
-                    resultRowStep_ = step;
-                    resultFirst_ = resultEnd_ = static_cast<std::size_t>(-1);
-                }
-                break;
-            }
-        }
-    }
-    auto* historyScroll = document_->GetElementById("results-scroll");
-    const auto visible = VisibleResultRows(ui.results.size(),
-        historyScroll ? LibraryScrollDp(historyScroll->GetScrollTop(),lastDensity_) : 0.0f,
-        resultRowStep_);
-    if (visible.first != resultFirst_ || visible.end != resultEnd_)
-        RebuildResults(ui);
+    if (visiblePage_ == Page::Play) playPresenter_.ProcessEvent(event);
 }
 
 bool NativeMenuUi::RefreshLayoutMetrics() {
@@ -837,8 +498,6 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                                 const EditorSetView& setView) {
     if (!EditorAvailable()) return;
     Activate(Page::Editor);
-    currentLibrary_ = nullptr;
-    currentUi_ = nullptr;
     // The document now fills the actual context. No per-widget resize
     // arithmetic or virtual-canvas offsets are written into RCSS.
     input.editor.nativeChrome = true;
@@ -980,8 +639,6 @@ void NativeMenuUi::UpdateSettings(GameSettings& settings, SettingsUi& ui,
                                   bool exclusiveKeyboardInput) {
     if (!SettingsAvailable()) return;
     Activate(Page::Settings);
-    currentLibrary_ = nullptr;
-    currentUi_ = nullptr;
     settingsPresenter_.BeginFrame(settings, ui, input, events);
     settingsPresenter_.Sync();
     const bool keyboard = !exclusiveKeyboardInput &&
@@ -1010,8 +667,6 @@ void NativeMenuUi::UpdateSettings(GameSettings& settings, SettingsUi& ui,
 void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status) {
     if (!HomeAvailable()) return;
     Activate(Page::Home);
-    currentUi_ = nullptr;
-    currentLibrary_ = nullptr;
     pendingHomeAction_ = -1;
     const bool failed = status.find("FAILED") != std::string::npos ||
         status.find("UNAVAILABLE") != std::string::npos ||
@@ -1019,7 +674,7 @@ void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status) {
     const std::string notice = failed ? status : "";
     if (notice != lastHomeNotice_) {
         if (auto* element = homeDocument_->GetElementById("home-notice"))
-            element->SetInnerRML(Escape(notice));
+            UpdateRmlText(element,notice);
         lastHomeNotice_ = notice;
     }
     PumpInput();
@@ -1050,68 +705,25 @@ void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status) {
 
 MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
                                 FrameInput& input) {
-    MenuEvents result;
-    if (!Available()) return result;
+    if (!Available()) return {};
     if (visiblePage_ != Page::Play) {
         Activate(Page::Play);
-        if (auto* search = document_->GetElementById("search"))
-            static_cast<Rml::ElementFormControlInput*>(search)->
-                SetValue(ui.search);
+        playPresenter_.SetSearch(ui.search);
     }
-    currentLibrary_ = &library;
-    currentUi_ = &ui;
-    pending_ = {};
-    // Resolve density before evaluating scroll windows. On a resize preserve
-    // the logical dp position, not the previous physical-pixel offset.
-    auto* treeScroll = document_->GetElementById("tree-scroll");
-    auto* historyScroll = document_->GetElementById("results-scroll");
     const float oldDensity = lastDensity_;
-    const float treeTopDp = treeScroll ? LibraryScrollDp(treeScroll->GetScrollTop(),oldDensity) : 0.0f;
-    const float historyTopDp = historyScroll ? LibraryScrollDp(historyScroll->GetScrollTop(),oldDensity) : 0.0f;
+    const auto scroll = playPresenter_.ReadScrollPosition(oldDensity);
     if (RefreshLayoutMetrics()) {
         context_->Update();
-        if (oldDensity > 0.0f && oldDensity != lastDensity_) {
-            if (treeScroll) treeScroll->SetScrollTop(LibraryScrollPixels(treeTopDp,lastDensity_));
-            if (historyScroll) historyScroll->SetScrollTop(LibraryScrollPixels(historyTopDp,lastDensity_));
-        }
+        if (oldDensity > 0.0f && oldDensity != lastDensity_)
+            playPresenter_.RestoreScrollPosition(scroll,lastDensity_);
     }
-    Rebuild(library, ui);
+    playPresenter_.BeginFrame(library,ui,lastDensity_);
+    playPresenter_.Sync();
     PumpInput();
-    if (auto* focus = context_->GetFocusElement();
-        focus && focus->GetTagName() == "button" &&
-        (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
-        focus->Click();
-    const bool typing = IsSearchFocused();
-    if (!typing) {
-        if (IsKeyPressed(KEY_UP)) ui.MoveTree(-1, library);
-        if (IsKeyPressed(KEY_DOWN)) ui.MoveTree(1, library);
-        if (IsKeyPressed(KEY_LEFT)) ui.MoveChart(-1, library);
-        if (IsKeyPressed(KEY_RIGHT)) ui.MoveChart(1, library);
-        // Enter on a focused EDIT button cannot start the chart as well.
-        const auto* focus = context_->GetFocusElement();
-        const bool buttonFocused = focus && focus->GetTagName() == "button";
-        if (!buttonFocused && IsKeyPressed(KEY_ENTER))
-            pending_.playSelected = true;
-        if (!buttonFocused && IsKeyPressed(KEY_E))
-            pending_.editSelected = true;
-        if (IsKeyPressed(KEY_ESCAPE)) input.backPressed = true;
-    } else {
-        if (IsKeyPressed(KEY_ESCAPE)) {
-            if (auto* element = document_->GetElementById("search"))
-                element->Blur();
-        }
-    }
-    if (IsKeyPressed(KEY_F5)) pending_.refresh = true;
-    // Search is a real text input. All global shortcuts, not only
-    // Enter/Escape/E, must be suppressed while it owns keyboard focus.
-    // The application still receives OS window-close requests separately.
-    if (typing) SuppressGlobalMenuShortcuts(input);
-    else input.startPressed = false;
-    Rebuild(library, ui);
+    playPresenter_.ProcessKeyboard(input);
+    playPresenter_.Sync();
     context_->Update();
-    result = pending_;
-    pending_ = {};
-    return result;
+    return playPresenter_.EndFrame();
 }
 
 MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
@@ -1119,8 +731,6 @@ MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
     MenuEvents events;
     if (!SkinAvailable()) return events;
     Activate(Page::Skin);
-    currentLibrary_ = nullptr;
-    currentUi_ = nullptr;
     SuppressGlobalMenuShortcuts(input);
     skinPresenter_.BeginFrame(draft, ui, input, events);
     skinPresenter_.Sync();
@@ -1189,8 +799,6 @@ MenuEvents NativeMenuUi::UpdateResults(FrameInput& input,
     MenuEvents events;
     if (!ResultsAvailable()) return events;
     Activate(Page::Results);
-    currentUi_ = nullptr;
-    currentLibrary_ = nullptr;
     SuppressGlobalMenuShortcuts(input);
     resultsPresenter_.BeginFrame(selected, grades, total, chartTitle,
                                  historical, history, input, events);

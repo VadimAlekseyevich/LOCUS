@@ -113,6 +113,7 @@ if(LOCUS_ENABLE_RMLUI)
     target_sources(locus PRIVATE
         src/app/rml_raylib_renderer.cpp
         src/app/native_menu_ui.cpp
+        src/app/native_play_ui.cpp
         src/app/native_settings_ui.cpp
         src/app/native_editor_ui.cpp
         src/app/native_results_ui.cpp

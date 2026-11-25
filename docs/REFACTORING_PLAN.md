@@ -165,6 +165,8 @@
 
 **25.11.2026 — T08/T12: PLAY virtual scroll.** Prefix sums, viewport queries and generated spacers now share dp units; RmlUi pixel scroll offsets and measured result row heights are converted at the boundary. A DPI change restores the previous logical scroll position. Tests cover 100/125/150/200/250% density on 10 000 library entries and 25 000 results. Windows CI and interactive scrolling remain required.
 
+**25.11.2026 — T11: PLAY presenter.** NativePlayUi владеет virtual-list DOM, кешами, поиском и typed MenuEvents. Модель библиотеки и selection заимствуются только внутри BeginFrame/EndFrame; хост управляет context, layout и маршрутизацией. DPI/scroll contract сохранён. Windows CI требуется.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>
