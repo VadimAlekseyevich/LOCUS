@@ -94,7 +94,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     if (draft && ui.tab == EditorTab::Route) {
         SetText("editor-snap-label", "SNAP 1/" + std::to_string(draft->Data().route.snapDivision));
         SetText("editor-zoom-label", "ZOOM " + std::to_string(static_cast<int>(std::lround(detail::PixelsPerBeat(ui)/36.0f*100))) + "%");
-        const auto counts = detail::DirectionPressCounts(draft->Data().route);
+        const auto& counts=draft->DirectionPressCounts();
         const auto* selected = draft->SelectedTurn();
         for (int index=0; index<8; ++index) {
             const std::string suffix = std::to_string(index);

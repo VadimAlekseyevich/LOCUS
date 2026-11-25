@@ -715,6 +715,31 @@ int main() {
                     "bulk merge Undo/Redo restores old and new intervals");
     }
 
+    {
+        ChartEditor counts;
+        LoadedChart source;
+        source.route.lengthBeats=16;
+        source.route.turns={{2,Heading::UpRight,1000},{3,Heading::DownLeft,1500}};
+        counts.Load(source);
+        const auto& first=counts.DirectionPressCounts();
+        const auto expected=CountDirectionPresses(source.route);
+        ok &= Check(first==expected && first[0]==1 && first[1]==1 &&
+                    first[2]==1 && first[3]==1 && first[4]==1 && first[6]==1,
+                    "cached physical direction totals count diagonal components");
+        counts.SelectBeat(2);
+        ok &= Check(counts.DirectionPressCounts()==expected,
+                    "selection leaves authored counts unchanged");
+        ok &= Check(counts.SetOutgoingHeading(Heading::Up) &&
+                    counts.DirectionPressCounts()==CountDirectionPresses(counts.Data().route) &&
+                    counts.DirectionPressCounts()!=expected &&
+                    counts.Undo() && counts.DirectionPressCounts()==expected &&
+                    counts.Redo() && counts.DirectionPressCounts()!=expected,
+                    "edit Undo Redo invalidate direction totals");
+        counts.Load(source);
+        ok &= Check(counts.DirectionPressCounts()==expected,
+                    "document replacement invalidates direction totals");
+    }
+
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 patches=1\n";
     return 0;

@@ -205,17 +205,8 @@ inline std::optional<core::Heading> DirectionPadHeading(int row, int col) noexce
 }
 // Live counts of physical direction presses in the full chart.
 // A diagonal increments its own pad plus both cardinal components.
-inline std::array<int, 8> DirectionPressCounts(const core::Chart& chart) noexcept {
-    std::array<int, 8> counts{};
-    for (const auto& note : chart.turns) {
-        if (!core::ValidHeading(note.direction)) continue;
-        const unsigned mask = core::HeadingArrowMask(note.direction);
-        for (int cardinal = 0; cardinal < 4; ++cardinal)
-            if (mask & (1u << cardinal)) ++counts[static_cast<std::size_t>(cardinal)];
-        if (core::IsDiagonal(note.direction))
-            ++counts[static_cast<std::size_t>(note.direction)];
-    }
-    return counts;
+inline std::array<int,8> DirectionPressCounts(const core::Chart& chart) noexcept {
+    return core::CountDirectionPresses(chart);
 }
 
 // Vertical icon rail: clipboard/undo/redo remain keyboard-only.

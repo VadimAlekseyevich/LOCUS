@@ -16,6 +16,26 @@ ChartEditor::ChartEditor() {
     NewDraft();
 }
 
+std::array<int,8> CountDirectionPresses(const Chart& chart) noexcept {
+    std::array<int,8> counts{};
+    for(const auto& note:chart.turns) {
+        if(!ValidHeading(note.direction)) continue;
+        const auto mask=HeadingArrowMask(note.direction);
+        for(int cardinal=0;cardinal<4;++cardinal)
+            if(mask&(1u<<cardinal)) ++counts[static_cast<std::size_t>(cardinal)];
+        if(IsDiagonal(note.direction))
+            ++counts[static_cast<std::size_t>(note.direction)];
+    }
+    return counts;
+}
+const std::array<int,8>& ChartEditor::DirectionPressCounts() const noexcept {
+    if(directionCountsRevision_!=RouteRevision()) {
+        directionCounts_=CountDirectionPresses(chart_.route);
+        directionCountsRevision_=RouteRevision();
+    }
+    return directionCounts_;
+}
+
 const ChartDifficulty& ChartEditor::Difficulty() const {
     if (difficultyRevision_ != revision_) {
         difficulty_ = CalculateChartDifficulty(chart_.route,

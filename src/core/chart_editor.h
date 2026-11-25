@@ -3,6 +3,7 @@
 #include "core/chart_json.h"
 #include "core/chart_difficulty.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -11,6 +12,9 @@
 #include <vector>
 
 namespace locus::core {
+
+// Physical direction totals: a diagonal counts itself and both keys.
+std::array<int,8> CountDirectionPresses(const Chart& chart) noexcept;
 
 // Editor values are owned in memory; platform adapters handle persistent files.
 class ChartEditor {
@@ -51,6 +55,7 @@ public:
     std::uint64_t RouteRevision() const noexcept { return routeRevision_; }
     // Recomputed once per authored revision, not on every rendered frame.
     const ChartDifficulty& Difficulty() const;
+    const std::array<int,8>& DirectionPressCounts() const noexcept;
     void MarkSaved() noexcept;
     // Accept validated bytes after saving without resetting cursor/history.
     // Unlike Load(), this keeps the active editing session alive.
@@ -155,6 +160,9 @@ private:
     mutable std::uint64_t difficultyRevision_ =
         std::numeric_limits<std::uint64_t>::max();
     mutable ChartDifficulty difficulty_;
+    mutable std::uint64_t directionCountsRevision_ =
+        std::numeric_limits<std::uint64_t>::max();
+    mutable std::array<int,8> directionCounts_{};
 };
 
 } // namespace locus::core

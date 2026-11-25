@@ -262,6 +262,8 @@
 
 **26.11.2026 — T10/T14: comparison retry boundary.** EditorSetView carries published catalog revision. Failed disk materialization is retried once on a new refresh even when file fingerprint and gameplay revision are unchanged; successful references retain compiled routes. Bounded two-reference selection uses stack array instead of per-frame vector allocation. Regression checks failed and successful cache behavior across refresh; timeline test qualification corrected. Windows CI required.
 
+**26.11.2026 — T10/T14: shared authored direction counts.** ChartEditor caches physical direction totals by RouteRevision; native controls, fallback and comparison snapshot consume one result instead of scanning the full route twice per rendered frame and maintaining a separate comparison cache. Diagonal key semantics unchanged. Tests cover mutation/Undo/Redo/Load, cursor navigation. Windows CI required.
+
 **Приёмка.** Для выбранного FPS связывать цифры с реальным бюджетом кадра (например, 6,94 мс при 144 Гц) и базой той же машины. Менять только доказанный источник задержки. Возможные локальные решения — переиспользование буферов mesh, декодирование с отменой, индекс сегментов темпа. Сравнить до/после, контрольные суммы, точность нот, критерии сортировки и метрики сложности. Изменение формулы рейтинга получает собственную версию и отдельные музыкальные примеры.
 
 <a id="t15"></a>

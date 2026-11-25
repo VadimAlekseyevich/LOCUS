@@ -537,7 +537,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             if (one.Compile(draft.Data().route,draft.Data().offsetSeconds))
                 fallback.panes[0]={&one,draft.Data().title,true};
             fallback.count=1;
-            fallback.directionPressCounts=DirectionPressCounts(chart);
+            fallback.directionPressCounts=draft.DirectionPressCounts();
             comparisons=&fallback;
         }
         if (comparisons && HasLayoutArea(previewArea)) {

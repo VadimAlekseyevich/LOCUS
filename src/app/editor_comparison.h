@@ -123,7 +123,6 @@ private:
     };
     Cached active_;
     std::uint64_t activeRevision_ = ~std::uint64_t{0};
-    std::array<int, 8> activeDirectionPressCounts_{};
     std::array<Cached, 2> reference_{};
     // Reused for every render frame; all panes use the same songSeconds.
     std::array<RoutePreviewFrame, 3> previewFrames_{};

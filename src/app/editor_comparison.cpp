@@ -199,7 +199,6 @@ void HandleEditorComparisonControls(EditorUiState& ui,
 void EditorComparisonCache::Reset() noexcept {
     active_ = Cached{};
     activeRevision_ = ~std::uint64_t{0};
-    activeDirectionPressCounts_ = {};
     reference_ = {};
     previewFrames_ = {};
 }
@@ -217,10 +216,8 @@ EditorComparisonFrame EditorComparisonCache::Prepare(
         activeRevision_ = draft.RouteRevision();
         active_.ready = active_.route.Compile(
             draft.Data().route, draft.Data().offsetSeconds);
-        activeDirectionPressCounts_ =
-            detail::DirectionPressCounts(draft.Data().route);
     }
-    frame.directionPressCounts = activeDirectionPressCounts_;
+    frame.directionPressCounts=draft.DirectionPressCounts();
     // Build the visual slots from file identities, not from which chart is
     // currently being edited. A click only moves the EDIT marker, never a pane.
     std::array<const EditorComparisonOption*,2> visible{};
