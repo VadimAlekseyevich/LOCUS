@@ -246,6 +246,8 @@
 
 **26.11.2026 — T08/T15: browser model boundary.** `library_selection.h/.cpp` contains SongSelectUi, Unicode search, cached tree projection and keyboard selection independently of menu rendering/RmlUi/raylib. Existing 8193-file fixture gives titles distinct suffixes and exports model-only p50/p95/p99 for first query, 128 alternating query edits, 1024 difficulty selections (asserting stable projection), 128 expanded-set changes. CSV `library-browser-benchmark.csv` is collected in Windows CI; these are not end-to-end input/display latencies.
 
+**26.11.2026 — T14: batched editor paste.** PasteTurns validates/projects the complete clipboard, merges sorted timestamps within the touched tick range, overwrites the common prefix and shifts the untouched suffix once. Exact-time replacement preserves existing representation; no-op/invalid paste does not touch history. Complexity of vector operations changes from repeated O(N) insertion to O(N+M) (tempo conversion cost separate). Regression covers 16,384 existing + 32,768 incoming records, overlap, identical paste, invalid final note and Undo/Redo. Windows CI required.
+
 **Приёмка.** Для выбранного FPS связывать цифры с реальным бюджетом кадра (например, 6,94 мс при 144 Гц) и базой той же машины. Менять только доказанный источник задержки. Возможные локальные решения — переиспользование буферов mesh, декодирование с отменой, индекс сегментов темпа. Сравнить до/после, контрольные суммы, точность нот, критерии сортировки и метрики сложности. Изменение формулы рейтинга получает собственную версию и отдельные музыкальные примеры.
 
 <a id="t15"></a>

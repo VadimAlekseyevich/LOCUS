@@ -663,6 +663,58 @@ int main() {
                 clash.Data().route.turns[2].timeMs == 1500,
                 "moving onto an existing exact time rejects atomically");
 
+    // Large interleaved insertions exercise the worst case of the former
+    // per-note vector insert loop. Every original timestamp survives; only
+    // exact matches may change heading. One undo restores the whole splice.
+    {
+        LoadedChart source;
+        source.route.bpm=120;
+        source.route.ticksPerBeat=1;
+        source.route.lengthBeats=32770;
+        constexpr int count=16384;
+        for (int i=1;i<=count;++i)
+            source.route.turns.push_back({i,Heading::Right,i*500LL});
+        ChartEditor large;
+        large.Load(source);
+        ChartEditor::Pattern pattern;
+        pattern.span=count;
+        pattern.ticksPerBeat=1;
+        for (int i=0;i<count;++i) {
+            pattern.notes.push_back({i,Heading::Left,0});
+            pattern.notes.push_back({i,Heading::Up,10});
+        }
+        const auto initialRevision=large.RouteRevision();
+        ok &= Check(large.PasteTurns(1,pattern) &&
+                    large.Data().route.turns.size()==2*count &&
+                    large.RouteRevision()==initialRevision+1 &&
+                    large.HistoryStoredTurns()==3*count,
+                    "large timestamp merge is one reversible history transaction");
+        bool exact=true;
+        for (int i=0;i<count && large.Data().route.turns.size()==2*count;++i) {
+            const auto& a=large.Data().route.turns[2*i];
+            const auto& b=large.Data().route.turns[2*i+1];
+            exact &= a.beat==i+1 && a.timeMs==(i+1)*500LL &&
+                a.direction==Heading::Left && b.beat==i+1 &&
+                b.timeMs==a.timeMs+10 && b.direction==Heading::Up;
+        }
+        const auto revision=large.RouteRevision();
+        ok &= Check(exact && !large.PasteTurns(1,pattern) &&
+                    large.RouteRevision()==revision,
+                    "repeat identical bulk paste is a no-op");
+        auto invalid=pattern;
+        invalid.notes.back().timeMs=499;
+        ok &= Check(!large.PasteTurns(1,invalid) &&
+                    large.RouteRevision()==revision &&
+                    large.Data().route.turns.size()==2*count,
+                    "late invalid timestamp cannot partially commit bulk paste");
+        ok &= Check(large.Undo() && !large.Dirty() &&
+                    large.Data().route.turns.size()==count &&
+                    large.Data().route.turns.front().direction==Heading::Right &&
+                    large.Data().route.turns.back().timeMs==count*500LL &&
+                    large.Redo() && large.Data().route.turns.size()==2*count,
+                    "bulk merge Undo/Redo restores old and new intervals");
+    }
+
     if (!ok) return 1;
     std::cout << "CHART_EDITOR_PASS bpm=1 offset_ms=1 turns=1 patches=1\n";
     return 0;

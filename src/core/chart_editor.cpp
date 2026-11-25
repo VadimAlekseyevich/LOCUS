@@ -734,10 +734,13 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
         return false;
 
     const auto& route = chart_.route;
-    std::vector<TurnEvent> updated = route.turns;
+    // Validate and project the complete clipboard before touching the draft.
+    // Valid projected ticks are monotonic in song time; within one tick the
+    // clipboard already requires strictly increasing offsets.
+    std::vector<TurnEvent> incoming;
+    incoming.reserve(pattern.notes.size());
     int lastRelative = -1;
     std::int64_t lastOffset = kNoTimeMs;
-    bool changed = false;
     for (const auto& note : pattern.notes) {
         if (!ValidHeading(note.direction) ||
             note.beat < 0 || note.beat >= pattern.span ||
@@ -769,30 +772,59 @@ bool ChartEditor::PasteTurns(int destinationBeat, const Pattern& pattern) {
             TempoTickAtMs(route, chart_.offsetSeconds, ms) != beat)
             return false;
 
-        // The vector is always sorted by song milliseconds. Replace only
-        // the event at the SAME time, never an arbitrary neighbor at its
-        // rounded tick. Sorting/insertion is logarithmic search + one splice.
-        const auto found = std::lower_bound(
-            updated.begin(), updated.end(), ms,
-            [&](const TurnEvent& event, std::int64_t timeMs) {
-                return EventTimeMs(route, event, chart_.offsetSeconds) < timeMs;
-            });
-        if (found != updated.end() &&
-            EventTimeMs(route, *found, chart_.offsetSeconds) == ms) {
-            if (found->beat != beat) return false;
-            if (found->direction != note.direction) {
-                found->direction = note.direction;
-                changed = true;
-            }
+        if (!incoming.empty() && ms <= incoming.back().timeMs)
+            return false;
+        incoming.push_back({beat,note.direction,ms});
+    }
+
+    // Merge only the affected tick interval. Existing and pasted notes
+    // have sorted, unique timestamps. Equal timestamps replace direction
+    // only, preserving the original note representation and identity.
+    const int lastBeat=static_cast<int>(
+        static_cast<long long>(destinationBeat)+span-1);
+    const auto first=std::lower_bound(route.turns.begin(),route.turns.end(),
+        destinationBeat,[](const TurnEvent& event,int tick) { return event.beat<tick; });
+    const auto end=std::upper_bound(first,route.turns.end(),lastBeat,
+        [](int tick,const TurnEvent& event) { return tick<event.beat; });
+    const auto index=static_cast<std::size_t>(first-route.turns.begin());
+    const auto replaced=static_cast<std::size_t>(end-first);
+    std::vector<TurnEvent> merged;
+    merged.reserve(replaced+incoming.size());
+    auto old=first;
+    auto add=incoming.cbegin();
+    bool changed=false;
+    while (old!=end && add!=incoming.cend()) {
+        const auto oldMs=EventTimeMs(route,*old,chart_.offsetSeconds);
+        if (oldMs<add->timeMs) {
+            merged.push_back(*old++);
+        } else if (oldMs>add->timeMs) {
+            merged.push_back(*add++);
+            changed=true;
         } else {
-            updated.insert(found, {beat, note.direction, ms});
-            changed = true;
+            if (old->beat!=add->beat) return false;
+            auto event=*old++;
+            changed |= event.direction!=add->direction;
+            event.direction=add->direction;
+            merged.push_back(event);
+            ++add;
         }
     }
+    merged.insert(merged.end(),old,end);
+    changed |= add!=incoming.cend();
+    merged.insert(merged.end(),add,incoming.cend());
     if (!changed) return false;
-    SaveUndo(destinationBeat, static_cast<int>(
-        static_cast<long long>(destinationBeat) + span - 1));
-    chart_.route.turns = std::move(updated);
+
+    // Commit a single range splice and one history entry. Overwrite the
+    // common prefix and shift the untouched suffix at most once (the
+    // merged range never shrinks). No per-note insertion into the chart.
+    auto& turns=chart_.route.turns;
+    const auto extra=merged.size()-replaced;
+    if (extra) turns.reserve(turns.size()+extra);
+    SaveUndo(destinationBeat,lastBeat);
+    auto target=turns.begin()+static_cast<std::ptrdiff_t>(index);
+    std::copy_n(merged.begin(),replaced,target);
+    if (extra) turns.insert(target+static_cast<std::ptrdiff_t>(replaced),
+        merged.begin()+static_cast<std::ptrdiff_t>(replaced),merged.end());
     MarkDirty();
     return true;
 }
