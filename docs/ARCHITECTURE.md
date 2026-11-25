@@ -29,14 +29,14 @@ its own zoom. The bottom whole-song overview is an independent audio-seconds
 projection over `ChartEditor::SongDurationSeconds()`, supporting fast
 seek without note mutation. All BPM markers read the canonical Song Set
 tempo map (fallback: the current draft), rather than individual chart notes.
-The tempo map in `core/tempo_map.h` anchors a new local downbeat at each BPM marker; the upper ruler scrolls in fixed song seconds and changes subdivision density locally. Notes retain their exact `timeMs` during reprojection. SET selects a difficulty on the first click and opens it on the second click (or the explicit open command), retaining unsaved-change confirmation.
+The tempo map in `core/tempo_map.h` anchors a new local downbeat at each BPM marker; the upper ruler scrolls in fixed song seconds and changes subdivision density locally. Notes retain their exact `timeMs` during reprojection. Song Setup selects a difficulty on the first click and opens it on the second click (or Enter), retaining unsaved-change confirmation.
 TEST borrows a prepared draft without writing it. Library: disk → validated
 Song Set index → explicit chart/audio activation. Audio streams are unloaded
 before the shared audio device; GPU textures before the window.
 
 ## Invariants worth keeping
 
-- Scoring reads the consumed-song/audio clock, never rendered frame count.
+- Scoring reads the unsmoothed authoritative transport cursor, never rendered frame count. Its actual backend (monotonic rate clock or supported consumed cursor) is specified in [Timing contract](TIMING_CONTRACT.md).
   Smoothing and the camera are **presentation only**.
 - A diagonal is an authored two-arrow event; each physical arrow receives
   its own timestamp and judgement. Renderer and difficulty calculation must
@@ -62,7 +62,7 @@ projected onto the nearest editor tick. `PositionAt` is logarithmic in
 the number of events and `Window` visits only visible runs. `PlayPresentation`
 compiles once per chart activation and lends the immutable route to camera,
 path mesh and junction renderer. The outro freezes the same song timestamp.
-The chart difficulty READ geometry also uses these exact positions.
+Difficulty V4 uses exact timestamps and key masks for physical strain; its independent READ diagnostic approximates local geometry and never contributes to overall.
 
 The world-space scale still uses ticks-per-beat as a *unit conversion*:
 the camera applies its inverse, so screen motion is based on real elapsed
@@ -116,13 +116,13 @@ centering. No build-time experimental switch is needed.
 **and a full-file noncryptographic content fingerprint** match. Song Set
 tempo publication verifies the same bytes under its writer lock, so an
 external same-size/same-timestamp edit cannot silently reuse stale notes.
-Known-new or modified chart files are parsed and fingerprinted from the same bytes; unchanged candidates use a streaming fingerprint to avoid parsing and rating again. The published catalog retains compact metadata rather than note vectors, materializing verified payloads on selection. CI exercises 8,193 charts and a dense 786,432-note catalog.
+Known-new or modified chart files are parsed and fingerprinted from the same bytes; unchanged candidates use a streaming fingerprint to avoid parsing and rating again. The published catalog retains compact metadata, ratings and fingerprints rather than note vectors, materializing verified payloads on selection. AsyncLibraryRefresh publishes complete revisions and cancels stale scans; Unicode search and tree projections are cached, and result history uses a separate cancellable worker. CI exercises 8,193 charts and a dense 786,432-note catalog.
 
 Continue physical Windows fault testing for permissions, interrupted
 replacement and disk-full recovery. A file fingerprint is not a substitute
 for a transactional filesystem or a cryptographic authenticity check.
 
-### 7. Build boundaries and QA (in progress)
+### 7. Build boundaries and QA
 
 The storage targets in `cmake/storage_targets.cmake` share production code with tests:
 `locus_file_io` (byte reads) → `locus_chart_storage` (chart and manifest transactions, archives) → `locus_song_library` (catalog/metadata/materialization) → `locus_library_selection` (headless tree/search model). All depend on the independently linkable `locus_core`; none require raylib or RmlUi. Low-level byte IO is also used by audio without linking the catalog. The application owns orchestration, while tests link only the modules they exercise.
@@ -137,21 +137,24 @@ The Windows CI and headless domain tests are valuable, but cannot establish
 actual motion readability, acoustic sync or screen-tearing behavior.
 The optional headless `locus_route_preview_bench` executable profiles
 1,024/60,000 event charts at 4/20 NPS with one/four simultaneous preview
-panes and reports wall-clock compile time plus per-frame snapshot time. Windows
+panes and reports compile time, per-frame snapshot time, CPU ribbon p50/p95/p99, scratch capacity growth and a geometry checksum. Windows
 CI runs all four cases and uploads the output. This gives repeatable CPU-side
 numbers, **not GPU frame rate or input latency**. Verify the camera and glyph
 legibility on a real Windows display before introducing visual crossings
 masks or a supplementary action queue. Add regression
 tests only for contracts or failures they can actually detect.
 
-## Implementation order
+## Difficulty and remaining architecture work
 
-1. **Done:** compile exact-time gameplay geometry and indexed runs.
-2. **Done:** consolidate per-frame route and transport snapshots.
-3. Validate dense-pattern readability on actual displays before proposing visual changes; keep rendering appearance under explicit design review.
-4. Consider editor time-first authoring while preserving BPM/Snap ergonomics.
-5. Profile dense cases and verify real-device input, audio and clipping.
+V4 maintains independent histories of the four keys, short/slow decay states,
+rhythm history and sorted section peaks. The editor caches ratings by route
+revision; the catalog caches verified summaries. See [formulas](CHART_DIFFICULTY.md).
+READ is purely diagnostic. The renderer reuses PathRibbonWorkspace across
+PLAY and comparison panes; TempoProjection indexes musical-time conversions;
+cached direction counts, SET views and virtualized lists avoid repeated
+full-document work in stable frames.
 
-The exact-time route is now the structural foundation for a trustworthy
-high-difficulty readability system. Do not introduce a new plugin framework,
-screen hierarchy or premature general-purpose rendering engine.
+Prioritize measured issues: audio cursor accuracy/PCM memory, filesystem
+fault recovery, full-frame profiling, keyboard focus and real-window usability.
+Keep changes feature-driven rather than refactoring by file length.
+See [engineering acceptance](REFACTORING_PLAN.md).

@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | HOME | Responsive menu and buttons | Brand texture/background |
 | PLAY menu | Search, virtualized Song Set/chart tree, history, commands | Artwork/background and fallback screen |
-| EDIT | SET metadata, audio/tempo table, difficulty list, ROUTE tools, direction pad, transport, comparison picker | Route preview, upper note ruler, whole-song overview and fallback authoring UI |
+| EDIT | Song Setup (metadata, audio/tempo table, difficulty list), Chart Editor tools, direction pad, transport, comparison picker | Route preview, upper note ruler, whole-song overview and fallback authoring UI |
 | SETTINGS | Responsive settings, key bindings and calibration controls | Calibration visuals where needed and fallback |
 | SKINS | Skin profiles, colors/settings fields and actions | Hue/SV graphics and live gameplay preview, fallback |
 | RESULTS | Score summary, actions, virtualized saved history | Artwork/background and fallback |
@@ -34,14 +34,15 @@ workspace, GameSettings and Skin remain authoritative.
 4. Native layout uses the real context and density-independent pixels, not
    a fixed 960×540 letterbox. Canvas coordinates map through the measured
    editor layout; resize/DPI layout is refreshed before hit-testing.
-5. Generated flex buttons use a `button-label` span. `UpdateRmlText`
+5. Native screens omit persistent navigation headers. Esc returns from Chart Editor to Song Setup and otherwise navigates back subject to text focus and guards. Editor layout uses measured snapshots and maximum available equal square previews. SKINS owns rename on the first profile tab, and every skin tab shares one preview rectangle.
+6. Generated flex buttons use a `button-label` span. `UpdateRmlText`
    mutates existing text nodes and escapes user-controlled content when a
    wrapper must be restored. Stable controls are not rebuilt on text changes.
-6. Published catalog revision and cached frame views separate structural
+7. Published catalog revision and cached frame views separate structural
    changes from selection. PLAY, RESULTS, SET and COMPARE materialize only
    their visible rows plus overscan. Commands retain stable IDs/paths or
    verified model indices, never viewport-local row numbers.
-7. Gameplay and editor route previews consume exact-time prepared geometry.
+8. Gameplay and editor route previews consume exact-time prepared geometry.
    Menu animations and UI navigation do not change scored input time.
    Skin previews may draw independently; scored gameplay never uses RmlUi.
 

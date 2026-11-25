@@ -1,20 +1,36 @@
-# LOCUS UI — design review
+# LOCUS — native UI acceptance
 
-- [ ] PLAY on Home opens **song selection**, not the scored playfield.
-- [ ] PLAY has a plain background unless its selected Song Set supplies artwork; no synthetic artwork or central artwork box.
-- [ ] All Song Set details and chart metrics appear on the left, with PLAY and EDIT easily reachable.
-- [ ] Results history is chart-specific and appears in the left panel; multiple attempts are selectable.
-- [ ] Song/difficulty scrolling occupies the expanded right-hand browser, with readable rows and search.
-- [ ] Dark violet-blue background is soft, not black; sky and violet accents are readable; pale lilac is restrained.
-- [ ] Approved \`locus.\` and LO proportions are preserved in recolored SVG sources; app icon remains circular.
-- [ ] Home buttons have adequate size and clear selected/hover/focus feedback.
-- [ ] SET has editable song title, artist, mapper and tags, with paired import/export and background buttons.
-- [ ] ROUTE has a larger preview, icon tool rail with short tooltips/hotkeys, directional pad and heading.
-- [ ] Upper note ruler and lower song timeline remain separate in all editor tabs.
-- [ ] Lower timeline holds small Play/Restart, dropdown speed and copyable milliseconds on one line.
-- [ ] AUDIO tempo map remains readable; Settings has only Display/Audio; Skins preview reflects color changes.
-- [ ] Every keyboard-focused control has an obvious visible focus state.
-- [ ] Reduced motion is respected; **no scored-gameplay UI animations**.
-- [ ] Native PLAY shows saved results with per-chart history; HTML sample Results remain demo-only.
-- [ ] Native SET edits shared Song Set metadata without mutating any chart file.
-- [ ] No replay playback, scored-gameplay UI animation or chart file format change.
+Checklist for real Windows display/input review. Existing headless tests
+provide layout and command evidence, not visual acceptance. Record build,
+window size, DPI, data and screenshots/video for defects.
+
+- [ ] HOME: readable approved wordmark, adequate buttons, obvious focus;
+  Home EDIT opens a clean draft.
+- [ ] Song selection: actual artwork or theme, wide searchable virtual tree,
+  metadata and V4 rating/history; Enter starts focused selection, not during
+  text input; EDIT opens selected chart. No redundant Song Set button.
+- [ ] Song Setup: audio/tempo/preview, metadata, difficulty rename and
+  background, import/export, delete/restore accessible. First click selects,
+  second click or Enter opens Chart Editor.
+- [ ] Chart Editor: separate upper ruler and full-song overview, readable
+  3×3 compass and counts, START, snap/zoom, transform tools, rate entry,
+  TIME copy and TEST; direction keys never author notes.
+- [ ] Comparison: equal maximal squares, stable positions and same song time,
+  independent draft/undo, no extra seek on focus change.
+- [ ] SETTINGS: display/audio-offset and binding groups; conflicts, cancellation,
+  calibration, fullscreen and font fallback.
+- [ ] SKINS: first profile tab owns rename, HSV wheel and hex agree with preview,
+  same preview bounds across tabs, save/error/dirty guard and restore.
+- [ ] PLAY/TEST: readable route at 50% and 200–600 px/s; diagonal, repeat and
+  reversal patterns; no scrims; combo/accuracy and right-gutter grades do not
+  obscure route. Cursor hidden in active play, pause/leave guard works.
+- [ ] RESULTS: actual grades, saved attempt history, retry/edit, correct
+  older-revision/rules and practice-rate labels; no replay.
+- [ ] All screens: Esc navigation without persistent title/back strip,
+  visible focus, one command per gesture, modal input ownership, literal
+  Unicode text, scrolling, resize/drag, usable small and wide layouts.
+  Review 800×450 through 1920×810 and portrait, Windows DPI 100–200%.
+- [ ] Keep menu animations separate from active gameplay timing; evaluate
+  accessibility/reduced-motion behavior without assuming mockup features exist.
+
+See [engineering checklist](../../../docs/REFACTORING_PLAN.md#t13).

@@ -1,57 +1,30 @@
-# Menu/UI migration plan — foundation and Home implemented
+# LOCUS — UI design boundaries
 
-## Scope: menus only (hard boundary)
+Native HOME, song selection, SETTINGS, SKINS, RESULTS and editor controls use
+RmlUi; raylib owns active gameplay and specialized canvases. The production
+[UI architecture](../../../docs/UI_RML_MIGRATION.md) is authoritative.
+The v1/v2 prototypes and tokens are visual references, not feature specifications.
 
-The approved soft blue/rose theme and **all new hover, press, focus, modal and screen UI animations** are for application **menus and editors only**: Home, Song Library, Settings (including calibrator), SKIN configuration, editor SET/ROUTE/FIELD controls, Listen and post-game Results, plus dialogs outside active gameplay.
+## Design contract
 
-**No new animations during PLAY**, including the playfield, character/avatar, chart path, turns, hit indicators, accuracy HUD, pause overlay or input feedback. Do not hook `UiMotionState`, `UiDialogMotion` or animated menu widgets into `Screen::Play`, `GameSession`, `PlayPresentation`, `gameplay_ui`, `route_renderer` or `path_mesh`. This UI project does not authorize any gameplay rendering or camera changes.
+- Keep app theme independent of gameplay SKIN. Reuse `assets/ui/rml/common.rcss`
+  and semantic controls; fallback widgets use the shared `src/app/ui_*.h`
+  foundation. Do not introduce another UI framework without a demonstrated need.
+- Use adaptive native flex geometry and density-independent units. Shared measured
+  rectangles drive canvas rendering and hit testing. The fallback virtual
+  reference canvas is not a native layout constraint.
+- Preserve visible keyboard focus, hover/selected/disabled states, readable
+  feedback, UTF-8 text clipping and modal ownership. No actions on obscured controls.
+- No persistent navigation header where Esc already supplies the action.
+- Menus use the shared transition policy; gameplay timing, judgement,
+  camera, route materials and HUD changes require separate gameplay design review.
+  Do not use menu animations to alter scoring or authored timestamps.
+- Preserve approved brand geometry; rebuild runtime PNGs from SVG sources
+  when changing the approved artwork.
 
-Existing gameplay/camera movement, scoring effects and PLAY→Results outro remain exactly as they are; they are **outside this redesign**. Existing navigation fade is also left unchanged until explicitly approved. A menu preview is not permission to alter gameplay.
+## Review
 
-
-## Current state
-
-- `src/app/ui_button.h` implements shared chrome, the three existing button styles and new semantic variants. `ui_theme.h`, `ui_motion.h`, `ui_focus.h`, `ui_widgets.h`, and `ui_text.h` form the menu/editor-only foundation. **Evolve these, do not add an unrelated widget framework.**
-- `src/app/transition_easing.h` provides smoothstep/ease; `src/app/screen_fade_transition.h` provides 65 ms exit + 95 ms entrance; `src/app/play_outro_transition.h` handles the separate in-game result transition.
-- Home now uses the approved centered wordmark (no corner duplicate), theme, shared buttons, focus and faster 55 ms hover. Song Library, Settings, editor and SKIN still have hardcoded legacy screen-specific styles. Centralize those without moving business logic.
-- `viewport.h` keeps UI coordinates in a 960 × 540 virtual canvas; continue sharing layout rectangles between renderer and input for proper window scaling.
-
-## Common UI foundation
-
-1. Semantic `UiTheme` colors/spacing/radius/typography tokens, independent of user-configurable gameplay SKIN.
-2. One family of Button, IconButton, Toggle, TextInput, Slider, Tabs, Panel, Dialog, ScrollList, Toast and keyboard focus/hover/press/disabled states. Keep hit testing and drawing in sync; never move hitboxes to match animation.
-3. Shared text measurement and clipping for UTF-8 labels (**implemented for new themed buttons, text inputs, list rows and notices**); preserve Windows font fallback until an approved appropriately licensed font is provided.
-4. A **menu-only** presentation API (`UiMotionState`/`UiDialogMotion`) for control states and dialogs. Stable monotonic clock; animation must never run during PLAY or change gameplay scoring, input timestamps, selection, saved chart data or audio.
-
-## Motion targets — Home hover/press/focus implemented; others pending
-
-| Interaction | Initial target | Presentation |
-| --- | ---: | --- |
-| Hover | 130 ms | soft fill/border interpolation, no glow |
-| Press | 80 ms | subtle downward movement or scale ≤ 1% |
-| Focus/selected | 160 ms | color + visible focus ring |
-| Screen change | reuse 65 + 95 ms | preserve current `ScreenFadeTransition` until separately tuned |
-| Modal open/close | 170/130 ms | quiet fade and ≤ 6 px movement |
-| Notices | about 170 ms | fade in/out; critical messages remain readable |
-
-These are **menu animation** durations only, measured in wall-clock time rather than frames. Honor reduced-motion settings, support keyboard access and don't hide controls behind hover-only effects. There are **no gameplay animation targets** in this plan.
-
-Home is wired to the approved C++ layout, real keyboard/mouse actions, and the source SVG brand rasterized into bundled PNGs. UI primitives are used only on Home so far; **do not claim other screens are redesigned**.
-
-## Migration order (one approved mockup → one C++ integration)
-
-1. Shared theme + primitives + motion scaffolding; behavior must remain unchanged.
-2. Main menu/Home: **implemented** centered layout, SVG-derived brand, Play, Editor, Skins, Settings, Exit, Tab/Shift+Tab/Enter/Space, pointer hover/press and focus ring.
-3. Song library: nested charts, import/export, selection, restore/delete, error/empty states.
-4. Settings: controls, display, input rebinding, global-offset manual field and metronome calibrator.
-5. SKIN screen: profiles, color wheel and sliders; keep gameplay skin separate from app theme.
-6. Editor shell: SET/ROUTE/FIELD and up to three comparison panes, saving, timeline navigation, test play and modals.
-7. Listen, Results and menu dialogs. **PLAY and its pause/HUD overlays are explicitly excluded**: no new transitions, micro-interactions or gameplay effects.
-
-## Quality gates
-
-- Review each screen as a code-rendered prototype before merging any related UI code.
-- Check 960×540, small/larger windows, 16:9 and non-16:9; mouse alignment, focus indicators, disabled/error/confirmation states.
-- Verify Escape and quit confirmations, modified keyboard binds, paused Play, editor unsaved work, Ctrl+S, Song Set import and offset calibration.
-- Observe **menu-only** UI motion on Windows hardware. Keep PLAY unmodified; menu input never takes precedence over gameplay input.
-- Do not add generic components speculatively; extract when a common need is demonstrated.
+Use [Nightbloom review checklist](../v2/REVIEW.md), real Windows window sizes
+and DPI, and the current [engineering acceptance](../../../docs/REFACTORING_PLAN.md).
+Headless layout tests check geometry and input contracts; visual quality and
+physical interaction require real hardware. Mockups do not establish implementation.

@@ -60,7 +60,7 @@ percentages of the final score.
 
 READ remains a diagnostic from the previous angle/clutter model, displayed
 as Read* in PLAY, with zero weight in overall. The 1.8s peak NPS/KPS and
-legacy PEAK density are telemetry, not independent rating bonuses.
+PEAK density are telemetry, not independent rating bonuses.
 activeSeconds still sums note gaps capped at 1.5s for telemetry only.
 
 ## Properties and limitations
@@ -77,5 +77,4 @@ activeSeconds still sums note gaps capped at 1.5s for telemetry only.
 - Parameters need real-player calibration using observed accuracy and
   matched-density pattern families; this is not a measured human skill model.
 
-The UI and library recompute ratings from the same core calculator.
-Chart and skin formats and gameplay judgement are unchanged.
+The editor uses a route-revision cache; the library stores derived metadata for each verified chart. Both use the same core calculator. Difficulty V4 is the estimator version, independent of judgement rules version 1. Ratings are not persisted in charts or Results.

@@ -1,37 +1,26 @@
-> **Current clickable UI:** [night-mode interactive prototype](../v2/index.html). This folder retains the approved SVG glyph geometry; vector colors now match the newer violet/sky/soft lilac palette.
+# LOCUS — brand source and visual reference
 
-# LOCUS — approved UI reference (v1)
+The approved logo and icon geometry is maintained here. The offline [Nightbloom
+prototype](../v2/index.html) illustrates a menu design; production behavior is
+defined by [UI architecture](../../../docs/UI_RML_MIGRATION.md) and
+[game design](../../../docs/GDD.md).
 
-This folder is the **approved design reference**, not C++ gameplay code. Theme, widget, text-fit, focus and motion foundations exist in `src/app/ui_*.h`. **Home is integrated in C++**; Library, Settings, SKIN, Editor and other screens are not yet migrated.
+- Lowercase **locus.** wordmark with sky-blue dot (concept 02).
+- Compact **LO** (concept 06) is for the app/window icon, not a duplicated
+  Home corner badge. The icon is centered in a dark circle with transparent outside.
+- Dark violet-blue palette, sky accents, restrained lilac emphasis. Four
+  primary Home actions (Play, Edit, Skin, Settings) and a small Exit button.
 
-## Locked direction
+Files: `wordmark.svg`, `monogram.svg`, `app-icon.svg`, `tokens.json`,
+`preview.html` (illustrative offline Home) and `render_brand.py`.
+The runtime consumes rasterizations under repository-root `assets/ui/`,
+not the HTML mockup. Regenerate after an approved vector/palette change:
 
-- Centered main menu composition based on the approved concept **02**.
-- Main wordmark: soft lowercase **locus.**, with light sky-blue dot. Original vector outlines from concept 02 retained, with SVG viewBox cropped to the artwork.
-- Compact mark: **LO** from concept **06**, retained for the actual app/window icon only; it is **not displayed in the Home corner**.
-- Windows launcher icon: **exactly the same LO vector inside a centered dark circle**, with transparent outside, no separate logo treatment.
-- Soft charcoal-violet, sky blue, muted violet and sparse soft lilac accents; avoid busy grids, decorative micro-labels and invented UI information.
-- Four real primary actions: Play, Editor, Skins, Settings. Skins and Settings have more visible tinted treatments; Exit is a small clearly bounded button.
-- Home hover now resolves in 55 ms (press 45 ms; focus 95 ms), independently of other menus.
+```sh
+python -m pip install cairosvg Pillow
+python design/ui/v1/render_brand.py
+```
 
-## Files
-
-- `preview.html`: offline code-based home mockup and illustrative controls/transition; open in a browser.
-- `wordmark.svg`: full `locus.` mark.
-- `monogram.svg`: short `LO` mark.
-- `app-icon.svg`: circle-backed, geometrically centered `LO`; transparent outside circle.
-- `assets/ui/wordmark.png` and `assets/ui/app-icon.png` (repository-root `assets/ui/`): rasterizations of the approved SVG outlines, bundled next to the Windows executable via CMake for Home and runtime window icon.
-- `tokens.json`: shared palette and initial style/motion tokens.
-- `IMPLEMENTATION_PLAN.md`: migration architecture, animation rules and review stages.
-
-The mockup does not contain an audio engine, editor logic or real navigation.
-
-## Agreement
-
-New screens first receive a reviewable HTML/CSS/SVG mockup with interaction states, **then** are implemented in C++ after approval. Keep design reference separate from production assets and do not copy HTML rendering into raylib.
-
-No chart, Song Set, SKIN or user-settings file formats were changed by adding these assets.
-
-SVG design sources are recolored for the new UI palette. The runtime PNG app icon and wordmark are regenerated from these SVG vectors.
-
-Rebuild source rasterizations: `python design/ui/v1/render_brand.py` (requires `cairosvg` and `Pillow`). This updates the actual `assets/ui/*.png` files read by the app.
+Keep design and production assets separate. Review new visual design before
+implementation; reuse the shared native component foundation. See
+[design boundaries](IMPLEMENTATION_PLAN.md).

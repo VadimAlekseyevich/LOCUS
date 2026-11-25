@@ -2,7 +2,7 @@
 
 **Original game and source code by [VadimAlekseyevich](https://github.com/VadimAlekseyevich/LOCUS).**
 
-A Windows rhythm game with a built-in chart editor. Read the moving route and press the outgoing direction in time with your song; missed notes change your grade, never the authored route.
+A Windows rhythm game with a built-in chart editor. Read the moving route and press directional notes in time with your song, including repeated notes on straight sections. Missed notes change your grade, never the authored route.
 
 UI reference: **[interactive Nightbloom prototype](design/ui/v2/index.html)**. HOME, song selection, Settings, SKINS and Results use RmlUi. The editor uses RmlUi for metadata, timing controls, difficulty selection and authoring controls, with raylib for timelines and route previews. Scored gameplay is rendered entirely by raylib. The rendering/input ownership rules are documented in [UI architecture](docs/UI_RML_MIGRATION.md); chart and gameplay logic are independent of the menu framework.
 
@@ -21,8 +21,6 @@ A local log folder is created under `.locus-runs/` (Git-ignored). Logs are not u
 
 A portable Windows build is available as the **`locus-windows-x64`** [GitHub Actions artifact](https://github.com/VadimAlekseyevich/LOCUS/actions): download the contained `LOCUS-windows-x64.zip`, extract all files and run `Start LOCUS.bat` (or `locus.exe`). The launcher records startup output and the exit code in a temporary log and prints its path on failure. The complete `assets/ui` directory and `examples` ship beside the executable; CI diagnostics are a separate artifact. For the same portable layout locally, use `cmake --install build/windows --config Release --prefix build/windows/portable` after building. Required resources are declared in [`cmake/ui_assets_manifest.cmake`](cmake/ui_assets_manifest.cmake).
 
-The audio offset is stored as an optional `globalOffsetMs` integer in the current `settings.json` v3; existing key bindings and saved charts are preserved. No chart, skin or Song Set file format changes.
-
 ### Portable core development (Linux, Windows)
 
 The rhythm/chart model can be compiled and tested without raylib, RmlUi, SoundTouch, a display or an audio device. Only the pinned JSON and Unicode dependencies are fetched.
@@ -37,44 +35,62 @@ This configuration runs the 12 portable tests for route geometry, timing, judgem
 
 ## Gameplay
 
-The world is infinite. During PLAY, an experimental camera **slightly lags behind the moving player** instead of anticipating the route: the player appears ahead of center as the camera catches up. The lag scales with movement speed (up to a safe limit), and turns are smoothed without reading future notes. The **red forward route moves with the camera**. Only the part inside the centered square is visible. In landscape the square's side equals the **window height**; a thin white frame can be recolored in SKIN. No gameplay grid or text is drawn on the left.
+LOCUS is a four-key spatial rhythm game. Follow an authored route on an unbounded plane. Each note sets its absolute outgoing heading; a repeated heading requires another press without bending the route. The marker continues moving regardless of errors. Diagonals are two independently graded physical inputs at one timestamp.
 
-Completed charts now also produce timestamped **Results JSON files** under `%LOCALAPPDATA%\\LOCUS\\Results`. From PLAY, click any previous result in the left panel to view its Perfect/Good/Bad/Miss and accuracy; multiple attempts are supported, **without replay playback**. Editor TEST and abandoned attempts do not count. See [Results storage](docs/RESULTS.md). To the right, the game shows **Accuracy** and counts for Perfect, Good, Bad and Miss. Accuracy is `(100×Perfect + 75×Good + 50×Bad) / all judged notes`; a Miss contributes zero. A chart ends **when its final note is judged**, not when the music file ends. Results shows the final accuracy and counts.
-
-| Game action | Default key |
+| Action | Default binding |
 | --- | --- |
-| Left / Down / Up / Right | **D / F / J / K** |
-| Diagonal | Two adjacent directions together (for example J+K) |
-| Pause / retry / Home | **Esc / R / H** |
+| Left / Down / Up / Right | D / F / J / K |
+| Diagonal | Both constituent directions (e.g. J+K) |
+| Pause / retry / leave | Esc / R / H |
+| Practice rate (custom chart) | 1–5: 100 / 75 / 50 / 25 / 10% |
+| Movement speed | [ / ] or numpad − / + |
+| Lookahead | , / . |
 
-Gameplay direction bindings are configurable in SETTINGS. **SETTINGS → AUDIO → GLOBAL AUDIO OFFSET** accepts a signed integer in milliseconds (−1000 to +1000), or use **CALIBRATE** to start a synthesized **100-BPM metronome** and tap **any currently bound gameplay direction key** on **every audible beat**. Start tapping at any time, even partway through the metronome; there is no required warm-up or accent-only phase. After **18 recorded taps**, an outlier-resistant median estimates the delay and noisy attempts are rejected. Choose **APPLY** to save the suggestion, **RETRY** to measure again, or **CANCEL** to keep your current value. **Positive offset (+200 ms)** means the output is heard 200 ms later than the raw song clock; **negative offset (−200 ms)** means it is heard earlier. The global correction moves both scored input/judgement and gameplay visuals to the same perceived audio time in PLAY and TEST, including the built-in demo. At reduced practice speed, the real-time delay scales to the corresponding amount of song time. It does **not** change chart `timeMs`, song offset, tempo markers, editor clock, or audio playback speed. Calibration measures audio-output delay **plus the player's tap tendency**; repeat a few times for consistency and preferably use wired headphones.
+The largest centered square clips the forward route. Default speed is 135 logical px/s and lookahead 800 ms of original song time. Camera lag defaults to 180 ms; zero disables it. All are configurable in SKINS. The HUD shows combo and accuracy in the corners; detailed grades appear only when the right gutter permits. A Song Set background fills the window with aspect-preserving cropping.
 
-Editor note placement uses only the clickable direction pad. During PLAY (including editor TEST), a fresh press of any bound direction during a long unmapped intro skips the music forward to the first note minus the smallest whole number of **4/4 measures lasting at least one second**. The triggering press is not scored; near-note presses and normal music with no long intro are unaffected.
+Perfect/Good/Bad timing windows are ±50/110/180 ms. Accuracy is `(100*Perfect + 75*Good + 50*Bad) / resolvedInputs`. Miss breaks combo; there is no fail. The last resolved input triggers the outro and Results, even if music continues. Completed normal PLAY attempts are saved locally; TEST and abandoned attempts are excluded. See [GDD](docs/GDD.md), [timing](docs/TIMING_CONTRACT.md) and [results](docs/RESULTS.md).
 
-## Screens and editor
+## Song selection and mapping
 
-Home has **PLAY, EDIT, SKIN, SETTINGS, EXIT**. PLAY opens a read-only library with a song tree on the right: selecting a song expands its indented charts below it, sorted by calculated difficulty (easiest first). Up/Down navigate rows, Left/Right switch difficulties; use **EDIT** for content changes. Each chart displays an uncapped **DIFFICULTY V4** rating, based on physical key speed, individual finger strain, coordination, rhythm and stamina. Reading is a separate visual diagnostic and does not affect the rating. The rating is also visible live in the Chart Editor. See [Chart Difficulty](docs/CHART_DIFFICULTY.md) for the complete heuristic and its limitations. Installed songs live under `%LOCALAPPDATA%\LOCUS\Songs`. The built-in demo is always available.
+HOME → PLAY opens a searchable song tree, with metadata and saved chart attempts on the left. Enter starts the selected difficulty when a text field is not focused. EDIT opens it in the editor; IMPORT and RESCAN manage local ingestion. Difficulty V4 ranks charts by physical speed, individual key strain, coordination, rhythm and stamina. Read* is diagnostic only. Ratings are computed on demand, never serialized.
 
-EDIT opens **SONG SETUP**, combining song metadata, audio, timing and difficulty management. Attach audio and create a Song Set for a new song; select a difficulty (or the draft), then click it again or press Enter to enter **CHART EDITOR**. Back returns to Song Setup without discarding the draft. Rename the selected difficulty in the single name field above the list. The Chart Editor has two independent timelines. The **upper note ruler** scrolls with zoom/snap and shows authored turns. The **bottom whole-song overview** always spans the exact audio duration, never zooms and shows the Song Set's shared BPM markers rather than chart notes. Click or drag the bottom bar to jump to distant sections at the closest snap tick without modifying the chart. All compared previews follow the same selected song time:
+HOME → EDIT opens a clean **Song Setup** draft. Attach WAV/MP3 and configure timing; select the draft and click it again or press Enter to open **Chart Editor**, installing the initial Song Set if necessary. Managed Song Sets expose title/artist/mapper/tags, shared tempo map, menu preview start, background and difficulty management in Song Setup. Esc returns to Song Setup without losing the draft.
 
-- **SET:** Song Set, shared audio and difficulties (easiest first), plus editable **Song Title / Artist / Mapper / Song Set Tags** (Enter saves; Esc cancels). **Select a difficulty, then click it again or press Enter to open it**; unsaved draft changes require confirmation. Use NEW, COPY, IMPORT, EXPORT, DELETE/RESTORE and OPEN FOLDER. The list scrolls with the mouse wheel, without paging buttons.
-- **ROUTE:** compact vertical icon tools (mirror, rotate, compare and TEST), a large square route preview and a full-size 3×3 mouse-only direction pad. Initial heading (START) is next to the compass, rather than in a fourth FIELD tab. **COMPARE** opens at most two other difficulties of the same Song Set, for three equally sized, exact-time synchronized previews. The **SPD −/+** and **PATH −/+** controls beside the pad set editor-only movement speed (px/s) and visible path length (ms), saved separately from the gameplay SKIN. Click a preview to focus that chart **without moving or resizing its pane or seeking the song**: the upper ruler and lower song overview remain at exactly the same music time, even with different tick resolutions or paused playback. Its notes and tools appear above, while the single audio playback stays shared. Each open chart retains its own Undo/Redo and unsaved route; nonfocused unsaved panes show an asterisk. A single bottom row has Play/Restart buttons, the full-song timeline, an editable 1–100% preview rate and a copyable millisecond time. Copy/cut/paste/undo/redo remain available through editor shortcuts; reflection, rotation and compare have icon buttons with hover hints.
-- **AUDIO:** difficulty name, an editable **song-wide BPM table** (absolute offset in whole milliseconds and BPM per row), plus the independent Song Preview Start. Add a marker at the selected song position, edit its time/tempo, or delete a later marker. The first row establishes beat zero; later rows start a new local downbeat at that exact millisecond and change only the grid density to the right. The table and markers apply to every difficulty in the pack.
+In Chart Editor:
 
-Chart titles, song/artist names, difficulty labels and saved skin names are stored in **UTF-8**. Input, paste, Backspace and shortened UI labels preserve whole Unicode characters (Cyrillic, accents, etc.). Glyph rendering depends on the installed font; the Windows UI font atlas covers Cyrillic, Latin with accents and Greek.
-The old FIELD tab has been removed from the visible navigation. START heading is edited in ROUTE; there is no separate editor grid-size control.
+- The upper zoomable note ruler selects notes and patterns with snap; the lower whole-song overview seeks through audio and shows shared BPM markers. TIME copies whole milliseconds.
+- Click the mouse-only 3×3 compass to place or change a note, including repeated headings; DEL removes it. Diagonal notes contribute to both constituent cardinal counts on the pad. START edits initial heading.
+- Ctrl+click the ruler stages an unsnapped millisecond; the next direction click commits it. Distinct timestamps sharing one tick remain editable; repeated clicks cycle overlapping note clusters.
+- Mirror horizontally/vertically, rotate ±90°, copy/cut/paste, shift and undo/redo patterns. COMPARE opens up to two additional same-song difficulties with independent draft/history and equal-sized synchronized previews. Focus changes neither seek nor rearrange panes.
+- SPEED and PATH set editor-only visual speed (20–2000 logical px/s) and lookahead (50–10000 ms). Bottom Play/RST, whole-song overview and numeric 1–100% preview rate share one transport. SoundTouch preserves pitch on supported slow playback; fallback changes pitch. TEST plays the unsaved draft and returns to it.
 
-Click the eight compass directions to place notes (including repeated same-direction presses on a straight route), or the center DEL button to remove notes; gameplay direction keys do not place editor notes. **Ctrl+click** the upper note ruler to stage an *unsnapped millisecond*; click a compass direction to commit exactly at that time. Ordinary clicks remain grid-snapped. Repeatedly click an overlapping note cluster to cycle through its distinct timestamps; the selected note is outlined. On the upper note ruler, **←/→** navigate and **↑/↓** adjust snap subdivision; PageUp/PageDown, wheel and modifier combinations also work. Load audio with **O**, preview with **Space**, test-play with **T**; in PLAY, Esc opens pause/menu. Practice speeds in ROUTE are 100/75/50/25/10%. **Ctrl+S** saves ONLY the currently focused difficulty into the permanent Song Set library (renaming a difficulty also renames its JSON file, with a safe suffix if needed), **Ctrl+Shift+S** creates a new difficulty in that set, **Ctrl+O** opens a chart, and **Ctrl+N** starts a new draft. External chart files are not silently overwritten: saving their edited versions installs them into the library.
+Default shortcuts: O attach audio, Space preview, T TEST, Ctrl+S save focused difficulty, Ctrl+Shift+S new difficulty, Ctrl+O/Ctrl+N open/new, Ctrl+C/X/V copy/cut/paste, Ctrl+Z/Y undo/redo. Arrow keys navigate the upper ruler and adjust snap; Backspace/Delete removes notes. Save/Discard/Cancel protects dirty drafts; Save All leaves any failed draft open.
 
-To share a complete song with all difficulties, use **EDIT → SONG SETUP → EXPORT** to export a `.locuspack` archive. **EDIT → SONG SETUP → IMPORT** accepts individual `.locus.json` charts or complete `.locuspack` packages. The archive is a standard ZIP container with stored files, song metadata, shared audio and all difficulties. Imports check paths, checksums and file size limits before installing anything. Reimport merges an existing Song Set by its persistent set and difficulty IDs, adds new difficulties, and retains unrelated difficulties and local shared metadata. Identical charts are left untouched; changed shared audio is rejected.
+Song Setup provides NEW, DUPLICATE, IMPORT, EXPORT, DELETE CHART, DELETE SET, RESTORE, OPEN FOLDER and background controls. Export a complete set as `.locuspack` (store-only ZIP). Imports validate paths, CRC, bounds and shared audio identity; reimport merges persistent IDs without deleting unrelated difficulties. External chart saves install into the library rather than overwrite the source. Deletes are recoverable; chart overwrites retain backups.
 
-Open a song with **EDIT**, then use **SONG SETUP → NEW / DUPLICATE / DELETE CHART / DELETE SET / RESTORE** to manage difficulties and songs. Deletions require **Y** confirmation and can be recovered from LOCUS Trash. **SONG SETUP → MENU PREVIEW START / MS** accepts a manually typed whole-millisecond value (Enter saves, Esc cancels, Ctrl+V pastes); the +/− buttons are removed. Copied ROUTE note patterns remain available when switching difficulties or opening a new draft; Ctrl+V pastes using the destination chart's current tick resolution and preserves sub-tick millisecond offsets (incompatible grids or exact-time collisions are rejected without modifying the chart). In **CHART EDITOR**, click the **TIME** value above the direction pad to copy its current song position as an integer number of milliseconds; the upper note ruler itself has no time labels. The lower overview shows the song end and all shared BPM-change markers. **ADD/REPLACE BG** and **REMOVE BG** manage shared song artwork. In **CHART EDITOR**, the **ROT -90** and **ROT +90** buttons rotate the selected pattern’s absolute headings counterclockwise/clockwise without shifting timestamps. Select a note and press Backspace/Delete (or the middle **DEL** pad button) to remove it; Ctrl+Z undoes edits. All difficulties in a managed Song Set share exactly one audio file. See [Song Set storage](docs/SONG_SETS.md).
+## Settings and skins
 
-Chart JSON uses **formatVersion 4** only, absolute heading codes `u/r/d/l/ru/rd/ld/lu`, integer `timeMs` and independent snap settings. Older chart versions and full-length headings are not supported. BPM changes do not move already authored notes in song time. See [chart format](docs/CHART_FORMAT.md) and [sample](examples/first-song.locus.json) (requires your own `song.mp3`).
+SETTINGS has DISPLAY (VSync, FPS limit/counter, fullscreen), AUDIO / OFFSET (volume, offset/calibration) and PLAY/MENUS/EDITOR binding groups. Defaults: VSync on, 240 FPS cap, counter off, master volume 70%, offset 0. F11 toggles borderless fullscreen.
 
-SKINS has a full-width native tab bar with **PATH, PLAYER, COLORS and MY SKINS**, a shared header with the skin name, a preview on the right and LOAD/SAVE/SAVE AS/RESET buttons beneath it. COLORS uses a hue wheel, a saturation/brightness square and an exact `#RRGGBB` / `#RRGGBBAA` field instead of four RGBA sliders; the live gameplay preview stays visible while changing colors. MY SKINS scans `%LOCALAPPDATA%\\LOCUS\\Skins\\Profiles`; **OPEN FOLDER** opens that directory in Explorer; choose **ACTIVATE** to apply a saved profile, **STORE** to create another named profile, **REFRESH** to rescan, **DELETE** to remove the selected profile with confirmation, or **UNDO** to restore the most recent deletion from `Skins\\Trash`. The active look remains in `Skins\\active.locus-skin.json`. **LOAD** imports an external JSON into the draft, **SAVE** applies changes, and **SAVE AS** exports a JSON. Switching profiles refuses to discard unsaved edits. SKIN → PLAYER also provides **CAMERA LAG (MS)** (180 by default; 0 disables the effect; slider 0–500, exact entry up to 1500), saved separately in every skin. SKIN also edits path effects, marker size, **fixed cardinal movement speed** (20–2000 logical pixels/s; default 135), HUD visibility and ten RGBA colors including the square border. Speed is independent of BPM, chart grid size, practice playback rate and heading: diagonal movement is normalized to the same distance per tick as straight movement. The ROUTE editor shows continuous exact-time preview routes without grid lines or dots. All ROUTE panes use separate editor-only movement speed and path-length settings; these do not change the gameplay SKIN. Grid metadata does not scale the preview. The snap ruler remains editable. During PLAY, **[ / ]** or **numpad − / +** adjust the speed by 10 pixels/s and save it for future charts. The [skin sample](examples/default.locus-skin.json) is independent of charts.
+Global offset is an integer from −1000 to +1000 ms. Positive means audio is heard later than the raw clock; correction is subtracted from scored and visual song time, scaled by practice rate. CALIBRATE plays 100-BPM clicks: tap any bound gameplay key on each beat for 18 accepted taps, then APPLY, RETRY or CANCEL. This estimates audio delay plus tap bias, not hardware latency alone.
 
-**Esc means Back** in Editor and menus, **Pause/Menu** in PLAY. After **EDITOR → TEST**, leaving the level returns directly to the **same unsaved editor draft**; TEST never auto-saves. Normal PLAY requires confirmation before leaving for Song Library. Windows F11 uses a non-topmost borderless desktop window so Alt+Tab can switch applications. Closing an unsaved comparison chart or leaving Editor prompts **S/Save**, **Y/Discard**, or **N/Esc/Cancel**. Saving on exit writes all open changed charts; a failed write does not close any remaining unsaved draft. New unsaved difficulties must be saved once before they can be parked in a comparison pane. **Esc on Home**, EXIT, the window X and Alt+F4 open a quit confirmation; **Y** quits and **N/Esc** cancels.
+SKINS opens on the SKINS profile tab (rename, STORE/ACTIVATE, REFRESH, OPEN FOLDER, DELETE/UNDO), followed by PATH, PLAYER and COLORS. All tabs share one live gameplay preview. COLORS uses an HSV wheel, SV square and RGB/RGBA hex field. PATH controls preview duration, width, outline, fade, opacity, junction size/glow and reverse cap scale. PLAYER controls size, speed, camera lag, glow, flash and HUD. Ten RGBA colors include FIELD BORDER. LOAD imports a draft, SAVE applies it, SAVE AS exports it and RESET restores defaults.
+
+Native menus omit persistent title/back bars: Esc navigates back, except during gameplay where it pauses. Leaving active play requires confirmation. Home Esc, EXIT, window close and Alt+F4 open quit confirmation. Gameplay direction and command bindings are configurable.
+
+## Local data
+
+Files live under `%LOCALAPPDATA%/LOCUS/`: `Songs/`, `Trash/`, `Results/`, `Skins/Profiles/`, `Skins/Trash/`, `Skins/active.locus-skin.json` and `settings.json`. Text uses UTF-8; Windows filesystem paths use Unicode APIs. Current pre-release contracts:
+
+| Data | Version | Reference |
+| --- | --- | --- |
+| Charts | formatVersion 4 | [Format](docs/CHART_FORMAT.md), [example](examples/first-song.locus.json) |
+| Song Set manifest | formatVersion 2 | [Storage](docs/SONG_SETS.md) |
+| Skins | version 2 | [Example](examples/default.locus-skin.json) |
+| Settings | version 3 | [GameSettings](src/app/game_settings.h) |
+| Results | version 2; judgement rules 1 | [Results](docs/RESULTS.md) |
+
+Backward compatibility before the first release is not guaranteed. Back up local data before format changes. The current portable ZIP is validated in CI, but clean-machine interactive acceptance and a tagged release remain pending.
 
 ## License and creator permissions
 
@@ -115,11 +131,15 @@ When the service launches, its published Terms of Service and copyright policy s
 
 **Reference model:** [osu! copyright policy](https://osu.ppy.sh/legal/en/Copyright), [osu! user-upload terms](https://osu.ppy.sh/legal/en/Terms), [US Copyright Office section 512 guide](https://www.copyright.gov/512/) and [DMCA agent directory](https://www.copyright.gov/dmca-directory/). LOCUS intends to adopt comparable practical protections, **not** to claim that osu! policy automatically applies to LOCUS.
 
-## Project
+## Documentation
 
 - [Game design](docs/GDD.md)
 - [Roadmap](docs/ROADMAP.md)
-- [Architecture audit](docs/ARCHITECTURE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Difficulty V4](docs/CHART_DIFFICULTY.md)
+- [Input and audio timing](docs/TIMING_CONTRACT.md)
+- [Native UI architecture](docs/UI_RML_MIGRATION.md)
+- [Engineering acceptance checklist](docs/REFACTORING_PLAN.md)
 - [Chart format](docs/CHART_FORMAT.md)
 - [Song Set storage and recovery](docs/SONG_SETS.md)
 - [Completed Results storage (no replay playback)](docs/RESULTS.md)

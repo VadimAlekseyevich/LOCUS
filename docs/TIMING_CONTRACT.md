@@ -10,7 +10,7 @@ FPS nor visual easing may influence scored time.
 | --- | --- | --- |
 | OS keyboard event | Windows `GetMessageTime()` (queue timestamp, uptime milliseconds) | `native_key_capture.cpp` |
 | Application monotonic | `steady_clock`, same origin as `MonotonicSeconds()` | `SongClock`, `GameSession` |
-| Authoritative song time | `DemoTransport::SongSeconds` or `ChartPlayback::AudioSeconds` | `TurnJudge`, `ChartClockFrame::judgeSeconds` |
+| Authoritative song time | `DemoTransport::SongSeconds` or `ChartPlayback::AudioSeconds` | Raw input to calibration, `ChartClockFrame::judgeSeconds` |
 | Rendered song time | `ChartClockFrame::visualSeconds` | Avatar, camera, route presentation only |
 | Musical beat | Song milliseconds through `tempoMap` and `ticksPerBeat` | Route and editor grid |
 | Judgement time | `CalibratedSongSeconds(rawSongTime, globalOffsetMs, practiceRate)` | `TurnJudge::PressHeading` / `Advance` |
@@ -44,10 +44,11 @@ every transition between two frames.
 - **Custom chart during silent preroll:** `ChartPlayback` advances a
   `SongClock` only before physical audio starts. Negative song time is
   impossible to obtain from a decoder cursor.
-- **Custom chart at 100% after audio starts:** `ChartPlayback` uses the
-  `LocalMusic` clock, just like slow playback. Switching from a delayed
-  slow consumed cursor back to normal rate preserves the exact song position,
-  rather than jumping to the independent preroll clock.
+- **Custom chart at 100% after audio starts:** `ChartPlayback` delegates to
+  `LocalMusic::SongSeconds()`, which uses its anchored monotonic rate clock
+  at normal speed. Switching from a delayed slow consumed cursor back to
+  normal rate preserves the song position rather than jumping to the
+  independent preroll clock. This is not a measured hardware cursor.
 - **Custom chart below 100%:** after the audio stream begins,
   `ChartPlayback::AudioSeconds()` requests `LocalMusic::SongSeconds()`.
   `LocalMusic` prefers the raylib consumed cursor when using the ordinary
@@ -91,10 +92,7 @@ a 7 ms inter-key diagonal. `locus_chart_clock_transport_contract` checks
 preroll, tempo changes, 100/50/10% practice, pause, rate change while paused,
 seek, completion and missing audio output with a deterministic output backend.
 
-The optional SoundTouch decode now keeps raylib's converted 32-bit float
-`Wave` as the sole retained full-song PCM buffer. Previously it also
-allocated `LoadWaveSamples` and a second `std::vector<float>` copy of that
-PCM. `LOCAL_MUSIC_STRETCH_READY` reports decode wall milliseconds and
+The SoundTouch decode retains raylib's converted 32-bit float `Wave` as its full-song PCM buffer, without a second full copy. `LOCAL_MUSIC_STRETCH_READY` reports decode wall milliseconds and
 retained PCM bytes at the first slowdown; these are not a process-wide
 peak-memory measurement. A bounded streaming decoder remains necessary to
 avoid memory scaling linearly with song duration.

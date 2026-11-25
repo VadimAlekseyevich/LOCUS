@@ -6,7 +6,7 @@ belong to the **whole Song Set**; individual difficulty JSON files do not
 contain them. Windows filesystem paths use Unicode APIs;
 authored-name limits are in Unicode characters rather than arbitrary bytes.
 
-## New installed layout
+## Installed layout
 
 Permanent songs live in **%LOCALAPPDATA%\LOCUS\Songs**. Each managed Song Set
 has one directory containing a shared WAV/MP3, a **set.locus.json** manifest
@@ -39,23 +39,23 @@ files or recalculating chart ratings. A title edit changes the display title,
 not the stable Song Set ID or chart filenames.
 
 Each managed Song Set owns **one shared ordered tempo map**, saved in manifest
-version 2. EDIT → AUDIO has a BPM/OFFSET (MS) table; each row changes tempo at
+version 2. Song Setup has a BPM/OFFSET (MS) table; each row changes tempo at
 that absolute song time. The first marker defines beat zero, later markers
-continue the accumulated beat count and their tempo lasts until the next row
+start a new local downbeat at their exact timestamp; their tempo lasts until the next row
 (or the end of the song). Earlier time uses the first BPM. All difficulties
 share the map, and all authored note timestamps stay in song milliseconds.
 A BPM change may project multiple distinct millisecond events into one editor tick; all their original timestamps are preserved and they remain separately editable.
 Only manifest v2 and chart v4 are supported.
 
 Each Song Set also stores **previewStartMs** (default 0), independent of
-BPM/offset. In **EDIT → AUDIO**, enter an exact whole-millisecond position
+BPM/offset. In **Song Setup → AUDIO & TIMING**, enter an exact whole-millisecond position
 (0..3,600,000), or Ctrl+V to paste a value copied by clicking the TIME display on ROUTE. Enter saves,
 Esc cancels, and no increment/decrement buttons are used. PLAY only reads it.
 A separate menu audio decoder fades the old song out before the newly
 selected song fades in. Song Set previews start from their own saved position.
 
-In EDIT, open a chart belonging to a **managed Song Set**, switch to SET
-and choose **ADD BG** (or **REPLACE BG**) to attach a PNG or JPEG.
+In EDIT, open a chart belonging to a **managed Song Set**, return to Song Setup
+and choose **ADD BACKGROUND** (or replace the existing image) to attach a PNG or JPEG.
 Use **REMOVE BG** to clear it. Image data must successfully decode before
 LOCUS installs a copy; invalid files leave the previous background untouched.
 The original is untouched and all difficulties share the same background. It appears in Song Select, EDIT, PLAY and Results, with its aspect
@@ -71,13 +71,12 @@ make an otherwise valid chart disappear. Folders without a current Song Set mani
 
 The files on disk are authoritative. The library index is rebuilt at startup
 or on explicit rescan (also after imports/deletion). Unchanged chart files,
-identified by last-write time, size and content fingerprint, reuse parsed
-data and difficulty results. Changing the Song Set's BPM or offset refreshes
+identified by last-write time, size and content fingerprint, reuse compact metadata and difficulty results. Full note vectors are materialized on demand and verified against the indexed fingerprint. Asynchronous scans publish complete revisions. Changing the Song Set's BPM or offset refreshes
 musical-grid projections but does not change difficulty for unchanged note timestamps; timestamp
 changes in an individual chart invalidate only that chart. A shared timing
 edit refuses to publish if difficulty files were externally changed or added
 after the last scan: refresh first. Within each Song Set, difficulties are displayed in
-ascending calculated V2 rating (easiest first), using title and filename only
+ascending calculated V4 rating (easiest first), using title and filename only
 to break ties. A Song Set's technical ID stays independent of its
 visible title.
 
@@ -86,23 +85,22 @@ also renames its .locus.json file within that Song Set. A conflicting filename
 receives a numeric suffix rather than overwriting another difficulty. Save
 failure attempts to restore the original filename; successful saves keep the
 editor and library selection attached to the new path. The chart format is
-unchanged. EDIT -> SET -> OPEN FOLDER opens that Song Set in Windows Explorer.
-SKIN -> MY SKINS -> OPEN FOLDER opens the personal Profiles directory.
+unchanged. Song Setup -> OPEN FOLDER opens that Song Set in Windows Explorer.
+SKIN -> SKINS -> OPEN FOLDER opens the personal Profiles directory.
 
 ## Everyday workflow
 
-1. **Create a song:** Home -> EDIT -> O (attach WAV/MP3), author the chart
-   and Ctrl+S. The new chart and shared audio are installed as one Song Set.
-2. **Create difficulty:** PLAY -> select an installed song -> EDIT -> SET ->
+1. **Create a song:** Home -> EDIT -> ATTACH AUDIO (WAV/MP3), select and open the draft. This installs the initial Song Set if it is not already managed. Return to Song Setup to edit shared metadata, artwork or timing. Author the chart and Ctrl+S to save the difficulty.
+2. **Create difficulty:** PLAY -> select an installed song -> Song Setup ->
    NEW, then Ctrl+S. No duplicate external authoring copy is created.
 3. **Edit difficulty:** select it -> E -> rename/edit notes and Ctrl+S.
    BPM/offset belong to the entire song, not a single chart.
    Ctrl+Shift+S creates a separate difficulty without overwriting the original.
    TEST is in-memory; Esc/H returns to the same unsaved draft.
-4. **Copy difficulty:** EDIT -> SET -> select difficulty -> COPY.
-5. **Share a complete set:** EDIT -> SET -> EXPORT creates a
+4. **Copy difficulty:** Song Setup -> select difficulty -> COPY.
+5. **Share a complete set:** Song Setup -> EXPORT creates a
    `.locuspack` archive. This is a standard store-only ZIP, with metadata,
-   shared audio, optional background art and all chart JSONs. EDIT -> SET -> IMPORT installs `.locuspack` archives as whole
+   shared audio, optional background art and all chart JSONs. Song Setup -> IMPORT installs `.locuspack` archives as whole
    Song Sets. An existing `setId` merges into its installed folder:
    matching `difficultyId` values update in place, new IDs add difficulties,
    and missing IDs in the package do not delete installed difficulties.
@@ -110,7 +108,7 @@ SKIN -> MY SKINS -> OPEN FOLDER opens the personal Profiles directory.
    and audio remain authoritative; different audio bytes are rejected.
    A current chart without an installed ID may be repaired at the exact
    matching package filename and title inside the same set.
-6. **Import charts:** EDIT -> SET -> IMPORT creates/finds a managed Song Set
+6. **Import charts:** Song Setup -> IMPORT creates/finds a managed Song Set
    or adds a difficulty to the current Set if its audio bytes match.
    A persistent difficulty ID resolves its installed chart even after
    renaming or moving the source; an ID-less draft uses its original source
@@ -118,12 +116,12 @@ SKIN -> MY SKINS -> OPEN FOLDER opens the personal Profiles directory.
    creates a new identity. If an ID matches multiple sets, select the target.
    Changed files are backed up; batches are validated before writing and
    attempt rollback on a publication failure.
-7. **Delete:** EDIT -> SET has separate DELETE (selected difficulty) and
+7. **Delete:** Song Setup has separate DELETE CHART (selected difficulty) and
    DELETE SET (entire song) buttons. Y confirms, N/Esc cancels. You cannot
    delete the final difficulty alone: delete the whole Set instead.
    ROUTE uses Backspace/Delete or the center DEL button for selected notes;
    Ctrl+Z restores a removed note.
-8. **Restore:** EDIT -> SET -> RESTORE LAST restores the newest item from the LOCUS
+8. **Restore:** Song Setup -> RESTORE restores the newest item from the LOCUS
    Trash, including after an application restart.
 
 An external chart opened through Ctrl+O is installed into the library when
@@ -159,11 +157,11 @@ Back up **%LOCALAPPDATA%\LOCUS** before changing chart/storage formats.
 ## Pre-release compatibility
 
 Before the first public release, **backwards compatibility is not promised**.
-Only chart v4, Song Set manifest v2 and skin v2 are supported; older formats are rejected.
+Current formats: chart v4, Song Set manifest v2, skin v2, settings v3 and Results v2. Unsupported versions are rejected.
 
 ## Remaining limitations
 
-There is no built-in history browser, archive compression, support for generic
+There is no built-in previous-chart-version backup browser, archive compression, support for generic
 Deflate-compressed ZIP imports, or automatic staging-file garbage collection yet. Physical Windows testing
 for device timing, denial of filesystem writes and sudden power loss is still
 required.

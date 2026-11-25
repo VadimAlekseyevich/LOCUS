@@ -1,85 +1,63 @@
-# LOCUS — Foundation roadmap
+# LOCUS — Roadmap
 
-Prerequisite work before adding larger mechanics or expanding the chart editor.
-See [GDD](GDD.md), [architecture audit](ARCHITECTURE.md) and
-[chart format](CHART_FORMAT.md).
+Current gameplay, formats and ownership are described in [GDD](GDD.md),
+[architecture](ARCHITECTURE.md), [chart format](CHART_FORMAT.md) and
+[Difficulty V4](CHART_DIFFICULTY.md). The [engineering acceptance checklist](REFACTORING_PLAN.md)
+tracks implementation and remaining validation separately. The game is pre-release.
 
-## Stabilization stages
+## 1. Stabilize the existing foundation
 
-- [x] **1. Architecture boundaries (2026-11-08).** EditorSession,
-  EditorFileActions, ListenSession, SkinProfileActions, song library and
-  session/navigation lifetime are separated. Headless tests cover failure
-  paths and native-dialog cancellation through injected pickers. The entry
-  point now owns application composition and cross-screen frame ordering;
-  dedicated render, editor, Play, library and input modules own the respective
-  screen behaviors. Further refactors should be feature-driven, not cosmetic.
-- [x] **2a. Managed Song Set storage.** New imports have one shared audio,
-  a manifest, independently saved difficulty charts and library-wide writer
-  locks. Save no longer creates redundant external authoring copies.
-- [x] **2b. Recoverable local deletion.** A confirmed delete moves a difficulty
-  or Song Set to LOCUS Trash; U can restore it, including after restart.
-  Chart overwrites keep backups in `.locus-history/`.
-- [x] **2b. Portable Song Set packages.** Export and import a complete
-  managed Song Set as .locuspack (ZIP store-only), with CRC, size bounds and
-  path traversal checks.
-- [x] **2b. Song Set artwork.** Optional shared PNG/JPEG backgrounds per
-  managed song, aspect-preserving cover crop, safe ZIP transport and a reusable
-  image-resource layer for later skins and UI sprites.
-- [x] **2c. Shared song tempo maps.** Chart v4 and Song Set manifest v2
-  store absolute-millisecond BPM markers. The editor has a song-wide table
-  and preserves note timestamps when the beat ruler is reprojected.
-- [ ] **2d. Power-loss and filesystem validation.** Test denied writes, full
-  disks, interrupted imports and recovery on physical Windows; add conservative
-  cleanup only when safe.
-- [ ] **3. Full scenario regression tests.** Chart create/edit/undo/save/
-  reopen/TEST/PLAY/Results, BPM/snap timing invariance, repeated navigation,
-  canceled dialogs, and safe shutdown.
-- [ ] **4. Real-device audio, input and visual QA.** Measure synchronization,
-  end-of-song late-hit windows, pause/resume/seek, practice rates and
-  initialization/device loss on actual Windows hardware.
-- [ ] **5. Profiling.** Benchmark dense 65k-turn charts, editor timeline
-  operations and render cadence. Add caches only if measurements justify them.
-- [ ] **6. GUI and usability verification.** Windows desktop tests for
-  wide/narrow/portrait aspect ratios, clipping, font fallback, Unicode paths,
-  remappable shortcut conflicts and editor workflows.
-- [ ] **7. Reproducible release baseline.** Portable package or installer
-  that runs without Visual Studio/CMake, clean-machine validation, version,
-  license, documentation and tagged stable build.
+The local game, editor, native menus, compact Song Set catalog, recovery,
+portable packages, exact-time route and per-key judgement are implemented.
+Complete acceptance instead of starting another broad refactor:
 
-There is **no pre-release compatibility guarantee** for chart versions or library layout. Changes affecting older files must be communicated to the developer.
+- [ ] Real Windows input/audio timing at 100/50/10%, calibration, seek, pause,
+  end-of-song and first slow-playback startup; see [timing contract](TIMING_CONTRACT.md).
+- [ ] Disk-full, permissions, interrupted publication/import and recovery on Windows.
+- [ ] Native screen usability, Unicode text, keyboard focus, resize/DPI and
+  editor comparison on physical displays; verify legacy fallback parity.
+- [ ] Profile full frame, dense editor operations, large catalog and PCM
+  memory on the same hardware/build. Change only measured bottlenecks.
+- [ ] Clean-machine portable ZIP acceptance without build tools, dependency
+  notices, version and a reproducible tagged build.
 
-Stages 1–6 are the engineering gate for adding major new mechanics. Stage 7
-is required before public distribution, but need not block internal prototyping.
-Every code milestone must pass Windows Release, CTest, production diagnostics,
-clean-worktree checks and the actual BAT launcher.
+## 2. Gameplay presentation
 
-## Gameplay presentation
+Keep exact input timestamps, authoritative route and grading independent of rendering.
 
-The next feature-driven milestone focuses on the actual PLAY/TEST scene
-rather than expanding menu/editor functionality. Core route coordinates,
-note timestamps and scoring stay authoritative and unchanged.
+- [ ] **G01. Route rendering:** shared antialiased tapered ribbon and outline
+  are implemented. Validate physical GPU output, overlaps, reversals,
+  repeated straight notes and outer joins at multiple scales.
+- [ ] **G02. Player and junction materials:** tune readability and restrained
+  feedback; use the same materials in gameplay and skin preview.
+- [ ] **G03. Playfield and HUD:** current combo/accuracy and right-gutter
+  grade counts are implemented. Validate narrow windows and contrast.
+- [ ] **G04. Judgement feedback:** evaluate distinct effects, timing feedback,
+  and optional hitsounds without changing judgement windows prematurely.
+- [ ] **G05. Sight-reading:** test dense patterns with players. Route reading
+  should communicate input, not dominate physical execution difficulty.
 
-- [ ] **G01. Route rendering.** Shared, pixel-scale-aware alpha feathering
-  is implemented for the tapered ribbon and its outline, including editor
-  comparison, skin preview and the outro stroke. Remaining: round outer
-  joins without changing the authored centerline, overlap readability,
-  and physical Windows visual checks at multiple zooms, all headings,
-  reversals and dense patterns.
-- [ ] **G02. Player and junction materials.** Soft radial effects, readable
-  target shapes, shared across gameplay and skin preview.
-- [ ] **G03. Playfield and HUD.** Minimal HUD with bottom-left combo,
-  top-right accuracy and grade counts exclusively in the right gutter.
-  No scrims, progress bar, or bottom-right readout. Shared skin preview;
-  pending real-device visual validation and readability tuning.
-- [ ] **G04. Judgement feedback.** Distinct hit effects, timing information,
-  optional hitsounds and further feedback.
-- [ ] **G05. Sight-reading and profiling.** Validate overlap/reversal cues,
-  dense patterns, camera motion and GPU frame cost on real hardware.
+## 3. Mapping and difficulty
 
-## Possible later features
+- [ ] Calibrate [Difficulty V4](CHART_DIFFICULTY.md) against matched-density
+  streams, jacks, alternating keys, diagonal transitions and real attempts.
+  Reading remains a separate diagnostic, not a ranking factor.
+- [ ] Evaluate waveform-assisted mapping, automatic BPM analysis, and
+  other tools based on mapper feedback. Shared tempo maps, exact unsnapped
+  note placement, pattern transforms and pitch-preserving practice already exist.
+- [ ] Build a representative local chart collection and validate progression
+  from approachable to demanding physical input patterns.
 
-Waveform editing, automatic BPM detection and online services
-are outside foundation stabilization. Shared song tempo maps and
-pitch-preserving practice playback are implemented; actual audio-device
-latency, memory use and rate-change quality still require real-device QA.
-Scope new mechanics separately after the stable baseline.
+## 4. Release and community
+
+- [ ] First public Windows release: complete the acceptance checklist,
+  package and onboarding, known limitations and licensing notices.
+- [ ] Evaluate replay recording, player skill/performance statistics and
+  rankings separately from the chart-only difficulty estimator.
+- [ ] Design accounts, online chart packs, moderation and leaderboards only
+  after the local gameplay/scoring foundation is stable. Before hosting,
+  implement the actual rights/reporting workflow described in the [README](../README.md#community-chart-packs-with-music--future-hosting-policy).
+
+No pre-release compatibility guarantee: report every incompatible format
+change, update examples and the corresponding contract in the same commit.
+Prioritize performance, scalable ownership and non-hacky solutions.
