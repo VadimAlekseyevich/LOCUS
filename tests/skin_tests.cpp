@@ -169,7 +169,9 @@ int main() {
           FlipSkinToggle(toggleFixture, 1, 6) && toggleFixture.showHitErrorBar &&
           !FlipSkinToggle(toggleFixture, 1, 5) &&
           !FlipSkinToggle(toggleFixture, 2, 0) &&
-          !GetSkinSetting(1, 6),
+          GetSkinToggle(toggleFixture, 1, 6) &&
+          FlipSkinToggle(toggleFixture, 1, 6) && !toggleFixture.showHitErrorBar &&
+          !GetSkinSetting(1, 7),
           "toggles use actual fields and numeric/invalid rows are not switches");
     // Draggers have modest limits, but exact input can go further.
     SkinNumberRange limits;
