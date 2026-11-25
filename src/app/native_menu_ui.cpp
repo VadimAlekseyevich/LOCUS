@@ -829,6 +829,18 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
             const float scale = std::max(0.05f, viewport.scale);
             canvas->SetProperty("left", std::to_string(viewport.offsetX / scale) + "dp");
             canvas->SetProperty("top", std::to_string(viewport.offsetY / scale) + "dp");
+            // Song Setup is purely native UI. Let its flex columns occupy
+            // the real window width, rather than inherit the chart's
+            // fixed-aspect raylib canvas. Keep the shared audio transport
+            // anchored below the panels in the existing chart viewport.
+            if (auto* setup = editorDocument_->GetElementById("editor-set-ui")) {
+                const float extraX = viewport.offsetX / scale;
+                const float extraY = viewport.offsetY / scale;
+                setup->SetProperty("left", std::to_string(-extraX) + "dp");
+                setup->SetProperty("top", std::to_string(12.0f - extraY) + "dp");
+                setup->SetProperty("width", std::to_string(960.0f + 2.0f * extraX) + "dp");
+                setup->SetProperty("height", std::to_string(458.0f + extraY) + "dp");
+            }
         }
         lastEditorWidth_ = GetScreenWidth();
         lastEditorHeight_ = GetScreenHeight();

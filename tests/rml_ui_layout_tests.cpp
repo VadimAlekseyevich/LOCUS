@@ -448,15 +448,15 @@ int main(int argc, char** argv) {
             ok &= Check(std::abs(footer->GetAbsoluteTop() - 485.0f) < 2.0f,
                         "960x540: editor shell aligns with raylib viewport");
             if (set && route) {
-                set->SetProperty("display", "block");
+                set->SetProperty("display", "flex");
                 route->SetProperty("display", "none");
                 context->Update();
                 auto* metadata = editorDoc->GetElementById("editor-set-metadata");
                 auto* difficulties = editorDoc->GetElementById("editor-set-difficulties");
                 auto* name = editorDoc->GetElementById("editor-difficulty-title");
                 ok &= Check(metadata && difficulties && name &&
-                    metadata->GetAbsoluteLeft()+metadata->GetOffsetWidth() <= 350.0f &&
-                    difficulties->GetAbsoluteLeft() >= 647.0f &&
+                    metadata->GetAbsoluteLeft() < 20.0f &&
+                    difficulties->GetAbsoluteLeft()+difficulties->GetOffsetWidth() <= 960.1f &&
                     audio && audio->GetAbsoluteLeft() >= metadata->GetAbsoluteLeft()+metadata->GetOffsetWidth() &&
                     audio->GetAbsoluteLeft()+audio->GetOffsetWidth() <= difficulties->GetAbsoluteLeft() &&
                     !editorDoc->GetElementById("editor-setup-enter") &&
@@ -471,6 +471,21 @@ int main(int argc, char** argv) {
                     attach && tempo && add && LabelCentered(attach) && LabelCentered(add) &&
                     tempo->GetAbsoluteTop() + tempo->GetOffsetHeight() <= add->GetAbsoluteTop()+1.0f,
                     "AUDIO & TIMING uses shared input/button controls and a bounded scroll list");
+                // Simulate the same full-width setup sizing that the native
+                // window adapter supplies on a 1280-wide logical viewport.
+                const float originalWidth = audio->GetOffsetWidth();
+                context->SetDimensions({1280, 540});
+                canvas->SetProperty("left", "160dp");
+                set->SetProperty("left", "-160dp");
+                set->SetProperty("width", "1280dp");
+                context->Update();
+                ok &= Check(audio->GetOffsetWidth() > originalWidth + 85.0f &&
+                    difficulties->GetAbsoluteLeft()+difficulties->GetOffsetWidth() <= 1280.1f &&
+                    metadata->GetAbsoluteLeft() < 20.0f,
+                    "ultrawide Song Setup columns grow with actual window width");
+                canvas->SetProperty("left", "0dp");
+                set->SetProperty("left", "0dp");
+                set->SetProperty("width", "960dp");
             }
             context->SetDimensions({1536, 960});
             context->SetDensityIndependentPixelRatio(1.6f);

@@ -44,13 +44,13 @@
 
 /* All SET fields and action layout live in RCSS; the SongLibrary retains
    exclusive ownership of metadata and difficulty identities. */
-#editor-set-ui { position:absolute; left:0; top:0; width:960dp; height:540dp; pointer-events:none; }
-.editor-set-panel { position:absolute; top:12dp; height:458dp; padding:10dp;
+#editor-set-ui { position:absolute; left:0; top:12dp; width:960dp; height:458dp;
+  display:flex; flex-direction:row; align-items:stretch; gap:10dp;
+  padding:0 14dp; pointer-events:none; }
+.editor-set-panel { flex:1; min-width:0; min-height:0; padding:10dp;
   border:1dp #565d7b; border-radius:10dp; background-color:#252d45;
   display:flex; flex-direction:column; pointer-events:auto; }
-#editor-set-metadata { left:43dp; width:300dp; }
-#editor-set-difficulties { left:647dp; width:290dp; }
-#editor-set-audio { left:350dp; width:290dp; }
+#editor-set-metadata { overflow-y:auto; }
 #editor-attach-audio, #editor-tempo-add { flex:0 0 30dp; height:30dp; padding:0; font-size:11dp; }
 #editor-attach-audio { margin-bottom:4dp; }
 .editor-setup-caption { display:block; color:#a6bad9; font-size:9dp; white-space:nowrap;
@@ -87,5 +87,4 @@
 .editor-set-row { display:block; flex:0 0 30dp; width:100%; min-height:30dp; height:30dp; padding:2dp 5dp; font-size:12dp; }
 .editor-set-row.active { border-color:#a2d8ee; }
 .editor-set-row.selected { background-color:#59527a; border-color:#a2d8ee; }
-#editor-set-hint { position:absolute; left:54dp; top:456dp;
-  color:#9da8c6; font-size:9dp; pointer-events:none; }
+#editor-set-hint { white-space:normal; color:#9da8c6; pointer-events:none; }

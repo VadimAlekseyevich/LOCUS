@@ -117,7 +117,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         if (auto* route = document_->GetElementById("editor-route-ui"))
             route->SetProperty("display", ui.tab == EditorTab::Route ? "block" : "none");
         if (auto* set = document_->GetElementById("editor-set-ui"))
-            set->SetProperty("display", ui.tab == EditorTab::Set ? "block" : "none");
+            set->SetProperty("display", ui.tab == EditorTab::Set ? "flex" : "none");
         lastTab_ = static_cast<int>(ui.tab);
     }
     if (setView && ui.tab == EditorTab::Set) {
