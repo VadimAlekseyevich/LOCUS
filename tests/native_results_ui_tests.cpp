@@ -56,7 +56,8 @@ bool TestNativeResultsVirtualHistory() {
             runs.push_back(std::move(run));
         }
         history.ReplaceResults({"test-set","test-chart"},std::move(runs));
-        const auto selected=history.results[omitted];
+        auto selected=history.results[omitted];
+        selected.hasReplay=true;
         FrameInput input;
         MenuEvents events;
         NativeResultsUi presenter;
@@ -71,6 +72,11 @@ bool TestNativeResultsVirtualHistory() {
         context->Update();
         presenter.Sync();
         context->Update();
+        auto* watch=document->GetElementById("results-watch-replay");
+        if (watch) watch->Click();
+        ok &= Check(watch && events.watchReplay,
+                    "historical attempt can emit watch replay without retry");
+        events.watchReplay=false;
         auto* scroll=document->GetElementById("results-history");
         auto* list=document->GetElementById("results-history-list");
         ok &= Check(scroll && list && list->GetNumChildren()<50 &&

@@ -44,6 +44,7 @@ struct GameplayView {
     // Frame-only borrow from PlayPresentation. The next Prepare may overwrite
     // this object; RenderFrame must not retain the pointer.
     const RoutePreviewFrame* routePreview = nullptr;
+    bool watchingReplay = false;
 };
 
 // The visible playfield is exactly one screen-height square, centred in

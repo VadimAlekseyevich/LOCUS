@@ -20,6 +20,7 @@
    <div id="results-hit-histogram"></div>
    <div id="results-histogram-axis" class="results-muted results-histogram-axis"></div>
    <div id="results-replay-status" class="results-muted"></div>
+   <button id="results-watch-replay" class="secondary" data-action="watch-replay"><span class="button-label">WATCH REPLAY</span></button>
    <div class="results-actions">
     <button id="results-retry" class="primary" data-action="retry"><span class="button-label">RETRY</span></button>
     <button id="results-edit" class="secondary" data-action="edit"><span class="button-label">EDIT CHART</span></button>

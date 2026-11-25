@@ -70,11 +70,13 @@ struct GameplayHudStats {
     core::GradeCounts grades{};
     int combo = 0;
     double practiceRate = 1.0;
+    bool watchingReplay = false;
 };
 
 inline GameplayHudStats MakeGameplayHudStats(const core::TurnJudge& judge,
-                                              double practiceRate) noexcept {
-    return {judge.Counts(), judge.Combo(), practiceRate};
+                                              double practiceRate,
+                                              bool watchingReplay = false) noexcept {
+    return {judge.Counts(), judge.Combo(), practiceRate, watchingReplay};
 }
 
 void DrawGameplayHud(Font font, const GameplayHudLayout& layout,

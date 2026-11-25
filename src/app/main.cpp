@@ -363,6 +363,7 @@ int main(int argc, char** argv) try {
     std::string playedGameplayRevision;
     std::string playedSongTitle = "BUILT-IN DEMO";
     std::optional<locus::app::RunResult> displayedResult;
+    std::optional<locus::app::RunResult> replaySource; // spectator is never a new attempt
     bool historicalResult = false;
     // Cached on result selection, not searched across the library per frame.
     // Historical scores identify their own Song Set, never the most recently
@@ -573,6 +574,7 @@ int main(int argc, char** argv) try {
             displayedResultBackgroundPath = locus::app::BackgroundForSavedResult(
                 library.Songs(), *displayedResult);
             historicalResult = true;
+            libraryUi.replayNotice.clear();
             input.requestedScreen = Screen::Results;
             input.startPressed = false;
             input.backPressed = false;
@@ -917,6 +919,26 @@ int main(int argc, char** argv) try {
         }
 
         bool loadedNewChart = false;
+        if (previousScreen==Screen::Results && state.screen==Screen::Results &&
+            menuEvents.watchReplay && displayedResult && !anyModal) {
+            locus::app::ReplayLaunchInfo replayInfo;
+            if (displayedResult->songSetId=="builtin-demo" && !transport.Ready()) {
+                libraryUi.replayNotice="REPLAY: DEMO AUDIO UNAVAILABLE";
+            } else if (locus::app::LaunchSavedReplay(
+                    libraryLaunch,resultsStore,*displayedResult,replayInfo,now)) {
+                replaySource=*displayedResult;
+                loadedNewChart=customChart;
+                playedChartPath=std::move(replayInfo.chart);
+                playedBackgroundPath=std::move(replayInfo.background);
+                playedRunKey={replaySource->songSetId,replaySource->difficultyId};
+                playedGameplayRevision=replaySource->gameplayRevision;
+                playedSongTitle=replaySource->songTitle;
+                playCameFromEditor=false;
+                libraryUi.replayNotice.clear();
+            } else {
+                libraryUi.replayNotice="REPLAY: "+musicError;
+            }
+        }
         if (state.screen == Screen::SongSelect) {
             if (menuEvents.refresh) {
                 std::string queued;
@@ -950,11 +972,16 @@ int main(int argc, char** argv) try {
         }
         if (state.screen != previousScreen) {
             if (state.screen == Screen::Play) {
+                if (!replaySource) gameSession.ClearReplay();
+                libraryUi.replayNotice.clear();
                 displayedResult.reset();
                 displayedResultBackgroundPath.clear();
                 historicalResult = false;
                 if (previousScreen != Screen::Results)
                     playCameFromEditor = previousScreen == Screen::Editor;
+            } else if (previousScreen == Screen::Play && replaySource) {
+                gameSession.ClearReplay();
+                replaySource.reset();
             } else if (previousScreen == Screen::Results &&
                        state.screen != Screen::Results) {
                 displayedResult.reset();
@@ -1073,7 +1100,16 @@ int main(int argc, char** argv) try {
             playActions.Update(input, now);
             // The same completed-outro edge is used in live play and the
             // headless journey test. Save only once; never save Editor TEST.
-            if (!alreadyCompleted && sessionCompleted) {
+            if (!alreadyCompleted && sessionCompleted && gameSession.IsReplay()) {
+                // A spectator completion only returns to the original score.
+                // It never enters CaptureCompletedRun or becomes a new record.
+                displayedResult=std::move(replaySource);
+                replaySource.reset();
+                historicalResult=true;
+                displayedResultBackgroundPath=playedBackgroundPath;
+                gameSession.Stop(customChart);
+                gameSession.ClearReplay();
+            } else if (!alreadyCompleted && sessionCompleted) {
                 const locus::app::CompletedRunContext completion{
                     true, gameSession.IsEditorTest(), playCameFromEditor,
                     playedRunKey, playedSongTitle, chartTitle, judge.Counts(),
@@ -1146,7 +1182,7 @@ int main(int argc, char** argv) try {
         const auto transportView = showGameplay
             ? playActions.Transport(renderNow)
             : locus::app::PlayTransportView{};
-        const GameplayView gameplay = presentation.Prepare(
+        GameplayView gameplay = presentation.Prepare(
             {activeChart, judge, gameSession.Flash(), chartTitle,
              transportView.songSeconds, transportView.offsetSeconds,
              transportView.paused, sessionCompleted, customChart,
@@ -1154,6 +1190,7 @@ int main(int argc, char** argv) try {
              settings.hitFlash, settings, activeSkin},
             state.screen == Screen::Play,
             state.quitConfirmation || state.levelExitConfirmation, renderNow);
+        gameplay.watchingReplay=gameSession.IsReplay();
         // The editor and COMPARE pane routes all see the same one clock
         // snapshot; no transport sampling happens inside drawing methods.
         locus::app::EditorRenderClock editorClock;

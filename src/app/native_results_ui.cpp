@@ -113,8 +113,12 @@ void NativeResultsUi::Sync() {
         }
     }
     SetText("results-practice", detail);
-    SetText("results-replay-status", selected_ && selected_->hasReplay
+    SetText("results-replay-status", !history_->replayNotice.empty()
+        ? history_->replayNotice : selected_ && selected_->hasReplay
         ? "REPLAY RECORDED" : "NO RECORDED REPLAY");
+    if (auto* button=document_->GetElementById("results-watch-replay"))
+        button->SetProperty("display",selected_ && selected_->hasReplay
+            ? "block" : "none");
     for (const char* id : {"results-retry", "results-edit"}) {
         if (auto* button = document_->GetElementById(id))
             button->SetProperty("display", historical_ ? "none" : "inline-block");
@@ -263,7 +267,9 @@ void NativeResultsUi::ProcessEvent(Rml::Event& event) {
         target = target->GetParentNode();
     if (!target || target->HasAttribute("disabled")) return;
     const std::string action = target->GetAttribute<Rml::String>("data-action", "");
-    if (!historical_ && action == "retry") input_->startPressed = true;
+    if (action == "watch-replay" && selected_ && selected_->hasReplay)
+        events_->watchReplay = true;
+    else if (!historical_ && action == "retry") input_->startPressed = true;
     else if (!historical_ && action == "edit") input_->openEditorPressed = true;
     else if (action == "history") {
         const int index = target->GetAttribute<int>("data-index", -1);

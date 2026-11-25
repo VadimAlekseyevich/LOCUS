@@ -68,7 +68,12 @@ void DrawHitErrorBar(const GameplayHudLayout& l, const Skin& skin,
 void DrawGameplayHud(Font font, const GameplayHudLayout& l,
                      const GameplayHudStats& stats, const Skin& skin,
                      const HitErrorHistory* errors, double now) {
-    if (!skin.showHud || l.bounds.width <= 0 || l.bounds.height <= 0) return;
+    if (l.bounds.width <= 0 || l.bounds.height <= 0) return;
+    if (stats.watchingReplay) {
+        const Rectangle label{l.combo.x,l.bounds.y+16.0f*l.unit,120.0f*l.unit,20.0f*l.unit};
+        Text(font,"REPLAY",label,0,15,l.unit,skin.hudText);
+    }
+    if (!skin.showHud) return;
     const float u = l.unit;
     const Color text = skin.hudText;
     const Color muted = WithOpacity(text, 0.69f);

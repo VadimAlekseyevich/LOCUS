@@ -43,6 +43,7 @@ struct MenuEvents {
     bool toggleFullscreen = false;
     bool applyDisplaySettings = false;
     locus::app::SkinCommand skinCommand = locus::app::SkinCommand::None;
+    bool watchReplay = false;
 };
 
 

@@ -809,7 +809,7 @@ MenuEvents NativeMenuUi::UpdateResults(FrameInput& input,
     resultsPresenter_.Sync();
     PumpInput();
     bool consumed = input.startPressed || input.openEditorPressed ||
-                    events.viewResultIndex >= 0;
+                    events.viewResultIndex >= 0 || events.watchReplay;
     if (!consumed && keyboard.activate) {
         if (auto* focus = context_->GetFocusElement();
             focus && focus->GetTagName() == "button") {

@@ -78,6 +78,7 @@ struct SongSelectUi {
                         std::string gameplayRevision = {});
     std::string notice;
     LibraryDeletePending pendingDelete = LibraryDeletePending::None;
+    std::string replayNotice; // explicit Results replay launch error
 
     void SelectSong(int index, const SongLibrary& songs);
     void MoveSong(int delta, const SongLibrary& songs);
