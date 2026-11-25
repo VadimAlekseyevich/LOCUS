@@ -107,7 +107,8 @@ void UpdateSkinColorDrag(Vector2 logicalMouse, Skin& skin, SkinUi& ui) {
 
 Rectangle SkinBackButton() { return {52, 74, 100, 39}; }
 Rectangle SkinTabButton(int index) {
-    return {52.0f + index * 221.0f, 128.0f, 214.0f, 40.0f};
+    const int slot = (index + 1) % 4; // profiles first; setting IDs unchanged
+    return {52.0f + slot * 221.0f, 128.0f, 214.0f, 40.0f};
 }
 Rectangle SkinActionButton(int index) {
     return {604.0f + (index % 2) * 166.0f,
@@ -124,12 +125,12 @@ Rectangle SkinHexRect() { return {342, 411, 190, 35}; }
 Rectangle SkinColorSquareRect() { return {388, 274, 82, 82}; }
 Vector2 SkinColorWheelCenter() { return {429, 315}; }
 Rectangle SkinProfileRow(int row) {
-    return {69, 220.0f + row * 37.0f, 482, 32};
+    return {69, 233.0f + row * 34.0f, 482, 30};
 }
 Rectangle SkinProfileActionRect(int index) {
     return {70.0f + index * 97.0f, 416, 92, 34};
 }
-Rectangle SkinProfilesFolderRect() { return {377, 184, 177, 28}; }
+Rectangle SkinProfilesFolderRect() { return {377, 453, 177, 28}; }
 Rectangle SkinDeleteConfirmRect() { return {283, 310, 169, 42}; }
 Rectangle SkinDeleteCancelRect() { return {506, 310, 169, 42}; }
 
@@ -145,7 +146,7 @@ SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
             ui.draggingColor = 0;
             return SkinCommand::None;
         }
-    if (Hit(mouse, NameField())) {
+    if (ui.page == 3 && Hit(mouse, NameField())) {
         ui.editingName = true;
         ui.nameSelectAll = true;
         ui.previousName = skin.name;

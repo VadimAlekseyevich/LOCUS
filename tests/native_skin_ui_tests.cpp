@@ -58,9 +58,18 @@ bool TestNativeSkinTextEditing() {
         presenter.Sync();
         context->Update();
         auto* name = dynamic_cast<Rml::ElementFormControlInput*>(document->GetElementById("skin-name"));
-        auto* number = dynamic_cast<Rml::ElementFormControlInput*>(document->GetElementById("skin-number-0"));
-        ok &= Check(name && number,"native name and numeric inputs exist");
-        if (name && number) {
+        auto* preview=document->GetElementById("skin-preview-canvas");
+        auto* profiles=document->GetElementById("skin-tab-profiles");
+        auto* path=document->GetElementById("skin-tab-path");
+        auto* colors=document->GetElementById("skin-tab-colors");
+        auto* player=document->GetElementById("skin-tab-player");
+        auto* nameRow=document->GetElementById("skin-name-row");
+        auto* hexRow=document->GetElementById("skin-color-edit");
+        ok &= Check(ui.page==3 && profiles && profiles->IsClassSet("selected") &&
+                    path && profiles->GetAbsoluteLeft()<path->GetAbsoluteLeft() &&
+                    name && preview && colors && player && nameRow && hexRow,
+                    "SKINS is the initial first tab with rename in left panel");
+        if (name && preview && profiles && path && colors && player && nameRow && hexRow) {
             const std::string originalName = skin.name;
             const double originalNumber = GetSkinNumber(skin,0,0,ui.selectedColor);
             Type(*context,*name,"New Skin");
@@ -71,6 +80,24 @@ bool TestNativeSkinTextEditing() {
             context->Update();
             ok &= Check(name->GetValue()==originalName && skin.name==originalName && !ui.dirty,
                         "Esc cancels name without dirtying skin");
+            Type(*context,*name,"Renamed Skin");
+            path->Click();
+            presenter.Sync();
+            context->Update();
+            ok &= Check(skin.name=="Renamed Skin" && ui.dirty && ui.page==0,
+                        "switching tab commits valid name");
+            ui.dirty=false;
+            auto* number = dynamic_cast<Rml::ElementFormControlInput*>(document->GetElementById("skin-number-0"));
+            if (!Check(number!=nullptr,"PATH numeric input exists")) {
+                presenter.EndFrame();
+                presenter.Attach(nullptr);
+                document->RemoveEventListener("click",&listener);
+                document->RemoveEventListener("focus",&listener,true);
+                document->RemoveEventListener("blur",&listener,true);
+                Rml::RemoveContext("skin-presenter-test");
+                Rml::Shutdown();
+                return false;
+            }
             Type(*context,*number,"1200");
             ok &= Check(number->GetValue()=="1200" &&
                         GetSkinNumber(skin,0,0,ui.selectedColor)==originalNumber && !ui.dirty,
@@ -82,17 +109,36 @@ bool TestNativeSkinTextEditing() {
                         "Enter commits numeric value once");
             ui.dirty = false;
             Type(*context,*number,"bad");
-            name->Focus();
+            presenter.FinishFocusedText(true);
             presenter.Sync();
             context->Update();
             ok &= Check(GetSkinNumber(skin,0,0,ui.selectedColor)==1200 &&
                         number->GetValue()==FormatSkinNumber(1200) && !ui.dirty && ui.noticeError,
                         "invalid blur restores previous value without mutating skin");
-            Type(*context,*name,"Renamed Skin");
-            number->Focus();
-            ok &= Check(skin.name=="Renamed Skin" && ui.dirty,
-                        "clicking another field commits the valid name");
-            presenter.FinishFocusedText(false);
+            // The shared preview is independent of all left-panel fields.
+            for (const auto size : {Rml::Vector2i{1280,720},Rml::Vector2i{800,450}}) {
+                context->SetDimensions(size);
+                profiles->Click();
+                presenter.Sync();
+                context->Update();
+                const float x=preview->GetAbsoluteLeft(),y=preview->GetAbsoluteTop();
+                const auto width=preview->GetOffsetWidth(),height=preview->GetOffsetHeight();
+                for (auto* tab : {path,player,colors,profiles}) {
+                    tab->Click();
+                    presenter.Sync();
+                    context->Update();
+                    ok &= Check(preview->GetAbsoluteLeft()==x && preview->GetAbsoluteTop()==y &&
+                                preview->GetOffsetWidth()==width && preview->GetOffsetHeight()==height,
+                                "preview geometry identical across every skin tab");
+                    if (ui.page==2) {
+                        auto* hex=document->GetElementById("skin-hex");
+                        auto* wheel=document->GetElementById("skin-wheel-canvas");
+                        ok &= Check(hex && wheel && hex->GetAbsoluteTop()>=
+                                    wheel->GetAbsoluteTop()+wheel->GetOffsetHeight()-1,
+                                    "hex input follows color wheel in left panel");
+                    }
+                }
+            }
         }
         presenter.EndFrame();
         presenter.Attach(nullptr);

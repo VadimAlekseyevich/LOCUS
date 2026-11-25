@@ -238,7 +238,6 @@ void DrawColorPickerWheel(const Skin& skin, const SkinUi& ui) {
 void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
     DrawColorPickerWheel(skin, ui);
     const Color current = SkinColor(skin, ui.selectedColor);
-    Label(font, "HEX / ALPHA", 347, 389, 14, kMuted);
     DrawInput(font, SkinHexRect(),
               ui.editingHex ? ui.hexBuffer : FormatSkinHex(current),
               ui.editingHex, ui.editingHex && ui.hexSelectAll);
@@ -250,10 +249,7 @@ void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
 
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     const auto& theme=ApprovedUiTheme();
-    Label(font,"NAME",650,87,12,kMuted);
-    DrawInput(font,NameField(),skin.name,ui.editingName,
-              ui.editingName&&ui.nameSelectAll);
-    const char* tabs[]={"PATH","PLAYER","COLORS","MY SKINS"};
+    const char* tabs[]={"PATH","PLAYER","COLORS","SKINS"};
     for(int i=0;i<4;++i)
         DrawUiThemedButton(font,SkinTabButton(i),tabs[i],
             ui.page==i?UiButtonVariant::Cool:UiButtonVariant::Quiet,
@@ -294,7 +290,9 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
         DrawColorPicker(font, skin, ui);
         PreviewPath(font, skin); // Always visible on COLORS as well.
     } else {
-        Label(font, "PERSONAL SKINS / PROFILES", 69, 195, 18, kGold);
+        Label(font,"SKIN NAME",69,199,12,kMuted);
+        DrawInput(font,NameField(),skin.name,ui.editingName,
+                  ui.editingName&&ui.nameSelectAll);
         Button(font, SkinProfilesFolderRect(), "OPEN FOLDER");
         if (ui.profiles.empty())
             Label(font, "NO SAVED PROFILES YET", 80, 250, 17, kMuted);

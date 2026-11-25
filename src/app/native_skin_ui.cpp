@@ -77,7 +77,7 @@ void NativeSkinUi::RebuildControls() {
                  << EscapeRml(setting->label) << "</div>";
             if (setting->toggle) {
                 html << "<button data-action='toggle' data-index='" << row
-                     << "'><span class='button-label'>"
+                     << "'><span id='skin-toggle-" << row << "' class='button-label'>"
                      << (GetSkinToggle(*skin_, ui_->page, row) ? "ON" : "OFF")
                      << "</span></button>";
             } else {
@@ -99,6 +99,7 @@ void NativeSkinUi::RebuildControls() {
         for (int i = 0; i < kSkinColorCount; ++i) {
             html << "<button class='skin-swatch"
                  << (i == ui_->selectedColor ? " selected" : "")
+                 << "' id='skin-swatch-" << i
                  << "' data-action='swatch' data-index='" << i
                  << "'><span class='button-label'>" << EscapeRml(SkinColorLabel(i))
                  << "</span><span id='skin-swatch-chip-" << i
@@ -153,6 +154,8 @@ void NativeSkinUi::Sync() {
         if (element && element != focus && element->GetValue() != value)
             element->SetValue(value);
     };
+    if (auto* nameRow = document_->GetElementById("skin-name-row"))
+        nameRow->SetProperty("display",ui_->page==3 ? "flex" : "none");
     syncInput("skin-name", skin_->name);
     SetText("skin-dirty", ui_->dirty ? "UNSAVED" : "");
     SetText("skin-notice", ui_->notice);
@@ -169,8 +172,10 @@ void NativeSkinUi::Sync() {
     if (auto* colorEdit = document_->GetElementById("skin-color-edit"))
         colorEdit->SetProperty("display", ui_->page == 2 ? "block" : "none");
     if (ui_->page == 2) {
-        if (lastColor_ != ui_->selectedColor) {
-            RebuildControls();
+        if (rebuild || lastColor_ != ui_->selectedColor) {
+            for (int i=0;i<kSkinColorCount;++i)
+                if (auto* button=document_->GetElementById("skin-swatch-"+std::to_string(i)))
+                    button->SetClass("selected",i==ui_->selectedColor);
             lastColor_ = ui_->selectedColor;
         }
         syncInput("skin-hex", FormatSkinHex(
@@ -190,9 +195,12 @@ void NativeSkinUi::Sync() {
         const int count = SkinSettingCount(ui_->page);
         for (int row = 0; row < count; ++row) {
             if (ui_->page < 2 && GetSkinSetting(ui_->page, row)->toggle) {
-                // Toggling reuses the native element, preserving focus.
+                // Reset/load can replace the model without a click.
                 const std::string id = "skin-toggle-" + std::to_string(row);
-                (void)id;
+                if (auto* label=document_->GetElementById(id)) {
+                    const std::string value=GetSkinToggle(*skin_,ui_->page,row) ? "ON" : "OFF";
+                    if (label->GetInnerRML()!=value) UpdateRmlText(label,value);
+                }
                 continue;
             }
             const double value = GetSkinNumber(
@@ -391,6 +399,7 @@ void NativeSkinUi::ProcessEvent(Rml::Event& event) {
         return;
     }
     if (action == "tab") {
+        FinishFocusedText(true);
         ui_->page = std::clamp(target->GetAttribute<int>("data-index", 0), 0, 3);
         ui_->draggingRow = -1;
         ui_->draggingColor = 0;
@@ -404,6 +413,7 @@ void NativeSkinUi::ProcessEvent(Rml::Event& event) {
                               ? "ON" : "OFF");
         }
     } else if (action == "swatch") {
+        FinishFocusedText(true);
         const int color = target->GetAttribute<int>("data-index", -1);
         if (color >= 0 && color < kSkinColorCount) {
             ui_->selectedColor = color;

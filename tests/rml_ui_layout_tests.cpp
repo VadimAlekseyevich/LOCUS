@@ -623,6 +623,10 @@ int main(int argc, char** argv) {
         auto* preview = skinDoc->GetElementById("skin-preview-canvas");
         auto* name = skinDoc->GetElementById("skin-name");
         auto* pathTab = skinDoc->GetElementById("skin-tab-path");
+        auto* profilesTab = skinDoc->GetElementById("skin-tab-profiles");
+        ok &= Check(profilesTab && pathTab &&
+                    profilesTab->GetAbsoluteLeft()<pathTab->GetAbsoluteLeft(),
+                    "SKINS tab precedes PATH");
         auto* deleteLayer = skinDoc->GetElementById("skin-delete-modal");
         auto* deletePanel = skinDoc->GetElementById("skin-delete-panel");
         auto* deleteCancel = skinDoc->GetElementById("skin-delete-cancel");

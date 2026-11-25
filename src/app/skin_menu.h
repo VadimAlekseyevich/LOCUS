@@ -21,7 +21,7 @@ struct SkinProfileItem {
 };
 
 struct SkinUi {
-    int page = 0;               // 0 = path, 1 = player/HUD, 2 = colors, 3 = profiles
+    int page = 3;               // 0 = path, 1 = player/HUD, 2 = colors, 3 = skins (first tab)
     int selectedColor = 1;
     bool dirty = false;
     bool editingName = false;
