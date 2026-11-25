@@ -108,6 +108,8 @@ void NativeResultsUi::Sync() {
         }
     }
     SetText("results-practice", detail);
+    SetText("results-replay-status", selected_ && selected_->hasReplay
+        ? "REPLAY RECORDED" : "NO RECORDED REPLAY");
     for (const char* id : {"results-retry", "results-edit"}) {
         if (auto* button = document_->GetElementById(id))
             button->SetProperty("display", historical_ ? "none" : "inline-block");

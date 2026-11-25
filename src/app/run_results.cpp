@@ -60,6 +60,7 @@ Json Encode(const RunResult& r) {
         {"practiceRate", r.practiceRate},
         {"variablePracticeRate", r.variablePracticeRate}
     };
+    result["hasReplay"] = r.hasReplay;
     if (r.statistics) {
         const auto& s = *r.statistics;
         result["statistics"] = {{"maxCombo", s.maxCombo},
@@ -93,6 +94,7 @@ bool Decode(const Json& obj, RunResult& out) {
         // v2 records created before variable-rate tracking represented a
         // single nominal speed. New records always persist this explicit flag.
         r.variablePracticeRate = obj.value("variablePracticeRate", false);
+        r.hasReplay = obj.value("hasReplay", false);
         if (obj.contains("statistics")) {
             const auto& s = obj.at("statistics");
             if (!s.is_object() || !s.at("maxCombo").is_number_integer() ||
@@ -178,7 +180,7 @@ bool CaptureCompletedRun(const RunResultsStore& store,
     record.practiceRate = completion.practiceRate;
     record.variablePracticeRate = completion.variablePracticeRate;
     record.statistics = completion.statistics;
-    if (!store.Save(record, error)) return false;
+    if (!store.Save(record, error, completion.replay)) return false;
     saved = std::move(record);
     return true;
 }
@@ -201,7 +203,17 @@ fs::path RunResultsStore::Directory(const RunKey& key) const {
     return root_ / PathToken(key);
 }
 
-bool RunResultsStore::Save(RunResult& r, std::string& error) const {
+bool RunResultsStore::Save(RunResult& r, std::string& error,
+                           const core::ReplayTrace* replay) const {
+    // Do not copy a reference to another attempt's replay. Serialize once
+    // before allocating an ID. Failure to record must not lose a valid score.
+    r.hasReplay = false;
+    std::string replayBytes;
+    if (replay && replay->judgementVersion == r.judgementVersion &&
+        !replay->events.empty()) {
+        try { core::EncodeReplay(*replay, replayBytes); }
+        catch (...) { replayBytes.clear(); }
+    }
     if (r.completedAtMs == 0) r.completedAtMs = ClockMs();
     r.accuracyPercent = r.grades.AccuracyPercent();
     if (r.id.empty()) r.id = std::to_string(r.completedAtMs);
@@ -225,19 +237,98 @@ bool RunResultsStore::Save(RunResult& r, std::string& error) const {
             return false;
         }
         const fs::path dest = dir / (fileId + ".json");
+        const fs::path replayPath = dir / (fileId + ".locus-replay");
+        if (!replayBytes.empty()) {
+            // Exclusive sidecar claim before summary publication.
+            const auto replayStatus = AtomicCreateTextFile(
+                replayPath, replayBytes, error);
+            if (replayStatus == AtomicTextWriteStatus::AlreadyExists) continue;
+            candidate.hasReplay = replayStatus == AtomicTextWriteStatus::Published;
+        }
         // No exists()/ofstream gap: the CREATE_NEW/link publication is
         // exclusive even if two processes picked the same timestamp and ID.
         // Abandoned legacy .pending files must not block new attempts.
         const auto status = AtomicCreateTextFile(
             dest, Encode(candidate).dump(2), error);
-        if (status == AtomicTextWriteStatus::AlreadyExists) continue;
-        if (status != AtomicTextWriteStatus::Published) return false;
+        if (status != AtomicTextWriteStatus::Published) {
+            if (candidate.hasReplay) {
+                std::error_code cleanup;
+                fs::remove(replayPath, cleanup); // only our exclusive claim
+            }
+            if (status == AtomicTextWriteStatus::AlreadyExists) continue;
+            return false;
+        }
         r.id = candidate.id;
+        r.hasReplay = candidate.hasReplay;
         error.clear();
         return true;
     }
     error = "Could not allocate a unique result filename.";
     return false;
+}
+
+bool RunResultsStore::LoadReplay(const RunResult& run, core::ReplayTrace& replay,
+                                 std::string& error) const {
+    error.clear();
+    if (!run.hasReplay || !ValidRunResult(run)) {
+        error = "No replay for this attempt.";
+        return false;
+    }
+    const fs::path path = Directory({run.songSetId,run.difficultyId}) /
+                          (run.id + ".locus-replay");
+    std::error_code ec;
+    if (fs::symlink_status(path,ec).type() != fs::file_type::regular || ec) {
+        error = "Replay is missing or inaccessible.";
+        return false;
+    }
+    const auto size = fs::file_size(path,ec);
+    if (ec || size < core::kReplayHeaderBytes || size > core::kMaxReplayBytes) {
+        error = "Invalid replay file size.";
+        return false;
+    }
+    try {
+        std::ifstream in(path, std::ios::binary);
+        std::string bytes(static_cast<std::size_t>(size),'\0');
+        core::ReplayTrace decoded;
+        if (!in.read(bytes.data(),static_cast<std::streamsize>(bytes.size())) ||
+            in.peek() != std::char_traits<char>::eof() ||
+            !core::DecodeReplay(bytes,decoded) ||
+            decoded.judgementVersion != run.judgementVersion) {
+            error = "Invalid or incompatible replay.";
+            return false;
+        }
+        replay = std::move(decoded);
+        return true;
+    } catch (const std::exception&) {
+        error = "Cannot read replay.";
+        return false;
+    }
+}
+
+bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,
+                     const core::Chart& chart,
+                     const std::string& loadedGameplayRevision) {
+    if (!ValidRunResult(run) ||
+        CompareRunRevision(run, loadedGameplayRevision) != RunRevisionState::Current)
+        return false;
+    core::TurnJudge judge(chart);
+    if (!core::RejudgeReplay(replay,judge) || !judge.AllScorableJudged())
+        return false;
+    const auto& a = judge.Counts();
+    const auto& b = run.grades;
+    if (a.perfect != b.perfect || a.good != b.good ||
+        a.bad != b.bad || a.miss != b.miss ||
+        a.Resolved() != run.notesJudged) return false;
+    if (run.statistics) {
+        const auto actual = judge.Statistics();
+        const auto& expected = *run.statistics;
+        if (actual.maxCombo != expected.maxCombo ||
+            actual.timedHits != expected.timedHits ||
+            std::abs(actual.meanErrorMs - expected.meanErrorMs) > 1e-6 ||
+            std::abs(actual.unstableRate - expected.unstableRate) > 1e-6)
+            return false;
+    }
+    return true;
 }
 
 std::vector<RunResult> RunResultsStore::Load(const RunKey& key,

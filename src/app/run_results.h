@@ -12,7 +12,7 @@
 
 namespace locus::app {
 
-// Immutable summary only. No keypress events, movement or replay data.
+// Immutable compact summary. Replay payloads are separate, loaded on demand.
 // Both Song Set and difficulty IDs survive title and filename changes. The
 // gameplay revision marks which recorded attempts used older authored notes.
 struct RunResult {
@@ -33,6 +33,7 @@ struct RunResult {
     bool variablePracticeRate = false;
     // Missing for attempts created before timing telemetry was introduced.
     std::optional<core::RunStatistics> statistics;
+    bool hasReplay = false;
 };
 
 struct RunKey {
@@ -73,7 +74,12 @@ public:
         : root_(std::move(root)) {}
 
     // Creates a new attempt file without overwriting an existing one.
-    bool Save(RunResult& result, std::string& error) const;
+    bool Save(RunResult& result, std::string& error,
+              const core::ReplayTrace* replay = nullptr) const;
+    // The summary is the commit marker. Missing/corrupt sidecars never
+    // invalidate the score history; payloads are read only on demand.
+    bool LoadReplay(const RunResult& run, core::ReplayTrace& replay,
+                    std::string& error) const;
 
     // Most recent first. Malformed files are skipped independently.
     std::vector<RunResult> Load(const RunKey& key,
@@ -102,6 +108,7 @@ struct CompletedRunContext {
     bool variablePracticeRate = false;
     // Missing for attempts created before timing telemetry was introduced.
     std::optional<core::RunStatistics> statistics;
+    const core::ReplayTrace* replay = nullptr; // borrowed during capture
 };
 
 // Returns true only after a durable result is written. On ineligible calls
@@ -113,5 +120,9 @@ bool CaptureCompletedRun(const RunResultsStore& store,
 
 std::string FormatRunTimestamp(std::int64_t unixMs);
 bool ValidRunResult(const RunResult& result) noexcept;
+// The caller supplies the actual loaded chart revision. Never mutates live play.
+bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,
+                     const core::Chart& chart,
+                     const std::string& loadedGameplayRevision);
 
 } // namespace locus::app

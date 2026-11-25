@@ -343,7 +343,50 @@ int main(int argc, char** argv) {
         ok &= Check(parked && !ec && fs::exists(easyFolder),
                     "saved results survive a temporary directory obstruction");
     }
-    // These records are result summaries, not playbacks: no timeline events.
+    // Replay sidecars do not inflate the history model or replace scores.
+    {
+        locus::core::Chart chart;
+        chart.turns = {{2,locus::core::Heading::UpRight,1000},
+                       {4,locus::core::Heading::Left,2000}};
+        locus::core::TurnJudge judge(chart);
+        judge.BeginReplayCapture();
+        judge.PressHeading(locus::core::Heading::Up,1.0);
+        judge.PressHeading(locus::core::Heading::Right,1.05);
+        judge.Advance(2.3);
+        RunResult run = first;
+        run.id.clear();
+        run.songSetId = "replay-set";
+        run.completedAtMs += 90000;
+        run.grades = judge.Counts();
+        run.notesJudged = judge.Counts().Resolved();
+        run.statistics = judge.Statistics();
+        const auto* trace = judge.CompletedReplay();
+        const bool saved = trace && store.Save(run,error,trace);
+        const auto records = store.Load({run.songSetId,run.difficultyId},error);
+        locus::core::ReplayTrace decoded;
+        ok &= Check(saved && records.size() == 1 && records[0].hasReplay &&
+                    store.LoadReplay(records[0],decoded,error) &&
+                    locus::app::VerifyRunReplay(records[0],decoded,chart,kRevision) &&
+                    !locus::app::VerifyRunReplay(records[0],decoded,chart,"old"),
+                    "replay round trip and matching chart revision verification");
+        RunResult collision = run;
+        collision.id = std::to_string(run.completedAtMs);
+        ok &= Check(store.Save(collision,error,trace) &&
+                    collision.id != run.id && collision.hasReplay,
+                    "exclusive replay collision allocates a new attempt ID");
+        fs::path sidecar;
+        for (const auto& item : fs::recursive_directory_iterator(root / "Results")) {
+            if (item.path().filename() == run.id + ".locus-replay") {
+                sidecar = item.path();
+                break;
+            }
+        }
+        if (!sidecar.empty()) std::ofstream(sidecar,std::ios::binary|std::ios::trunc) << "bad";
+        ok &= Check(!sidecar.empty() && !store.LoadReplay(run,decoded,error) &&
+                    store.Load({run.songSetId,run.difficultyId},error).size() == 2,
+                    "corrupt sidecar does not hide either score");
+    }
+    // The JSON history stays small: replay payloads live in sidecars.
     fs::remove_all(root, ec);
     return ok ? 0 : 1;
 }

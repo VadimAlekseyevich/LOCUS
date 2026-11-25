@@ -1079,12 +1079,17 @@ int main(int argc, char** argv) try {
                     playedRunKey, playedSongTitle, chartTitle, judge.Counts(),
                     judge.ScorableCount(), playActions.Transport(now).practiceSpeed,
                     playedGameplayRevision,
-                    gameSession.VariablePracticeRate(), judge.Statistics()
+                    gameSession.VariablePracticeRate(), judge.Statistics(),
+                    judge.CompletedReplay()
                 };
                 locus::app::RunResult record;
                 std::string error;
                 if (locus::app::CaptureCompletedRun(
                         resultsStore, completion, record, error)) {
+                    if (!record.hasReplay) {
+                        libraryUi.notice = "RESULT SAVED / REPLAY NOT AVAILABLE";
+                        std::cerr << libraryUi.notice << '\n';
+                    }
                     displayedResult = record;
                     displayedResultBackgroundPath = playedBackgroundPath;
                     historicalResult = false;

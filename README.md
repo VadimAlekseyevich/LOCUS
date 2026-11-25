@@ -142,6 +142,6 @@ When the service launches, its published Terms of Service and copyright policy s
 - [Engineering acceptance checklist](docs/REFACTORING_PLAN.md)
 - [Chart format](docs/CHART_FORMAT.md)
 - [Song Set storage and recovery](docs/SONG_SETS.md)
-- [Completed Results storage (no replay playback)](docs/RESULTS.md)
+- [Completed Results and scoring replay storage](docs/RESULTS.md)
 
 The Windows CI checks compilation, chart/editor behavior and scoring without a GUI. Physical audio latency and desktop appearance still require real-device testing.
