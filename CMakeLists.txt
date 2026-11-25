@@ -101,6 +101,7 @@ add_executable(locus
     src/app/skin_menu.cpp
     src/app/skin_menu_draw.cpp
     src/app/menu_ui.cpp
+    src/app/library_selection.cpp
     src/app/chart_editor_ui.cpp
     src/app/chart_editor_actions.cpp
     src/app/editor_timeline_actions.cpp
@@ -694,6 +695,7 @@ if(LOCUS_BUILD_TESTS)
         src/app/async_library_refresh.cpp
         src/app/library_file_actions.cpp
         src/app/menu_ui.cpp
+        src/app/library_selection.cpp
         src/app/run_results.cpp
         src/app/home_brand_assets.cpp
         src/app/executable_directory.cpp
@@ -724,6 +726,7 @@ if(LOCUS_BUILD_TESTS)
 
     add_executable(locus_song_library_tests
         tests/song_library_tests.cpp
+        src/app/library_selection.cpp
             ${LOCUS_SONG_LIBRARY_SOURCES}
         src/app/song_archive.cpp
         src/app/chart_file.cpp

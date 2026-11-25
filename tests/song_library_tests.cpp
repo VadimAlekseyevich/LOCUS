@@ -1,4 +1,5 @@
 #include "app/song_library.h"
+#include "app/library_selection.h"
 #include "core/chart_revision.h"
 #include "app/song_set_storage.h"
 #include "app/atomic_move.h"
@@ -20,6 +21,7 @@
 #include <stdexcept>
 #include <iomanip>
 #include <vector>
+#include <array>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -81,6 +83,67 @@ bool HasConsistentCatalogMetadata(const SongLibrary& library) {
     }
     return true;
 }
+// Measure actual browser model calls independently of GPU, RmlUi, input
+// dispatch and disk I/O. The 8193-chart fixture below supplies the catalog;
+// no extra filesystem scan is needed for these timings.
+bool WriteBrowserBenchmark(const SongLibrary& library,const fs::path& output) {
+    using Clock=std::chrono::steady_clock;
+    SongSelectUi ui;
+    std::ofstream csv(output,std::ios::binary);
+    if (!csv) return false;
+    csv<<std::fixed<<std::setprecision(6)
+       <<"scenario,charts,samples,p50_ms,p95_ms,p99_ms,checksum\n";
+    const auto measure=[&](const char* scenario,int samples,auto&& operation) {
+        std::vector<double> times;
+        times.reserve(static_cast<std::size_t>(samples));
+        std::uint64_t checksum=0;
+        for(int i=0;i<samples;++i) {
+            const auto start=Clock::now();
+            const auto result=operation(i);
+            const auto end=Clock::now();
+            checksum+=result;
+            times.push_back(std::chrono::duration<double,std::milli>(end-start).count());
+        }
+        std::sort(times.begin(),times.end());
+        const auto percentile=[&](std::size_t percent) {
+            return times[(times.size()*percent+99)/100-1];
+        };
+        csv<<scenario<<','<<library.ChartCount()<<','<<samples<<','
+           <<percentile(50)<<','<<percentile(95)<<','<<percentile(99)<<','<<checksum<<'\n';
+        return checksum;
+    };
+    ui.SelectSong(1,library);
+    ui.search="Stress";
+    const auto initial=measure("first_search",1,[&](int) {
+        return LibraryTreeRows(library,ui).size();
+    });
+    // Include broad matches, narrow difficulty names, an absent match,
+    // normalized input and clearing the query.
+    const std::array<const char*,8> queries={
+        "Stress","Stress 1","Stress 12","Stress 123","not present",
+        "STRESS 12","stress",""
+    };
+    const auto search=measure("search_edit",128,[&](int i) {
+        ui.search=queries[static_cast<std::size_t>(i)%queries.size()];
+        return LibraryTreeRows(library,ui).size();
+    });
+    ui.search.clear();
+    LibraryTreeRows(library,ui);
+    const auto before=ui.treeCache.generation;
+    const auto select=measure("difficulty_selection",1024,[&](int i) {
+        ui.SelectChart((i*193)%static_cast<int>(library.ChartCount()),library);
+        return static_cast<std::uint64_t>(ui.selectedChart+1);
+    });
+    const bool sameProjection=ui.treeCache.generation==before;
+    const auto expand=measure("set_expansion",128,[&](int i) {
+        ui.SelectSong(i%2,library);
+        return LibraryTreeRows(library,ui).size();
+    });
+    csv.flush();
+    return static_cast<bool>(csv) && initial==library.ChartCount()+1 &&
+        search>0 && select>0 && expand>0 && sameProjection;
+}
+
 // Separate process from correctness tests: peak working set is a lifetime
 // high-water mark. Capture a post-fixture baseline, scan cold/warm, then
 // materialize representative selected charts. No GPU or audio decoder.
@@ -1242,7 +1305,7 @@ int main(int argc,char** argv) {
             scaleSet / "set.locus.json", largeManifest, error);
         if (metadataReady) {
             const std::string prefix =
-                R"({"formatVersion":4,"title":"Stress","difficultyId":")";
+                R"({"formatVersion":4,"title":"Stress )";
             const std::string suffix =
                 R"(","audioPath":"song.wav","bpm":120,"offsetMs":0,)"
                 R"("tempoMap":[{"timeMs":0,"bpm":120}],"grid":{"width":8,)"
@@ -1252,7 +1315,7 @@ int main(int argc,char** argv) {
                 const std::string n = std::to_string(index);
                 const std::string id(32 - n.size(), '0');
                 Write(scaleSet / ("stress-" + n + ".locus.json"),
-                      prefix + id + n + suffix);
+                      prefix + n + R"(","difficultyId":")" + id + n + suffix);
             }
             SongLibrary largeLibrary(scaleRoot);
             std::string summary;
@@ -1319,6 +1382,9 @@ int main(int argc,char** argv) {
             ok &= Check(complete && reused,
                         "8193 nonempty charts index compactly with zero warm parses");
             if (reused) {
+                if (const char* report=std::getenv("LOCUS_BROWSER_BENCHMARK_OUTPUT"))
+                    ok &= Check(WriteBrowserBenchmark(largeLibrary,fs::u8path(report)),
+                                "browser model percentile CSV and selection invariants");
                 const auto& chosen=largeLibrary.Songs()[0].charts.back();
                 locus::core::LoadedChart loaded;
                 ok &= Check(chosen.CopyPayload(loaded,error) &&
