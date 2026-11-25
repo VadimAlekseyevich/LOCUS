@@ -249,6 +249,8 @@ int main() {
         clickDifficulty.mouseClick = true;
         clickDifficulty.mouse = {700.0f, 308.0f}; // Hard difficulty row
         managedSet.HandleControls(clickDifficulty);
+        ok &= Check(!managedSet.HasPending() && editor.Dirty(), "first click selects without dirty guard");
+        managedSet.HandleControls(clickDifficulty);
         ok &= Check(managedSet.HasPending() && editor.Dirty() &&
                     activePath == installedEasy.wstring(),
                     "SET opens a standalone difficulty only after dirty-draft confirmation");

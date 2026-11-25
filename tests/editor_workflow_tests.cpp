@@ -201,12 +201,18 @@ int main() {
     editorUi.tab = app::EditorTab::Set;
     editorUi.comparisonFiles.push_back(installedHard);
     ok &= Check(sets.FocusDifficulty(indexFor(installedHard)) &&
+                !sets.HasPending() && chartPath == installedEasy.wstring() &&
+                editorUi.tab == app::EditorTab::Set,
+                "first click selects Hard without opening or changing comparison");
+    ok &= Check(sets.FocusDifficulty(indexFor(installedHard)) &&
                 !sets.HasPending() && chartPath == installedHard.wstring() &&
                 editorUi.tab == app::EditorTab::Route &&
                 editorUi.comparisonFiles.empty() && !files.ParkedEditor(installedEasy),
                 "Song Setup > Hard opens standalone, not a comparison pane");
     editorUi.tab = app::EditorTab::Set;
     ok &= Check(sets.FocusDifficulty(indexFor(installedEasy)) &&
+                editorUi.tab == app::EditorTab::Set &&
+                sets.EnterChart(now) &&
                 chartPath == installedEasy.wstring() &&
                 editorUi.comparisonFiles.empty() &&
                 editorUi.tab == app::EditorTab::Route,
@@ -600,9 +606,8 @@ int main() {
                 editor.Data().difficultyId == playedDifficultyId,
                 "Open played difficulty before rename");
     editorUi.tab = app::EditorTab::Set;
-    sets.RenameDifficulty(indexFor(installedHard));
-    ok &= Check(editorUi.active == app::EditorField::Title &&
-                editorUi.tab == app::EditorTab::Set && !sets.HasPending() &&
+    sets.FocusDifficulty(indexFor(installedHard));
+    ok &= Check(editorUi.tab == app::EditorTab::Set && !sets.HasPending() &&
                 sets.CommitDifficultyTitle("Hard Renamed", now),
                 "Song Setup > Rename saves installed clean difficulty after completed PLAY");
     editorUi.active = app::EditorField::None;

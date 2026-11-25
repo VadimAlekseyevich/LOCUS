@@ -52,8 +52,14 @@ struct EditorControls {
     // Typed Set editor operations. No synthetic raylib click coordinates.
     std::optional<EditorSetAction> setRequest;
     int selectedDifficulty = -1;
-    int renameDifficulty = -1;
+    std::string selectedDifficultyId;
+    bool selectDraft = false;
     bool enterChart = false;
+    bool attachAudio = false;
+    std::optional<std::string> previewMsValue;
+    int tempoRow = -1;
+    bool tempoBpm = false, tempoAdd = false, tempoRemove = false;
+    std::optional<std::string> tempoValue;
     std::optional<std::string> difficultyTitle;
     std::optional<EditorSetField> metadataField;
     std::string metadataValue;
@@ -71,7 +77,7 @@ enum class EditorTab { Route, Audio, Field, Set };
 enum class EditorSetAction {
     None, Open, NewDifficulty, Duplicate, Import, Export,
     DeleteDifficulty, DeleteSongSet, Restore,
-    AttachBackground, RemoveBackground, SetPreviewExact, OpenFolder, RenameDifficulty
+    AttachBackground, RemoveBackground, SetPreviewExact, OpenFolder
 };
 struct EditorComparisonOption {
     std::filesystem::path file;
@@ -95,6 +101,7 @@ struct EditorSetView {
     std::string title, artist, mapper, audioName, id;
     std::vector<std::string> tags; // Set-wide metadata.
     std::vector<std::string> difficulties;
+    std::vector<std::string> difficultyIds;
     std::vector<EditorComparisonOption> comparisonOptions;
     int current = -1, selected = -1, firstVisible = 0;
 };
@@ -126,7 +133,9 @@ struct EditorUiState {
     bool HasRange() const noexcept {
         return rangeFirst >= 0 && rangeLast >= rangeFirst;
     }
-    int setSelected = -1; // -1 follows the currently open difficulty.
+    int setSelected = -1; // fallback selection for older callers
+    std::string setSelectedId; // explicit selection, independent of open document
+    bool setupDraftSelected = false;
     int setFirstVisible = 0;
     int tempoEditingRow = -1;
     bool tempoEditingBpm = false;

@@ -131,7 +131,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     if (ui.tab == EditorTab::Set) {
         ui.draggingTimeline = false;
         if (input.mouseClick) {
-            if (Hit(kSong, input.mouse)) action.chooseAudio = true;
+            if (!input.nativeChrome && Hit(kSong, input.mouse)) action.chooseAudio = true;
             else if (!input.nativeChrome && Hit(kTitle, input.mouse))
                 editor_text::BeginField(ui, draft, EditorField::Title);
         }

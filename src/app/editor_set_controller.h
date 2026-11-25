@@ -57,7 +57,8 @@ public:
     bool CommitMetadata(EditorSetField field, const std::string& value,
                         const std::string& expectedSetId);
     bool FocusDifficulty(int index);
-    void RenameDifficulty(int index);
+    bool SelectDifficultyId(const std::string& id);
+    void ClickDraft(double& now);
     bool EnterChart(double& now);
     bool CommitDifficultyTitle(const std::string& value, double& now);
     // Persist a chart's tempo edit; if publication fails, reverse only the

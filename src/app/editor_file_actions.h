@@ -50,6 +50,8 @@ public:
     void Open(double& now, std::string& error);
     void AttachAudio(double& now);
     bool Save(bool saveAs, double& now);
+    bool RenameInactiveDifficulty(const std::filesystem::path& file,
+                                  const std::string& title, std::string& error);
 
     // Same-song comparison panes can become editable without losing the
     // active draft. Every visited difficulty owns an independent Undo stack.

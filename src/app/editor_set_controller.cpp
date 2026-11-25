@@ -106,6 +106,7 @@ EditorSetView EditorSetController::View() const {
     const fs::path folder = ctx_.files.ActiveSetFolder();
     const LibrarySong* set = FindSet(ctx_.library, folder);
     view.hasAudio = ctx_.editor.HasSongDuration();
+    view.newDifficultyDraft = ctx_.chartPath.empty();
     if (!set) return view;
 
     view.managed = true;
@@ -123,7 +124,11 @@ EditorSetView EditorSetController::View() const {
     view.hasBackground = !set->backgroundImage.empty();
     view.backgroundPath = set->backgroundImage;
     for (std::size_t i = 0; i < set->charts.size(); ++i) {
-        view.difficulties.push_back(set->charts[i].metadata.title);
+        const auto& entry = set->charts[i];
+        const auto* parked = ctx_.files.ParkedEditor(entry.file);
+        view.difficulties.push_back(entry.file == fs::path(ctx_.chartPath)
+            ? ctx_.editor.Data().title : parked ? parked->Data().title : entry.metadata.title);
+        view.difficultyIds.push_back(entry.metadata.difficultyId);
         view.comparisonOptions.push_back({
             set->charts[i].file, set->charts[i].metadata.title,
             set->charts[i].data.get(), set->charts[i].indexedFileSize,
@@ -134,13 +139,19 @@ EditorSetView EditorSetController::View() const {
     }
     const int count = static_cast<int>(view.difficulties.size());
     if (count == 0) return view;
-    view.selected = ctx_.ui.setSelected < 0
-        ? std::max(0, view.current)
-        : std::clamp(ctx_.ui.setSelected, 0, count - 1);
+    if (!ctx_.ui.setSelectedId.empty()) {
+        const auto at = std::find(view.difficultyIds.begin(), view.difficultyIds.end(),
+                                  ctx_.ui.setSelectedId);
+        if (at != view.difficultyIds.end())
+            view.selected = static_cast<int>(at - view.difficultyIds.begin());
+    }
+    if (view.selected < 0 && !view.newDifficultyDraft)
+        view.selected = ctx_.ui.setSelected < 0 ? std::max(0, view.current)
+            : std::clamp(ctx_.ui.setSelected, 0, count - 1);
     view.firstVisible = std::clamp(ctx_.ui.setFirstVisible, 0,
                                    std::max(0, count - 5));
     if (ctx_.ui.setSelected < 0) {
-        if (view.selected < view.firstVisible)
+        if (view.selected >= 0 && view.selected < view.firstVisible)
             view.firstVisible = view.selected;
         if (view.selected >= view.firstVisible + 5)
             view.firstVisible = view.selected - 4;
@@ -293,21 +304,45 @@ bool EditorSetController::FocusDifficulty(int index) {
     if (index < 0 || index >= static_cast<int>(view.difficulties.size()) ||
         index >= static_cast<int>(view.comparisonOptions.size()))
         return false;
+    const auto& id = view.difficultyIds[static_cast<std::size_t>(index)];
+    const bool activate = ctx_.ui.setSelectedId == id;
+    ctx_.ui.setSelectedId = id;
     ctx_.ui.setSelected = index;
-    Request(EditorSetAction::Open);
+    ctx_.ui.setupDraftSelected = false;
+    if (activate) Request(EditorSetAction::Open);
     return true;
 }
 
-void EditorSetController::RenameDifficulty(int index) {
+void EditorSetController::ClickDraft(double& now) {
+    if (!ctx_.chartPath.empty()) return;
+    const bool activate = ctx_.ui.setupDraftSelected;
+    ctx_.ui.setSelectedId.clear();
+    ctx_.ui.setSelected = -1;
+    ctx_.ui.setupDraftSelected = true;
+    if (activate) EnterChart(now);
+}
+
+bool EditorSetController::SelectDifficultyId(const std::string& id) {
     const auto view = View();
-    if (index < 0 || index >= static_cast<int>(view.difficulties.size())) return;
-    ctx_.ui.setSelected = index;
-    Request(EditorSetAction::RenameDifficulty);
+    const auto it = std::find(view.difficultyIds.begin(), view.difficultyIds.end(), id);
+    return it != view.difficultyIds.end() &&
+        FocusDifficulty(static_cast<int>(it - view.difficultyIds.begin()));
 }
 
 bool EditorSetController::CommitDifficultyTitle(const std::string& value, double& now) {
+    const auto view = View();
+    if (view.selected >= 0 && view.selected != view.current) {
+        const auto file = view.comparisonOptions[static_cast<std::size_t>(view.selected)].file;
+        std::string error;
+        if (!ctx_.files.RenameInactiveDifficulty(file, value, error)) {
+            Notice(error, true);
+            return false;
+        }
+        Notice("DIFFICULTY NAME UPDATED");
+        return true;
+    }
     if (value == ctx_.editor.Data().title) return true;
-    const bool persist = View().current >= 0 && !ctx_.files.AnyDirty();
+    const bool persist = view.current >= 0 && !ctx_.editor.Dirty();
     if (!ctx_.editor.SetTitle(value)) {
         Notice("INVALID DIFFICULTY NAME", true);
         return false;
@@ -321,6 +356,11 @@ bool EditorSetController::CommitDifficultyTitle(const std::string& value, double
 }
 
 bool EditorSetController::EnterChart(double& now) {
+    const auto view = View();
+    if (view.selected >= 0) {
+        Request(EditorSetAction::Open);
+        return !HasPending() && ctx_.ui.tab == EditorTab::Route;
+    }
     if (!ctx_.editor.HasSongDuration()) {
         Notice("ATTACH AUDIO FIRST", true);
         return false;
@@ -330,8 +370,7 @@ bool EditorSetController::EnterChart(double& now) {
             Notice("CANNOT CREATE SONG SET - CHECK AUDIO AND TRY AGAIN", true);
             return false;
         }
-        Notice("SONG SET CREATED - EDIT DETAILS, THEN OPEN CHART EDITOR");
-        return true;
+        Notice("SONG SET CREATED");
     }
     ctx_.ui.tab = EditorTab::Route;
     ctx_.ui.comparisonPickerOpen = false;
@@ -447,6 +486,18 @@ void EditorSetController::HandleControls(const EditorControls& input) {
             return;
         }
     }
+    if (input.previewMsValue) {
+        int parsed = 0;
+        if (!ParseSongPreviewMs(*input.previewMsValue, parsed)) {
+            Notice("PREVIEW MUST BE WHOLE MS (0..3600000)", true);
+            return;
+        }
+        EditorSetRequest request;
+        request.action = EditorSetAction::SetPreviewExact;
+        request.folder = ctx_.files.ActiveSetFolder();
+        request.previewMs = parsed;
+        Execute(request);
+    }
     if ((ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio) && !ui.editingSetPreview) {
         const EditorSetView view = View();
         const auto tempo = view.managed && !view.tempoMap.empty()
@@ -456,7 +507,13 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         if (HandleTempoTable(ui, input, tempo, ctx_.editor,
                              [&](const std::vector<core::TempoMarker>& markers) {
                                  return ApplyTempoMap(markers);
-                             })) return;
+                             })) {
+            if (input.tempoValue) {
+                ui.tempoEditingRow = -1;
+                ui.tempoBuffer.clear();
+            }
+            return;
+        }
     }
     if (ui.editingSetPreview) {
         if (input.escape) {
@@ -501,7 +558,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
     }
     // Only a manually typed preview position is editable in AUDIO.
     if (ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio) {
-        if (clicked && ui.active == EditorField::None &&
+        if (!input.nativeChrome && clicked && ui.active == EditorField::None &&
             CheckCollisionPointRec(mouse, detail::kAudioPreviewMs)) {
             const EditorSetView view = View();
             if (!view.managed) {
@@ -522,7 +579,6 @@ void EditorSetController::HandleControls(const EditorControls& input) {
     const int count = static_cast<int>(view.difficulties.size());
     const float wheel = input.mouseWheel;
     if (wheel != 0.0f && count > 0 && detail::Hit(detail::kSetupDifficultyPanel, mouse)) {
-        ctx_.ui.setSelected = view.selected; // Browsing need not follow active.
         const int delta = wheel > 0.0f ? -1 : 1;
         ctx_.ui.setFirstVisible = std::clamp(
             view.firstVisible + delta, 0, std::max(0, count - 5));
@@ -531,10 +587,6 @@ void EditorSetController::HandleControls(const EditorControls& input) {
     for (int row = 0; row < 5; ++row) {
         const int index = view.firstVisible + row;
         if (index >= count) break;
-        if (CheckCollisionPointRec(mouse, detail::SetDifficultyRenameRow(row))) {
-            RenameDifficulty(index);
-            return;
-        }
         if (CheckCollisionPointRec(mouse, detail::SetDifficultyRow(row))) {
             FocusDifficulty(index);
             return;
@@ -558,7 +610,6 @@ void EditorSetController::Request(EditorSetAction action) {
         return;
     }
     if (song && (action == EditorSetAction::Open ||
-                 action == EditorSetAction::RenameDifficulty ||
                  action == EditorSetAction::Duplicate ||
                  action == EditorSetAction::DeleteDifficulty)) {
         const EditorSetView view = View();
@@ -577,8 +628,7 @@ void EditorSetController::Request(EditorSetAction action) {
     const bool deletesUnsaved = action == EditorSetAction::DeleteDifficulty &&
         ((affectsCurrent && ctx_.editor.Dirty()) ||
          (parked && parked->Dirty()));
-    const bool switching = (action == EditorSetAction::Open ||
-                            action == EditorSetAction::RenameDifficulty) &&
+    const bool switching = action == EditorSetAction::Open &&
         request.chart != fs::path(ctx_.chartPath);
     request.discardsDraft = deletesUnsaved ||
         (ctx_.files.AnyDirty() &&
@@ -660,22 +710,15 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
             Notice("SONG BACKGROUND SAVED (ALL DIFFICULTIES)");
             return true;
         }
-        case EditorSetAction::Open:
-        case EditorSetAction::RenameDifficulty: {
+        case EditorSetAction::Open: {
             if (request.chart != fs::path(ctx_.chartPath) &&
                 !ctx_.files.OpenFromLibrary(request.chart.wstring(), error)) break;
             ctx_.ui.setSelected = -1;
             ctx_.ui.comparisonPickerOpen = false;
-            if (request.action == EditorSetAction::RenameDifficulty) {
-                ctx_.ui.tab = EditorTab::Set;
-                ctx_.ui.active = EditorField::Title;
-                ctx_.ui.buffer = ctx_.editor.Data().title;
-                ctx_.ui.replaceOnType = true;
-                Notice("RENAME DIFFICULTY - ENTER TO APPLY");
-            } else {
-                ctx_.ui.tab = EditorTab::Route;
-                Notice("DIFFICULTY OPENED - CTRL+S SAVES THIS CHART");
-            }
+            ctx_.ui.setSelectedId.clear();
+            ctx_.ui.setupDraftSelected = false;
+            ctx_.ui.tab = EditorTab::Route;
+            Notice("DIFFICULTY OPENED - CTRL+S SAVES THIS CHART");
             return true;
         }
         case EditorSetAction::NewDifficulty: {

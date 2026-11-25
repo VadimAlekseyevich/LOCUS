@@ -67,18 +67,28 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
         }
         return false;
     }
-    if (input.editor.renameDifficulty >= 0) {
-        context_.sets.RenameDifficulty(input.editor.renameDifficulty);
+    if (input.editor.attachAudio) {
+        context_.files.AttachAudio(now);
+        return false;
+    }
+    if (input.editor.selectDraft ||
+        (context_.ui.tab == EditorTab::Set && !input.editor.nativeChrome &&
+         input.editor.mouseClick && context_.sets.View().newDifficultyDraft &&
+         detail::Hit(detail::kSetupEnter, input.editor.mouse))) {
+        context_.sets.ClickDraft(now);
         return false;
     }
     if (input.editor.enterChart ||
-        (context_.ui.tab == EditorTab::Set && !input.editor.nativeChrome &&
-         input.editor.mouseClick && detail::Hit(detail::kSetupEnter, input.editor.mouse))) {
+        (context_.ui.tab == EditorTab::Set && input.editor.enter && !context_.ui.EditingText())) {
         context_.sets.EnterChart(now);
         return false;
     }
     // RmlUi SET commands are typed events and take precedence over the
     // legacy pointer path. They are validated by the same domain controller.
+    if (!input.editor.selectedDifficultyId.empty()) {
+        context_.sets.SelectDifficultyId(input.editor.selectedDifficultyId);
+        return false;
+    }
     if (input.editor.selectedDifficulty >= 0) {
         context_.sets.FocusDifficulty(input.editor.selectedDifficulty);
         return false;
@@ -129,8 +139,7 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
         for (int row = 0; row < 5; ++row) {
             const int index = set.firstVisible + row;
             if (index >= static_cast<int>(set.difficulties.size())) break;
-            if (detail::Hit(detail::SetDifficultyRow(row),input.editor.mouse) ||
-                detail::Hit(detail::SetDifficultyRenameRow(row),input.editor.mouse)) {
+            if (detail::Hit(detail::SetDifficultyRow(row),input.editor.mouse)) {
                 context_.sets.HandleControls(input.editor);
                 return false;
             }

@@ -28,6 +28,11 @@ bool HandleTempoTable(EditorUiState& ui, const EditorControls& input,
     const int count = static_cast<int>(current.size());
     ui.tempoFirstVisible = std::clamp(ui.tempoFirstVisible, 0,
                                       std::max(0, count - 5));
+    if (input.tempoValue) {
+        ui.tempoEditingRow = input.tempoRow;
+        ui.tempoEditingBpm = input.tempoBpm;
+        ui.tempoBuffer = *input.tempoValue;
+    }
     if (ui.tempoEditingRow >= 0) {
         if (input.escape) {
             ui.tempoEditingRow = -1;
@@ -49,7 +54,7 @@ bool HandleTempoTable(EditorUiState& ui, const EditorControls& input,
             if (ui.tempoBuffer.size() < 32)
                 ui.tempoBuffer.push_back(static_cast<char>(ch));
         }
-        if (input.enter || input.tab || input.mouseClick) {
+        if (input.tempoValue || input.enter || input.tab || input.mouseClick) {
             auto next = current;
             if (ui.tempoEditingRow >= count) {
                 error("TEMPO ROW NO LONGER EXISTS");
@@ -106,16 +111,24 @@ bool HandleTempoTable(EditorUiState& ui, const EditorControls& input,
         }
         return true;
     }
-    if (input.mouseWheel != 0.0f &&
+    if (!input.nativeChrome && input.mouseWheel != 0.0f &&
         detail::Hit(detail::kTempoTable, input.mouse)) {
         ui.tempoFirstVisible = std::clamp(ui.tempoFirstVisible +
             (input.mouseWheel > 0.0f ? -1 : 1),
             0, std::max(0, count - 5));
         return true;
     }
-    if (!input.mouseClick) return false;
+    if (input.tempoRemove) {
+        if (input.tempoRow > 0 && input.tempoRow < count) {
+            auto next = current;
+            next.erase(next.begin() + input.tempoRow);
+            apply(next);
+        }
+        return true;
+    }
+    if (!input.tempoAdd && (!input.mouseClick || input.nativeChrome)) return false;
     const Vector2 mouse = input.mouse;
-    if (detail::Hit(detail::kTempoAdd, mouse)) {
+    if (input.tempoAdd || detail::Hit(detail::kTempoAdd, mouse)) {
         if (count >= 256 || !draft.HasSongDuration()) {
             error("LOAD AUDIO BEFORE ADDING BPM MARKERS");
             return true;

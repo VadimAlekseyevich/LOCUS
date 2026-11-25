@@ -384,6 +384,55 @@ bool EditorFileActions::Save(bool saveAs, double& now) {
 }
 
 
+bool EditorFileActions::RenameInactiveDifficulty(const std::filesystem::path& file,
+                                                   const std::string& title, std::string& error) {
+    namespace fs = std::filesystem;
+    int s = -1, c = -1;
+    if (file == fs::path(context_.chartPath) ||
+        !context_.library.FindChart(file, s, c) ||
+        file.parent_path() != ActiveSetFolder()) {
+        error = "Selected difficulty no longer belongs to this Song Set.";
+        return false;
+    }
+    auto parked = parked_.find(file);
+    if (parked != parked_.end() && parked->second.editor.Dirty()) {
+        auto& draft = parked->second.editor;
+        if (draft.Data().title == title || draft.SetTitle(title)) return true;
+        error = "Invalid difficulty name.";
+        return false;
+    }
+    // Rename metadata directly without opening or saving the unrelated
+    // active document. The file path remains stable for inactive charts.
+    context_.library.MarkDiskMutation();
+    FolderWriteLock libraryLock, setLock;
+    if (!libraryLock.Acquire(context_.library.Root(), error) ||
+        !setLock.Acquire(file.parent_path(), error)) return false;
+    core::LoadedChart stored;
+    std::wstring audio;
+    if (!OpenChartWithAudioPath(file.wstring(), stored, audio, error)) return false;
+    if (stored.difficultyId != context_.library.Songs()[static_cast<std::size_t>(s)]
+            .charts[static_cast<std::size_t>(c)].metadata.difficultyId) {
+        error = "Difficulty identity changed on disk.";
+        return false;
+    }
+    if (stored.title == title) return true;
+    core::ChartEditor validation;
+    validation.Load(stored);
+    if (!validation.SetTitle(title)) {
+        error = "Invalid difficulty name.";
+        return false;
+    }
+    stored.title = validation.Data().title;
+    if (!SaveChartWithAudioPath(file.wstring(), audio, stored, error, true)) return false;
+    if (parked != parked_.end()) parked_.erase(parked);
+    std::string notice;
+    if (!context_.library.Refresh(notice)) {
+        error = "Name saved on disk; refresh library: " + notice;
+        return false;
+    }
+    return true;
+}
+
 bool EditorFileActions::RestoreWorkspaceAudio(std::string& error) {
     if (context_.audioPath.empty()) {
         error = "Editor has no associated song audio.";

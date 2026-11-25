@@ -273,10 +273,7 @@ constexpr Rectangle kSetDuplicate{796, 229, 130, 28};
 constexpr Rectangle kSetDeleteDifficulty{658, 431, 130, 30};
 constexpr Rectangle kSetDeleteSong{796, 431, 130, 30};
 constexpr Rectangle SetDifficultyRow(int row) noexcept {
-    return {658.0f, 264.0f + row * 32.0f, 207.0f, 29.0f};
-}
-constexpr Rectangle SetDifficultyRenameRow(int row) noexcept {
-    return {871.0f, 264.0f + row * 32.0f, 55.0f, 29.0f};
+    return {658.0f, 264.0f + row * 32.0f, 268.0f, 29.0f};
 }
 inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
     if (CheckCollisionPointRec(p, kSetOpenFolder)) return EditorSetAction::OpenFolder;
