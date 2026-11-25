@@ -57,6 +57,9 @@ public:
     bool CommitMetadata(EditorSetField field, const std::string& value,
                         const std::string& expectedSetId);
     bool FocusDifficulty(int index);
+    void RenameDifficulty(int index);
+    bool EnterChart(double& now);
+    bool CommitDifficultyTitle(const std::string& value, double& now);
     // Persist a chart's tempo edit; if publication fails, reverse only the
     // operation that caused it (Undo must be reversed by Redo, not Undo).
     bool SyncSongTiming(EditorHistoryOperation operation =

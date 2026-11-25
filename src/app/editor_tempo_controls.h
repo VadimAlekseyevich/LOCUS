@@ -19,7 +19,7 @@ template<class Apply>
 bool HandleTempoTable(EditorUiState& ui, const EditorControls& input,
                       const std::vector<core::TempoMarker>& current,
                       const core::ChartEditor& draft, Apply&& apply) {
-    if (ui.tab != EditorTab::Audio || ui.active != EditorField::None ||
+    if ((ui.tab != EditorTab::Audio && ui.tab != EditorTab::Set) || ui.active != EditorField::None ||
         ui.editingSetPreview) return false;
     const auto error = [&](const char* message) {
         ui.feedback = message;

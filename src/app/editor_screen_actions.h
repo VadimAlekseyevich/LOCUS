@@ -44,6 +44,7 @@ public:
     explicit EditorScreenActions(EditorScreenContext context) noexcept
         : context_(context) {}
     bool Apply(const FrameInput& input, double& now);
+    void BlurTextOnPointer(Vector2 mouse, double& now);
 
 private:
     EditorScreenContext context_;

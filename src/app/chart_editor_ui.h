@@ -52,6 +52,9 @@ struct EditorControls {
     // Typed Set editor operations. No synthetic raylib click coordinates.
     std::optional<EditorSetAction> setRequest;
     int selectedDifficulty = -1;
+    int renameDifficulty = -1;
+    bool enterChart = false;
+    std::optional<std::string> difficultyTitle;
     std::optional<EditorSetField> metadataField;
     std::string metadataValue;
     std::string metadataSetId;
@@ -68,7 +71,7 @@ enum class EditorTab { Route, Audio, Field, Set };
 enum class EditorSetAction {
     None, Open, NewDifficulty, Duplicate, Import, Export,
     DeleteDifficulty, DeleteSongSet, Restore,
-    AttachBackground, RemoveBackground, SetPreviewExact, OpenFolder
+    AttachBackground, RemoveBackground, SetPreviewExact, OpenFolder, RenameDifficulty
 };
 struct EditorComparisonOption {
     std::filesystem::path file;
@@ -81,6 +84,7 @@ struct EditorComparisonOption {
 struct EditorSetView {
     bool managed = false;
     bool newDifficultyDraft = false;
+    bool hasAudio = false;
     bool hasBackground = false;
     std::filesystem::path backgroundPath;
     int previewStartMs = 0;

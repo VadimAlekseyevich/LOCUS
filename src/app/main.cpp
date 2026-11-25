@@ -590,6 +590,15 @@ int main(int argc, char** argv) try {
         
             persistSettings();
         }
+        if (state.screen == Screen::Editor && !wasQuitConfirmation &&
+            !editorSet.HasPending() && editorFiles.PendingClose().empty() &&
+            editorDiscard.Pending() == locus::app::EditorPending::None &&
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && editorUi.EditingText()) {
+            double blurNow = MonotonicSeconds();
+            editorActions.BlurTextOnPointer(
+                locus::app::EditorVirtualMouse(GetMousePosition(), GetScreenWidth(),
+                                               GetScreenHeight()), blurNow);
+        }
         // Comparison popup owns ALL actions until it closes. Global
         // file/Back shortcuts are decoded before EditorSetController sees
         // the click, so suppress them here too. Otherwise clicking outside
@@ -621,6 +630,16 @@ int main(int argc, char** argv) try {
             input.editorSaveAs = false;
             input.chooseMusicPressed = false;
             input.editorTest = false;
+        }
+        if (state.screen == Screen::Editor && input.backPressed &&
+            editorUi.tab == locus::app::EditorTab::Route &&
+            !editorUi.EditingText() && !editorSet.HasPending() &&
+            editorFiles.PendingClose().empty() &&
+            editorDiscard.Pending() == locus::app::EditorPending::None) {
+            editorUi.tab = locus::app::EditorTab::Set;
+            editorUi.comparisonPickerOpen = false;
+            editorUi.rateDropdownOpen = false;
+            input = FrameInput{};
         }
         const bool editorModalClick = state.screen == Screen::Editor &&
             IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
@@ -868,7 +887,7 @@ int main(int argc, char** argv) try {
                 libraryFileActions.Apply(menuEvents, false, now);
             loadedNewChart = locus::app::LaunchLibrarySelection(
                 libraryLaunch, menuEvents, now);
-            if (menuEvents.openSet && state.screen == Screen::Editor)
+            if (state.screen == Screen::Editor)
                 editorUi.tab = locus::app::EditorTab::Set;
         }
 
@@ -976,6 +995,7 @@ int main(int argc, char** argv) try {
                         editorStatus = "EDIT FAILED: " + error;
                         editorFiles.NewDraft();
                     }
+                    editorUi.tab = locus::app::EditorTab::Set;
                 }
             }
         } else if (state.screen == Screen::Play) {

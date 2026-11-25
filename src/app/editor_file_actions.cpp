@@ -46,7 +46,8 @@ void EditorFileActions::NewDraft() {
     context_.chartPath.clear();
     context_.audioPath.clear();
     context_.previewStartBeat = 0;
-    context_.status = "NEW CHART - CLICK LOAD SONG";
+    context_.ui.tab = EditorTab::Set;
+    context_.status = "SONG SETUP - ATTACH AUDIO TO BEGIN";
 }
 
 bool EditorFileActions::OpenFromLibrary(const std::wstring& chartFile,

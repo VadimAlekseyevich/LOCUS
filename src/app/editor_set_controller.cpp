@@ -105,6 +105,7 @@ EditorSetView EditorSetController::View() const {
     EditorSetView view;
     const fs::path folder = ctx_.files.ActiveSetFolder();
     const LibrarySong* set = FindSet(ctx_.library, folder);
+    view.hasAudio = ctx_.editor.HasSongDuration();
     if (!set) return view;
 
     view.managed = true;
@@ -297,6 +298,47 @@ bool EditorSetController::FocusDifficulty(int index) {
     return true;
 }
 
+void EditorSetController::RenameDifficulty(int index) {
+    const auto view = View();
+    if (index < 0 || index >= static_cast<int>(view.difficulties.size())) return;
+    ctx_.ui.setSelected = index;
+    Request(EditorSetAction::RenameDifficulty);
+}
+
+bool EditorSetController::CommitDifficultyTitle(const std::string& value, double& now) {
+    if (value == ctx_.editor.Data().title) return true;
+    const bool persist = View().current >= 0 && !ctx_.files.AnyDirty();
+    if (!ctx_.editor.SetTitle(value)) {
+        Notice("INVALID DIFFICULTY NAME", true);
+        return false;
+    }
+    if (persist && !ctx_.files.Save(false, now)) {
+        Notice("RENAME NOT SAVED - RETRY CTRL+S", true);
+        return false;
+    }
+    Notice(persist ? "DIFFICULTY RENAMED" : "DIFFICULTY NAME CHANGED - CTRL+S TO SAVE");
+    return true;
+}
+
+bool EditorSetController::EnterChart(double& now) {
+    if (!ctx_.editor.HasSongDuration()) {
+        Notice("ATTACH AUDIO FIRST", true);
+        return false;
+    }
+    if (ctx_.files.ActiveSetFolder().empty() && ctx_.chartPath.empty()) {
+        if (!ctx_.files.Save(false, now)) {
+            Notice("CANNOT CREATE SONG SET - CHECK AUDIO AND TRY AGAIN", true);
+            return false;
+        }
+        Notice("SONG SET CREATED - EDIT DETAILS, THEN OPEN CHART EDITOR");
+        return true;
+    }
+    ctx_.ui.tab = EditorTab::Route;
+    ctx_.ui.comparisonPickerOpen = false;
+    ctx_.ui.rateDropdownOpen = false;
+    return true;
+}
+
 void EditorSetController::HandleControls(const EditorControls& input) {
     if (pending_) return;
     auto& ui = ctx_.ui;
@@ -348,7 +390,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         return;
     }
     if (ui.tab != EditorTab::Set && ui.tab != EditorTab::Audio) return;
-    if (ui.tab == EditorTab::Set) {
+    if (ui.tab == EditorTab::Set && !input.nativeChrome) {
         const EditorSetField hovered = clicked
             ? detail::ClickedSetMetadataField(mouse)
             : EditorSetField::None;
@@ -405,7 +447,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
             return;
         }
     }
-    if (ui.tab == EditorTab::Audio && !ui.editingSetPreview) {
+    if ((ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio) && !ui.editingSetPreview) {
         const EditorSetView view = View();
         const auto tempo = view.managed && !view.tempoMap.empty()
             ? view.tempoMap
@@ -458,7 +500,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
         return;
     }
     // Only a manually typed preview position is editable in AUDIO.
-    if (ui.tab == EditorTab::Audio) {
+    if (ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio) {
         if (clicked && ui.active == EditorField::None &&
             CheckCollisionPointRec(mouse, detail::kAudioPreviewMs)) {
             const EditorSetView view = View();
@@ -471,13 +513,15 @@ void EditorSetController::HandleControls(const EditorControls& input) {
             ui.setPreviewBuffer = std::to_string(view.previewStartMs);
             ui.feedback = "PREVIEW MS / CTRL+V PASTE / ENTER SAVE / ESC CANCEL";
             ui.feedbackError = false;
+            return;
         }
-        return;
+        if (ui.tab == EditorTab::Audio) return;
     }
+    if (input.nativeChrome) return;
     EditorSetView view = View();
     const int count = static_cast<int>(view.difficulties.size());
     const float wheel = input.mouseWheel;
-    if (wheel != 0.0f && count > 0) {
+    if (wheel != 0.0f && count > 0 && detail::Hit(detail::kSetupDifficultyPanel, mouse)) {
         ctx_.ui.setSelected = view.selected; // Browsing need not follow active.
         const int delta = wheel > 0.0f ? -1 : 1;
         ctx_.ui.setFirstVisible = std::clamp(
@@ -487,6 +531,10 @@ void EditorSetController::HandleControls(const EditorControls& input) {
     for (int row = 0; row < 5; ++row) {
         const int index = view.firstVisible + row;
         if (index >= count) break;
+        if (CheckCollisionPointRec(mouse, detail::SetDifficultyRenameRow(row))) {
+            RenameDifficulty(index);
+            return;
+        }
         if (CheckCollisionPointRec(mouse, detail::SetDifficultyRow(row))) {
             FocusDifficulty(index);
             return;
@@ -510,6 +558,7 @@ void EditorSetController::Request(EditorSetAction action) {
         return;
     }
     if (song && (action == EditorSetAction::Open ||
+                 action == EditorSetAction::RenameDifficulty ||
                  action == EditorSetAction::Duplicate ||
                  action == EditorSetAction::DeleteDifficulty)) {
         const EditorSetView view = View();
@@ -528,7 +577,8 @@ void EditorSetController::Request(EditorSetAction action) {
     const bool deletesUnsaved = action == EditorSetAction::DeleteDifficulty &&
         ((affectsCurrent && ctx_.editor.Dirty()) ||
          (parked && parked->Dirty()));
-    const bool switching = action == EditorSetAction::Open &&
+    const bool switching = (action == EditorSetAction::Open ||
+                            action == EditorSetAction::RenameDifficulty) &&
         request.chart != fs::path(ctx_.chartPath);
     request.discardsDraft = deletesUnsaved ||
         (ctx_.files.AnyDirty() &&
@@ -610,15 +660,22 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
             Notice("SONG BACKGROUND SAVED (ALL DIFFICULTIES)");
             return true;
         }
-        case EditorSetAction::Open: {
+        case EditorSetAction::Open:
+        case EditorSetAction::RenameDifficulty: {
             if (request.chart != fs::path(ctx_.chartPath) &&
                 !ctx_.files.OpenFromLibrary(request.chart.wstring(), error)) break;
             ctx_.ui.setSelected = -1;
-            ctx_.ui.tab = EditorTab::Route;
-            ctx_.ui.comparisonFiles.clear();
-            ctx_.ui.comparisonFocusedSlot = 0;
             ctx_.ui.comparisonPickerOpen = false;
-            Notice("DIFFICULTY OPENED - CTRL+S SAVES THIS CHART");
+            if (request.action == EditorSetAction::RenameDifficulty) {
+                ctx_.ui.tab = EditorTab::Set;
+                ctx_.ui.active = EditorField::Title;
+                ctx_.ui.buffer = ctx_.editor.Data().title;
+                ctx_.ui.replaceOnType = true;
+                Notice("RENAME DIFFICULTY - ENTER TO APPLY");
+            } else {
+                ctx_.ui.tab = EditorTab::Route;
+                Notice("DIFFICULTY OPENED - CTRL+S SAVES THIS CHART");
+            }
             return true;
         }
         case EditorSetAction::NewDifficulty: {
@@ -628,7 +685,10 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
                     audio.wstring(), folder.wstring(), error)) break;
             ctx_.ui.tab = EditorTab::Set;
             ctx_.ui.setSelected = -1;
-            Notice("NEW DIFFICULTY - CTRL+S TO SAVE");
+            ctx_.ui.active = EditorField::Title;
+            ctx_.ui.buffer = ctx_.editor.Data().title;
+            ctx_.ui.replaceOnType = true;
+            Notice("NAME THE NEW DIFFICULTY, THEN OPEN CHART EDITOR");
             return true;
         }
         case EditorSetAction::Duplicate: {
@@ -706,6 +766,7 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
                 break;
             }
             const fs::path source(picked.path);
+            const bool hadSet = song != nullptr;
             if (source.extension() == L".locuspack") {
                 fs::path importedSet;
                 if (!ctx_.library.ImportPackage(source, importedSet, error)) {
@@ -713,7 +774,16 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
                         error = "PACKAGE SAVED; REFRESH PLAY LIBRARY: " + error;
                     break;
                 }
-                Notice("SONG SET IMPORTED; OPEN IT IN PLAY LIBRARY");
+                if (!hadSet && !ctx_.files.AnyDirty()) {
+                    const auto* imported = FindSet(ctx_.library, importedSet);
+                    if (imported && !imported->charts.empty()) {
+                        const auto chart = imported->charts.front().file;
+                        if (ctx_.files.OpenFromLibrary(chart.wstring(), error))
+                            ctx_.ui.tab = EditorTab::Set;
+                        else { Notice("IMPORTED; OPEN FAILED: " + error, true); return false; }
+                    }
+                }
+                Notice("SONG SET IMPORTED");
                 return true;
             }
             if (!song) {
@@ -723,7 +793,12 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
                         error = "CHART SAVED; REFRESH PLAY LIBRARY: " + error;
                     break;
                 }
-                Notice("CHART IMPORTED; OPEN ITS SET IN PLAY LIBRARY");
+                if (!ctx_.files.AnyDirty()) {
+                    if (ctx_.files.OpenFromLibrary(installed.wstring(), error))
+                        ctx_.ui.tab = EditorTab::Set;
+                    else { Notice("IMPORTED; OPEN FAILED: " + error, true); return false; }
+                }
+                Notice("CHART IMPORTED");
                 return true;
             }
             fs::path installed;

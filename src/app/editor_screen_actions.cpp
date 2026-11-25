@@ -11,13 +11,73 @@
 
 namespace locus::app {
 
+void EditorScreenActions::BlurTextOnPointer(Vector2 mouse, double& now) {
+    auto& ui = context_.ui;
+    if (!ui.EditingText()) return;
+    const bool inside = ui.active == EditorField::Title
+        ? detail::Hit(detail::kTitle, mouse)
+        : ui.editingSetField != EditorSetField::None
+        ? detail::Hit(detail::SetMetadataBounds(ui.editingSetField), mouse)
+        : ui.editingSetPreview ? detail::Hit(detail::kAudioPreviewMs, mouse)
+        : ui.tempoEditingRow >= 0 &&
+          detail::Hit(ui.tempoEditingBpm
+              ? detail::TempoBpmCell(ui.tempoEditingRow - ui.tempoFirstVisible)
+              : detail::TempoOffsetCell(ui.tempoEditingRow - ui.tempoFirstVisible), mouse);
+    if (inside) return;
+    EditorControls commit;
+    commit.enter = true;
+    if (ui.active == EditorField::Title) {
+        const auto value = ui.buffer;
+        ui.active = EditorField::None;
+        ui.buffer.clear();
+        ui.replaceOnType = false;
+        context_.sets.CommitDifficultyTitle(value, now);
+    } else if (ui.active != EditorField::None) {
+        context_.session.ApplyControls(commit, now);
+    } else {
+        const auto before = context_.session.TempoMap();
+        context_.sets.HandleControls(commit);
+        if (before != context_.session.TempoMap())
+            context_.session.StopPreviewForTempoChange();
+    }
+    // Invalid input does not trap pointer focus. Keep saved data and feedback.
+    ui.active = EditorField::None;
+    ui.editingSetField = EditorSetField::None;
+    ui.editingSetId.clear();
+    ui.setFieldBuffer.clear();
+    ui.editingSetPreview = false;
+    ui.setPreviewBuffer.clear();
+    ui.tempoEditingRow = -1;
+    ui.tempoBuffer.clear();
+}
+
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
+    if (input.editor.difficultyTitle)
+        context_.sets.CommitDifficultyTitle(*input.editor.difficultyTitle, now);
+    if (context_.ui.active == EditorField::Title &&
+        (input.editor.enter || input.editor.tab)) {
+        const auto value = context_.ui.buffer;
+        if (context_.sets.CommitDifficultyTitle(value, now)) {
+            context_.ui.active = EditorField::None;
+            context_.ui.buffer.clear();
+        }
+        return false;
+    }
+    if (input.editor.renameDifficulty >= 0) {
+        context_.sets.RenameDifficulty(input.editor.renameDifficulty);
+        return false;
+    }
+    if (input.editor.enterChart ||
+        (context_.ui.tab == EditorTab::Set && !input.editor.nativeChrome &&
+         input.editor.mouseClick && detail::Hit(detail::kSetupEnter, input.editor.mouse))) {
+        context_.sets.EnterChart(now);
+        return false;
+    }
     // RmlUi SET commands are typed events and take precedence over the
     // legacy pointer path. They are validated by the same domain controller.
     if (input.editor.metadataField) {
         context_.sets.CommitMetadata(*input.editor.metadataField,
             input.editor.metadataValue, input.editor.metadataSetId);
-        return false;
     }
     if (input.editor.selectedDifficulty >= 0) {
         context_.sets.FocusDifficulty(input.editor.selectedDifficulty);
@@ -57,20 +117,20 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
     if (context_.ui.tab == EditorTab::Set &&
         (context_.ui.editingSetField != EditorSetField::None ||
          (input.editor.mouseClick &&
-          detail::ClickedSetMetadataField(input.editor.mouse) !=
+          !input.editor.nativeChrome && detail::ClickedSetMetadataField(input.editor.mouse) !=
               EditorSetField::None))) {
         context_.sets.HandleControls(input.editor);
         return false;
     }
     // SET row focus clicks are exclusive too. A simultaneous Ctrl+S must
     // never accidentally write whichever chart was clicked in that frame.
-    if (context_.ui.tab == EditorTab::Set && input.editor.mouseClick) {
+    if (context_.ui.tab == EditorTab::Set && input.editor.mouseClick && !input.editor.nativeChrome) {
         const EditorSetView set = context_.sets.View();
         for (int row = 0; row < 5; ++row) {
             const int index = set.firstVisible + row;
             if (index >= static_cast<int>(set.difficulties.size())) break;
-            if (detail::Hit(detail::SetDifficultyRow(row),
-                            input.editor.mouse)) {
+            if (detail::Hit(detail::SetDifficultyRow(row),input.editor.mouse) ||
+                detail::Hit(detail::SetDifficultyRenameRow(row),input.editor.mouse)) {
                 context_.sets.HandleControls(input.editor);
                 return false;
             }
@@ -127,6 +187,7 @@ bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
             context_.files.Save(true, now);
             break;
         case EditorFileCommand::TestPlay:
+            if (context_.ui.tab != EditorTab::Route) return false;
             return context_.session.BeginTest(
                 context_.testTarget, now, context_.error);
         case EditorFileCommand::None:

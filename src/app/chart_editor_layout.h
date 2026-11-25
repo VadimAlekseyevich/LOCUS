@@ -137,7 +137,7 @@ constexpr Rectangle kTabSet{433, 69, 127, 37};
 constexpr Rectangle kTabRoute{567, 69, 145, 37};
 constexpr Rectangle kTabAudio{719, 69, 145, 37};
 constexpr Rectangle kEditorBack{52, 69, 99, 37};
-constexpr Rectangle kSong{66, 412, 270, 35};
+constexpr Rectangle kSong{361, 151, 268, 30};
 constexpr Rectangle kPlay = kEditorPreviewPlay;
 constexpr Rectangle kStop = kEditorPreviewRestart;
 constexpr Rectangle kTest{0, 0, 0, 0};
@@ -216,32 +216,33 @@ inline int EditorPathControlDelta(Vector2 point) noexcept {
 constexpr Rectangle kStartHeadingPrev{817, 367, 34, 35};
 constexpr Rectangle kStartHeadingValue{854, 367, 37, 35};
 constexpr Rectangle kStartHeadingNext{896, 367, 34, 35};
-constexpr Rectangle kAudioMetaPanel{52, 178, 302, 292};
-constexpr Rectangle kAudioTempoPanel{367, 178, 566, 292};
+constexpr Rectangle kSetupMetadataPanel{43,117,300,353};
+constexpr Rectangle kAudioTempoPanel{350,117,290,353};
+constexpr Rectangle kSetupDifficultyPanel{647,117,290,353};
+constexpr Rectangle kAudioMetaPanel = kAudioTempoPanel;
 // Retired standalone fields are not interactive; old enum cases are inert.
 constexpr Rectangle kBpm{-1, -1, 0, 0};
 constexpr Rectangle kOffset{-1, -1, 0, 0};
-constexpr Rectangle kTitle{66, 219, 270, 39};
-constexpr Rectangle kAudioPreviewMs{66, 306, 270, 39};
+constexpr Rectangle kTitle{658, 155, 268, 30};
+constexpr Rectangle kAudioPreviewMs{361, 209, 268, 30};
+constexpr Rectangle kSetupEnter{658, 192, 268, 31};
 constexpr Rectangle TempoOffsetCell(int row) noexcept {
-    return {384.0f, 242.0f + row * 35.0f, 197.0f, 31.0f};
+    return {361.0f, 281.0f + row * 28.0f, 105.0f, 25.0f};
 }
 constexpr Rectangle TempoBpmCell(int row) noexcept {
-    return {590.0f, 242.0f + row * 35.0f, 196.0f, 31.0f};
+    return {471.0f, 281.0f + row * 28.0f, 88.0f, 25.0f};
 }
 constexpr Rectangle TempoDeleteCell(int row) noexcept {
-    return {797.0f, 242.0f + row * 35.0f, 122.0f, 31.0f};
+    return {564.0f, 281.0f + row * 28.0f, 65.0f, 25.0f};
 }
-constexpr Rectangle kTempoAdd{384, 427, 319, 30};
-constexpr Rectangle kTempoPrev{773, 186, 68, 28};
-constexpr Rectangle kTempoNext{851, 186, 68, 28};
-constexpr Rectangle kTempoTable{380, 236, 540, 182};
+constexpr Rectangle kTempoAdd{361, 431, 268, 30};
+constexpr Rectangle kTempoTable{361, 281, 268, 140};
 // Song Set editor: metadata on the left, difficulties on the right.
 // These rectangles are shared by drawing, hit-testing and input ownership.
-constexpr Rectangle kSetTitleField{52, 194, 506, 35};
-constexpr Rectangle kSetArtistField{52, 248, 246, 35};
-constexpr Rectangle kSetMapperField{312, 248, 246, 35};
-constexpr Rectangle kSetTagsField{52, 303, 506, 35};
+constexpr Rectangle kSetTitleField{54, 155, 278, 30};
+constexpr Rectangle kSetArtistField{54, 200, 278, 30};
+constexpr Rectangle kSetMapperField{54, 245, 278, 30};
+constexpr Rectangle kSetTagsField{54, 290, 278, 30};
 constexpr Rectangle SetMetadataBounds(EditorSetField field) noexcept {
     switch (field) {
         case EditorSetField::Title: return kSetTitleField;
@@ -261,18 +262,21 @@ inline EditorSetField ClickedSetMetadataField(Vector2 p) noexcept {
             return field;
     return EditorSetField::None;
 }
-constexpr Rectangle kSetBackground{52, 360, 246, 29};
-constexpr Rectangle kSetRemoveBackground{312, 360, 246, 29};
-constexpr Rectangle kSetImport{52, 397, 246, 29};
-constexpr Rectangle kSetExport{312, 397, 246, 29};
-constexpr Rectangle kSetOpenFolder{52, 434, 246, 29};
-constexpr Rectangle kSetRestore{312, 434, 246, 29};
-constexpr Rectangle kSetNew{570, 179, 170, 31};
-constexpr Rectangle kSetDuplicate{747, 179, 183, 31};
-constexpr Rectangle kSetDeleteDifficulty{570, 426, 170, 31};
-constexpr Rectangle kSetDeleteSong{747, 426, 183, 31};
+constexpr Rectangle kSetBackground{54, 333, 136, 30};
+constexpr Rectangle kSetRemoveBackground{196, 333, 136, 30};
+constexpr Rectangle kSetImport{54, 371, 136, 30};
+constexpr Rectangle kSetExport{196, 371, 136, 30};
+constexpr Rectangle kSetOpenFolder{54, 409, 136, 30};
+constexpr Rectangle kSetRestore{196, 409, 136, 30};
+constexpr Rectangle kSetNew{658, 229, 130, 28};
+constexpr Rectangle kSetDuplicate{796, 229, 130, 28};
+constexpr Rectangle kSetDeleteDifficulty{658, 431, 130, 30};
+constexpr Rectangle kSetDeleteSong{796, 431, 130, 30};
 constexpr Rectangle SetDifficultyRow(int row) noexcept {
-    return {570.0f, 221.0f + row * 39.0f, 360.0f, 36.0f};
+    return {658.0f, 264.0f + row * 32.0f, 207.0f, 29.0f};
+}
+constexpr Rectangle SetDifficultyRenameRow(int row) noexcept {
+    return {871.0f, 264.0f + row * 32.0f, 55.0f, 29.0f};
 }
 inline EditorSetAction ClickedSetAction(Vector2 p) noexcept {
     if (CheckCollisionPointRec(p, kSetOpenFolder)) return EditorSetAction::OpenFolder;
@@ -334,11 +338,7 @@ inline Rectangle RouteSpeedBounds(int index) {
 
 inline bool Hit(Rectangle bounds, Vector2 pos) { return CheckCollisionPointRec(pos, bounds); }
 
-inline EditorTab ClickedTab(Vector2 mouse, EditorTab previous) {
-    if (Hit(kTabSet, mouse)) return EditorTab::Set;
-    if (Hit(kTabRoute, mouse)) return EditorTab::Route;
-    if (Hit(kTabAudio, mouse)) return EditorTab::Audio;
-    return previous;
-}
+// Navigation is an explicit workspace transition, not a tab hitbox.
+inline EditorTab ClickedTab(Vector2, EditorTab previous) { return previous; }
 
  } // namespace locus::app::detail

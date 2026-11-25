@@ -32,7 +32,7 @@ static Rectangle FieldBounds(EditorField field) {
 }
 
 EditorField ClickedField(Vector2 mouse, EditorTab tab) {
-    if (tab == EditorTab::Audio) {
+    if (tab == EditorTab::Set) {
         for (const auto field : {EditorField::Title}) {
             if (Hit(FieldBounds(field), mouse)) return field;
         }
@@ -141,8 +141,7 @@ EditorUiAction HandleTextInput(core::ChartEditor& draft, EditorUiState& ui,
         if (input.enter || input.tab) {
             const bool committed = CommitField(ui, draft);
             action.changedChart = committed;
-            if (committed && input.tab && ui.tab == EditorTab::Audio)
-                BeginField(ui, draft, EditorField::Bpm);
+
         } else if (input.mouseClick) {
             const EditorField target = ClickedField(input.mouse, ui.tab);
             const EditorTab nextTab = input.nativeChrome
