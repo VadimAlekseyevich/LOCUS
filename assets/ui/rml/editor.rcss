@@ -15,13 +15,6 @@
 #editor-chart-name { display:block; overflow:hidden; white-space:nowrap;
   text-overflow:ellipsis; font-size:15dp; font-weight:750; }
 #editor-dirty { color:#b5a4f3; font-size:18dp; font-weight:800; }
-.editor-tabs { display:flex; flex:0 0 427dp; flex-direction:row;
-  align-items:center; gap:7dp; }
-.editor-tab { flex:1; min-width:0; height:35dp;
-  padding:2dp; border-radius:9dp;
-  font-weight:750; font-size:13dp; }
-.editor-tab.selected { background-color:#56527e;
-  color:#eae3ff; border-color:#b5a4f3; }
 #editor-footer-playback { position:absolute; left:52dp; top:485dp;
   display:flex; flex-direction:row; gap:5dp; }
 #editor-footer-playback button { width:39dp; height:40dp; padding:1dp;
@@ -64,11 +57,12 @@
 /* All SET fields and action layout live in RCSS; the SongLibrary retains
    exclusive ownership of metadata and difficulty identities. */
 #editor-set-ui { position:absolute; left:0; top:0; width:960dp; height:540dp; pointer-events:none; }
-.editor-set-panel { position:absolute; top:175dp; height:294dp; padding:10dp;
+.editor-set-panel { position:absolute; top:117dp; height:353dp; padding:10dp;
   border:1dp #565d7b; border-radius:10dp; background-color:#252d45;
   display:flex; flex-direction:column; pointer-events:auto; }
-#editor-set-metadata { left:43dp; width:522dp; }
-#editor-set-difficulties { left:567dp; width:370dp; }
+#editor-set-metadata { left:43dp; width:300dp; }
+#editor-set-difficulties { left:647dp; width:290dp; }
+#editor-setup-enter { height:31dp; flex:0 0 31dp; margin-bottom:6dp; font-size:12dp; }
 .editor-set-title { display:block; color:#b5a4f3; font-weight:800; font-size:13dp;
   margin-bottom:6dp; letter-spacing:1dp; }
 .editor-set-field { display:flex; flex-direction:column; flex:0 0 auto;
@@ -88,9 +82,10 @@
   padding:0; font-size:10dp; }
 #editor-set-list { display:flex; flex-direction:column; flex:1;
   gap:5dp; overflow-y:auto; min-height:0; }
-.editor-set-row { display:block; width:100%; min-height:32dp;
-  height:32dp; padding:3dp 7dp; text-align:left; font-size:12dp; }
+.editor-difficulty-entry { display:flex; flex:0 0 29dp; height:29dp; gap:4dp; }
+.editor-set-row { flex:1; min-width:0; min-height:29dp; height:29dp; padding:2dp 5dp; text-align:left; font-size:12dp; }
+.editor-rename-row { flex:0 0 55dp; width:55dp; height:29dp; padding:0; font-size:10dp; }
 .editor-set-row.active { border-color:#a2d8ee; }
 .editor-set-row.selected { background-color:#59527a; }
-#editor-set-hint { position:absolute; left:52dp; top:469dp;
+#editor-set-hint { position:absolute; left:54dp; top:456dp;
   color:#9da8c6; font-size:9dp; pointer-events:none; }

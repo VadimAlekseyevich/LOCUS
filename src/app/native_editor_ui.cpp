@@ -78,7 +78,8 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
                           const GameSettings* settings,
                           const EditorSetView* setView) {
     if (!document_) return;
-    SetText("editor-chart-name", title);
+    SetText("editor-chart-name", ui.tab == EditorTab::Set ? "SONG SETUP" : "CHART EDITOR / " + title);
+    SetText("editor-back", ui.tab == EditorTab::Route ? "SONG SETUP" : "BACK");
     SetText("editor-dirty", dirty ? "*" : "");
     SetText("editor-preview-play", running ? "PAUSE" : "PLAY");
     lastRatePercent_ = std::clamp(
@@ -114,13 +115,6 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
             route->SetProperty("display", ui.tab == EditorTab::Route ? "block" : "none");
         if (auto* set = document_->GetElementById("editor-set-ui"))
             set->SetProperty("display", ui.tab == EditorTab::Set ? "block" : "none");
-        const auto setSelected = [&](const char* id, bool selected) {
-            if (auto* element = document_->GetElementById(id))
-                element->SetClass("selected", selected);
-        };
-        setSelected("editor-tab-set", ui.tab == EditorTab::Set);
-        setSelected("editor-tab-route", ui.tab == EditorTab::Route);
-        setSelected("editor-tab-audio", ui.tab == EditorTab::Audio);
         lastTab_ = static_cast<int>(ui.tab);
     }
     if (setView && ui.tab == EditorTab::Set) {
@@ -144,8 +138,12 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
             tags += tag;
         }
         update("editor-set-tags", tags);
+        if (auto* name = dynamic_cast<Rml::ElementFormControlInput*>(document_->GetElementById("editor-difficulty-title")))
+            if (name != focus && name->GetValue() != title) name->SetValue(title);
+        SetText("editor-setup-enter", !setView->hasAudio ? "ATTACH AUDIO FIRST" :
+                !setView->managed && (!draft || draft->Data().difficultyId.empty()) ? "CREATE SONG SET" : "OPEN CHART EDITOR");
         SetText("editor-set-hint", setView->managed ? "" :
-                "SAVE SONG TO EDIT SHARED SONG SET METADATA");
+                "CREATE SONG SET TO EDIT SHARED DETAILS");
         std::ostringstream signature;
         signature << setView->id << ':' << setView->current
                   << ':' << setView->selected;
@@ -155,19 +153,28 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
             setListSignature_ = signature.str();
             std::ostringstream html;
             for (std::size_t i=0; i<setView->difficulties.size(); ++i) {
-                html << "<button class='editor-set-row";
+                html << "<div class='editor-difficulty-entry'><button class='editor-set-row";
                 if (static_cast<int>(i) == setView->current) html << " active";
                 if (static_cast<int>(i) == setView->selected) html << " selected";
                 html << "' data-action='set-difficulty' data-index='" << i
                      << "'><span class='button-label'>"
                      << EscapeRml(setView->difficulties[i])
-                     << "</span></button>";
+                     << "</span></button><button class='editor-rename-row' data-action='set-rename' data-index='" << i
+                     << "'><span class='button-label'>RENAME</span></button></div>";
             }
             if (setView->difficulties.empty())
                 html << "<div class='empty'>NO DIFFICULTIES YET</div>";
             if (auto* list = document_->GetElementById("editor-set-list"))
                 list->SetInnerRML(html.str());
         }
+    }
+}
+void NativeEditorUi::CancelFocusedField() {
+    if (!document_) return;
+    if (auto* field = dynamic_cast<Rml::ElementFormControlInput*>(document_->GetContext()->GetFocusElement())) {
+        field->SetValue(field->GetId() == "editor-preview-rate"
+            ? std::to_string(lastRatePercent_) : focusedInitialValue_);
+        field->Blur();
     }
 }
 void NativeEditorUi::ProcessEvent(Rml::Event& event) {
@@ -198,20 +205,28 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
         }
         return;
     }
-    if (event.GetType() == "change" && ui_->tab == EditorTab::Set) {
-        auto* changed = dynamic_cast<Rml::ElementFormControlInput*>(
-            event.GetTargetElement());
-        if (changed && changed->GetAttribute<Rml::String>("data-kind", "") ==
-                           "set-field") {
-            const int field = changed->GetAttribute<int>("data-field", -1);
-            if (field >= static_cast<int>(EditorSetField::Title) &&
-                field <= static_cast<int>(EditorSetField::Tags)) {
-                input_->editor.metadataField = static_cast<EditorSetField>(field);
-                input_->editor.metadataValue = changed->GetValue();
-                input_->editor.metadataSetId = activeSetId_;
+    if (ui_->tab == EditorTab::Set) {
+        if (auto* field = dynamic_cast<Rml::ElementFormControlInput*>(event.GetTargetElement())) {
+            const auto kind = field->GetAttribute<Rml::String>("data-kind", "");
+            if (kind == "set-field" || kind == "difficulty-title") {
+                if (event.GetType() == "focus") focusedInitialValue_ = field->GetValue();
+                if (event.GetType() == "blur" && field->GetValue() != focusedInitialValue_) {
+                    if (kind == "difficulty-title")
+                        input_->editor.difficultyTitle = field->GetValue();
+                    else {
+                        const int value = field->GetAttribute<int>("data-field", -1);
+                        if (value >= static_cast<int>(EditorSetField::Title) &&
+                            value <= static_cast<int>(EditorSetField::Tags)) {
+                            input_->editor.metadataField = static_cast<EditorSetField>(value);
+                            input_->editor.metadataValue = field->GetValue();
+                            input_->editor.metadataSetId = activeSetId_;
+                        }
+                    }
+                }
+                if (event.GetType() == "click") consumedPointer_ = true;
+                return;
             }
         }
-        return;
     }
     if (event.GetType() != "click") return;
     auto* target = event.GetTargetElement();
@@ -223,12 +238,10 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     consumedPointer_ = true;
     if (action == "back") {
         input_->backPressed = true;
-    } else if (action == "tab-set" || action == "tab-route" ||
-               action == "tab-audio") {
-        ui_->tab = action == "tab-set" ? EditorTab::Set
-                 : action == "tab-audio" ? EditorTab::Audio : EditorTab::Route;
-        ui_->rateDropdownOpen = false;
-        ui_->comparisonPickerOpen = false;
+    } else if (action == "setup-enter") {
+        input_->editor.enterChart = true;
+    } else if (action == "set-rename") {
+        input_->editor.renameDifficulty = target->GetAttribute<int>("data-index", -1);
     } else if (action == "preview-play") {
         ui_->rateDropdownOpen = false;
         input_->editor.previewToggle = true;

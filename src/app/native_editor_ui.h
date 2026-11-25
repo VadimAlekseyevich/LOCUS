@@ -29,6 +29,7 @@ public:
     bool SuppressingClick() const noexcept { return suppressClick_; }
     void ReleaseClickSuppression() noexcept { suppressClick_ = false; }
     void EndFrame() noexcept;
+    void CancelFocusedField();
 private:
     void SetText(const char* id, const std::string& value);
     Rml::ElementDocument* document_ = nullptr;
@@ -40,6 +41,7 @@ private:
     bool suppressClick_ = false;
     std::unordered_map<std::string, std::string> textCache_;
     int lastRatePercent_ = 100;
+    std::string focusedInitialValue_;
     std::string activeSetId_, setListSignature_;
     int lastTab_ = -1, lastTextEditing_ = -1;
 };

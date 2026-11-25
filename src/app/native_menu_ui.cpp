@@ -226,9 +226,13 @@ bool NativeMenuUi::Initialize() {
         // Focus/blur do not bubble in RmlUi. Listen directly on the rate
         // input so editing is transactional rather than clamped on every
         // character inserted/deleted by the text widget.
-        if (auto* rate = editorDocument_->GetElementById("editor-preview-rate")) {
-            rate->AddEventListener("focus", this);
-            rate->AddEventListener("blur", this);
+        for (const char* id : {"editor-preview-rate", "editor-set-title",
+                               "editor-set-artist", "editor-set-mapper",
+                               "editor-set-tags", "editor-difficulty-title"}) {
+            if (auto* field = editorDocument_->GetElementById(id)) {
+                field->AddEventListener("focus", this);
+                field->AddEventListener("blur", this);
+            }
         }
         editorDocument_->Hide();
         editorPresenter_.Attach(editorDocument_);
@@ -851,6 +855,16 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     editorPresenter_.BeginFrame(ui, input);
     editorPresenter_.Sync(ui, title, dirty, rate, playing, songTimeMs,
                           &draft, &settings, &setView);
+    if (ui.tab == EditorTab::Set && ui.active == EditorField::Title) {
+        if (auto* name = dynamic_cast<Rml::ElementFormControlInput*>(
+                editorDocument_->GetElementById("editor-difficulty-title"))) {
+            name->SetValue(ui.buffer);
+            name->Focus();
+            name->Select();
+            ui.active = EditorField::None;
+            ui.buffer.clear();
+        }
+    }
     // The active RmlUi input is the only consumer of native character
     // events. The legacy chart controller receives no text that frame.
     const bool nativeTyping = EditorTextFocused();
@@ -877,26 +891,11 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         }
     }
     PumpInput(nativeTyping && EditorTextFocused());
-    // Numeric preview rate owns Enter/Escape while focused: commit or undo
-    // without leaking these keys into editor navigation.
-    if (nativeTyping) {
-        if (auto* focusedRate = dynamic_cast<Rml::ElementFormControlInput*>(
-                context_->GetFocusElement());
-            focusedRate && focusedRate->GetId() == "editor-preview-rate") {
-            const bool cancel = IsKeyPressed(KEY_ESCAPE);
-            const bool commit = IsKeyPressed(KEY_ENTER) ||
-                                IsKeyPressed(KEY_KP_ENTER);
-            if (cancel || commit) {
-                if (cancel)
-                    focusedRate->SetValue(std::to_string(
-                        std::clamp(static_cast<int>(std::lround(rate * 100.0)),
-                                   1, 100)));
-                focusedRate->Blur();
-                input.editor.escape = false;
-                input.editor.enter = false;
-                input.backPressed = false;
-            }
-        }
+    // Enter commits any focused field; Esc reverts only that field.
+    if (nativeTyping && EditorTextFocused()) {
+        if (IsKeyPressed(KEY_ESCAPE)) editorPresenter_.CancelFocusedField();
+        else if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))
+            context_->GetFocusElement()->Blur();
     }
     if (!ui.EditingText() && !nativeTyping) {
         if (IsKeyPressed(KEY_TAB)) {
@@ -944,7 +943,8 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                 ((over("editor-route-tools") && !over("editor-route-compare-gap")) ||
                  over("editor-route-pad") ||
                  over("editor-route-speed") || over("editor-route-path"))) ||
-            (ui.tab == EditorTab::Set && over("editor-set-ui"));
+            (ui.tab == EditorTab::Set &&
+             (over("editor-set-metadata") || over("editor-set-difficulties")));
         if (popupWasOpen && !popupContent && !transport) {
             ui.rateDropdownOpen = false;
             // The release event must dismiss only, not navigate through

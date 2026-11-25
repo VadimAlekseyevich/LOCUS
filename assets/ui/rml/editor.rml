@@ -12,11 +12,6 @@
       <span id="editor-chart-name">ORIGINAL</span>
       <span id="editor-dirty"></span>
     </div>
-    <div class="editor-tabs">
-      <button id="editor-tab-set" class="editor-tab" data-action="tab-set"><span class="button-label">SET</span></button>
-      <button id="editor-tab-route" class="editor-tab selected" data-action="tab-route"><span class="button-label">ROUTE</span></button>
-      <button id="editor-tab-audio" class="editor-tab" data-action="tab-audio"><span class="button-label">AUDIO</span></button>
-    </div>
   </div>
   <div id="editor-route-ui">
     <div id="editor-route-tools">
@@ -43,7 +38,7 @@
   </div>
   <div id="editor-set-ui" style="display:none;">
     <div id="editor-set-metadata" class="editor-set-panel">
-      <div class="editor-set-title">SONG SET</div>
+      <div class="editor-set-title">SONG DETAILS</div>
       <div class="editor-set-field"><div>SONG TITLE</div><input type="text" id="editor-set-title" class="editor-set-input" data-kind="set-field" data-field="1" value="" /></div>
       <div class="editor-set-field"><div>ARTIST</div><input type="text" id="editor-set-artist" class="editor-set-input" data-kind="set-field" data-field="2" value="" /></div>
       <div class="editor-set-field"><div>MAPPER</div><input type="text" id="editor-set-mapper" class="editor-set-input" data-kind="set-field" data-field="3" value="" /></div>
@@ -57,11 +52,13 @@
     </div>
     <div id="editor-set-difficulties" class="editor-set-panel">
       <div class="editor-set-title">DIFFICULTIES</div>
+      <div class="editor-set-field"><div>CURRENT DIFFICULTY / RENAME</div><input type="text" id="editor-difficulty-title" class="editor-set-input" data-kind="difficulty-title" value="" /></div>
+      <button id="editor-setup-enter" class="secondary" data-action="setup-enter"><span class="button-label">OPEN CHART EDITOR</span></button>
       <div class="editor-set-quick"><button data-action="set-new"><span class="button-label">NEW</span></button><button data-action="set-duplicate"><span class="button-label">DUPLICATE</span></button></div>
       <div id="editor-set-list"></div>
       <div class="editor-set-quick"><button data-action="set-delete-chart"><span class="button-label">DELETE CHART</span></button><button data-action="set-delete-set"><span class="button-label">DELETE SET</span></button></div>
     </div>
-    <div id="editor-set-hint">SAVE SONG TO EDIT SHARED SONG SET METADATA</div>
+    <div id="editor-set-hint">CREATE SONG SET TO EDIT SHARED DETAILS</div>
   </div>
   <div id="editor-footer-playback">
     <button id="editor-preview-play" class="secondary" data-action="preview-play"><span class="button-label">PLAY</span></button>

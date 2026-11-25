@@ -495,17 +495,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     // Native editor shell replaces ONLY common chrome, not authoring views.
     if (!nativeShell) {
     DrawRectangleRounded({43,65,899,45},.12f,8,theme.surface);
-    DrawUiThemedButton(font,kEditorBack,"BACK",UiButtonVariant::Quiet,
-                       {},{},theme,14);
-    const std::string activeTitle = Truncate(draft.Data().title,23);
+    DrawUiThemedButton(font,kEditorBack,routeTab?"SONG SETUP":"BACK",
+                       UiButtonVariant::Quiet,{}, {},theme,12);
+    const auto activeTitle = routeTab ? "CHART EDITOR / " + Truncate(draft.Data().title,40)
+                                     : std::string("SONG SETUP");
     Label(font,activeTitle.c_str(),160,80,16,theme.foreground);
-    if (draft.Dirty()) Label(font,"*",385,79,19,violet);
-    DrawUiThemedButton(font,kTabSet,"SET",
-                       ui.tab==EditorTab::Set?UiButtonVariant::Cool:UiButtonVariant::Quiet);
-    DrawUiThemedButton(font,kTabRoute,"ROUTE",
-                       routeTab?UiButtonVariant::Cool:UiButtonVariant::Quiet);
-    DrawUiThemedButton(font,kTabAudio,"AUDIO",
-                       ui.tab==EditorTab::Audio?UiButtonVariant::Cool:UiButtonVariant::Quiet);
+    if (draft.Dirty()) Label(font,"*",650,79,19,violet);
     }
 
     if (routeTab) {
@@ -602,179 +597,109 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         CompactButton(font,kEditorPathMinus,"-",violet);
         CompactButton(font,kEditorPathPlus,"+",sky);
         }
-    } else if (ui.tab == EditorTab::Audio) {
-        DrawRectangleRounded(kAudioMetaPanel,
-            UiRoundness(kAudioMetaPanel,12),10,theme.surface);
-        DrawRectangleRoundedLinesEx(kAudioMetaPanel,
-            UiRoundness(kAudioMetaPanel,12),10,1,theme.divider);
-        DrawRectangleRounded(kAudioTempoPanel,
-            UiRoundness(kAudioTempoPanel,12),10,theme.surface);
-        DrawRectangleRoundedLinesEx(kAudioTempoPanel,
-            UiRoundness(kAudioTempoPanel,12),10,1,theme.divider);
-        Label(font,"CHART",66,185,17,violet);
-        DrawTextField(font,kTitle,"DIFFICULTY TITLE",
-                      draft.Data().title,EditorField::Title,ui);
-        Label(font,"SONG PREVIEW START  /  MS",kAudioPreviewMs.x,
-              kAudioPreviewMs.y-21,13,muted);
-        const Color box=ui.editingSetPreview
-            ? Color{61,58,91,255}:Color{34,42,64,255};
-        DrawRectangleRounded(kAudioPreviewMs,
-            UiRoundness(kAudioPreviewMs,9),9,box);
-        DrawRectangleRoundedLinesEx(kAudioPreviewMs,
-            UiRoundness(kAudioPreviewMs,9),9,
-            ui.editingSetPreview?2.0f:1.0f,
-            ui.editingSetPreview?sky:theme.divider);
-        const std::string preview = ui.editingSetPreview
-            ? ui.setPreviewBuffer
-            : (set.managed ? std::to_string(set.previewStartMs)
-                           : "SAVE SONG FIRST");
-        Label(font,preview.c_str(),kAudioPreviewMs.x+10,
-              kAudioPreviewMs.y+10,15,theme.foreground);
-        Label(font,TextFormat("DIFFICULTY  %.1f",
-              draft.Difficulty().overall),
-              66,372,16,sky);
-        DrawUiThemedButton(font,kSong,
-            hasAudio?"REPLACE AUDIO":"ATTACH AUDIO",
-            UiButtonVariant::Quiet,{}, {},theme,13);
-
+    } else if (ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio) {
+        const auto panel = [&](Rectangle bounds) {
+            DrawRectangleRounded(bounds,UiRoundness(bounds,12),9,theme.surface);
+            DrawRectangleRoundedLinesEx(bounds,UiRoundness(bounds,12),9,1,theme.divider);
+        };
+        const auto textBox = [&](Rectangle bounds,const char* label,
+                                 const std::string& value,bool active) {
+            Label(font,label,bounds.x,bounds.y-15,11,muted);
+            DrawRectangleRounded(bounds,UiRoundness(bounds,7),8,
+                active?Color{62,59,92,255}:Color{31,41,63,255});
+            DrawRectangleRoundedLinesEx(bounds,UiRoundness(bounds,7),8,
+                active?2.0f:1.0f,active?sky:theme.divider);
+            Label(font,UiFitText(font,value,bounds.width-14,13).c_str(),
+                bounds.x+7,bounds.y+8,13,theme.foreground);
+        };
+        panel(kAudioTempoPanel);
+        Label(font,"AUDIO & TIMING",361,126,15,violet);
+        DrawUiThemedButton(font,kSong,hasAudio?"AUDIO LOADED / CHANGE":"ATTACH AUDIO",
+            UiButtonVariant::Quiet,{}, {},theme,12);
+        const std::string audioLabel=set.audioName.empty()?songName:set.audioName;
+        Label(font,UiFitText(font,audioLabel,268,11).c_str(),361,184,11,muted);
+        textBox(kAudioPreviewMs,"MENU PREVIEW START / MS",
+            ui.editingSetPreview?ui.setPreviewBuffer:
+            set.managed?std::to_string(set.previewStartMs):"CREATE SONG SET FIRST",
+            ui.editingSetPreview);
+        Label(font,"TEMPO MAP",361,246,13,violet);
+        Label(font,"OFFSET / MS",361,266,10,muted);
+        Label(font,"BPM",471,266,10,muted);
         const auto changes=set.managed&&!set.tempoMap.empty()
-            ?set.tempoMap
-            :core::EffectiveTempoMap(chart,draft.Data().offsetSeconds);
-        Label(font,"SONG TEMPO MAP",384,186,17,violet);
-
-        Label(font,"OFFSET / MS",384,220,12,muted);
-        Label(font,"BPM",590,220,12,muted);
+            ?set.tempoMap:core::EffectiveTempoMap(chart,draft.Data().offsetSeconds);
         const int count=static_cast<int>(changes.size());
-        const int first=std::clamp(ui.tempoFirstVisible,0,
-                                   std::max(0,count-5));
-        for(int row=0;row<5;++row) {
+        const int first=std::clamp(ui.tempoFirstVisible,0,std::max(0,count-5));
+        for (int row=0;row<5;++row) {
             const int index=first+row;
             if(index>=count)break;
             const auto& marker=changes[static_cast<std::size_t>(index)];
-            const auto cell=[&](Rectangle bounds,const std::string& value,
-                                bool editing) {
-                const auto tint=editing?sky:theme.divider;
+            const auto cell=[&](Rectangle bounds,const std::string& value,bool editing) {
                 DrawRectangleRounded(bounds,UiRoundness(bounds,7),8,
-                   editing?Color{62,59,92,255}:Color{31,41,63,255});
-                DrawRectangleRoundedLinesEx(bounds,
-                   UiRoundness(bounds,7),8,editing?2.0f:1.0f,tint);
-                Label(font,UiFitText(font,value,bounds.width-16,14).c_str(),
-                      bounds.x+8,bounds.y+8,14,theme.foreground);
+                    editing?Color{62,59,92,255}:Color{31,41,63,255});
+                DrawRectangleRoundedLinesEx(bounds,UiRoundness(bounds,7),8,
+                    editing?2.0f:1.0f,editing?sky:theme.divider);
+                Label(font,UiFitText(font,value,bounds.width-12,12).c_str(),
+                    bounds.x+6,bounds.y+6,12,theme.foreground);
             };
             char bpm[48]{};
             std::snprintf(bpm,sizeof(bpm),"%g",marker.bpm);
-            const bool msActive=ui.tempoEditingRow==index&&
-                                !ui.tempoEditingBpm;
-            const bool bpmActive=ui.tempoEditingRow==index&&
-                                 ui.tempoEditingBpm;
-            cell(TempoOffsetCell(row),
-                msActive?ui.tempoBuffer:std::to_string(marker.timeMs),msActive);
-            cell(TempoBpmCell(row),
-                bpmActive?ui.tempoBuffer:std::string(bpm),bpmActive);
-            if(index>0)CompactButton(font,TempoDeleteCell(row),
-                                    "DELETE",violet);
-            else Label(font,"START",TempoDeleteCell(row).x+20,
-                       TempoDeleteCell(row).y+9,12,sky);
+            const bool msActive=ui.tempoEditingRow==index&&!ui.tempoEditingBpm;
+            const bool bpmActive=ui.tempoEditingRow==index&&ui.tempoEditingBpm;
+            cell(TempoOffsetCell(row),msActive?ui.tempoBuffer:std::to_string(marker.timeMs),msActive);
+            cell(TempoBpmCell(row),bpmActive?ui.tempoBuffer:std::string(bpm),bpmActive);
+            if(index>0)CompactButton(font,TempoDeleteCell(row),"DEL",violet);
+            else Label(font,"START",TempoDeleteCell(row).x+8,TempoDeleteCell(row).y+7,10,sky);
         }
-        DrawUiThemedButton(font,kTempoAdd,"+ ADD BPM MARKER",
-                           UiButtonVariant::Cool,{}, {},theme,13);
-        Label(font,TextFormat("%d / %d",count?first+1:0,count),
-              801,437,12,muted);
-    } else if (ui.tab == EditorTab::Set && !nativeShell) {
-        const Rectangle metadataPanel{43,175,522,294};
-        const Rectangle difficultiesPanel{567,175,370,294};
-        DrawRectangleRounded(metadataPanel,UiRoundness(metadataPanel,11),
-                             9,theme.surface);
-        DrawRectangleRoundedLinesEx(metadataPanel,UiRoundness(metadataPanel,11),
-                                    9,1,theme.divider);
-        DrawRectangleRounded(difficultiesPanel,UiRoundness(difficultiesPanel,11),
-                             9,theme.surface);
-        DrawRectangleRoundedLinesEx(difficultiesPanel,
-                                    UiRoundness(difficultiesPanel,11),
-                                    9,1,theme.divider);
-        // Same geometry and hitboxes as SET input. Only this tab changes:
-        // shared Song Set metadata is editable, chart files remain separate.
-        const auto& theme = ApprovedUiTheme();
-        const Color sky = theme.softBlue;
-        const Color violet = theme.rose;
-        const Color normal = theme.foreground;
-        const Color muted = theme.secondaryText;
-        const auto metadataField = [&](EditorSetField field,
-                                       Rectangle bounds, const char* label,
-                                       const std::string& value) {
-            const bool focus = ui.editingSetField == field;
-            Label(font, label, bounds.x, bounds.y - 15, 12, muted);
-            DrawRectangleRounded(bounds, 0.16f, 6,
-                focus ? Color{60, 59, 94, 255} : theme.surface);
-            DrawRectangleRoundedLinesEx(bounds, 0.16f, 6,
-                focus ? 2.0f : 1.0f,
-                focus ? sky : Color{112, 112, 158, 160});
-            const std::string& text = focus ? ui.setFieldBuffer : value;
-            const int limit = static_cast<int>(bounds.width / 9.5f) - 2;
-            const std::string shown = Truncate(text,
-                static_cast<std::size_t>(std::max(4, limit)));
-            Label(font, shown.c_str(), bounds.x + 9, bounds.y + 8,
-                  15, set.managed ? normal : muted);
-            if (focus) {
-                const float width = MeasureTextEx(font, shown.c_str(),
-                                                  15, 1.0f).x;
-                const float x = std::min(bounds.x + bounds.width - 5,
-                                           bounds.x + 11 + width);
-                DrawLineEx({x, bounds.y + 7}, {x, bounds.y + 26},
-                           1.6f, sky);
+        if (count>5) Label(font,TextFormat("%d-%d / %d",first+1,std::min(first+5,count),count),361,420,10,muted);
+        DrawUiThemedButton(font,kTempoAdd,"+ ADD BPM MARKER",UiButtonVariant::Cool,{}, {},theme,12);
+        if (!nativeShell) {
+            panel(kSetupMetadataPanel);
+            panel(kSetupDifficultyPanel);
+            Label(font,"SONG DETAILS",54,126,15,violet);
+            Label(font,"DIFFICULTIES",658,126,15,sky);
+            std::string tags;
+            for(const auto& tag:set.tags) { if(!tags.empty())tags+=", "; tags+=tag; }
+            const auto field=[&](EditorSetField kind,Rectangle bounds,
+                                 const char* label,const std::string& value) {
+                const bool focused=ui.editingSetField==kind;
+                textBox(bounds,label,focused?ui.setFieldBuffer:value,focused);
+            };
+            field(EditorSetField::Title,kSetTitleField,"SONG TITLE",set.title);
+            field(EditorSetField::Artist,kSetArtistField,"ARTIST",set.artist);
+            field(EditorSetField::Mapper,kSetMapperField,"MAPPER",set.mapper);
+            field(EditorSetField::Tags,kSetTagsField,"TAGS",tags);
+            CompactButton(font,kSetBackground,set.hasBackground?"BACKGROUND":"ADD BG",sky);
+            CompactButton(font,kSetRemoveBackground,"REMOVE BG",violet);
+            CompactButton(font,kSetImport,"IMPORT",sky);
+            CompactButton(font,kSetExport,"EXPORT",violet);
+            CompactButton(font,kSetOpenFolder,"OPEN FOLDER",sky);
+            CompactButton(font,kSetRestore,"RESTORE",violet);
+            if(!set.managed) Label(font,"CREATE SONG SET TO EDIT DETAILS",54,449,10,muted);
+            textBox(kTitle,"CURRENT DIFFICULTY / RENAME",
+                ui.active==EditorField::Title?ui.buffer:draft.Data().title,
+                ui.active==EditorField::Title);
+            DrawUiThemedButton(font,kSetupEnter,!hasAudio?"ATTACH AUDIO FIRST":
+                !set.managed&&draft.Data().difficultyId.empty()?"CREATE SONG SET":"OPEN CHART EDITOR",
+                UiButtonVariant::Cool,{}, {},theme,12);
+            CompactButton(font,kSetNew,"NEW",sky);
+            CompactButton(font,kSetDuplicate,"DUPLICATE",violet);
+            for(int row=0;row<5;++row) {
+                const int index=set.firstVisible+row;
+                if(index>=static_cast<int>(set.difficulties.size()))break;
+                const auto bounds=SetDifficultyRow(row);
+                const bool active=index==set.current;
+                DrawRectangleRounded(bounds,UiRoundness(bounds,7),8,
+                    index==set.selected?Color{62,61,95,255}:Color{31,41,63,255});
+                DrawRectangleRoundedLinesEx(bounds,UiRoundness(bounds,7),8,
+                    active?2.0f:1.0f,active?sky:theme.divider);
+                Label(font,UiFitText(font,set.difficulties[static_cast<std::size_t>(index)],
+                    bounds.width-16,13).c_str(),bounds.x+8,bounds.y+8,13,theme.foreground);
+                CompactButton(font,SetDifficultyRenameRow(row),"RENAME",violet);
             }
-        };
-        std::string tagList;
-        for (const auto& tag : set.tags) {
-            if (!tagList.empty()) tagList += ", ";
-            tagList += tag;
+            if(set.difficulties.empty())Label(font,"NO SAVED DIFFICULTIES",658,275,11,muted);
+            CompactButton(font,kSetDeleteDifficulty,"DELETE CHART",theme.danger);
+            CompactButton(font,kSetDeleteSong,"DELETE SET",theme.danger);
         }
-        Label(font,"SONG SET",53,164,12,theme.rose);
-        Label(font,"DIFFICULTIES",575,164,12,theme.softBlue);
-        metadataField(EditorSetField::Title, kSetTitleField,
-                      "SONG TITLE", set.title);
-        metadataField(EditorSetField::Artist, kSetArtistField,
-                      "ARTIST", set.artist);
-        metadataField(EditorSetField::Mapper, kSetMapperField,
-                      "MAPPER", set.mapper);
-        metadataField(EditorSetField::Tags, kSetTagsField,
-                      "TAGS", tagList);
-        if (set.managed) {
-            CompactButton(font, kSetBackground,
-                set.hasBackground ? "BACKGROUND" : "ADD BACKGROUND", sky);
-            CompactButton(font, kSetRemoveBackground, "REMOVE BG", violet);
-            CompactButton(font, kSetOpenFolder, "OPEN FOLDER", sky);
-        }
-        CompactButton(font, kSetImport, "IMPORT", sky);
-        CompactButton(font, kSetExport, "EXPORT", violet);
-        CompactButton(font, kSetRestore, "RESTORE", violet);
-        CompactButton(font, kSetNew, "NEW", sky);
-        CompactButton(font, kSetDuplicate, "DUPLICATE", violet);
-        CompactButton(font, kSetDeleteDifficulty,
-                      "DELETE CHART", Color{214, 159, 198, 255});
-        CompactButton(font, kSetDeleteSong,
-                      "DELETE SET", Color{214, 159, 198, 255});
-
-        for (int row = 0; row < 5; ++row) {
-            const int index = set.firstVisible + row;
-            if (index >= static_cast<int>(set.difficulties.size())) break;
-            const Rectangle bounds = SetDifficultyRow(row);
-            const bool chosen = index == set.selected;
-            const bool active = index == set.current;
-            DrawRectangleRounded(bounds, 0.13f, 6,
-                chosen ? Color{62, 61, 95, 255} : theme.surface);
-            DrawRectangleRoundedLinesEx(bounds, 0.13f, 6,
-                active ? 2.0f : 1.0f, active ? sky : theme.divider);
-            const std::string title = Truncate(set.difficulties[
-                static_cast<std::size_t>(index)], 29);
-            Label(font, title.c_str(), bounds.x + 11,
-                  bounds.y + 8, 15, normal);
-            if (active) Label(font, "EDITING", bounds.x + 282,
-                              bounds.y + 10, 11, violet);
-        }
-        if (!set.managed)
-            Label(font, "SAVE CHART TO ENABLE PACK METADATA",
-                  53, 463, 10, muted);
     } else {
         Label(font, "INITIAL HEADING", 104, 207, 17,
               Color{194, 218, 231, 255});
@@ -791,7 +716,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
 
     }
 
-    DrawTimeline(font,draft,ui,previewBeat);
+    if(routeTab) DrawTimeline(font,draft,ui,previewBeat);
     DrawSongOverview(font,draft,set,previewSeconds);
 
     // Timeline and song overview still use raylib; transport chrome is RmlUi.
