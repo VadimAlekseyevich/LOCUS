@@ -139,22 +139,26 @@ bool SongLibrary::Refresh(std::string& message,
         const auto bytes = current.file_size(ec);
         const bool hasMetadata = hasTimestamp && !ec;
         ec.clear();
-        std::uint64_t contentFingerprint = 0;
-        const bool hasFingerprint = hasMetadata &&
-            ChartFileFingerprint(path, contentFingerprint);
-
         LibraryChart indexed;
         const auto old = previous.find(path);
         const auto* prior = old == previous.end() ? nullptr : old->second.chart;
-        const bool reuse = hasFingerprint && prior && prior->HasPayload() &&
+        const bool reuseCandidate = hasMetadata && prior && prior->HasPayload() &&
             prior->indexedWriteTime == timestamp &&
             prior->indexedFileSize == bytes &&
-            prior->indexedContentFingerprint == contentFingerprint &&
             prior->songSetId == metadata.id &&
             old->second.song->tempoMap == metadata.tempoMap &&
             prior->difficulty.notes == prior->metadata.noteCount &&
             std::isfinite(prior->difficulty.overall) &&
             (prior->metadata.noteCount == 0 || prior->difficulty.overall > 0.0);
+        std::uint64_t contentFingerprint = 0;
+        std::uintmax_t fingerprintBytes = 0;
+        // Only a potentially reusable entry needs a separate streaming
+        // fingerprint. New/known-dirty charts are hashed in the parse buffer.
+        const bool probed = reuseCandidate &&
+            ChartFileFingerprint(path,contentFingerprint,&fingerprintBytes);
+        stats.fingerprintBytes += fingerprintBytes;
+        const bool reuse = probed && fingerprintBytes == bytes &&
+            contentFingerprint == prior->indexedContentFingerprint;
         core::LoadedChart chart; // scoped to this one file, never put in next
         if (reuse) {
             indexed = *prior;
@@ -162,10 +166,14 @@ bool SongLibrary::Refresh(std::string& message,
             std::wstring audio;
             std::string problem;
             std::uint64_t parsedFingerprint = 0;
+            std::size_t parsedBytes = 0;
             const bool opened = OpenChartWithAudioPath(path.wstring(),chart,audio,problem,
-                nullptr,&parsedFingerprint);
-            if (hasFingerprint && parsedFingerprint != 0 &&
-                parsedFingerprint != contentFingerprint) {
+                nullptr,&parsedFingerprint,&parsedBytes);
+            stats.parsedBytes += parsedBytes;
+            // If a candidate changed between its streaming probe and
+            // actual read, don't publish a mixed-generation index.
+            if (probed && parsedBytes != 0 &&
+                (parsedFingerprint != contentFingerprint || parsedBytes != fingerprintBytes)) {
                 message = "Difficulty changed during scan; retry refresh.";
                 return false;
             }
@@ -173,10 +181,18 @@ bool SongLibrary::Refresh(std::string& message,
                 ++skipped;
                 continue;
             }
-            if (!hasFingerprint) {
-                message = "Cannot fingerprint an indexed difficulty; retry refresh.";
+            // Verify the parsed buffer belongs to the observed file
+            // signature. Unlike directory_entry's potentially cached
+            // metadata, these queries are made after the read.
+            const auto finalBytes = fs::file_size(path,ec);
+            const bool validSize = !ec && finalBytes == bytes && parsedBytes == bytes;
+            ec.clear();
+            const auto finalTimestamp = fs::last_write_time(path,ec);
+            if (!hasMetadata || !validSize || ec || finalTimestamp != timestamp) {
+                message = "Difficulty changed during scan; retry refresh.";
                 return false;
             }
+            contentFingerprint = parsedFingerprint;
             indexed.file = path;
             indexed.RefreshMetadata(chart);
             indexed.audioFile = fs::path(audio);

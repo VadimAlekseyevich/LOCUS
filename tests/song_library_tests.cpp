@@ -153,7 +153,9 @@ int DenseCatalogBenchmark(const fs::path& csvPath) {
     const auto coldStart=Clock::now();
     if (!library.Refresh(error) || library.ChartCount()!=count ||
         library.LastRefreshStats().parsedCharts!=count ||
-        library.LastRefreshStats().peakParsedNotes!=notes) {
+        library.LastRefreshStats().peakParsedNotes!=notes ||
+        library.LastRefreshStats().fingerprintBytes!=0 ||
+        library.LastRefreshStats().parsedBytes!=sourceBytes) {
         std::cerr<<"DENSE_BENCH_ERROR cold "<<error<<'\n'; return 1;
     }
     const double coldMs=elapsed(coldStart);
@@ -163,7 +165,9 @@ int DenseCatalogBenchmark(const fs::path& csvPath) {
     if (!library.Refresh(error) || library.ChartCount()!=count ||
         library.LastRefreshStats().parsedCharts!=0 ||
         library.LastRefreshStats().reusedCharts!=count ||
-        library.LastRefreshStats().calculatedDifficulties!=0) {
+        library.LastRefreshStats().calculatedDifficulties!=0 ||
+        library.LastRefreshStats().parsedBytes!=0 ||
+        library.LastRefreshStats().fingerprintBytes!=sourceBytes) {
         std::cerr<<"DENSE_BENCH_ERROR warm "<<error<<'\n'; return 1;
     }
     const double warmMs=elapsed(warmStart);
@@ -189,13 +193,14 @@ int DenseCatalogBenchmark(const fs::path& csvPath) {
     };
     std::ofstream csv(csvPath,std::ios::binary);
     csv<<std::fixed<<std::setprecision(3)
-       <<"phase,charts,notes_per_chart,source_bytes,elapsed_ms,parsed,reused,ratings,peak_parsed_notes,working_set_bytes,peak_working_set_bytes,private_bytes,load_samples,p50_ms,p95_ms,p99_ms,checksum\n";
+       <<"phase,charts,notes_per_chart,source_bytes,elapsed_ms,parsed,reused,ratings,peak_parsed_notes,fingerprint_bytes,parsed_bytes,working_set_bytes,peak_working_set_bytes,private_bytes,load_samples,p50_ms,p95_ms,p99_ms,checksum\n";
     const auto row=[&](const char* phase,double ms,const LibraryRefreshStats& stats,
                        const ProcessMemory& mem,int n,double p50,double p95,double p99,
                        std::uint64_t sum) {
         csv<<phase<<','<<count<<','<<notes<<','<<sourceBytes<<','<<ms<<','
            <<stats.parsedCharts<<','<<stats.reusedCharts<<','<<stats.calculatedDifficulties<<','
-           <<stats.peakParsedNotes<<','<<mem.workingSet<<','<<mem.peakWorkingSet<<','
+           <<stats.peakParsedNotes<<','<<stats.fingerprintBytes<<','<<stats.parsedBytes<<','
+           <<mem.workingSet<<','<<mem.peakWorkingSet<<','
            <<mem.privateBytes<<','<<n<<','<<p50<<','<<p95<<','<<p99<<','<<sum<<'\n';
     };
     row("baseline",0,{},baseline,0,0,0,0,0);
@@ -1260,6 +1265,8 @@ int main(int argc,char** argv) {
                 largeLibrary.LastRefreshStats().resolvedAudioPaths == 1 &&
                 largeLibrary.LastRefreshStats().calculatedDifficulties == kLargeChartCount &&
                 largeLibrary.LastRefreshStats().peakParsedNotes == 1 &&
+                largeLibrary.LastRefreshStats().fingerprintBytes == 0 &&
+                largeLibrary.LastRefreshStats().parsedBytes > 0 &&
                 std::all_of(largeLibrary.Songs()[0].charts.begin(),
                     largeLibrary.Songs()[0].charts.end(),[](const LibraryChart& chart) {
                         return chart.HasPayload() && chart.metadata.noteCount==1 &&
@@ -1275,6 +1282,8 @@ int main(int argc,char** argv) {
                 largeLibrary.LastRefreshStats().parsedCharts == 0 &&
                 largeLibrary.LastRefreshStats().peakParsedNotes == 0 &&
                 largeLibrary.LastRefreshStats().calculatedDifficulties == 0 &&
+                largeLibrary.LastRefreshStats().parsedBytes == 0 &&
+                largeLibrary.LastRefreshStats().fingerprintBytes == coldStats.parsedBytes &&
                 largeLibrary.LastRefreshStats().resolvedAudioPaths == 1;
             const auto finish = std::chrono::steady_clock::now();
             const auto ms = [](auto duration) {
@@ -1291,17 +1300,19 @@ int main(int argc,char** argv) {
             // future scanner changes can be compared without conflating work.
             if (const char* output = std::getenv("LOCUS_SCAN_BENCHMARK_OUTPUT")) {
                 std::ofstream csv(fs::u8path(output), std::ios::binary);
-                csv << "scenario,charts,elapsed_ms,parsed,reused,audio_resolves,ratings\n";
+                csv << "scenario,charts,elapsed_ms,parsed,reused,audio_resolves,ratings,fingerprint_bytes,parsed_bytes\n";
                 csv << "cold," << kLargeChartCount << ','
                     << ms(warmStart - coldStart) << ','
                     << coldStats.parsedCharts << ',' << coldStats.reusedCharts
                     << ',' << coldStats.resolvedAudioPaths << ','
-                    << coldStats.calculatedDifficulties << '\n';
+                    << coldStats.calculatedDifficulties << ','
+                    << coldStats.fingerprintBytes << ',' << coldStats.parsedBytes << '\n';
                 csv << "warm," << kLargeChartCount << ','
                     << ms(finish - warmStart) << ','
                     << warmStats.parsedCharts << ',' << warmStats.reusedCharts
                     << ',' << warmStats.resolvedAudioPaths << ','
-                    << warmStats.calculatedDifficulties << '\n';
+                    << warmStats.calculatedDifficulties << ','
+                    << warmStats.fingerprintBytes << ',' << warmStats.parsedBytes << '\n';
                 ok &= Check(static_cast<bool>(csv),
                             "scan benchmark CSV saved for CI comparison");
             }

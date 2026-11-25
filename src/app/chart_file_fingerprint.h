@@ -26,7 +26,9 @@ inline std::uint64_t ChartContentFingerprint(std::string_view bytes) noexcept {
 // Reading at most 8 MiB per chart (the chart loader's maximum) is cheaper
 // than parsing JSON and recalculating the difficulty of every difficulty.
 inline bool ChartFileFingerprint(const std::filesystem::path& path,
-                                 std::uint64_t& result) {
+                                 std::uint64_t& result,
+                                 std::uintmax_t* actualBytes = nullptr) {
+    if (actualBytes) *actualBytes = 0;
     std::error_code ec;
     const auto size = std::filesystem::file_size(path, ec);
     if (ec || size > kMaxChartFileBytes) return false;
@@ -35,13 +37,17 @@ inline bool ChartFileFingerprint(const std::filesystem::path& path,
 
     std::uint64_t hash = 14695981039346656037ULL;
     std::array<char, 16384> buffer{};
+    std::uintmax_t total = 0;
     while (file) {
         file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         const auto count = file.gcount();
+        total += static_cast<std::uintmax_t>(count);
+        if (actualBytes) *actualBytes = total;
+        if (total > kMaxChartFileBytes) return false;
         AddChartFingerprintBytes(hash,std::string_view(
             buffer.data(),static_cast<std::size_t>(count)));
     }
-    if (!file.eof() || file.bad()) return false;
+    if (!file.eof() || file.bad() || total != size) return false;
     result = hash;
     return true;
 }

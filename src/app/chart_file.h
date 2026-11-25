@@ -20,7 +20,8 @@ bool OpenChartWithAudioPath(const std::wstring& chartFile,
                             std::wstring& absoluteAudioPath,
                             std::string& error,
                             const std::uint64_t* expectedFingerprint = nullptr,
-                            std::uint64_t* actualFingerprint = nullptr);
+                            std::uint64_t* actualFingerprint = nullptr,
+                            std::size_t* actualBytes = nullptr);
 
 // Replace updates an existing chart after a recoverable backup. CreateNew
 // publishes a difficulty without ever overwriting another writer's file.

@@ -74,6 +74,10 @@ struct LibraryRefreshStats {
     std::size_t calculatedDifficulties = 0;
     // Maximum notes in any single parsed chart, not total catalog notes.
     std::size_t peakParsedNotes = 0;
+    // Chart JSON bytes read through fingerprint-only and parse paths.
+    // Excludes manifests, audio and OS filesystem/cache overhead.
+    std::uintmax_t fingerprintBytes = 0;
+    std::uintmax_t parsedBytes = 0;
     // OS canonicalization probes for shared audio during the chart walk.
     // Should scale with distinct audio files, not difficulty count.
     std::size_t resolvedAudioPaths = 0;

@@ -40,13 +40,16 @@ bool OpenChartWithAudioPath(const std::wstring& chartFile,
                             std::wstring& absoluteAudioPath,
                             std::string& error,
                             const std::uint64_t* expectedFingerprint,
-                            std::uint64_t* actualFingerprint) {
+                            std::uint64_t* actualFingerprint,
+                            std::size_t* actualBytes) {
+    if (actualBytes) *actualBytes = 0;
 #ifdef _WIN32
     std::vector<std::uint8_t> bytes;
     if (!ReadLocalFileBytes(chartFile, bytes, error, kMaxChartFileBytes)) {
         error = "Chart file: " + error;
         return false;
     }
+    if (actualBytes) *actualBytes = bytes.size();
     const std::string_view contents(reinterpret_cast<const char*>(bytes.data()),bytes.size());
     if (expectedFingerprint || actualFingerprint) {
         const auto fingerprint = ChartContentFingerprint(contents);
