@@ -122,4 +122,4 @@ The following areas are not implemented or verified:
 Remaining work is tracked in [ROADMAP.md](ROADMAP.md).
 
 
-Difficulty v2 estimates each chart on an uncapped scale using exact timestamps, sustained and peak note density, key combinations, rhythm, route readability and stamina. It is displayed in PLAY and EDIT and never written into chart JSON. Full methodology: [CHART_DIFFICULTY.md](CHART_DIFFICULTY.md).
+Difficulty V4 estimates each chart on an uncapped scale using exact timestamps and physical key strain: speed, independent finger retriggers, chord coordination, rhythm and stamina. Route readability is diagnostic only and never contributes to the overall rating. It is displayed in PLAY and EDIT and never written into chart JSON. Full methodology: [CHART_DIFFICULTY.md](CHART_DIFFICULTY.md).

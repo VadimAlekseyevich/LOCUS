@@ -5,7 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
-#include <numeric>
+#include <functional>
 #include <vector>
 
 namespace locus::core {
@@ -34,8 +34,6 @@ struct Note {
     Heading heading = Heading::Right;
     unsigned mask = 0;
     int keys = 1;
-    double rhythm = 0.0;
-    double coordination = 0.0;
     double reading = 0.0;
 };
 double Nonnegative(double value) {
@@ -93,6 +91,168 @@ double Percentile(std::vector<double> values, double fraction) {
     std::nth_element(values.begin(), values.begin() + index, values.end());
     return values[index];
 }
+
+// These are chart-only heuristics, not physiological or player-specific
+// parameters. Times are original song seconds and each bit is one key.
+constexpr double kSpeedTau = 0.40;
+constexpr double kFingerTau = 0.48;
+constexpr double kCoordinationTau = 0.42;
+constexpr double kRhythmTau = 0.45;
+constexpr double kStaminaTau = 6.0;
+constexpr std::int64_t kSectionMs = 400;
+constexpr double kPeakWeight = 0.90;
+enum Skill : std::size_t { Speed, Finger, Coordination, Rhythm, Stamina, SkillCount };
+using Skills = std::array<double, SkillCount>;
+
+double Decay(double dt, double tau) {
+    return std::exp(-dt / tau);
+}
+
+// A fixed normalization (rather than division by the number of occupied
+// sections) ensures padding a chart with easy notes cannot dilute a spike.
+// Only sections containing actual input contribute: silence is recovery.
+class SectionPeaks {
+public:
+    void Add(std::int64_t relativeMs, const Skills& sample) {
+        const auto section = relativeMs / kSectionMs;
+        if (section != current_) {
+            if (current_ >= 0) peaks_.push_back(peak_);
+            current_ = section;
+            peak_.fill(0.0);
+        }
+        for (std::size_t i = 0; i < SkillCount; ++i)
+            peak_[i] = std::max(peak_[i], sample[i]);
+    }
+    Skills Finish() {
+        if (current_ >= 0) peaks_.push_back(peak_);
+        Skills result{};
+        std::vector<double> values;
+        values.reserve(peaks_.size());
+        for (std::size_t i = 0; i < SkillCount; ++i) {
+            values.clear();
+            for (const auto& p : peaks_)
+                if (p[i] > 0.0) values.push_back(p[i]);
+            std::sort(values.begin(), values.end(), std::greater<double>{});
+            double weighted = 0.0, weight = 1.0;
+            for (double v : values) {
+                weighted += weight * v * v;
+                weight *= kPeakWeight;
+                if (weight < 1e-12) break;
+            }
+            result[i] = std::sqrt((1.0 - kPeakWeight) * weighted);
+        }
+        return result;
+    }
+private:
+    std::int64_t current_ = -1;
+    Skills peak_{};
+    std::vector<Skills> peaks_;
+};
+
+// Surprise is change in a sequence, rather than merely change of adjacent
+// gaps. A stable alternating rhythm earns a discount after two repetitions.
+// The bounded history requires actual evidence, not an accidental match.
+double RhythmSurprise(double dt, const std::array<double, 8>& gaps,
+                      std::size_t count) {
+    if (count == 0 || dt > 2.0 || gaps[0] > 2.0) return 0.0;
+    const auto distance = [](double a, double b) {
+        return std::min(3.0, std::abs(std::log2(a / b)));
+    };
+    const double adjacent = distance(dt, gaps[0]);
+    double novelty = adjacent;
+    for (std::size_t period = 2; period <= 4; ++period) {
+        if (count < 2 * period - 1) continue;
+        double error = distance(dt, gaps[period-1]);
+        for (std::size_t j = 0; j < period-1; ++j)
+            error += distance(gaps[j], gaps[j+period]);
+        error /= static_cast<double>(period);
+        novelty = std::min(novelty, error);
+    }
+    return 0.20 * adjacent + 0.80 * novelty;
+}
+
+class InputStrain {
+public:
+    Skills Add(const Note& note, const Note* prev) {
+        const double dt = prev ? (note.timeMs - prev->timeMs) / 1000.0 : 0.0;
+        const auto reused = prev ? Bits(note.mask & prev->mask) : 0;
+        const auto changed = prev ? Bits(note.mask ^ prev->mask) : 0;
+        // Global physical press rate and independent per-finger histories.
+        speed_ = speed_ * Decay(dt, kSpeedTau) + note.keys / kSpeedTau;
+        double hardest = 0.0, squares = 0.0, fingerRhythm = 0.0;
+        for (std::size_t f = 0; f < fingers_.size(); ++f) {
+            auto& finger = fingers_[f];
+            finger.strain *= Decay(dt, kFingerTau);
+            if (note.mask & (1u << f)) {
+                double increment = 1.0;
+                if (finger.seen) {
+                    const double gap = (note.timeMs - finger.lastMs) / 1000.0;
+                    // Short same-finger intervals cost extra, even if
+                    // intervening events use entirely different directions.
+                    increment += 0.65 * std::pow(0.125 / (gap + 0.025), 1.2);
+                    if (finger.lastGap > 0.0 && gap <= 1.0 && finger.lastGap <= 1.0)
+                        fingerRhythm += std::min(2.0,
+                            std::abs(std::log2(gap / finger.lastGap)));
+                    finger.lastGap = gap;
+                }
+                finger.strain += increment / kFingerTau;
+                finger.lastMs = note.timeMs;
+                finger.seen = true;
+            }
+            hardest = std::max(hardest, finger.strain);
+            squares += finger.strain * finger.strain;
+        }
+        // A busy anchor dominates, while two busy fingers still cost more
+        // than one. Rotations and reflections only permute the four states.
+        const double fingerLoad = 0.75 * hardest + 0.25 * std::sqrt(squares);
+
+        // Chord synchronization and release/retrigger of an overlapping
+        // chord. Ordinary jacks are already accounted for by finger strain.
+        // No heading angles, path coordinates or assumed hand assignment.
+        double coordinationImpulse = note.keys == 2 ? 0.85 : 0.0;
+        if (prev) {
+            const bool chordTransition = note.keys == 2 || prev->keys == 2;
+            coordinationImpulse += 0.08 * changed;
+            if (chordTransition && reused > 0)
+                coordinationImpulse += (0.40 + 0.32 * reused) *
+                    (0.12 / (dt + 0.025));
+        }
+        coordination_ = coordination_ * Decay(dt, kCoordinationTau) +
+            coordinationImpulse / kCoordinationTau;
+
+        double surprise = 0.0;
+        if (prev) {
+            if (dt > 2.0) gapCount_ = 0;
+            else {
+                surprise = RhythmSurprise(dt, gaps_, gapCount_);
+                for (std::size_t j = gaps_.size()-1; j > 0; --j)
+                    gaps_[j] = gaps_[j-1];
+                gaps_[0] = dt;
+                gapCount_ = std::min(gapCount_+1, gaps_.size());
+            }
+        }
+        rhythm_ = rhythm_ * Decay(dt, kRhythmTau) +
+            (0.70 * surprise * note.keys + 0.30 * fingerRhythm) / kRhythmTau;
+
+        // Separate slow recovery from speed. Only substantial accumulated
+        // physical input contributes to stamina; sparse songs stay easy.
+        endurance_ = endurance_ * Decay(dt, kStaminaTau) + note.keys / kStaminaTau;
+        return {speed_, fingerLoad, coordination_, rhythm_,
+                std::max(0.0, endurance_ - 2.0)};
+    }
+private:
+    struct FingerState {
+        bool seen = false;
+        std::int64_t lastMs = 0;
+        double lastGap = 0.0;
+        double strain = 0.0;
+    };
+    std::array<FingerState, 4> fingers_{};
+    std::array<double, 8> gaps_{};
+    std::size_t gapCount_ = 0;
+    double speed_ = 0.0, coordination_ = 0.0, rhythm_ = 0.0, endurance_ = 0.0;
+};
+
 } // namespace
 
 ChartDifficulty CalculateChartDifficulty(const Chart& chart,
@@ -146,188 +306,76 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     result.keyPresses = totalKeys;
     if (n == 0) return result;
 
-    std::vector<double> rhythmSamples, coordinationSamples, readingSamples;
-    rhythmSamples.reserve(n);
-    coordinationSamples.reserve(n);
-    readingSamples.reserve(n);
-    double previousInterval = 0.0;
-    int sharedKeyStreak = 0;
+    InputStrain input;
+    SectionPeaks peaks;
+    // Geometry is a separate editor diagnostic. It is deliberately absent
+    // from the input strain calculation and final rating.
     for (std::size_t i = 0; i < n; ++i) {
         Note& cur = notes[i];
-        if (i == 0) continue;
-        const Note& prev = notes[i-1];
-        const double dt = (cur.timeMs - prev.timeMs) / 1000.0;
-        const int angle = std::abs(HeadingIndex(cur.heading) -
-                                   HeadingIndex(prev.heading));
-        const int eighths = std::min(angle, 8-angle);
-        const double turn = static_cast<double>(eighths) / 4.0;
-        // Brief gaps make sharp geometry harder to decode.
-        const double urgency = 1.0 + 0.8 * std::clamp(
-            (0.40 - dt) / 0.40, 0.0, 1.0);
-
-        // Rhythmic surprise depends only on real gaps between key events.
-        // Grid labels and BPM markers cannot make unchanged input harder.
-        double variation = 0.0;
-        if (previousInterval > 0.0 && dt <= 2.0 && previousInterval <= 2.0)
-            variation = std::min(2.0, std::abs(
-                std::log2(dt / previousInterval)));
-        cur.rhythm = std::min(2.5,
-            variation * 0.85 + (dt < 0.22 ? 0.23 : 0.0));
-        previousInterval = dt;
-
-        const int changed = Bits(cur.mask ^ prev.mask);
-        const bool repeated = cur.mask == prev.mask;
-        cur.coordination = (cur.keys == 2 ? 1.0 : 0.0) +
-            (changed >= 2 ? 0.55 : changed == 1 ? 0.18 : 0.0) +
-            (changed == 4 ? 0.55 : 0.0) +
-            (repeated && dt < 0.19 ? 0.52 : 0.0);
-        cur.coordination *= std::clamp(0.55 / dt, 0.30, 1.8);
-
-        // A diagonal requires two simultaneous physical keys. If the NEXT
-        // note reuses either key, that finger must be released/retriggered
-        // while the previous chord is still being processed. This is not
-        // equivalent to two unrelated notes or a full key-set switch.
-        //
-        // Diagonal -> cardinal, diagonal -> overlapping diagonal and their
-        // repeated chains are all modeled. Shared key masks are invariant
-        // to rotating/mirroring the entire chart. The pressure fades out
-        // beyond 500 ms and is bounded for extremely small intervals.
-        const int reusedKeys = Bits(prev.mask & cur.mask);
-        if (reusedKeys > 0 && (prev.keys == 2 || cur.keys == 2)) {
-            sharedKeyStreak = std::min(6, sharedKeyStreak + 1);
-            const double proximity = std::clamp((0.50 - dt) / 0.40, 0.0, 1.0);
-            const double retrigger = std::min(2.75, 0.28 / dt) * proximity;
-            const double patternLoad = prev.keys == 2
-                ? (cur.keys == 2 ? (reusedKeys == 2 ? 2.10 : 1.95) : 1.80)
-                : 0.70;
-            const double chain = 1.0 + 0.12 * (sharedKeyStreak - 1);
-            cur.coordination += patternLoad * retrigger * chain;
-        } else {
-            sharedKeyStreak = 0;
-        }
-
-        cur.reading = turn * urgency;
-        // Scan only nearby route pieces within the last four seconds:
-        // actual path returns, intersections and overlapping strokes
-        // obscure which of the visually close turns is next.
-        double localClutter = 0.0;
-        for (std::size_t back = 2; back <= 12 && back < i; ++back) {
-            const std::size_t j = i - back;
-            if (j == 0 || cur.timeMs - notes[j].timeMs > 4000) break;
-            const double gap = SegmentDistance(
-                prev.pos, cur.pos, notes[j-1].pos, notes[j].pos);
-            if (gap < 0.7) {
-                const double severity = 1.0 - gap / 0.7;
-                localClutter += 0.35 + 0.42 * severity;
-            }
-        }
-        cur.reading += std::min(1.9, localClutter) +
-                       (eighths == 4 ? 0.40 : 0.0);
-        rhythmSamples.push_back(cur.rhythm);
-        coordinationSamples.push_back(cur.coordination);
-        readingSamples.push_back(cur.reading);
+        const Note* prev = i ? &notes[i-1] : nullptr;
+        peaks.Add(cur.timeMs - notes.front().timeMs, input.Add(cur, prev));
+        if (!prev) continue;
+        const double dt = (cur.timeMs - prev->timeMs) / 1000.0;
         result.activeSeconds += std::min(1.5, dt);
-    }
-
-    // A fixed time window handles both full streams and micro-bursts. The
-    // peak is informative, but percentile load resists one-note outliers.
-    std::vector<double> keyRates, noteRates, coordRates, readRates, rhythmRates;
-    std::vector<double> burstKeyRates;
-    keyRates.reserve(n); noteRates.reserve(n);
-    coordRates.reserve(n); readRates.reserve(n); rhythmRates.reserve(n);
-    burstKeyRates.reserve(n);
-    std::size_t first = 0, burstFirst = 0;
-    int rollingKeys = 0, burstKeys = 0;
-    double rollingCoord = 0.0, rollingRead = 0.0, rollingRhythm = 0.0;
-    constexpr double window = 1.8;
-    constexpr std::int64_t windowMs = 1800;
-    // A shorter window detects fast microbursts without treating one
-    // isolated event as representative of the entire chart.
-    constexpr double burstWindow = 0.65;
-    constexpr std::int64_t burstWindowMs = 650;
-    for (std::size_t i = 0; i < n; ++i) {
-        rollingKeys += notes[i].keys;
-        burstKeys += notes[i].keys;
-        while (burstFirst < i &&
-               notes[i].timeMs - notes[burstFirst].timeMs > burstWindowMs) {
-            burstKeys -= notes[burstFirst].keys;
-            ++burstFirst;
+        const int angle = std::abs(HeadingIndex(cur.heading) - HeadingIndex(prev->heading));
+        const int eighths = std::min(angle, 8-angle);
+        const double urgency = 1.0 + 0.8 * std::clamp((0.40 - dt) / 0.40, 0.0, 1.0);
+        cur.reading = (static_cast<double>(eighths) / 4.0) * urgency;
+        double clutter = 0.0;
+        for (std::size_t back = 2; back <= 12 && back < i; ++back) {
+            const auto j = i - back;
+            if (j == 0 || cur.timeMs - notes[j].timeMs > 4000) break;
+            const double gap = SegmentDistance(prev->pos, cur.pos, notes[j-1].pos, notes[j].pos);
+            if (gap < 0.7) clutter += 0.35 + 0.42 * (1.0 - gap / 0.7);
         }
-        burstKeyRates.push_back(burstKeys / burstWindow);
-        rollingCoord += notes[i].coordination;
-        rollingRead += notes[i].reading;
-        rollingRhythm += notes[i].rhythm;
-        while (first < i &&
-               notes[i].timeMs - notes[first].timeMs > windowMs) {
-            rollingKeys -= notes[first].keys;
-            rollingCoord -= notes[first].coordination;
-            rollingRead -= notes[first].reading;
-            rollingRhythm -= notes[first].rhythm;
+        cur.reading += std::min(1.9, clutter) + (eighths == 4 ? 0.40 : 0.0);
+    }
+    const auto skills = peaks.Finish();
+    result.speed = skills[Speed];
+    result.fingerStrain = skills[Finger];
+    result.coordination = skills[Coordination];
+    result.rhythm = skills[Rhythm];
+    result.stamina = skills[Stamina];
+
+    // Stable 1.8s density telemetry and the separate visual diagnostic.
+    // The old active-wide average/percentile cannot dilute the new rating.
+    std::vector<double> noteRates, readRates, keyRates;
+    noteRates.reserve(n); readRates.reserve(n); keyRates.reserve(n);
+    std::size_t first = 0;
+    int keys = 0;
+    double reading = 0.0;
+    constexpr double window = 1.8;
+    for (std::size_t i = 0; i < n; ++i) {
+        keys += notes[i].keys;
+        reading += notes[i].reading;
+        while (first < i && notes[i].timeMs - notes[first].timeMs > 1800) {
+            keys -= notes[first].keys;
+            reading -= notes[first].reading;
             ++first;
         }
         const double nps = static_cast<double>(i - first + 1) / window;
-        const double kps = rollingKeys / window;
+        const double kps = keys / window;
         noteRates.push_back(nps);
         keyRates.push_back(kps);
-        coordRates.push_back(rollingCoord / window);
-        readRates.push_back(rollingRead / window);
-        rhythmRates.push_back(rollingRhythm / window);
+        readRates.push_back(reading / window);
         result.notesPerSecondPeak = std::max(result.notesPerSecondPeak, nps);
         result.keysPerSecondPeak = std::max(result.keysPerSecondPeak, kps);
     }
-    const double q85Keys = Percentile(keyRates, 0.85);
-    const double q85Notes = Percentile(noteRates, 0.85);
-    const double q90BurstKeys = Percentile(burstKeyRates, 0.90);
-    // Local density alone overvalues a short burst. Include the number of
-    // physical presses over the chart's active spans, with rests above 1.5 s
-    // contributing only 1.5 s to the denominator. Repeated dense passages
-    // therefore matter even when the fastest small window is unchanged.
-    const double activeKeysPerSecond = result.activeSeconds > 0.0
-        ? static_cast<double>(totalKeys) / result.activeSeconds : 0.0;
-    // Density is the leading strain: both note frequency and physical key
-    // rate matter. 1.8s + 650ms windows reward sustained passages while
-    // still registering short, intense clusters.
-    result.speed = Nonnegative(1.55 * (
-        0.48*q85Notes + 0.22*q85Keys + 0.22*activeKeysPerSecond +
-        0.08*q90BurstKeys));
-
-    const double avgRhythm = rhythmSamples.empty() ? 0.0 :
-        std::accumulate(rhythmSamples.begin(), rhythmSamples.end(), 0.0) /
-        rhythmSamples.size();
-    result.rhythm = Nonnegative(
-        (0.38 * Percentile(rhythmRates, 0.85) + 0.30*avgRhythm) *
-        std::max(0.30, q85Notes / 3.0));
-    result.coordination = Nonnegative(
-        0.62 * (0.65*Percentile(coordRates, 0.85) +
-                0.35*Percentile(coordRates, 0.95)));
+    const double n85 = Percentile(noteRates, 0.85);
     result.reading = Nonnegative(
-        0.80 * (0.75*Percentile(readRates, 0.85) +
-                0.25*Percentile(readRates, 0.95)) *
-        std::max(0.45, std::sqrt(q85Notes / 3.0)));
-    // Both how long a dense pattern persists and how many presses it
-    // requires matter. Quiet songs and isolated notes earn no stamina.
-    // Square-root duration grows indefinitely, but at a diminishing rate.
-    result.stamina = Nonnegative(
-        0.85 * std::sqrt(result.activeSeconds / 30.0) *
-        std::max(0.0, activeKeysPerSecond - 1.0));
-    result.peak = Nonnegative(
-        0.58 * (0.75*Percentile(keyRates, 0.99) +
-                0.25*result.keysPerSecondPeak - 1.0));
-    // Key density and fast overlapping diagonal transitions now contribute
-    // more than geometry alone. Keep the component breakdown consistent
-    // with the six existing difficulty metrics in the song-selection UI.
-    const double energy =
-        0.55*result.speed*result.speed +
-        0.08*result.rhythm*result.rhythm +
-        0.23*result.coordination*result.coordination +
-        0.11*result.reading*result.reading +
-        0.03*result.stamina*result.stamina;
-    // Confidence adjusts tiny samples; it is NOT a difficulty ceiling.
-    const double sampleConfidence = 0.70 + 0.30 *
-        std::min(1.0, static_cast<double>(n)/24.0);
-    result.overall = Nonnegative((
-        std::sqrt(energy) + result.peak * 0.08) *
-        sampleConfidence);
+        0.80 * (0.75 * Percentile(readRates, 0.85) + 0.25 * Percentile(readRates, 0.95)) *
+        std::max(0.45, std::sqrt(n85 / 3.0)));
+    result.peak = Nonnegative(0.58 * (0.75 * Percentile(keyRates, 0.99) +
+        0.25 * result.keysPerSecondPeak - 1.0));
+
+    // All weighted skills are physical input skills. A geometric crossing
+    // cannot raise the rating independently of the actual key sequence.
+    result.overall = Nonnegative(std::sqrt(
+        0.35 * result.speed * result.speed +
+        0.30 * result.fingerStrain * result.fingerStrain +
+        0.20 * result.coordination * result.coordination +
+        0.10 * result.rhythm * result.rhythm +
+        0.05 * result.stamina * result.stamina));
     return result;
 }
 

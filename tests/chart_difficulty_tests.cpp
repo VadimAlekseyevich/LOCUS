@@ -31,14 +31,14 @@ Chart Sequence(std::size_t n, const std::vector<int>& gaps,
     return chart;
 }
 bool Finite(const ChartDifficulty& d) {
-    for (double value : {d.overall,d.speed,d.rhythm,d.coordination,d.reading,
+    for (double value : {d.overall,d.speed,d.fingerStrain,d.rhythm,d.coordination,d.reading,
                          d.stamina,d.peak,d.notesPerSecondPeak,
                          d.keysPerSecondPeak,d.activeSeconds})
         if (!std::isfinite(value) || value < 0.0) return false;
     return true;
 }
 bool SameDimensions(const ChartDifficulty& a, const ChartDifficulty& b) {
-    for (const auto diff : {a.overall-b.overall, a.speed-b.speed,
+    for (const auto diff : {a.overall-b.overall, a.speed-b.speed, a.fingerStrain-b.fingerStrain,
                            a.rhythm-b.rhythm, a.coordination-b.coordination,
                            a.reading-b.reading, a.stamina-b.stamina,
                            a.peak-b.peak})
@@ -174,8 +174,47 @@ int main() {
     const auto loops = CalculateChartDifficulty(
         Sequence(60, {220}, {Heading::Right,Heading::Left}));
     ok &= Check(loops.reading > steady.reading &&
-                loops.overall > steady.overall,
-                "reversals and overlapping route segments increase reading strain");
+                loops.fingerStrain < steady.fingerStrain &&
+                loops.overall < steady.overall,
+                "alternating fingers are easier than jacks despite route overlap");
+    const auto roll = CalculateChartDifficulty(Sequence(80, {100},
+        {Heading::Up, Heading::Right, Heading::Down, Heading::Left}));
+    const auto trill = CalculateChartDifficulty(Sequence(80, {100},
+        {Heading::Up, Heading::Right}));
+    const auto jack = CalculateChartDifficulty(Sequence(80, {100}, {Heading::Up}));
+    ok &= Check(roll.keyPresses == jack.keyPresses && trill.keyPresses == jack.keyPresses &&
+                roll.fingerStrain < trill.fingerStrain && trill.fingerStrain < jack.fingerStrain &&
+                roll.overall < trill.overall && trill.overall < jack.overall,
+                "same NPS: distributed roll < trill < one-finger jack");
+    const auto chordJack = CalculateChartDifficulty(Sequence(80, {100}, {Heading::UpRight}));
+    ok &= Check(chordJack.overall > jack.overall &&
+                chordJack.coordination > jack.coordination,
+                "two-finger chordjack is harder than single jack");
+    // Same physical workload (one-to-one remapping of all four keys)
+    // may change route crossings and turn angles. It must not change score.
+    const auto routeA = CalculateChartDifficulty(Sequence(120, {100,140},
+        {Heading::Up,Heading::Right,Heading::Down,Heading::Left}));
+    const auto routeB = CalculateChartDifficulty(Sequence(120, {100,140},
+        {Heading::Up,Heading::Down,Heading::Right,Heading::Left}));
+    ok &= Check(std::abs(routeA.overall - routeB.overall) < 1e-8 &&
+                std::abs(routeA.reading - routeB.reading) > 1e-3,
+                "geometry cannot change difficulty for equivalent input");
+    const auto irregular = CalculateChartDifficulty(Sequence(80, {75,150,50,125,110,190,90},
+        {Heading::Right}));
+    const auto repeating = CalculateChartDifficulty(Sequence(80, {75,150},
+        {Heading::Right}));
+    ok &= Check(irregular.rhythm > repeating.rhythm,
+                "repeating rhythm is discounted relative to irregular gaps");
+    auto padded = Sequence(80, {100}, {Heading::Right});
+    const auto burst = CalculateChartDifficulty(padded);
+    auto tail = Sequence(500, {800}, {Heading::Right});
+    for (auto e : tail.turns) {
+        e.timeMs += 30000;
+        e.beat = TickAtTimeMs(padded.bpm, padded.ticksPerBeat, 0, e.timeMs);
+        padded.turns.push_back(e);
+    }
+    ok &= Check(CalculateChartDifficulty(padded).overall + 1e-8 >= burst.overall,
+                "padding a hard passage with easy notes cannot dilute rating");
 
     const auto shortStream = CalculateChartDifficulty(
         Sequence(18, {190}, {Heading::Right,Heading::Down}));
@@ -263,6 +302,6 @@ int main() {
                 "new blank editor does not reuse previous cached score");
 
     if (!ok) return 1;
-    std::cout << "DIFFICULTY_V3_PASS density and overlapping diagonal transitions\n";
+    std::cout << "DIFFICULTY_V4_PASS physical key strain and recovery\n";
     return 0;
 }

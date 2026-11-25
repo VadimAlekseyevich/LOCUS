@@ -1,85 +1,81 @@
-# Chart difficulty — v2
+# Chart difficulty — V4
 
-LOCUS estimates intrinsic chart difficulty on an **uncapped, nonnegative scale**.
-There is no maximum score of 10 (or any other fixed ceiling), and none of the
-six component ratings saturates at a fixed maximum. Ratings are derived on demand and are not stored in chart files.
+The overall rating is a chart-only, uncapped estimate of physical execution
+difficulty. A directional event is a simultaneous mask of one or two of the
+four physical keys. The rating does not depend on route geometry, crossings,
+turn angles, skin, BPM notation, snap, practice speed, or keyboard layout.
+It is calculated on demand, not stored in chart JSON.
 
-This is still a heuristic, **not** a calibrated player skill prediction or a
-guarantee that a pattern is sight-readable. The displayed **V2** label makes
-the current formula explicit.
+## Design
 
-The calculator in `core/chart_difficulty.{h,cpp}` uses absolute note
-timestamps, directions, and route geometry measured in time-based reference units.
-It neither loads audio nor depends on BPM/tempo maps, editor grid positions,
-the current skin, practice speed, key bindings or player performance. The editor recalculates after chart changes;
-the song library computes ratings during a rescan.
+The algorithm uses independent key histories and exponentially decaying
+strain, inspired by [osu!mania's Strain skill](https://github.com/ppy/osu/blob/master/osu.Game.Rulesets.Mania/Difficulty/Skills/Strain.cs)
+and [osu!'s section aggregation](https://github.com/ppy/osu/blob/master/osu.Game/Rulesets/Difficulty/Skills/StrainSkill.cs).
+Separate jack/chord/technical and endurance skills in
+[Etterna MinaCalc](https://github.com/etternagame/etterna/tree/master/src/Etterna/MinaCalc)
+inform the decomposition. LOCUS uses its own formulas and constants, not
+either game's rating scale. All parameters are provisional and uncalibrated.
 
-## What contributes
+## Input strain
 
-1. **SPEED** — rolling 1.8-second note and physical-key rates, plus **active
-   chart-wide physical-key density**. Long or consistently dense streams
-   contribute to total difficulty. Diagonal notes count as one note but
-   two key presses.
-2. **RHYTHM** — irregular adjacent intervals, varying real-time spacing and very
-   short gaps. Its density multiplier has no upper ceiling; a steady triplet
-   pattern is not as irregular as unpredictable alternating intervals.
-3. **KEYS** — simultaneous diagonal input, rapid changes in key masks,
-   opposite-chord switches and repeated-note jacks. No hard rating cap.
-4. **READ** — sharp turns, 180-degree reversals and nearby route segments.
-   Visual ambiguity is approximated geometrically, not from actual rendered
-   pixels. Dense turns intensify this contribution without a hard cap.
-5. **STAMINA** — active duration and chart-wide physical key rate. Longer
-   dense passages increase difficulty even if their fastest 1.8 seconds
-   stay identical; long rests cannot inflate exertion by themselves.
-6. **PEAK** — a secondary indication of especially fast sections, using
-   the 99th-percentile and maximum short-window key rates.
+All times are original song seconds. For every event let dt be the gap from
+the preceding event, k the number of physical keys (1 or 2), and df the gap
+from the previous press of finger f. Every state decays by exp(-dt/tau).
 
-For the chart-wide density and stamina measurements, `activeSeconds` sums
-consecutive note gaps with each gap limited to 1.5 seconds. That discounts
-long silent intervals but does not erase their effect on the average rate.
-One isolated note contributes zero active duration. The calculation uses
-integer-millisecond differences, preserving invariance under shifting all
-note timestamps together with the song offset.
+- SPEED: decay with tau=0.40; add k/0.40 on each event.
+- FINGERS: decay each of four independent states with tau=0.48; for every
+  pressed finger add (1 + 0.65*(0.125/(df+0.025))^1.2)/0.48, or 1/0.48
+  on its first press. Combine as 0.75*max(F) + 0.25*sqrt(sum(F^2)).
+  A jack, trill and roll have different retrigger costs at the same NPS.
+- COORDINATION: decay with tau=0.42; add impulse/0.42. Impulse is 0.85 for
+  a chord plus 0.08 per changed key bit from the previous event, plus
+  (0.40+0.32*sharedKeys)*0.12/(dt+0.025) if either event is a chord and
+  they share a key. This models chord synchronization and anchor reuse.
+- RHYTHM: decay with tau=0.45; add (0.70*surprise*k + 0.30*fingerRhythm)/0.45.
+  Surprise combines 20% adjacent gap log2-ratio distance and 80% minimum
+  matching error against repeated periods of 2–4 gaps, with two repetitions
+  required. Ratio distances are bounded at 3. FingerRhythm sums log2-ratio
+  distances (bounded at 2) of successive intervals on each pressed finger,
+  where both intervals are <=1s. Gaps >2s reset global rhythm history.
+- STAMINA: decay a separate press-rate state with tau=6.0; add k/6.0 and
+  report max(0,state-2). This models slow recovery independently of speed.
 
-## Current formula
+## Section aggregation and overall
+
+Each occupied 400ms section, aligned to the first event, stores the maximum
+of each skill at actual event times. Sort the peaks of a skill descending.
+Empty sections do not add load; elapsed time still decays every state.
 
 ```text
-activeKps = totalPhysicalKeyPresses / activeSeconds  (0 if no active duration)
-q85Nps   = 85th percentile of rolling notes/second
-q85Kps   = 85th percentile of rolling keys/second
-
-SPEED = 1.35 × (0.55 × q85Nps + 0.20 × q85Kps + 0.25 × activeKps)
-
-base = sqrt(
-    0.52 × SPEED² +
-    0.14 × RHYTHM² +
-    0.14 × KEYS² +
-    0.15 × READ² +
-    0.05 × STAMINA²
-)
-total = (base + 0.08 × PEAK) × (0.70 + 0.30 × min(noteCount / 24, 1))
+skill = sqrt(0.10 * sum(0.90^j * peak[j]^2))
+overall = sqrt(0.35*SPEED^2 + 0.30*FINGERS^2 + 0.20*COORDINATION^2
+             + 0.10*RHYTHM^2 + 0.05*STAMINA^2)
 ```
 
-All displayed components are nonnegative and **not capped**. RHYTHM, KEYS,
-READ, STAMINA and PEAK retain their own formulas in the calculator source.
-The confidence factor reduces the influence of extremely short samples;
-it does **not** impose an upper limit. Stamina's duration contribution grows
-approximately with the square root of active seconds rather than approaching
-an artificial asymptote.
+The normalization is fixed (not divided by section count), so short sections
+matter, sustained high strain contributes more, and easy padding cannot
+dilute already-recorded peaks. There is no extra note-count confidence
+penalty. The weights are coefficients of a quadratic norm, not literal
+percentages of the final score.
 
-The weights are hypotheses. They have not been calibrated using a dataset of
-real players, and should be judged by comparing chart examples in-game.
+READ remains a diagnostic from the previous angle/clutter model, displayed
+as Read* in PLAY, with zero weight in overall. The 1.8s peak NPS/KPS and
+legacy PEAK density are telemetry, not independent rating bonuses.
+activeSeconds still sums note gaps capped at 1.5s for telemetry only.
 
-## Guarantees and limitations
+## Properties and limitations
 
-- Whole-chart rotation or mirroring leaves every component unchanged.
-- Changing BPM, tempo map, or tick subdivision without changing absolute note
-  times and directions leaves the entire rating unchanged.
-- Shifting note times together with the offset leaves the rating unchanged.
-- The calculation never changes chart timing, headings, scoring or JSON.
-- Blank charts report zero; invalid chart parameters return no useful rating.
-- Audio latency, actual rendered overlap, monitor size, chosen skin, practice
-  speed, human memory and finger technique are not modelled.
+- Blank charts return zero. Exact event timestamps dominate tick metadata.
+- Shifting all times, rotating/mirroring headings or changing the tempo grid
+  without changing input leaves the rating unchanged.
+- One-to-one key permutations that preserve valid input masks leave physical
+  rating unchanged even when the route geometry changes.
+- No assumed mapping of keys to hands or player-specific dexterity.
+- O(n + m log m) input analysis for n events and m occupied sections;
+  bounded four-finger state and eight-gap history. Reading diagnostics use
+  bounded local geometry comparisons and linear-time percentile selection.
+- Parameters need real-player calibration using observed accuracy and
+  matched-density pattern families; this is not a measured human skill model.
 
-Compare charts by relative rating and breakdown, not by interpreting a fixed
-number as an objective skill level. A score of 12 or 30 is legitimate.
+The UI and library recompute ratings from the same core calculator.
+Chart and skin formats and gameplay judgement are unchanged.

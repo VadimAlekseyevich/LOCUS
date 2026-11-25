@@ -6,12 +6,15 @@
 
 namespace locus::core {
 
-// Difficulty v3 is an unbounded, nonnegative chart-only estimate.
-// Dense key streams and rapid shared-key diagonal transitions carry extra strain.\n// Not a grade, a player skill rating or a promise of sight-readability.
+// Difficulty V4: physical key strain only, on an uncapped nonnegative scale.
+// Reading and peak density remain diagnostics; neither affects overall.
+// Not a grade, a player skill rating or a promise of sight-readability.
+inline constexpr int kChartDifficultyVersion = 4;
 // No skin, key binding, playback speed or song duration dependence.
 struct ChartDifficulty {
     double overall = 0.0;
     double speed = 0.0;
+    double fingerStrain = 0.0; // individual retrigger and anchor pressure
     double rhythm = 0.0;
     double coordination = 0.0;
     double reading = 0.0;

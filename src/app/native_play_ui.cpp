@@ -176,9 +176,6 @@ void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     const LibraryChart* chart = ui.Selected(library);
     const auto rating = chart ? chart->difficulty :
         core::CalculateChartDifficulty(core::MakeDemoChart());
-    const int count = chart
-        ? static_cast<int>(chart->metadata.noteCount)
-        : static_cast<int>(core::MakeDemoChart().turns.size());
     // Initial library-index telemetry is not a user-facing notification.
     SetText("notice", ui.notice.rfind("LIBRARY:", 0) == 0
         ? "" : ui.notice);
@@ -202,13 +199,14 @@ void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     SetText("song-tags", tags);
     SetText("chart-title", chart ? chart->metadata.title : "ORIGINAL");
     SetText("rating", Rating(rating.overall));
-    SetText("chart-notes", std::to_string(count) + " TURNS");
+    SetText("chart-notes", std::to_string(rating.notes) + " EVENTS / " +
+        std::to_string(rating.keyPresses) + " KEYS");
     SetText("metric-speed", Rating(rating.speed));
     SetText("metric-rhythm", Rating(rating.rhythm));
     SetText("metric-coord", Rating(rating.coordination));
     SetText("metric-reading", Rating(rating.reading));
     SetText("metric-stamina", Rating(rating.stamina));
-    SetText("metric-peak", Rating(rating.peak));
+    SetText("metric-fingers", Rating(rating.fingerStrain));
 
 }
 

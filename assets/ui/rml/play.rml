@@ -19,21 +19,21 @@
         </div>
         <div id="difficulty-section">
           <div class="difficulty-heading">
-            <div class="eyebrow">DIFFICULTY</div>
+            <div class="eyebrow">DIFFICULTY V4</div>
             <div id="rating">0.8</div>
           </div>
           <div id="chart-title">ORIGINAL</div>
-          <div id="chart-notes">9 TURNS</div>
+          <div id="chart-notes">9 EVENTS / 9 KEYS</div>
           <div id="metrics">
             <div class="metrics-row">
               <div class="metric"><span>Speed</span><strong id="metric-speed">0.0</strong></div>
-              <div class="metric"><span>Rhythm</span><strong id="metric-rhythm">0.0</strong></div>
+              <div class="metric"><span>Fingers</span><strong id="metric-fingers">0.0</strong></div>
               <div class="metric"><span>Coord.</span><strong id="metric-coord">0.0</strong></div>
             </div>
             <div class="metrics-row">
-              <div class="metric"><span>Reading</span><strong id="metric-reading">0.0</strong></div>
+              <div class="metric"><span>Rhythm</span><strong id="metric-rhythm">0.0</strong></div>
               <div class="metric"><span>Stamina</span><strong id="metric-stamina">0.0</strong></div>
-              <div class="metric"><span>Peak</span><strong id="metric-peak">0.0</strong></div>
+              <div class="metric" title="Visual diagnostic only; not included in difficulty"><span>Read*</span><strong id="metric-reading">0.0</strong></div>
             </div>
           </div>
         </div>
