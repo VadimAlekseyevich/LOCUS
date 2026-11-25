@@ -266,10 +266,15 @@ int main(int argc, char** argv) {
             // Direct text updates must preserve the button's child node and
             // focusable identity, even when captions contain markup characters.
             auto* label = play->GetChild(0);
-            locus::app::UpdateRmlText(play, "PLAY & TEST");
-            ok &= Check(play->GetChild(0) == label &&
-                        label->IsClassSet("button-label"),
-                        "RmlUi text update preserves button DOM identity");
+            const std::string literal = u8"Карта <tag> & \"quote\" 'apostrophe'";
+            const std::string escaped = u8"Карта &lt;tag&gt; &amp; &quot;quote&quot; &#39;apostrophe&#39;";
+            ok &= Check(locus::app::EscapeRml(literal)==escaped,
+                        "shared RML escaping preserves UTF-8 and protects text/attributes");
+            locus::app::UpdateRmlText(play,literal);
+            auto* text = label ? dynamic_cast<Rml::ElementText*>(label->GetChild(0)) : nullptr;
+            ok &= Check(play->GetChild(0) == label && label &&
+                        label->IsClassSet("button-label") && text && text->GetText()==literal,
+                        "RmlUi literal text update preserves UTF-8 and button DOM identity");
             locus::app::UpdateRmlText(play, "PLAY");
             auto* first = home->FindNextTabElement(home, true);
             auto* second = first ? home->FindNextTabElement(first, true)

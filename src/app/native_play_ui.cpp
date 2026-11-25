@@ -16,21 +16,6 @@
 namespace locus::app {
 namespace {
 
-std::string Escape(const std::string& source) {
-    std::string out;
-    out.reserve(source.size());
-    for (char c : source) {
-        switch (c) {
-            case '&': out += "&amp;"; break;
-            case '<': out += "&lt;"; break;
-            case '>': out += "&gt;"; break;
-            case '"': out += "&quot;"; break;
-            case '\'': out += "&#39;"; break;
-            default: out += c; break;
-        }
-    }
-    return out;
-}
 
 std::string Rating(double value) {
     std::ostringstream stream;
@@ -252,7 +237,7 @@ void NativePlayUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
         else html << "<span class='row-chevron"
                   << (item.song == ui.selectedSong ? " expanded" : "")
                   << "'></span>";
-        html << "<span class='row-label'>" << Escape(name) << "</span>";
+        html << "<span class='row-label'>" << EscapeRml(name) << "</span>";
         if (isChart) html << "<span class='row-rating'>"
                           << Rating(difficulty) << "</span>";
         else {
@@ -297,7 +282,7 @@ void NativePlayUi::RebuildResults(SongSelectUi& ui) {
         html << "<button class='result' data-action='result' data-index='"
              << i << "'><strong>" << Accuracy(result.accuracyPercent)
              << "</strong><span class='result-date'>"
-             << label << Escape(FormatRunTimestamp(result.completedAtMs))
+             << label << EscapeRml(FormatRunTimestamp(result.completedAtMs))
              << "</span><span class='result-arrow'>&gt;</span></button>";
     }
     if (window.after > 0.0f)

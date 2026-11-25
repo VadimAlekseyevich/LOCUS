@@ -12,20 +12,6 @@
 
 namespace locus::app {
 namespace {
-std::string Escape(const std::string& source) {
-    std::string out;
-    for (const char c : source) {
-        switch (c) {
-            case '&': out += "&amp;"; break;
-            case '<': out += "&lt;"; break;
-            case '>': out += "&gt;"; break;
-            case '"': out += "&quot;"; break;
-            case '\'': out += "&#39;"; break;
-            default: out += c; break;
-        }
-    }
-    return out;
-}
 std::string Percent(double value) {
     std::ostringstream out;
     out << std::fixed << std::setprecision(2) << value << '%';
@@ -124,10 +110,10 @@ void NativeResultsUi::Sync() {
                     run, history_->resultGameplayRevision);
                 html << "<button class='results-history-row' data-action='history'"
                      << " data-index='" << i << "'><span class='button-label'>"
-                     << Escape(Percent(run.accuracyPercent)) << " / "
+                     << EscapeRml(Percent(run.accuracyPercent)) << " / "
                      << (revision == RunRevisionState::OlderChart ? "OLD CHART / " :
                          revision == RunRevisionState::OlderRules ? "OLD RULES / " : "")
-                     << Escape(FormatRunTimestamp(run.completedAtMs))
+                     << EscapeRml(FormatRunTimestamp(run.completedAtMs))
                      << "</span></button>";
             }
         }

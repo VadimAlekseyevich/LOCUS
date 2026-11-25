@@ -14,21 +14,6 @@
 
 namespace locus::app {
 namespace {
-std::string EscapeRml(const std::string& text) {
-    std::string out;
-    out.reserve(text.size());
-    for (char c : text) {
-        switch (c) {
-            case '&': out += "&amp;"; break;
-            case '<': out += "&lt;"; break;
-            case '>': out += "&gt;"; break;
-            case '"': out += "&quot;"; break;
-            case '\'': out += "&#39;"; break;
-            default: out += c;
-        }
-    }
-    return out;
-}
 int GlobalBindingIndex(int group, int local) {
     return group == 0 ? local : kGameActionCount +
         (group == 1 ? local : kNavigationShortcutCount + local);
@@ -42,6 +27,9 @@ void NativeSettingsUi::Attach(Rml::ElementDocument* document) noexcept {
     lastPage_ = -1;
     lastGroup_ = -1;
     lastCalibration_ = false;
+    // Attach also runs when returning to an existing hidden document.
+    // Reset the real layer along with the cached visibility state.
+    if (document_) SetRmlModalVisibility(document_->GetElementById("settings-calibration"),false);
 }
 void NativeSettingsUi::BeginFrame(GameSettings& settings, SettingsUi& ui,
                                   FrameInput& input, MenuEvents& events) noexcept {

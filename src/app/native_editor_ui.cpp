@@ -22,21 +22,6 @@
 
 namespace locus::app {
 namespace {
-std::string EscapeRml(const std::string& value) {
-    std::string out;
-    out.reserve(value.size());
-    for (const char c : value) {
-        switch (c) {
-            case '&': out += "&amp;"; break;
-            case '<': out += "&lt;"; break;
-            case '>': out += "&gt;"; break;
-            case '"': out += "&quot;"; break;
-            case '\'': out += "&#39;"; break;
-            default: out += c; break;
-        }
-    }
-    return out;
-}
 bool ParsePercent(const std::string& raw, int& result) noexcept {
     if (raw.empty() || raw.size() > 3) return false;
     int value = 0;
@@ -56,6 +41,9 @@ void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     setListSignature_.clear();
     compareListSignature_.clear();
     compareVisible_ = false;
+    // Attach also runs when returning to an existing hidden document.
+    // Reset the real layer along with the cached visibility state.
+    if (document_) SetRmlModalVisibility(document_->GetElementById("editor-compare-layer"),false);
     tempoRows_ = -1;
     lastTab_ = -1;
     lastTextEditing_ = -1;

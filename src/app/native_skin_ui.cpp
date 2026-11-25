@@ -17,21 +17,6 @@
 
 namespace locus::app {
 namespace {
-std::string Escape(const std::string& raw) {
-    std::string out;
-    out.reserve(raw.size());
-    for (char c : raw) {
-        switch (c) {
-            case '&': out += "&amp;"; break;
-            case '<': out += "&lt;"; break;
-            case '>': out += "&gt;"; break;
-            case '"': out += "&quot;"; break;
-            case '\'': out += "&#39;"; break;
-            default: out += c; break;
-        }
-    }
-    return out;
-}
 std::string HexColor(Color color) {
     char value[12];
     std::snprintf(value, sizeof(value), "#%02X%02X%02X%02X",
@@ -52,6 +37,9 @@ void NativeSkinUi::Attach(Rml::ElementDocument* document) noexcept {
     lastProfileSelection_ = -1;
     lastProfilesRevision_ = ~std::uint64_t(0);
     lastModal_ = false;
+    // Attach also runs when returning to an existing hidden document.
+    // Reset the real layer along with the cached visibility state.
+    if (document_) SetRmlModalVisibility(document_->GetElementById("skin-delete-modal"),false);
     cache_.clear();
 }
 void NativeSkinUi::BeginFrame(Skin& skin, SkinUi& ui,
@@ -84,7 +72,7 @@ void NativeSkinUi::RebuildControls() {
             const auto* setting = GetSkinSetting(ui_->page, row);
             if (!setting) continue;
             html << "<div class='skin-setting-row'><div class='skin-setting-name'>"
-                 << Escape(setting->label) << "</div>";
+                 << EscapeRml(setting->label) << "</div>";
             if (setting->toggle) {
                 html << "<button data-action='toggle' data-index='" << row
                      << "'><span class='button-label'>"
@@ -100,7 +88,7 @@ void NativeSkinUi::RebuildControls() {
                      << row << "'></div></div></div>"
                      << "<input type='text' class='skin-number' id='skin-number-"
                      << row << "' data-kind='number' data-index='" << row
-                     << "' value='" << Escape(FormatSkinNumber(value)) << "' />";
+                     << "' value='" << EscapeRml(FormatSkinNumber(value)) << "' />";
             }
             html << "</div>";
         }
@@ -110,7 +98,7 @@ void NativeSkinUi::RebuildControls() {
             html << "<button class='skin-swatch"
                  << (i == ui_->selectedColor ? " selected" : "")
                  << "' data-action='swatch' data-index='" << i
-                 << "'><span class='button-label'>" << Escape(SkinColorLabel(i))
+                 << "'><span class='button-label'>" << EscapeRml(SkinColorLabel(i))
                  << "</span><span id='skin-swatch-chip-" << i
                  << "' class='skin-swatch-chip' style='background-color:"
                  << HexColor(SkinColor(*skin_, i)) << "'></span></button>";
@@ -124,7 +112,7 @@ void NativeSkinUi::RebuildControls() {
                  << (static_cast<int>(i) == ui_->selectedProfile ? " selected" : "")
                  << "' data-action='profile' data-index='" << i
                  << "'><span class='button-label'>"
-                 << Escape(ui_->profiles[i].name) << "</span></button>";
+                 << EscapeRml(ui_->profiles[i].name) << "</span></button>";
         }
         if (ui_->profiles.empty())
             html << "<div class='empty'>NO PERSONAL SKINS YET</div>";
