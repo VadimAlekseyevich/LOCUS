@@ -240,7 +240,7 @@ bool NativeMenuUi::Initialize() {
     }
     playPresenter_.Attach(document_);
     document_->AddEventListener("click", this);
-    document_->AddEventListener("input", this);
+    document_->AddEventListener("change", this);
     document_->Hide();
     context_->Update();
     return true;
@@ -259,7 +259,7 @@ void NativeMenuUi::Shutdown() {
     if (context_) {
         if (document_) {
             document_->RemoveEventListener("click", this);
-            document_->RemoveEventListener("input", this);
+            document_->RemoveEventListener("change", this);
         }
         if (homeDocument_) homeDocument_->RemoveEventListener("click", this);
         if (settingsDocument_)

@@ -107,15 +107,20 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
     auto* target = event.GetTargetElement();
     if (!target || !document_ || !currentUi_ || !currentLibrary_)
         return;
-    if (event.GetType() == "input") {
+    // RmlUi's WidgetTextInput emits Change for every edit (including
+    // paste/backspace), not the HTML-style Input event.
+    if (event.GetType() == "change") {
         if (target->GetId() != "search") return;
         if (auto* search = dynamic_cast<Rml::ElementFormControlInput*>(target)) {
-            currentUi_->search = search->GetValue();
+            const auto value = search->GetValue();
+            if (value == currentUi_->search) return;
+            currentUi_->search = value;
             currentUi_->treeScroll = 0;
             if (auto* scroll = document_->GetElementById("tree-scroll"))
                 scroll->SetScrollTop(0);
             lastTreeSignature_.clear();
-            Sync();
+            // The host's post-input Sync processes a whole burst of text
+            // events once, rather than rebuilding the catalog per character.
         }
         return;
     }

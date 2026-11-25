@@ -6,6 +6,7 @@
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/Event.h>
 #include <RmlUi/Core/EventListener.h>
+#include <RmlUi/Core/Input.h>
 #include <iostream>
 
 namespace {
@@ -54,7 +55,7 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         NativePlayUi presenter;
         PlayEvents listener(presenter);
         document->AddEventListener("click",&listener);
-        document->AddEventListener("input",&listener);
+        document->AddEventListener("change",&listener);
         presenter.Attach(document);
         document->Show();
         context->Update();
@@ -129,9 +130,22 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         }
         presenter.Sync();
         context->Update();
+        ok &= Check(search && search->GetValue()=="zzzzzzzz",
+                    "RmlUi text widget receives the typed characters");
         ok &= Check(selection.search=="zzzzzzzz" && tree &&
                     !ChartRow(tree,1,0) && !ChartRow(tree,1,1),
                     "native text input filters the real library");
+        if (search) {
+            context->ProcessKeyDown(Rml::Input::KI_A,Rml::Input::KM_CTRL);
+            context->ProcessKeyUp(Rml::Input::KI_A,Rml::Input::KM_CTRL);
+            context->ProcessKeyDown(Rml::Input::KI_BACK,0);
+            context->ProcessKeyUp(Rml::Input::KI_BACK,0);
+        }
+        presenter.Sync();
+        context->Update();
+        ok &= Check(selection.search.empty() && ChartRow(tree,1,0) &&
+                    ChartRow(tree,1,1),
+                    "clearing the real search widget restores both difficulties");
         keyboard = {};
         keyboard.startPressed = true;
         keyboard.openEditorPressed = true;
@@ -146,7 +160,7 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
                     "search owns activation, rebindable shortcuts and navigation");
         presenter.Attach(nullptr);
         document->RemoveEventListener("click",&listener);
-        document->RemoveEventListener("input",&listener);
+        document->RemoveEventListener("change",&listener);
         document->Hide();
     }
     if (context) Rml::RemoveContext("play-presenter-test");
