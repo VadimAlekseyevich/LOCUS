@@ -1,0 +1,41 @@
+name: LOCUS portable core
+on:
+  push:
+    paths:
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "src/**"
+      - "tests/**"
+      - "benchmarks/**"
+      - "examples/**"
+      - ".github/workflows/core_ci.yml"
+  pull_request:
+    paths:
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "src/**"
+      - "tests/**"
+      - "benchmarks/**"
+      - "examples/**"
+      - ".github/workflows/core_ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure portable core (no graphics/audio dependencies)
+        run: cmake -S . -B build/core -G Ninja -DCMAKE_BUILD_TYPE=Release -DLOCUS_BUILD_APP=OFF -DLOCUS_BUILD_TESTS=ON -DLOCUS_BUILD_BENCHMARKS=ON
+      - name: Build
+        run: cmake --build build/core --parallel 2
+      - name: Test
+        run: ctest --test-dir build/core --output-on-failure --no-tests=error
+      - name: Profile editor model
+        run: ./build/core/locus_editor_bench

@@ -23,6 +23,18 @@ A portable Windows build is available as the **`locus-windows-x64`** [GitHub Act
 
 The audio offset is stored as an optional `globalOffsetMs` integer in the current `settings.json` v3; existing key bindings and saved charts are preserved. No chart, skin or Song Set file format changes.
 
+### Portable core development (Linux, Windows)
+
+The rhythm/chart model can be compiled and tested without raylib, RmlUi, SoundTouch, a display or an audio device. Only the pinned JSON and Unicode dependencies are fetched.
+
+```sh
+cmake -S . -B build/core -DCMAKE_BUILD_TYPE=Release -DLOCUS_BUILD_APP=OFF -DLOCUS_BUILD_TESTS=ON -DLOCUS_BUILD_BENCHMARKS=ON
+cmake --build build/core --config Release --parallel 2
+ctest --test-dir build/core -C Release --output-on-failure
+```
+
+This configuration runs the 12 portable tests for route geometry, timing, judgement, chart JSON, editor history, difficulty and input/cursor models. It does not build the desktop game or validate native UI, disk transactions or audio hardware. The full Windows build remains the default. Linux CI also runs the editor model profiler.
+
 ## Gameplay
 
 The world is infinite. During PLAY, an experimental camera **slightly lags behind the moving player** instead of anticipating the route: the player appears ahead of center as the camera catches up. The lag scales with movement speed (up to a safe limit), and turns are smoothed without reading future notes. The **red forward route moves with the camera**. Only the part inside the centered square is visible. In landscape the square's side equals the **window height**; a thin white frame can be recolored in SKIN. No gameplay grid or text is drawn on the left.

@@ -1,0 +1,65 @@
+# Same portable suite for desktop and core-only builds.
+# Keep target and CTest names stable for existing CI consumers.
+add_executable(locus_route_tests tests/route_tests.cpp)
+target_compile_features(locus_route_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_route_tests PRIVATE locus_core)
+add_test(NAME locus_demo_route COMMAND locus_route_tests)
+
+add_executable(locus_timed_route_tests tests/timed_route_tests.cpp)
+target_compile_features(locus_timed_route_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_timed_route_tests PRIVATE locus_core)
+add_test(NAME locus_exact_time_route COMMAND locus_timed_route_tests)
+
+add_executable(locus_route_view_tests tests/route_view_tests.cpp)
+target_compile_features(locus_route_view_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_route_view_tests PRIVATE locus_core)
+add_test(NAME locus_route_view COMMAND locus_route_view_tests)
+
+add_executable(locus_music_tests tests/music_tests.cpp)
+target_compile_features(locus_music_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_music_tests PRIVATE locus_core)
+add_test(NAME locus_demo_audio_clock COMMAND locus_music_tests)
+
+add_executable(locus_playback_cursor_tests tests/playback_cursor_tests.cpp)
+target_compile_features(locus_playback_cursor_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_playback_cursor_tests PRIVATE locus_core)
+add_test(NAME locus_slow_playback_cursor COMMAND locus_playback_cursor_tests)
+
+add_executable(locus_music_file_tests tests/music_file_tests.cpp)
+target_compile_features(locus_music_file_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_music_file_tests PRIVATE locus_core)
+add_test(NAME locus_local_music_files COMMAND locus_music_file_tests)
+
+add_executable(locus_chart_json_tests tests/chart_json_tests.cpp)
+target_compile_features(locus_chart_json_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_chart_json_tests PRIVATE locus_core)
+add_test(NAME locus_chart_json_compatibility COMMAND locus_chart_json_tests)
+
+add_executable(locus_tempo_map_tests tests/tempo_map_tests.cpp)
+target_compile_features(locus_tempo_map_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_tempo_map_tests PRIVATE locus_core)
+add_test(NAME locus_song_tempo_map COMMAND locus_tempo_map_tests)
+
+add_executable(locus_chart_difficulty_tests tests/chart_difficulty_tests.cpp)
+target_compile_features(locus_chart_difficulty_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_chart_difficulty_tests PRIVATE locus_core)
+add_test(NAME locus_chart_difficulty_v2 COMMAND locus_chart_difficulty_tests)
+
+add_executable(locus_chart_editor_tests tests/chart_editor_tests.cpp)
+target_compile_features(locus_chart_editor_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_chart_editor_tests PRIVATE locus_core)
+add_test(NAME locus_chart_editing COMMAND locus_chart_editor_tests)
+
+add_executable(locus_direction_input_tests tests/direction_input_tests.cpp)
+target_compile_features(locus_direction_input_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_direction_input_tests PRIVATE locus_core)
+add_test(NAME locus_precise_direction_input_events
+         COMMAND locus_direction_input_tests)
+
+add_executable(locus_judgement_tests tests/judgement_tests.cpp)
+target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)
+target_link_libraries(locus_judgement_tests PRIVATE locus_core)
+add_test(NAME locus_turn_judgement COMMAND locus_judgement_tests)
+
+set_tests_properties(locus_chart_json_compatibility PROPERTIES
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")

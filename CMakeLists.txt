@@ -3,13 +3,13 @@ cmake_minimum_required(VERSION 3.25)
 # LOCUS game and headless tests.
 project(LOCUS VERSION 0.1.0 LANGUAGES C CXX)
 
-option(LOCUS_BUILD_TESTS "Build and register core tests with CTest" OFF)
+option(LOCUS_BUILD_TESTS "Build and register tests with CTest" OFF)
+option(LOCUS_BUILD_APP "Build the desktop game and application-side tests" ON)
 option(LOCUS_BUILD_BENCHMARKS "Build optional headless route preview profiler" OFF)
 option(LOCUS_ENABLE_RMLUI "Use responsive RmlUi for non-gameplay UI screens" ON)
 
-# Pinned raylib and JSON dependencies.
-include(cmake/dependencies.cmake)
-find_package(Threads REQUIRED)
+# The core configuration never fetches graphics, font or audio libraries.
+include(cmake/core_dependencies.cmake)
 
 add_library(locus_core STATIC
     src/core/route.cpp
@@ -33,6 +33,30 @@ target_include_directories(locus_core PUBLIC
     "${PROJECT_SOURCE_DIR}/src"
 )
 
+if(MSVC)
+    # UTF-8 must also apply to the core-only test targets.
+    add_compile_options(/utf-8)
+    target_compile_options(locus_core PRIVATE /W4 /permissive- /utf-8)
+else()
+    target_compile_options(locus_core PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+if(LOCUS_BUILD_TESTS)
+    enable_testing()
+    include(cmake/core_tests.cmake)
+endif()
+if(LOCUS_BUILD_BENCHMARKS)
+    add_executable(locus_editor_bench benchmarks/editor_bench.cpp)
+    target_compile_features(locus_editor_bench PRIVATE cxx_std_17)
+    target_link_libraries(locus_editor_bench PRIVATE locus_core)
+endif()
+
+if(NOT LOCUS_BUILD_APP)
+    return()
+endif()
+
+include(cmake/dependencies.cmake)
+find_package(Threads REQUIRED)
 include(cmake/storage_targets.cmake)
 include(cmake/runtime_targets.cmake)
 
@@ -178,12 +202,8 @@ set_target_properties(locus PROPERTIES
 )
 
 if(MSVC)
-    # Text literals and UTF-8 test fixtures must not depend on system ANSI locale.
-    add_compile_options(/utf-8)
-    target_compile_options(locus_core PRIVATE /W4 /permissive- /utf-8)
     target_compile_options(locus PRIVATE /W4 /permissive- /utf-8)
 else()
-    target_compile_options(locus_core PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(locus PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
@@ -194,13 +214,9 @@ if(LOCUS_BUILD_BENCHMARKS)
     target_link_libraries(locus_route_preview_bench PRIVATE locus_path_mesh)
     target_compile_features(locus_route_preview_bench PRIVATE cxx_std_17)
     target_link_libraries(locus_route_preview_bench PRIVATE locus_core raylib)
-    add_executable(locus_editor_bench benchmarks/editor_bench.cpp)
-    target_compile_features(locus_editor_bench PRIVATE cxx_std_17)
-    target_link_libraries(locus_editor_bench PRIVATE locus_core)
 endif()
 
 if(LOCUS_BUILD_TESTS)
-    enable_testing()
     add_test(NAME locus_packaged_ui_assets
         COMMAND "${CMAKE_COMMAND}"
             "-DLOCUS_UI_ASSETS_DIR=$<TARGET_FILE_DIR:locus>/assets/ui"
@@ -246,12 +262,6 @@ if(LOCUS_BUILD_TESTS)
     add_test(NAME locus_chart_clock_transport_contract
              COMMAND locus_clock_contract_tests)
 
-    add_executable(locus_direction_input_tests tests/direction_input_tests.cpp)
-    target_compile_features(locus_direction_input_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_direction_input_tests PRIVATE locus_core)
-    add_test(NAME locus_precise_direction_input_events
-             COMMAND locus_direction_input_tests)
-
     add_executable(locus_app_journey_tests
         tests/app_journey_tests.cpp
         src/app/screen_flow.cpp
@@ -280,59 +290,6 @@ if(LOCUS_BUILD_TESTS)
     target_link_libraries(locus_results_background_tests PRIVATE locus_core)
     add_test(NAME locus_saved_result_background
              COMMAND locus_results_background_tests)
-
-    add_executable(locus_route_tests tests/route_tests.cpp)
-    target_compile_features(locus_route_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_route_tests PRIVATE locus_core)
-    add_test(NAME locus_demo_route COMMAND locus_route_tests)
-
-    # PLAY uses exact song-time route boundaries, independent of editor ticks.
-    add_executable(locus_timed_route_tests tests/timed_route_tests.cpp)
-    target_compile_features(locus_timed_route_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_timed_route_tests PRIVATE locus_core)
-    add_test(NAME locus_exact_time_route COMMAND locus_timed_route_tests)
-
-    add_executable(locus_route_view_tests tests/route_view_tests.cpp)
-    target_compile_features(locus_route_view_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_route_view_tests PRIVATE locus_core)
-    add_test(NAME locus_route_view COMMAND locus_route_view_tests)
-
-    add_executable(locus_music_tests tests/music_tests.cpp)
-    target_compile_features(locus_music_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_music_tests PRIVATE locus_core)
-    add_test(NAME locus_demo_audio_clock COMMAND locus_music_tests)
-
-    add_executable(locus_playback_cursor_tests tests/playback_cursor_tests.cpp)
-    target_compile_features(locus_playback_cursor_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_playback_cursor_tests PRIVATE locus_core)
-    add_test(NAME locus_slow_playback_cursor COMMAND locus_playback_cursor_tests)
-
-    add_executable(locus_music_file_tests tests/music_file_tests.cpp)
-    target_compile_features(locus_music_file_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_music_file_tests PRIVATE locus_core)
-    add_test(NAME locus_local_music_files COMMAND locus_music_file_tests)
-
-    add_executable(locus_chart_json_tests tests/chart_json_tests.cpp)
-    target_compile_features(locus_chart_json_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_chart_json_tests PRIVATE locus_core)
-    add_test(NAME locus_chart_json_compatibility COMMAND locus_chart_json_tests)
-    add_executable(locus_tempo_map_tests tests/tempo_map_tests.cpp)
-    target_compile_features(locus_tempo_map_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_tempo_map_tests PRIVATE locus_core)
-    add_test(NAME locus_song_tempo_map COMMAND locus_tempo_map_tests)
-    # Keep the shipped example checked by the same parser as real files.
-    set_tests_properties(locus_chart_json_compatibility PROPERTIES
-        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-
-    add_executable(locus_chart_difficulty_tests tests/chart_difficulty_tests.cpp)
-    target_compile_features(locus_chart_difficulty_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_chart_difficulty_tests PRIVATE locus_core)
-    add_test(NAME locus_chart_difficulty_v2 COMMAND locus_chart_difficulty_tests)
-
-    add_executable(locus_chart_editor_tests tests/chart_editor_tests.cpp)
-    target_compile_features(locus_chart_editor_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_chart_editor_tests PRIVATE locus_core)
-    add_test(NAME locus_chart_editing COMMAND locus_chart_editor_tests)
 
     add_executable(locus_quit_dialog_input_tests
         tests/quit_dialog_input_tests.cpp)
@@ -730,10 +687,5 @@ if(LOCUS_BUILD_TESTS)
         set_tests_properties(locus_independent_skin_json PROPERTIES
             WORKING_DIRECTORY "$<TARGET_FILE_DIR:locus>")
     endif()
-
-    add_executable(locus_judgement_tests tests/judgement_tests.cpp)
-    target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)
-    target_link_libraries(locus_judgement_tests PRIVATE locus_core)
-    add_test(NAME locus_turn_judgement COMMAND locus_judgement_tests)
 
 endif()

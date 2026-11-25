@@ -282,6 +282,8 @@
 
 **26.11.2026 — T15: shared runtime targets.** `locus_transport` owns LocalMusic, SoundTouch integration, demo transport, device and chart playback. `locus_game_session` consumes it. `locus_result_store` owns results/history, without graphics. `locus_path_mesh` is separately linkable by CPU geometry tests/benchmark; `locus_route_renderer` owns GPU submission. Existing injected MusicOutputBackend remains the test seam. 62 previous source assignments (including the repeated pitch-preserving source loop) become 10 shared instances (52 fewer). No gameplay/format changes. Windows CI and measured build time pending.
 
+**26.11.2026 — T15: portable core configuration.** `LOCUS_BUILD_APP=OFF` returns after core targets/tests/editor benchmark, before any desktop/audio/font dependency is fetched. JSON and utf8proc pins unchanged and shared by full build. 12 existing portable CTest registrations moved to cmake/core_tests.cmake; desktop retains those names. Linux Ninja Release workflow builds/tests/profiles core without a graphics device. README documents exact commands and scope. Linux/Windows CI pending.
+
 **Приёмка.** Чистая и повторная Windows Release сборки с тестами и BAT, Linux-сборка явно обозначенного переносимого набора, наличие прежних тестов в ctest -N. Зафиксировать время и количество повторных компиляций на одной машине. Таблица экранов в архитектуре соответствует инициализации в NativeMenuUi и путям fallback. Документы объясняют источник времени, локальную сильную долю и текущую скорость предпросмотра. Примеры читаются текущими парсерами.
 
 <a id="t16"></a>
