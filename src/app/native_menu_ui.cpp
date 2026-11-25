@@ -732,6 +732,8 @@ MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
     MenuEvents events;
     if (!SkinAvailable()) return events;
     Activate(Page::Skin);
+    const auto fileShortcut = SkinFileShortcut(input);
+    const bool backShortcut = input.backPressed;
     SuppressGlobalMenuShortcuts(input);
     skinPresenter_.BeginFrame(draft, ui, input, events);
     skinPresenter_.Sync();
@@ -774,17 +776,13 @@ MenuEvents NativeMenuUi::UpdateSkin(Skin& draft, SkinUi& ui,
     } else if (editing && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
         focus->Blur();
     } else if (!editing) {
-            if (IsKeyPressed(KEY_ESCAPE)) input.backPressed = true;
-            if (focus && focus->GetTagName() == "button" &&
-                (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)))
-                focus->Click();
-            const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) ||
-                              IsKeyDown(KEY_RIGHT_CONTROL);
-            const bool shift = IsKeyDown(KEY_LEFT_SHIFT) ||
-                               IsKeyDown(KEY_RIGHT_SHIFT);
-            if (ctrl && IsKeyPressed(KEY_S))
-                events.skinCommand = shift ? SkinCommand::SaveAs : SkinCommand::Save;
-            if (ctrl && IsKeyPressed(KEY_O)) events.skinCommand = SkinCommand::Load;
+        if (focus && focus->GetTagName() == "button" &&
+            (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
+            if (!focus->HasAttribute("disabled")) focus->Click();
+        } else if (events.skinCommand == SkinCommand::None) {
+            if (backShortcut) input.backPressed = true;
+            else events.skinCommand = fileShortcut;
+        }
     }
     skinPresenter_.Sync();
     context_->Update();

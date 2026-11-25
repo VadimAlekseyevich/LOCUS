@@ -6,6 +6,7 @@
 #include "app/home_menu.h"
 #include "app/viewport.h"
 #include "app/results_keyboard_input.h"
+#include "app/menu_controller.h"
 
 #include <cmath>
 #include <iostream>
@@ -24,6 +25,23 @@ bool Near(float lhs, float rhs, float tolerance = 0.015f) {
 
 int main() {
     bool ok = true;
+    {
+        FrameInput input;
+        ok &= Check(SkinFileShortcut(input)==SkinCommand::None,
+                    "SKINS has no implicit default file action");
+        input.editorOpen = true;
+        ok &= Check(SkinFileShortcut(input)==SkinCommand::Load,
+                    "SKINS consumes configured Open shortcut");
+        input.editorSave = true;
+        ok &= Check(SkinFileShortcut(input)==SkinCommand::Save,
+                    "SKINS consumes configured Save shortcut");
+        input.editorSaveAs = true;
+        ok &= Check(SkinFileShortcut(input)==SkinCommand::SaveAs,
+                    "SKINS consumes configured Save As before Save");
+        SuppressGlobalMenuShortcuts(input);
+        ok &= Check(SkinFileShortcut(input)==SkinCommand::None,
+                    "focused fields and modal suppression clear skin file shortcuts");
+    }
     {
         FrameInput input;
         input.startPressed = true;

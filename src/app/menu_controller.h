@@ -8,6 +8,15 @@
 
 namespace locus::app {
 
+// File operations use the same configured chords in both authoring
+// workspaces. The screen owns the action; the physical binding is shared.
+inline SkinCommand SkinFileShortcut(const FrameInput& input) noexcept {
+    if (input.editorSaveAs) return SkinCommand::SaveAs;
+    if (input.editorSave) return SkinCommand::Save;
+    if (input.editorOpen) return SkinCommand::Load;
+    return SkinCommand::None;
+}
+
 struct MenuEvents {
     bool import = false;
     bool importIntoSelected = false;

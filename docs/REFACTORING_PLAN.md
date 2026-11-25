@@ -175,6 +175,8 @@
 
 **25.11.2026 — T11: RESULTS input ownership.** При доступном RmlUi PollFrameInput больше не проверяет legacy RESULTS hitboxes. ResultsKeyboardIntent отделяет собранные настройки Back/Home/Retry/Edit/Enter от DOM-команд: последнее слово у native action, затем Back, Edit, Retry; историческая попытка не допускает Retry/Edit. Добавлены проверки в ui_foundation_tests; Windows CI требуется.
 
+**25.11.2026 — T11: SKINS shortcuts.** Native/fallback Skin используют общий SkinFileShortcut из настроенных EditorSave/SaveAs/Open (общие файловые действия разных authoring contexts); активный input/modal поглощает shortcuts, native Back читает собранный биндинг. Добавлены чистые проверки выбора команды. Формат настроек не меняется; Windows CI требуется.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>

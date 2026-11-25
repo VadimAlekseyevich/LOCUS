@@ -59,9 +59,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     if (state.screen == Screen::Skin) {
         if (!skinUi.pendingDeleteProfile.empty()) {
             // Modal owns input until explicitly confirmed or canceled.
-            input.backPressed = false;
-            input.homePressed = false;
-            input.requestedScreen.reset();
+            SuppressGlobalMenuShortcuts(input);
             const bool confirm = IsKeyPressed(KEY_Y) ||
                 (mouseClick && validMouse &&
                  CheckCollisionPointRec(mouse, SkinDeleteConfirmRect()));
@@ -79,9 +77,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (locus::app::SkinMenuEditingText(skinUi)) {
             // Enter and Escape belong to the field, not the menu navigation.
             // Clicking away attempts a commit; invalid numbers keep focus.
-            input.backPressed = false;
-            input.homePressed = false;
-            input.requestedScreen.reset();
+            SuppressGlobalMenuShortcuts(input);
             if (mouseClick && validMouse) {
                 if (!locus::app::FinishSkinTextInput(draftSkin, skinUi, true))
                     return events;
@@ -103,15 +99,9 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                         0, maximum);
             }
         }
-        const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
-        const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-        if (ctrl && IsKeyPressed(KEY_S)) {
-            events.skinCommand = shift ? locus::app::SkinCommand::SaveAs
-                                       : locus::app::SkinCommand::Save;
-            return events;
-        }
-        if (ctrl && IsKeyPressed(KEY_O)) {
-            events.skinCommand = locus::app::SkinCommand::Load;
+        if (const auto command = SkinFileShortcut(input); command != SkinCommand::None) {
+            events.skinCommand = command;
+            SuppressGlobalMenuShortcuts(input);
             return events;
         }
     }
