@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/virtual_list.h"
 #include <string>
 #include <unordered_map>
 
@@ -34,7 +35,16 @@ private:
     std::unordered_map<std::string, std::string> textCache_;
     int lastRatePercent_ = 100;
     std::string focusedInitialValue_;
-    std::string activeSetId_, setListSignature_, compareListSignature_;
+    struct DifficultyList {
+        LibraryRowWindow window;
+        std::string identity,visibleSignature;
+        float stepDp=0.0f;
+        bool valid=false;
+    };
+    void SyncDifficultyList(const EditorUiState& ui,const EditorSetView& view,
+                            const std::string& title,bool compare);
+    DifficultyList setList_,compareList_;
+    std::string activeSetId_;
     bool compareVisible_ = false;
     int lastTab_ = -1, lastTextEditing_ = -1;
     int tempoRows_ = -1;

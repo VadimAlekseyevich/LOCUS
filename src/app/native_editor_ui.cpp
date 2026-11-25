@@ -38,8 +38,8 @@ void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     document_ = document;
     textCache_.clear();
     activeSetId_.clear();
-    setListSignature_.clear();
-    compareListSignature_.clear();
+    setList_={};
+    compareList_={};
     compareVisible_ = false;
     // Attach also runs when returning to an existing hidden document.
     // Reset the real layer along with the cached visibility state.
@@ -130,40 +130,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         }
     }
     if (showCompare) {
-        std::ostringstream signature;
-        for (const auto& option : setView->comparisonOptions) {
-            const auto path = option.file.u8string();
-            signature << path.size() << ':' << path;
-        }
-        if (signature.str() != compareListSignature_) {
-            compareListSignature_ = signature.str();
-            std::ostringstream html;
-            for (std::size_t i=0; i<setView->comparisonOptions.size(); ++i) {
-                html << "<button class='editor-compare-row' id='editor-compare-row-" << i
-                     << "' data-action='compare-select' data-file='"
-                     << EscapeRml(setView->comparisonOptions[i].file.u8string())
-                     << "'><span class='button-label'></span></button>";
-                textCache_.erase("editor-compare-row-" + std::to_string(i));
-            }
-            if (auto* list = document_->GetElementById("editor-compare-list"))
-                list->SetInnerRML(html.str());
-        }
-        for (std::size_t i=0; i<setView->comparisonOptions.size(); ++i) {
-            const auto& option = setView->comparisonOptions[i];
-            const auto id = "editor-compare-row-" + std::to_string(i);
-            const bool active = static_cast<int>(i)==setView->current;
-            const bool included = HasEditorComparison(ui,option.file);
-            if (auto* row = document_->GetElementById(id)) {
-                row->SetClass("selected",included || active);
-                if (active || !option.available || option.file.empty() ||
-                    (!included && ui.comparisonFiles.size()>=2))
-                    row->SetAttribute("disabled","");
-                else row->RemoveAttribute("disabled");
-            }
-            const auto& name = i < setView->difficulties.size()
-                ? setView->difficulties[i] : option.title;
-            SetText(id.c_str(),std::string(active?"EDIT  ":included?"−  ":"+  ") + name);
-        }
+        SyncDifficultyList(ui,*setView,title,true);
         SetText("editor-compare-notice",std::to_string(1+ui.comparisonFiles.size())+" / 3 OPEN");
     }
     if (setView && ui.tab == EditorTab::Set) {
@@ -235,39 +202,123 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
             setInput("editor-tempo-ms-" + suffix, std::to_string(tempo[i].timeMs), true);
             setInput("editor-tempo-bpm-" + suffix, bpm.str(), true);
         }
-        // Only rebuild when row identity/order changes, not on selection or
-        // title edits. This preserves keyboard focus and scrolling.
-        std::ostringstream signature;
-        signature << setView->id << ':' << setView->newDifficultyDraft;
-        for (const auto& id : setView->difficultyIds) signature << ':' << id;
-        if (signature.str() != setListSignature_) {
-            setListSignature_ = signature.str();
-            std::ostringstream html;
-            if (setView->newDifficultyDraft)
-                html << "<button class='editor-set-row' id='editor-draft-row' data-action='draft-difficulty'><span class='button-label'>"
-                     << EscapeRml(title) << "</span></button>";
-            for (std::size_t i=0; i<setView->difficulties.size(); ++i) {
-                html << "<button class='editor-set-row' id='editor-difficulty-" << i
-                     << "' data-action='set-difficulty' data-id='" << EscapeRml(setView->difficultyIds[i])
-                     << "'><span class='button-label'>" << EscapeRml(setView->difficulties[i])
-                     << "</span></button>";
-                textCache_.erase("editor-difficulty-" + std::to_string(i));
+        SyncDifficultyList(ui,*setView,title,false);
+    }
+}
+
+void NativeEditorUi::SyncDifficultyList(const EditorUiState& ui,
+    const EditorSetView& view,const std::string& title,bool compare) {
+    auto* scroll=document_->GetElementById(compare?"editor-compare-list":"editor-set-list");
+    auto* list=document_->GetElementById(compare?"editor-compare-rows":"editor-set-rows");
+    auto* context=document_->GetContext();
+    if (!scroll || !list || !context) return;
+    auto& state=compare?compareList_:setList_;
+    const float density=context->GetDensityIndependentPixelRatio();
+    constexpr float gap=5.0f;
+    const char* rowClass=compare?"editor-compare-row":"editor-set-row";
+    if (state.identity!=view.id) {
+        state={};
+        state.identity=view.id;
+        scroll->SetScrollTop(0);
+    }
+    if (state.stepDp<=0) state.stepDp=(compare?34.0f:30.0f)+gap;
+    for (int i=0;i<list->GetNumChildren();++i) {
+        auto* row=list->GetChild(i);
+        if (row && row->IsClassSet(rowClass) && row->GetOffsetHeight()>0) {
+            const float measured=LibraryScrollDp(row->GetOffsetHeight(),density)+gap;
+            if (std::abs(measured-state.stepDp)>0.5f) {
+                state.stepDp=measured;
+                state.valid=false;
             }
-            textCache_.erase("editor-draft-row");
-            if (auto* list = document_->GetElementById("editor-set-list"))
-                list->SetInnerRML(html.str());
+            break;
         }
-        if (auto* row = document_->GetElementById("editor-draft-row")) {
-            row->SetClass("selected", !selectedInstalled);
-            SetText("editor-draft-row", title + " (DRAFT)");
-        }
-        for (std::size_t i=0; i<setView->difficulties.size(); ++i) {
-            const auto id = "editor-difficulty-" + std::to_string(i);
-            if (auto* row = document_->GetElementById(id)) {
-                row->SetClass("active", static_cast<int>(i) == setView->current);
-                row->SetClass("selected", static_cast<int>(i) == selected);
-                SetText(id.c_str(), setView->difficulties[i]);
+    }
+    const std::size_t draftRows=!compare && view.newDifficultyDraft?1:0;
+    const std::size_t count=compare?view.comparisonOptions.size():
+        view.difficulties.size()+draftRows;
+    const float height=LibraryScrollDp(scroll->GetClientHeight(),density);
+    const float top=std::clamp(LibraryScrollDp(scroll->GetScrollTop(),density),
+        0.0f,std::max(0.0f,count*state.stepDp-gap-height));
+    const auto window=VisibleUniformRows(count,top,state.stepDp,
+        VirtualRowsForViewport(height,state.stepDp),5,gap);
+    // Only visible identity/order matters. Avoid hashing thousands of
+    // offscreen paths/IDs on every Sync. Labels and selection update in place.
+    std::ostringstream signature;
+    signature<<draftRows<<':'<<count<<':';
+    for (std::size_t row=window.first;row<window.end;++row) {
+        if (row<draftRows) { signature<<"draft;"; continue; }
+        const auto i=row-draftRows;
+        const auto key=compare?view.comparisonOptions[i].file.u8string():
+            (i<view.difficultyIds.size()?view.difficultyIds[i]:std::string{});
+        signature<<key.size()<<':'<<key;
+    }
+    const auto identity=signature.str();
+    if (!state.valid || state.window.first!=window.first ||
+        state.window.end!=window.end || state.visibleSignature!=identity) {
+        std::ostringstream html;
+        const auto spacer=[&](float dp) {
+            if(dp>0) html<<"<div class='editor-list-spacer' style='height:"<<dp
+                <<"dp;flex:0 0 "<<dp<<"dp'></div>";
+        };
+        spacer(window.before);
+        for (std::size_t row=window.first;row<window.end;++row) {
+            if (row<draftRows) {
+                html<<"<button class='editor-set-row' id='editor-draft-row' data-action='draft-difficulty'><span class='button-label'></span></button>";
+                continue;
             }
+            const auto i=row-draftRows;
+            if(compare) {
+                html<<"<button class='editor-compare-row' id='editor-compare-row-"<<i
+                    <<"' data-action='compare-select' data-file='"
+                    <<EscapeRml(view.comparisonOptions[i].file.u8string())
+                    <<"'><span class='button-label'></span></button>";
+            } else {
+                html<<"<button class='editor-set-row' id='editor-difficulty-"<<i
+                    <<"' data-action='set-difficulty' data-id='"
+                    <<EscapeRml(i<view.difficultyIds.size()?view.difficultyIds[i]:std::string{})
+                    <<"'><span class='button-label'></span></button>";
+            }
+        }
+        spacer(window.after);
+        // Invalidate only recycled row text; do not grow a cache of all rows.
+        for(int i=0;i<list->GetNumChildren();++i)
+            if(auto* child=list->GetChild(i)) textCache_.erase(child->GetId());
+        for(auto* focus=context->GetFocusElement();focus;focus=focus->GetParentNode()) {
+            if(focus==list) { document_->Focus(); break; }
+        }
+        list->SetInnerRML(html.str());
+        scroll->SetScrollTop(LibraryScrollPixels(top,density));
+        state.window=window;
+        state.visibleSignature=identity;
+        state.valid=true;
+    }
+    for(std::size_t row=window.first;row<window.end;++row) {
+        if(row<draftRows) {
+            if(auto* button=document_->GetElementById("editor-draft-row")) {
+                button->SetClass("selected",view.selected<0);
+                SetText("editor-draft-row",title+" (DRAFT)");
+            }
+            continue;
+        }
+        const auto i=row-draftRows;
+        const auto id=std::string(compare?"editor-compare-row-":"editor-difficulty-")+std::to_string(i);
+        auto* button=document_->GetElementById(id);
+        if(!button) continue;
+        const bool active=static_cast<int>(i)==view.current;
+        if(compare) {
+            const auto& option=view.comparisonOptions[i];
+            const bool included=HasEditorComparison(ui,option.file);
+            button->SetClass("selected",included||active);
+            if(active || !option.available || option.file.empty() ||
+               (!included && ui.comparisonFiles.size()>=2))
+                button->SetAttribute("disabled","");
+            else button->RemoveAttribute("disabled");
+            const auto& name=i<view.difficulties.size()?view.difficulties[i]:option.title;
+            SetText(id.c_str(),std::string(active?"EDIT  ":included?"−  ":"+  ")+name);
+        } else {
+            button->SetClass("active",active);
+            button->SetClass("selected",static_cast<int>(i)==view.selected);
+            SetText(id.c_str(),view.difficulties[i]);
         }
     }
 }

@@ -72,7 +72,7 @@
       <div class="editor-set-title">DIFFICULTIES</div>
       <div class="editor-set-field"><div>DIFFICULTY NAME</div><input type="text" id="editor-difficulty-title" class="editor-set-input" data-kind="difficulty-title" value="" /></div>
       <div class="editor-set-quick"><button data-action="set-new"><span class="button-label">NEW</span></button><button data-action="set-duplicate"><span class="button-label">DUPLICATE</span></button></div>
-      <div id="editor-set-list"></div>
+      <div id="editor-set-list"><div id="editor-set-rows"></div></div>
       <div class="editor-setup-caption">CLICK TO SELECT · CLICK AGAIN OR ENTER TO EDIT</div>
       <div class="editor-set-quick"><button data-action="set-delete-chart"><span class="button-label">DELETE CHART</span></button><button data-action="set-delete-set"><span class="button-label">DELETE SET</span></button></div>
     </div>
@@ -94,7 +94,7 @@
   <div id="editor-compare-panel" class="ui-modal-panel" data-action="compare-panel">
     <div class="ui-modal-heading">COMPARE CHARTS</div>
     <div class="meta">Same song · up to three open difficulties</div>
-    <div id="editor-compare-list"></div>
+    <div id="editor-compare-list"><div id="editor-compare-rows"></div></div>
     <div id="editor-compare-notice" class="meta"></div>
     <div class="ui-modal-actions"><button id="editor-compare-done" class="secondary" data-action="compare-dismiss"><span class="button-label">DONE</span></button></div>
   </div>

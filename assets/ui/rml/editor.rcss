@@ -87,8 +87,9 @@
   margin-bottom:6dp; }
 .editor-set-quick button { flex:1; height:30dp; min-width:0;
   padding:0; font-size:12dp; }
-#editor-set-list { display:flex; flex-direction:column; flex:1;
-  gap:5dp; overflow-y:auto; min-height:0; }
+#editor-set-list { flex:1; overflow-y:auto; min-height:0; }
+#editor-set-rows, #editor-compare-rows { display:flex; flex-direction:column; gap:5dp; }
+.editor-list-spacer { flex-shrink:0; width:1dp; }
 .editor-set-row { display:block; flex:0 0 30dp; width:100%; min-height:30dp; height:30dp; padding:2dp 5dp; font-size:12dp; }
 .editor-set-row.active { border-color:#a2d8ee; }
 .editor-set-row.selected { background-color:#59527a; border-color:#a2d8ee; }
@@ -130,8 +131,7 @@
 #editor-tool-compare .button-label { font-size:11dp; }
 #editor-tool-compare.selected { border-color:#a2d8ee; background-color:#465476; }
 #editor-compare-panel { height:76%; max-height:480dp; }
-#editor-compare-list { display:flex; flex-direction:column; flex:1;
-  min-height:0; gap:5dp; overflow-y:auto; }
+#editor-compare-list { flex:1; min-height:0; overflow-y:auto; }
 .editor-compare-row { display:block; flex:0 0 34dp; width:100%; height:34dp;
   padding:2dp 5dp; font-size:12dp; }
 .editor-compare-row.selected { border-color:#a2d8ee; background-color:#465476; }
