@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/route.h"
+#include "core/replay.h"
 
 #include <array>
 #include <cstddef>
@@ -79,6 +80,12 @@ public:
     }
 
     void Reset() noexcept;
+    // Only complete normal PLAY attempts are captured. A reset invalidates
+    // the previous trace; allocation failure disables capture, not scoring.
+    void BeginReplayCapture() noexcept;
+    const ReplayTrace* CompletedReplay() const noexcept {
+        return captureReplay_ && AllScorableJudged() ? &replay_ : nullptr;
+    }
     // Skip earlier turns without recording misses in a midway practice test.
     void ResetFromBeat(int firstScoredBeat) noexcept;
     // Editor TEST excludes only notes before this exact audio timestamp.
@@ -111,6 +118,8 @@ public:
     }
 
 private:
+    void RecordReplay(ReplayAction action, double songSeconds) noexcept;
+    void AdvanceImpl(double songSeconds) noexcept;
     void Resolve(Grade grade, double errorSeconds, bool wrongDirection,
                  Heading arrow) noexcept;
     void RecountScorable() noexcept;
@@ -133,6 +142,8 @@ private:
     double meanErrorMs_ = 0.0;
     double errorM2Ms_ = 0.0;
     std::optional<Judgement> last_;
+    ReplayTrace replay_;
+    bool captureReplay_ = false;
 };
 
 } // namespace locus::core

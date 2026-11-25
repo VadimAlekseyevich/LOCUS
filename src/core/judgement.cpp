@@ -31,6 +31,8 @@ const char* DirectionName(Heading direction) noexcept {
 
 void TurnJudge::Reset() noexcept {
     firstScoredEvent_ = 0;
+    captureReplay_ = false;
+    replay_.events.clear();
     counts_ = GradeCounts{};
     combo_ = maxCombo_ = 0;
     timedHits_ = 0;
@@ -155,7 +157,37 @@ RunStatistics TurnJudge::Statistics() const noexcept {
                 std::max(0.0, errorM2Ms_ / timedHits_))};
 }
 
+void TurnJudge::BeginReplayCapture() noexcept {
+    replay_.events.clear();
+    replay_.offsetSeconds = offsetSeconds_;
+    replay_.judgementVersion = kJudgementRulesVersion;
+    captureReplay_ = firstScoredEvent_ == 0 && counts_.Resolved() == 0;
+}
+
+void TurnJudge::RecordReplay(ReplayAction action, double songSeconds) noexcept {
+    if (!captureReplay_) return;
+    if (replay_.events.size() >= kMaxReplayEvents) {
+        captureReplay_ = false;
+        replay_.events.clear();
+        return;
+    }
+    try {
+        replay_.events.push_back({action, songSeconds});
+    } catch (...) {
+        captureReplay_ = false;
+        replay_.events.clear();
+    }
+}
+
 void TurnJudge::Advance(double songSeconds) noexcept {
+    const int previous = counts_.Resolved();
+    AdvanceImpl(songSeconds);
+    // Idle frames never grow the recording. Only expiry changes matter.
+    if (counts_.Resolved() != previous)
+        RecordReplay(ReplayAction::Advance, songSeconds);
+}
+
+void TurnJudge::AdvanceImpl(double songSeconds) noexcept {
     if (!std::isfinite(songSeconds)) return;
     // Expire the oldest unresolved authored turn first. Each of its
     // remaining arrow components receives its own Miss.
@@ -173,6 +205,7 @@ void TurnJudge::Advance(double songSeconds) noexcept {
 }
 
 void TurnJudge::FinishRemainingMisses() noexcept {
+    if (NextEvent()) RecordReplay(ReplayAction::Finish, 0.0);
     while (NextEvent()) {
         const auto index = NextEventIndex();
         for (int i = 0; i < 4; ++i)
@@ -185,7 +218,10 @@ std::optional<Judgement> TurnJudge::PressHeading(Heading outgoing,
                                                  double songSeconds) {
     const int lane = ArrowIndex(outgoing);
     if (lane < 0 || !std::isfinite(songSeconds)) return std::nullopt;
-    Advance(songSeconds);
+    // Preserve actual dispatch order, including ignored keys and timestamps
+    // that may arrive out of order. PressHeading itself expires old notes.
+    if (NextEvent()) RecordReplay(static_cast<ReplayAction>(lane), songSeconds);
+    AdvanceImpl(songSeconds);
 
     // First judge the next expected note on this particular key, which may
     // belong to a LATER authored turn while another key has a pending half.

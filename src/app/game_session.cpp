@@ -30,6 +30,7 @@ void GameSession::Start(bool customChart, double now) {
     } else {
         demo_.Start(now);
     }
+    if (!testOrigin_) judge_.BeginReplayCapture();
 }
 
 void GameSession::Restart(bool customChart, double now) {

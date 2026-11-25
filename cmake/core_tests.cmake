@@ -61,5 +61,9 @@ target_compile_features(locus_judgement_tests PRIVATE cxx_std_17)
 target_link_libraries(locus_judgement_tests PRIVATE locus_core)
 add_test(NAME locus_turn_judgement COMMAND locus_judgement_tests)
 
+add_executable(locus_replay_tests tests/replay_tests.cpp)
+target_link_libraries(locus_replay_tests PRIVATE locus_core)
+add_test(NAME locus_scoring_replay COMMAND locus_replay_tests)
+
 set_tests_properties(locus_chart_json_compatibility PROPERTIES
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
