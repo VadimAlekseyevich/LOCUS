@@ -223,17 +223,9 @@ bool NativeMenuUi::Initialize() {
     if (editorDocument_) {
         editorDocument_->AddEventListener("click", this);
         editorDocument_->AddEventListener("change", this);
-        // Focus/blur do not bubble in RmlUi. Listen directly on the rate
-        // input so editing is transactional rather than clamped on every
-        // character inserted/deleted by the text widget.
-        for (const char* id : {"editor-preview-rate", "editor-set-title",
-                               "editor-set-artist", "editor-set-mapper",
-                               "editor-set-tags", "editor-difficulty-title"}) {
-            if (auto* field = editorDocument_->GetElementById(id)) {
-                field->AddEventListener("focus", this);
-                field->AddEventListener("blur", this);
-            }
-        }
+        // Capture focus events for all inputs, including dynamic tempo rows.
+        editorDocument_->AddEventListener("focus", this, true);
+        editorDocument_->AddEventListener("blur", this, true);
         editorDocument_->Hide();
         editorPresenter_.Attach(editorDocument_);
     } else {
@@ -944,7 +936,8 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                  over("editor-route-pad") ||
                  over("editor-route-speed") || over("editor-route-path"))) ||
             (ui.tab == EditorTab::Set &&
-             (over("editor-set-metadata") || over("editor-set-difficulties")));
+             (over("editor-set-metadata") || over("editor-set-audio") ||
+              over("editor-set-difficulties")));
         if (popupWasOpen && !popupContent && !transport) {
             ui.rateDropdownOpen = false;
             // The release event must dismiss only, not navigate through

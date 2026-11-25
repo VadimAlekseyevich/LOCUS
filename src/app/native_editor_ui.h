@@ -44,5 +44,6 @@ private:
     std::string focusedInitialValue_;
     std::string activeSetId_, setListSignature_;
     int lastTab_ = -1, lastTextEditing_ = -1;
+    int tempoRows_ = -1;
 };
 } // namespace locus::app

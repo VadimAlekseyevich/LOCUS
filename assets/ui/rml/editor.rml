@@ -50,12 +50,22 @@
         <button data-action="set-folder"><span class="button-label">OPEN FOLDER</span></button>
         <button data-action="set-restore"><span class="button-label">RESTORE</span></button></div>
     </div>
+    <div id="editor-set-audio" class="editor-set-panel">
+      <div class="editor-set-title">AUDIO &amp; TIMING</div>
+      <button id="editor-attach-audio" data-action="attach-audio"><span class="button-label">ATTACH AUDIO</span></button>
+      <div id="editor-audio-name" class="editor-setup-caption"></div>
+      <div class="editor-set-field"><div>MENU PREVIEW START / MS</div><input type="text" id="editor-preview-ms" class="editor-set-input" data-kind="preview-ms" maxlength="7" value="" /></div>
+      <div class="editor-set-title editor-tempo-heading">TEMPO MAP</div>
+      <div class="editor-tempo-row editor-tempo-labels"><div class="editor-tempo-offset">OFFSET / MS</div><div class="editor-tempo-bpm">BPM</div><div class="editor-tempo-action"></div></div>
+      <div id="editor-tempo-list"></div>
+      <button id="editor-tempo-add" class="secondary" data-action="tempo-add"><span class="button-label">+ ADD BPM MARKER</span></button>
+    </div>
     <div id="editor-set-difficulties" class="editor-set-panel">
       <div class="editor-set-title">DIFFICULTIES</div>
-      <div class="editor-set-field"><div>CURRENT DIFFICULTY / RENAME</div><input type="text" id="editor-difficulty-title" class="editor-set-input" data-kind="difficulty-title" value="" /></div>
-      <button id="editor-setup-enter" class="secondary" data-action="setup-enter"><span class="button-label">OPEN CHART EDITOR</span></button>
+      <div class="editor-set-field"><div>DIFFICULTY NAME</div><input type="text" id="editor-difficulty-title" class="editor-set-input" data-kind="difficulty-title" value="" /></div>
       <div class="editor-set-quick"><button data-action="set-new"><span class="button-label">NEW</span></button><button data-action="set-duplicate"><span class="button-label">DUPLICATE</span></button></div>
       <div id="editor-set-list"></div>
+      <div class="editor-setup-caption">CLICK TO SELECT · CLICK AGAIN OR ENTER TO EDIT</div>
       <div class="editor-set-quick"><button data-action="set-delete-chart"><span class="button-label">DELETE CHART</span></button><button data-action="set-delete-set"><span class="button-label">DELETE SET</span></button></div>
     </div>
     <div id="editor-set-hint">CREATE SONG SET TO EDIT SHARED DETAILS</div>

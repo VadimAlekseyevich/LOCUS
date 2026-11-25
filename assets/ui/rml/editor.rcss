@@ -1,5 +1,5 @@
 /* Editor shell aligns to the existing 960x540 editor viewport.
-   Chart preview, note pad, tempo timeline and editing panels remain raylib.
+   Chart preview and timelines remain raylib; all Song Setup panels are RmlUi.
    No gameplay-related visuals or controls run through RmlUi. */
 #editor-canvas { position:absolute; left:0; top:0;
   width:960dp; height:540dp; background-color:transparent; }
@@ -62,7 +62,21 @@
   display:flex; flex-direction:column; pointer-events:auto; }
 #editor-set-metadata { left:43dp; width:300dp; }
 #editor-set-difficulties { left:647dp; width:290dp; }
-#editor-setup-enter { height:31dp; flex:0 0 31dp; margin-bottom:6dp; font-size:12dp; }
+#editor-set-audio { left:350dp; width:290dp; }
+#editor-attach-audio, #editor-tempo-add { flex:0 0 30dp; height:30dp; padding:0; font-size:11dp; }
+#editor-attach-audio { margin-bottom:4dp; }
+.editor-setup-caption { display:block; color:#a6bad9; font-size:9dp; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; margin:3dp 0 6dp; }
+.editor-tempo-heading { margin-top:7dp; margin-bottom:3dp; }
+.editor-tempo-row { display:flex; flex-direction:row; align-items:center; gap:4dp; flex:0 0 27dp; height:27dp; }
+.editor-tempo-offset { flex:1.2; min-width:0; }
+.editor-tempo-bpm { flex:1; min-width:0; }
+.editor-tempo-action { flex:0 0 48dp; width:48dp; }
+.editor-tempo-labels { flex:0 0 15dp; height:15dp; color:#a6bad9; font-size:10dp; }
+.editor-tempo-row input { width:auto; }
+.editor-tempo-row button { height:27dp; padding:0; font-size:10dp; }
+.editor-tempo-start { color:#a2d8ee; font-size:10dp; text-align:center; }
+#editor-tempo-list { display:flex; flex-direction:column; flex:1; min-height:0; gap:4dp; overflow-y:auto; margin-bottom:6dp; }
 .editor-set-title { display:block; color:#b5a4f3; font-weight:800; font-size:13dp;
   margin-bottom:6dp; letter-spacing:1dp; }
 .editor-set-field { display:flex; flex-direction:column; flex:0 0 auto;
@@ -82,10 +96,8 @@
   padding:0; font-size:10dp; }
 #editor-set-list { display:flex; flex-direction:column; flex:1;
   gap:5dp; overflow-y:auto; min-height:0; }
-.editor-difficulty-entry { display:flex; flex:0 0 29dp; height:29dp; gap:4dp; }
-.editor-set-row { flex:1; min-width:0; min-height:29dp; height:29dp; padding:2dp 5dp; text-align:left; font-size:12dp; }
-.editor-rename-row { flex:0 0 55dp; width:55dp; height:29dp; padding:0; font-size:10dp; }
+.editor-set-row { display:block; flex:0 0 30dp; width:100%; min-height:30dp; height:30dp; padding:2dp 5dp; font-size:12dp; }
 .editor-set-row.active { border-color:#a2d8ee; }
-.editor-set-row.selected { background-color:#59527a; }
+.editor-set-row.selected { background-color:#59527a; border-color:#a2d8ee; }
 #editor-set-hint { position:absolute; left:54dp; top:456dp;
   color:#9da8c6; font-size:9dp; pointer-events:none; }

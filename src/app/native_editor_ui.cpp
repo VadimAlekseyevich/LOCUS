@@ -15,6 +15,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <iomanip>
+#include "core/tempo_map.h"
 
 namespace locus::app {
 namespace {
@@ -51,6 +53,7 @@ void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     suppressClick_ = false;
     activeSetId_.clear();
     setListSignature_.clear();
+    tempoRows_ = -1;
     lastTab_ = -1;
     lastTextEditing_ = -1;
 }
@@ -138,34 +141,87 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
             tags += tag;
         }
         update("editor-set-tags", tags);
-        if (auto* name = dynamic_cast<Rml::ElementFormControlInput*>(document_->GetElementById("editor-difficulty-title")))
-            if (name != focus && name->GetValue() != title) name->SetValue(title);
-        SetText("editor-setup-enter", !setView->hasAudio ? "ATTACH AUDIO FIRST" :
-                !setView->managed ? "CREATE SONG SET" : "OPEN CHART EDITOR");
+        const auto selected = setView->selected;
+        const bool selectedInstalled = selected >= 0 &&
+            selected < static_cast<int>(setView->difficulties.size());
+        const auto setInput = [&](const std::string& id, const std::string& value, bool enabled) {
+            if (auto* field = dynamic_cast<Rml::ElementFormControlInput*>(document_->GetElementById(id))) {
+                if (field != focus && field->GetValue() != value) field->SetValue(value);
+                if (enabled) field->RemoveAttribute("disabled");
+                else field->SetAttribute("disabled", "");
+            }
+        };
+        setInput("editor-difficulty-title", selectedInstalled
+            ? setView->difficulties[static_cast<std::size_t>(selected)] : title,
+            selectedInstalled || setView->newDifficultyDraft);
         SetText("editor-set-hint", setView->managed ? "" :
-                "CREATE SONG SET TO EDIT SHARED DETAILS");
+                "ATTACH AUDIO, THEN OPEN THE DRAFT TO CREATE THE SET");
+        SetText("editor-attach-audio", setView->hasAudio ? "AUDIO LOADED / CHANGE" : "ATTACH AUDIO");
+        SetText("editor-audio-name", setView->audioName.empty() && draft
+            ? draft->Data().audioPath : setView->audioName);
+        setInput("editor-preview-ms", setView->managed ? std::to_string(setView->previewStartMs) : "",
+            setView->managed);
+        const auto tempo = !setView->tempoMap.empty() ? setView->tempoMap
+            : draft ? core::EffectiveTempoMap(draft->Data().route, draft->Data().offsetSeconds)
+                    : std::vector<core::TempoMarker>{};
+        if (tempoRows_ != static_cast<int>(tempo.size())) {
+            std::ostringstream html;
+            for (std::size_t i = 0; i < tempo.size(); ++i) {
+                html << "<div class='editor-tempo-row'>"
+                    << "<input type='text' class='editor-set-input editor-tempo-offset' id='editor-tempo-ms-" << i
+                    << "' data-kind='tempo-offset' data-index='" << i << "' maxlength='32' value='' />"
+                    << "<input type='text' class='editor-set-input editor-tempo-bpm' id='editor-tempo-bpm-" << i
+                    << "' data-kind='tempo-bpm' data-index='" << i << "' maxlength='32' value='' />";
+                if (i == 0) html << "<div class='editor-tempo-action editor-tempo-start'>START</div>";
+                else html << "<button class='editor-tempo-action' data-action='tempo-remove' data-index='" << i
+                          << "'><span class='button-label'>DEL</span></button>";
+                html << "</div>";
+            }
+            if (auto* list = document_->GetElementById("editor-tempo-list")) {
+                list->SetInnerRML(html.str());
+                tempoRows_ = static_cast<int>(tempo.size());
+            }
+        }
+        for (std::size_t i = 0; i < tempo.size(); ++i) {
+            const auto suffix = std::to_string(i);
+            std::ostringstream bpm;
+            bpm << std::setprecision(15) << tempo[i].bpm;
+            setInput("editor-tempo-ms-" + suffix, std::to_string(tempo[i].timeMs), true);
+            setInput("editor-tempo-bpm-" + suffix, bpm.str(), true);
+        }
+        // Only rebuild when row identity/order changes, not on selection or
+        // title edits. This preserves keyboard focus and scrolling.
         std::ostringstream signature;
-        signature << setView->id << ':' << setView->current
-                  << ':' << setView->selected;
-        for (const auto& difficulty : setView->difficulties)
-            signature << difficulty.size() << ':' << difficulty;
+        signature << setView->id << ':' << setView->newDifficultyDraft;
+        for (const auto& id : setView->difficultyIds) signature << ':' << id;
         if (signature.str() != setListSignature_) {
             setListSignature_ = signature.str();
             std::ostringstream html;
+            if (setView->newDifficultyDraft)
+                html << "<button class='editor-set-row' id='editor-draft-row' data-action='draft-difficulty'><span class='button-label'>"
+                     << EscapeRml(title) << "</span></button>";
             for (std::size_t i=0; i<setView->difficulties.size(); ++i) {
-                html << "<div class='editor-difficulty-entry'><button class='editor-set-row";
-                if (static_cast<int>(i) == setView->current) html << " active";
-                if (static_cast<int>(i) == setView->selected) html << " selected";
-                html << "' data-action='set-difficulty' data-index='" << i
-                     << "'><span class='button-label'>"
-                     << EscapeRml(setView->difficulties[i])
-                     << "</span></button><button class='editor-rename-row' data-action='set-rename' data-index='" << i
-                     << "'><span class='button-label'>RENAME</span></button></div>";
+                html << "<button class='editor-set-row' id='editor-difficulty-" << i
+                     << "' data-action='set-difficulty' data-id='" << EscapeRml(setView->difficultyIds[i])
+                     << "'><span class='button-label'>" << EscapeRml(setView->difficulties[i])
+                     << "</span></button>";
+                textCache_.erase("editor-difficulty-" + std::to_string(i));
             }
-            if (setView->difficulties.empty())
-                html << "<div class='empty'>NO DIFFICULTIES YET</div>";
+            textCache_.erase("editor-draft-row");
             if (auto* list = document_->GetElementById("editor-set-list"))
                 list->SetInnerRML(html.str());
+        }
+        if (auto* row = document_->GetElementById("editor-draft-row")) {
+            row->SetClass("selected", !selectedInstalled);
+            SetText("editor-draft-row", title + " (DRAFT)");
+        }
+        for (std::size_t i=0; i<setView->difficulties.size(); ++i) {
+            const auto id = "editor-difficulty-" + std::to_string(i);
+            if (auto* row = document_->GetElementById(id)) {
+                row->SetClass("active", static_cast<int>(i) == setView->current);
+                row->SetClass("selected", static_cast<int>(i) == selected);
+                SetText(id.c_str(), setView->difficulties[i]);
+            }
         }
     }
 }
@@ -208,12 +264,19 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     if (ui_->tab == EditorTab::Set) {
         if (auto* field = dynamic_cast<Rml::ElementFormControlInput*>(event.GetTargetElement())) {
             const auto kind = field->GetAttribute<Rml::String>("data-kind", "");
-            if (kind == "set-field" || kind == "difficulty-title") {
+            if (kind == "set-field" || kind == "difficulty-title" ||
+                kind == "preview-ms" || kind == "tempo-offset" || kind == "tempo-bpm") {
                 if (event.GetType() == "focus") focusedInitialValue_ = field->GetValue();
                 if (event.GetType() == "blur" && field->GetValue() != focusedInitialValue_) {
                     if (kind == "difficulty-title")
                         input_->editor.difficultyTitle = field->GetValue();
-                    else {
+                    else if (kind == "preview-ms")
+                        input_->editor.previewMsValue = field->GetValue();
+                    else if (kind == "tempo-offset" || kind == "tempo-bpm") {
+                        input_->editor.tempoRow = field->GetAttribute<int>("data-index", -1);
+                        input_->editor.tempoBpm = kind == "tempo-bpm";
+                        input_->editor.tempoValue = field->GetValue();
+                    } else {
                         const int value = field->GetAttribute<int>("data-field", -1);
                         if (value >= static_cast<int>(EditorSetField::Title) &&
                             value <= static_cast<int>(EditorSetField::Tags)) {
@@ -238,10 +301,15 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     consumedPointer_ = true;
     if (action == "back") {
         input_->backPressed = true;
-    } else if (action == "setup-enter") {
-        input_->editor.enterChart = true;
-    } else if (action == "set-rename") {
-        input_->editor.renameDifficulty = target->GetAttribute<int>("data-index", -1);
+    } else if (action == "draft-difficulty") {
+        input_->editor.selectDraft = true;
+    } else if (action == "attach-audio") {
+        input_->editor.attachAudio = true;
+    } else if (action == "tempo-add") {
+        input_->editor.tempoAdd = true;
+    } else if (action == "tempo-remove") {
+        input_->editor.tempoRemove = true;
+        input_->editor.tempoRow = target->GetAttribute<int>("data-index", -1);
     } else if (action == "preview-play") {
         ui_->rateDropdownOpen = false;
         input_->editor.previewToggle = true;
@@ -249,8 +317,8 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
         ui_->rateDropdownOpen = false;
         input_->editor.previewRestart = true;
     } else if (action == "set-difficulty") {
-        input_->editor.selectedDifficulty =
-            target->GetAttribute<int>("data-index", -1);
+        input_->editor.selectedDifficultyId =
+            target->GetAttribute<Rml::String>("data-id", "");
     } else if (action == "set-new") input_->editor.setRequest = EditorSetAction::NewDifficulty;
     else if (action == "set-duplicate") input_->editor.setRequest = EditorSetAction::Duplicate;
     else if (action == "set-import") input_->editor.setRequest = EditorSetAction::Import;

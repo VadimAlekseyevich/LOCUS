@@ -395,7 +395,7 @@ int main(int argc, char** argv) {
         auto* header = editorDoc->GetElementById("editor-header");
         auto* set = editorDoc->GetElementById("editor-set-ui");
         auto* route = editorDoc->GetElementById("editor-route-ui");
-        auto* enterEditor = editorDoc->GetElementById("editor-setup-enter");
+        auto* audio = editorDoc->GetElementById("editor-set-audio");
         auto* footer = editorDoc->GetElementById("editor-footer-playback");
         auto* rate = editorDoc->GetElementById("editor-preview-rate");
         ok &= Check(rate && rate->GetTagName() == "input" &&
@@ -430,7 +430,7 @@ int main(int argc, char** argv) {
         auto* time = editorDoc->GetElementById("editor-preview-time");
         auto* compass = editorDoc->GetElementById("editor-route-pad");
         auto* toolrail = editorDoc->GetElementById("editor-route-tools");
-        ok &= Check(canvas && header && set && route && enterEditor &&
+        ok &= Check(canvas && header && set && route && audio &&
                     footer && rate && time && compass && toolrail,
                     "EDITOR has separate setup/authoring views and transport controls");
         if (header && footer && canvas) {
@@ -452,7 +452,9 @@ int main(int argc, char** argv) {
                 ok &= Check(metadata && difficulties && name &&
                     metadata->GetAbsoluteLeft()+metadata->GetOffsetWidth() <= 350.0f &&
                     difficulties->GetAbsoluteLeft() >= 647.0f &&
-                    LabelCentered(enterEditor),
+                    audio && audio->GetAbsoluteLeft() >= metadata->GetAbsoluteLeft()+metadata->GetOffsetWidth() &&
+                    audio->GetAbsoluteLeft()+audio->GetOffsetWidth() <= difficulties->GetAbsoluteLeft() &&
+                    !editorDoc->GetElementById("editor-setup-enter"),
                     "SONG SETUP panels leave central audio/timing region clear");
             }
             context->SetDimensions({1536, 960});

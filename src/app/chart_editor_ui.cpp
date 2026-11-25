@@ -597,7 +597,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         CompactButton(font,kEditorPathMinus,"-",violet);
         CompactButton(font,kEditorPathPlus,"+",sky);
         }
-    } else if (ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio) {
+    } else if (!nativeShell && (ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio)) {
         const auto panel = [&](Rectangle bounds) {
             DrawRectangleRounded(bounds,UiRoundness(bounds,12),9,theme.surface);
             DrawRectangleRoundedLinesEx(bounds,UiRoundness(bounds,12),9,1,theme.divider);
@@ -675,12 +675,14 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             CompactButton(font,kSetOpenFolder,"OPEN FOLDER",sky);
             CompactButton(font,kSetRestore,"RESTORE",violet);
             if(!set.managed) Label(font,"CREATE SONG SET TO EDIT DETAILS",54,449,10,muted);
-            textBox(kTitle,"CURRENT DIFFICULTY / RENAME",
-                ui.active==EditorField::Title?ui.buffer:draft.Data().title,
+            const auto selectedName = set.selected >= 0
+                ? set.difficulties[static_cast<std::size_t>(set.selected)] : draft.Data().title;
+            textBox(kTitle,"DIFFICULTY NAME",
+                ui.active==EditorField::Title?ui.buffer:selectedName,
                 ui.active==EditorField::Title);
-            DrawUiThemedButton(font,kSetupEnter,!hasAudio?"ATTACH AUDIO FIRST":
-                !set.managed?"CREATE SONG SET":"OPEN CHART EDITOR",
-                UiButtonVariant::Cool,{}, {},theme,12);
+            if (set.newDifficultyDraft)
+                DrawUiThemedButton(font,kSetupEnter,(draft.Data().title + " (DRAFT)").c_str(),
+                    UiButtonVariant::Quiet,{}, {},theme,12);
             CompactButton(font,kSetNew,"NEW",sky);
             CompactButton(font,kSetDuplicate,"DUPLICATE",violet);
             for(int row=0;row<5;++row) {
@@ -694,13 +696,12 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
                     active?2.0f:1.0f,active?sky:theme.divider);
                 Label(font,UiFitText(font,set.difficulties[static_cast<std::size_t>(index)],
                     bounds.width-16,13).c_str(),bounds.x+8,bounds.y+8,13,theme.foreground);
-                CompactButton(font,SetDifficultyRenameRow(row),"RENAME",violet);
             }
             if(set.difficulties.empty())Label(font,"NO SAVED DIFFICULTIES",658,275,11,muted);
             CompactButton(font,kSetDeleteDifficulty,"DELETE CHART",theme.danger);
             CompactButton(font,kSetDeleteSong,"DELETE SET",theme.danger);
         }
-    } else {
+    } else if (!nativeShell) {
         Label(font, "INITIAL HEADING", 104, 207, 17,
               Color{194, 218, 231, 255});
         Button(font, kFieldHeadingPrev, "<", Color{145, 189, 221, 255});
