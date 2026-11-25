@@ -73,7 +73,8 @@ inline LibraryRowWindow VisibleLibraryRows(
 // guessed from a CSS min-height that may include padding and borders.
 inline LibraryRowWindow VisibleResultRows(
     std::size_t count, float scrollTop, float measuredRowStep,
-    std::size_t maxRows = 32, std::size_t overscan = 5) noexcept {
+    std::size_t maxRows = 32, std::size_t overscan = 5,
+    float gap = 5.0f) noexcept {
     LibraryRowWindow view;
     if (count == 0) return view;
     const float step = std::isfinite(measuredRowStep) &&
@@ -84,10 +85,18 @@ inline LibraryRowWindow VisibleResultRows(
         std::floor(top / step)));
     view.first = firstVisible > overscan ? firstVisible - overscan : 0;
     view.end = std::min(count, view.first + std::max(std::size_t(1), maxRows));
-    constexpr float gap = 5.0f;
     view.before = view.first == 0 ? 0.0f : view.first * step - gap;
     view.after = view.end == count ? 0.0f : (count - view.end) * step - gap;
     return view;
+}
+
+// Size the working set from the actual viewport, not a hard row cap.
+inline std::size_t VirtualRowsForViewport(float heightDp, float stepDp,
+                                          std::size_t overscan = 5) noexcept {
+    if (!std::isfinite(heightDp) || heightDp <= 0.0f ||
+        !std::isfinite(stepDp) || stepDp <= 0.0f) return 32;
+    return static_cast<std::size_t>(std::ceil(heightDp / stepDp)) +
+        1 + 2 * overscan;
 }
 
 } // namespace locus::app

@@ -792,6 +792,13 @@ MenuEvents NativeMenuUi::UpdateResults(FrameInput& input,
     MenuEvents events;
     if (!ResultsAvailable()) return events;
     Activate(Page::Results);
+    const float oldDensity = lastDensity_;
+    const float scrollDp = resultsPresenter_.ReadScrollDp(oldDensity);
+    if (RefreshLayoutMetrics()) {
+        context_->Update();
+        if (oldDensity > 0.0f && oldDensity != lastDensity_)
+            resultsPresenter_.RestoreScrollDp(scrollDp,lastDensity_);
+    }
     const auto keyboard = TakeResultsKeyboard(input);
     resultsPresenter_.BeginFrame(selected, grades, total, chartTitle,
                                  historical, history, input, events);
@@ -807,6 +814,8 @@ MenuEvents NativeMenuUi::UpdateResults(FrameInput& input,
         }
     }
     ApplyResultsKeyboard(input,keyboard,historical,consumed);
+    context_->Update();
+    resultsPresenter_.Sync();
     context_->Update();
     resultsPresenter_.EndFrame();
     return events;

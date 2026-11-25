@@ -22,7 +22,9 @@
 .results-grade strong { display:block; font-size:30dp; color:#eef1fb; }
 .results-separator { border-top:1dp #535a79; padding-top:14dp; }
 #results-history { flex:1; min-height:0; overflow-y:auto; }
-.results-history-row { display:block; width:100%; margin-bottom:6dp;
+#results-history-list { display:flex; flex-direction:column; gap:6dp; }
+.results-history-spacer { flex-shrink:0; width:1dp; }
+.results-history-row { display:block; width:100%; flex:0 0 36dp;
   height:36dp; font-size:12dp; text-align:left; }
 .results-empty { display:block; color:#9da8c6; padding:9dp; font-size:12dp; }
 @media (max-width:730dp) {

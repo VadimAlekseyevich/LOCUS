@@ -181,6 +181,8 @@
 
 **25.11.2026 — T11/T13: transactional SKINS fields.** NativeSkinUi commits name/number/hex only on blur (Enter moves focus); Esc cancels edit buffer without changing skin or dirty flag, invalid value restores model representation. Hex commit updates the chip in place. Added actual NativeSkinUi + production skins.rml integration test to locus_skin_tests, covers real typing, cancel, Enter, invalid blur, focus switch. Windows CI required.
 
+**25.11.2026 — T08/T12: virtual RESULTS history.** NativeResultsUi retains source indices only on history/selection revisions, materializes a viewport-sized overscanned window with dp spacers and validates original run identity on click. Scroll stays logical across density changes; DOM is bounded by visible rows, not count. Integration test loads production results.rml with 25k summaries, checks omission of selected run, last row, click mapping, DPI and expired-frame guard. Windows CI required.
+
 **Приёмка.** Tab/Shift+Tab, Enter, Esc, колесо и мышь работают на HOME, PLAY, SETTINGS, SKINS, RESULTS и в Editor. Одно событие вызывает одну команду. Текст, rebinding и калибровка перехватывают соответствующие клавиши. Закрытие popup внешним кликом не ставит ноту. Русский ввод, вставка текста с символами разметки и длинные имена выводятся буквально. Подсказка отражает переназначенную клавишу. Esc в PLAY ставит на паузу, выход требует подтверждения.
 
 <a id="t12"></a>

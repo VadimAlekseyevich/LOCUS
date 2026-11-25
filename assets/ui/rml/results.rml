@@ -27,7 +27,7 @@
     <div class="results-grade"><div>MISS</div><strong id="results-miss">0</strong></div>
    </div>
    <div class="results-block-title results-separator">OTHER RESULTS</div>
-   <div id="results-history"><div class="results-empty">NO OTHER SAVED RESULTS</div></div>
+   <div id="results-history"><div id="results-history-list"><div class="results-empty">NO OTHER SAVED RESULTS</div></div></div>
   </div>
  </div>
 </div></body></rml>

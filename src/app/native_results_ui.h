@@ -1,5 +1,6 @@
 #pragma once
 #include "app/run_results.h"
+#include "app/library_virtual_list.h"
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -20,10 +21,13 @@ public:
                     const SongSelectUi& history, FrameInput& input,
                     MenuEvents& events) noexcept;
     void Sync();
+    float ReadScrollDp(float density) const;
+    void RestoreScrollDp(float position, float density);
     void ProcessEvent(Rml::Event& event);
     void EndFrame() noexcept;
 private:
     void SetText(const char* id, const std::string& value);
+    void SyncHistory();
     Rml::ElementDocument* document_ = nullptr;
     const RunResult* selected_ = nullptr;
     const core::GradeCounts* grades_ = nullptr;
@@ -35,6 +39,11 @@ private:
     int total_ = 0;
     std::uint64_t lastHistoryRevision_ = ~std::uint64_t(0);
     std::string lastSelectedId_;
+    RunKey lastHistoryKey_;
+    std::vector<std::size_t> historyIndices_;
+    LibraryRowWindow historyWindow_;
+    bool historyWindowValid_ = false;
+    float historyRowStepDp_ = 42.0f;
     std::unordered_map<std::string, std::string> textCache_;
 };
 } // namespace locus::app

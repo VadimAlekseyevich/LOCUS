@@ -707,7 +707,9 @@ if(LOCUS_BUILD_TESTS)
     if(LOCUS_ENABLE_RMLUI)
         target_sources(locus_library_browser_tests PRIVATE
             tests/native_play_ui_tests.cpp
-            src/app/native_play_ui.cpp)
+            tests/native_results_ui_tests.cpp
+            src/app/native_play_ui.cpp
+            src/app/native_results_ui.cpp)
         target_compile_definitions(locus_library_browser_tests PRIVATE LOCUS_TEST_NATIVE_PLAY=1)
         target_link_libraries(locus_library_browser_tests PRIVATE RmlUi::Core)
         add_dependencies(locus_library_browser_tests locus_ui_assets)
