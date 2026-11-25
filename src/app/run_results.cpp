@@ -181,8 +181,9 @@ bool CaptureCompletedRun(const RunResultsStore& store,
                          RunResult& saved, std::string& error) {
     error.clear();
     // A Results screen or a repeated frame is NOT a new completed attempt.
-    // Never publish TEST, abandoned sessions, or a partially judged chart.
+    // Never publish TEST, spectator playback, abandoned or partial sessions.
     if (!completion.completedThisFrame || completion.editorTest ||
+        completion.spectator ||
         completion.launchedFromEditor || completion.key.Empty() ||
         completion.scorableCount == 0 ||
         completion.scorableCount >
@@ -402,8 +403,8 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
             error = "Saved results directory traversal failed: " + ec.message();
             return {};
         }
+        if (entry.path().extension() != ".json") continue;
         if (entry.is_symlink(ec) || !entry.is_regular_file(ec) ||
-            entry.path().extension() != ".json" ||
             entry.file_size(ec) > 16384 || ec) {
             ec.clear();
             continue;

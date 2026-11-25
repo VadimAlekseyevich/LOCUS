@@ -12,7 +12,8 @@ pre-release; incompatible changes are allowed but must be called out.
 | `ChartEditor` | Mutable authoring document, selection, revisioned undo/redo | Saved-file selection, playback device, render UI |
 | `EditorComparisonCache` | Revision-cached routes for one focused draft and up to two parked/library difficulties; frame-local read-only render snapshot | Audio transport, chart mutations, persistence |
 | `SongLibrary` / `song_set_storage` | Installed Song Sets, authoritative shared tempo map, file transactions, recovery, cache/index | Gameplay scoring or editor keyboard state |
-| `ChartPlayback` / `GameSession` | Audio-time transport and per-arrow judgement | Screen rendering, camera, skin settings |
+| `ChartPlayback` / `GameSession` | Audio-time transport, per-arrow judgement and spectator dispatch | Screen rendering, camera, skin settings |
+| `core/replay` / `RunResultsStore` | Deterministic scoring trace codec/cursor; compact result JSON and lazily loaded sidecars | UI, audio transport, online trust |
 | `PlayPresentation` | Presentation-only camera lag, outro and adjustment notice | Authoritative song time or note results |
 | `path_mesh` / `route_renderer` / `gameplay_ui` | Project sampled route into a clipped square, draw ribbons, turn targets and marker | Loading files or changing gameplay state |
 | Screen controllers | Play, editor, library, skin and modal commands | Other screens' storage or render internals |

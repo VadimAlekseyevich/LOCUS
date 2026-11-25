@@ -48,7 +48,7 @@ LOCUS is a four-key spatial rhythm game. Follow an authored route on an unbounde
 
 The largest centered square clips the forward route. Default speed is 135 logical px/s and lookahead 800 ms of original song time. Camera lag defaults to 180 ms; zero disables it. All are configurable in SKINS. The HUD shows combo and accuracy in the corners; detailed grades appear only when the right gutter permits. A Song Set background fills the window with aspect-preserving cropping.
 
-Perfect/Good/Bad timing windows are ±50/110/180 ms. Accuracy is `(100*Perfect + 75*Good + 50*Bad) / resolvedInputs`. Miss breaks combo; there is no fail. The last resolved input triggers the outro and Results, even if music continues. Completed normal PLAY attempts are saved locally; TEST and abandoned attempts are excluded. See [GDD](docs/GDD.md), [timing](docs/TIMING_CONTRACT.md) and [results](docs/RESULTS.md).
+Perfect/Good/Bad timing windows are ±50/110/180 ms. Accuracy is `(100*Perfect + 75*Good + 50*Bad) / resolvedInputs`. Miss breaks combo; there is no fail. The last resolved input triggers the outro and Results, even if music continues. Completed normal PLAY attempts are saved locally with maximum combo, timing statistics and scoring replay where available; TEST, spectator and abandoned attempts are excluded. WATCH REPLAY in native Results verifies and plays a matching installed revision without producing another score. See [GDD](docs/GDD.md), [timing](docs/TIMING_CONTRACT.md) and [results](docs/RESULTS.md).
 
 ## Song selection and mapping
 

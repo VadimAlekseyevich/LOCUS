@@ -73,14 +73,14 @@ Accuracy (%) = (100 × Perfect + 75 × Good + 50 × Bad)
 ### 4.1 During Play
 
 - **Center:** the square, route, marker, configurable border and optional hit effects. A song-wide PNG/JPEG background may fill the physical window behind the game, preserving its aspect ratio and center-cropping excess rather than distorting pixels. Backgrounds also appear dimmed behind Song Select and Results.
-- **HUD:** current combo at lower left, accuracy and non-default practice rate at upper right. Perfect, Good, Bad and Miss counts form a compact column strictly outside the right edge of the world clip, hidden when the gutter is too narrow. Perfect, Good and Bad extend combo; any Miss breaks it. Diagonals count per physical arrow. Combo is live-only, not a new score or saved-results field.
-- HUD has no background scrims, progress bar or last-hit readout. The essential corner values remain visible in narrow windows; detailed grades never cover the route. HUD can be hidden in the skin.
+- **HUD:** current combo at lower left, accuracy and non-default practice rate at upper right. Perfect, Good, Bad and Miss counts form a compact column strictly outside the right edge of the world clip, hidden when the gutter is too narrow. Perfect, Good and Bad extend combo; any Miss breaks it. Diagonals count per physical arrow. Current combo is live; the highest combo is stored with completed results.
+- HUD has no background scrims, progress bar or last-hit readout. The essential corner values remain visible in narrow windows; detailed grades never cover the route. HUD can be hidden in the skin. An optional HIT ERROR BAR (off by default) in SKIN → PLAYER draws successful early/late timings with fading marks; the same rendering is used in skin preview.
 - PLAY hotkeys **[ / ]** or numpad **- / +** adjust base speed by **10 logical px/s**; **, / .** decrease/increase PREVIEW TIME by **50 ms**. Both repeat while held (230 ms initial delay, faster after 1.2 s), never override rebound gameplay keys, and persist to the global skin after a short idle period (or on exit). Changes are shown briefly near the top center, including when the HUD is hidden.
 - A centered pause dialog offers Resume, Retry and Leave without editing the chart. The mouse cursor is hidden during focused active gameplay and restored for pause, confirmations and other screens. The built-in demo and local charts use the same gameplay and results presentation.
 
 ### 4.2 Results
 
-Show the same four judgement counts plus **final Accuracy** and resolved-note count. Retry, Home and **E to edit the played chart** remain available. Results is not delayed to the end of a long audio outro.
+Show the same four judgement counts plus **final Accuracy** and resolved-note count. New completed attempts also store maximum combo, mean hit error, unstable rate and a fixed-bin hit error distribution. WATCH REPLAY in native Results reconstructs recorded scoring operations on the matching chart revision; spectator playback does not save another result. See [Results](RESULTS.md) for format and playback limitations. Retry, Home and **E to edit the played chart** remain available. Results is not delayed to the end of a long audio outro.
 
 ### 4.3 Menus and safe exit
 

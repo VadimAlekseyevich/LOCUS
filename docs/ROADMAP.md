@@ -34,6 +34,8 @@ Keep exact input timestamps, authoritative route and grading independent of rend
   grade counts are implemented. Validate narrow windows and contrast.
 - [ ] **G04. Judgement feedback:** evaluate distinct effects, timing feedback,
   and optional hitsounds without changing judgement windows prematurely.
+  The optional hit error bar and persistent timing histogram are implemented;
+  validate their readability and timing with physical devices.
 - [ ] **G05. Sight-reading:** test dense patterns with players. Route reading
   should communicate input, not dominate physical execution difficulty.
 
@@ -52,8 +54,11 @@ Keep exact input timestamps, authoritative route and grading independent of rend
 
 - [ ] First public Windows release: complete the acceptance checklist,
   package and onboarding, known limitations and licensing notices.
-- [ ] Evaluate replay recording, player skill/performance statistics and
-  rankings separately from the chart-only difficulty estimator.
+- [x] Record deterministic scoring replays and provide local spectator playback
+  for matching revisions in native Results.
+- [ ] Validate replay playback on physical Windows devices, add transport recording
+  if needed, and evaluate player skill/performance statistics and rankings
+  separately from the chart-only difficulty estimator.
 - [ ] Design accounts, online chart packs, moderation and leaderboards only
   after the local gameplay/scoring foundation is stable. Before hosting,
   implement the actual rights/reporting workflow described in the [README](../README.md#community-chart-packs-with-music--future-hosting-policy).

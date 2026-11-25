@@ -1116,7 +1116,7 @@ int main(int argc, char** argv) try {
                     judge.ScorableCount(), playActions.Transport(now).practiceSpeed,
                     playedGameplayRevision,
                     gameSession.VariablePracticeRate(), judge.Statistics(),
-                    judge.CompletedReplay()
+                    judge.CompletedReplay(), gameSession.IsReplay()
                 };
                 locus::app::RunResult record;
                 std::string error;

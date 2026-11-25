@@ -93,6 +93,7 @@ bool LaunchSavedReplay(const LibraryLaunchContext& ctx,
         return false;
     }
     if (!store.LoadReplay(result,trace,ctx.error)) return false;
+    const bool previousCustom=ctx.session.customChart;
     ReplayLaunchInfo preparedInfo;
     if (result.songSetId=="builtin-demo" &&
         result.difficultyId=="00000000000000000000000000000001") {
@@ -143,6 +144,10 @@ bool LaunchSavedReplay(const LibraryLaunchContext& ctx,
         ctx.ui.SelectSong(songIndex+1,ctx.library);
         ctx.ui.SelectChart(chartIndex,ctx.library);
     }
+    // Results may still be playing the previous song's outro. Stop the
+    // other transport only after successful validation and preparation.
+    if (previousCustom != ctx.session.customChart)
+        ctx.session.gameSession.Stop(previousCustom);
     ctx.session.gameSession.SetReplay(std::move(trace));
     ctx.app.screen=Screen::Play;
     info=std::move(preparedInfo);

@@ -143,7 +143,8 @@ int main() {
 
     // Actual two-key diagonal at 1000 ms and one left key after the
     // 2000 ms BPM transition. This path exercises the production judge.
-    judge.Reset();
+    judge.SetOffsetSeconds(hardPayload.offsetSeconds);
+    judge.BeginReplayCapture();
     const auto up = judge.PressHeading(core::Heading::Up, 1.000);
     const auto right = judge.PressHeading(core::Heading::Right, 1.007);
     const auto left = judge.PressHeading(core::Heading::Left, 3.000);
@@ -164,6 +165,9 @@ int main() {
                 "unfinished Play does not write a result");
 
     completion.completedThisFrame = true;
+    completion.statistics = judge.Statistics();
+    completion.replay = judge.CompletedReplay();
+    ok &= Check(completion.replay != nullptr, "normal Play records a complete trace");
     ok &= Check(app::CaptureCompletedRun(disk, completion, captured, error) &&
                 error.empty() && !captured.id.empty() &&
                 captured.notesJudged == static_cast<int>(judge.ScorableCount()) &&
@@ -173,6 +177,16 @@ int main() {
                 captured.gameplayRevision == completion.gameplayRevision,
                 "Play > final judgement persists exactly one complete attempt");
 
+    core::ReplayTrace restored;
+    ok &= Check(captured.hasReplay && disk.LoadReplay(captured,restored,error) &&
+                app::VerifyRunReplay(captured,restored,chart,completion.gameplayRevision),
+                "Results > recorded replay survives disk roundtrip and rejudges");
+    completion.spectator = true;
+    completion.replay = nullptr;
+    ok &= Check(!app::CaptureCompletedRun(disk,completion,captured,error) &&
+                error.empty() && history().size() == 1,
+                "Replay > completion cannot publish a new attempt");
+    completion.spectator = false;
     nav.screen = Screen::Results;
     completion.completedThisFrame = false;
     ok &= Check(!app::CaptureCompletedRun(disk, completion, captured, error) &&

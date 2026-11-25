@@ -109,6 +109,7 @@ struct CompletedRunContext {
     // Missing for attempts created before timing telemetry was introduced.
     std::optional<core::RunStatistics> statistics;
     const core::ReplayTrace* replay = nullptr; // borrowed during capture
+    bool spectator = false;
 };
 
 // Returns true only after a durable result is written. On ineligible calls
