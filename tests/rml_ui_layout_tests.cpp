@@ -593,7 +593,8 @@ int main(int argc, char** argv) {
                     view.message = "Save changed charts before leaving?";
                     view.notice = "Failed saves keep unsaved drafts open.";
                     view.approveLabel = "Y / DISCARD";
-                    confirm.Sync(view);
+                    ok &= Check(confirm.Sync(view) && !confirm.Sync(view),
+                        "unchanged confirmation does not invalidate layout");
                     context->Update();
                     auto* save = editorDoc->GetElementById("confirmation-save");
                     auto* approve = editorDoc->GetElementById("confirmation-approve");
@@ -626,6 +627,9 @@ int main(int argc, char** argv) {
                         "native approval returns a typed choice");
                     confirm.Sync({});
                     context->Update();
+                    ok &= Check(!confirm.Visible() && !locus::app::RmlFocusWithin(
+                        confirm.Panel(),context->GetFocusElement()),
+                        "closing confirmation releases modal focus");
                 }
                 // Portrait Song Setup must remain usable by scrolling the
                 // actual container; no hidden fixed-coordinate inputs.

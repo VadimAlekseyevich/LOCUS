@@ -330,8 +330,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
             EndMode2D();
             BeginMode2D(camera);
         }
-        // Modal controls still use the legacy centered transform, but their
-        // backdrop covers the actual window, not just the old 16:9 rectangle.
+        // Only the non-native fallback draws editor confirmations here.
+        // RmlConfirmation owns layout and hit-testing in the native editor.
         if (!hasNativeEditorShell && editorSetPending && editorPending == EditorPending::None) {
             DrawRectangleRec(transform.ToVirtualBounds(
                 {0,0,static_cast<float>(GetScreenWidth()),static_cast<float>(GetScreenHeight())}),

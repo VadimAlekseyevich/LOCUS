@@ -809,17 +809,14 @@ void NativeMenuUi::SyncEditorConfirmation(const ConfirmationView& view) {
     if (view.visible) Activate(Page::Editor);
     if (!ShowingEditor()) return;
     const bool changed = editorConfirmation_.Visible() != view.visible;
-    editorConfirmation_.Sync(view);
-    if (changed) {
-        editorPointerRouter_.Reset();
-        context_->Update();
-    }
+    if (changed) editorPointerRouter_.Reset();
+    if (editorConfirmation_.Sync(view)) context_->Update();
 }
 
 ConfirmationChoice NativeMenuUi::UpdateEditorConfirmation(const ConfirmationView& view) {
     SyncEditorConfirmation(view);
     if (!view.visible || !ShowingEditor()) return ConfirmationChoice::None;
-    PumpInput(false, true);
+    PumpInput(false);
     editorConfirmation_.FocusCancelIfOutside();
     auto* panel = editorConfirmation_.Panel();
     auto* focus = context_->GetFocusElement();

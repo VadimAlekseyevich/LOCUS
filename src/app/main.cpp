@@ -690,6 +690,7 @@ int main(int argc, char** argv) try {
                 }
                 input = FrameInput{}; // No actions beneath a modal confirmation.
                 editorSet.Confirm(approve, cancel);
+                editorChoice = ConfirmationChoice::None; // one dialog owns one decision
             }
         }
         // Inactive comparison panes own real dirty drafts. Closing one
@@ -705,6 +706,7 @@ int main(int argc, char** argv) try {
                 double saveNow = MonotonicSeconds();
                 editorFiles.ResolveClose(save, discard, saveNow);
             }
+            editorChoice = ConfirmationChoice::None;
         }
         if (previousScreen == Screen::Editor && !wasQuitConfirmation) {
             bool approvedBySaving = false;

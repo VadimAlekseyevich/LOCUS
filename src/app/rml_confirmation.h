@@ -19,8 +19,8 @@ public:
             layer->SetProperty("display","none");
     }
 
-    void Sync(const ConfirmationView& view) {
-        if (!document_) return;
+    bool Sync(const ConfirmationView& view) {
+        if (!document_ || view == view_) return false;
         auto* panel = Panel();
         if (view.visible != view_.visible) {
             if (auto* focus = document_->GetContext()->GetFocusElement();
@@ -31,11 +31,11 @@ public:
             choice_ = ConfirmationChoice::None;
         }
         if (view.visible) {
-            if (view.heading != view_.heading)
+            if (view.heading != view_.heading || !view_.visible)
                 UpdateRmlText(Element("confirmation-heading"),view.heading);
-            if (view.message != view_.message)
+            if (view.message != view_.message || !view_.visible)
                 UpdateRmlText(Element("confirmation-message"),view.message);
-            if (view.notice != view_.notice)
+            if (view.notice != view_.notice || !view_.visible)
                 UpdateRmlText(Element("confirmation-notice"),view.notice);
             if (view.approveLabel != view_.approveLabel || !view_.visible)
                 UpdateRmlText(Element("confirmation-approve"),view.approveLabel);
@@ -44,6 +44,7 @@ public:
                     save->SetProperty("display",view.canSave ? "inline-block" : "none");
         }
         view_ = view;
+        return true;
     }
 
     bool Visible() const noexcept { return view_.visible; }
@@ -59,7 +60,8 @@ public:
             target = target->GetParentNode();
         if (!target || target->HasAttribute("disabled")) return;
         const auto action = target->GetAttribute<Rml::String>("data-confirmation","");
-        choice_ = ChooseConfirmation(view_,action=="save",action=="approve",action=="cancel");
+        const auto choice = ChooseConfirmation(view_,action=="save",action=="approve",action=="cancel");
+        if (choice != ConfirmationChoice::None) choice_ = choice;
     }
     ConfirmationChoice TakeChoice() noexcept {
         const auto result = choice_;

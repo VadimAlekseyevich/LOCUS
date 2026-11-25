@@ -9,6 +9,11 @@ struct ConfirmationView {
     bool canSave = false;
     std::string heading, message, notice;
     std::string approveLabel = "Y / CONFIRM";
+    bool operator==(const ConfirmationView& other) const noexcept {
+        return visible == other.visible && canSave == other.canSave &&
+            heading == other.heading && message == other.message &&
+            notice == other.notice && approveLabel == other.approveLabel;
+    }
 };
 
 // Escape/cancel takes precedence over destructive actions on coincident keys.
