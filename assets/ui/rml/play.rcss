@@ -1,20 +1,13 @@
 /* Song selection: approved design/ui/v2 hierarchy at 960x540.
    RmlUi uses physical-pixel scaling configured by NativeMenuUi. */
 #app { display:flex; flex-direction:column; width:100%; height:100%; }
-#heading { display:flex; flex-direction:row; align-items:center;
-  flex:0 0 56dp; height:56dp; padding:7dp 14dp;
-  gap:12dp; background-color:#23283bd9; border-bottom:1dp #535873; }
-.back { flex:0 0 93dp; width:93dp; height:40dp;
-  color:#cfc1fa; border-color:#726a99; }
-.heading-title { color:#d0c7fa; font-size:22dp; font-weight:750;
-  letter-spacing:1dp; }
 #workspace { display:flex; flex:1; min-height:0; min-width:0;
-  flex-direction:row; gap:16dp; padding:12dp 14dp 14dp; }
-#details { flex:0 0 352dp; width:352dp; min-width:0;
+  flex-direction:row; gap:12dp; padding:12dp 14dp; }
+#details { flex:0 0 37%; width:37%; max-width:430dp; min-width:0;
   display:flex; flex-direction:column; overflow:hidden; }
 #library { flex:1; display:flex; flex-direction:column; min-width:0;
   overflow:hidden; }
-#summary { display:block; flex:0 0 auto; }
+#summary { display:block; flex:0 1 auto; min-height:0; overflow-y:auto; }
 #pack-section { display:block; padding:12dp 15dp 10dp;
   border-bottom:1dp #515572; }
 #song-title { display:block; font-size:22dp; font-weight:750;
@@ -105,7 +98,7 @@
   font-weight:700; letter-spacing:0.4dp; }
 @media (max-width:800dp) {
   #workspace { gap:10dp; padding:8dp; }
-  #details { flex-basis:330dp; width:330dp; }
+  #details { flex-basis:43%; width:43%; }
   #pack-section, #difficulty-section { padding-left:11dp; padding-right:11dp; }
 }
 @media (max-height:510dp) {

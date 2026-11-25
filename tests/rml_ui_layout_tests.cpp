@@ -170,8 +170,9 @@ int main(int argc, char** argv) {
         auto* search = document->GetElementById("search");
         auto* results = document->GetElementById("results-scroll");
         auto* metric = document->GetElementById("metric-speed");
-        auto* setButton = document->GetElementById("set-button");
-        ok &= Check(left && right && search && results && metric && setButton,
+        ok &= Check(left && right && search && results && metric &&
+                    !document->GetElementById("set-button") &&
+                    !document->GetElementById("heading") && left->GetAbsoluteTop() < 20.0f,
                     "PLAY has separate summary, metrics and real action controls");
         // RmlUi supplies no user-agent CSS. Without explicit display:block
         // on divs, summary values form a single overlapping inline row.
@@ -368,8 +369,7 @@ int main(int argc, char** argv) {
         context->SetDensityIndependentPixelRatio(1.0f);
         context->Update();
         auto* canvas = editorDoc->GetElementById("editor-canvas");
-        for (const char* id : {"editor-back",
-                               "editor-tool-mirror-h", "editor-tool-mirror-v",
+        for (const char* id : {"editor-tool-mirror-h", "editor-tool-mirror-v",
                                "editor-tool-rotate-ccw", "editor-tool-rotate-cw",
                                "editor-tool-test", "editor-pad-7",
                                "editor-pad-0", "editor-pad-1",
@@ -390,9 +390,8 @@ int main(int argc, char** argv) {
         renderer.texturedDraws = 0;
         context->Render();
         ok &= Check(renderer.texturedDraws > 0,
-                    "EDITOR header and transport labels produce glyph geometry");
+                    "EDITOR tools and transport labels produce glyph geometry");
 
-        auto* header = editorDoc->GetElementById("editor-header");
         auto* set = editorDoc->GetElementById("editor-set-ui");
         auto* route = editorDoc->GetElementById("editor-route-ui");
         auto* audio = editorDoc->GetElementById("editor-set-audio");
@@ -430,17 +429,16 @@ int main(int argc, char** argv) {
         auto* time = editorDoc->GetElementById("editor-preview-time");
         auto* compass = editorDoc->GetElementById("editor-route-pad");
         auto* toolrail = editorDoc->GetElementById("editor-route-tools");
-        ok &= Check(canvas && header && set && route && audio &&
+        ok &= Check(canvas && !editorDoc->GetElementById("editor-header") && set && route && audio &&
                     footer && rate && time && compass && toolrail,
                     "EDITOR has separate setup/authoring views and transport controls");
-        if (header && footer && canvas) {
+        if (footer && canvas) {
             ok &= Check(compass && toolrail &&
                 compass->GetOffsetWidth() > 170.0f &&
                 toolrail->GetAbsoluteLeft() + toolrail->GetOffsetWidth() <
                     compass->GetAbsoluteLeft(),
                 "EDITOR ROUTE native compass and toolrail are separate");
-            ok &= Check(std::abs(header->GetAbsoluteTop() - 65.0f) < 2.0f &&
-                        std::abs(footer->GetAbsoluteTop() - 485.0f) < 2.0f,
+            ok &= Check(std::abs(footer->GetAbsoluteTop() - 485.0f) < 2.0f,
                         "960x540: editor shell aligns with raylib viewport");
             if (set && route) {
                 set->SetProperty("display", "block");
@@ -454,7 +452,9 @@ int main(int argc, char** argv) {
                     difficulties->GetAbsoluteLeft() >= 647.0f &&
                     audio && audio->GetAbsoluteLeft() >= metadata->GetAbsoluteLeft()+metadata->GetOffsetWidth() &&
                     audio->GetAbsoluteLeft()+audio->GetOffsetWidth() <= difficulties->GetAbsoluteLeft() &&
-                    !editorDoc->GetElementById("editor-setup-enter"),
+                    !editorDoc->GetElementById("editor-setup-enter") &&
+                    metadata->GetAbsoluteTop() < 20.0f &&
+                    metadata->GetOffsetHeight() > 440.0f,
                     "SONG SETUP uses three nonoverlapping native panels without an open button");
                 auto* preview = editorDoc->GetElementById("editor-preview-ms");
                 auto* attach = editorDoc->GetElementById("editor-attach-audio");
@@ -469,8 +469,8 @@ int main(int argc, char** argv) {
             context->SetDensityIndependentPixelRatio(1.6f);
             canvas->SetProperty("top", "30dp");
             context->Update();
-            ok &= Check(std::abs(header->GetAbsoluteTop() - 152.0f) < 4.0f &&
-                        footer->GetAbsoluteTop() < 960.0f,
+            ok &= Check(footer->GetAbsoluteTop() < 960.0f &&
+                        audio->GetAbsoluteTop() < 75.0f,
                         "1536x960: editor shell respects letterboxing");
         }
     }

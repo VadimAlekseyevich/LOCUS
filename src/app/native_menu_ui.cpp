@@ -480,15 +480,10 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
     if (!target) return;
     const std::string action =
         target->GetAttribute<Rml::String>("data-action", "");
-    if (action == "back") pending_.backRequested = true;
-    else if (action == "play") pending_.playSelected = true;
+    if (action == "play") pending_.playSelected = true;
     else if (action == "edit") pending_.editSelected = true;
     else if (action == "rescan") pending_.refresh = true;
     else if (action == "import") pending_.import = true;
-    else if (action == "song-set") {
-        pending_.editSelected = true;
-        pending_.openSet = true;
-    }
     else if (action == "song") {
         const int song = target->GetAttribute<int>("data-song", -1);
         if (song >= 0) {
@@ -550,12 +545,7 @@ void NativeMenuUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     SetText("metric-reading", Rating(rating.reading));
     SetText("metric-stamina", Rating(rating.stamina));
     SetText("metric-peak", Rating(rating.peak));
-    if (auto* editSet = document_->GetElementById("set-button")) {
-        if (song && song->managed && chart)
-            editSet->RemoveAttribute("disabled");
-        else
-            editSet->SetAttribute("disabled", "");
-    }
+
 }
 
 void NativeMenuUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
@@ -934,8 +924,7 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         };
         const bool popupContent = over("editor-rate-popup");
         const bool transport = over("editor-footer-rate-time");
-        const bool chromeArea = over("editor-header") ||
-            over("editor-footer-playback") || transport ||
+        const bool chromeArea = over("editor-footer-playback") || transport ||
             (ui.tab == EditorTab::Route &&
                 ((over("editor-route-tools") && !over("editor-route-compare-gap")) ||
                  over("editor-route-pad") ||
@@ -1012,8 +1001,8 @@ void NativeMenuUi::UpdateSettings(GameSettings& settings, SettingsUi& ui,
         SuppressGlobalMenuShortcuts(input);
     } else if (auto* focus = context_->GetFocusElement();
                focus && focus->GetTagName() == "button") {
-        // Keep BACK produced by clicking the native BACK button, but never
-        // activate a different screen's shortcuts while a control is focused.
+        // Keep keyboard Back, but never activate another screen's shortcuts
+        // while a control is focused.
         SuppressGlobalMenuShortcuts(input, true);
     }
     settingsPresenter_.Sync();
@@ -1107,7 +1096,6 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
     // The application still receives OS window-close requests separately.
     if (typing) SuppressGlobalMenuShortcuts(input);
     else input.startPressed = false;
-    if (pending_.backRequested) input.backPressed = true;
     Rebuild(library, ui);
     context_->Update();
     result = pending_;

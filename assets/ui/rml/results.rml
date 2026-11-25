@@ -3,10 +3,6 @@
 <link type="text/rcss" href="common.rcss" />
 <link type="text/rcss" href="results.rcss" /></head>
 <body><div id="results-root">
- <div class="results-header">
-  <button class="quiet results-back" data-action="back"><span class="button-label">BACK</span></button>
-  <div class="results-title">RESULTS</div>
- </div>
  <div class="results-columns">
   <div class="panel results-panel results-main">
    <div><div id="results-song" class="results-song">LOCUS</div>

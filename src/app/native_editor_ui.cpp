@@ -81,9 +81,9 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
                           const GameSettings* settings,
                           const EditorSetView* setView) {
     if (!document_) return;
-    SetText("editor-chart-name", ui.tab == EditorTab::Set ? "SONG SETUP" : "CHART EDITOR / " + title);
-    SetText("editor-back", ui.tab == EditorTab::Route ? "SONG SETUP" : "BACK");
-    SetText("editor-dirty", dirty ? "*" : "");
+    // Song Setup shows the selected name; authoring panes show chart names.
+    // No global screen header is needed.
+    (void)dirty;
     SetText("editor-preview-play", running ? "PAUSE" : "PLAY");
     lastRatePercent_ = std::clamp(
         static_cast<int>(std::lround(rate * 100.0)), 1, 100);

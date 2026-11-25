@@ -3,18 +3,6 @@
    No gameplay-related visuals or controls run through RmlUi. */
 #editor-canvas { position:absolute; left:0; top:0;
   width:960dp; height:540dp; background-color:transparent; }
-#editor-header { position:absolute; left:43dp; top:65dp;
-  width:899dp; height:45dp; display:flex; flex-direction:row;
-  align-items:center; gap:7dp; padding:4dp 6dp;
-  border:1dp #555d80; border-radius:10dp;
-  background-color:#272c42; }
-#editor-back { width:99dp; flex:0 0 99dp; height:35dp;
-  font-size:13dp; font-weight:750; color:#cfc1fa; }
-.editor-caption { display:flex; align-items:center; flex:1; min-width:0;
-  overflow:hidden; gap:7dp; padding:0 5dp; color:#eef1fb; }
-#editor-chart-name { display:block; overflow:hidden; white-space:nowrap;
-  text-overflow:ellipsis; font-size:15dp; font-weight:750; }
-#editor-dirty { color:#b5a4f3; font-size:18dp; font-weight:800; }
 #editor-footer-playback { position:absolute; left:52dp; top:485dp;
   display:flex; flex-direction:row; gap:5dp; }
 #editor-footer-playback button { width:39dp; height:40dp; padding:1dp;
@@ -57,7 +45,7 @@
 /* All SET fields and action layout live in RCSS; the SongLibrary retains
    exclusive ownership of metadata and difficulty identities. */
 #editor-set-ui { position:absolute; left:0; top:0; width:960dp; height:540dp; pointer-events:none; }
-.editor-set-panel { position:absolute; top:117dp; height:353dp; padding:10dp;
+.editor-set-panel { position:absolute; top:12dp; height:458dp; padding:10dp;
   border:1dp #565d7b; border-radius:10dp; background-color:#252d45;
   display:flex; flex-direction:column; pointer-events:auto; }
 #editor-set-metadata { left:43dp; width:300dp; }

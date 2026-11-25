@@ -6,10 +6,6 @@
 </head>
 <body>
 <div id="app">
-  <div id="heading">
-    <button class="back quiet" data-action="back"><span class="button-label">&#8592; BACK</span></button>
-    <div class="heading-title">PLAY</div>
-  </div>
   <div id="workspace">
     <div id="details" class="panel">
       <div id="summary">
@@ -62,7 +58,6 @@
       <input id="search" class="ui-input" type="text" placeholder="Search songs..." maxlength="64" />
       <div id="tree-scroll"><div id="tree"></div></div>
       <div id="library-footer">
-        <button id="set-button" data-action="song-set" class="quiet"><span class="button-label">SONG SET</span></button>
         <button data-action="import" class="quiet"><span class="button-label">IMPORT</span></button>
         <button data-action="rescan" class="quiet"><span class="button-label">RESCAN</span></button>
       </div>

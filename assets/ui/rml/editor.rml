@@ -6,13 +6,6 @@
 </head>
 <body>
 <div id="editor-canvas">
-  <div id="editor-header">
-    <button id="editor-back" class="quiet" data-action="back"><span class="button-label">BACK</span></button>
-    <div class="editor-caption">
-      <span id="editor-chart-name">ORIGINAL</span>
-      <span id="editor-dirty"></span>
-    </div>
-  </div>
   <div id="editor-route-ui">
     <div id="editor-route-tools">
     <button id="editor-tool-mirror-h" data-action="mirror-h" title="MIRROR H"><span class="button-label editor-icon-label">↔</span></button>

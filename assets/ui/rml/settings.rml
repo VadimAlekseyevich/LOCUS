@@ -6,10 +6,6 @@
 </head>
 <body>
 <div id="settings-root">
-  <div class="settings-header">
-    <button class="quiet settings-back" data-action="back"><span class="button-label">BACK</span></button>
-    <div class="settings-title">SETTINGS</div>
-  </div>
   <div id="settings-panels">
     <div class="panel settings-panel">
       <div class="settings-tabs">

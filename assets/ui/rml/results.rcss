@@ -1,13 +1,8 @@
 #results-root { display:flex; flex-direction:column; width:100%; height:100%; }
-.results-header { flex:0 0 56dp; height:56dp; display:flex; flex-direction:row;
-  align-items:center; padding:7dp 14dp; gap:12dp; background-color:#23283bd9;
-  border-bottom:1dp #535873; }
-.results-back { width:93dp; height:40dp; flex:0 0 93dp; }
-.results-title { display:block; font-size:22dp; font-weight:800; color:#d0c7fa; letter-spacing:1dp; }
 .results-columns { display:flex; flex-direction:row; flex:1; min-height:0; min-width:0;
   gap:12dp; padding:12dp 14dp; }
 .results-panel { flex:1; min-width:0; padding:20dp; }
-.results-main { display:flex; flex-direction:column; justify-content:space-between; }
+.results-main { display:flex; flex-direction:column; justify-content:space-between; overflow-y:auto; }
 .results-side { display:flex; flex-direction:column; gap:12dp; }
 .results-eyebrow { display:block; font-size:13dp; font-weight:800; color:#b5a4f3; letter-spacing:1dp; }
 .results-song { display:block; font-size:26dp; font-weight:800; color:#eef1fb;

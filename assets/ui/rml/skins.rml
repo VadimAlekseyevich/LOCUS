@@ -2,12 +2,6 @@
 <link type="text/rcss" href="common.rcss" />
 <link type="text/rcss" href="skins.rcss" /></head>
 <body><div id="skins-root">
- <div class="skins-header">
-  <button class="quiet skins-back" data-action="back"><span class="button-label">BACK</span></button>
-  <div class="skins-title">SKINS</div>
-  <div id="skin-dirty"></div>
-  <input id="skin-name" class="ui-input skins-name" type="text" data-kind="name" value="Default"/>
- </div>
  <div class="skins-tabs">
   <button id="skin-tab-path" class="selected" data-action="tab" data-index="0"><span class="button-label">PATH</span></button>
   <button id="skin-tab-player" data-action="tab" data-index="1"><span class="button-label">PLAYER</span></button>
@@ -21,6 +15,7 @@
     <div class="skins-label">COLOR / HEX / ALPHA</div>
     <input id="skin-hex" type="text" class="ui-input" data-kind="hex" value="#FF4654FF"/>
    </div>
+   <div class="skin-name-row"><div class="skins-label">SKIN NAME</div><input id="skin-name" class="ui-input skins-name" type="text" data-kind="name" value="Default"/><div id="skin-dirty"></div></div>
    <div class="skins-label">LIVE PREVIEW</div>
    <div id="skin-preview-canvas"></div>
    <div class="skins-actions">
