@@ -202,17 +202,17 @@ constexpr float kPreviewLeft = 106.0f;
 constexpr float kPreviewRight = 733.0f;
 constexpr float kPreviewTop = kTimelineY + kTimelineHeight + 15.0f;
 constexpr float kPreviewGap = 8.0f;
+constexpr Rectangle kLegacyPreviewArea{
+    kPreviewLeft, kPreviewTop, kPreviewRight - kPreviewLeft,
+    kSongOverview.y - kPreviewTop - 26.0f};
 inline Rectangle PreviewBounds(const EditorUiState& ui) noexcept {
-    return HasLayoutArea(ui.layout.preview) ? ui.layout.preview :
-        Rectangle{kPreviewLeft, kPreviewTop, kPreviewRight - kPreviewLeft,
-                  kSongOverview.y - kPreviewTop - 26.0f};
+    return HasLayoutArea(ui.layout.preview) ? ui.layout.preview : kLegacyPreviewArea;
 }
 inline Rectangle ComparisonPreviewBounds(const EditorUiState& ui, int count, int index) noexcept {
     return SquarePreviewPane(PreviewBounds(ui), count, index, kPreviewGap);
 }
 inline Rectangle ComparisonPreviewBounds(int count, int index) noexcept {
-    return SquarePreviewPane({kPreviewLeft, kPreviewTop, kPreviewRight-kPreviewLeft,
-                              kSongOverview.y-kPreviewTop-26.0f}, count, index, kPreviewGap);
+    return SquarePreviewPane(kLegacyPreviewArea, count, index, kPreviewGap);
 }
 inline Rectangle CompareToggleBounds(const EditorUiState& ui) noexcept {
     return HasLayoutArea(ui.layout.compareToggle) ? ui.layout.compareToggle : kCompareToggle;

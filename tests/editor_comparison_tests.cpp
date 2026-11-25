@@ -1,4 +1,5 @@
 #include "app/editor_comparison.h"
+#include "app/chart_editor_layout.h"
 #include "core/chart_editor.h"
 
 #include <algorithm>
