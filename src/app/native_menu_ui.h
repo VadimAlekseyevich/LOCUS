@@ -7,6 +7,7 @@
 #include "app/library_virtual_list.h"
 #include "app/native_settings_ui.h"
 #include "app/native_editor_ui.h"
+#include "app/rml_confirmation.h"
 #include "app/native_results_ui.h"
 #include "app/native_skin_ui.h"
 #include <RmlUi/Core/EventListener.h>
@@ -57,6 +58,8 @@ public:
                       const core::ChartEditor& draft,
                       const GameSettings& settings,
                       const EditorSetView& setView);
+    ConfirmationChoice UpdateEditorConfirmation(const ConfirmationView& view);
+    void SyncEditorConfirmation(const ConfirmationView& view);
     void SyncEditor(EditorUiState& ui, const std::string& title,
                     bool dirty, double rate, bool playing, long long songTimeMs,
                     const core::ChartEditor& draft,
@@ -104,6 +107,7 @@ private:
     Rml::ElementDocument* skinDocument_ = nullptr;
     NativeSettingsUi settingsPresenter_;
     NativeEditorUi editorPresenter_;
+    RmlConfirmation editorConfirmation_;
     NativeResultsUi resultsPresenter_;
     NativeSkinUi skinPresenter_;
     const SongLibrary* currentLibrary_ = nullptr;

@@ -332,7 +332,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
         }
         // Modal controls still use the legacy centered transform, but their
         // backdrop covers the actual window, not just the old 16:9 rectangle.
-        if (editorSetPending && editorPending == EditorPending::None) {
+        if (!hasNativeEditorShell && editorSetPending && editorPending == EditorPending::None) {
             DrawRectangleRec(transform.ToVirtualBounds(
                 {0,0,static_cast<float>(GetScreenWidth()),static_cast<float>(GetScreenHeight())}),
                 Color{10, 13, 21, 225});
@@ -370,8 +370,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                              MenuButtonStyle({130, 226, 215, 255}));
             }
         }
-        if (editorPending != EditorPending::None ||
-            !editorClosePending.empty()) {
+        if (!hasNativeEditorShell && (editorPending != EditorPending::None ||
+            !editorClosePending.empty())) {
             const bool closingPane = !editorClosePending.empty();
             DrawRectangleRec(transform.ToVirtualBounds(
                 {0,0,static_cast<float>(GetScreenWidth()),static_cast<float>(GetScreenHeight())}),
@@ -458,9 +458,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
          (state.screen == Screen::Settings && nativeMenu->SettingsAvailable() &&
           nativeMenu->ShowingSettings()) ||
          (state.screen == Screen::Editor && nativeMenu->EditorAvailable() &&
-          nativeMenu->ShowingEditor() && !editorSetPending &&
-          editorPending == EditorPending::None &&
-          editorClosePending.empty())))
+          nativeMenu->ShowingEditor())))
     {
         nativeMenu->Render();
         if (state.screen == Screen::Skin) {

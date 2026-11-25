@@ -8,6 +8,7 @@
 #include <RmlUi/Core/StyleTypes.h>
 #include "app/rml_ui_text.h"
 #include "app/rml_modal_focus.h"
+#include "app/rml_confirmation.h"
 #include "app/rml_native_files.h"
 
 #include <algorithm>
@@ -583,6 +584,48 @@ int main(int argc, char** argv) {
                         layer->SetProperty("display","none");
                         context->Update();
                     } else ok &= Check(false,"native compare modal exists");
+                    locus::app::RmlConfirmation confirm;
+                    confirm.Attach(editorDoc);
+                    locus::app::ConfirmationView view;
+                    view.visible = true;
+                    view.canSave = true;
+                    view.heading = "UNSAVED CHART CHANGES";
+                    view.message = "Save changed charts before leaving?";
+                    view.notice = "Failed saves keep unsaved drafts open.";
+                    view.approveLabel = "Y / DISCARD";
+                    confirm.Sync(view);
+                    context->Update();
+                    auto* save = editorDoc->GetElementById("confirmation-save");
+                    auto* approve = editorDoc->GetElementById("confirmation-approve");
+                    auto* cancel = editorDoc->GetElementById("confirmation-cancel");
+                    ok &= Check(inside(confirm.Panel(),sample.width,sample.height) &&
+                        inside(save,sample.width,sample.height) &&
+                        inside(approve,sample.width,sample.height) &&
+                        inside(cancel,sample.width,sample.height) &&
+                        LabelCentered(save) && LabelCentered(approve) && LabelCentered(cancel),
+                        "shared confirmation fits all editor viewport sizes");
+                    confirm.FocusCancelIfOutside();
+                    ok &= Check(context->GetFocusElement()==cancel,
+                        "destructive confirmation initially focuses safe cancel");
+                    confirm.Click(toolrail);
+                    ok &= Check(confirm.TakeChoice()==locus::app::ConfirmationChoice::None,
+                        "background cannot dispatch confirmation");
+                    confirm.Click(save);
+                    ok &= Check(confirm.TakeChoice()==locus::app::ConfirmationChoice::Save,
+                        "native save returns a typed choice");
+                    view.canSave = false;
+                    view.approveLabel = "Y / CONFIRM";
+                    confirm.Sync(view);
+                    context->Update();
+                    confirm.Click(save);
+                    ok &= Check(confirm.TakeChoice()==locus::app::ConfirmationChoice::None &&
+                        save->GetDisplay()==Rml::Style::Display::None,
+                        "clean deletion hides and rejects Save");
+                    confirm.Click(approve);
+                    ok &= Check(confirm.TakeChoice()==locus::app::ConfirmationChoice::Approve,
+                        "native approval returns a typed choice");
+                    confirm.Sync({});
+                    context->Update();
                 }
                 // Portrait Song Setup must remain usable by scrolling the
                 // actual container; no hidden fixed-coordinate inputs.

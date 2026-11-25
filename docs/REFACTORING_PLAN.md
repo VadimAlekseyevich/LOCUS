@@ -179,6 +179,8 @@
 
 <a id="t13"></a>
 
+**Продолжение T11/T12.** Compare перенесён на RmlUi (8307f65, 3e138a7, fb37ece; CI успешен). Подтверждения удаления Song Set/сложности, закрытия dirty comparison и выхода из редактора используют общий ConfirmationView / RmlConfirmation с типизированными Save/Approve/Cancel и фокусом на Cancel. Нативный путь больше не использует фиксированные hitboxes подтверждений; fallback и глобальные Quit/Leave пока сохранены. Добавлены проверки модели и геометрии на разных DPI. Новый CI и ручной GUI smoke обязательны.
+
 ### T13. Удобство игрока, маппера и редактора скина
 
 **P1 · тестовые сцены можно готовить вместе с T11–T12.** [design/ui/v2/REVIEW.md](../design/ui/v2/REVIEW.md), assets/ui/rml, gameplay_ui.cpp, skin_hue_geometry.h, skin_menu_draw.cpp, native_skin_ui.cpp, native_results_ui.cpp, listen_session.cpp. Статическая разметка не показывает качество работы на заполненной библиотеке, с длинным названием, неподдерживаемым глифом или после ошибки. У меню уже есть маркировка selected/focus и настоящие кнопки. Проверять их в последовательности действий.

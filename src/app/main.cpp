@@ -58,6 +58,7 @@
 #include "app/session_transition.h"
 #include "app/quit_media.h"
 #include "app/editor_discard_guard.h"
+#include "app/editor_confirmation.h"
 #include "app/editor_save_modal_layout.h"
 #include "app/chart_editor_layout.h"
 #include "core/tempo_map.h"
@@ -486,6 +487,12 @@ int main(int argc, char** argv) try {
         input.baseSpeedDelta += repeatSpeed;
         input.previewTimeDelta += repeatPreview;
         MenuEvents menuEvents;
+        using locus::app::ConfirmationChoice;
+        const auto confirmation = locus::app::EditorConfirmationView(
+            editorSet.Pending(), editorDiscard.Pending(),
+            !editorFiles.PendingClose().empty(), editorStatus);
+        bool nativeEditorConfirmation = false;
+        ConfirmationChoice editorChoice = ConfirmationChoice::None;
         if (!(wasAnyModal || input.closeRequested)) {
 #ifdef LOCUS_WITH_RMLUI
             if (state.screen == Screen::Home && nativeMenu.HomeAvailable())
@@ -501,11 +508,11 @@ int main(int argc, char** argv) try {
                     displayedResult ? displayedResult->notesJudged :
                         static_cast<int>(judge.ScorableCount()),
                     chartTitle, historicalResult, libraryUi);
-            else if (state.screen == Screen::Editor &&
-                     nativeMenu.EditorAvailable() &&
-                     !editorSet.HasPending() &&
-                     editorDiscard.Pending() == locus::app::EditorPending::None &&
-                     editorFiles.PendingClose().empty()) {
+            else if (state.screen == Screen::Editor && nativeMenu.EditorAvailable() &&
+                     confirmation.visible) {
+                nativeEditorConfirmation = true;
+                editorChoice = nativeMenu.UpdateEditorConfirmation(confirmation);
+            } else if (state.screen == Screen::Editor && nativeMenu.EditorAvailable()) {
                 nativeMenu.UpdateEditor(editorUi, input, editor.Data().title,
                     editor.Dirty(), chartPlayback.Speed(),
                     chartPlayback.Playing() && !chartPlayback.Paused(),
@@ -644,6 +651,7 @@ int main(int argc, char** argv) try {
             input = FrameInput{};
         }
         const bool editorModalClick = state.screen == Screen::Editor &&
+            !nativeEditorConfirmation && confirmation.visible &&
             IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
         const bool editorModalConfirm = editorModalClick &&
             locus::app::MenuActionHit(locus::app::kEditorModalConfirmButton,
@@ -660,6 +668,12 @@ int main(int argc, char** argv) try {
         const bool cancelDraftClick = editorModalClick &&
             locus::app::MenuActionHit(locus::app::kEditorCancelDraftButton,
                 GetMousePosition(), GetScreenWidth(), GetScreenHeight());
+        if (!nativeEditorConfirmation)
+            editorChoice = locus::app::ChooseConfirmation(confirmation,
+                IsKeyPressed(KEY_S) || saveDraftClick,
+                IsKeyPressed(KEY_Y) || (confirmation.canSave ? discardDraftClick : editorModalConfirm),
+                IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE) ||
+                    (confirmation.canSave ? cancelDraftClick : editorModalCancel));
         const Screen previousScreen = state.screen;
         if (previousScreen == Screen::Editor && editorSet.HasPending() &&
             !wasQuitConfirmation) {
@@ -667,15 +681,9 @@ int main(int argc, char** argv) try {
                 // The native quit dialog takes priority over editor modals.
                 editorSet.CancelPending();
             } else {
-                const auto* pendingSet = editorSet.Pending();
-                const bool dirty = pendingSet && pendingSet->discardsDraft;
-                const bool save = dirty &&
-                    (IsKeyPressed(KEY_S) || saveDraftClick);
-                bool approve = IsKeyPressed(KEY_Y) ||
-                    (dirty ? discardDraftClick : editorModalConfirm);
-                const bool cancel = IsKeyPressed(KEY_N) ||
-                    IsKeyPressed(KEY_ESCAPE) ||
-                    (dirty ? cancelDraftClick : editorModalCancel);
+                const bool save = editorChoice == ConfirmationChoice::Save;
+                bool approve = editorChoice == ConfirmationChoice::Approve;
+                const bool cancel = editorChoice == ConfirmationChoice::Cancel;
                 if (save) {
                     double saveNow = MonotonicSeconds();
                     approve = editorFiles.SaveAll(saveNow);
@@ -689,10 +697,9 @@ int main(int argc, char** argv) try {
         // editor action is allowed through.
         if (previousScreen == Screen::Editor && !wasQuitConfirmation &&
             !editorFiles.PendingClose().empty() && !input.closeRequested) {
-            const bool save = IsKeyPressed(KEY_S) || saveDraftClick;
-            const bool discard = IsKeyPressed(KEY_Y) || discardDraftClick;
-            const bool cancel = IsKeyPressed(KEY_N) ||
-                                IsKeyPressed(KEY_ESCAPE) || cancelDraftClick;
+            const bool save = editorChoice == ConfirmationChoice::Save;
+            const bool discard = editorChoice == ConfirmationChoice::Approve;
+            const bool cancel = editorChoice == ConfirmationChoice::Cancel;
             input = FrameInput{};
             if (save || discard || cancel) {
                 double saveNow = MonotonicSeconds();
@@ -702,7 +709,7 @@ int main(int argc, char** argv) try {
         if (previousScreen == Screen::Editor && !wasQuitConfirmation) {
             bool approvedBySaving = false;
             if (editorDiscard.Pending() != EditorPending::None &&
-                (IsKeyPressed(KEY_S) || saveDraftClick) &&
+                editorChoice == ConfirmationChoice::Save &&
                 editorFiles.PendingClose().empty()) {
                 double saveNow = MonotonicSeconds();
                 approvedBySaving = editorFiles.SaveAll(saveNow);
@@ -710,9 +717,8 @@ int main(int argc, char** argv) try {
             }
             const auto outcome = editorDiscard.Handle(
                 input, editorFiles.AnyDirty(),
-                approvedBySaving || IsKeyPressed(KEY_Y) || discardDraftClick,
-                IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE) ||
-                    cancelDraftClick);
+                approvedBySaving || editorChoice == ConfirmationChoice::Approve,
+                editorChoice == ConfirmationChoice::Cancel);
             if (outcome == locus::app::EditorDiscardOutcome::ChangesKept)
                 editorStatus = "CHANGES KEPT - CTRL+S TO SAVE";
         }
@@ -1136,12 +1142,17 @@ int main(int argc, char** argv) try {
         const auto editorSetView = visibleState.screen == Screen::Editor
             ? editorSet.View() : locus::app::EditorSetView{};
 #ifdef LOCUS_WITH_RMLUI
-        if (visibleState.screen == Screen::Editor && nativeMenu.EditorAvailable())
+        if (visibleState.screen == Screen::Editor && nativeMenu.EditorAvailable()) {
             nativeMenu.SyncEditor(editorUi, editor.Data().title, editor.Dirty(),
                 editorClock.practiceRate,
                 editorClock.playing && !editorClock.paused,
                 locus::app::detail::RouteTimeMs(editor, editorClock.tick),
                 editor, settings, editorSetView);
+            nativeMenu.SyncEditorConfirmation(state.quitConfirmation || state.levelExitConfirmation
+                ? locus::app::ConfirmationView{}
+                : locus::app::EditorConfirmationView(editorSet.Pending(), editorDiscard.Pending(),
+                    !editorFiles.PendingClose().empty(), editorStatus));
+        }
 #endif
         if (visibleState.screen == Screen::Editor &&
             editorChartPath != comparisonCacheChartPath) {

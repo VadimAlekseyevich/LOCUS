@@ -4,6 +4,7 @@
 #include "app/editor_file_actions.h"
 #include "app/editor_set_controller.h"
 #include "app/editor_discard_guard.h"
+#include "app/editor_confirmation.h"
 #include "app/editor_session.h"
 #include "app/game_session.h"
 #include "app/local_music.h"
@@ -126,6 +127,20 @@ int main() {
     using namespace locus;
     using app::Screen;
     bool ok = true;
+    const auto noConfirm = app::EditorConfirmationView(nullptr,app::EditorPending::None,false,"");
+    app::EditorSetRequest deletion;
+    deletion.action = app::EditorSetAction::DeleteSongSet;
+    auto cleanConfirm = app::EditorConfirmationView(&deletion,app::EditorPending::None,false,"");
+    deletion.discardsDraft = true;
+    auto dirtyConfirm = app::EditorConfirmationView(&deletion,app::EditorPending::None,false,"SAVE FAILED: disk");
+    auto closeConfirm = app::EditorConfirmationView(nullptr,app::EditorPending::None,true,"");
+    ok &= Check(!noConfirm.visible && cleanConfirm.visible && !cleanConfirm.canSave &&
+        dirtyConfirm.canSave && dirtyConfirm.notice=="SAVE FAILED: disk" &&
+        closeConfirm.canSave && closeConfirm.message=="Save before closing this chart?" &&
+        app::ChooseConfirmation(cleanConfirm,true,false,false)==app::ConfirmationChoice::None &&
+        app::ChooseConfirmation(dirtyConfirm,true,true,true)==app::ConfirmationChoice::Cancel &&
+        app::ChooseConfirmation(dirtyConfirm,true,false,false)==app::ConfirmationChoice::Save,
+        "editor confirmation model distinguishes clean deletion, dirty save and pane close");
     TempProfile profile;
     const fs::path sources = profile.root / "external";
     fs::create_directories(sources);

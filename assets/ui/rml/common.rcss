@@ -72,3 +72,9 @@ scrollbarvertical sliderarrowdec, scrollbarvertical sliderarrowinc {
 .ui-modal-heading { display:block; color:#a2d8ee; font-size:17dp; font-weight:800; }
 .ui-modal-actions { display:flex; flex-direction:row; gap:8dp; flex:0 0 38dp; }
 .ui-modal-actions button { flex:1; min-width:0; height:38dp; padding:4dp; }
+
+/* Confirmation overlays are above other native modals (e.g. Compare).
+   Their backdrop is intentionally non-dismissible; only explicit choices act. */
+.ui-confirmation-layer { z-index:40; background-color:#0a0e19d9; }
+.ui-confirmation-notice { min-height:0; overflow-y:auto; word-break:break-word; }
+#confirmation-approve { color:#f0b7b7; border-color:#a97588; }

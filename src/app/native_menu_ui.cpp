@@ -348,6 +348,7 @@ void NativeMenuUi::Activate(Page page) {
     } else if (page == Page::Editor && editorDocument_) {
         editorDocument_->Show();
         editorPresenter_.Attach(editorDocument_);
+        editorConfirmation_.Attach(editorDocument_);
         lastEditorLayoutTab_ = -1;
     }
     ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
@@ -437,6 +438,10 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
         return;
     }
     if (visiblePage_ == Page::Editor) {
+        if (editorConfirmation_.Visible()) {
+            if (event.GetType() == "click") editorConfirmation_.Click(target);
+            return;
+        }
         editorPresenter_.ProcessEvent(event);
         return;
     }
@@ -799,6 +804,35 @@ void NativeMenuUi::DispatchInput(bool dispatchKeyboard, bool dispatchButtons,
         context_->ProcessTextInput(static_cast<Rml::Character>(codepoint));
 }
 
+void NativeMenuUi::SyncEditorConfirmation(const ConfirmationView& view) {
+    if (!EditorAvailable()) return;
+    if (view.visible) Activate(Page::Editor);
+    if (!ShowingEditor()) return;
+    const bool changed = editorConfirmation_.Visible() != view.visible;
+    editorConfirmation_.Sync(view);
+    if (changed) {
+        editorPointerRouter_.Reset();
+        context_->Update();
+    }
+}
+
+ConfirmationChoice NativeMenuUi::UpdateEditorConfirmation(const ConfirmationView& view) {
+    SyncEditorConfirmation(view);
+    if (!view.visible || !ShowingEditor()) return ConfirmationChoice::None;
+    PumpInput(false, true);
+    editorConfirmation_.FocusCancelIfOutside();
+    auto* panel = editorConfirmation_.Panel();
+    auto* focus = context_->GetFocusElement();
+    if (IsKeyPressed(KEY_TAB))
+        MoveRmlModalFocus(panel,focus,IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+    else if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))
+        ActivateRmlModalButton(panel,focus);
+    const auto keyboard = ChooseConfirmation(view,IsKeyPressed(KEY_S),IsKeyPressed(KEY_Y),
+        IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ESCAPE));
+    const auto pointer = editorConfirmation_.TakeChoice();
+    return keyboard != ConfirmationChoice::None ? keyboard : pointer;
+}
+
 void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                                 const std::string& title, bool dirty,
                                 double rate, bool playing,
@@ -808,6 +842,7 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
                                 const EditorSetView& setView) {
     if (!EditorAvailable()) return;
     Activate(Page::Editor);
+    SyncEditorConfirmation({});
     currentLibrary_ = nullptr;
     currentUi_ = nullptr;
     // The document now fills the actual context. No per-widget resize
