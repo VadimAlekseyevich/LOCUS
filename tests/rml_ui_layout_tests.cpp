@@ -529,7 +529,7 @@ int main(int argc, char** argv) {
                     context->SetDimensions({sample.width,sample.height});
                     context->SetDensityIndependentPixelRatio(sample.density);
                     context->Update();
-                    auto* compare = editorDoc->GetElementById("editor-route-compare-gap");
+                    auto* compare = editorDoc->GetElementById("editor-tool-compare");
                     auto* options = editorDoc->GetElementById("editor-route-options");
                     ok &= Check(inside(slot,sample.width,sample.height) &&
                         inside(ruler,sample.width,sample.height) &&
@@ -550,6 +550,22 @@ int main(int argc, char** argv) {
                         ok &= Check(right(toolrail) <= slot->GetAbsoluteLeft()+1.0f &&
                             right(slot) <= compass->GetAbsoluteLeft()+1.0f,
                             "landscape editor keeps independent side rails");
+                    auto* layer = editorDoc->GetElementById("editor-compare-layer");
+                    auto* panel = editorDoc->GetElementById("editor-compare-panel");
+                    auto* list = editorDoc->GetElementById("editor-compare-list");
+                    auto* done = editorDoc->GetElementById("editor-compare-done");
+                    if (layer && panel && list && done) {
+                        layer->SetProperty("display","flex");
+                        list->SetInnerRML("<div style='height:800dp; flex:0 0 800dp;'>ROWS</div>");
+                        context->Update();
+                        ok &= Check(inside(panel,sample.width,sample.height) &&
+                            inside(done,sample.width,sample.height) &&
+                            bottom(list) <= done->GetAbsoluteTop()+1.0f &&
+                            list->GetScrollHeight()>list->GetClientHeight(),
+                            "native compare modal stays inside viewport with scrollable rows");
+                        layer->SetProperty("display","none");
+                        context->Update();
+                    } else ok &= Check(false,"native compare modal exists");
                 }
                 // Portrait Song Setup must remain usable by scrolling the
                 // actual container; no hidden fixed-coordinate inputs.

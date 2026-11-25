@@ -158,6 +158,7 @@ void HandleEditorComparisonControls(EditorUiState& ui,
         }
         return;
     }
+    if (input.nativeChrome) return; // No legacy picker hitboxes in native UI.
     const Vector2 mouse = input.mouse;
     if (ui.comparisonPickerOpen && input.mouseWheel != 0.0f &&
         detail::Hit(detail::ComparePopupBounds(ui), mouse)) {

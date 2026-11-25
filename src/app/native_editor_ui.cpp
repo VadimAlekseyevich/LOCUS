@@ -3,6 +3,7 @@
 #include "app/app_input.h"
 #include "app/chart_editor_ui.h"
 #include "app/chart_editor_layout.h"
+#include "app/editor_comparison.h"
 #include "app/game_settings.h"
 #include "app/rml_ui_text.h"
 
@@ -52,6 +53,8 @@ void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     textCache_.clear();
     activeSetId_.clear();
     setListSignature_.clear();
+    compareListSignature_.clear();
+    compareVisible_ = false;
     tempoRows_ = -1;
     lastTab_ = -1;
     lastTextEditing_ = -1;
@@ -121,6 +124,61 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         if (auto* status = document_->GetElementById("editor-status-slot"))
             status->SetProperty("display", ui.tab == EditorTab::Set ? "block" : "none");
         lastTab_ = static_cast<int>(ui.tab);
+    }
+    const bool showCompare = ui.tab == EditorTab::Route && ui.comparisonPickerOpen && setView;
+    if (auto* toggle = document_->GetElementById("editor-tool-compare")) {
+        toggle->SetClass("selected",showCompare);
+        if (setView && CanOpenEditorComparison(*setView))
+            toggle->RemoveAttribute("disabled");
+        else toggle->SetAttribute("disabled","");
+    }
+    if (showCompare != compareVisible_) {
+        if (!showCompare && CompareFocusActive())
+            if (auto* focus = document_->GetContext()->GetFocusElement()) focus->Blur();
+        if (auto* layer = document_->GetElementById("editor-compare-layer"))
+            layer->SetProperty("display",showCompare ? "flex" : "none");
+        compareVisible_ = showCompare;
+        if (showCompare) {
+            if (auto* list = document_->GetElementById("editor-compare-list"))
+                list->SetScrollTop(0);
+        }
+    }
+    if (showCompare) {
+        std::ostringstream signature;
+        for (const auto& option : setView->comparisonOptions) {
+            const auto path = option.file.u8string();
+            signature << path.size() << ':' << path;
+        }
+        if (signature.str() != compareListSignature_) {
+            compareListSignature_ = signature.str();
+            std::ostringstream html;
+            for (std::size_t i=0; i<setView->comparisonOptions.size(); ++i) {
+                html << "<button class='editor-compare-row' id='editor-compare-row-" << i
+                     << "' data-action='compare-select' data-file='"
+                     << EscapeRml(setView->comparisonOptions[i].file.u8string())
+                     << "'><span class='button-label'></span></button>";
+                textCache_.erase("editor-compare-row-" + std::to_string(i));
+            }
+            if (auto* list = document_->GetElementById("editor-compare-list"))
+                list->SetInnerRML(html.str());
+        }
+        for (std::size_t i=0; i<setView->comparisonOptions.size(); ++i) {
+            const auto& option = setView->comparisonOptions[i];
+            const auto id = "editor-compare-row-" + std::to_string(i);
+            const bool active = static_cast<int>(i)==setView->current;
+            const bool included = HasEditorComparison(ui,option.file);
+            if (auto* row = document_->GetElementById(id)) {
+                row->SetClass("selected",included || active);
+                if (active || !option.chart || option.file.empty() ||
+                    (!included && ui.comparisonFiles.size()>=2))
+                    row->SetAttribute("disabled","");
+                else row->RemoveAttribute("disabled");
+            }
+            const auto& name = i < setView->difficulties.size()
+                ? setView->difficulties[i] : option.title;
+            SetText(id.c_str(),std::string(active?"EDIT  ":included?"−  ":"+  ") + name);
+        }
+        SetText("editor-compare-notice",std::to_string(1+ui.comparisonFiles.size())+" / 3 OPEN");
     }
     if (setView && ui.tab == EditorTab::Set) {
         activeSetId_ = setView->id;
@@ -227,6 +285,35 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
         }
     }
 }
+bool NativeEditorUi::CompareFocusActive() const {
+    if (!document_) return false;
+    const auto* panel = document_->GetElementById("editor-compare-panel");
+    if (!panel) return false;
+    for (auto* element = document_->GetContext()->GetFocusElement();
+         element; element = element->GetParentNode())
+        if (element == panel) return true;
+    return false;
+}
+
+void NativeEditorUi::MoveCompareFocus(bool backwards) {
+    if (!document_ || !compareVisible_) return;
+    std::vector<Rml::Element*> buttons;
+    if (auto* list = document_->GetElementById("editor-compare-list"))
+        for (int i=0; i<list->GetNumChildren(); ++i) {
+            auto* row = list->GetChild(i);
+            if (row && !row->HasAttribute("disabled")) buttons.push_back(row);
+        }
+    if (auto* done = document_->GetElementById("editor-compare-done"))
+        buttons.push_back(done);
+    if (buttons.empty()) return;
+    const auto found = std::find(buttons.begin(),buttons.end(),
+        document_->GetContext()->GetFocusElement());
+    const auto n = static_cast<int>(buttons.size());
+    int next = found==buttons.end() ? (backwards?n-1:0) :
+        (static_cast<int>(found-buttons.begin())+(backwards?n-1:1))%n;
+    buttons[static_cast<std::size_t>(next)]->Focus();
+}
+
 void NativeEditorUi::CancelFocusedField() {
     if (!document_) return;
     if (auto* field = dynamic_cast<Rml::ElementFormControlInput*>(document_->GetContext()->GetFocusElement())) {
@@ -298,7 +385,18 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     if (!target || target->HasAttribute("disabled")) return;
     const std::string action = target->GetAttribute<Rml::String>("data-action", "");
     if (action.empty()) return;
-    if (action == "draft-difficulty") {
+    // Modal whitespace/scrollbar clicks do nothing; the backdrop alone
+    // dismisses. Never let an underlying focused control emit a command.
+    if (ui_->comparisonPickerOpen && action.rfind("compare-",0)!=0) return;
+    if (action == "compare-toggle") {
+        input_->editor.compareAction = ComparePickerAction::Toggle;
+    } else if (action == "compare-dismiss") {
+        input_->editor.compareAction = ComparePickerAction::Dismiss;
+    } else if (action == "compare-select") {
+        input_->editor.compareAction = ComparePickerAction::Select;
+        input_->editor.compareFile = std::filesystem::u8path(
+            target->GetAttribute<Rml::String>("data-file",""));
+    } else if (action == "draft-difficulty") {
         input_->editor.selectDraft = true;
     } else if (action == "attach-audio") {
         input_->editor.attachAudio = true;

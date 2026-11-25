@@ -20,7 +20,7 @@
     <button id="editor-tool-mirror-v" data-action="mirror-v" title="MIRROR V"><span class="button-label editor-icon-label">↕</span></button>
     <button id="editor-tool-rotate-ccw" data-action="rotate-ccw" title="ROTATE LEFT"><span class="button-label editor-icon-label">↶</span></button>
     <button id="editor-tool-rotate-cw" data-action="rotate-cw" title="ROTATE RIGHT"><span class="button-label editor-icon-label">↷</span></button>
-    <div id="editor-route-compare-gap" class="editor-tool-gap"></div>
+    <button id="editor-tool-compare" data-action="compare-toggle" title="COMPARE CHARTS"><span class="button-label">CMP</span></button>
     <button id="editor-tool-test" data-action="test-chart" title="TEST CHART"><span class="button-label editor-icon-label">▶</span></button>
     </div>
     <div id="editor-preview-slot" class="editor-canvas-slot"></div>
@@ -88,6 +88,15 @@
     <div id="editor-rate-control"><input id="editor-preview-rate" type="text" value="100" data-kind="preview-rate" maxlength="3"/><span class="editor-rate-unit">%</span></div>
     <button id="editor-preview-time" class="quiet" data-action="time-copy"><span class="button-label">0 MS</span></button>
   </div>
+  </div>
+</div>
+<div id="editor-compare-layer" class="ui-modal-layer" data-action="compare-dismiss" style="display:none;">
+  <div id="editor-compare-panel" class="ui-modal-panel" data-action="compare-panel">
+    <div class="ui-modal-heading">COMPARE CHARTS</div>
+    <div class="meta">Same song · up to three open difficulties</div>
+    <div id="editor-compare-list"></div>
+    <div id="editor-compare-notice" class="meta"></div>
+    <div class="ui-modal-actions"><button id="editor-compare-done" class="secondary" data-action="compare-dismiss"><span class="button-label">DONE</span></button></div>
   </div>
 </div>
 </body>

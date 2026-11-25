@@ -26,6 +26,8 @@ public:
               const EditorSetView* setView = nullptr);
     void EndFrame() noexcept;
     void CancelFocusedField();
+    void MoveCompareFocus(bool backwards);
+    bool CompareFocusActive() const;
 private:
     void SetText(const char* id, const std::string& value);
     Rml::ElementDocument* document_ = nullptr;
@@ -34,7 +36,8 @@ private:
     std::unordered_map<std::string, std::string> textCache_;
     int lastRatePercent_ = 100;
     std::string focusedInitialValue_;
-    std::string activeSetId_, setListSignature_;
+    std::string activeSetId_, setListSignature_, compareListSignature_;
+    bool compareVisible_ = false;
     int lastTab_ = -1, lastTextEditing_ = -1;
     int tempoRows_ = -1;
 };

@@ -827,7 +827,7 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
     const bool held = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     const bool released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     const auto dispatch = editorPointerRouter_.Route(
-        ui.layout, pointer, pressed, held, released, ui.comparisonPickerOpen);
+        ui.layout, pointer, pressed, held, released, false, ui.comparisonPickerOpen);
     if (ui.tab == EditorTab::Set && ui.active == EditorField::Title) {
         if (auto* name = dynamic_cast<Rml::ElementFormControlInput*>(
                 editorDocument_->GetElementById("editor-difficulty-title"))) {
@@ -874,7 +874,17 @@ void NativeMenuUi::UpdateEditor(EditorUiState& ui, FrameInput& input,
         else if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))
             context_->GetFocusElement()->Blur();
     }
-    if (!ui.EditingText() && !nativeTyping && !ui.comparisonPickerOpen) {
+    if (ui.comparisonPickerOpen) {
+        if (IsKeyPressed(KEY_TAB))
+            editorPresenter_.MoveCompareFocus(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
+            if (!editorPresenter_.CompareFocusActive())
+                editorPresenter_.MoveCompareFocus(false);
+            else if (auto* focus = context_->GetFocusElement();
+                     focus && focus->GetTagName()=="button" && !focus->HasAttribute("disabled"))
+                focus->Click();
+        }
+    } else if (!ui.EditingText() && !nativeTyping) {
         if (IsKeyPressed(KEY_TAB)) {
             // Tab belongs to native focus traversal, not the old
             // editor's text-field navigation in the same frame.
@@ -918,7 +928,8 @@ void NativeMenuUi::ReadEditorLayout(EditorUiState& ui) const noexcept {
     snapshot.status = ui.tab == EditorTab::Set ? slot("editor-status-slot") : Rectangle{};
     snapshot.timeline = ui.tab == EditorTab::Route ? slot("editor-note-ruler") : Rectangle{};
     snapshot.preview = ui.tab == EditorTab::Route ? slot("editor-preview-slot") : Rectangle{};
-    snapshot.compareToggle = ui.tab == EditorTab::Route ? slot("editor-route-compare-gap") : Rectangle{};
+    // Compare is a native button/modal, not a custom canvas slot.
+    snapshot.compareToggle = {};
     ui.layout = snapshot;
 }
 

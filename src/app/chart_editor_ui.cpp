@@ -509,8 +509,9 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
         EditorIconButton(kRotateCounterclockwise,EditorIcon::RotateL,sky);
         EditorIconButton(kRotateClockwise,EditorIcon::RotateR,sky);
         }
-        EditorIconButton(CompareToggleBounds(ui),EditorIcon::Compare,
-                         set.managed?sky:muted,ui.comparisonPickerOpen);
+        if (!nativeShell)
+            EditorIconButton(CompareToggleBounds(ui),EditorIcon::Compare,
+                             set.managed?sky:muted,ui.comparisonPickerOpen);
         if (!nativeShell) {
         EditorIconButton(kRouteTest,EditorIcon::Play,sky);
         }
@@ -736,7 +737,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     }
 
     if(routeTab) {
-        DrawComparisonPicker(font,ui,set);
+        if (!nativeShell) DrawComparisonPicker(font,ui,set);
         // Only fallback controls use the legacy hitboxes. Native controls
         // own their own geometry and tooltip metadata.
         if (!nativeShell) {
@@ -752,7 +753,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             "Test chart  /  "+
             KeyboardChordName(settings.Shortcut(ShortcutAction::EditorTest)));
         }
-        EditorToolTip(font,ui,CompareToggleBounds(ui),"Compare charts");
+        if (!nativeShell) EditorToolTip(font,ui,CompareToggleBounds(ui),"Compare charts");
     }
     if(ui.rateDropdownOpen && !nativeShell) {
         DrawRectangleRounded(kEditorRatePopup,UiRoundness(kEditorRatePopup,9),

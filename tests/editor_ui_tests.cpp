@@ -179,6 +179,10 @@ int main() {
                 !routePointer({100,30},false,false,false).nativeWheel &&
                 !routePointer({550,100},false,false,false,true).nativeWheel,
                 "scroll input belongs to the hovered native area or exclusive canvas overlay");
+    ok &= Check(pointerRouter.Route(pointerLayout,{100,30},true,true,false,false,true).nativeButtons &&
+                pointerRouter.Route(pointerLayout,{100,30},false,false,true,false,true).nativeButtons &&
+                pointerRouter.Route(pointerLayout,{100,30},false,false,false,false,true).nativeWheel,
+                "native modal owns canvas clicks and scroll through release");
     const auto referenceSquare = detail::ComparisonPreviewBounds(3, 0);
     ok &= Check(referenceSquare.width > 200.0f &&
                 referenceSquare.width < 210.0f &&

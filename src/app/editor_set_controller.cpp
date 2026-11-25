@@ -414,7 +414,7 @@ void EditorSetController::HandleControls(const EditorControls& input) {
                         Notice(problem, true);
                     return;
                 }
-            } else {
+            } else if (!input.nativeChrome) {
                 for (int row = 0; row < 5; ++row) {
                     if (!detail::Hit(detail::ComparePickerRow(ui, row),
                                      input.mouse)) continue;

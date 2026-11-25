@@ -55,9 +55,10 @@ class EditorPointerRouter {
 public:
     EditorPointerDispatch Route(const EditorLayoutSnapshot& layout, Vector2 point,
                                 bool pressed, bool held, bool released,
-                                bool canvasOverlayOpen) noexcept {
-        const bool nativeHover = !canvasOverlayOpen &&
-            !EditorCanvasContains(layout, point);
+                                bool canvasOverlayOpen,
+                                bool nativeOverlayOpen = false) noexcept {
+        const bool nativeHover = nativeOverlayOpen ||
+            (!canvasOverlayOpen && !EditorCanvasContains(layout, point));
         if (pressed || (held && !captured_)) {
             captured_ = true;
             nativeCapture_ = nativeHover;
