@@ -78,13 +78,17 @@ int SettingsBindingIndex(const SettingsUi& ui, int visibleRow) noexcept {
 }
 Rectangle SettingsGameTab() { return {251, 158, 190, 34}; } // AUDIO
 Rectangle SettingsDisplayTab() { return {71, 158, 170, 34}; }
-Rectangle SettingsOffsetField() { return {78, 331, 135, 40}; }
-Rectangle SettingsCalibrateButton() { return {230, 331, 188, 40}; }
+Rectangle SettingsOffsetField() { return {78, 415, 135, 40}; }
+Rectangle SettingsCalibrateButton() { return {230, 415, 188, 40}; }
 Rectangle SettingsCalibrationApplyButton() { return {273, 387, 171, 44}; }
 Rectangle SettingsCalibrationRetryButton() { return {454, 387, 145, 44}; }
 Rectangle SettingsCalibrationCancelButton() { return {609, 387, 137, 44}; }
-Rectangle SettingsVolumeMinus() { return {300, 230, 43, 35}; }
-Rectangle SettingsVolumePlus() { return {354, 230, 43, 35}; }
+Rectangle SettingsVolumeMinus() { return {300, 210, 43, 35}; }
+Rectangle SettingsVolumePlus() { return {354, 210, 43, 35}; }
+Rectangle SettingsHitSoundMinus() { return {300, 258, 43, 35}; }
+Rectangle SettingsHitSoundPlus() { return {354, 258, 43, 35}; }
+Rectangle SettingsMetronomeMinus() { return {300, 306, 43, 35}; }
+Rectangle SettingsMetronomePlus() { return {354, 306, 43, 35}; }
 Rectangle SettingsFlashButton() { return {297, 303, 100, 35}; }
 Rectangle SettingsVsyncButton() { return {297, 211, 100, 36}; }
 Rectangle SettingsFpsMinus() { return {301, 286, 43, 35}; }
@@ -332,15 +336,17 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
            ui.page == SettingsPage::Game);
 
     if (ui.page == SettingsPage::Game) {
-        Label(font, "MASTER VOLUME", 73, 202, 16, kMuted);
-        Label(font, TextFormat("%d%%",
-              static_cast<int>(std::lround(settings.volume * 100))),
-              85, 236, 23, kText);
-        Button(font, SettingsVolumeMinus(), "-", kMint);
-        Button(font, SettingsVolumePlus(), "+", kMint);
-        DrawLine(72, 276, 441, 276, edge);
+        const auto audioRow=[&](const char* name,float gain,Rectangle minus,Rectangle plus) {
+            Label(font,name,73,minus.y+10,15,kMuted);
+            Label(font,TextFormat("%d%%",static_cast<int>(std::lround(gain*100))),230,minus.y+9,17,kText);
+            Button(font,minus,"-",kMint); Button(font,plus,"+",kMint);
+        };
+        audioRow("MUSIC",settings.volume,SettingsVolumeMinus(),SettingsVolumePlus());
+        audioRow("HITSOUNDS",settings.hitSoundVolume,SettingsHitSoundMinus(),SettingsHitSoundPlus());
+        audioRow("METRONOME",settings.metronomeVolume,SettingsMetronomeMinus(),SettingsMetronomePlus());
+        DrawLine(72, 360, 441, 360, edge);
 
-        Label(font, "GLOBAL AUDIO OFFSET / MS", 73, 302, 16, kMuted);
+        Label(font, "GLOBAL AUDIO OFFSET / MS", 73, 387, 16, kMuted);
         Button(font, SettingsOffsetField(),
                ui.editingGlobalOffset ? ui.globalOffsetBuffer + "_"
                : (settings.globalOffsetMs > 0 ? "+" : "") +

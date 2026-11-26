@@ -83,7 +83,7 @@
   <div id="editor-footer-playback">
     <button id="editor-preview-play" class="secondary" data-action="preview-play" title="PLAY / PAUSE"><span id="editor-play-label" class="button-label editor-icon-label">▶</span></button>
     <button id="editor-preview-stop" class="quiet" data-action="preview-stop" title="STOP"><span class="button-label editor-icon-label">■</span></button>
-    <button id="editor-metronome" class="quiet" data-action="metronome-toggle" title="METRONOME"><span class="button-label">MET</span></button>
+    <button id="editor-metronome" class="quiet" data-action="metronome-toggle" title="METRONOME"><img class="editor-metronome-icon" src="metronome.png" /></button>
   </div>
   <div id="editor-overview-slot" class="editor-canvas-slot"></div>
   <div id="editor-footer-rate-time">

@@ -146,3 +146,5 @@
 
 
 @media (max-width:740dp) { #editor-waveform { font-size:10dp; } }
+
+.editor-metronome-icon { display:block; position:absolute; width:24dp; height:24dp; left:50%; top:50%; margin:-12dp 0 0 -12dp; pointer-events:none; }

@@ -103,6 +103,7 @@ bool TestNativeEditorVirtualLists() {
             document->GetElementById("editor-preview-time"));
         if (time) {
             ok &= Check(time->Focus(),"song time accepts focus");
+            time->Click(); // Mouse-up selects after the native focus default action.
             int first=-1,last=-1;
             Rml::String selection;
             time->GetSelection(&first,&last,&selection);

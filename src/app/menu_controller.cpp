@@ -421,14 +421,16 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                 events.calibrationStart = true;
                 return events;
             }
-            const auto changeVolume = [&](int delta) {
-                const int current = static_cast<int>(
-                    std::lround(settings.volume * 10.0f));
-                settings.volume = std::clamp(current + delta, 0, 10) / 10.0f;
+            const auto changeVolume = [&](float& gain,int delta) {
+                GameSettings::StepAudioVolume(gain,delta);
                 events.saveSettings = true;
             };
-            if (hit(SettingsVolumeMinus())) changeVolume(-1);
-            else if (hit(SettingsVolumePlus())) changeVolume(1);
+            if (hit(SettingsVolumeMinus())) changeVolume(settings.volume,-1);
+            else if (hit(SettingsVolumePlus())) changeVolume(settings.volume,1);
+            else if (hit(SettingsHitSoundMinus())) changeVolume(settings.hitSoundVolume,-1);
+            else if (hit(SettingsHitSoundPlus())) changeVolume(settings.hitSoundVolume,1);
+            else if (hit(SettingsMetronomeMinus())) changeVolume(settings.metronomeVolume,-1);
+            else if (hit(SettingsMetronomePlus())) changeVolume(settings.metronomeVolume,1);
         } else {
             if (hit(SettingsVsyncButton())) {
                 settings.vsync = !settings.vsync;
