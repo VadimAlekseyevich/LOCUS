@@ -14,7 +14,7 @@ remain subject to design review. It is not an API specification.
 | Song Set ID + difficulty ID | Stable local identity through rename/copy/import | Server-owned published IDs, ownership and revision mapping |
 | `ChartGameplayRevision` | Detect changed gameplay within local history | Noncryptographic fingerprint; does not bind audio bytes or authenticate ownership |
 | Results v2 + LOCREP04 | Immutable summaries and separate replay data | Player identity, global attempt identity, submission status, verified result derivation |
-| `.locuspack` | Portable package with shared audio, metadata, optional background and charts | Server-side hostile-input validation, quotas, media inspection and immutable publication |
+| `.locuspack` | Portable package with shared audio, metadata, optional background and charts | Portable structural validation shared with desktop; quotas, full media inspection and immutable publication pending |
 | Async catalog/history | Cached, cancellable off-frame data loading | Network I/O, paging, cancellation, session ownership and durable submission retries |
 | Local file transactions | Protect local edits and recoverable import | Not a server persistence layer; Windows-only chart/byte I/O and local paths must not leak into API |
 
@@ -25,6 +25,7 @@ The Linux core CI does not build the desktop storage targets. The portable
 counts and statistics from a completed trace and requires the caller's
 trusted chart offset. Local replay validation uses this same entry point.
 It does not authenticate a submission or decide ranking eligibility.
+The portable `locus_package` target builds the same ZIP reader/writer, manifest codec and staged package validator as the desktop import path. It validates bounded JSON and archive structure, shared audio references, unique chart IDs, effective timing and image signatures. It does not decode audio or fully decode images, and never publishes to a server.
 
 ## 2. Proposed deployment and ownership
 
@@ -184,7 +185,7 @@ No legal workflow is currently operational.
 | Gate | Deliverable | Acceptance |
 | --- | --- | --- |
 | W0 | Documentation and portable rules boundary | Core-only CI; no future capability described as implemented |
-| W1 | Portable verifier + package validation boundary (verifier implemented; package/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
+| W1 | Portable verifier + package validation boundary (verifier and structural package validation implemented; media/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
 | W2 | Local run/profile ownership and PP contract | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
 | W3 | API/data contract and private backend | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
 | W4 | Private vertical slice | Publish one authorized test map, play, submit replay, server rejudge, show leaderboard and profile through the same API; retry idempotency |

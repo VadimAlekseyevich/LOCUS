@@ -33,7 +33,7 @@ cmake --build build/core --config Release --parallel 2
 ctest --test-dir build/core -C Release --output-on-failure
 ```
 
-This configuration runs the portable tests for route geometry, timing, judgement, chart JSON, editor history, difficulty and input/cursor models. It does not build the desktop game or validate native UI, disk transactions or audio hardware. The full Windows build remains the default. Linux CI also runs the editor model profiler.
+This configuration runs the portable tests for route geometry, timing, judgement, chart JSON, editor history, difficulty and input/cursor models. It also builds the portable package codec and runs structural package validation tests. It does not build the desktop game or validate native UI, desktop disk transactions or audio hardware. The full Windows build remains the default. Linux CI also runs the editor model profiler.
 
 ## Gameplay
 

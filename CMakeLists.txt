@@ -43,6 +43,20 @@ else()
     target_compile_options(locus_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+# Portable package codec/validation; no desktop or audio dependencies.
+add_library(locus_package STATIC
+    src/app/song_set_manifest.cpp
+    src/app/song_archive.cpp
+    src/app/package_validation.cpp
+)
+target_link_libraries(locus_package PUBLIC locus_core PRIVATE nlohmann_json::nlohmann_json)
+set_target_properties(locus_package PROPERTIES CXX_EXTENSIONS OFF)
+if(MSVC)
+    target_compile_options(locus_package PRIVATE /W4 /permissive- /utf-8)
+else()
+    target_compile_options(locus_package PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 if(LOCUS_BUILD_TESTS)
     enable_testing()
     include(cmake/core_tests.cmake)

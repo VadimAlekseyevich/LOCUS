@@ -150,7 +150,7 @@ tests only for contracts or failures they can actually detect.
 
 ## Online readiness
 
-The `LOCUS_BUILD_APP=OFF` build supplies the portable chart/judge/replay/difficulty engine and `EvaluateCompletedReplay`, the shared scoring consistency verifier. The desktop catalog and filesystem adapters are not a portable server storage layer: `ReadLocalFileBytes` and `OpenChartWithAudioPath` have Windows-only implementations. No network or account service is implemented. The future server must own published revisions, authenticated scores and ranking eligibility. See [online architecture](ONLINE_ARCHITECTURE.md) for the staged plan.
+The `LOCUS_BUILD_APP=OFF` build supplies the portable chart/judge/replay/difficulty engine and `EvaluateCompletedReplay`, the shared scoring consistency verifier. The portable `locus_package` target contains the ZIP codec, manifest codec and staged package structural validator, shared by desktop import and headless tests. The desktop catalog and other filesystem adapters are not a portable server storage layer: `ReadLocalFileBytes` and `OpenChartWithAudioPath` have Windows-only implementations. No network or account service is implemented. The future server must own published revisions, authenticated scores and ranking eligibility. See [online architecture](ONLINE_ARCHITECTURE.md) for the staged plan.
 
 ## Difficulty and remaining architecture work
 

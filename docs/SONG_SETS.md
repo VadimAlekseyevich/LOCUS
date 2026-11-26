@@ -142,7 +142,7 @@ saved. LOCUS does not silently overwrite the external source.
   occupied original path.
 - **Package integrity:** LOCUS checks ZIP entry names, file counts, total
   size, CRC-32 and central directory consistency; unsafe paths and malformed
-  packages are rejected. Only uncompressed ZIP entries are accepted for now.
+  packages are rejected. Only uncompressed ZIP entries are accepted for now. Package filenames must be valid UTF-8, flat and portable across Windows and Linux; normalized name collisions, reserved device names and unsafe characters are rejected. The manifest is bounded to 64 KiB, chart JSON to 8 MiB; duplicate keys and excessive JSON depth are rejected. The portable structural validator is shared by desktop import and headless builds. Full media decoding and server publication are separate concerns.
   A failed extraction stays outside the library and is removed.
 - **Concurrency:** imports and managed editor saves hold a library-wide OS
   write lock and then a per-Set lock. Crashes release those locks automatically;

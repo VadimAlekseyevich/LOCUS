@@ -1,6 +1,7 @@
 #include "app/song_library.h"
 #include "app/song_library_internal.h"
 #include "app/song_archive.h"
+#include "app/package_validation.h"
 #include "app/chart_file.h"
 #include "app/song_set_storage.h"
 #include "app/atomic_move.h"
@@ -138,59 +139,11 @@ bool SongLibrary::ImportPackageOnDisk(const fs::path& archive,
         return false;
     };
     if (!ExtractSongSetArchive(archive, stage, error)) return fail();
-    SongSetManifest metadata;
-    if (!LoadSongSetManifest(stage / L"set.locus.json", metadata, error))
-        return fail();
-    const fs::path audio = stage / fs::u8path(metadata.audioFile);
-    if (!metadata.backgroundFile.empty()) {
-        const fs::path art = stage / fs::u8path(metadata.backgroundFile);
-        if (!ValidateImageAssetFile(art, error)) return fail();
-    }
-    if (!fs::is_regular_file(audio, ec) || ec) {
-        error = "Package is missing the shared audio file.";
-        return fail();
-    }
-    std::map<std::string, InstalledDifficulty> incomingCharts;
-    std::set<std::string> incomingDifficultyIds;
-    for (fs::directory_iterator it(stage, ec), end; !ec && it != end;
-         it.increment(ec)) {
-        const fs::path path = it->path();
-        if (!it->is_regular_file(ec) || ec) {
-            error = "Package contains an unexpected directory or file type.";
-            return fail();
-        }
-        if (path.filename() == L"set.locus.json" ||
-            fs::equivalent(path, audio, ec)) continue;
-        if (!metadata.backgroundFile.empty() &&
-            path.filename() == fs::u8path(metadata.backgroundFile)) continue;
-        if (path.extension() != L".json") {
-            error = "Package contains unsupported files.";
-            return fail();
-        }
-        core::LoadedChart parsed;
-        std::wstring chartAudio;
-        if (!OpenChartWithAudioPath(path.wstring(), parsed, chartAudio, error))
-            return fail();
-        if (!fs::equivalent(fs::path(chartAudio), audio, ec) || ec) {
-            error = "Package difficulty does not use shared audio.";
-            return fail();
-        }
-        if (!core::ValidDifficultyId(parsed.difficultyId) ||
-            !incomingDifficultyIds.insert(parsed.difficultyId).second) {
-            error = "Package has a missing or duplicate difficultyId.";
-            return fail();
-        }
-        // Validate the authoritative timing before either a new set is
-        // published or an existing one is merged.
-        auto projected = parsed;
-        if (!ApplySongTiming(projected, metadata.tempoMap, error)) return fail();
-        const auto id = parsed.difficultyId;
-        incomingCharts.emplace(id, InstalledDifficulty{path, std::move(parsed)});
-    }
-    if (ec || incomingCharts.empty()) {
-        error = "Package contains no valid difficulties.";
-        return fail();
-    }
+    ValidatedPackage package;
+    if (!ValidateStagedPackage(stage,package,error)) return fail();
+    const auto& metadata=package.manifest;
+    const auto& audio=package.audio;
+    const auto& incomingCharts=package.difficulties;
     fs::path existingSet;
     // Refresh indexes nested Song Sets as well as immediate children of
     // Songs/. Enforce exactly the same identity domain BEFORE publishing the
@@ -284,7 +237,7 @@ bool SongLibrary::ImportPackageOnDisk(const fs::path& archive,
     // Publication or merge completed. Keep the actual installed
     // location even if the in-memory index cannot be refreshed immediately.
     installedSet = target;
-    incomingIds.assign(incomingDifficultyIds.begin(),incomingDifficultyIds.end());
+    for (const auto& entry : incomingCharts) incomingIds.push_back(entry.first);
     error.clear();
     return true;
 }

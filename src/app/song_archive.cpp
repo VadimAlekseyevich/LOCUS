@@ -1,5 +1,7 @@
 #include "app/song_archive.h"
-#include "app/song_set_storage.h"
+#include "app/song_set_manifest.h"
+#include "core/utf8.h"
+#include "core/unicode_search.h"
 #include "app/image_asset_file.h"
 
 #include <algorithm>
@@ -42,10 +44,19 @@ struct ZipEntry {
 };
 
 bool FlatName(const std::string& s) {
-    if (s.empty() || s.size() > 255 || s == "." || s == "..") return false;
+    if (s.empty() || s.size()>255 || s=="." || s==".." ||
+        !core::utf8::Valid(s) || s.back()=='.' || s.back()==' ') return false;
     for (unsigned char c : s)
-        if (c < 32 || c == 127 || c == '/' || c == '\\' || c == ':')
+        if (c<32 || c==127 || std::string_view("/\\:<>|\"?*").find(c)!=std::string_view::npos)
             return false;
+    // Reject device names (including an extension) even on Linux.
+    const auto key=core::NormalizedSearchKey(s);
+    auto stem=key.substr(0,key.find('.'));
+    while (!stem.empty() && stem.back()==' ') stem.pop_back();
+    if (stem=="con" || stem=="prn" || stem=="aux" || stem=="nul" ||
+        stem=="conin$" || stem=="conout$" ||
+        (stem.size()==4 && (stem.compare(0,3,"com")==0 || stem.compare(0,3,"lpt")==0)
+         && stem[3]>='0' && stem[3]<='9')) return false;
     return true;
 }
 
@@ -159,7 +170,7 @@ bool ExportSongSetArchive(const fs::path& setFolder,
             return false;
         }
         const std::string name = FileUtf8Name(file);
-        if (!FlatName(name) || !names.insert(name).second) {
+        if (!FlatName(name) || !names.insert(core::NormalizedSearchKey(name)).second) {
             error = "Export has an unsafe or duplicate filename.";
             return false;
         }
@@ -220,7 +231,7 @@ bool ExportSongSetArchive(const fs::path& setFolder,
                       static_cast<std::streamsize>(entry.name.size()));
         }
         const auto endPos = out.tellp();
-        if (endPos < 0 || static_cast<std::uint64_t>(endPos) > 0xffffffffu)
+        if (endPos < 0 || static_cast<std::uint64_t>(endPos)+22u > kMaxArchive)
             throw std::runtime_error("Archive exceeds ZIP size limit.");
         Put32(out, kEnd);
         Put16(out, 0); Put16(out, 0);
@@ -286,7 +297,7 @@ bool ExtractSongSetArchive(const fs::path& archiveFile,
             std::string name(nameLength, '\0');
             if (!input.read(name.data(), nameLength))
                 throw std::runtime_error("Truncated archive filename.");
-            if (!FlatName(name) || !names.insert(name).second)
+            if (!FlatName(name) || !names.insert(core::NormalizedSearchKey(name)).second)
                 throw std::runtime_error("Unsafe or duplicate archive filename.");
             input.seekg(extraLength, std::ios::cur);
             if (!input) throw std::runtime_error("Truncated archive extra data.");

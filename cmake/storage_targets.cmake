@@ -11,9 +11,8 @@ add_library(locus_chart_storage STATIC
     src/app/chart_file.cpp
     src/app/chart_save.cpp
     src/app/song_set_storage.cpp
-    src/app/song_archive.cpp
 )
-target_link_libraries(locus_chart_storage PUBLIC locus_core
+target_link_libraries(locus_chart_storage PUBLIC locus_package locus_core
     PRIVATE locus_file_io nlohmann_json::nlohmann_json)
 
 add_library(locus_song_library STATIC
