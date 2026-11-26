@@ -248,7 +248,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     editor_timeline::ApplyWheel(draft, input.mouseWheel);
     action.previewToggle |= input.previewToggle;
     action.previewRestart |= input.previewRestart;
-        action.previewStop |= input.previewStop;
+    action.previewStop |= input.previewStop;
     if (input.speedIndex >= 0) action.speedIndex = input.speedIndex;
     return action;
 }

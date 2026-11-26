@@ -556,7 +556,7 @@ int main(int argc, char** argv) try {
                     editor.Dirty(), chartPlayback.Speed(),
                     chartPlayback.Playing() && !chartPlayback.Paused(),
                     std::llround(1000.0*(chartPlayback.Playing()
-                        ? chartPlayback.VisualAudioSeconds(now)
+                        ? chartPlayback.VisualAudioSeconds(MonotonicSeconds())
                         : std::isfinite(editorUi.focusSongSeconds) ? editorUi.focusSongSeconds
                             : editor.AudioSecondsAtBeat(editor.SelectedBeat()))),
                     editor, settings, editorSet.FrameView());

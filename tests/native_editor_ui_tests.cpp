@@ -5,6 +5,7 @@
 #include "rml_test_support.h"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/EventListener.h>
 #include <iostream>
 
@@ -58,6 +59,8 @@ bool TestNativeEditorVirtualLists() {
         NativeEditorUi presenter;
         Events events(presenter);
         document->AddEventListener("click",&events);
+        document->AddEventListener("focus",&events,true);
+        document->AddEventListener("blur",&events,true);
         context->SetDensityIndependentPixelRatio(1.6f);
         document->Show();
         context->Update();
@@ -96,6 +99,27 @@ bool TestNativeEditorVirtualLists() {
                     "visible rename and selection preserve row identity");
             }
         }
+        auto* time=dynamic_cast<Rml::ElementFormControlInput*>(
+            document->GetElementById("editor-preview-time"));
+        if (time) {
+            ok &= Check(time->Focus(),"song time accepts focus");
+            int first=-1,last=-1;
+            Rml::String selection;
+            time->GetSelection(&first,&last,&selection);
+            ok &= Check(selection=="0","song time selects entire initial value");
+            time->SetValue("");
+            sync();
+            ok &= Check(time->GetValue().empty(),"live sync preserves empty time edit");
+            time->SetValue("7125");
+            time->Blur();
+            ok &= Check(input.editor.seekSongTimeMs==7125,"blur commits exact milliseconds");
+            input.editor.seekSongTimeMs.reset();
+            time->Focus();
+            time->SetValue("12345");
+            presenter.CancelFocusedField();
+            ok &= Check(!input.editor.seekSongTimeMs && time->GetValue()=="0",
+                        "cancel restores current time without seeking");
+        } else ok &= Check(false,"song time is editable input");
         ui.tab=EditorTab::Route;
         sync();
         auto* wave=document->GetElementById("editor-waveform");
@@ -152,6 +176,8 @@ bool TestNativeEditorVirtualLists() {
         presenter.EndFrame();
         presenter.Attach(nullptr);
         document->RemoveEventListener("click",&events);
+        document->RemoveEventListener("focus",&events,true);
+        document->RemoveEventListener("blur",&events,true);
         document->Hide();
     }
     if(context) Rml::RemoveContext("editor-virtual-test");
