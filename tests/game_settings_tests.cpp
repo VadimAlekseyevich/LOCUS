@@ -117,11 +117,12 @@ int main() {
     // editor-only preference must not reset a user's custom keyboard binds.
     auto existingV3 = nlohmann::json::parse(serialized);
     existingV3.erase("globalOffsetMs");
+    existingV3.erase("backgroundDim");
     existingV3.erase("editorPreviewSpeed");
     existingV3.erase("editorPreviewLengthMs");
     GameSettings preserved;
     ok &= Check(ParseGameSettings(existingV3.dump(), preserved, error) &&
-                preserved.globalOffsetMs == 0 &&
+                preserved.globalOffsetMs == 0 && preserved.backgroundDim==65 &&
                 preserved.editorPreviewSpeed == 135.0f &&
                 preserved.editorPreviewLengthMs == 800.0f &&
                 preserved.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&
@@ -132,6 +133,16 @@ int main() {
     ok &= Check(!ParseGameSettings(existingV3.dump(), untouched, error) &&
                 untouched.editorPreviewSpeed == 480.0f,
                 "invalid editor preference cannot partially overwrite settings");
+
+    auto invalidDim=nlohmann::json::parse(serialized);
+    invalidDim["backgroundDim"]=101;
+    GameSettings dim=parsed;
+    ok &= Check(!ParseGameSettings(invalidDim.dump(),dim,error) &&
+                dim.backgroundDim==40,"invalid background dim leaves settings unchanged");
+    dim.backgroundDim=98; dim.StepBackgroundDim(1);
+    ok &= Check(dim.backgroundDim==100,"background dim upper clamp");
+    dim.backgroundDim=2; dim.StepBackgroundDim(-1);
+    ok &= Check(dim.backgroundDim==0,"background dim lower clamp");
 
     auto invalidOffset = nlohmann::json::parse(serialized);
     invalidOffset["globalOffsetMs"] = 1001;

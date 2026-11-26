@@ -451,12 +451,12 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
     const float cursor = SongOverviewX(songSeconds, duration, bounds);
     const float lineY = bounds.y + bounds.height - 8.0f;
     const auto& graph=draft.DifficultyGraph();
-    if (graph.maximum>0.0 && bounds.height>20.0f) {
+    if (graph.maximum>0.0 && bounds.height>24.0f) {
         const float top=bounds.y+14.0f;
-        const float width=(bounds.width-6.0f)/graph.peaks.size();
+        const float width=bounds.width/graph.peaks.size();
         if (width>0) for (std::size_t i=0;i<graph.peaks.size();++i) {
             const float height=static_cast<float>(graph.peaks[i]/graph.maximum)*(lineY-top);
-            if (height>0) DrawRectangleRec({bounds.x+3+i*width,lineY-height,width,height},
+            if (height>0) DrawRectangleRec({bounds.x+i*width,lineY-height,width,height},
                                            Color{181,164,243,150});
         }
     }
@@ -477,7 +477,11 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
         : std::vector<core::TempoMarker>{};
     const auto& tempoMarkers=set.managed && !set.tempoMap.empty()?set.tempoMap:
         (chart.tempoMap.empty()?fallback:chart.tempoMap);
-    float previousTextRight = -1000.0f;
+    const int total = static_cast<int>(std::ceil(duration));
+    const std::string end=TextFormat("%d:%02d", total / 60, total % 60);
+    const float timeWidth=MeasureTextEx(font,end.c_str(),11.0f,1.0f).x;
+    const float timeX=right-timeWidth-7.0f;
+    float previousTextRight = bounds.x;
     for (const auto& marker : tempoMarkers) {
         const float x = SongOverviewX(marker.timeMs / 1000.0, duration, bounds);
         DrawLineEx({x, bounds.y + 5.0f}, {x, lineY+4.0f},
@@ -486,7 +490,7 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
         const float width = MeasureTextEx(font, name, 11.0f, 1.0f).x;
         const float labelX = std::clamp(x + 4.0f, bounds.x + 7.0f,
             std::max(bounds.x + 7.0f, right - width - 6.0f));
-        if (labelX > previousTextRight + 6.0f) {
+        if (labelX > previousTextRight + 6.0f && labelX+width+6.0f<timeX) {
             Label(font, name, labelX, bounds.y + 3.0f, 11.0f,
                   Color{172, 233, 219, 255});
             previousTextRight = labelX + width;
@@ -498,10 +502,7 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
                       4.0f, bounds.height - 4.0f},
                      Color{241, 206, 118, 255});
     DrawCircleV({cursor, lineY}, 4.0f, ApprovedUiTheme().foreground);
-    const int total = static_cast<int>(std::ceil(duration));
-    const char* end = TextFormat("%d:%02d", total / 60, total % 60);
-    const float timeWidth = MeasureTextEx(font, end, 11.0f, 1.0f).x;
-    Label(font, end, right - timeWidth - 7.0f, bounds.y + 3.0f, 11.0f,
+    Label(font, end.c_str(), timeX, bounds.y + 3.0f, 11.0f,
           Color{170, 191, 211, 255});
 }
 

@@ -321,7 +321,8 @@ int main(int argc, char** argv) try {
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
     locus::app::HitSoundPlayer hitSounds, previewHitSounds;
-    hitSounds.Configure(activeSkin);
+    if (!hitSounds.Configure(activeSkin))
+        std::cerr << "HITSOUND_LOAD_FAILED\n";
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
     // Dedicated calibration stream. It does not touch scoring transports,
     // chart data or the player's existing audio decoder.
@@ -639,7 +640,11 @@ int main(int argc, char** argv) try {
             if (menuEvents.skinCommand==locus::app::SkinCommand::ClearHitSound)
                 previewHitSounds.Clear();
             // Applied resources are prepared in menus, not on the first hit.
-            hitSounds.Configure(activeSkin);
+            if (menuEvents.skinCommand!=locus::app::SkinCommand::None &&
+                !hitSounds.Configure(activeSkin)) {
+                skinUi.notice="HITSOUND AUDIO UNAVAILABLE";
+                skinUi.noticeError=true;
+            }
         }
         if (menuEvents.saveSettings) {
             transport.SetVolume(settings.volume);
@@ -1120,7 +1125,6 @@ int main(int argc, char** argv) try {
         if (state.screen == Screen::Play) {
             const bool alreadyCompleted = sessionCompleted;
             if (input.pausePressed || input.restartPressed) hitSounds.Stop();
-            hitSounds.Configure(activeSkin);
             playActions.Update(input, now);
             const auto hitCount=gameSession.TakeHitSoundCount();
             for (unsigned i=0;i<std::min(hitCount,16u);++i)

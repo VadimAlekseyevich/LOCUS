@@ -1,4 +1,5 @@
 #include "app/skin_profile_actions.h"
+#include "app/skin_hitsound_data.h"
 
 #include <chrono>
 #include <fstream>
@@ -18,7 +19,8 @@
 
 namespace {
 namespace fs = std::filesystem;
-fs::path importFile, exportFile;
+fs::path importFile, exportFile, soundFile;
+locus::app::MusicPickResult PickSound() { return {soundFile.wstring(),{},false}; }
 int loadCalls = 0, exportCalls = 0;
 locus::app::MusicPickResult CancelLoad() {
     ++loadCalls; return {{}, {}, true};
@@ -273,7 +275,34 @@ int main() {
     bad.Apply(SkinCommand::RestoreProfile);
     ok &= Check(!ui.noticeError && fs::exists(firstProfile),
                 "undo restores a deleted active profile file");
+    // Import a real short PCM file, then remove the source. Exported skins
+    // must contain the sound, not a path to the original machine.
+    soundFile=root/"hit.wav";
+    std::string wav;
+    ok &= Check(DecodeHitSound("524946462800000057415645666d74201000000001000100401f0000803e000002001000646174610400000000000100",wav),
+                "valid import fixture");
+    { std::ofstream out(soundFile,std::ios::binary); out.write(wav.data(),wav.size()); }
+    SkinProfileActions soundActions{active,draft,ui,activeFile,{GoodLoad,Export,PickSound}};
+    soundActions.Apply(SkinCommand::LoadHitSound);
+    ok &= Check(ui.dirty && draft.hitSoundWav && !active.hitSoundWav,
+                "hitsound import affects only draft");
     std::error_code ec;
+    fs::remove(soundFile,ec);
+    draft.hitSoundVolume=35;
+    soundActions.Apply(SkinCommand::SaveAs);
+    Skin portable;
+    ok &= Check(!ui.dirty && LoadSkin(exportFile,portable,error,false) &&
+                portable.hitSoundWav && *portable.hitSoundWav==wav &&
+                portable.hitSoundVolume==35,
+                "exported profile retains sound after source deletion");
+    soundActions.Apply(SkinCommand::LoadHitSound);
+    ok &= Check(ui.noticeError && draft.hitSoundWav && *draft.hitSoundWav==wav,
+                "failed import preserves existing sound");
+    soundActions.Apply(SkinCommand::ClearHitSound);
+    ok &= Check(ui.dirty && !draft.hitSoundWav && active.hitSoundWav,
+                "remove is a draft-only change until Save");
+    soundActions.Apply(SkinCommand::Save);
+    ok &= Check(!active.hitSoundWav && !ui.dirty,"save applies sound removal");
     fs::remove_all(root, ec);
     if (!ok) return 1;
     std::cout << "SKIN_PROFILE_PASS cancel=1 load=1 saveas=1 reset=1 invalid=1\n";
