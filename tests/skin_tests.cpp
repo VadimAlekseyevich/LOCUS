@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <iostream>
 #include <fstream>
+#include <iterator>
 #include <string>
 
 using namespace locus::app;
@@ -64,6 +65,19 @@ int main() {
     check(HitSoundFormatFromPath(L"sample.MP3",format) && format==HitSoundFormat::Mp3 &&
           HitSoundFormatFromPath(L"sample.OGG",format) && format==HitSoundFormat::Ogg &&
           !HitSoundFormatFromPath(L"sample.exe",format),"supported file extensions");
+    for (const auto type : {HitSoundFormat::Mp3,HitSoundFormat::Ogg}) {
+        const auto file=std::filesystem::path(LOCUS_HITSOUND_FIXTURES)/
+            (std::string("silence")+HitSoundExtension(type));
+        std::ifstream input(file,std::ios::binary);
+        std::string bytes((std::istreambuf_iterator<char>(input)),{});
+        audioSkin.hitSound=HitSoundAsset::Create(type,bytes,audioError);
+        check(audioSkin.hitSound && ParseSkin(SerializeSkin(audioSkin),decodedAudio,audioError) &&
+              decodedAudio.hitSound && decodedAudio.hitSound->Format()==type &&
+              decodedAudio.hitSound->Bytes()==bytes,
+              "real compressed audio decodes and round trips without transcoding");
+        const auto invalid=HitSoundAsset::Create(type,"not audio",audioError);
+        check(!invalid,"reject invalid compressed audio");
+    }
     // Exercise raylib's ACTUAL DrawRing geometry: x=cos(angle),
     // y=sin(angle). The previous regression test used the same wrong
     // coordinate swap as the renderer and could never catch its bug.
