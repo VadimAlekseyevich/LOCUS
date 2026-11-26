@@ -55,7 +55,7 @@
         <button id="mod-ez" data-action="mod-ez" class="secondary" title="Wider judgement windows (150%)"><span class="button-label">EZ</span></button>
         <button id="mod-hr" data-action="mod-hr" class="secondary" title="Tighter judgement windows (70%)"><span class="button-label">HR</span></button>
         <button id="mod-hd" data-action="mod-hd" class="secondary" title="Route and notes disappear before reaching the player"><span class="button-label">HD</span></button>
-        <button id="mod-fl" data-action="mod-fl" class="secondary" title="Only the next 350ms of the route is visible"><span class="button-label">FL</span></button>
+        <button id="mod-fl" data-action="mod-fl" class="secondary" title="Only a small circular area around the player is visible"><span class="button-label">FL</span></button>
       </div>
       <div id="commands">
         <button id="start" data-action="play" class="primary"><span class="button-label">PLAY</span></button>

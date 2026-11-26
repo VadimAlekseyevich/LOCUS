@@ -41,8 +41,6 @@ inline void PrepareRoutePreview(const core::TimedRoute& route,
         lookaheadMs <= 0.0f) return;
     out.horizonSeconds = static_cast<double>(lookaheadMs) / 1000.0;
     if (!std::isfinite(clockRate) || clockRate <= 0.0) clockRate = 1.0;
-    if (core::HasMod(mods,core::PlayMod::Flashlight))
-        out.horizonSeconds = std::min(out.horizonSeconds,0.35*clockRate);
     if (core::HasMod(mods,core::PlayMod::Hidden))
         out.hiddenFadeSeconds = std::min(out.horizonSeconds*0.5,0.45*clockRate);
     route.Window(songSeconds, songSeconds + out.horizonSeconds, out.spans);

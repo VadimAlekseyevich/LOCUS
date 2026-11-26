@@ -6,7 +6,9 @@ four physical keys. The rating does not depend on route geometry, crossings,
 turn angles, skin, BPM notation, snap, or keyboard layout. The base rating
 uses 100% speed; HT/DT recompute the same model at the selected rate.
 EZ/HR change judgement windows (150% / 70%), not physical press strain.
-HD fades near the player and FL caps future visibility at 350 real milliseconds.
+HD fades near the player. FL masks the entire scene outside a player-centred
+circular aperture (radius 72 logical pixels on the 540-pixel playfield),
+while preserving the skin's normal route lookahead and the HUD.
 Neither visual nor timing-window modifiers change the physical strain rating.
 It is calculated on demand, not stored in chart JSON.
 

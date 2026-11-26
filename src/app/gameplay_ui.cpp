@@ -9,6 +9,7 @@
 #include "app/ui_button.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <string>
 
@@ -17,6 +18,35 @@ namespace {
 void DrawTextLabel(Font font, const char* message, Vector2 position,
                    float size, Color color) {
     DrawTextEx(font, message, position, size, 1.0f, color);
+}
+// Opaque inverse-circle mask in the same logical screen space as the
+// actual player marker. No render target, stencil state or per-frame heap
+// allocation is needed; the outer polygon covers even ultrawide viewports.
+void DrawFlashlightMask(Vector2 center, Rectangle visible) {
+    constexpr float radius = 72.0f; // 144 / 540 of the playfield diameter.
+    constexpr std::size_t segments = 128;
+    static const auto unitCircle = [] {
+        std::array<Vector2,segments+1> points{};
+        for (std::size_t i=0;i<segments;++i) {
+            const double angle = 6.283185307179586 * i / segments;
+            points[i] = {static_cast<float>(std::cos(angle)),
+                         static_cast<float>(std::sin(angle))};
+        }
+        points.back() = points.front();
+        return points;
+    }();
+    const float dx = std::max(std::abs(center.x-visible.x),
+                              std::abs(center.x-visible.x-visible.width));
+    const float dy = std::max(std::abs(center.y-visible.y),
+                              std::abs(center.y-visible.y-visible.height));
+    const float outer = std::max(radius+1.0f,std::hypot(dx,dy)*1.01f+2.0f);
+    std::array<Vector2,2*(segments+1)> strip{};
+    for (std::size_t i=0;i<=segments;++i) {
+        const auto p = unitCircle[i];
+        strip[2*i] = {center.x+p.x*outer,center.y+p.y*outer};
+        strip[2*i+1] = {center.x+p.x*radius,center.y+p.y*radius};
+    }
+    DrawTriangleStrip(strip.data(),static_cast<int>(strip.size()),BLACK);
 }
 } // namespace
 
@@ -105,6 +135,10 @@ void DrawPlayGrid(Font font,const GameplayView& gameplay,double now,
         {0.0f,0.0f,static_cast<float>(GetScreenWidth()),
                    static_cast<float>(GetScreenHeight())});
     DrawGameplayFieldEdges(kGameplayWorldViewport,visible,gameplay.skin.fieldBorder);
+    // Composite after the world, background and field edges, but before HUD
+    // and pause dialogs. The hole follows the marker, not the lagging camera.
+    if (core::HasMod(gameplay.judge.Mods(),core::PlayMod::Flashlight))
+        DrawFlashlightMask(marker,visible);
     const auto layout = LayoutGameplayHud(visible,kGameplayWorldViewport);
     DrawGameplayHud(font,layout,MakeGameplayHudStats(gameplay.judge,gameplay.practiceSpeed,
                                                      gameplay.watchingReplay),

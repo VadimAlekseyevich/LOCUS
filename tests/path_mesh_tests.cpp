@@ -96,6 +96,13 @@ int main() {
     ok &= Check(compiledRoute.Compile(chart, 0.0),
                 "compile timed route for shared preview");
     const auto compiledFrame = app::MakeRoutePreview(compiledRoute, 1.25, 800.0f);
+    app::RoutePreviewFrame flashlightFrame;
+    app::PrepareRoutePreview(compiledRoute,1.25,800.0f,flashlightFrame,
+                             core::ModBit(core::PlayMod::Flashlight),1.25);
+    ok &= Check(Near(flashlightFrame.horizonSeconds,compiledFrame.horizonSeconds) &&
+                flashlightFrame.spans.size()==compiledFrame.spans.size() &&
+                flashlightFrame.turnsFarToNear.size()==compiledFrame.turnsFarToNear.size(),
+                "Flashlight is screen-space masking, not a route lookahead override");
     const auto preparedRibbon = app::BuildScoredPathRibbon(
         compiledFrame, canvas, defaults);
     const auto compatibilityRibbon = app::BuildScoredPathRibbon(
