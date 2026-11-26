@@ -1,6 +1,7 @@
 #include "app/skin.h"
 #include "app/skin_controls.h"
 #include "app/skin_hue_geometry.h"
+#include "app/skin_preview_geometry.h"
 #include "app/movement_speed.h"
 #include <nlohmann/json.hpp>
 
@@ -143,6 +144,37 @@ int main() {
           intact.name == "Retain",
           "negative cap size is invalid");
     check(Skin{}.lookaheadMs == 800.0f, "default 800 ms preview");
+    check(Skin{}.reverseCapScale==2.0f,"default reverse cap size is 2");
+    // The preview must preserve ratios between movement distances and
+    // visual radii at every canvas size, including the default 135 px/s.
+    const Skin defaults;
+    const auto& previewRoute=SkinPreviewRoute();
+    const auto& turns=previewRoute.Turns();
+    check(previewRoute.Ready() && turns.size()==4,"preview route compiles");
+    if (turns.size()==4) {
+        for (float side : {100.0f,191.0f,400.0f}) {
+            const float scale=SkinPreviewWorldScale({0,0,side,side});
+            const auto scaled=SkinForPreview(defaults,scale);
+            const float step=StepForTimedRoute(defaults.baseSpeedPxPerSecond,
+                                               previewRoute)*scale;
+            const auto marker=previewRoute.PositionAt(0.0);
+            const auto distance=[step](core::GridPoint a,core::GridPoint b) {
+                return std::hypot(a.x-b.x,a.y-b.y)*step;
+            };
+            check(std::abs(scaled.pathWidth/defaults.pathWidth-scale)<1e-6f &&
+                  std::abs(scaled.junctionRadius/defaults.junctionRadius-scale)<1e-6f &&
+                  std::abs(scaled.playerRadius/defaults.playerRadius-scale)<1e-6f &&
+                  scaled.reverseCapScale==defaults.reverseCapScale,
+                  "preview uniformly scales lengths, not dimensionless properties");
+            check(distance(marker,turns[0].position)>
+                      scaled.playerRadius*1.65f+scaled.junctionRadius*1.45f,
+                  "default player glow separated from first preview turn");
+            for (std::size_t i=1;i<turns.size();++i)
+                check(distance(turns[i-1].position,turns[i].position)>
+                          2.0f*scaled.junctionRadius*1.45f,
+                      "default preview turn glows remain separated");
+        }
+    }
     auto invalid = original;
     invalid.lookaheadMs = 0.0f;
     check(!invalid.Valid(error), "reject invalid lookahead");

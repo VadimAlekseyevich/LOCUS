@@ -1,6 +1,7 @@
 #include "app/skin_menu.h"
 #include "app/gameplay_hud.h"
 #include "app/skin_menu_layout.h"
+#include "app/skin_preview_geometry.h"
 #include "app/skin_hue_geometry.h"
 #include "app/menu_ui.h"
 #include "app/ui_button.h"
@@ -113,35 +114,23 @@ void PreviewPath(Font font, const Skin& skin,
         : ViewportTransform::Menu(GetScreenWidth(), GetScreenHeight()))
         .Scissor(frame);
     BeginScissorMode(clip.x, clip.y, clip.width, clip.height);
-    const float pixelsPerBeat =
-        StepForFixedSpeed(skin.baseSpeedPxPerSecond, 120.0, 1) *
-        frame.width / kVirtualHeight;
-    const float horizon = static_cast<float>(
-        ScoredPreviewTicks(skin.lookaheadMs, 120.0, 1));
+    const float worldScale=SkinPreviewWorldScale(frame);
+    const Skin scaled=SkinForPreview(skin,worldScale);
+    const auto& sampleRoute=SkinPreviewRoute();
+    const float step=StepForTimedRoute(skin.baseSpeedPxPerSecond,sampleRoute)*worldScale;
     // Steady rightward travel: the avatar appears ahead of the
     // camera center by the same speed-dependent lag as in PLAY.
     const float lagPx = std::min(
         72.0f, skin.baseSpeedPxPerSecond * skin.cameraLagMs / 1000.0f) *
-        frame.width / kVirtualHeight;
-    // Real authored eight-direction route, not a separately drawn sine
-    // wave. This uses the same ribbon, fade, turns and material as PLAY.
-    static const core::TimedRoute sampleRoute = [] {
-        auto chart = core::MakeDemoChart();
-        chart.turns = {{1, core::Heading::UpRight, 150},
-                       {2, core::Heading::DownRight, 350},
-                       {3, core::Heading::Right, 500},
-                       {4, core::Heading::Right, 650}};
-        core::TimedRoute route;
-        route.Compile(chart, 0.0);
-        return route;
-    }();
+        worldScale;
+    // One exact-time route and the same world-size proportions as PLAY.
     const auto preview = MakeRoutePreview(sampleRoute, 0.0, skin.lookaheadMs);
-    const RouteCanvas canvas{687.0f + lagPx, 335.0f, pixelsPerBeat,
+    const RouteCanvas canvas{687.0f + lagPx, 335.0f, step,
                              preview.marker};
-    const Vector2 marker = DrawTimedRouteTrajectory(preview, canvas, skin);
-    DrawTimedRouteJunctions(preview, canvas, skin);
-    const float radius = skin.playerRadius * 0.7f;
-    DrawCircleV(marker, std::max(radius + 3.0f, radius * skin.hitFlashScale * 1.5f),
+    const Vector2 marker = DrawTimedRouteTrajectory(preview, canvas, scaled);
+    DrawTimedRouteJunctions(preview, canvas, scaled);
+    const float radius=scaled.playerRadius;
+    DrawCircleV(marker, std::max(radius + 3.0f*worldScale, radius * skin.hitFlashScale * 1.5f),
                 WithOpacity(skin.hitFlash, 0.32f));
     if (skin.playerGlow)
         DrawCircleV(marker, radius * 1.65f, WithOpacity(skin.player, 0.2f));
@@ -151,13 +140,13 @@ void PreviewPath(Font font, const Skin& skin,
     // Show the actual adjustable semicircular end cap on an overlapping
     // right -> left route segment. The same helper draws PLAY and EDITOR.
     const Vector2 turnPoint{784.0f, 385.0f};
-    const float proximity = ScoredPathOpacity(
-        horizon * 0.35f, horizon, skin.fadePower);
+    const float proximity = ScoredPathOpacity(0.35,1.0,skin.fadePower);
     const float opacity = proximity * skin.pathOpacity;
-    const float junctionRadius = std::min(11.0f, skin.junctionRadius * 0.7f)
+    const float junctionRadius = std::min(scaled.junctionRadius,
+                                         step*preview.ticksPerBeat*0.45f)
         * ScoredTurnSize(proximity);
     DrawSoftRouteLine({723.0f, turnPoint.y}, turnPoint,
-               std::max(1.0f, skin.pathWidth * 0.75f),
+               ScoredPathWidthFromOpacity(proximity,scaled.pathWidth),
                WithOpacity(skin.trajectory, opacity));
     DrawReverseCap(turnPoint, junctionRadius, core::Heading::Left,
                    skin.junction, opacity, skin.junctionGlow,

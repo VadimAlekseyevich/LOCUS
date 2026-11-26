@@ -9,7 +9,7 @@
     "opacity": 1,
     "junctionRadius": 9.5,
     "junctionGlow": true,
-    "reverseCapScale": 3.2
+    "reverseCapScale": 2
   },
   "player": {
     "radius": 12.5,

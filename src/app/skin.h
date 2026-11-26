@@ -10,7 +10,7 @@
 namespace locus::app {
 
 // A skin describes presentation only. Never serialize it into a song/chart.
-inline constexpr float kDefaultReverseCapScale = 3.2f; // 2x the old 1.6 factor.
+inline constexpr float kDefaultReverseCapScale = 2.0f;
 
 struct Skin {
     std::string name = "Default";
