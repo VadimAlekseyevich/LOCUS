@@ -316,14 +316,9 @@ bool RunResultsStore::LoadReplay(const RunResult& run, core::ReplayTrace& replay
     }
 }
 
-std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
-                                             std::string& error,
-                                             const std::atomic<bool>* cancelled) const {
-    std::vector<RunResult> records;
-    error.clear();
-    if (!core::ValidDifficultyId(playerId_)) { error="Local player unavailable."; return records; }
-    if (key.Empty()) return records;
-    const fs::path dir = Directory(key);
+bool RunResultsStore::ReadDirectory(const fs::path& dir,const RunKey* key,
+                                    std::vector<RunResult>& records,std::string& error,
+                                    const std::atomic<bool>* cancelled) const {
     std::error_code ec;
     // One non-following status probe distinguishes missing history from a
     // regular file, a symlink, or an inaccessible directory. Combining
@@ -332,33 +327,33 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
     const fs::file_status state = fs::symlink_status(dir, ec);
     if (state.type() == fs::file_type::not_found &&
         (!ec || ec == std::errc::no_such_file_or_directory))
-        return records; // A difficulty with no attempts is ordinary.
+        return true; // A difficulty with no attempts is ordinary.
     if (ec) {
         error = "Cannot inspect saved results: " + ec.message();
-        return records;
+        return false;
     }
     if (state.type() != fs::file_type::directory) {
         error = "Saved results path is not an accessible directory.";
-        return records;
+        return false;
     }
     // An unreadable folder or failed traversal is NOT an empty history.
     // Never publish an incomplete result list after an iterator failure.
     fs::directory_iterator current(dir, fs::directory_options::none, ec);
     if (ec) {
         error = "Could not list saved results: " + ec.message();
-        return records;
+        return false;
     }
     const fs::directory_iterator end;
     while (current != end) {
         if (cancelled && cancelled->load(std::memory_order_relaxed)) {
             error = "History loading cancelled.";
-            return {};
+            return false;
         }
         const fs::directory_entry entry = *current;
         current.increment(ec);
         if (ec) {
             error = "Saved results directory traversal failed: " + ec.message();
-            return {};
+            return false;
         }
         if (entry.path().extension() != ".json") continue;
         if (entry.is_symlink(ec) || !entry.is_regular_file(ec) ||
@@ -373,8 +368,9 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
             RunResult record;
             if (!Decode(json, record) ||
                 record.playerId != playerId_ ||
-                record.songSetId != key.songSetId ||
-                record.difficultyId != key.difficultyId ||
+                (key && (record.songSetId != key->songSetId ||
+                         record.difficultyId != key->difficultyId)) ||
+                PathToken({record.songSetId,record.difficultyId}) != dir.filename().string() ||
                 entry.path().stem().string() != record.id) continue;
             records.push_back(std::move(record));
         } catch (const std::exception&) {
@@ -383,8 +379,52 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
     }
     if (cancelled && cancelled->load(std::memory_order_relaxed)) {
         error = "History loading cancelled.";
-        return {};
+        return false;
     }
+    return true;
+}
+
+bool RunResultsStore::LoadPlayerSummary(PlayerPerformanceSummary& summary,std::string& error,
+                                         const std::atomic<bool>* cancelled) const {
+    error.clear();
+    if (!core::ValidDifficultyId(playerId_)) { error="Local player unavailable."; return false; }
+    if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+        error="Profile loading cancelled."; return false;
+    }
+    const auto owner=root_/playerId_;
+    std::error_code ec;
+    const auto status=fs::symlink_status(owner,ec);
+    if (status.type()==fs::file_type::not_found && (!ec || ec==std::errc::no_such_file_or_directory)) {
+        summary={}; return true;
+    }
+    if (ec || status.type()!=fs::file_type::directory) {
+        error="Cannot inspect player history."; return false;
+    }
+    std::vector<RunResult> records;
+    for (fs::directory_iterator it(owner,ec),end; !ec && it!=end; it.increment(ec)) {
+        if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+            error="Profile loading cancelled."; return false;
+        }
+        const auto name=it->path().filename().u8string();
+        if (!core::ValidDifficultyId(name)) continue;
+        if (!ReadDirectory(it->path(),nullptr,records,error,cancelled)) return false;
+    }
+    if (ec) { error="Cannot enumerate player history: "+ec.message(); return false; }
+    if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+        error="Profile loading cancelled."; return false;
+    }
+    summary=SummarizePlayerPerformance(playerId_,records);
+    return true;
+}
+
+std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
+                                             std::string& error,
+                                             const std::atomic<bool>* cancelled) const {
+    std::vector<RunResult> records;
+    error.clear();
+    if (!core::ValidDifficultyId(playerId_)) { error="Local player unavailable."; return records; }
+    if (key.Empty()) return records;
+    if (!ReadDirectory(Directory(key),&key,records,error,cancelled)) return {};
     std::sort(records.begin(), records.end(),
               [](const RunResult& a, const RunResult& b) {
                   if (a.completedAtMs != b.completedAtMs)

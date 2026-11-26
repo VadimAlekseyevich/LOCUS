@@ -44,8 +44,8 @@ slot. Other owners and conflicting repeated attempt IDs are excluded; identical
 projection inputs count once. No extra bonus for retries or play count.
 The short-chart confidence factor can increase with extra notes below its
 200-key saturation point; test padding sensitivity during calibration. This projection
-does not yet scan the complete on-disk history or expose a profile screen.
+is fed by a full owner-scoped background scan of committed summaries, without opening replays or requiring installed maps. Home displays a compact local PP, play count and weighted accuracy line. The scan is requested on Home, invalidated by new saves, and never publishes cancelled or incomplete snapshots. A dedicated profile screen remains planned.
 Local profile policy is not the final competitive leaderboard policy.
 
 Next: collect representative charts and real human runs, calibrate PP and
-mod eligibility, then connect the owner-scoped history reader and profile UI.
+mod eligibility, then extend the compact Home summary into a full profile screen.

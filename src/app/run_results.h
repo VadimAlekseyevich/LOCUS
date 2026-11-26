@@ -32,7 +32,15 @@ public:
                                 std::string& error,
                                 const std::atomic<bool>* cancelled = nullptr) const;
 
+    // Full owner-scoped scan. No chart catalog or replay payload access;
+    // deleted charts remain represented in the local profile.
+    bool LoadPlayerSummary(PlayerPerformanceSummary& summary,std::string& error,
+                           const std::atomic<bool>* cancelled=nullptr) const;
+
 private:
+    bool ReadDirectory(const std::filesystem::path& dir,const RunKey* key,
+                       std::vector<RunResult>& records,std::string& error,
+                       const std::atomic<bool>* cancelled) const;
     std::filesystem::path Directory(const RunKey& key) const;
     std::filesystem::path root_;
     const std::string playerId_;

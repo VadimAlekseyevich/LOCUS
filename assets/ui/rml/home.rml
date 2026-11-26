@@ -16,6 +16,7 @@
       <button id="home-settings" class="home-action" data-action="home-settings"><span class="button-label">SETTINGS</span></button>
     </div>
   </div>
+  <div id="home-profile"></div>
   <div id="home-notice"></div>
   <button id="home-exit" class="quiet" data-action="home-exit"><span class="button-label">EXIT</span></button>
 </div>

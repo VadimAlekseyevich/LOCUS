@@ -129,6 +129,14 @@ int main(int argc, char** argv) {
                 store.Load({"set-123",kEasyId},error).size()==2,
                 "separate player histories are isolated");
 
+    locus::app::PlayerPerformanceSummary summary;
+    ok &= Check(store.LoadPlayerSummary(summary,error) && summary.playCount==3 &&
+                summary.ratedDifficulties==0 &&
+                otherStore.LoadPlayerSummary(summary,error) && summary.playCount==1,
+                "profile scan spans charts without leaking other owners");
+    std::atomic<bool> cancelledProfile{true};
+    ok &= Check(!store.LoadPlayerSummary(summary,error,&cancelledProfile) &&
+                summary.playCount==1,"cancelled profile scan preserves prior snapshot");
     RunResult renamedSong = first;
     renamedSong.id.clear();
     renamedSong.songTitle = "Renamed Set";

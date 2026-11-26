@@ -129,8 +129,8 @@ void DrawMainMenu(Font font, const std::string& status,
                            theme, i == 4 ? 16.0f : 18.0f);
     }
 
-    // The approved Home composition intentionally has no stats/shortcut
-    // clutter. Actual failure notices remain accessible.
+    if (!ui.profileLabel.empty()) Label(font,ui.profileLabel,24,20,13,kViolet);
+    // Actual failure notices remain accessible.
     if (status.find("FAILED") != std::string::npos ||
         status.find("NOT SAVED") != std::string::npos ||
         status.find("UNAVAILABLE") != std::string::npos) {

@@ -34,3 +34,5 @@
 @media (max-height:460dp) {
   #home-wordmark { margin-bottom:38dp; }
 }
+
+#home-profile { position:absolute; left:20dp; top:18dp; font-size:13dp; color:#d0c7fa; }

@@ -195,7 +195,7 @@ No legal workflow is currently operational.
 | --- | --- | --- |
 | W0 | Documentation and portable rules boundary | Core-only CI; no future capability described as implemented |
 | W1 | Portable verifier + package validation boundary (verifier, structural package validation and SHA-256 content descriptor implemented; media/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
-| W2 | Local run/profile ownership and PP contract (portable attempt model, local identity and owner-scoped storage implemented; experimental PP calculator and pure profile projection implemented; full history and profile UI pending) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
+| W2 | Local run/profile ownership and PP contract (portable attempt model, local identity and owner-scoped storage implemented; experimental PP calculator and pure profile projection implemented; owner-scoped full history scan and compact Home summary implemented; detailed profile UI pending) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
 | W3 | API/data contract and private backend | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
 | W4 | Private vertical slice | Publish one authorized test map, play, submit replay, server rejudge, show leaderboard and profile through the same API; retry idempotency |
 | W5 | Catalog/download/upload workflow | Immutable revision mapping, paging, cancellation, safe install, quotas, rollback and fault recovery |

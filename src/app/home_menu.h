@@ -4,6 +4,7 @@
 #include "app/ui_motion.h"
 
 #include <array>
+#include <string>
 
 namespace locus::app {
 
@@ -33,6 +34,7 @@ struct HomeMenuUi {
     UiFocusChain focus;
     std::array<UiMotionState, kHomeMenuActionCount> motion{};
     bool active = false;
+    std::string profileLabel;
 
     void Reset() noexcept {
         focus.Clear();

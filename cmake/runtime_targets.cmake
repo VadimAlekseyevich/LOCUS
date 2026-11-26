@@ -20,6 +20,7 @@ target_link_libraries(locus_game_session PUBLIC locus_transport)
 add_library(locus_result_store STATIC
     src/app/run_results.cpp
     src/app/async_result_history.cpp
+    src/app/async_player_summary.cpp
 )
 target_link_libraries(locus_result_store PUBLIC locus_result_model
     PRIVATE nlohmann_json::nlohmann_json Threads::Threads)

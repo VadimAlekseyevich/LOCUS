@@ -1,3 +1,4 @@
+#include "app/async_player_summary.h"
 #include "app/player_profile.h"
 #include "core/route.h"
 #include "core/judgement.h"
@@ -376,6 +377,7 @@ int main(int argc, char** argv) try {
     // switching must replace both adapters at a session boundary.
     const locus::app::RunResultsStore resultsStore(userData / L"Results",localPlayer.id);
     locus::app::AsyncResultHistory historyReader(userData / L"Results",localPlayer.id);
+    locus::app::AsyncPlayerSummary playerSummary(resultsStore);
     locus::app::RunKey playedRunKey;
     std::string playedGameplayRevision;
     std::string playedSongTitle = "BUILT-IN DEMO";
@@ -408,6 +410,7 @@ int main(int argc, char** argv) try {
     };
 
     while (state.running) {
+        if (state.screen==Screen::Home) playerSummary.Update(homeUi.profileLabel);
         // Publish the worker result only from the main thread. Any import or
         // editor Save that advanced the catalog revision while scanning
         // invalidates the worker snapshot and queues a fresh scan.
@@ -548,7 +551,7 @@ int main(int argc, char** argv) try {
                 if (nativeEditorConfirmation)
                     editorChoice = nativeMenu.UpdateConfirmation(confirmation);
             } else if (state.screen == Screen::Home && nativeMenu.HomeAvailable())
-                nativeMenu.UpdateHome(input, menuStatus);
+                nativeMenu.UpdateHome(input, menuStatus, homeUi.profileLabel);
             else if (state.screen == Screen::SongSelect && nativeMenu.Available())
                 menuEvents = nativeMenu.Update(library, libraryUi, input);
             else if (state.screen == Screen::Skin && nativeMenu.SkinAvailable())
@@ -1196,6 +1199,7 @@ int main(int argc, char** argv) try {
                         libraryUi.notice = "RESULT SAVED / REPLAY NOT AVAILABLE";
                         std::cerr << libraryUi.notice << '\n';
                     }
+                    playerSummary.Invalidate();
                     displayedResult = record;
                     displayedResultBackgroundPath = playedBackgroundPath;
                     historicalResult = false;
@@ -1383,6 +1387,7 @@ int main(int argc, char** argv) try {
                     );
     }
 
+    playerSummary.CancelAndJoin();
     historyReader.CancelAndJoin(); // Both readers finish before teardown.
     libraryRefresh.CancelAndJoin(); // No worker survives application teardown.
     persistHotkeySkin(); // Flush pending adjustments on exit.

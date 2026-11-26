@@ -670,10 +670,16 @@ void NativeMenuUi::UpdateSettings(GameSettings& settings, SettingsUi& ui,
     settingsPresenter_.EndFrame();
 }
 
-void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status) {
+void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status,
+                              const std::string& profileLabel) {
     if (!HomeAvailable()) return;
     Activate(Page::Home);
     pendingHomeAction_ = -1;
+    if (profileLabel!=lastProfileLabel_) {
+        if (auto* element=homeDocument_->GetElementById("home-profile"))
+            UpdateRmlText(element,profileLabel);
+        lastProfileLabel_=profileLabel;
+    }
     const bool failed = status.find("FAILED") != std::string::npos ||
         status.find("UNAVAILABLE") != std::string::npos ||
         status.find("NOT SAVED") != std::string::npos;
