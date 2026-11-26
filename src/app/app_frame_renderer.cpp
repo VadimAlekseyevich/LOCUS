@@ -219,7 +219,7 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
     if (background && background->Ready() &&
         (state.screen == Screen::Play || state.screen == Screen::Results ||
          state.screen == Screen::SongSelect || state.screen == Screen::Editor)) {
-        const unsigned char veil = state.screen == Screen::Play ? 160
+        const unsigned char veil = state.screen == Screen::Play ? static_cast<unsigned char>(std::lround(settings.backgroundDim*255.0/100.0))
             : state.screen == Screen::SongSelect ? 132
             : state.screen == Screen::Editor ? 202 : 190;
         background->DrawCover(GetScreenWidth(), GetScreenHeight(), veil);

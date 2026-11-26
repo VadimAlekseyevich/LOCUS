@@ -108,6 +108,7 @@ void NativeSettingsUi::Sync() {
         if (auto* elem = document_->GetElementById(id))
             elem->SetClass("selected", ui_->bindingGroup == group);
     }
+    SetText("value-background-dim",std::to_string(settings_->backgroundDim)+"%");
     SetText("value-vsync", settings_->vsync ? "ON" : "OFF");
     SetText("value-fps", settings_->FpsLimitLabel());
     SetText("value-show-fps", settings_->showFps ? "ON" : "OFF");
@@ -207,6 +208,9 @@ void NativeSettingsUi::ProcessEvent(Rml::Event& event) {
         settings_->fullscreen = !settings_->fullscreen;
         events_->toggleFullscreen = true;
         events_->saveSettings = true;
+    } else if (action == "dim-minus" || action == "dim-plus") {
+        settings_->StepBackgroundDim(action=="dim-plus" ? 1 : -1);
+        events_->saveSettings=true;
     } else if (action == "volume-minus" || action == "volume-plus") {
         const int current = static_cast<int>(
             std::lround(settings_->volume * 10.0f));

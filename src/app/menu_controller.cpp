@@ -444,6 +444,9 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             } else if (hit(SettingsShowFpsButton())) {
                 settings.showFps = !settings.showFps;
                 events.saveSettings = true;
+            } else if (hit(SettingsDimMinus()) || hit(SettingsDimPlus())) {
+                settings.StepBackgroundDim(hit(SettingsDimPlus()) ? 1 : -1);
+                events.saveSettings=true;
             } else if (hit(SettingsFullscreenButton())) {
                 settings.fullscreen = !settings.fullscreen;
                 events.toggleFullscreen = true;

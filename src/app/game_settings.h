@@ -70,6 +70,8 @@ struct GameSettings {
     int globalOffsetMs = 0;
     static constexpr int kGlobalOffsetLimitMs = 1000;
     float volume = 0.7f;
+    int backgroundDim = 65; // PLAY/TEST/replay artwork darkening, percent
+    void StepBackgroundDim(int direction) noexcept;
     bool hitFlash = true;
     bool fullscreen = false;
     bool vsync = true;        // Prevent screen tearing; can be overridden by driver.

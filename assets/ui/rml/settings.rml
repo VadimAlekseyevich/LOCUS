@@ -16,6 +16,7 @@
         <div class="settings-row"><span>Vertical sync</span><button id="value-vsync" data-action="vsync"><span class="button-label">ON</span></button></div>
         <div class="settings-row"><span>Frame rate limit</span><div class="settings-step"><button data-action="fps-minus"><span class="button-label">-</span></button><strong id="value-fps">240</strong><button data-action="fps-plus"><span class="button-label">+</span></button></div></div>
         <div class="settings-row"><span>Show FPS counter</span><button id="value-show-fps" data-action="show-fps"><span class="button-label">OFF</span></button></div>
+        <div class="settings-row"><span>Background dim</span><div class="settings-step"><button data-action="dim-minus"><span class="button-label">-</span></button><strong id="value-background-dim">65%</strong><button data-action="dim-plus"><span class="button-label">+</span></button></div></div>
         <div class="settings-row"><span>Fullscreen</span><button id="value-fullscreen" data-action="fullscreen"><span class="button-label">OFF</span></button></div>
       </div>
       <div id="settings-audio" class="settings-fields" style="display:none;">

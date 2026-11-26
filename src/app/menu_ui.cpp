@@ -90,7 +90,9 @@ Rectangle SettingsVsyncButton() { return {297, 211, 100, 36}; }
 Rectangle SettingsFpsMinus() { return {301, 286, 43, 35}; }
 Rectangle SettingsFpsPlus() { return {354, 286, 43, 35}; }
 Rectangle SettingsShowFpsButton() { return {297, 355, 100, 36}; }
-Rectangle SettingsFullscreenButton() { return {297, 421, 100, 36}; }
+Rectangle SettingsFullscreenButton() { return {297, 410, 100, 30}; }
+Rectangle SettingsDimMinus() { return {301, 451, 43, 30}; }
+Rectangle SettingsDimPlus() { return {354, 451, 43, 30}; }
 Rectangle MenuBackButton() { return {794, 78, 110, 37}; }
 
 void DrawMainMenu(Font font, const std::string& status,
@@ -362,9 +364,13 @@ void DrawSettingsMenu(Font font, const GameSettings& settings,
                settings.showFps ? "ON" : "OFF", kGold, settings.showFps);
         DrawLine(72, 405, 441, 405, edge);
 
-        Label(font, "FULLSCREEN (F11)", 73, 428, 16, kMuted);
+        Label(font, "FULLSCREEN (F11)", 73, 418, 16, kMuted);
         Button(font, SettingsFullscreenButton(),
                settings.fullscreen ? "ON" : "OFF", kMuted, settings.fullscreen);
+        Label(font,"BACKGROUND DIM",73,448,13,kMuted);
+        Label(font,TextFormat("%d%%",settings.backgroundDim),85,465,16,kText);
+        Button(font,SettingsDimMinus(),"-",kViolet);
+        Button(font,SettingsDimPlus(),"+",kViolet);
     }
 
     Label(font, "KEY BINDINGS", 508, 156, 17, kMint);

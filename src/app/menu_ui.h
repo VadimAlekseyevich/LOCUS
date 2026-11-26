@@ -67,6 +67,8 @@ Rectangle SettingsVolumeMinus();
 Rectangle SettingsVolumePlus();
 Rectangle SettingsFlashButton();
 Rectangle SettingsFullscreenButton();
+Rectangle SettingsDimMinus();
+Rectangle SettingsDimPlus();
 Rectangle MenuBackButton();
 
 void DrawMainMenu(Font font, const std::string& status,

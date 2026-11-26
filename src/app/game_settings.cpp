@@ -170,7 +170,15 @@ bool GameSettings::StepEditorPreviewLength(int direction) noexcept {
     return true;
 }
 
+void GameSettings::StepBackgroundDim(int direction) noexcept {
+    backgroundDim=std::clamp(backgroundDim+(direction>0 ? 5 : direction<0 ? -5 : 0),0,100);
+}
+
 bool GameSettings::Valid(std::string& error) const {
+    if (backgroundDim<0 || backgroundDim>100) {
+        error="Background dim must be between 0 and 100 percent.";
+        return false;
+    }
     if (globalOffsetMs < -kGlobalOffsetLimitMs ||
         globalOffsetMs > kGlobalOffsetLimitMs) {
         error = "Global audio offset must be between -1000 and +1000 ms.";
@@ -273,6 +281,7 @@ std::string SerializeGameSettings(const GameSettings& settings) {
         {"version", 3},
         {"globalOffsetMs", settings.globalOffsetMs},
         {"volume", settings.volume},
+        {"backgroundDim", settings.backgroundDim},
         {"hitFlash", settings.hitFlash},
         {"fullscreen", settings.fullscreen},
         {"vsync", settings.vsync},
@@ -314,6 +323,13 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             parsed.globalOffsetMs = object["globalOffsetMs"].get<int>();
         }
         parsed.volume = object["volume"].get<float>();
+        if (object.contains("backgroundDim")) {
+            if (!object["backgroundDim"].is_number_integer()) {
+                error="Background dim must be an integer percentage.";
+                return false;
+            }
+            parsed.backgroundDim=object["backgroundDim"].get<int>();
+        }
         parsed.hitFlash = object["hitFlash"].get<bool>();
         parsed.fullscreen = object["fullscreen"].get<bool>();
         for (const char* key : {"vsync", "fpsLimit", "showFps"}) {

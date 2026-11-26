@@ -72,7 +72,7 @@ Song Setup provides NEW, DUPLICATE, IMPORT, EXPORT, DELETE CHART, DELETE SET, RE
 
 ## Settings and skins
 
-SETTINGS has DISPLAY (VSync, FPS limit/counter, fullscreen), AUDIO / OFFSET (volume, offset/calibration) and PLAY/MENUS/EDITOR binding groups. Defaults: VSync on, 240 FPS cap, counter off, master volume 70%, offset 0. F11 toggles borderless fullscreen.
+SETTINGS has DISPLAY (VSync, FPS limit/counter, fullscreen, background dim 0–100%), AUDIO / OFFSET (volume, offset/calibration) and PLAY/MENUS/EDITOR binding groups. Defaults: VSync on, 240 FPS cap, counter off, master volume 70%, offset 0. F11 toggles borderless fullscreen.
 
 Global offset is an integer from −1000 to +1000 ms. Positive means audio is heard later than the raw clock; correction is subtracted from scored and visual song time, scaled by practice rate. CALIBRATE plays 100-BPM clicks: tap any bound gameplay key on each beat for 18 accepted taps, then APPLY, RETRY or CANCEL. This estimates audio delay plus tap bias, not hardware latency alone.
 
@@ -149,3 +149,5 @@ When the service launches, its published Terms of Service and copyright policy s
 The Windows CI checks compilation, chart/editor behavior and scoring without a GUI. Physical audio latency and desktop appearance still require real-device testing.
 
 **Optional timing feedback:** SKIN → PLAYER → HIT ERROR BAR shows early/late successful physical arrow hits on a small bottom-center timing scale (original song-time windows). The newest marks fade after 1.25 seconds of real time, with at most 64 retained marks and no per-hit allocations. SKINS preview uses the same renderer; the bar is disabled by default, hidden with SHOW HUD, and older skin v2 files without `hud.hitErrorBar` default to off. PLAYER controls length (40–480 logical pixels); COLORS controls a single RGBA color. Only `hud.hitErrorLength` and `colors.hitErrorColor` are stored in addition to the visibility toggle.
+
+Background dim is a global DISPLAY preference (default 65%), applied to PLAY, TEST and replay artwork behind the gameplay layer. Menu artwork is unchanged.
