@@ -10,6 +10,7 @@
 #include <utility>
 
 namespace locus::app {
+namespace fs = std::filesystem;
 namespace {
 bool SafeAudioFilename(const std::string& name) {
     if (name.empty() || name == "." || name == ".." || name.size() > 255 ||

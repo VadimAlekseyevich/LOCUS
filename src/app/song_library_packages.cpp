@@ -69,7 +69,8 @@ bool SongLibrary::ExportPackage(const fs::path& setFolder,
             error=file.filename().u8string()+": "+error;
             return false;
         }
-        if (!fs::equivalent(fs::path(audio),sharedAudio,ec) || ec) {
+        if (parsed.audioPath!=published.audioFile ||
+            !fs::equivalent(fs::path(audio),sharedAudio,ec) || ec) {
             error=file.filename().u8string()+": difficulty uses different audio.";
             return false;
         }
