@@ -64,6 +64,14 @@ inline bool TestFontAvailable() {
             Rml::LoadFontFace(bold.u8string(), "Locus",
                 Rml::Style::FontStyle::Normal,
                 Rml::Style::FontWeight::Bold);
+#ifdef _WIN32
+        const char* symbols="C:/Windows/Fonts/seguisym.ttf";
+#else
+        const char* symbols="/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
+#endif
+        if (!std::filesystem::exists(symbols)) symbols=path;
+        Rml::LoadFontFace(symbols,"LocusIcons",Rml::Style::FontStyle::Normal,
+                          Rml::Style::FontWeight::Normal,true);
         return true;
     }
     return false;

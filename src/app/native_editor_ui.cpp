@@ -7,6 +7,7 @@
 #include "app/game_settings.h"
 #include "app/rml_ui_text.h"
 #include "app/rml_modal_focus.h"
+#include "app/rml_glyph_alignment.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -50,6 +51,9 @@ bool ParseSongTime(const std::string& raw,long long& result) noexcept {
 void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     document_ = document;
     textCache_.clear();
+    iconLabels_.clear();
+    glyphAlignment_.clear();
+    if (document_) document_->GetElementsByClassName(iconLabels_,"editor-icon-label");
     activeSetId_.clear();
     setList_={};
     compareList_={};
@@ -87,7 +91,8 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     // Song Setup shows the selected name; authoring panes show chart names.
     // No global screen header is needed.
     (void)dirty;
-    SetText("editor-play-label", running ? "Ⅱ" : "▶");
+    SetText("editor-play-label", running ? u8"\u2016" : u8"\u25BA");
+    for (auto* label:iconLabels_) AlignRmlGlyph(*label,glyphAlignment_[label]);
     SetText("editor-waveform-label",ui.waveformVisible?"WAVE ON":"WAVE OFF");
     if (auto* wave=document_->GetElementById("editor-waveform"))
         wave->SetClass("selected",ui.waveformVisible);

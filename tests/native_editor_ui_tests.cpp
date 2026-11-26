@@ -123,6 +123,17 @@ bool TestNativeEditorVirtualLists() {
         } else ok &= Check(false,"song time is editable input");
         ui.tab=EditorTab::Route;
         sync();
+        auto* playLabel=document->GetElementById("editor-play-label");
+        auto* metronome=document->GetElementById("editor-metronome");
+        ok &= Check(playLabel && playLabel->GetInnerRML()==u8"\u25BA" &&
+                    metronome && metronome->GetChild(0) &&
+                    metronome->GetChild(0)->GetInnerRML()==u8"\u2669",
+                    "transport uses text symbols rather than image assets");
+        presenter.Sync(ui,"Draft",false,1,true,0,nullptr,nullptr,&view);
+        context->Update();
+        ok &= Check(playLabel && playLabel->GetInnerRML()==u8"\u2016",
+                    "running transport uses supported pause glyph");
+        sync();
         auto* wave=document->GetElementById("editor-waveform");
         auto* waveLabel=document->GetElementById("editor-waveform-label");
         ok &= Check(wave && waveLabel && wave->IsClassSet("selected") &&

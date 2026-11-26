@@ -44,7 +44,8 @@
 #editor-route-pad .button-label { font-size:25dp; }
 #editor-route-tools .button-label { font-size:24dp; }
 .editor-icon-label { font-family:LocusIcons; font-weight:normal;
-  color:#a2d8ee; }
+  color:#a2d8ee; height:1.5em; line-height:1.5; margin:-0.75em 0 0;
+  overflow:visible; pointer-events:none; }
 .editor-pad-count { position:absolute; right:5dp; bottom:5dp;
   line-height:1; font-size:10dp; color:#c9bbfa; }
 #editor-route-pad button.selected { background-color:#585281; border-color:#b5a4f3; }
@@ -147,4 +148,3 @@
 
 @media (max-width:740dp) { #editor-waveform { font-size:10dp; } }
 
-.editor-metronome-icon { display:block; position:absolute; width:24dp; height:24dp; left:50%; top:50%; margin:-12dp 0 0 -12dp; pointer-events:none; }

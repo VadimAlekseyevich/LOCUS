@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/virtual_list.h"
+#include "app/rml_glyph_alignment.h"
 #include <string>
 #include <unordered_map>
 
@@ -33,6 +34,8 @@ private:
     EditorUiState* ui_ = nullptr;
     FrameInput* input_ = nullptr;
     std::unordered_map<std::string, std::string> textCache_;
+    Rml::ElementList iconLabels_;
+    std::unordered_map<Rml::Element*,RmlGlyphAlignment> glyphAlignment_;
     int lastRatePercent_ = 100;
     long long lastSongTimeMs_ = 0;
     std::string focusedInitialValue_;

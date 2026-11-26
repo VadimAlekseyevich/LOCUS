@@ -120,7 +120,7 @@ bool LoadUiFontFace() {
     const char* symbolFonts[] = {
 #ifdef _WIN32
         "C:/Windows/Fonts/seguisym.ttf",
-        "C:/Windows/Fonts/seguiemj.ttf",
+        "C:/Windows/Fonts/segoeui.ttf",
 #else
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
@@ -130,7 +130,7 @@ bool LoadUiFontFace() {
     for (const char* path : symbolFonts) {
         if (fs::exists(fs::u8path(path)) &&
             Rml::LoadFontFace(path, "LocusIcons",
-                Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal)) {
+                Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal, true)) {
             iconFontLoaded = true;
             break;
         }
