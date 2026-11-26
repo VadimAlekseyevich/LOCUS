@@ -121,15 +121,19 @@ std::optional<double> RunPerformance(const RunResult& r) noexcept {
     return core::CalculatePerformance(*r.performanceDifficulty,r.grades,percent,r.modFlags);
 }
 
-PlayerPerformanceSummary SummarizePlayerPerformance(
+PlayerProfileSnapshot ProjectPlayerProfile(
     const std::string& playerId,const std::vector<RunResult>& results) {
-    PlayerPerformanceSummary summary;
-    if (!core::ValidDifficultyId(playerId)) return summary;
+    PlayerProfileSnapshot snapshot;
+    auto& summary=snapshot.summary;
+    if (!core::ValidDifficultyId(playerId)) return snapshot;
     // Equal projection inputs with the same attempt ID count once.
     // Conflicting duplicates cannot make aggregation order-dependent.
     const auto sameProjection=[](const RunResult& a,const RunResult& b) {
         return a.songSetId==b.songSetId && a.difficultyId==b.difficultyId &&
             a.gameplayRevision==b.gameplayRevision && a.notesJudged==b.notesJudged &&
+            a.songTitle==b.songTitle && a.chartTitle==b.chartTitle &&
+            a.completedAtMs==b.completedAtMs && a.practiceRate==b.practiceRate &&
+            a.modFlags==b.modFlags && a.modSeed==b.modSeed &&
             a.grades.perfect==b.grades.perfect && a.grades.good==b.grades.good &&
             a.grades.bad==b.grades.bad && a.grades.miss==b.grades.miss &&
             RunPerformance(a)==RunPerformance(b);
@@ -141,7 +145,16 @@ PlayerPerformanceSummary SummarizePlayerPerformance(
         if (!inserted.second && inserted.first->second &&
             !sameProjection(*inserted.first->second,r)) inserted.first->second=nullptr;
     }
-    std::map<std::pair<std::string,std::string>,double> best;
+    struct Candidate { const RunResult* run=nullptr; double pp=0.0; };
+    const auto better=[](const Candidate& a,const Candidate& b) {
+        if (a.pp!=b.pp) return a.pp>b.pp;
+        const auto aa=a.run->grades.AccuracyPercent(), ba=b.run->grades.AccuracyPercent();
+        if (aa!=ba) return aa>ba;
+        if (a.run->completedAtMs!=b.run->completedAtMs)
+            return a.run->completedAtMs>b.run->completedAtMs;
+        return a.run->id<b.run->id;
+    };
+    std::map<std::pair<std::string,std::string>,Candidate> best;
     double accuracySum=0.0,keys=0.0;
     for (const auto& entry : unique) {
         if (!entry.second) continue;
@@ -151,21 +164,30 @@ PlayerPerformanceSummary SummarizePlayerPerformance(
         accuracySum+=r.grades.AccuracyPercent()*r.notesJudged;
         if (const auto pp=RunPerformance(r)) {
             auto& value=best[{r.songSetId,r.difficultyId}];
-            value=std::max(value,*pp);
+            const Candidate candidate{&r,*pp};
+            if (!value.run || better(candidate,value)) value=candidate;
         }
     }
     if (keys>0.0) summary.weightedAccuracy=accuracySum/keys;
-    std::vector<double> values;
+    std::vector<Candidate> values;
     values.reserve(best.size());
     for (const auto& entry : best) values.push_back(entry.second);
-    std::sort(values.begin(),values.end(),std::greater<double>{});
+    std::sort(values.begin(),values.end(),better);
     summary.ratedDifficulties=values.size();
+    snapshot.bestScores.reserve(values.size());
     double weight=1.0;
-    for (double pp : values) {
-        summary.totalPp+=weight*pp;
+    for (const auto& value : values) {
+        const double weighted=weight*value.pp;
+        summary.totalPp+=weighted;
+        snapshot.bestScores.push_back({*value.run,value.pp,weighted});
         weight*=0.95;
     }
-    return summary;
+    return snapshot;
+}
+
+PlayerPerformanceSummary SummarizePlayerPerformance(
+    const std::string& playerId,const std::vector<RunResult>& results) {
+    return ProjectPlayerProfile(playerId,results).summary;
 }
 
 bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,

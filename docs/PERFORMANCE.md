@@ -44,8 +44,8 @@ slot. Other owners and conflicting repeated attempt IDs are excluded; identical
 projection inputs count once. No extra bonus for retries or play count.
 The short-chart confidence factor can increase with extra notes below its
 200-key saturation point; test padding sensitivity during calibration. This projection
-is fed by a full owner-scoped background scan of committed summaries, without opening replays or requiring installed maps. Home displays a compact local PP, play count and weighted accuracy line. The scan is requested on Home, invalidated by new saves, and never publishes cancelled or incomplete snapshots. A dedicated profile screen remains planned.
+is fed by a full owner-scoped background scan of committed summaries, without opening replays or requiring installed maps. Home displays a compact local PP, play count and weighted accuracy line. The scan is requested on Home, invalidated by new saves, and never publishes cancelled or incomplete snapshots. Click the Home profile line to open the paginated local best scores view; Escape returns Home. Each difficulty has one best result with accuracy, mods and PP. A typed snapshot carries the weighted contribution separately from raw PP.
 Local profile policy is not the final competitive leaderboard policy.
 
 Next: collect representative charts and real human runs, calibrate PP and
-mod eligibility, then extend the compact Home summary into a full profile screen.
+mod eligibility, then define server-owned ranking eligibility and the profile API.

@@ -2,6 +2,7 @@
 
 #include "app/ui_focus.h"
 #include "app/ui_motion.h"
+#include "app/player_profile_view.h"
 
 #include <array>
 #include <string>
@@ -10,11 +11,16 @@ namespace locus::app {
 
 // Approved Home reference: four centered actions and a quiet Exit.
 // Every rectangle is in the shared virtual 960x540 UI canvas.
-constexpr int kHomeMenuActionCount = 5;
+constexpr int kHomeMenuActionCount = 6;
 inline Rectangle HomeMenuButton(int index) noexcept {
+    if (index == 5) return {24.0f, 18.0f, 530.0f, 32.0f};
     if (index == 4) return {784.0f, 458.0f, 122.0f, 46.0f};
     if (index < 0 || index >= 4) return {};
     return {77.0f + 204.0f * index, 324.0f, 192.0f, 80.0f};
+}
+
+inline Rectangle ProfilePageButton(bool next) noexcept {
+    return {next?802.0f:54.0f,478.0f,104.0f,34.0f};
 }
 
 // Input is sampled by the menu controller, never from the renderer. Nothing
@@ -34,7 +40,7 @@ struct HomeMenuUi {
     UiFocusChain focus;
     std::array<UiMotionState, kHomeMenuActionCount> motion{};
     bool active = false;
-    std::string profileLabel;
+    PlayerProfileView profile;
 
     void Reset() noexcept {
         focus.Clear();

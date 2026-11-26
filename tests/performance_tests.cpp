@@ -57,6 +57,13 @@ int main() {
         std::abs(summary.totalPp-*perfect*1.95)<1e-8 &&
         std::abs(summary.weightedAccuracy-(200.0+good.AccuracyPercent())/3.0)<1e-8,
         "one best result per difficulty; foreign owners excluded");
+    const auto profile=app::ProjectPlayerProfile(run.playerId,{third,second,run,foreign});
+    ok &= Check(profile.bestScores.size()==2 &&
+        profile.bestScores[0].result.id==run.id &&
+        profile.bestScores[1].result.id==third.id &&
+        std::abs(profile.bestScores[1].weightedPp-*perfect*0.95)<1e-8 &&
+        profile.summary.totalPp==summary.totalPp,
+        "profile rows match weighted totals with deterministic tie order");
     const auto duplicated=app::SummarizePlayerPerformance(run.playerId,{run,second,third,run});
     ok &= Check(duplicated.playCount==3 && duplicated.totalPp==summary.totalPp,
         "identical repeated attempt counted once");

@@ -1,11 +1,12 @@
 #pragma once
 #include "app/run_results.h"
+#include "app/player_profile_view.h"
 #include <chrono>
 #include <future>
 #include <memory>
 
 namespace locus::app {
-// One coalesced off-thread projection, requested only on Home. A save
+// One coalesced off-thread projection, requested on Home or Profile. A save
 // invalidates an in-flight snapshot; no stale result can be published.
 class AsyncPlayerSummary {
 public:
@@ -16,10 +17,10 @@ public:
         if (cancel_) cancel_->store(true,std::memory_order_relaxed);
     }
     // True only when the display state changes. No filesystem I/O here.
-    bool Update(std::string& label);
+    bool Update(PlayerProfileView& view);
     void CancelAndJoin() noexcept;
 private:
-    struct Outcome { PlayerPerformanceSummary summary; std::string error; bool success=false; };
+    struct Outcome { PlayerProfileSnapshot snapshot; std::string error; bool success=false; };
     RunResultsStore store_;
     bool dirty_=true;
     std::future<Outcome> worker_;

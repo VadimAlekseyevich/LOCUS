@@ -11,6 +11,8 @@ set(LOCUS_REQUIRED_UI_ASSETS
     rml/home.rml
     rml/play.rcss
     rml/play.rml
+    rml/profile.rml
+    rml/profile.rcss
     rml/results.rcss
     rml/results.rml
     rml/settings.rcss

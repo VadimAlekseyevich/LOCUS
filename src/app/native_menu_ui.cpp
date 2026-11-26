@@ -184,6 +184,12 @@ bool NativeMenuUi::Initialize() {
     } else {
         std::cerr << "Could not load HOME RmlUi; using legacy HOME UI.\n";
     }
+    profileDocument_=context_->LoadDocument(
+        (file.parent_path()/"profile.rml").generic_u8string());
+    if (profileDocument_) {
+        profileDocument_->AddEventListener("click",this);
+        profileDocument_->Hide();
+    }
     settingsDocument_ = context_->LoadDocument(
         (file.parent_path() / "settings.rml").generic_u8string());
     if (settingsDocument_) {
@@ -263,6 +269,8 @@ void NativeMenuUi::Shutdown() {
             document_->RemoveEventListener("change", this);
         }
         if (homeDocument_) homeDocument_->RemoveEventListener("click", this);
+        if (profileDocument_) profileDocument_->RemoveEventListener("click",this);
+        profileDocument_=nullptr;
         if (settingsDocument_)
             settingsDocument_->RemoveEventListener("click", this);
         settingsPresenter_.Attach(nullptr);
@@ -310,6 +318,7 @@ void NativeMenuUi::Activate(Page page) {
     }
     if (document_) document_->Hide();
     if (homeDocument_) homeDocument_->Hide();
+    if (profileDocument_) profileDocument_->Hide();
     if (settingsDocument_) settingsDocument_->Hide();
     if (editorDocument_) editorDocument_->Hide();
     if (resultsDocument_) resultsDocument_->Hide();
@@ -320,6 +329,9 @@ void NativeMenuUi::Activate(Page page) {
         lastHomeNotice_.clear();
         if (auto* notice = homeDocument_->GetElementById("home-notice"))
             notice->SetInnerRML("");
+    } else if (page == Page::Profile && profileDocument_) {
+        profileDocument_->Show();
+        profileRevision_=~std::uint64_t(0);
     } else if (page == Page::Play && document_) {
         document_->Show();
         playPresenter_.Attach(document_);
@@ -339,6 +351,8 @@ void NativeMenuUi::Activate(Page page) {
     }
     ::SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
+
+bool NativeMenuUi::ShowingProfile() const noexcept { return visiblePage_==Page::Profile; }
 
 bool NativeMenuUi::ShowingHome() const noexcept {
     return visiblePage_ == Page::Home;
@@ -409,6 +423,16 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
         else if (action == "home-skins") pendingHomeAction_ = 2;
         else if (action == "home-settings") pendingHomeAction_ = 3;
         else if (action == "home-exit") pendingHomeAction_ = 4;
+        else if (action == "home-profile") pendingHomeAction_=5;
+        return;
+    }
+    if (visiblePage_ == Page::Profile) {
+        if (event.GetType()!="click") return;
+        while (target && !target->HasAttribute("data-action")) target=target->GetParentNode();
+        if (!target) return;
+        const auto action=target->GetAttribute<Rml::String>("data-action","");
+        if (action=="profile-prev") profilePageDelta_=-1;
+        else if (action=="profile-next") profilePageDelta_=1;
         return;
     }
     if (visiblePage_ == Page::Settings) {
@@ -676,7 +700,7 @@ void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status,
     Activate(Page::Home);
     pendingHomeAction_ = -1;
     if (profileLabel!=lastProfileLabel_) {
-        if (auto* element=homeDocument_->GetElementById("home-profile"))
+        if (auto* element=homeDocument_->GetElementById("home-profile-label"))
             UpdateRmlText(element,profileLabel);
         lastProfileLabel_=profileLabel;
     }
@@ -705,6 +729,7 @@ void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status,
         case 2: input.requestedScreen = Screen::Skin; break;
         case 3: input.requestedScreen = Screen::Settings; break;
         case 4: input.closeRequested = true; break;
+        case 5: input.requestedScreen=Screen::Profile; break;
         default: break;
     }
     // Enter on a focused button cannot double-trigger the Home PLAY shortcut.
@@ -712,6 +737,56 @@ void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status,
     if (pendingHomeAction_ >= 0 ||
         (focus && focus->GetTagName() == "button"))
         input.startPressed = false;
+    context_->Update();
+}
+
+void NativeMenuUi::UpdateProfile(FrameInput& input,PlayerProfileView& view) {
+    if (!ProfileAvailable()) return;
+    Activate(Page::Profile);
+    profilePageDelta_=0;
+    PumpInput();
+    if (auto* focus=context_->GetFocusElement();
+        focus && focus->GetTagName()=="button" &&
+        (IsKeyPressed(KEY_ENTER)||IsKeyPressed(KEY_KP_ENTER))) focus->Click();
+    const int keys=static_cast<int>(IsKeyPressed(KEY_RIGHT))-static_cast<int>(IsKeyPressed(KEY_LEFT));
+    view.StepPage(profilePageDelta_?profilePageDelta_:keys);
+    input.startPressed=false;
+    if (profileRevision_!=view.revision || profilePage_!=view.page) {
+        const auto set=[&](const std::string& id,const std::string& value) {
+            if (auto* e=profileDocument_->GetElementById(id)) UpdateRmlText(e,value);
+        };
+        const auto show=[&](const std::string& id,bool visible) {
+            if (auto* e=profileDocument_->GetElementById(id)) e->SetProperty("display",visible?"flex":"none");
+        };
+        const bool ready=view.state==ProfileLoadState::Ready;
+        set("profile-summary",view.label);
+        set("profile-count",ready?"BEST SCORES / "+std::to_string(view.snapshot.summary.ratedDifficulties):"BEST SCORES");
+        set("profile-empty",ready && view.snapshot.bestScores.empty()?"No rated scores yet.":"");
+        for (std::size_t i=0;i<PlayerProfileView::kRows;++i) {
+            const auto suffix=std::to_string(i);
+            const auto index=view.page*PlayerProfileView::kRows+i;
+            const bool visible=ready && index<view.snapshot.bestScores.size();
+            show("profile-row-"+suffix,visible);
+            if (!visible) continue;
+            const auto& item=view.snapshot.bestScores[index];
+            set("profile-rank-"+suffix,std::to_string(index+1));
+            set("profile-title-"+suffix,item.result.songTitle+" / "+item.result.chartTitle);
+            set("profile-mods-"+suffix,FormatRunMods(item.result));
+            set("profile-acc-"+suffix,TextFormat("%.2f%%",item.result.grades.AccuracyPercent()));
+            set("profile-pp-"+suffix,TextFormat("%.1f PP",item.pp));
+        }
+        set("profile-page",ready?std::to_string(view.page+1)+" / "+std::to_string(view.PageCount()):"");
+        const auto disable=[&](const char* id,bool disabled) {
+            if (auto* e=profileDocument_->GetElementById(id)) {
+                if (disabled) e->SetAttribute("disabled",true);
+                else e->RemoveAttribute("disabled");
+            }
+        };
+        disable("profile-prev",!ready || view.page==0);
+        disable("profile-next",!ready || view.page+1>=view.PageCount());
+        profileRevision_=view.revision;
+        profilePage_=view.page;
+    }
     context_->Update();
 }
 

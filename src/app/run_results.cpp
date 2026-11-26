@@ -385,7 +385,7 @@ bool RunResultsStore::ReadDirectory(const fs::path& dir,const RunKey* key,
     return true;
 }
 
-bool RunResultsStore::LoadPlayerSummary(PlayerPerformanceSummary& summary,std::string& error,
+bool RunResultsStore::LoadPlayerProfile(PlayerProfileSnapshot& snapshot,std::string& error,
                                          const std::atomic<bool>* cancelled) const {
     error.clear();
     if (!core::ValidDifficultyId(playerId_)) { error="Local player unavailable."; return false; }
@@ -396,7 +396,7 @@ bool RunResultsStore::LoadPlayerSummary(PlayerPerformanceSummary& summary,std::s
     std::error_code ec;
     const auto status=fs::symlink_status(owner,ec);
     if (status.type()==fs::file_type::not_found && (!ec || ec==std::errc::no_such_file_or_directory)) {
-        summary={}; return true;
+        snapshot={}; return true;
     }
     if (ec || status.type()!=fs::file_type::directory) {
         error="Cannot inspect player history."; return false;
@@ -414,7 +414,19 @@ bool RunResultsStore::LoadPlayerSummary(PlayerPerformanceSummary& summary,std::s
     if (cancelled && cancelled->load(std::memory_order_relaxed)) {
         error="Profile loading cancelled."; return false;
     }
-    summary=SummarizePlayerPerformance(playerId_,records);
+    auto projected=ProjectPlayerProfile(playerId_,records);
+    if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+        error="Profile loading cancelled."; return false;
+    }
+    snapshot=std::move(projected);
+    return true;
+}
+
+bool RunResultsStore::LoadPlayerSummary(PlayerPerformanceSummary& summary,std::string& error,
+                                         const std::atomic<bool>* cancelled) const {
+    PlayerProfileSnapshot snapshot;
+    if (!LoadPlayerProfile(snapshot,error,cancelled)) return false;
+    summary=snapshot.summary;
     return true;
 }
 

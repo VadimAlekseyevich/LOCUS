@@ -35,4 +35,4 @@
   #home-wordmark { margin-bottom:38dp; }
 }
 
-#home-profile { position:absolute; left:20dp; top:18dp; font-size:13dp; color:#d0c7fa; }
+#home-profile { position:absolute; left:20dp; top:18dp; width:55%; max-width:480dp; height:32dp; font-size:13dp; color:#d0c7fa; }

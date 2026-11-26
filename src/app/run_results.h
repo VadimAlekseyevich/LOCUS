@@ -34,6 +34,8 @@ public:
 
     // Full owner-scoped scan. No chart catalog or replay payload access;
     // deleted charts remain represented in the local profile.
+    bool LoadPlayerProfile(PlayerProfileSnapshot& snapshot,std::string& error,
+                           const std::atomic<bool>* cancelled=nullptr) const;
     bool LoadPlayerSummary(PlayerPerformanceSummary& summary,std::string& error,
                            const std::atomic<bool>* cancelled=nullptr) const;
 

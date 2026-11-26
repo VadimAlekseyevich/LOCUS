@@ -248,6 +248,12 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
             !nativeMenu->ShowingHome() || (state.quitConfirmation && !nativeConfirmation))
 #endif
             DrawHomeScreen(font, menuStatus, homeUi, homeBrand, now);
+    } else if (state.screen == Screen::Profile) {
+#ifdef LOCUS_WITH_RMLUI
+        if (!nativeMenu || !nativeMenu->ProfileAvailable() ||
+            !nativeMenu->ShowingProfile() || (state.quitConfirmation && !nativeConfirmation))
+#endif
+            DrawPlayerProfile(font,homeUi.profile);
     } else if (state.screen == Screen::SongSelect) {
 #ifdef LOCUS_WITH_RMLUI
         if (!nativeMenu || !nativeMenu->Available() ||
@@ -499,6 +505,8 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
           nativeMenu->ShowingPlay()) ||
          (state.screen == Screen::Home && nativeMenu->HomeAvailable() &&
           nativeMenu->ShowingHome()) ||
+         (state.screen == Screen::Profile && nativeMenu->ProfileAvailable() &&
+          nativeMenu->ShowingProfile()) ||
          (state.screen == Screen::Skin && nativeMenu->SkinAvailable() &&
           nativeMenu->ShowingSkin()) ||
          (state.screen == Screen::Results && nativeMenu->ResultsAvailable() &&

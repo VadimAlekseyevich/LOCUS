@@ -1,0 +1,19 @@
+<rml>
+<head><title>LOCUS / PROFILE</title><link type="text/rcss" href="common.rcss" /><link type="text/rcss" href="profile.rcss" /></head>
+<body><div id="profile">
+  <div class="eyebrow">LOCAL PROFILE</div>
+  <div id="profile-summary">LOADING LOCAL PROFILE</div>
+  <div id="profile-count" class="eyebrow">BEST SCORES</div>
+  <div id="profile-scores" class="panel">
+  <div id="profile-empty" class="empty"></div>
+  <div class="profile-row" id="profile-row-0"><div class="profile-rank" id="profile-rank-0"></div><div class="profile-title" id="profile-title-0"></div><div class="profile-mods" id="profile-mods-0"></div><div class="profile-acc" id="profile-acc-0"></div><div class="profile-pp" id="profile-pp-0"></div></div>
+  <div class="profile-row" id="profile-row-1"><div class="profile-rank" id="profile-rank-1"></div><div class="profile-title" id="profile-title-1"></div><div class="profile-mods" id="profile-mods-1"></div><div class="profile-acc" id="profile-acc-1"></div><div class="profile-pp" id="profile-pp-1"></div></div>
+  <div class="profile-row" id="profile-row-2"><div class="profile-rank" id="profile-rank-2"></div><div class="profile-title" id="profile-title-2"></div><div class="profile-mods" id="profile-mods-2"></div><div class="profile-acc" id="profile-acc-2"></div><div class="profile-pp" id="profile-pp-2"></div></div>
+  <div class="profile-row" id="profile-row-3"><div class="profile-rank" id="profile-rank-3"></div><div class="profile-title" id="profile-title-3"></div><div class="profile-mods" id="profile-mods-3"></div><div class="profile-acc" id="profile-acc-3"></div><div class="profile-pp" id="profile-pp-3"></div></div>
+  <div class="profile-row" id="profile-row-4"><div class="profile-rank" id="profile-rank-4"></div><div class="profile-title" id="profile-title-4"></div><div class="profile-mods" id="profile-mods-4"></div><div class="profile-acc" id="profile-acc-4"></div><div class="profile-pp" id="profile-pp-4"></div></div>
+  <div class="profile-row" id="profile-row-5"><div class="profile-rank" id="profile-rank-5"></div><div class="profile-title" id="profile-title-5"></div><div class="profile-mods" id="profile-mods-5"></div><div class="profile-acc" id="profile-acc-5"></div><div class="profile-pp" id="profile-pp-5"></div></div>
+  <div class="profile-row" id="profile-row-6"><div class="profile-rank" id="profile-rank-6"></div><div class="profile-title" id="profile-title-6"></div><div class="profile-mods" id="profile-mods-6"></div><div class="profile-acc" id="profile-acc-6"></div><div class="profile-pp" id="profile-pp-6"></div></div>
+  <div class="profile-row" id="profile-row-7"><div class="profile-rank" id="profile-rank-7"></div><div class="profile-title" id="profile-title-7"></div><div class="profile-mods" id="profile-mods-7"></div><div class="profile-acc" id="profile-acc-7"></div><div class="profile-pp" id="profile-pp-7"></div></div>
+  </div>
+  <div id="profile-actions"><button id="profile-prev" class="quiet" data-action="profile-prev"><span class="button-label">PREV</span></button><div id="profile-page"></div><button id="profile-next" class="quiet" data-action="profile-next"><span class="button-label">NEXT</span></button></div>
+</div></body></rml>

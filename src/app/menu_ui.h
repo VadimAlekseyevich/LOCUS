@@ -83,6 +83,7 @@ Rectangle MenuBackButton();
 void DrawMainMenu(Font font, const std::string& status,
                   const HomeMenuUi& ui, const HomeBrandAssets& brand,
                   double now);
+void DrawPlayerProfile(Font font,const PlayerProfileView& view);
 void DrawSongSelectMenu(Font font, const SongLibrary& library,
                         const SongSelectUi& ui);
 void DrawSettingsMenu(Font font, const GameSettings& settings,

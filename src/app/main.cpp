@@ -410,7 +410,8 @@ int main(int argc, char** argv) try {
     };
 
     while (state.running) {
-        if (state.screen==Screen::Home) playerSummary.Update(homeUi.profileLabel);
+        if (state.screen==Screen::Home || state.screen==Screen::Profile)
+            playerSummary.Update(homeUi.profile);
         // Publish the worker result only from the main thread. Any import or
         // editor Save that advanced the catalog revision while scanning
         // invalidates the worker snapshot and queues a fresh scan.
@@ -551,7 +552,9 @@ int main(int argc, char** argv) try {
                 if (nativeEditorConfirmation)
                     editorChoice = nativeMenu.UpdateConfirmation(confirmation);
             } else if (state.screen == Screen::Home && nativeMenu.HomeAvailable())
-                nativeMenu.UpdateHome(input, menuStatus, homeUi.profileLabel);
+                nativeMenu.UpdateHome(input, menuStatus, homeUi.profile.label);
+            else if (state.screen == Screen::Profile && nativeMenu.ProfileAvailable())
+                nativeMenu.UpdateProfile(input,homeUi.profile);
             else if (state.screen == Screen::SongSelect && nativeMenu.Available())
                 menuEvents = nativeMenu.Update(library, libraryUi, input);
             else if (state.screen == Screen::Skin && nativeMenu.SkinAvailable())
@@ -1349,6 +1352,7 @@ int main(int argc, char** argv) try {
 #ifdef LOCUS_WITH_RMLUI
         if (visibleState.screen != Screen::SongSelect &&
             visibleState.screen != Screen::Home &&
+            visibleState.screen != Screen::Profile &&
             visibleState.screen != Screen::Settings &&
             visibleState.screen != Screen::Editor &&
             visibleState.screen != Screen::Results &&

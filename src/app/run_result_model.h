@@ -104,6 +104,17 @@ struct PlayerPerformanceSummary {
     std::size_t ratedDifficulties=0;
     double weightedAccuracy=0.0; // percent across unique completed attempts
 };
+struct PlayerBestScore {
+    RunResult result;
+    double pp=0.0;
+    double weightedPp=0.0;
+};
+struct PlayerProfileSnapshot {
+    PlayerPerformanceSummary summary;
+    std::vector<PlayerBestScore> bestScores;
+};
+PlayerProfileSnapshot ProjectPlayerProfile(
+    const std::string& playerId,const std::vector<RunResult>& results);
 // Owner-scoped, order-independent projection. One best per stable difficulty
 // across rates, mods and revisions; duplicate attempt IDs are ignored.
 PlayerPerformanceSummary SummarizePlayerPerformance(

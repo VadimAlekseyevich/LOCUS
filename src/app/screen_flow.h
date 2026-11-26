@@ -7,7 +7,7 @@ namespace locus::app {
 constexpr int kSmokeFrames = 60;
 
 enum class Screen {
-    Home, Play, Editor, Results, Listen, SongSelect, Skin, Settings
+    Home, Play, Editor, Results, Listen, SongSelect, Skin, Settings, Profile
 };
 
 struct AppState {

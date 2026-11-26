@@ -12,6 +12,7 @@ const char* ScreenName(Screen screen) noexcept {
         case Screen::SongSelect: return "Song Library";
         case Screen::Skin: return "Skin";
         case Screen::Settings: return "Settings";
+        case Screen::Profile: return "Profile";
     }
     return "Unknown";
 }

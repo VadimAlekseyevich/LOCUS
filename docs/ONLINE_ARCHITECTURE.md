@@ -133,7 +133,7 @@ Keep all verified attempts and original replay blobs independent of derived
 PP. Difficulty V4 measures physical execution; READ stays diagnostic and
 has zero ranking weight. [Performance V1](PERFORMANCE.md) is now a provisional pure calculation from
 validated difficulty, actual grades and explicit mods. Local Results shows
-PP and an owner-scoped best-score projection exist. The desktop scans committed summaries in a background worker and displays a compact Home profile; a dedicated profile screen remains pending. Calibrate the constants before competition. Store calculator versions and support
+PP and an owner-scoped best-score projection exist. The desktop scans committed summaries in a background worker and displays a compact Home profile; a dedicated, paginated local profile displays the same best-score projection. Calibrate the constants before competition. Store calculator versions and support
 deterministic recalculation without overwriting source attempts.
 
 Use a durable outbox for eligible submissions with bounded retries and
@@ -194,7 +194,7 @@ No legal workflow is currently operational.
 | --- | --- | --- |
 | W0 | Documentation and portable rules boundary | Core-only CI; no future capability described as implemented |
 | W1 | Portable verifier + package validation boundary (verifier, structural package validation and SHA-256 content descriptor implemented; media/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
-| W2 | Local run/profile ownership and PP contract (portable attempt model, local identity and owner-scoped storage implemented; experimental PP calculator and pure profile projection implemented; owner-scoped full history scan and compact Home summary implemented; detailed profile UI pending) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
+| W2 | Local run/profile ownership and PP contract (portable attempt model, local identity and owner-scoped storage implemented; experimental PP calculator and pure profile projection implemented; owner-scoped full history scan and compact Home summary implemented; local profile and paginated best scores implemented; account API and competitive policy pending) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
 | W3 | API/data contract and private backend | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
 | W4 | Private vertical slice | Publish one authorized test map, play, submit replay, server rejudge, show leaderboard and profile through the same API; retry idempotency |
 | W5 | Catalog/download/upload workflow | Immutable revision mapping, paging, cancellation, safe install, quotas, rollback and fault recovery |

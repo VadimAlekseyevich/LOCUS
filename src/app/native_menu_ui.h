@@ -33,6 +33,9 @@ public:
     bool Initialize();
     void Shutdown();
     bool Available() const noexcept { return document_ != nullptr; }
+    bool ProfileAvailable() const noexcept { return profileDocument_ != nullptr; }
+    bool ShowingProfile() const noexcept;
+    void UpdateProfile(FrameInput& input,PlayerProfileView& view);
     bool HomeAvailable() const noexcept { return homeDocument_ != nullptr; }
     bool SettingsAvailable() const noexcept { return settingsDocument_ != nullptr; }
     bool EditorAvailable() const noexcept { return editorDocument_ != nullptr; }
@@ -84,7 +87,7 @@ public:
     void RenderConfirmation();
 
 private:
-    enum class Page { None, Home, Play, Settings, Editor, Results, Skin };
+    enum class Page { None, Home, Play, Settings, Editor, Results, Skin, Profile };
     void Activate(Page page);
     bool RefreshLayoutMetrics();
     void PumpInput(bool dispatchKeyboard = true, bool forceLayout = false,
@@ -103,6 +106,10 @@ private:
     bool confirmationPressed_ = false;
     Rml::ElementDocument* document_ = nullptr;
     Rml::ElementDocument* homeDocument_ = nullptr;
+    Rml::ElementDocument* profileDocument_ = nullptr;
+    std::uint64_t profileRevision_=~std::uint64_t(0);
+    std::size_t profilePage_=~std::size_t(0);
+    int profilePageDelta_=0;
     Rml::ElementDocument* settingsDocument_ = nullptr;
     Rml::ElementDocument* editorDocument_ = nullptr;
     Rml::ElementDocument* resultsDocument_ = nullptr;

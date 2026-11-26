@@ -114,11 +114,11 @@ void DrawMainMenu(Font font, const std::string& status,
     const auto& theme = ApprovedUiTheme();
     brand.Draw(font);
 
-    const char* labels[] = {"PLAY", "EDITOR", "SKINS", "SETTINGS", "EXIT"};
+    const char* labels[] = {"PLAY", "EDITOR", "SKINS", "SETTINGS", "EXIT", ui.profile.label.c_str()};
     constexpr UiButtonVariant variants[] = {
         UiButtonVariant::Rose, UiButtonVariant::Blue,
         UiButtonVariant::Cool, UiButtonVariant::Warm,
-        UiButtonVariant::Quiet
+        UiButtonVariant::Quiet, UiButtonVariant::Quiet
     };
     for (int i = 0; i < kHomeMenuActionCount; ++i) {
         const Rectangle bounds = HomeMenuButton(i);
@@ -126,10 +126,9 @@ void DrawMainMenu(Font font, const std::string& status,
         state.focused = ui.focus.Focused() == i;
         DrawUiThemedButton(font, bounds, labels[i], variants[i],
                            state, ui.motion[static_cast<std::size_t>(i)].Frame(now),
-                           theme, i == 4 ? 16.0f : 18.0f);
+                           theme, i == 5 ? 13.0f : i == 4 ? 16.0f : 18.0f);
     }
 
-    if (!ui.profileLabel.empty()) Label(font,ui.profileLabel,24,20,13,kViolet);
     // Actual failure notices remain accessible.
     if (status.find("FAILED") != std::string::npos ||
         status.find("NOT SAVED") != std::string::npos ||
@@ -137,6 +136,35 @@ void DrawMainMenu(Font font, const std::string& status,
         DrawUiToast(font, {77.0f, 465.0f, 700.0f, 42.0f},
                     status.c_str(), true, 1.0f, theme);
     }
+}
+
+void DrawPlayerProfile(Font font,const PlayerProfileView& view) {
+    const auto& summary=view.snapshot.summary;
+    Label(font,"LOCAL PROFILE",54,24,22,kViolet);
+    if (view.state!=ProfileLoadState::Ready) {
+        Label(font,view.label,54,104,18,kMuted); return;
+    }
+    Label(font,TextFormat("%.1f PP   /   %llu PLAYS   /   %.2f%% ACC",
+        summary.totalPp,static_cast<unsigned long long>(summary.playCount),
+        summary.weightedAccuracy),54,64,25,kText);
+    Label(font,"BEST SCORES / "+std::to_string(summary.ratedDifficulties),54,116,16,kMuted);
+    if (view.snapshot.bestScores.empty())
+        Label(font,"No rated scores yet.",54,165,16,kMuted);
+    for (std::size_t i=0;i<PlayerProfileView::kRows;++i) {
+        const auto index=view.page*PlayerProfileView::kRows+i;
+        if (index>=view.snapshot.bestScores.size()) break;
+        const auto& row=view.snapshot.bestScores[index];
+        const float y=145.0f+40.0f*static_cast<float>(i);
+        DrawRectangleRounded({54,y,852,36},0.25f,6,Color{40,45,66,255});
+        Label(font,std::to_string(index+1),66,y+9,14,kMuted);
+        Label(font,Clip(row.result.songTitle+" / "+row.result.chartTitle,45),110,y+9,15,kText);
+        Label(font,FormatRunMods(row.result),518,y+9,12,kMuted);
+        Label(font,TextFormat("%.2f%%",row.result.grades.AccuracyPercent()),698,y+9,14,kMint);
+        Label(font,TextFormat("%.1f PP",row.pp),810,y+9,14,kViolet);
+    }
+    if (view.page>0) Button(font,ProfilePageButton(false),"PREV",kViolet);
+    if (view.page+1<view.PageCount()) Button(font,ProfilePageButton(true),"NEXT",kViolet);
+    Label(font,std::to_string(view.page+1)+" / "+std::to_string(view.PageCount()),455,488,15,kMuted);
 }
 
 void DrawSongSelectMenu(Font font, const SongLibrary& library,

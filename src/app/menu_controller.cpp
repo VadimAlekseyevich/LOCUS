@@ -51,11 +51,20 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             case 2: input.requestedScreen = Screen::Skin; break;
             case 3: input.requestedScreen = Screen::Settings; break;
             case 4: input.closeRequested = true; break;
+            case 5: input.requestedScreen = Screen::Profile; break;
             default: break;
         }
         return events;
     }
 
+    if (state.screen == Screen::Profile) {
+        const bool prev=IsKeyPressed(KEY_LEFT) ||
+            (mouseClick && validMouse && CheckCollisionPointRec(mouse,ProfilePageButton(false)));
+        const bool next=IsKeyPressed(KEY_RIGHT) ||
+            (mouseClick && validMouse && CheckCollisionPointRec(mouse,ProfilePageButton(true)));
+        homeUi.profile.StepPage(static_cast<int>(next)-static_cast<int>(prev));
+        return events;
+    }
     if (state.screen == Screen::Skin) {
         if (!skinUi.pendingDeleteProfile.empty()) {
             // Modal owns input until explicitly confirmed or canceled.
