@@ -356,14 +356,15 @@ bool RunResultsStore::ReadDirectory(const fs::path& dir,const RunKey* key,
             return false;
         }
         if (entry.path().extension() != ".json") continue;
-        if (entry.is_symlink(ec) || !entry.is_regular_file(ec) ||
-            entry.file_size(ec) > 16384 || ec) {
-            ec.clear();
-            continue;
-        }
+        const auto type=entry.symlink_status(ec).type();
+        if (ec) { error="Cannot inspect saved result: "+ec.message(); return false; }
+        if (type!=fs::file_type::regular) continue;
+        const auto size=entry.file_size(ec);
+        if (ec) { error="Cannot inspect saved result size: "+ec.message(); return false; }
+        if (size>16384) continue;
         try {
             std::ifstream stream(entry.path(), std::ios::binary);
-            if (!stream) continue;
+            if (!stream) { error="Cannot open saved result."; return false; }
             Json json = Json::parse(stream);
             RunResult record;
             if (!Decode(json, record) ||

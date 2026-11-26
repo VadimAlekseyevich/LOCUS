@@ -133,8 +133,7 @@ Keep all verified attempts and original replay blobs independent of derived
 PP. Difficulty V4 measures physical execution; READ stays diagnostic and
 has zero ranking weight. [Performance V1](PERFORMANCE.md) is now a provisional pure calculation from
 validated difficulty, actual grades and explicit mods. Local Results shows
-PP and a pure owner-scoped best-score projection exists; full history loading
-and profile UI remain pending. Calibrate the constants before competition. Store calculator versions and support
+PP and an owner-scoped best-score projection exist. The desktop scans committed summaries in a background worker and displays a compact Home profile; a dedicated profile screen remains pending. Calibrate the constants before competition. Store calculator versions and support
 deterministic recalculation without overwriting source attempts.
 
 Use a durable outbox for eligible submissions with bounded retries and
