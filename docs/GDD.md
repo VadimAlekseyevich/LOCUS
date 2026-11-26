@@ -125,7 +125,7 @@ The following areas remain open:
 
 - A tagged public release and clean-machine interactive acceptance of the already-built CI portable ZIP.
 - Hands-on display, keyboard/audio synchronization and accessibility checks on multiple real machines and aspect ratios. Windows CI cannot judge these.
-- Waveform editing and measured input/audio latency.
+- Measured input/audio latency and further refinement of editor waveform rendering.
 - Online hosting/accounts/leaderboards, multiplayer and non-Windows ports.
 
 Remaining work is tracked in [ROADMAP.md](ROADMAP.md).
@@ -133,4 +133,4 @@ Remaining work is tracked in [ROADMAP.md](ROADMAP.md).
 
 Optional skin hitsounds: one user WAV, MP3 or OGG Vorbis and volume in SKINS → AUDIO; successful physical arrows, including individual diagonal components and replayed hits, trigger the sound. This is presentation-only and does not change the judge or replay format.
 
-Editor audio analysis: cached min/max waveform at 5 ms resolution in both rulers, per-tempo-marker MET click with a 4/4 accent, and DETECT BPM candidates in Song Setup. Candidate evidence is heuristic; review phase and BPM before ADD or REPLACE TEMPO MAP. TAP BPM fits the original song-time period from at least four taps during playback; RESET starts a new estimate. Tempo changes preserve all exact authored note timestamps. Auto analysis uses 40–240 BPM candidates and may miss fast changes, ambiguous subdivisions or expressive timing; manually edit markers as necessary.
+The editor displays a cached min/max audio waveform at 5 ms resolution in both rulers. MET plays a click at each beat of the manually authored tempo map, with a 4/4 accent. The lower overview shows physical difficulty only in ROUTE; Song Setup displays shared song audio and timing without any difficulty-specific graph. Tempo changes preserve all exact authored note timestamps.
