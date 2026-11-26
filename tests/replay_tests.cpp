@@ -118,6 +118,21 @@ int main() {
                 decoded.ratePercent == 75 && RejudgeReplay(decoded,verified) &&
                 verified.Mods() == decoded.modFlags && verified.Counts().perfect == 1,
                 "modded replay restores scoring and presentation configuration");
+    const auto randomFlags=ModBit(PlayMod::Random);
+    const auto randomA=TransformModChart(chart,randomFlags,123);
+    const auto randomB=TransformModChart(chart,randomFlags,123);
+    bool deterministic=true;
+    for (std::size_t i=0;i<chart.turns.size();++i)
+        deterministic &= randomA.turns[i].direction==randomB.turns[i].direction &&
+            randomA.turns[i].timeMs==chart.turns[i].timeMs &&
+            IsDiagonal(randomA.turns[i].direction)==IsDiagonal(chart.turns[i].direction);
+    ok &= Check(deterministic,"random preserves rhythm and cardinality with fixed seed");
+    TurnJudge sudden(one), perfect(one);
+    sudden.SetMods(ModBit(PlayMod::SuddenDeath));
+    sudden.Advance(2.0);
+    perfect.SetMods(ModBit(PlayMod::Perfect));
+    perfect.PressHeading(Heading::Right,1.06);
+    ok &= Check(sudden.Failed() && perfect.Failed(),"SD and PF fail on their respective grades");
     decoded.modFlags = 3;
     ok &= Check(!EncodeReplay(decoded,bytes), "conflicting mods rejected");
     live.ResetFromAudioSeconds(2.0);

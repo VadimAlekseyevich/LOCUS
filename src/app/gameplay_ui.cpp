@@ -140,7 +140,8 @@ void DrawPlayGrid(Font font,const GameplayView& gameplay,double now,
     if (core::HasMod(gameplay.judge.Mods(),core::PlayMod::Flashlight))
         DrawFlashlightMask(marker,visible);
     const auto layout = LayoutGameplayHud(visible,kGameplayWorldViewport);
-    DrawGameplayHud(font,layout,MakeGameplayHudStats(gameplay.judge,gameplay.practiceSpeed,
+    if (!core::HasMod(gameplay.judge.Mods(),core::PlayMod::Cinema))
+        DrawGameplayHud(font,layout,MakeGameplayHudStats(gameplay.judge,gameplay.practiceSpeed,
                                                      gameplay.watchingReplay),
                     gameplay.skin,&gameplay.hitFlash.Errors(),now);
     if (now < gameplay.adjustmentNoticeUntil)
@@ -162,7 +163,7 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay,
     DrawRectangleRounded({497, 77, 398, 306}, 0.04f, 8,
                          Color{39, 45, 68, 246});
     DrawTextLabel(font, historical ? "SAVED RESULT" :
-                       gameplay.completed ? "CHART COMPLETE" : "RESULTS",
+                       gameplay.judge.Failed() ? "FAILED" : gameplay.completed ? "CHART COMPLETE" : "RESULTS",
                   Vector2{94.0f, 92.0f}, 28.0f, sky);
     const std::string shown = core::utf8::Truncate(title, 36);
     DrawTextLabel(font, shown.c_str(), {94, 130}, 17, theme.foreground);

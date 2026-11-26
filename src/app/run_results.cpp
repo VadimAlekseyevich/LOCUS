@@ -58,7 +58,7 @@ Json Encode(const RunResult& r) {
         {"notesJudged", r.notesJudged},
         {"accuracyPercent", r.accuracyPercent},
         {"practiceRate", r.practiceRate},
-        {"variablePracticeRate", r.variablePracticeRate}, {"modFlags", r.modFlags}
+        {"variablePracticeRate", r.variablePracticeRate}, {"modFlags", r.modFlags}, {"modSeed", r.modSeed}
     };
     result["hasReplay"] = r.hasReplay;
     if (r.statistics) {
@@ -99,8 +99,14 @@ bool Decode(const Json& obj, RunResult& out) {
         if (obj.contains("modFlags")) {
             if (!obj.at("modFlags").is_number_unsigned() && !obj.at("modFlags").is_number_integer()) return false;
             const auto flags = obj.at("modFlags").get<std::int64_t>();
-            if (flags < 0 || flags > 15 || !core::ValidModFlags(static_cast<core::ModFlags>(flags))) return false;
+            if (flags < 0 || flags > 1023 || !core::ValidModFlags(static_cast<core::ModFlags>(flags))) return false;
             r.modFlags = static_cast<core::ModFlags>(flags);
+        }
+        if (obj.contains("modSeed")) {
+            if (!obj.at("modSeed").is_number_integer()) return false;
+            const auto seed=obj.at("modSeed").get<std::int64_t>();
+            if (seed<0 || seed>0xffffffffLL) return false;
+            r.modSeed=static_cast<std::uint32_t>(seed);
         }
         if (obj.contains("statistics")) {
             const auto& s = obj.at("statistics");
@@ -152,7 +158,8 @@ bool ValidRunResult(const RunResult& r) noexcept {
         r.grades.Resolved() != r.notesJudged ||
         !std::isfinite(r.accuracyPercent) ||
         !std::isfinite(r.practiceRate) ||
-        r.practiceRate <= 0.0 || r.practiceRate > 1.5 || !core::ValidModFlags(r.modFlags)) return false;
+        r.practiceRate <= 0.0 || r.practiceRate > 1.5 || !core::ValidModFlags(r.modFlags) || core::Assisted(r.modFlags) ||
+        (!core::HasMod(r.modFlags,core::PlayMod::Random) && r.modSeed!=0)) return false;
     if (r.statistics) {
         const auto& s = *r.statistics;
         const int hits = r.notesJudged - r.grades.miss;
@@ -189,7 +196,7 @@ bool CaptureCompletedRun(const RunResultsStore& store,
     // A Results screen or a repeated frame is NOT a new completed attempt.
     // Never publish TEST, spectator playback, abandoned or partial sessions.
     if (!completion.completedThisFrame || completion.editorTest ||
-        completion.spectator ||
+        completion.spectator || core::Assisted(completion.modFlags) ||
         completion.launchedFromEditor || completion.key.Empty() ||
         completion.scorableCount == 0 ||
         completion.scorableCount >
@@ -209,6 +216,7 @@ bool CaptureCompletedRun(const RunResultsStore& store,
     record.practiceRate = completion.practiceRate;
     record.variablePracticeRate = completion.variablePracticeRate;
     record.modFlags = completion.modFlags;
+    record.modSeed = completion.modSeed;
     record.statistics = completion.statistics;
     if (!store.Save(record, error, completion.replay)) return false;
     saved = std::move(record);
@@ -251,7 +259,7 @@ bool RunResultsStore::Save(RunResult& r, std::string& error,
     r.hasReplay = false;
     std::string replayBytes;
     if (replay && replay->judgementVersion == r.judgementVersion &&
-        !r.variablePracticeRate && replay->modFlags == r.modFlags && !replay->events.empty() &&
+        !r.variablePracticeRate && replay->modFlags == r.modFlags && replay->modSeed == r.modSeed && !replay->events.empty() &&
         std::abs(replay->ratePercent / 100.0 - r.practiceRate) < 1e-9) {
         try { core::EncodeReplay(*replay, replayBytes); }
         catch (...) { replayBytes.clear(); }
@@ -340,7 +348,7 @@ bool RunResultsStore::LoadReplay(const RunResult& run, core::ReplayTrace& replay
         if (!in.read(bytes.data(),static_cast<std::streamsize>(bytes.size())) ||
             in.peek() != std::char_traits<char>::eof() ||
             !core::DecodeReplay(bytes,decoded) ||
-            decoded.judgementVersion != run.judgementVersion || run.variablePracticeRate || decoded.modFlags != run.modFlags ||
+            decoded.judgementVersion != run.judgementVersion || run.variablePracticeRate || decoded.modFlags != run.modFlags || decoded.modSeed != run.modSeed ||
              std::abs(decoded.ratePercent / 100.0 - run.practiceRate) > 1e-9) {
             error = "Invalid or incompatible replay.";
             return false;
@@ -356,7 +364,7 @@ bool RunResultsStore::LoadReplay(const RunResult& run, core::ReplayTrace& replay
 bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,
                      const core::Chart& chart,
                      const std::string& loadedGameplayRevision) {
-    if (!ValidRunResult(run) || run.variablePracticeRate || replay.modFlags != run.modFlags ||
+    if (!ValidRunResult(run) || run.variablePracticeRate || replay.modFlags != run.modFlags || replay.modSeed != run.modSeed ||
         std::abs(replay.ratePercent / 100.0 - run.practiceRate) > 1e-9 ||
         CompareRunRevision(run, loadedGameplayRevision) != RunRevisionState::Current)
         return false;

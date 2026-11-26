@@ -44,17 +44,17 @@ LOCUS is a four-key spatial rhythm game. Follow an authored route on an unbounde
 | Left / Down / Up / Right | D / F / J / K |
 | Diagonal | Both constituent directions (e.g. J+K) |
 | Pause / retry / leave | Esc / R / H |
-| Practice rate (custom chart) | 1–5: 100 / 75 / 50 / 25 / 10% |
+| Scored rate | PLAY → MODS: HT 50–99%, DT 101–150% |
 | Movement speed | [ / ] or numpad − / + |
 | Lookahead | , / . |
 
 The largest centered square clips the forward route. Default speed is 135 logical px/s and lookahead 800 ms of original song time. Camera lag defaults to 180 ms; zero disables it. All are configurable in SKINS. The HUD shows combo and accuracy in the corners; detailed grades appear only when the right gutter permits. A Song Set background fills the window with aspect-preserving cropping.
 
-Perfect/Good/Bad timing windows are ±50/110/180 ms. Accuracy is `(100*Perfect + 75*Good + 50*Bad) / resolvedInputs`. Miss breaks combo; there is no fail. The last resolved input triggers the outro and Results, even if music continues. Completed normal PLAY attempts are saved locally with maximum combo, timing statistics and scoring replay where available; TEST, spectator and abandoned attempts are excluded. WATCH REPLAY in native Results verifies and plays a matching installed revision without producing another score. See [GDD](docs/GDD.md), [timing](docs/TIMING_CONTRACT.md) and [results](docs/RESULTS.md).
+Perfect/Good/Bad timing windows are ±50/110/180 ms. Accuracy is `(100*Perfect + 75*Good + 50*Bad) / resolvedInputs`. Miss breaks combo; normally there is no fail. SD stops on Miss, PF stops below Perfect. EZ/HR scale timing windows; HD/FL limit visibility; MR mirrors horizontally and RD randomizes headings without changing cardinal/diagonal key counts. AT plays automatically and CN hides judgement/HUD; assisted and failed attempts do not enter history. The last resolved input triggers the outro and Results, even if music continues. Completed normal PLAY attempts are saved locally with maximum combo, timing statistics and scoring replay where available; TEST, spectator and abandoned attempts are excluded. WATCH REPLAY in native Results verifies and plays a matching installed revision without producing another score. See [GDD](docs/GDD.md), [timing](docs/TIMING_CONTRACT.md) and [results](docs/RESULTS.md).
 
 ## Song selection and mapping
 
-HOME → PLAY opens a searchable song tree, with metadata and saved chart attempts on the left. Enter starts the selected difficulty when a text field is not focused. EDIT opens it in the editor; IMPORT and RESCAN manage local ingestion. Difficulty V4 ranks charts by physical speed, individual key strain, coordination, rhythm and stamina. Read* is diagnostic only. Ratings are computed on demand, never serialized.
+HOME → PLAY opens a searchable song tree, with metadata and saved chart attempts on the left. Click the selected chart again or press Enter when a text field is not focused to play. EDIT, MODS, IMPORT and RESCAN share the library footer. MODS opens a separate panel with speed sliders and modifier toggles. Difficulty V4 ranks charts by physical speed, individual key strain, coordination, rhythm and stamina. Read* is diagnostic only. Ratings are computed on demand, never serialized.
 
 HOME → EDIT opens a clean **Song Setup** draft. Attach WAV/MP3 and configure timing; select the draft and click it again or press Enter to open **Chart Editor**, installing the initial Song Set if necessary. Managed Song Sets expose title/artist/mapper/tags, shared tempo map, menu preview start, background and difficulty management in Song Setup. Esc returns to Song Setup without losing the draft.
 
@@ -64,7 +64,7 @@ In Chart Editor:
 - Click the mouse-only 3×3 compass to place or change a note, including repeated headings; DEL removes it. Diagonal notes contribute to both constituent cardinal counts on the pad. START edits initial heading.
 - Ctrl+click the ruler stages an unsnapped millisecond; the next direction click commits it. Distinct timestamps sharing one tick remain editable; repeated clicks cycle overlapping note clusters.
 - Mirror horizontally/vertically, rotate ±90°, copy/cut/paste, shift and undo/redo patterns. COMPARE opens up to two additional same-song difficulties with independent draft/history and equal-sized synchronized previews. Focus changes neither seek nor rearrange panes.
-- SPEED and PATH set editor-only visual speed (20–2000 logical px/s) and lookahead (50–10000 ms). Bottom Play/Pause and Stop, whole-song overview and numeric 1–100% preview rate share one transport. SoundTouch preserves pitch on supported slow playback; fallback changes pitch. TEST plays the unsaved draft and returns to it.
+- SPEED and PATH set editor-only visual speed (20–2000 logical px/s) and lookahead (50–10000 ms). Bottom Play/Pause and Stop, whole-song overview and numeric 1–150% preview rate share one transport. SoundTouch preserves pitch on supported slow playback; fallback changes pitch. TEST plays the unsaved draft and returns to it.
 
 Default shortcuts: O attach audio, Space preview, T TEST, Ctrl+S save focused difficulty, Ctrl+Shift+S new difficulty, Ctrl+O/Ctrl+N open/new, Ctrl+C/X/V copy/cut/paste, Ctrl+Z/Y undo/redo. Arrow keys navigate the upper ruler and adjust snap; Backspace/Delete removes notes. Save/Discard/Cancel protects dirty drafts; Save All leaves any failed draft open.
 

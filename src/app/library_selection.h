@@ -70,6 +70,8 @@ struct SelectedRateDifficultyCache {
 
 struct SongSelectUi {
     core::PlayMods mods;
+    bool modsOpen=false;
+    int modSliderDrag=-1;
     // 0 = the built-in demo, 1..N = permanent user Songs.
     int selectedSong = 0;
     int selectedChart = 0;

@@ -82,11 +82,11 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
                     !hard->IsClassSet("active") && easy==originalEasy &&
                     hard==originalHard,
                     "difficulty click changes active class without replacing DOM nodes");
-        auto* start = document->GetElementById("start");
+        auto* start = easy;
         if (start) start->Click();
         const auto play = presenter.EndFrame();
         ok &= Check(start && play.playSelected && !play.editSelected,
-                    "native PLAY emits only the typed Play command");
+                    "second click on selected chart emits Play command");
 
         // Real pointer hit-testing of a saved result after layout, not
         // just a synthetic Click on a node with no usable geometry.
@@ -106,7 +106,7 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         auto* results=document->GetElementById("results-list");
         auto* row=results && results->GetNumChildren()>0 ? results->GetChild(0):nullptr;
         auto* viewport=document->GetElementById("results-scroll");
-        ok &= Check(row && row->GetNumChildren()==3 &&
+        ok &= Check(row && row->GetNumChildren()==4 &&
                     row->GetChild(0)->IsClassSet("rank-B") &&
                     row->GetChild(0)->GetInnerRML()=="B" &&
                     row->GetChild(1)->GetInnerRML()=="80.00%" &&

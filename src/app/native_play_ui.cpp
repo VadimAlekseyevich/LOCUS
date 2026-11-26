@@ -126,6 +126,16 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
     // RmlUi's WidgetTextInput emits Change for every edit (including
     // paste/backspace), not the HTML-style Input event.
     if (event.GetType() == "change") {
+        if (target->GetId()=="ht-rate" || target->GetId()=="dt-rate") {
+            if (auto* slider=dynamic_cast<Rml::ElementFormControlInput*>(target)) {
+                try {
+                    const int percent=std::stoi(slider->GetValue());
+                    if (target->GetId()=="ht-rate") currentUi_->mods.halfTimePercent=std::clamp(percent,50,99);
+                    else currentUi_->mods.doubleTimePercent=std::clamp(percent,101,150);
+                } catch (...) {}
+            }
+            return;
+        }
         if (target->GetId() != "search") return;
         if (auto* search = dynamic_cast<Rml::ElementFormControlInput*>(target)) {
             const auto value = search->GetValue();
@@ -145,15 +155,16 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
     if (!target || target->HasAttribute("disabled")) return;
     const std::string action =
         target->GetAttribute<Rml::String>("data-action", "");
-    if (action == "play") pending_.playSelected = true;
+    if (action == "mods-open") currentUi_->modsOpen=true;
+    else if (action == "mods-close") { currentUi_->modsOpen=false; document_->Focus(); }
+    else if (action == "mods-reset") currentUi_->mods={};
+    else if (currentUi_->modsOpen && action.rfind("mod-",0)!=0) return;
     else if (action == "mod-ht") currentUi_->mods.Toggle(core::RateMod::HalfTime);
     else if (action == "mod-dt") currentUi_->mods.Toggle(core::RateMod::DoubleTime);
-    else if (action == "mod-ez") currentUi_->mods.Toggle(core::PlayMod::Easy);
-    else if (action == "mod-hr") currentUi_->mods.Toggle(core::PlayMod::HardRock);
-    else if (action == "mod-hd") currentUi_->mods.Toggle(core::PlayMod::Hidden);
-    else if (action == "mod-fl") currentUi_->mods.Toggle(core::PlayMod::Flashlight);
-    else if (action == "mod-minus") currentUi_->mods.Adjust(-1);
-    else if (action == "mod-plus") currentUi_->mods.Adjust(1);
+    else if (action.rfind("mod-",0)==0) {
+        for (const auto& mod : core::kPlayModDefinitions)
+            if (action == std::string("mod-")+mod.id) currentUi_->mods.Toggle(mod.mod);
+    }
     else if (action == "edit") pending_.editSelected = true;
     else if (action == "rescan") pending_.refresh = true;
     else if (action == "import") pending_.import = true;
@@ -167,6 +178,10 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
         const int song = target->GetAttribute<int>("data-song", -1);
         const int chart = target->GetAttribute<int>("data-chart", -1);
         if (song >= 0 && chart >= 0) {
+            if (currentUi_->selectedSong==song && currentUi_->selectedChart==chart && currentUi_->treeChartFocused) {
+                pending_.playSelected=true;
+                return;
+            }
             if (currentUi_->selectedSong != song)
                 currentUi_->SelectSong(song, *currentLibrary_);
             currentUi_->SelectChart(chart, *currentLibrary_);
@@ -182,30 +197,22 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
 }
 
 void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
-    SetText("mod-ht-label", "HT " + std::to_string(ui.mods.halfTimePercent) + "%");
-    SetText("mod-dt-label", "DT " + std::to_string(ui.mods.doubleTimePercent) + "%");
-    for (const auto& item : {std::pair{"mod-ht",core::RateMod::HalfTime},
-                             std::pair{"mod-dt",core::RateMod::DoubleTime}})
-        if (auto* button = document_->GetElementById(item.first))
-            button->SetClass("selected", ui.mods.rateMod == item.second);
-    for (const auto& item : {std::pair{"mod-ez",core::PlayMod::Easy},
-                             std::pair{"mod-hr",core::PlayMod::HardRock},
-                             std::pair{"mod-hd",core::PlayMod::Hidden},
-                             std::pair{"mod-fl",core::PlayMod::Flashlight}})
-        if (auto* button = document_->GetElementById(item.first))
-            button->SetClass("selected",core::HasMod(ui.mods.flags,item.second));
-    const int percent = ui.mods.RatePercent();
-    const bool active = ui.mods.rateMod != core::RateMod::None;
-    const int minimum = ui.mods.rateMod == core::RateMod::HalfTime ? 50 : 101;
-    const int maximum = ui.mods.rateMod == core::RateMod::HalfTime ? 99 : 150;
-    if (auto* button = document_->GetElementById("mod-minus")) {
-        if (active && percent > minimum) button->RemoveAttribute("disabled");
-        else button->SetAttribute("disabled", "");
-    }
-    if (auto* button = document_->GetElementById("mod-plus")) {
-        if (active && percent < maximum) button->RemoveAttribute("disabled");
-        else button->SetAttribute("disabled", "");
-    }
+    SetText("mod-ht-label", std::to_string(ui.mods.halfTimePercent)+"%");
+    SetText("mod-dt-label", std::to_string(ui.mods.doubleTimePercent)+"%");
+    for (const auto& item : {std::pair{"mod-ht",core::RateMod::HalfTime},std::pair{"mod-dt",core::RateMod::DoubleTime}})
+        if (auto* button=document_->GetElementById(item.first)) button->SetClass("selected",ui.mods.rateMod==item.second);
+    for (const auto& mod : core::kPlayModDefinitions)
+        if (auto* button=document_->GetElementById(std::string("mod-")+mod.id)) button->SetClass("selected",core::HasMod(ui.mods.flags,mod.mod));
+    for (const auto& item : {std::pair{"ht-rate",ui.mods.halfTimePercent},std::pair{"dt-rate",ui.mods.doubleTimePercent}})
+        if (auto* slider=dynamic_cast<Rml::ElementFormControlInput*>(document_->GetElementById(item.first))) {
+            const auto value=std::to_string(item.second);
+            if (slider->GetValue()!=value) slider->SetValue(value);
+        }
+    const int percent=ui.mods.RatePercent();
+    const auto summary=core::FormatMods(percent,ui.mods.flags);
+    SetText("mods-selection",summary);
+    if (auto* button=document_->GetElementById("mods-button")) button->SetClass("selected",summary!="NM");
+    if (auto* overlay=document_->GetElementById("mods-overlay")) overlay->SetProperty("display",ui.modsOpen?"flex":"none");
     const LibrarySong* song = ui.selectedSong > 0 &&
         ui.selectedSong <= static_cast<int>(library.Songs().size())
         ? &library.Songs()[static_cast<std::size_t>(ui.selectedSong - 1)]
@@ -239,7 +246,7 @@ void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     }
     SetText("song-tags", tags);
     SetText("chart-title", chart ? chart->metadata.title : "ORIGINAL");
-    SetText("rating", metric(&core::ChartDifficulty::overall));
+    SetText("rating", "★ " + metric(&core::ChartDifficulty::overall));
     SetText("chart-notes", rating ? std::to_string(rating->notes) + " EVENTS / " +
         std::to_string(rating->keyPresses) + " KEYS" : "RATING UNAVAILABLE - RESCAN");
     SetText("metric-speed", metric(&core::ChartDifficulty::speed));
@@ -297,7 +304,7 @@ void NativePlayUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
                   << "'></span>";
         html << "<span class='row-label'>" << EscapeRml(name) << "</span>";
         if (isChart) html << "<span class='row-rating'>"
-                          << Rating(difficulty) << "</span>";
+                          << "&#9733; " << Rating(difficulty) << "</span>";
         else {
             const std::size_t count = item.song == 0 ? 1 :
                 library.Songs()[static_cast<std::size_t>(item.song - 1)]
@@ -417,7 +424,7 @@ void NativePlayUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
     summary << library.Revision() << ':' << ui.selectedSong << ':'
             << ui.selectedChart << ':' << ui.notice << ':'
             << static_cast<int>(ui.mods.rateMod) << ':' << ui.mods.halfTimePercent
-            << ':' << ui.mods.doubleTimePercent << ':' << ui.mods.flags;
+            << ':' << ui.mods.doubleTimePercent << ':' << ui.mods.flags << ':' << ui.modsOpen;
     if (summary.str() != lastSummarySignature_) {
         UpdateSummary(library, ui);
         lastSummarySignature_ = summary.str();
@@ -459,6 +466,12 @@ void NativePlayUi::ProcessKeyboard(FrameInput& input) {
     if (!document_ || !currentUi_ || !currentLibrary_) return;
     auto* context = document_->GetContext();
     if (!context) return;
+    if (currentUi_->modsOpen) {
+        if (input.backPressed || input.cancelLibrarySearch) { currentUi_->modsOpen=false; document_->Focus(); }
+        SuppressGlobalMenuShortcuts(input);
+        input.backPressed=false;
+        return;
+    }
     // Resolve ownership before activation, because a click may rebuild the
     // focused subtree. A single Enter must never fall through to PLAY.
     if (pending_.viewResultIndex>=0) {

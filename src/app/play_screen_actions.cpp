@@ -27,6 +27,13 @@ void PlayScreenActions::Update(const FrameInput& input, double now) {
         if (custom) context_.local.Update(now);
         else context_.demo.Update(now);
         if (context_.outro.Done(now)) {
+            if (core::HasMod(context_.judge.Mods(),core::PlayMod::Cinema)) {
+                context_.app.screen=Screen::SongSelect;
+                context_.sessionCompleted=false;
+                context_.game.Stop(custom);
+                context_.outro.Reset();
+                return;
+            }
             FinishSession(context_.app, context_.judge);
             context_.sessionCompleted = true;
             context_.outro.BeginResults(now);
@@ -44,11 +51,17 @@ void PlayScreenActions::Update(const FrameInput& input, double now) {
         arrows.precise = true;
     }
     context_.game.Update(custom, now, arrows);
+    if (context_.judge.Failed()) {
+        context_.game.Stop(custom);
+        context_.app.screen=Screen::Results;
+        context_.sessionCompleted=false;
+        return;
+    }
     const bool audioFinished = custom
         ? context_.local.Finished() : context_.demo.Finished();
     if (ChartReadyForResults(context_.judge, audioFinished)) {
         const auto transport = Transport(now);
-        context_.outro.Begin(context_.chart, transport.songSeconds,
+        context_.outro.Begin(context_.judge.EffectiveChart(), transport.songSeconds,
                              transport.offsetSeconds, now);
     }
 }

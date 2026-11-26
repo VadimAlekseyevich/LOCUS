@@ -256,6 +256,27 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     }
 
     if (state.screen == Screen::SongSelect) {
+        if (libraryUi.modsOpen) {
+            const bool close=input.backPressed || input.cancelLibrarySearch || (mouseClick && validMouse && CheckCollisionPointRec(mouse,LibraryModsClose()));
+            SuppressGlobalMenuShortcuts(input);
+            input.backPressed=false;
+            if (close) { libraryUi.modsOpen=false; libraryUi.modSliderDrag=-1; return events; }
+            if (!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) libraryUi.modSliderDrag=-1;
+            if (mouseClick && validMouse) {
+                for (int i=0;i<2;++i) if (CheckCollisionPointRec(mouse,LibraryRateSlider(i))) libraryUi.modSliderDrag=i;
+                if (CheckCollisionPointRec(mouse,LibraryModsReset())) libraryUi.mods={};
+                for (int i=0;i<2;++i) if (CheckCollisionPointRec(mouse,LibraryModButton(i))) libraryUi.mods.Toggle(i==0?core::RateMod::HalfTime:core::RateMod::DoubleTime);
+                for (std::size_t i=0;i<core::kPlayModDefinitions.size();++i)
+                    if (CheckCollisionPointRec(mouse,LibraryModButton(static_cast<int>(i)+2))) libraryUi.mods.Toggle(core::kPlayModDefinitions[i].mod);
+            }
+            if (libraryUi.modSliderDrag>=0) {
+                const int i=libraryUi.modSliderDrag;
+                const auto rect=LibraryRateSlider(i);
+                const int percent=static_cast<int>(std::lround(49*std::clamp((mouse.x-rect.x)/rect.width,0.0f,1.0f)));
+                if (i==0) libraryUi.mods.halfTimePercent=50+percent; else libraryUi.mods.doubleTimePercent=101+percent;
+            }
+            return events;
+        }
         // Search owns keystrokes while focused: E must not edit, Enter must
         // not launch PLAY and Escape must not leave the song browser.
         const bool searchClicked = mouseClick && validMouse &&
@@ -300,7 +321,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (wheel != 0.0f && validMouse) {
             if (CheckCollisionPointRec(mouse, {382, 65, 564, 461})) {
                 libraryUi.ScrollTree(wheel > 0.0f ? -1 : 1, library);
-            } else if (CheckCollisionPointRec(mouse, {23, 274, 333, 183})) {
+            } else if (CheckCollisionPointRec(mouse, {23, 235, 333, 280})) {
                 const int maxScroll = std::max(0,
                     static_cast<int>(libraryUi.results.size()) -
                     kLibraryResultVisibleRows);
@@ -324,17 +345,10 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     };
 
     if (state.screen == Screen::SongSelect) {
-        if (hit(LibraryModButton(0))) { libraryUi.mods.Toggle(core::RateMod::HalfTime); return events; }
-        if (hit(LibraryModButton(1))) { libraryUi.mods.Toggle(core::RateMod::DoubleTime); return events; }
-        if (hit(LibraryModButton(2))) { libraryUi.mods.Adjust(-1); return events; }
-        if (hit(LibraryModButton(3))) { libraryUi.mods.Adjust(1); return events; }
-        if (hit(LibraryModButton(4))) { libraryUi.mods.Toggle(core::PlayMod::Easy); return events; }
-        if (hit(LibraryModButton(5))) { libraryUi.mods.Toggle(core::PlayMod::HardRock); return events; }
-        if (hit(LibraryModButton(6))) { libraryUi.mods.Toggle(core::PlayMod::Hidden); return events; }
-        if (hit(LibraryModButton(7))) { libraryUi.mods.Toggle(core::PlayMod::Flashlight); return events; }
-        if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
-        if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
-        if (hit(locus::app::LibraryEditButton())) events.editSelected = true;
+        if (hit(LibraryModsButton())) { libraryUi.modsOpen=true; return events; }
+        if (hit(LibraryImportButton())) { events.import=true; return events; }
+        if (hit(LibraryRefreshButton())) { events.refresh=true; return events; }
+        if (hit(locus::app::LibraryEditButton())) { events.editSelected=true; return events; }
         const int historySize = static_cast<int>(libraryUi.results.size());
         const int maxHistoryScroll =
             std::max(0, historySize - kLibraryResultVisibleRows);
@@ -365,11 +379,13 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                 ? locus::app::LibraryChartRow(row)
                 : locus::app::LibrarySongRow(row);
             if (!hit(bounds)) continue;
-            if (entry.chart < 0) libraryUi.SelectSong(entry.song, library);
+            if (entry.chart < 0) { libraryUi.SelectSong(entry.song, library); libraryUi.treeChartFocused=false; }
             else {
+                if (libraryUi.selectedSong==entry.song && libraryUi.selectedChart==entry.chart && libraryUi.treeChartFocused) { events.playSelected=true; return events; }
                 if (libraryUi.selectedSong != entry.song)
                     libraryUi.SelectSong(entry.song, library);
                 libraryUi.SelectChart(entry.chart, library);
+                libraryUi.treeChartFocused=true;
             }
             break;
         }

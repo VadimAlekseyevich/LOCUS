@@ -55,10 +55,7 @@ public:
     void Restart(bool customChart, double now);
     void Stop(bool customChart);
     void TogglePause(bool customChart, double now);
-    void SetMods(const core::PlayMods& mods) noexcept {
-        SetRatePercent(mods.RatePercent());
-        modFlags_ = core::ValidModFlags(mods.flags) ? mods.flags : 0;
-    }
+    void SetMods(const core::PlayMods& mods) noexcept;
     void SetRatePercent(int percent) noexcept {
         if (core::ValidModRate(percent)) ratePercent_ = percent;
     }
@@ -90,6 +87,8 @@ private:
     bool variablePracticeRate_ = false;
     int ratePercent_ = 100;
     core::ModFlags modFlags_ = 0;
+    std::uint32_t modSeed_ = 0;
+    std::size_t autoIndex_ = 0;
     std::optional<core::ReplayTrace> replay_;
     core::ReplayCursor replayCursor_;
     double replayFinishSeconds_ = 0.0;

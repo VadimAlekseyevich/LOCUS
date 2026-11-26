@@ -8,25 +8,25 @@
 #library { flex:1; display:flex; flex-direction:column; min-width:0;
   overflow:hidden; }
 #summary { display:block; flex:0 1 auto; min-height:0; overflow-y:auto; }
-#pack-section { display:block; padding:12dp 15dp 10dp;
+#pack-section { display:block; padding:5dp 12dp 5dp;
   border-bottom:1dp #515572; }
-#song-title { display:block; font-size:22dp; font-weight:750;
-  margin:5dp 0 3dp; color:#f3f0ff; }
-#song-author { display:block; font-size:15dp; color:#a2d8ee; font-weight:660; }
+#song-title { display:block; font-size:17dp; font-weight:750;
+  margin:2dp 0 1dp; color:#f3f0ff; }
+#song-author { display:block; font-size:12dp; color:#a2d8ee; font-weight:660; }
 #song-mapper { display:block; font-size:11dp; color:#acb6cb; margin-top:2dp; }
 #song-meta { display:block; font-size:11dp; font-weight:650;
-  color:#d0c7fa; margin-top:7dp; }
+  color:#d0c7fa; margin-top:2dp; }
 #song-tags { display:block; font-size:10dp; color:#acb6cb; margin-top:3dp; }
-#difficulty-section { display:block; padding:10dp 15dp 11dp;
+#difficulty-section { display:block; padding:5dp 12dp 6dp;
   border-bottom:1dp #515572; }
 .difficulty-heading { display:flex; flex-direction:row;
   align-items:center; justify-content:space-between; }
-#rating { display:block; font-size:26dp; color:#d0c7fa; font-weight:850; }
-#chart-title { display:block; font-size:19dp; font-weight:750;
+#rating { display:block; font-size:21dp; color:#d0c7fa; font-weight:850; }
+#chart-title { display:block; font-size:15dp; font-weight:750;
   color:#eef1fb; margin-top:2dp; }
 #chart-notes { display:block; font-size:11dp; color:#acb6cb;
   margin-top:5dp; }
-#metrics { display:flex; flex-direction:column; gap:7dp; margin-top:10dp; }
+#metrics { display:flex; flex-direction:column; gap:3dp; margin-top:4dp; }
 .metrics-row { display:flex; flex-direction:row; gap:10dp; }
 .metric { display:flex; flex:1; flex-direction:row; min-width:0;
   justify-content:space-between; align-items:center;
@@ -55,10 +55,6 @@
   font-size:13dp; font-weight:650; color:#c0c9e2; }
 #notice { display:block; color:#ecc3d1; padding:0 12dp;
   font-size:11dp; }
-#commands { display:flex; flex-direction:row;
-  flex:0 0 67dp; gap:8dp; padding:9dp 12dp 12dp; }
-#commands button { flex:1; height:46dp;
-  font-size:15dp; font-weight:800; letter-spacing:1dp; }
 .library-heading { display:flex; flex-direction:row; align-items:center;
   justify-content:space-between; flex:0 0 44dp;
   padding:5dp 13dp 0; color:#a2d8ee;
@@ -106,7 +102,6 @@
 @media (max-height:510dp) {
   #pack-section { padding-top:8dp; padding-bottom:7dp; }
   #difficulty-section { padding-top:7dp; padding-bottom:7dp; }
-  #commands { flex-basis:58dp; padding-top:6dp; padding-bottom:6dp; }
 }
 
 @media (max-width:650dp) {
@@ -114,8 +109,20 @@
   .result .result-accuracy { left:35dp; font-size:12dp; }
   .result .result-combo { right:5dp; font-size:11dp; }
 }
-#mods, #extra-mods { display:flex; flex-direction:row; flex:0 0 35dp; gap:5dp; padding:0 12dp; }
-#mods button, #extra-mods button { flex:1; height:32dp; font-size:12dp; }
-#mod-minus, #mod-plus { flex:0 0 32dp; }
-#mods button.selected, #extra-mods button.selected { background-color:#6c579a; border:1dp #d5c5ff; }
-.result .result-mod { left:44%; right:28%; text-align:center; font-size:10dp; color:#c1b3ea; }
+.result .result-mod { left:44%; right:28%; text-align:center; font-size:10dp; color:#c1b3ea; overflow:hidden; white-space:nowrap; }
+#mods-overlay { display:none; position:absolute; left:0; top:0; width:100%; height:100%; background-color:#090b15e8; align-items:center; justify-content:center; }
+#mods-panel { display:flex; flex-direction:column; width:70%; max-width:560dp; height:90%; max-height:510dp; padding:10dp 15dp; gap:5dp; }
+.mods-heading { display:flex; flex-direction:row; justify-content:space-between; align-items:center; color:#d0c7fa; font-size:15dp; font-weight:750; flex-shrink:0; }
+.mods-heading button { width:90dp; height:30dp; }
+#mods-content { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:5dp; }
+.mods-row, .rate-row { display:flex; flex-direction:row; align-items:center; gap:8dp; flex-shrink:0; }
+.mods-row button { flex:1; height:32dp; font-size:12dp; }
+.rate-row button { flex:0 0 125dp; height:32dp; font-size:12dp; }
+.rate-row input { flex:1; min-width:0; height:30dp; }
+.rate-row span { font-size:12dp; }
+#mod-ht-label, #mod-dt-label { width:46dp; text-align:right; color:#a2d8ee; }
+#mods-panel button.selected { background-color:#6c579a; border:1dp #d5c5ff; }
+#mods-button.selected { border:1dp #d5c5ff; background-color:#6c579a; }
+input.range slidertrack, input[type="range"] slidertrack { background-color:#40465f; height:5dp; }
+input.range sliderbar, input[type="range"] sliderbar { background-color:#b5a4f3; width:12dp; height:20dp; }
+

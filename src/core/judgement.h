@@ -101,7 +101,7 @@ const char* DirectionName(Heading heading) noexcept;
 // The authored route and geometry remain independent of judgement.
 class TurnJudge {
 public:
-    explicit TurnJudge(const Chart& chart) noexcept : chart_(chart) { Reset(); }
+    explicit TurnJudge(const Chart& chart) noexcept : sourceChart_(chart) { Reset(); }
 
     // Offset is audio time at which chart beat zero occurs. Call between sessions.
     void SetOffsetSeconds(double offset) noexcept {
@@ -109,7 +109,13 @@ public:
         Reset();
     }
 
-    void SetMods(ModFlags flags) noexcept { mods_ = ValidModFlags(flags) ? flags : 0; Reset(); }
+    void SetMods(ModFlags flags, std::uint32_t seed=0);
+    const Chart& EffectiveChart() const noexcept { return transformed_ ? *transformed_ : sourceChart_; }
+    std::uint32_t ModSeed() const noexcept { return modSeed_; }
+    bool Failed() const noexcept {
+        return (HasMod(mods_,PlayMod::SuddenDeath) && counts_.miss>0) ||
+               (HasMod(mods_,PlayMod::Perfect) && (counts_.good+counts_.bad+counts_.miss)>0);
+    }
     ModFlags Mods() const noexcept { return mods_; }
     double BadWindowSeconds() const noexcept { return kBadWindowSeconds * WindowScale(mods_); }
     void Reset() noexcept;
@@ -160,7 +166,9 @@ private:
     std::size_t FindNextArrow(std::size_t from, unsigned bit) const noexcept;
     std::size_t NextEventIndex() const noexcept;
 
-    const Chart& chart_;
+    const Chart& sourceChart_;
+    std::optional<Chart> transformed_;
+    std::uint32_t modSeed_=0;
     double offsetSeconds_ = 0.0;
     ModFlags mods_ = 0;
     std::size_t firstScoredEvent_ = 0;

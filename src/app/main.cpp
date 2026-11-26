@@ -550,7 +550,7 @@ int main(int argc, char** argv) try {
                     displayedResult ? displayedResult->grades : judge.Counts(),
                     displayedResult ? displayedResult->notesJudged :
                         static_cast<int>(judge.ScorableCount()),
-                    chartTitle, historicalResult, libraryUi);
+                    judge.Failed() && !displayedResult ? chartTitle + " / FAILED" : chartTitle, historicalResult, libraryUi);
             else if (state.screen == Screen::Editor && nativeMenu.EditorAvailable()) {
                 nativeMenu.UpdateEditor(editorUi, input, editor.Data().title,
                     editor.Dirty(), chartPlayback.Speed(),
@@ -1156,7 +1156,7 @@ int main(int argc, char** argv) try {
                     judge.ScorableCount(), playActions.Transport(now).practiceSpeed,
                     playedGameplayRevision,
                     gameSession.VariablePracticeRate(), judge.Statistics(),
-                    judge.CompletedReplay(), gameSession.IsReplay(), judge.Mods()
+                    judge.CompletedReplay(), gameSession.IsReplay(), judge.Mods(), judge.ModSeed()
                 };
                 locus::app::RunResult record;
                 std::string error;
@@ -1223,7 +1223,7 @@ int main(int argc, char** argv) try {
             ? playActions.Transport(renderNow)
             : locus::app::PlayTransportView{};
         GameplayView gameplay = presentation.Prepare(
-            {activeChart, judge, gameSession.Flash(), chartTitle,
+            {judge.EffectiveChart(), judge, gameSession.Flash(), chartTitle,
              transportView.songSeconds, transportView.offsetSeconds,
              transportView.paused, sessionCompleted, customChart,
              transportView.practiceSpeed, transportView.status,

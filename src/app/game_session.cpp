@@ -5,8 +5,16 @@
 #include "core/route.h"
 
 #include <algorithm>
+#include <chrono>
 
 namespace locus::app {
+
+void GameSession::SetMods(const core::PlayMods& mods) noexcept {
+    SetRatePercent(mods.RatePercent());
+    modFlags_ = core::ValidModFlags(mods.flags) ? mods.flags : 0;
+    modSeed_ = core::HasMod(modFlags_,core::PlayMod::Random) ? static_cast<std::uint32_t>(
+        std::chrono::steady_clock::now().time_since_epoch().count()) : 0;
+}
 
 void GameSession::Start(bool customChart, double now) {
     variablePracticeRate_ = false;
@@ -14,7 +22,9 @@ void GameSession::Start(bool customChart, double now) {
     hitSoundCount_=0;
     audioEndedAt_ = -1.0;
     audioEndSongSeconds_ = 0.0;
-    judge_.SetMods(testOrigin_ ? 0 : replay_ ? replay_->modFlags : modFlags_);
+    judge_.SetMods(testOrigin_ ? 0 : replay_ ? replay_->modFlags : modFlags_,
+                   testOrigin_ ? 0 : replay_ ? replay_->modSeed : modSeed_);
+    autoIndex_ = 0;
     const int percent = replay_ ? replay_->ratePercent : ratePercent_;
     if (!testOrigin_) {
         if (customChart) local_.SetSpeed(percent / 100.0, now);
@@ -43,7 +53,7 @@ void GameSession::Start(bool customChart, double now) {
     } else {
         demo_.Start(now);
     }
-    if (!testOrigin_ && !replay_) judge_.BeginReplayCapture(percent);
+    if (!testOrigin_ && !replay_ && !core::Assisted(judge_.Mods())) judge_.BeginReplayCapture(percent);
 }
 
 void GameSession::Restart(bool customChart, double now) {
@@ -120,16 +130,16 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     };
     // An event stream is authoritative when the OS backend is present:
     // don't also score raylib's frame snapshot for the same keydown.
-    const bool freshInput = arrows.precise
+    const bool freshInput = !core::Assisted(judge_.Mods()) && (arrows.precise
         ? (arrows.events && std::any_of(
             arrows.events->events.begin(),
             arrows.events->events.begin() + arrows.events->size,
             [](const DirectionKeyEvent& e) { return e.pressed; }))
         : std::any_of(arrows.pressed.begin(), arrows.pressed.end(),
-                      [](bool pressed) { return pressed; });
+                      [](bool pressed) { return pressed; }));
     // A key used to skip the intro is consumed, not judged as a note.
     if (playing && !paused && !chart_.turns.empty() &&
-        judge_.NextEvent() == &chart_.turns.front() &&
+        judge_.NextEvent() == &judge_.EffectiveChart().turns.front() &&
         judge_.Counts().Resolved() == 0 && freshInput) {
         const double current = inputSongTime.songSeconds;
         const double offset = customChart ? local_.OffsetSeconds() : 0.0;
@@ -149,8 +159,32 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     }
     // During the silent tail, allow late directional input up to the
     // standard judgement window after the final chart note.
+    if (core::Assisted(judge_.Mods())) {
+        if (paused) return;
+        if (customChart) local_.Update(now); else demo_.Update(now);
+        const bool finished = customChart ? local_.Finished() : demo_.Finished();
+        const double cursor = CalibratedTime(customChart ? local_.AudioSeconds(now) : demo_.SongSeconds(now),playbackRate);
+        const auto& chart = judge_.EffectiveChart();
+        const double offset = customChart ? local_.OffsetSeconds() : 0.0;
+        constexpr core::Heading keys[] = {core::Heading::Up,core::Heading::Right,core::Heading::Down,core::Heading::Left};
+        while (autoIndex_ < chart.turns.size()) {
+            const auto& turn = chart.turns[autoIndex_];
+            const double at = core::EventTimeMs(chart,turn,offset)/1000.0;
+            if (!finished && cursor < at) break;
+            const auto mask=core::HeadingArrowMask(turn.direction);
+            for (unsigned i=0;i<4;++i) if (mask & (1u<<i)) {
+                const auto hit=judge_.PressHeading(keys[i],at);
+                if (hit && !core::HasMod(judge_.Mods(),core::PlayMod::Cinema)) {
+                    hitFlash_.Trigger(*hit,now); ++hitSoundCount_;
+                }
+            }
+            ++autoIndex_;
+        }
+        return;
+    }
     if ((playing && !paused) || audioAlreadyFinished) {
         const auto score = [&](core::Heading direction, double capturedAt) {
+            if (judge_.Failed()) return;
             const double timestamp = audioEndedAt_ >= 0.0
                 ? audioEndSongSeconds_ +
                     std::max(0.0, capturedAt - audioEndedAt_) * playbackRate

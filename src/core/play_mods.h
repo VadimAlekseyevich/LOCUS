@@ -1,5 +1,7 @@
 #pragma once
 #include <algorithm>
+#include <array>
+#include "core/route.h"
 #include <cstdint>
 #include <string>
 namespace locus::core {
@@ -15,12 +17,43 @@ inline std::string FormatRateMod(int percent) {
     return std::string(RateModCode(RateModFor(percent))) + " " + std::to_string(percent) + "%";
 }
 // Stable persisted modifier bits. Never reuse a bit for a different rule.
-enum class PlayMod : std::uint32_t { Easy=1, HardRock=2, Hidden=4, Flashlight=8 };
+enum class PlayMod : std::uint32_t { Easy=1, HardRock=2, Hidden=4, Flashlight=8, Mirror=16, Random=32, Autoplay=64, SuddenDeath=128, Perfect=256, Cinema=512 };
 using ModFlags = std::uint32_t;
 constexpr ModFlags ModBit(PlayMod mod) noexcept { return static_cast<ModFlags>(mod); }
 constexpr bool HasMod(ModFlags flags, PlayMod mod) noexcept { return (flags & ModBit(mod)) != 0; }
+struct ModDefinition { PlayMod mod; const char* id; const char* code; const char* name; ModFlags conflicts; };
+inline constexpr std::array<ModDefinition,10> kPlayModDefinitions{{
+    {PlayMod::Easy,"ez","EZ","Easy",2u}, {PlayMod::HardRock,"hr","HR","Hard Rock",1u},
+    {PlayMod::Hidden,"hd","HD","Hidden",8u}, {PlayMod::Flashlight,"fl","FL","Flashlight",4u},
+    {PlayMod::Mirror,"mr","MR","Mirror",32u}, {PlayMod::Random,"rd","RD","Random",16u},
+    {PlayMod::Autoplay,"at","AT","Autoplay",128u|256u|512u},
+    {PlayMod::SuddenDeath,"sd","SD","Sudden Death",64u|256u|512u},
+    {PlayMod::Perfect,"pf","PF","Perfect",64u|128u|512u},
+    {PlayMod::Cinema,"cn","CN","Cinema",64u|128u|256u}
+}};
 constexpr bool ValidModFlags(ModFlags flags) noexcept {
-    return (flags & ~15u)==0 && (flags & 3u)!=3u && (flags & 12u)!=12u;
+    if (flags & ~1023u) return false;
+    for (const auto& mod : kPlayModDefinitions)
+        if (HasMod(flags,mod.mod) && (flags & mod.conflicts)) return false;
+    return true;
+}
+constexpr bool Assisted(ModFlags flags) noexcept {
+    return HasMod(flags,PlayMod::Autoplay) || HasMod(flags,PlayMod::Cinema);
+}
+// Fixed integer PRNG: replay output does not depend on standard-library RNGs.
+inline Chart TransformModChart(const Chart& source, ModFlags flags, std::uint32_t seed) {
+    Chart chart=source;
+    const auto transform=[&](Heading heading) {
+        if (HasMod(flags,PlayMod::Mirror)) return MirrorHeadingHorizontal(heading);
+        if (HasMod(flags,PlayMod::Random)) {
+            seed=seed*1664525u+1013904223u;
+            return RotateHeading(heading,static_cast<int>((seed>>30)*2));
+        }
+        return heading;
+    };
+    chart.initialHeading=transform(chart.initialHeading);
+    for (auto& turn : chart.turns) turn.direction=transform(turn.direction);
+    return chart;
 }
 constexpr double WindowScale(ModFlags flags) noexcept {
     return HasMod(flags,PlayMod::Easy) ? 1.5 : HasMod(flags,PlayMod::HardRock) ? 0.7 : 1.0;
@@ -30,8 +63,7 @@ inline std::string FormatMods(int rate, ModFlags flags) {
     const auto add = [&](PlayMod mod,const char* code) {
         if (HasMod(flags,mod)) { if (!out.empty()) out += " "; out += code; }
     };
-    add(PlayMod::Easy,"EZ"); add(PlayMod::HardRock,"HR");
-    add(PlayMod::Hidden,"HD"); add(PlayMod::Flashlight,"FL");
+    for (const auto& mod : kPlayModDefinitions) add(mod.mod,mod.code);
     return out.empty() ? "NM" : out;
 }
 // Menu configuration; a scored session takes an immutable snapshot.
@@ -48,8 +80,8 @@ struct PlayMods {
     void Toggle(PlayMod mod) noexcept {
         const auto bit = ModBit(mod);
         if (flags & bit) { flags &= ~bit; return; }
-        flags &= ~(bit & 3u ? 3u : 12u);
-        flags |= bit;
+        for (const auto& item : kPlayModDefinitions)
+            if (item.mod == mod) { flags &= ~item.conflicts; flags |= bit; break; }
     }
     void Adjust(int delta) noexcept {
         if (rateMod == RateMod::HalfTime) halfTimePercent = std::clamp(halfTimePercent + delta,50,99);

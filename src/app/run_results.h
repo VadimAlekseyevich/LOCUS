@@ -35,6 +35,7 @@ struct RunResult {
     std::optional<core::RunStatistics> statistics;
     bool hasReplay = false;
     core::ModFlags modFlags = 0;
+    std::uint32_t modSeed = 0;
 };
 
 struct RunKey {
@@ -112,6 +113,7 @@ struct CompletedRunContext {
     const core::ReplayTrace* replay = nullptr; // borrowed during capture
     bool spectator = false;
     core::ModFlags modFlags = 0;
+    std::uint32_t modSeed = 0;
 };
 
 // Returns true only after a durable result is written. On ineligible calls

@@ -43,22 +43,25 @@ Rectangle LibrarySongRow(int row) {
 Rectangle LibraryChartRow(int row) {
     return {414.0f, 154.0f + 39.0f * row, 519.0f, 35.0f};
 }
-Rectangle LibraryRefreshButton() { return {807, 480, 126, 37}; }
+Rectangle LibraryRefreshButton() { return {806, 480, 126, 37}; }
+Rectangle LibraryImportButton() { return {670,480,126,37}; }
+Rectangle LibraryModsButton() { return {534,480,126,37}; }
+Rectangle LibraryRateSlider(int index) { return {410,142.0f+index*43,270,24}; }
+Rectangle LibraryModsClose() { return {634,76,90,30}; }
+Rectangle LibraryModsReset() { return {634,426,90,30}; }
 Rectangle LibraryBackButton() { return {14, 9, 100, 39}; }
 Rectangle LibrarySearchField() { return {395, 109, 538, 35}; }
 Rectangle LibraryResultRow(int row) {
-    return {27.0f, 308.0f + 36.0f * row, 322.0f, 32.0f};
+    return {27.0f, 268.0f + 36.0f * row, 322.0f, 32.0f};
 }
-Rectangle LibraryResultPrevButton() { return {278, 277, 32, 25}; }
-Rectangle LibraryResultNextButton() { return {315, 277, 32, 25}; }
+Rectangle LibraryResultPrevButton() { return {278, 240, 32, 25}; }
+Rectangle LibraryResultNextButton() { return {315, 240, 32, 25}; }
 Rectangle LibraryModButton(int index) {
-    if (index == 0) return {27, 430, 118, 33};
-    if (index == 1) return {151, 430, 118, 33};
-    if (index < 4) return {275.0f + (index-2)*38.0f, 430, 35, 33};
-    return {27.0f + (index-4)*82.0f, 393, 77, 32};
+    if (index<2) return {237,138.0f+43*index,158,32};
+    const int i=index-2;
+    return {237.0f+(i%2)*248,225.0f+(i/2)*38,238,32};
 }
-Rectangle LibraryPlayButton() { return {27, 473, 154, 41}; }
-Rectangle LibraryEditButton() { return {193, 473, 155, 41}; }
+Rectangle LibraryEditButton() { return {398,480,126,37}; }
 Rectangle SettingsBindingButton(int row) {
     return {737.0f, 217.0f + 37.0f * row, 165.0f, 31.0f};
 }
@@ -174,49 +177,49 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     const LibraryChart* selected = ui.Selected(library);
     Label(font, "SONG SET", 28, 77, 11, lilac);
     fit(song ? song->title : "BUILT-IN DEMO",
-        28, 94, 320, 19, theme.foreground);
+        28, 89, 320, 16, theme.foreground);
     const std::string artistMapper = song
         ? (song->artist.empty() ? "UNKNOWN ARTIST" : song->artist) +
           (song->mapper.empty() ? std::string() : " / " + song->mapper)
         : "LOCUS";
-    fit(artistMapper, 28, 120, 315, 13, sky);
+    fit(artistMapper, 28, 108, 315, 12, sky);
     std::string songFacts = song
         ? TextFormat("%.2f BPM  |  %d CHARTS",
               song->bpm * ui.mods.RatePercent()/100.0, static_cast<int>(song->charts.size()))
         : TextFormat("%.2f BPM  |  1 CHART",120.0 * ui.mods.RatePercent()/100.0);
     if (song && !song->tags.empty())
         songFacts += "  |  " + song->tags.front();
-    fit(songFacts, 28, 143, 320, 12, faint);
-    DrawLine(28, 166, 350, 166, line);
+    fit(songFacts, 28, 124, 320, 11, faint);
+    DrawLine(28, 141, 350, 141, line);
 
     Label(font, ui.mods.RatePercent() == 100 ? std::string("DIFFICULTY") :
           std::string("DIFFICULTY / ") + core::FormatRateMod(ui.mods.RatePercent()),
-          28, 174, 11, lilac);
+          28, 148, 10, lilac);
     fit(selected ? selected->metadata.title : "ORIGINAL",
-        28, 190, 246, 17, theme.foreground);
+        28, 161, 246, 15, theme.foreground);
     const auto rating = ui.SelectedDifficulty(library);
     const auto score = rating.value_or(core::ChartDifficulty{});
-    Label(font, rating ? TextFormat("%.1f", score.overall) : "--", 288, 184, 27, sky);
+    Label(font, rating ? TextFormat("* %.1f", score.overall) : "--", 270, 155, 22, sky);
     const int turns = selected
         ? static_cast<int>(selected->metadata.noteCount)
         : static_cast<int>(core::MakeDemoChart().turns.size());
-    Label(font, TextFormat("%d TURNS", turns), 28, 213, 11, faint);
+    Label(font, TextFormat("%d TURNS", turns), 28, 180, 10, faint);
 
     // Six real difficulty metrics take only two lines; Results gets the
     // remaining ~165px instead of being squeezed below explanatory copy.
     if (rating) {
     Label(font, TextFormat("SPD %.1f   RHY %.1f   COORD %.1f",
           score.speed, score.rhythm, score.coordination),
-          28, 232, 12, theme.foreground);
+          28, 195, 11, theme.foreground);
     Label(font, TextFormat("READ %.1f   STA %.1f   PEAK %.1f",
           score.reading, score.stamina, score.peak),
-          28, 250, 12, faint);
+          28, 211, 11, faint);
     } else Label(font,"RATING UNAVAILABLE - RESCAN",28,232,12,faint);
-    DrawLine(28, 271, 350, 271, line);
+    DrawLine(28, 232, 350, 232, line);
 
-    Label(font, "RESULTS", 28, 283, 12, sky);
+    Label(font, "RESULTS", 28, 245, 12, sky);
     Label(font, TextFormat("%d", static_cast<int>(ui.results.size())),
-          116, 283, 12, lilac);
+          116, 245, 12, lilac);
     const int total = static_cast<int>(ui.results.size());
     if (total > kLibraryResultVisibleRows) {
         action(LibraryResultPrevButton(), "^", UiButtonVariant::Quiet);
@@ -224,7 +227,7 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     }
     if (total == 0) {
         Label(font, ui.resultsLoading ? "LOADING RESULTS..." :
-                    "NO SAVED RESULTS", 28, 319, 13, faint);
+                    "NO SAVED RESULTS", 28, 279, 13, faint);
     } else {
         for (int row = 0; row < kLibraryResultVisibleRows; ++row) {
             const int index = ui.resultScroll + row;
@@ -249,18 +252,7 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
                   rect.y+9,13,theme.secondaryText);
         }
     }
-    const auto ht = core::FormatRateMod(ui.mods.halfTimePercent);
-    const auto dt = core::FormatRateMod(ui.mods.doubleTimePercent);
-    Button(font,LibraryModButton(0),ht,sky,ui.mods.rateMod==core::RateMod::HalfTime);
-    Button(font,LibraryModButton(1),dt,lilac,ui.mods.rateMod==core::RateMod::DoubleTime);
-    action(LibraryModButton(2), "-", UiButtonVariant::Quiet);
-    action(LibraryModButton(3), "+", UiButtonVariant::Quiet);
-    Button(font,LibraryModButton(4),"EZ",lilac,core::HasMod(ui.mods.flags,core::PlayMod::Easy));
-    Button(font,LibraryModButton(5),"HR",lilac,core::HasMod(ui.mods.flags,core::PlayMod::HardRock));
-    Button(font,LibraryModButton(6),"HD",lilac,core::HasMod(ui.mods.flags,core::PlayMod::Hidden));
-    Button(font,LibraryModButton(7),"FL",lilac,core::HasMod(ui.mods.flags,core::PlayMod::Flashlight));
-    action(LibraryPlayButton(), "PLAY", UiButtonVariant::Blue);
-    action(LibraryEditButton(), "EDIT", UiButtonVariant::Rose);
+
 
     // Enlarged scrollable right browser; song and chart rows share hitboxes
     // with the controller and use the same flattened hierarchy.
@@ -307,7 +299,7 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
                 ? library.Songs()[static_cast<std::size_t>(item.song - 1)]
                       .charts[static_cast<std::size_t>(item.chart)].difficulty
                 : score;
-            const std::string value = TextFormat("%.1f", rating.overall);
+            const std::string value = TextFormat("* %.1f", rating.overall);
             const float width = MeasureTextEx(font, value.c_str(), 15, 1).x;
             Label(font, value, rect.x + rect.width - width - 13,
                   rect.y + 8, 15, pale);
@@ -315,9 +307,34 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     }
     if (rows.empty())
         Label(font, "NO MATCHING SONGS", 410, 176, 14, faint);
-    Label(font, TextFormat("%d-%d / %d", rows.empty() ? 0 : ui.treeScroll + 1,
-          end, static_cast<int>(rows.size())), 397, 476, 12, faint);
+    action(LibraryEditButton(), "EDIT", UiButtonVariant::Rose);
+    Button(font,LibraryModsButton(),"MODS",lilac,ui.mods.rateMod!=core::RateMod::None || ui.mods.flags!=0);
+    action(LibraryImportButton(),"IMPORT",UiButtonVariant::Quiet);
     action(LibraryRefreshButton(), "RESCAN", UiButtonVariant::Neutral);
+    if (ui.modsOpen) {
+        DrawRectangle(0,0,960,540,Color{9,11,21,232});
+        panel({221,64,520,412});
+        Label(font,"MODIFIERS",237,80,18,sky);
+        action(LibraryModsClose(),"CLOSE",UiButtonVariant::Quiet);
+        for (int i=0;i<2;++i) {
+            const bool ht=i==0;
+            const int value=ht?ui.mods.halfTimePercent:ui.mods.doubleTimePercent;
+            Button(font,LibraryModButton(i),ht?"Half Time":"Double Time",lilac,
+                   ui.mods.rateMod==(ht?core::RateMod::HalfTime:core::RateMod::DoubleTime));
+            const auto track=LibraryRateSlider(i);
+            const float ratio=(value-(ht?50:101))/49.0f;
+            DrawRectangleRounded({track.x,track.y+10,track.width,4},0.6f,6,theme.divider);
+            DrawCircleV({track.x+ratio*track.width,track.y+12},7,lilac);
+            Label(font,TextFormat("%d%%",value),686,track.y+5,13,sky);
+        }
+        for (std::size_t i=0;i<core::kPlayModDefinitions.size();++i) {
+            const auto& mod=core::kPlayModDefinitions[i];
+            Button(font,LibraryModButton(static_cast<int>(i)+2),mod.name,lilac,core::HasMod(ui.mods.flags,mod.mod));
+        }
+        Label(font,core::FormatMods(ui.mods.RatePercent(),ui.mods.flags),237,435,12,sky);
+        action(LibraryModsReset(),"RESET",UiButtonVariant::Quiet);
+        return;
+    }
 
     if (!ui.notice.empty() &&
         (ui.notice.find("FAILED") != std::string::npos ||

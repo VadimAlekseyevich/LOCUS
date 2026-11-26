@@ -29,6 +29,15 @@ const char* DirectionName(Heading direction) noexcept {
     return "UNKNOWN";
 }
 
+void TurnJudge::SetMods(ModFlags flags,std::uint32_t seed) {
+    mods_ = ValidModFlags(flags) ? flags : 0;
+    modSeed_ = HasMod(mods_,PlayMod::Random) ? seed : 0;
+    transformed_.reset();
+    if (HasMod(mods_,PlayMod::Mirror) || HasMod(mods_,PlayMod::Random))
+        transformed_ = TransformModChart(sourceChart_,mods_,modSeed_);
+    Reset();
+}
+
 void TurnJudge::Reset() noexcept {
     firstScoredEvent_ = 0;
     captureReplay_ = false;
@@ -46,11 +55,11 @@ void TurnJudge::Reset() noexcept {
 void TurnJudge::ResetFromBeat(int firstScoredBeat) noexcept {
     Reset();
     firstScoredEvent_ = static_cast<std::size_t>(
-        std::lower_bound(chart_.turns.begin(), chart_.turns.end(),
+        std::lower_bound(EffectiveChart().turns.begin(), EffectiveChart().turns.end(),
                          firstScoredBeat,
                          [](const TurnEvent& event, int beat) {
                              return event.beat < beat;
-                         }) - chart_.turns.begin());
+                         }) - EffectiveChart().turns.begin());
     RecountScorable();
     ResetArrowQueues();
 }
@@ -59,14 +68,14 @@ void TurnJudge::ResetFromAudioSeconds(double audioSeconds) noexcept {
     Reset();
     if (!std::isfinite(audioSeconds)) return;
     firstScoredEvent_ = static_cast<std::size_t>(
-        std::lower_bound(chart_.turns.begin(), chart_.turns.end(),
+        std::lower_bound(EffectiveChart().turns.begin(), EffectiveChart().turns.end(),
                          audioSeconds, [&](const TurnEvent& event, double seconds) {
                              const double time = event.timeMs == kNoTimeMs
                                  ? offsetSeconds_ + event.beat * 60.0 /
-                                       (chart_.bpm * chart_.ticksPerBeat)
+                                       (EffectiveChart().bpm * EffectiveChart().ticksPerBeat)
                                  : static_cast<double>(event.timeMs) / 1000.0;
                              return time < seconds - 1e-9;
-                         }) - chart_.turns.begin());
+                         }) - EffectiveChart().turns.begin());
     RecountScorable();
     ResetArrowQueues();
 }
@@ -98,15 +107,15 @@ int ArrowCount(unsigned mask) noexcept {
 
 void TurnJudge::RecountScorable() noexcept {
     scorableCount_ = 0;
-    for (std::size_t i = firstScoredEvent_; i < chart_.turns.size(); ++i)
+    for (std::size_t i = firstScoredEvent_; i < EffectiveChart().turns.size(); ++i)
         scorableCount_ += static_cast<std::size_t>(
-            ArrowCount(HeadingArrowMask(chart_.turns[i].direction)));
+            ArrowCount(HeadingArrowMask(EffectiveChart().turns[i].direction)));
 }
 
 std::size_t TurnJudge::FindNextArrow(std::size_t from,
                                            unsigned bit) const noexcept {
-    while (from < chart_.turns.size() &&
-           (HeadingArrowMask(chart_.turns[from].direction) & bit) == 0u)
+    while (from < EffectiveChart().turns.size() &&
+           (HeadingArrowMask(EffectiveChart().turns[from].direction) & bit) == 0u)
         ++from;
     return from;
 }
@@ -122,7 +131,7 @@ std::size_t TurnJudge::NextEventIndex() const noexcept {
 
 const TurnEvent* TurnJudge::NextEvent() const noexcept {
     const auto index = NextEventIndex();
-    return index < chart_.turns.size() ? &chart_.turns[index] : nullptr;
+    return index < EffectiveChart().turns.size() ? &EffectiveChart().turns[index] : nullptr;
 }
 
 void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
@@ -130,8 +139,8 @@ void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
     const int lane = ArrowIndex(arrow);
     if (lane < 0) return;
     const std::size_t at = nextByArrow_[lane];
-    if (at >= chart_.turns.size()) return;
-    last_ = Judgement{grade, chart_.turns[at].beat, errorSeconds,
+    if (at >= EffectiveChart().turns.size()) return;
+    last_ = Judgement{grade, EffectiveChart().turns[at].beat, errorSeconds,
                       wrongDirection, arrow};
     nextByArrow_[lane] = FindNextArrow(at + 1, 1u << lane);
     if (grade == Grade::Miss) combo_ = 0;
@@ -169,6 +178,7 @@ void TurnJudge::BeginReplayCapture(int ratePercent) noexcept {
     replay_.offsetSeconds = offsetSeconds_;
     replay_.ratePercent = ratePercent;
     replay_.modFlags = mods_;
+    replay_.modSeed = modSeed_;
     replay_.judgementVersion = kJudgementRulesVersion;
     captureReplay_ = firstScoredEvent_ == 0 && counts_.Resolved() == 0;
 }
@@ -201,9 +211,10 @@ void TurnJudge::AdvanceImpl(double songSeconds) noexcept {
     // Expire the oldest unresolved authored turn first. Each of its
     // remaining arrow components receives its own Miss.
     while (const TurnEvent* event = NextEvent()) {
+        if (Failed()) break;
         const double expectedSeconds = event->timeMs == kNoTimeMs
             ? offsetSeconds_ + event->beat * 60.0 /
-                (chart_.bpm * chart_.ticksPerBeat)
+                (EffectiveChart().bpm * EffectiveChart().ticksPerBeat)
             : static_cast<double>(event->timeMs) / 1000.0;
         if (songSeconds <= expectedSeconds + BadWindowSeconds()) break;
         const auto index = NextEventIndex();
@@ -231,15 +242,16 @@ std::optional<Judgement> TurnJudge::PressHeading(Heading outgoing,
     // that may arrive out of order. PressHeading itself expires old notes.
     if (NextEvent()) RecordReplay(static_cast<ReplayAction>(lane), songSeconds);
     AdvanceImpl(songSeconds);
+    if (Failed()) return std::nullopt;
 
     // First judge the next expected note on this particular key, which may
     // belong to a LATER authored turn while another key has a pending half.
     const std::size_t at = nextByArrow_[lane];
-    if (at < chart_.turns.size()) {
-        const TurnEvent& target = chart_.turns[at];
+    if (at < EffectiveChart().turns.size()) {
+        const TurnEvent& target = EffectiveChart().turns[at];
         const double targetSeconds = target.timeMs == kNoTimeMs
             ? offsetSeconds_ + target.beat * 60.0 /
-                (chart_.bpm * chart_.ticksPerBeat)
+                (EffectiveChart().bpm * EffectiveChart().ticksPerBeat)
             : static_cast<double>(target.timeMs) / 1000.0;
         const double error = songSeconds - targetSeconds;
         if (std::abs(error) <= BadWindowSeconds()) {
@@ -258,7 +270,7 @@ std::optional<Judgement> TurnJudge::PressHeading(Heading outgoing,
         oldest->direction == outgoing) return std::nullopt;
     const double expectedSeconds = oldest->timeMs == kNoTimeMs
         ? offsetSeconds_ + oldest->beat * 60.0 /
-            (chart_.bpm * chart_.ticksPerBeat)
+            (EffectiveChart().bpm * EffectiveChart().ticksPerBeat)
         : static_cast<double>(oldest->timeMs) / 1000.0;
     const double error = songSeconds - expectedSeconds;
     if (std::abs(error) > BadWindowSeconds()) return std::nullopt;
