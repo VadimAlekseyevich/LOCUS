@@ -179,7 +179,8 @@ int main() {
 
     core::ReplayTrace restored;
     ok &= Check(captured.hasReplay && disk.LoadReplay(captured,restored,error) &&
-                app::VerifyRunReplay(captured,restored,chart,completion.gameplayRevision),
+                app::VerifyRunReplay(captured,restored,chart,completion.gameplayRevision,
+                                     hardPayload.offsetSeconds),
                 "Results > recorded replay survives disk roundtrip and rejudges");
     completion.spectator = true;
     completion.replay = nullptr;
