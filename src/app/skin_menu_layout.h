@@ -13,11 +13,12 @@ inline bool Hit(Vector2 mouse, Rectangle rect) {
 }
 
 inline Rectangle ColorRow(int row) {
-    return {70.0f, 194.0f + row * 16.0f, 205.0f, 16.0f};
+    // Keep all eleven colors above the skin action row.
+    return {70.0f, 194.0f + row * 24.0f, 205.0f, 23.0f};
 }
 inline Rectangle NameField() { return {175, 190, 376, 34}; }
 constexpr float RowPitch(int page) noexcept {
-    return page == 1 ? 36.0f : 31.0f;
+    return 31.0f;
 }
 inline Rectangle SwitchRect(int page, int row) {
     return {468.0f, 200.0f + row * RowPitch(page), 84.0f, 28.0f};

@@ -35,17 +35,8 @@ constexpr SkinSetting kPlayerSettings[] = {
     {"HIT FLASH SIZE",   {0.5, 2, 0.1, 8},          &Skin::hitFlashScale},
     {"SHOW HUD",         {}, nullptr, &Skin::showHud},
     {"CAMERA LAG (MS)",  {0, 500, 0, 1500},         &Skin::cameraLagMs, nullptr, true},
-    {"HIT ERROR BAR",     {}, nullptr, &Skin::showHitErrorBar}
-};
-constexpr SkinSetting kHitErrorSettings[] = {
-    {"BAR LENGTH", {60, 360, 40, 480}, &Skin::hitErrorLength, nullptr},
-    {"BAR THICKNESS", {1, 16, 1, 24}, &Skin::hitErrorThickness, nullptr},
-    {"MARK WIDTH", {1, 8, 1, 12}, &Skin::hitErrorMarkWidth, nullptr},
-    {"MARK HEIGHT", {2, 32, 2, 48}, &Skin::hitErrorMarkHeight, nullptr},
-    {"FADE TIME (MS)", {100, 3000, 100, 5000}, &Skin::hitErrorFadeMs, nullptr, true},
-    {"ZONE OPACITY", {0, 1, 0, 1}, &Skin::hitErrorZoneOpacity, nullptr},
-    {"MARK OPACITY", {0, 1, 0, 1}, &Skin::hitErrorMarkOpacity, nullptr},
-    {"BOTTOM OFFSET", {0, 200, 0, 300}, &Skin::hitErrorBottomOffset, nullptr}
+    {"HIT ERROR BAR",     {}, nullptr, &Skin::showHitErrorBar},
+    {"HIT ERROR LENGTH", {60,360,40,480}, &Skin::hitErrorLength}
 };
 }
 
@@ -55,15 +46,12 @@ const SkinSetting* GetSkinSetting(int page, int row) noexcept {
         return &kPathSettings[row];
     if (page == 1 && row < static_cast<int>(std::size(kPlayerSettings)))
         return &kPlayerSettings[row];
-    if (page == 4 && row < static_cast<int>(std::size(kHitErrorSettings)))
-        return &kHitErrorSettings[row];
     return nullptr;
 }
 
 int SkinSettingCount(int page) noexcept {
     return page == 0 ? static_cast<int>(std::size(kPathSettings))
-         : page == 1 ? static_cast<int>(std::size(kPlayerSettings))
-         : page == 4 ? static_cast<int>(std::size(kHitErrorSettings)) : 0;
+         : page == 1 ? static_cast<int>(std::size(kPlayerSettings)) : 0;
 }
 
 bool GetSkinToggle(const Skin& skin, int page, int row) noexcept {

@@ -28,26 +28,12 @@ using Json = nlohmann::ordered_json;
 constexpr const char* kColorNames[kSkinColorCount] = {
     "BACKGROUND", "TRAJECTORY", "OUTLINE", "JUNCTION",
     "PLAYER", "PLAYER CORE", "HUD BACKGROUND", "HUD TEXT", "HIT FLASH",
-    "FIELD BORDER",
-    "HEB PERFECT ZONE",
-    "HEB GOOD ZONE",
-    "HEB BAD ZONE",
-    "HEB PERFECT MARK",
-    "HEB GOOD MARK",
-    "HEB BAD MARK",
-    "HEB CENTER"
+    "FIELD BORDER", "HIT ERROR BAR"
 };
 constexpr const char* kColorKeys[kSkinColorCount] = {
     "background", "trajectory", "outline", "junction",
     "player", "playerCore", "hudBackground", "hudText", "hitFlash",
-    "fieldBorder",
-    "hitErrorPerfectZone",
-    "hitErrorGoodZone",
-    "hitErrorBadZone",
-    "hitErrorPerfectMark",
-    "hitErrorGoodMark",
-    "hitErrorBadMark",
-    "hitErrorCenter"
+    "fieldBorder", "hitErrorColor"
 };
 
 Json EncodeColor(Color color) {
@@ -87,14 +73,7 @@ Color& SkinColor(Skin& skin, int index) noexcept {
         case 6: return skin.hudBackground;
         case 7: return skin.hudText;
         case 8: return skin.hitFlash;
-        case 9: return skin.fieldBorder;
-        case 10: return skin.hitErrorPerfectZone;
-        case 11: return skin.hitErrorGoodZone;
-        case 12: return skin.hitErrorBadZone;
-        case 13: return skin.hitErrorPerfectMark;
-        case 14: return skin.hitErrorGoodMark;
-        case 15: return skin.hitErrorBadMark;
-        case 16: return skin.hitErrorCenter;
+        case 10: return skin.hitErrorColor;
         default: return skin.fieldBorder;
     }
 }
@@ -120,14 +99,7 @@ bool Skin::Valid(std::string& error) const {
         {baseSpeedPxPerSecond, kMinBaseSpeed, kMaxBaseSpeed, "Base movement speed"},
         {cameraLagMs, 0.0f, 1500.0f, "Camera lag (ms)"},
         {hitFlashScale, 0.1f, 8.0f, "Hit flash scale"},
-        {hitErrorLength, 40.0f, 480.0f, "BAR LENGTH"},
-        {hitErrorThickness, 1.0f, 24.0f, "BAR THICKNESS"},
-        {hitErrorMarkWidth, 1.0f, 12.0f, "MARK WIDTH"},
-        {hitErrorMarkHeight, 2.0f, 48.0f, "MARK HEIGHT"},
-        {hitErrorFadeMs, 100.0f, 5000.0f, "FADE TIME (MS)"},
-        {hitErrorZoneOpacity, 0.0f, 1.0f, "ZONE OPACITY"},
-        {hitErrorMarkOpacity, 0.0f, 1.0f, "MARK OPACITY"},
-        {hitErrorBottomOffset, 0.0f, 300.0f, "BOTTOM OFFSET"}
+        {hitErrorLength, 40.0f, 480.0f, "Hit error bar length"}
     };
     for (const auto& field : fields) {
         if (!InRange(field.value, field.min, field.max)) {
@@ -163,18 +135,7 @@ std::string SerializeSkin(const Skin& skin) {
             {"glow", skin.playerGlow},
             {"hitFlashScale", skin.hitFlashScale}
         }},
-        {"hud", {{"visible", skin.showHud}, {"hitErrorBar", skin.showHitErrorBar},
-            {"hitErrorStyle", {
-                {"length", skin.hitErrorLength},
-                {"thickness", skin.hitErrorThickness},
-                {"markWidth", skin.hitErrorMarkWidth},
-                {"markHeight", skin.hitErrorMarkHeight},
-                {"fadeMs", skin.hitErrorFadeMs},
-                {"zoneOpacity", skin.hitErrorZoneOpacity},
-                {"markOpacity", skin.hitErrorMarkOpacity},
-                {"bottomOffset", skin.hitErrorBottomOffset}
-            }}
-        }},
+        {"hud", {{"visible", skin.showHud}, {"hitErrorBar", skin.showHitErrorBar}, {"hitErrorLength", skin.hitErrorLength}}},
         {"colors", std::move(colors)}
     };
     return object.dump(2) + "\n";
@@ -212,21 +173,12 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         parsed.showHud = object.at("hud").at("visible").get<bool>();
         parsed.showHitErrorBar = object.at("hud").value("hitErrorBar", false);
         const auto& hud = object.at("hud");
-        if (hud.contains("hitErrorStyle")) {
-            const auto& style = hud.at("hitErrorStyle");
-            if (!style.is_object()) { error = "Invalid hit error style."; return false; }
-            parsed.hitErrorLength = style.value("length", parsed.hitErrorLength);
-            parsed.hitErrorThickness = style.value("thickness", parsed.hitErrorThickness);
-            parsed.hitErrorMarkWidth = style.value("markWidth", parsed.hitErrorMarkWidth);
-            parsed.hitErrorMarkHeight = style.value("markHeight", parsed.hitErrorMarkHeight);
-            parsed.hitErrorFadeMs = style.value("fadeMs", parsed.hitErrorFadeMs);
-            parsed.hitErrorZoneOpacity = style.value("zoneOpacity", parsed.hitErrorZoneOpacity);
-            parsed.hitErrorMarkOpacity = style.value("markOpacity", parsed.hitErrorMarkOpacity);
-            parsed.hitErrorBottomOffset = style.value("bottomOffset", parsed.hitErrorBottomOffset);
-        }
+        parsed.hitErrorLength = hud.value("hitErrorLength", parsed.hitErrorLength);
+        if (!hud.contains("hitErrorLength") && hud.contains("hitErrorStyle"))
+            parsed.hitErrorLength = hud.at("hitErrorStyle").value("length", parsed.hitErrorLength);
         const auto& colors = object.at("colors");
         for (int i = 0; i < kSkinColorCount; ++i) {
-            if (i >= kBaseSkinColorCount && !colors.contains(kColorKeys[i])) continue;
+            if (i == 10 && !colors.contains(kColorKeys[i])) continue;
             if (!DecodeColor(colors.at(kColorKeys[i]), SkinColor(parsed, i))) {
                 error = std::string("Invalid RGBA color: ") + kColorKeys[i];
                 return false;

@@ -6,7 +6,6 @@
   <button id="skin-tab-profiles" class="selected" data-action="tab" data-index="3"><span class="button-label">SKINS</span></button>
   <button id="skin-tab-path" data-action="tab" data-index="0"><span class="button-label">PATH</span></button>
   <button id="skin-tab-player" data-action="tab" data-index="1"><span class="button-label">PLAYER</span></button>
-  <button id="skin-tab-hit-error" data-action="tab" data-index="4"><span class="button-label">HIT ERROR</span></button>
   <button id="skin-tab-colors" data-action="tab" data-index="2"><span class="button-label">COLORS</span></button>
  </div>
  <div class="skins-columns">

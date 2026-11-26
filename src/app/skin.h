@@ -31,16 +31,8 @@ struct Skin {
     bool playerGlow = true;
     float hitFlashScale = 1.0f;
     bool showHud = true;
-    bool showHitErrorBar = false;
-    // Logical HUD pixels, scaled with the shorter window dimension.
-    float hitErrorLength = 144.0f;
-    float hitErrorThickness = 4.0f;
-    float hitErrorMarkWidth = 2.0f;
-    float hitErrorMarkHeight = 12.0f;
-    float hitErrorFadeMs = 1250.0f;
-    float hitErrorZoneOpacity = 0.45f;
-    float hitErrorMarkOpacity = 1.0f;
-    float hitErrorBottomOffset = 16.0f;
+    float hitErrorLength = 144.0f; // logical HUD pixels
+    bool showHitErrorBar = false; // optional, bottom-center timing feedback
 
     Color background{21, 23, 33, 255};
     Color trajectory{255, 70, 84, 255};
@@ -53,20 +45,12 @@ struct Skin {
     Color hitFlash{255, 233, 174, 235};
     Color fieldBorder{245, 248, 252, 255}; // Thin square gameplay border.
 
-    Color hitErrorPerfectZone{142, 226, 204, 255};
-    Color hitErrorGoodZone{155, 205, 245, 255};
-    Color hitErrorBadZone{237, 198, 143, 255};
-    Color hitErrorPerfectMark{142, 226, 204, 255};
-    Color hitErrorGoodMark{155, 205, 245, 255};
-    Color hitErrorBadMark{237, 198, 143, 255};
-    Color hitErrorCenter{231, 237, 243, 255};
-
+    Color hitErrorColor{231,237,243,255};
     bool Valid(std::string& error) const;
 };
 
 // Stable names and indices used by the interactive color editor.
-constexpr int kBaseSkinColorCount = 10;
-constexpr int kSkinColorCount = 17;
+constexpr int kSkinColorCount = 11;
 const char* SkinColorLabel(int index) noexcept;
 Color& SkinColor(Skin& skin, int index) noexcept;
 const Color& SkinColor(const Skin& skin, int index) noexcept;

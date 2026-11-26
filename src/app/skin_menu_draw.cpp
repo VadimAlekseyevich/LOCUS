@@ -164,11 +164,10 @@ void PreviewPath(Font font, const Skin& skin,
     sample.grades = {42, 6, 1, 2};
     sample.combo = 18;
     HitErrorHistory errors;
-    const double lifetime=skin.hitErrorFadeMs/1000.0;
-    errors.Record({core::Grade::Bad,0,-0.145},1.0-lifetime*0.45);
-    errors.Record({core::Grade::Good,0,0.083},1.0-lifetime*0.25);
-    errors.Record({core::Grade::Perfect,0,0.012},1.0);
-    DrawGameplayHud(font,LayoutGameplayHud(area,frame),sample,skin,&errors,1.0);
+    errors.Record({core::Grade::Perfect,0,-0.022},0.0);
+    errors.Record({core::Grade::Good,0,0.083},0.2);
+    errors.Record({core::Grade::Perfect,0,0.012},0.4);
+    DrawGameplayHud(font,LayoutGameplayHud(area,frame),sample,skin,&errors,0.5);
 }
 
 void DrawColorPickerWheel(const Skin& skin, const SkinUi& ui) {
@@ -232,15 +231,15 @@ void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
 
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     const auto& theme=ApprovedUiTheme();
-    const char* tabs[]={"PATH","PLAYER","COLORS","SKINS","HIT ERROR"};
-    for(int i=0;i<5;++i)
+    const char* tabs[]={"PATH","PLAYER","COLORS","SKINS"};
+    for(int i=0;i<4;++i)
         DrawUiThemedButton(font,SkinTabButton(i),tabs[i],
             ui.page==i?UiButtonVariant::Cool:UiButtonVariant::Quiet,
             {},{},theme,14);
 
     Panel({52,181,536,302});
     Panel({595,181,341,342});
-    if (SkinSettingCount(ui.page)>0) {
+    if (ui.page == 0 || ui.page == 1) {
         for (int row = 0; row < RowCount(ui.page); ++row) {
             Label(font, RowName(ui.page, row), 70.0f,
                    206.0f + row * RowPitch(ui.page),
@@ -264,10 +263,10 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
             const Rectangle row = ColorRow(index);
             if (index == ui.selectedColor)
                 DrawRectangleRounded(row, 0.08f, 3, Color{43, 59, 72, 255});
-            Label(font, SkinColorLabel(index), row.x + 7, row.y + 2, 10,
+            Label(font, SkinColorLabel(index), row.x + 7, row.y + 5, 12,
                   index == ui.selectedColor ? kGold : kText);
             DrawRectangle(static_cast<int>(row.x + 158),
-                          static_cast<int>(row.y + 2), 38, 12,
+                          static_cast<int>(row.y + 4), 38, 17,
                           SkinColor(skin, index));
         }
         DrawColorPicker(font, skin, ui);

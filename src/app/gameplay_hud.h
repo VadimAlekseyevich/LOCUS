@@ -68,20 +68,12 @@ inline GameplayHudLayout LayoutGameplayHud(Rectangle bounds,
 
 inline Rectangle LayoutHitErrorBar(const GameplayHudLayout& l,const Skin& skin) noexcept {
     const float u=l.unit;
-    const auto bounds=l.bounds;
-    if (bounds.width<=0 || bounds.height<=0 || u<=0) return {};
-    const float margin=std::max(4.0f*u,skin.hitErrorMarkWidth*u);
-    const float width=std::min(skin.hitErrorLength*u,std::max(0.0f,bounds.width-2*margin));
-    const float height=std::max(skin.hitErrorThickness,skin.hitErrorMarkHeight+2)*u;
-    const float x=bounds.x+(bounds.width-width)*0.5f;
-    const float top=bounds.y+margin;
-    const float bottom=bounds.y+bounds.height-margin-height;
-    float y=std::clamp(bounds.y+bounds.height-skin.hitErrorBottomOffset*u-height,
-                       top,std::max(top,bottom));
-    if (x < l.combo.x+l.combo.width+4*u && x+width > l.combo.x &&
-        y+height>l.combo.y && y<l.combo.y+l.combo.height)
-        y=std::max(top,l.combo.y-height-4*u);
-    return {x,y,width,height};
+    const auto b=l.bounds;
+    const float w=std::min(skin.hitErrorLength*u,std::max(0.0f,b.width-8*u));
+    Rectangle bar{b.x+(b.width-w)*0.5f,b.y+b.height-34*u,w,18*u};
+    if (bar.x < l.combo.x+l.combo.width+4*u && bar.x+bar.width > l.combo.x)
+        bar.y=l.combo.y-22*u;
+    return bar;
 }
 
 struct GameplayHudStats {

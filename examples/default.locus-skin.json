@@ -21,16 +21,7 @@
   "hud": {
     "visible": true,
     "hitErrorBar": false,
-    "hitErrorStyle": {
-      "length": 144,
-      "thickness": 4,
-      "markWidth": 2,
-      "markHeight": 12,
-      "fadeMs": 1250,
-      "zoneOpacity": 0.45,
-      "markOpacity": 1,
-      "bottomOffset": 16
-    }
+    "hitErrorLength": 144
   },
   "colors": {
     "background": [
@@ -93,43 +84,7 @@
       252,
       255
     ],
-    "hitErrorPerfectZone": [
-      142,
-      226,
-      204,
-      255
-    ],
-    "hitErrorGoodZone": [
-      155,
-      205,
-      245,
-      255
-    ],
-    "hitErrorBadZone": [
-      237,
-      198,
-      143,
-      255
-    ],
-    "hitErrorPerfectMark": [
-      142,
-      226,
-      204,
-      255
-    ],
-    "hitErrorGoodMark": [
-      155,
-      205,
-      245,
-      255
-    ],
-    "hitErrorBadMark": [
-      237,
-      198,
-      143,
-      255
-    ],
-    "hitErrorCenter": [
+    "hitErrorColor": [
       231,
       237,
       243,

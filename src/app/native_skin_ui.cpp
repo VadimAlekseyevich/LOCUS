@@ -25,8 +25,8 @@ std::string HexColor(Color color) {
 }
 const char* TabId(int i) {
     static const char* ids[] = {"skin-tab-path", "skin-tab-player",
-                               "skin-tab-colors", "skin-tab-profiles", "skin-tab-hit-error"};
-    return ids[std::clamp(i, 0, 4)];
+                               "skin-tab-colors", "skin-tab-profiles"};
+    return ids[std::clamp(i, 0, 3)];
 }
 } // namespace
 
@@ -69,7 +69,7 @@ void NativeSkinUi::SetText(const char* id, const std::string& value) {
 void NativeSkinUi::RebuildControls() {
     if (!skin_ || !ui_ || !document_) return;
     std::ostringstream html;
-    if (SkinSettingCount(ui_->page) > 0) {
+    if (ui_->page < 2) {
         for (int row = 0; row < SkinSettingCount(ui_->page); ++row) {
             const auto* setting = GetSkinSetting(ui_->page, row);
             if (!setting) continue;
@@ -144,7 +144,7 @@ void NativeSkinUi::Sync() {
         lastProfilesRevision_ = ui_->profilesRevision;
         lastProfileSelection_ = ui_->selectedProfile;
     }
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
         if (auto* tab = document_->GetElementById(TabId(i)))
             tab->SetClass("selected", i == ui_->page);
     auto* focus = document_->GetContext()->GetFocusElement();
@@ -191,10 +191,10 @@ void NativeSkinUi::Sync() {
             swatchColors_[static_cast<std::size_t>(i)] = hex;
         }
     }
-    if (SkinSettingCount(ui_->page) > 0) {
+    if (ui_->page < 2) {
         const int count = SkinSettingCount(ui_->page);
         for (int row = 0; row < count; ++row) {
-            if (SkinSettingCount(ui_->page) > 0 && GetSkinSetting(ui_->page, row)->toggle) {
+            if (ui_->page < 2 && GetSkinSetting(ui_->page, row)->toggle) {
                 // Reset/load can replace the model without a click.
                 const std::string id = "skin-toggle-" + std::to_string(row);
                 if (auto* label=document_->GetElementById(id)) {
@@ -246,7 +246,7 @@ void NativeSkinUi::UpdatePointer(Rectangle wheelBounds) {
     const bool inPanel = clip.width > 0.0f &&
         CheckCollisionPointRec(mouse, clip);
     if (inPanel && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        if (SkinSettingCount(ui_->page) > 0) {
+        if (ui_->page < 2) {
             for (int row = 0; row < SkinSettingCount(ui_->page); ++row) {
                 const auto* setting = GetSkinSetting(ui_->page, row);
                 if (!setting || setting->toggle) continue;
@@ -275,7 +275,7 @@ void NativeSkinUi::UpdatePointer(Rectangle wheelBounds) {
         ui_->draggingColor = 0;
         return;
     }
-    if (SkinSettingCount(ui_->page) > 0 && ui_->draggingRow >= 0) {
+    if (ui_->page < 2 && ui_->draggingRow >= 0) {
         const int row = ui_->draggingRow;
         if (auto* track = document_->GetElementById(
                 "skin-slider-track-" + std::to_string(row))) {
@@ -400,7 +400,7 @@ void NativeSkinUi::ProcessEvent(Rml::Event& event) {
     }
     if (action == "tab") {
         FinishFocusedText(true);
-        ui_->page = std::clamp(target->GetAttribute<int>("data-index", 0), 0, 4);
+        ui_->page = std::clamp(target->GetAttribute<int>("data-index", 0), 0, 3);
         ui_->draggingRow = -1;
         ui_->draggingColor = 0;
     } else if (action == "toggle") {

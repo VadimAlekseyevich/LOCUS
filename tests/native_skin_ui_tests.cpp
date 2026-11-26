@@ -82,14 +82,13 @@ bool TestNativeSkinTextEditing() {
         auto* path=document->GetElementById("skin-tab-path");
         auto* colors=document->GetElementById("skin-tab-colors");
         auto* player=document->GetElementById("skin-tab-player");
-        auto* hitError=document->GetElementById("skin-tab-hit-error");
         auto* nameRow=document->GetElementById("skin-name-row");
         auto* hexRow=document->GetElementById("skin-color-edit");
         ok &= Check(ui.page==3 && profiles && profiles->IsClassSet("selected") &&
                     path && profiles->GetAbsoluteLeft()<path->GetAbsoluteLeft() &&
-                    name && preview && colors && player && hitError && nameRow && hexRow,
+                    name && preview && colors && player && nameRow && hexRow,
                     "SKINS is the initial first tab with rename in left panel");
-        if (name && preview && profiles && path && colors && player && hitError && nameRow && hexRow) {
+        if (name && preview && profiles && path && colors && player && nameRow && hexRow) {
             const std::string originalName = skin.name;
             const double originalNumber = GetSkinNumber(skin,0,0,ui.selectedColor);
             Type(*context,*name,"New Skin");
@@ -149,14 +148,14 @@ bool TestNativeSkinTextEditing() {
                 context->Update();
                 const float x=preview->GetAbsoluteLeft(),y=preview->GetAbsoluteTop();
                 const auto width=preview->GetOffsetWidth(),height=preview->GetOffsetHeight();
-                for (auto* tab : {path,player,hitError,colors,profiles}) {
+                for (auto* tab : {path,player,colors,profiles}) {
                     tab->Click();
                     presenter.Sync();
                     context->Update();
                     ok &= Check(preview->GetAbsoluteLeft()==x && preview->GetAbsoluteTop()==y &&
                                 preview->GetOffsetWidth()==width && preview->GetOffsetHeight()==height,
                                 "preview geometry identical across every skin tab");
-                    if (SkinSettingCount(ui.page)>0) {
+                    if (ui.page==0 || ui.page==1) {
                         for (int row=0;row<SkinSettingCount(ui.page);++row) {
                             const auto* setting=GetSkinSetting(ui.page,row);
                             if (!setting || !setting->number) continue;
