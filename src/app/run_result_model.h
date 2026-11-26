@@ -89,6 +89,7 @@ struct CompletedRunContext {
     core::ModFlags modFlags = 0;
     std::uint32_t modSeed = 0;
     std::optional<core::PerformanceDifficulty> performanceDifficulty;
+};
 
 // Build an eligible attempt without touching the filesystem or assigning
 // persistence identity/time. The owner-scoped store assigns player and attempt IDs.
