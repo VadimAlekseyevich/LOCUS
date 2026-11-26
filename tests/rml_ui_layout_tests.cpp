@@ -600,16 +600,20 @@ int main(int argc, char** argv) {
         context->Update();
         ok &= Check(HasButtonLabels(resultsDoc), "RESULTS buttons contain labels");
         auto* accuracy = resultsDoc->GetElementById("results-accuracy");
-        auto* history = resultsDoc->GetElementById("results-history");
+        auto* rank = resultsDoc->GetElementById("results-rank");
         auto* retry = resultsDoc->GetElementById("results-retry");
-        ok &= Check(accuracy && history && retry && accuracy->GetOffsetWidth() > 0 &&
-                    history->GetOffsetHeight() > 0 &&
-                    history->GetAbsoluteTop()+history->GetOffsetHeight() > 490.0f,
-                    "RESULTS has separate score, history and action regions");
+        ok &= Check(accuracy && rank && retry && accuracy->GetOffsetWidth() > 0 &&
+                    rank->GetOffsetHeight() > 0 &&
+                    rank->GetAbsoluteLeft() > accuracy->GetAbsoluteLeft() &&
+                    !resultsDoc->GetElementById("results-history") &&
+                    !resultsDoc->GetElementById("results-edit"),
+                    "RESULTS has score, rank and action regions without redundant history");
         context->SetDimensions({800, 450});
         context->Update();
         ok &= Check(retry && retry->GetAbsoluteLeft() + retry->GetOffsetWidth()
-                    <= 800.1f, "800x450 RESULTS actions fit");
+                    <= 800.1f && rank &&
+                    rank->GetAbsoluteLeft()+rank->GetOffsetWidth() <= 800.1f,
+                    "800x450 RESULTS actions and rank fit");
     }
     auto* skinDoc = context->LoadDocument(uiPath("skins.rml"));
     ok &= Check(skinDoc != nullptr, "native SKINS document parses");

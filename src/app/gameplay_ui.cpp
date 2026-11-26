@@ -147,7 +147,9 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay,
     const char* rankText=core::ResultRankName(rank);
     const float rankSize=80.0f;
     const auto rankWidth=MeasureTextEx(font,rankText,rankSize,1.0f).x;
-    DrawTextLabel(font,rankText,{(72+412)-rankWidth-24,282},rankSize,rankColor);
+    // The fallback renderer has no RCSS font effects. Keep the rank in a
+    // separate area of the summary instead of overlapping practice labels.
+    DrawTextLabel(font,rankText,{(72+412)-rankWidth-24,288},rankSize,rankColor);
     if (saved && saved->variablePracticeRate)
         DrawTextLabel(font,
                       TextFormat("VARIABLE RATE / LAST %.0f%%",

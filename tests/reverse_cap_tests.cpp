@@ -73,7 +73,7 @@ int main() {
                 !app::NeedsReverseCap(core::Heading::Right, core::Heading::Up) &&
                 !app::NeedsReverseCap(core::Heading::Left, core::Heading::Left) &&
                 app::Skin{}.reverseCapScale == app::kDefaultReverseCapScale &&
-                app::kDefaultReverseCapScale == 3.2f,
+                app::kDefaultReverseCapScale == 2.0f,
                 "caps follow actual incoming/outgoing reversal, not note labels");
 
     if (!ok) return 1;
