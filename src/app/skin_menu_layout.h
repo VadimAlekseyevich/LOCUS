@@ -17,7 +17,7 @@ inline Rectangle ColorRow(int row) {
     return {70.0f, 194.0f + row * 24.0f, 205.0f, 23.0f};
 }
 inline Rectangle NameField() { return {175, 190, 376, 34}; }
-constexpr float RowPitch(int page) noexcept {
+constexpr float RowPitch(int /*page*/) noexcept {
     return 31.0f;
 }
 inline Rectangle SwitchRect(int page, int row) {

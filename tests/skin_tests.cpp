@@ -158,7 +158,7 @@ int main() {
             const float step=StepForTimedRoute(defaults.baseSpeedPxPerSecond,
                                                previewRoute)*scale;
             const auto marker=previewRoute.PositionAt(0.0);
-            const auto distance=[step](core::GridPoint a,core::GridPoint b) {
+            const auto distance=[step](locus::core::GridPoint a,locus::core::GridPoint b) {
                 return std::hypot(a.x-b.x,a.y-b.y)*step;
             };
             check(std::abs(scaled.pathWidth/defaults.pathWidth-scale)<1e-6f &&
