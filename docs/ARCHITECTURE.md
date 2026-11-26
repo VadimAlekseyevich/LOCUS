@@ -13,7 +13,8 @@ pre-release; incompatible changes are allowed but must be called out.
 | `EditorComparisonCache` | Revision-cached routes for one focused draft and up to two parked/library difficulties; frame-local read-only render snapshot | Audio transport, chart mutations, persistence |
 | `SongLibrary` / `song_set_storage` | Installed Song Sets, authoritative shared tempo map, file transactions, recovery, cache/index | Gameplay scoring or editor keyboard state |
 | `ChartPlayback` / `GameSession` | Audio-time transport, per-arrow judgement and spectator dispatch | Screen rendering, camera, skin settings |
-| `core/replay` / `RunResultsStore` | Deterministic scoring trace codec/cursor; compact result JSON and lazily loaded sidecars | UI, audio transport, online trust |
+| `core/replay` / `core/score_verification` | Deterministic replay codec/cursor and completed score derivation from a trusted chart and offset | Storage, UI, audio, online trust |
+| `RunResultsStore` | Compact local result JSON and lazily loaded sidecars; compares claims against core verification | UI, audio, online trust |
 | `PlayPresentation` | Presentation-only camera lag, outro and adjustment notice | Authoritative song time or note results |
 | `path_mesh` / `route_renderer` / `gameplay_ui` | Project sampled route into a clipped square, draw ribbons, turn targets and marker | Loading files or changing gameplay state |
 | Screen controllers | Play, editor, library, skin and modal commands | Other screens' storage or render internals |
@@ -149,7 +150,7 @@ tests only for contracts or failures they can actually detect.
 
 ## Online readiness
 
-The `LOCUS_BUILD_APP=OFF` build supplies the portable chart/judge/replay/difficulty engine. The desktop catalog and filesystem adapters are not a portable server storage layer: `ReadLocalFileBytes` and `OpenChartWithAudioPath` have Windows-only implementations. No network or account service is implemented. The future server must own published revisions, authenticated scores and ranking eligibility. See [online architecture](ONLINE_ARCHITECTURE.md) for the staged plan.
+The `LOCUS_BUILD_APP=OFF` build supplies the portable chart/judge/replay/difficulty engine and `EvaluateCompletedReplay`, the shared scoring consistency verifier. The desktop catalog and filesystem adapters are not a portable server storage layer: `ReadLocalFileBytes` and `OpenChartWithAudioPath` have Windows-only implementations. No network or account service is implemented. The future server must own published revisions, authenticated scores and ranking eligibility. See [online architecture](ONLINE_ARCHITECTURE.md) for the staged plan.
 
 ## Difficulty and remaining architecture work
 

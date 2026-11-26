@@ -78,7 +78,7 @@ constexpr const char* ResultRankName(ResultRank rank) noexcept {
 // Compact completed-attempt telemetry, in original song milliseconds.
 // Misses (including wrong directions) are not timing samples.
 // 36 equal-width bins covering the complete Bad window, in song time.
-// With current rules each bin is 10 ms. Missing old telemetry is explicit.
+// Each bin is 10 ms in NM, scaled by EZ/HR. Missing old telemetry is explicit.
 inline constexpr std::size_t kHitErrorBinCount = 36;
 using HitErrorHistogram = std::array<int, kHitErrorBinCount>;
 

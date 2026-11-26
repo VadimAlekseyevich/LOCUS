@@ -34,7 +34,7 @@ inline bool ValidDifficultyId(std::string_view id) noexcept {
 // members instead of changing authored beat positions or directions.
 bool ParseChartJson(std::string_view text, LoadedChart& result, std::string& error);
 
-// Version 3: absolute note timestamps and absolute outgoing compass headings.
+// Version 4: absolute note timestamps, outgoing headings and explicit tempo map.
 bool SerializeChartJson(const LoadedChart& chart, std::string& json,
                         std::string& error);
 

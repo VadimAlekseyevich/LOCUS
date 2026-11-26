@@ -131,6 +131,7 @@ bool ValidRunResult(const RunResult& result) noexcept;
 // The caller supplies the actual loaded chart revision. Never mutates live play.
 bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,
                      const core::Chart& chart,
-                     const std::string& loadedGameplayRevision);
+                     const std::string& loadedGameplayRevision,
+                     double authoritativeOffsetSeconds);
 
 } // namespace locus::app

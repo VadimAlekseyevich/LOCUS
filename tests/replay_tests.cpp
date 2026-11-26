@@ -1,5 +1,6 @@
 #include "core/judgement.h"
 #include "core/replay.h"
+#include "core/score_verification.h"
 
 #include <cmath>
 #include <iostream>
@@ -48,6 +49,22 @@ int main() {
                 playback.Statistics().meanErrorMs == live.Statistics().meanErrorMs &&
                 playback.Statistics().unstableRate == live.Statistics().unstableRate,
                 "replay reuses actual judge and preserves counts/combo/telemetry");
+    const auto derived=EvaluateCompletedReplay(chart,0.25,decoded);
+    ok &= Check(derived && derived->grades.Resolved()==live.Counts().Resolved() &&
+                derived->grades.perfect==live.Counts().perfect &&
+                derived->grades.good==live.Counts().good &&
+                derived->grades.bad==live.Counts().bad &&
+                derived->grades.miss==live.Counts().miss &&
+                derived->statistics.maxCombo==live.MaxCombo() &&
+                derived->statistics.histogram==live.Statistics().histogram &&
+                derived->statistics.unstableRate==live.Statistics().unstableRate,
+                "portable score verification derives results from replay only");
+    auto partial=decoded;
+    partial.events.pop_back();
+    ok &= Check(!EvaluateCompletedReplay(chart,0.0,decoded) &&
+                !EvaluateCompletedReplay(chart,0.25,partial) &&
+                !EvaluateCompletedReplay(chart,std::numeric_limits<double>::infinity(),decoded),
+                "portable verification rejects mismatched timing and incomplete attempts");
     ReplayCursor cursor;
     TurnJudge spectator(chart);
     spectator.SetOffsetSeconds(decoded.offsetSeconds);

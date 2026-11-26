@@ -55,7 +55,7 @@
 | Mod | Active rules |
 | --- | --- |
 | NM | 100% speed, standard judgement |
-| HT / DT | Fixed rate in the ranges above; physical difficulty is recalculated |
+| HT / DT | Fixed rate (HT 50–99%, default 75%; DT 101–150%, default 125%); physical difficulty is recalculated |
 | EZ / HR | Timing windows ×1.5 / ×0.7 in original song time |
 | HD | Near-player route fades out |
 | FL | Opaque mask outside a circle of radius 72 logical px centred on the player; HUD and normal skin lookahead are preserved |

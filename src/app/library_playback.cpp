@@ -65,9 +65,8 @@ bool ActivateLibraryDifficulty(const LibraryChart& selected,
     if (replay &&
         (replay->result.songSetId != selected.songSetId ||
          replay->result.difficultyId != prepared.difficultyId ||
-         replay->trace.offsetSeconds != prepared.offsetSeconds ||
          !VerifyRunReplay(replay->result,replay->trace,prepared.route,
-                          core::ChartGameplayRevision(prepared)))) {
+                          core::ChartGameplayRevision(prepared),prepared.offsetSeconds))) {
         error = "Replay does not reproduce this difficulty revision.";
         return false;
     }

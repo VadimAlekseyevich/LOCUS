@@ -17,6 +17,7 @@ add_library(locus_core STATIC
     src/core/timed_route.cpp
     src/core/judgement.cpp
     src/core/replay.cpp
+    src/core/score_verification.cpp
     src/core/song_clock.cpp
     src/core/demo_audio.cpp
     src/core/music_file.cpp

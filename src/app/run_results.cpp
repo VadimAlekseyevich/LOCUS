@@ -3,6 +3,7 @@
 
 #include "core/utf8.h"
 #include "core/chart_json.h"
+#include "core/score_verification.h"
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -365,21 +366,21 @@ bool RunResultsStore::LoadReplay(const RunResult& run, core::ReplayTrace& replay
 
 bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,
                      const core::Chart& chart,
-                     const std::string& loadedGameplayRevision) {
+                     const std::string& loadedGameplayRevision,
+                     double authoritativeOffsetSeconds) {
     if (!ValidRunResult(run) || run.variablePracticeRate || replay.modFlags != run.modFlags || replay.modSeed != run.modSeed ||
         std::abs(replay.ratePercent / 100.0 - run.practiceRate) > 1e-9 ||
         CompareRunRevision(run, loadedGameplayRevision) != RunRevisionState::Current)
         return false;
-    core::TurnJudge judge(chart);
-    if (!core::RejudgeReplay(replay,judge) || !judge.AllScorableJudged())
-        return false;
-    const auto& a = judge.Counts();
+    const auto verified=core::EvaluateCompletedReplay(chart,authoritativeOffsetSeconds,replay);
+    if (!verified) return false;
+    const auto& a = verified->grades;
     const auto& b = run.grades;
     if (a.perfect != b.perfect || a.good != b.good ||
         a.bad != b.bad || a.miss != b.miss ||
         a.Resolved() != run.notesJudged) return false;
     if (run.statistics) {
-        const auto actual = judge.Statistics();
+        const auto& actual = verified->statistics;
         const auto& expected = *run.statistics;
         if (actual.maxCombo != expected.maxCombo ||
             actual.timedHits != expected.timedHits ||

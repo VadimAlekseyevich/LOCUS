@@ -374,8 +374,8 @@ int main(int argc, char** argv) {
         ok &= Check(saved && records.size() == 1 && records[0].hasReplay &&
                     records[0].statistics && records[0].statistics->histogram == run.statistics->histogram &&
                     store.LoadReplay(records[0],decoded,error) &&
-                    locus::app::VerifyRunReplay(records[0],decoded,chart,kRevision) &&
-                    !locus::app::VerifyRunReplay(records[0],decoded,chart,"old"),
+                    locus::app::VerifyRunReplay(records[0],decoded,chart,kRevision,0.0) &&
+                    !locus::app::VerifyRunReplay(records[0],decoded,chart,"old",0.0),
                     "replay round trip and matching chart revision verification");
         RunResult invalidHistogram=run;
         ++(*invalidHistogram.statistics->histogram)[0];

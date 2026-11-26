@@ -101,8 +101,7 @@ bool LaunchSavedReplay(const LibraryLaunchContext& ctx,
         result.difficultyId=="00000000000000000000000000000001") {
         core::LoadedChart demo;
         demo.route=ctx.session.demoChart;
-        if (trace.offsetSeconds!=0.0 ||
-            !VerifyRunReplay(result,trace,demo.route,core::ChartGameplayRevision(demo))) {
+        if (!VerifyRunReplay(result,trace,demo.route,core::ChartGameplayRevision(demo),demo.offsetSeconds)) {
             ctx.error="Replay does not reproduce the current demo.";
             return false;
         }

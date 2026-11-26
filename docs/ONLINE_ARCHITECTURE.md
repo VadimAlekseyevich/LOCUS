@@ -10,7 +10,7 @@ remain subject to design review. It is not an API specification.
 
 | Existing contract | Reuse | Gap before online use |
 | --- | --- | --- |
-| `locus_core` / `LOCUS_BUILD_APP=OFF` | Portable chart parser, exact timestamps, judge, mods, replay codec, Difficulty V4 | Portable score verification entry point and authoritative input validation |
+| `locus_core` / `LOCUS_BUILD_APP=OFF` | Portable chart parser, exact timestamps, judge, mods, replay codec, Difficulty V4 | Portable score verification entry point implemented; authoritative package/session input validation still needed |
 | Song Set ID + difficulty ID | Stable local identity through rename/copy/import | Server-owned published IDs, ownership and revision mapping |
 | `ChartGameplayRevision` | Detect changed gameplay within local history | Noncryptographic fingerprint; does not bind audio bytes or authenticate ownership |
 | Results v2 + LOCREP04 | Immutable summaries and separate replay data | Player identity, global attempt identity, submission status, verified result derivation |
@@ -20,7 +20,11 @@ remain subject to design review. It is not an API specification.
 
 Read [architecture](ARCHITECTURE.md), [chart format](CHART_FORMAT.md),
 [results](RESULTS.md) and [song sets](SONG_SETS.md) for current contracts.
-The Linux core CI does not currently build the desktop storage targets.
+The Linux core CI does not build the desktop storage targets. The portable
+`EvaluateCompletedReplay` entry point in `core/score_verification.h` derives
+counts and statistics from a completed trace and requires the caller's
+trusted chart offset. Local replay validation uses this same entry point.
+It does not authenticate a submission or decide ranking eligibility.
 
 ## 2. Proposed deployment and ownership
 
@@ -180,7 +184,7 @@ No legal workflow is currently operational.
 | Gate | Deliverable | Acceptance |
 | --- | --- | --- |
 | W0 | Documentation and portable rules boundary | Core-only CI; no future capability described as implemented |
-| W1 | Portable verifier + package validation boundary | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
+| W1 | Portable verifier + package validation boundary (verifier implemented; package/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
 | W2 | Local run/profile ownership and PP contract | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
 | W3 | API/data contract and private backend | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
 | W4 | Private vertical slice | Publish one authorized test map, play, submit replay, server rejudge, show leaderboard and profile through the same API; retry idempotency |
