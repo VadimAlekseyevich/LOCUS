@@ -5,7 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include <map>
-#include <set>
+#include <functional>
 
 namespace locus::app {
 namespace {
@@ -125,13 +125,21 @@ PlayerPerformanceSummary SummarizePlayerPerformance(
     const std::string& playerId,const std::vector<RunResult>& results) {
     PlayerPerformanceSummary summary;
     if (!core::ValidDifficultyId(playerId)) return summary;
-    // A duplicated attempt is not extra play count or extra PP. Conflicting
-    // duplicate records are excluded altogether rather than order-dependent.
+    // Equal projection inputs with the same attempt ID count once.
+    // Conflicting duplicates cannot make aggregation order-dependent.
+    const auto sameProjection=[](const RunResult& a,const RunResult& b) {
+        return a.songSetId==b.songSetId && a.difficultyId==b.difficultyId &&
+            a.gameplayRevision==b.gameplayRevision && a.notesJudged==b.notesJudged &&
+            a.grades.perfect==b.grades.perfect && a.grades.good==b.grades.good &&
+            a.grades.bad==b.grades.bad && a.grades.miss==b.grades.miss &&
+            RunPerformance(a)==RunPerformance(b);
+    };
     std::map<std::string,const RunResult*> unique;
     for (const auto& r : results) {
         if (r.playerId!=playerId || !ValidRunResult(r)) continue;
         const auto inserted=unique.emplace(r.id,&r);
-        if (!inserted.second) inserted.first->second=nullptr;
+        if (!inserted.second && inserted.first->second &&
+            !sameProjection(*inserted.first->second,r)) inserted.first->second=nullptr;
     }
     std::map<std::pair<std::string,std::string>,double> best;
     double accuracySum=0.0,keys=0.0;

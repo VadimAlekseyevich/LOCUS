@@ -404,6 +404,18 @@ int main(int argc, char** argv) {
                     store.Load({run.songSetId,run.difficultyId},error).size() == 2,
                     "corrupt sidecar does not hide either score");
     }
+    {
+        RunResult rated=first;
+        rated.songSetId="performance-set";
+        rated.performanceDifficulty=locus::core::PerformanceDifficulty{
+            locus::core::kChartDifficultyVersion,4.0,static_cast<std::size_t>(rated.notesJudged)};
+        ok &= Check(store.Save(rated,error),"rated result saved");
+        const auto saved=store.Load({rated.songSetId,rated.difficultyId},error);
+        ok &= Check(saved.size()==1 && saved.front().performanceDifficulty &&
+                    saved.front().performanceDifficulty->stars==4.0 &&
+                    locus::app::RunPerformance(saved.front())==locus::app::RunPerformance(rated),
+                    "difficulty inputs and derived PP round trip");
+    }
     // The JSON history stays small: replay payloads live in sidecars.
     fs::remove_all(root, ec);
     return ok ? 0 : 1;

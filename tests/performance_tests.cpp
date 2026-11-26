@@ -57,6 +57,14 @@ int main() {
         std::abs(summary.totalPp-*perfect*1.95)<1e-8 &&
         std::abs(summary.weightedAccuracy-(200.0+good.AccuracyPercent())/3.0)<1e-8,
         "one best result per difficulty; foreign owners excluded");
+    const auto duplicated=app::SummarizePlayerPerformance(run.playerId,{run,second,third,run});
+    ok &= Check(duplicated.playCount==3 && duplicated.totalPp==summary.totalPp,
+        "identical repeated attempt counted once");
+    auto conflict=run;
+    conflict.grades=good; conflict.accuracyPercent=good.AccuracyPercent();
+    const auto conflicts=app::SummarizePlayerPerformance(run.playerId,{run,conflict,third});
+    ok &= Check(conflicts.playCount==1 && conflicts.totalPp==*perfect,
+        "conflicting duplicate attempt excluded");
     run.performanceDifficulty.reset();
     ok &= Check(!app::RunPerformance(run),"older score without difficulty snapshot remains unrated");
     return ok?0:1;

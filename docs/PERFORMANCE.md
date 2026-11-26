@@ -40,8 +40,10 @@ and a collection of attempts. It reports play count, physical-key-weighted
 accuracy across valid unique attempts, and the sum of the best PP from each
 stable set/difficulty key, sorted descending and weighted by 0.95^i
 (zero-based). Rates, mods and old authored revisions compete for the same
-slot. Other owners and ambiguous repeated attempt IDs are excluded.
-No extra bonus for retries, easy map padding or play count. This projection
+slot. Other owners and conflicting repeated attempt IDs are excluded; identical
+projection inputs count once. No extra bonus for retries or play count.
+The short-chart confidence factor can increase with extra notes below its
+200-key saturation point; test padding sensitivity during calibration. This projection
 does not yet scan the complete on-disk history or expose a profile screen.
 Local profile policy is not the final competitive leaderboard policy.
 
