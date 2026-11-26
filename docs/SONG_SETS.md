@@ -75,7 +75,7 @@ identified by last-write time, size and content fingerprint, reuse compact metad
 musical-grid projections but does not change difficulty for unchanged note timestamps; timestamp
 changes in an individual chart invalidate only that chart. A shared timing
 edit refuses to publish if difficulty files were externally changed or added
-after the last scan: refresh first. Within each Song Set, difficulties are displayed in
+after the last scan: refresh first. Export is different: it enumerates and validates the saved files under the writer locks and does not require a fresh catalog. Within each Song Set, difficulties are displayed in
 ascending calculated V4 rating (easiest first), using title and filename only
 to break ties. A Song Set's technical ID stays independent of its
 visible title.
@@ -93,14 +93,14 @@ SKIN -> SKINS -> OPEN FOLDER opens the personal Profiles directory.
 1. **Create a song:** Home -> EDIT -> ATTACH AUDIO (WAV/MP3), select and open the draft. This installs the initial Song Set if it is not already managed. Return to Song Setup to edit shared metadata, artwork or timing. Author the chart and Ctrl+S to save the difficulty.
 2. **Create difficulty:** PLAY -> select an installed song -> Song Setup ->
    NEW, then Ctrl+S. No duplicate external authoring copy is created.
-3. **Edit difficulty:** select it -> E -> rename/edit notes and Ctrl+S.
+3. **Edit difficulty:** select it -> EDIT -> rename/edit notes and Ctrl+S.
    BPM/offset belong to the entire song, not a single chart.
    Ctrl+Shift+S creates a separate difficulty without overwriting the original.
    TEST is in-memory; Esc/H returns to the same unsaved draft.
-4. **Copy difficulty:** Song Setup -> select difficulty -> COPY.
+4. **Copy difficulty:** Song Setup -> select difficulty -> DUPLICATE.
 5. **Share a complete set:** Song Setup -> EXPORT creates a
    `.locuspack` archive. This is a standard store-only ZIP, with metadata,
-   shared audio, optional background art and all chart JSONs. Song Setup -> IMPORT installs `.locuspack` archives as whole
+   shared audio, optional background art and all valid saved chart JSONs. Export reads live disk files, checks set identity, unique difficulty IDs, shared audio and timing; unsaved edits are not included. Song Setup -> IMPORT installs `.locuspack` archives as whole
    Song Sets. An existing `setId` merges into its installed folder:
    matching `difficultyId` values update in place, new IDs add difficulties,
    and missing IDs in the package do not delete installed difficulties.
@@ -116,6 +116,7 @@ SKIN -> SKINS -> OPEN FOLDER opens the personal Profiles directory.
    creates a new identity. If an ID matches multiple sets, select the target.
    Changed files are backed up; batches are validated before writing and
    attempt rollback on a publication failure.
+   PLAY and Song Setup import dialogs accept multiple packs/JSON files via Ctrl/Shift. Each file is processed independently; a failed file does not undo other successful imports, and one final library refresh publishes the batch. The summary distinguishes failed imports from saved-but-unindexed files. The first failure is shown in the notice; individual failures are logged.
 7. **Delete:** Song Setup has separate DELETE CHART (selected difficulty) and
    DELETE SET (entire song) buttons. Y confirms, N/Esc cancels. You cannot
    delete the final difficulty alone: delete the whole Set instead.
@@ -157,7 +158,7 @@ Back up **%LOCALAPPDATA%\LOCUS** before changing chart/storage formats.
 ## Pre-release compatibility
 
 Before the first public release, **backwards compatibility is not promised**.
-Current formats: chart v4, Song Set manifest v2, skin v2, settings v3 and Results v2. Unsupported versions are rejected.
+Current formats: chart v4, Song Set manifest v2, skin v2, settings v3, Results v2 and replay LOCREP04. Unsupported versions are rejected.
 
 ## Remaining limitations
 

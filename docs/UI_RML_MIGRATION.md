@@ -5,12 +5,12 @@
 | Screen | Native RmlUi responsibility | raylib responsibility |
 | --- | --- | --- |
 | HOME | Responsive menu and buttons | Brand texture/background |
-| PLAY menu | Search, virtualized Song Set/chart tree, history, commands | Artwork/background and fallback screen |
+| PLAY menu | Search, virtualized Song Set/chart tree, history, footer commands and MODS overlay | Artwork/background and fallback screen |
 | EDIT | Song Setup (metadata, audio/tempo table, difficulty list), Chart Editor tools, direction pad, transport, comparison picker | Route preview, upper note ruler, whole-song overview and fallback authoring UI |
 | SETTINGS | Responsive settings, key bindings and calibration controls | Calibration visuals where needed and fallback |
 | SKINS | Skin profiles, colors/settings fields and actions | Hue/SV graphics and live gameplay preview, fallback |
 | RESULTS | Score summary, actions, virtualized saved history | Artwork/background and fallback |
-| Scored PLAY / TEST | None | Entire gameplay, camera, route, input timing and HUD |
+| Scored PLAY / TEST | None | Entire gameplay, camera, route, input timing, HUD and spectator timeline |
 
 RML and RCSS live in `assets/ui/rml`. `common.rcss` is the component styling
 foundation. `design/ui/v2` is the Nightbloom visual reference, not a runtime

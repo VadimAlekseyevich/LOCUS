@@ -49,7 +49,7 @@ every transition between two frames.
   at normal speed. Switching from a delayed slow consumed cursor back to
   normal rate preserves the song position rather than jumping to the
   independent preroll clock. This is not a measured hardware cursor.
-- **Custom chart below 100%:** after the audio stream begins,
+- **Custom chart at a non-native rate:** after the audio stream begins,
   `ChartPlayback::AudioSeconds()` requests `LocalMusic::SongSeconds()`.
   `LocalMusic` prefers the raylib consumed cursor when using the ordinary
   pitch-shifted stream and the backend supports that cursor. SoundTouch's
@@ -76,9 +76,9 @@ every transition between two frames.
 | Pause | Freeze song time; do not judge newly pressed keys or build up pending input |
 | Resume | Exclude paused wall time; no new origin for chart timestamps |
 | Change editor preview rate | Preserve the exact song position while changing slope; a rate change while paused must remain paused. PLAY and replay use a fixed rate from launch. |
-| Seek / retry | Explicit new origin, single discontinuity, clear the presentation cursor and pending physical inputs |
+| Seek / retry | Explicit new origin and clear the presentation cursor. Replay/AT seek with Left/Right or the bottom timeline, preserving pause and reconstructing judge state without skipped hitsounds. Normal scored PLAY cannot seek except its pre-note intro skip. |
 | Final audio frame | `GameSession` retains a short **silent judgement tail** so late inputs can finish the last note's standard window |
-| Results | Save only the completed-outro transition, never Editor TEST or an abandoned run |
+| Results | Save only completed eligible scored attempts, never Editor TEST, replay, Autoplay, failed or abandoned attempts. Spectators wait until audio end. |
 
 ## Acceptance and known evidence gaps
 
@@ -89,7 +89,7 @@ uses the production Win32 translator and tests key repeat, focus loss, and
 numpad vs navigation identity. `locus_editor_to_play_to_results_journey`
 exercises the real controllers, completed-outro transition, persistence and
 a 7 ms inter-key diagonal. `locus_chart_clock_transport_contract` checks
-preroll, tempo changes, 100/50/10% practice, pause, rate change while paused,
+preroll, tempo changes, 100/50/10% editor/transport rates, pause, rate change while paused,
 seek, completion and missing audio output with a deterministic output backend.
 
 The SoundTouch decode retains raylib's converted 32-bit float `Wave` as its full-song PCM buffer, without a second full copy. `LOCAL_MUSIC_STRETCH_READY` reports decode wall milliseconds and
@@ -99,7 +99,7 @@ avoid memory scaling linearly with song duration.
 
 **These are logical checks, not a sound-card latency benchmark.** T04 cannot be
 fully accepted without Windows loopback or an external audio recording that
-correlates the audible click to hardware key events at 100/50/10%, including
+correlates the audible click to hardware key events at 100/50/125% PLAY and 10% editor preview, including
 startup, pause, seek and the first slowdown's SoundTouch decode latency /
 peak resident memory. Record the device model, sample rate, buffer size,
 OS timer resolution, playback rate, number of samples, median, P95 and worst

@@ -119,6 +119,8 @@ tempo publication verifies the same bytes under its writer lock, so an
 external same-size/same-timestamp edit cannot silently reuse stale notes.
 Known-new or modified chart files are parsed and fingerprinted from the same bytes; unchanged candidates use a streaming fingerprint to avoid parsing and rating again. The published catalog retains compact metadata, ratings and fingerprints rather than note vectors, materializing verified payloads on selection. AsyncLibraryRefresh publishes complete revisions and cancels stale scans; Unicode search and tree projections are cached, and result history uses a separate cancellable worker. CI exercises 8,193 charts and a dense 786,432-note catalog.
 
+Export enumerates the saved Song Set under writer locks and validates live chart files independently of the cached catalog. Multi-file import has independent outcomes and one final index refresh; failed index publication is distinguished from failed disk writes.
+
 Continue physical Windows fault testing for permissions, interrupted
 replacement and disk-full recovery. A file fingerprint is not a substitute
 for a transactional filesystem or a cryptographic authenticity check.
@@ -132,7 +134,7 @@ The storage targets in `cmake/storage_targets.cmake` share production code with 
 
 Editor targets in `cmake/editor_targets.cmake` separate authoring input/commands, comparison preparation, canvas rendering, document IO, multi-document workspace, and TEST/preview session. Platform picker/folder adapters, settings and skin model are also shared with tests. Native editor, library/results and skin presenters are optional RmlUi targets; no RmlUi dependency flows into document editing, transport or core. The desktop executable retains screen composition. Shared screen flow, session actions, play presentation, library activation/browser and menu/brand rendering targets are defined in `cmake/application_targets.cmake`. A configure-time ownership check rejects duplicate first-party implementation source assignments and emits `locus-source-ownership.csv` for both desktop and portable builds.
 
-The portable `LOCUS_BUILD_APP=OFF` configuration fetches only JSON and utf8proc, builds `locus_core` and optionally the same 12 portable tests/editor benchmark as the desktop build. `cmake/core_tests.cmake` is the single registration source for these tests. Linux CI exercises this configuration; it is not a Linux desktop port.
+The portable `LOCUS_BUILD_APP=OFF` configuration fetches only JSON and utf8proc, builds `locus_core` and optionally the same portable tests/editor benchmark as the desktop build. `cmake/core_tests.cmake` is the single registration source for these tests. Linux CI exercises this configuration; it is not a Linux desktop port.
 
 The Windows CI and headless domain tests are valuable, but cannot establish
 actual motion readability, acoustic sync or screen-tearing behavior.
@@ -144,6 +146,10 @@ numbers, **not GPU frame rate or input latency**. Verify the camera and glyph
 legibility on a real Windows display before introducing visual crossings
 masks or a supplementary action queue. Add regression
 tests only for contracts or failures they can actually detect.
+
+## Online readiness
+
+The `LOCUS_BUILD_APP=OFF` build supplies the portable chart/judge/replay/difficulty engine. The desktop catalog and filesystem adapters are not a portable server storage layer: `ReadLocalFileBytes` and `OpenChartWithAudioPath` have Windows-only implementations. No network or account service is implemented. The future server must own published revisions, authenticated scores and ranking eligibility. See [online architecture](ONLINE_ARCHITECTURE.md) for the staged plan.
 
 ## Difficulty and remaining architecture work
 

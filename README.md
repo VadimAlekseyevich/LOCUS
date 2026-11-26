@@ -33,7 +33,7 @@ cmake --build build/core --config Release --parallel 2
 ctest --test-dir build/core -C Release --output-on-failure
 ```
 
-This configuration runs the 12 portable tests for route geometry, timing, judgement, chart JSON, editor history, difficulty and input/cursor models. It does not build the desktop game or validate native UI, disk transactions or audio hardware. The full Windows build remains the default. Linux CI also runs the editor model profiler.
+This configuration runs the portable tests for route geometry, timing, judgement, chart JSON, editor history, difficulty and input/cursor models. It does not build the desktop game or validate native UI, disk transactions or audio hardware. The full Windows build remains the default. Linux CI also runs the editor model profiler.
 
 ## Gameplay
 
@@ -50,7 +50,7 @@ LOCUS is a four-key spatial rhythm game. Follow an authored route on an unbounde
 
 The largest centered square clips the forward route. Default speed is 135 logical px/s and lookahead 800 ms of original song time. Camera lag defaults to 180 ms; zero disables it. All are configurable in SKINS. The HUD shows combo and accuracy in the corners; detailed grades appear only when the right gutter permits. A Song Set background fills the window with aspect-preserving cropping.
 
-Perfect/Good/Bad timing windows are ±50/110/180 ms. Accuracy is `(100*Perfect + 75*Good + 50*Bad) / resolvedInputs`. Miss breaks combo; normally there is no fail. SD stops on Miss, PF stops below Perfect. EZ/HR scale timing windows; HD/FL limit visibility; MR mirrors horizontally and RD randomizes headings without changing cardinal/diagonal key counts. AT plays automatically; assisted and failed attempts do not enter history. HUD visibility remains a skin setting. The last resolved input triggers the outro and Results, even if music continues. Completed normal PLAY attempts are saved locally with maximum combo, timing statistics and scoring replay where available; TEST, spectator and abandoned attempts are excluded. WATCH REPLAY in native Results verifies and plays a matching installed revision without producing another score. Replay and Autoplay support timeline scrubbing and Left/Right five-second seeks. See [GDD](docs/GDD.md), [timing](docs/TIMING_CONTRACT.md) and [results](docs/RESULTS.md).
+Unmodified Perfect/Good/Bad timing windows are ±50/110/180 ms of song time. Accuracy is `(100*Perfect + 75*Good + 50*Bad) / resolvedInputs`. Miss breaks combo; normally there is no fail. SD stops on Miss, PF stops below Perfect. EZ/HR scale timing windows; HD/FL limit visibility; MR mirrors horizontally and RD randomizes headings without changing cardinal/diagonal key counts. AT plays automatically; assisted and failed attempts do not enter history. HUD visibility remains a skin setting. In scored PLAY, the last resolved input triggers the outro and Results, even if music continues. Replay and Autoplay remain seekable through the end of the song. Completed normal PLAY attempts are saved locally with maximum combo, timing statistics and scoring replay where available; TEST, spectator and abandoned attempts are excluded. WATCH REPLAY in native Results verifies and plays a matching installed revision without producing another score. Replay and Autoplay support timeline scrubbing and Left/Right five-second seeks. See [GDD](docs/GDD.md), [timing](docs/TIMING_CONTRACT.md) and [results](docs/RESULTS.md).
 
 ## Song selection and mapping
 
@@ -64,11 +64,11 @@ In Chart Editor:
 - Click the mouse-only 3×3 compass to place or change a note, including repeated headings; DEL removes it. Diagonal notes contribute to both constituent cardinal counts on the pad. START edits initial heading.
 - Ctrl+click the ruler stages an unsnapped millisecond; the next direction click commits it. Distinct timestamps sharing one tick remain editable; repeated clicks cycle overlapping note clusters.
 - Mirror horizontally/vertically, rotate ±90°, copy/cut/paste, shift and undo/redo patterns. COMPARE opens up to two additional same-song difficulties with independent draft/history and equal-sized synchronized previews. Focus changes neither seek nor rearrange panes.
-- SPEED and PATH set editor-only visual speed (20–2000 logical px/s) and lookahead (50–10000 ms). Bottom Play/Pause and Stop, whole-song overview and numeric 1–150% preview rate share one transport. SoundTouch preserves pitch on supported slow playback; fallback changes pitch. TEST plays the unsaved draft and returns to it.
+- SPEED and PATH set editor-only visual speed (20–2000 logical px/s) and lookahead (50–10000 ms). Bottom Play/Pause and Stop, whole-song overview and numeric 1–150% preview rate share one transport. SoundTouch preserves pitch at supported non-native rates; fallback changes pitch. TEST plays the unsaved draft and returns to it.
 
 Default shortcuts: O attach audio, Space preview, T TEST, Ctrl+S save focused difficulty, Ctrl+Shift+S new difficulty, Ctrl+O/Ctrl+N open/new, Ctrl+C/X/V copy/cut/paste, Ctrl+Z/Y undo/redo. Arrow keys navigate the upper ruler and adjust snap; Backspace/Delete removes notes. Save/Discard/Cancel protects dirty drafts; Save All leaves any failed draft open.
 
-Song Setup provides NEW, DUPLICATE, IMPORT, EXPORT, DELETE CHART, DELETE SET, RESTORE, OPEN FOLDER and background controls. Export a complete set as `.locuspack` (store-only ZIP). Imports validate paths, CRC, bounds and shared audio identity; reimport merges persistent IDs without deleting unrelated difficulties. External chart saves install into the library rather than overwrite the source. Deletes are recoverable; chart overwrites retain backups.
+Song Setup provides NEW, DUPLICATE, IMPORT, EXPORT, DELETE CHART, DELETE SET, RESTORE, OPEN FOLDER and background controls. Export the saved Song Set as `.locuspack` (store-only ZIP). Export reads and validates live disk files under writer locks, independently of the library's cached chart fingerprints. Save pending editor changes before exporting. Imports validate paths, CRC, bounds and shared audio identity; reimport merges persistent IDs without deleting unrelated difficulties. External chart saves install into the library rather than overwrite the source. Deletes are recoverable; chart overwrites retain backups.
 
 ## Settings and skins
 
@@ -91,6 +91,7 @@ Files live under `%LOCALAPPDATA%/LOCUS/`: `Songs/`, `Trash/`, `Results/`, `Skins
 | Skins | version 2 | [Example](examples/default.locus-skin.json) |
 | Settings | version 3 | [GameSettings](src/app/game_settings.h) |
 | Results | version 2; judgement rules 1 | [Results](docs/RESULTS.md) |
+| Scoring replay | LOCREP04 | [Results](docs/RESULTS.md#scoring-replays-locrep04) |
 
 Backward compatibility before the first release is not guaranteed. Back up local data before format changes. The current portable ZIP is validated in CI, but clean-machine interactive acceptance and a tagged release remain pending.
 
@@ -103,6 +104,10 @@ LOCUS's original game and source code are **source-available under the [PolyForm
 There is a specific exception for community creators: **monetized videos, streams and original user-authored chart files are allowed**, including ads, sponsors, donations and paid chart downloads. These activities must credit **"LOCUS — original game by VadimAlekseyevich"** and link to this repository in a video/stream description, credits, or chart listing/README. See the [Community Content Permission](COMMUNITY_CONTENT_PERMISSION.md) for exact terms, including restrictions on selling or bundling the game itself.
 
 Your chart and media rights remain yours; any music, artwork or other third-party material still requires permission from its rights holder. External dependencies retain their own licenses.
+
+## Online development (planned)
+
+LOCUS is currently a local-first desktop game: accounts, online scores, PP, published map IDs and hosting are not implemented. The portable C++ core is the intended shared scoring and difficulty engine for the future backend. See [web preparation](docs/ONLINE_ARCHITECTURE.md) for the proposed service boundaries, trust model, decisions and implementation gates.
 
 ## Community chart packs with music — future hosting policy
 
@@ -145,6 +150,7 @@ When the service launches, its published Terms of Service and copyright policy s
 - [Chart format](docs/CHART_FORMAT.md)
 - [Song Set storage and recovery](docs/SONG_SETS.md)
 - [Completed Results and scoring replay storage](docs/RESULTS.md)
+- [Online architecture and preparation](docs/ONLINE_ARCHITECTURE.md)
 
 The Windows CI checks compilation, chart/editor behavior and scoring without a GUI. Physical audio latency and desktop appearance still require real-device testing.
 

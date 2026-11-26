@@ -11,7 +11,7 @@ The local game, editor, native menus, compact Song Set catalog, recovery,
 portable packages, exact-time route and per-key judgement are implemented.
 Complete acceptance instead of starting another broad refactor:
 
-- [ ] Real Windows input/audio timing at 100/50/10%, calibration, seek, pause,
+- [ ] Real Windows input/audio timing at 100/50/125% PLAY and 10% editor preview, calibration, seek, pause,
   end-of-song and first slow-playback startup; see [timing contract](TIMING_CONTRACT.md).
 - [ ] Disk-full, permissions, interrupted publication/import and recovery on Windows.
 - [ ] Native screen usability, Unicode text, keyboard focus, resize/DPI and
@@ -58,11 +58,10 @@ Keep exact input timestamps, authoritative route and grading independent of rend
   package and onboarding, known limitations and licensing notices.
 - [x] Record deterministic scoring replays and provide local spectator playback
   for matching revisions in native Results.
-- [ ] Validate replay playback on physical Windows devices, add transport recording
-  if needed, and evaluate player skill/performance statistics and rankings
-  separately from the chart-only difficulty estimator.
-- [ ] Design accounts, online chart packs, moderation and leaderboards only
-  after the local gameplay/scoring foundation is stable. Before hosting,
+- [x] Seekable replay and Autoplay playback with scoring reconstruction.
+- [ ] Validate spectator playback on physical Windows devices, including seek while paused, rate mods and end-of-song.
+- [ ] Establish shared portable score contracts, published chart identity and a versioned performance model before implementing profiles and leaderboard UI.
+- [ ] Prepare the local/client-server boundaries now; build a private vertical slice for accounts, published maps, score submission and leaderboards before public hosting. See [online architecture](ONLINE_ARCHITECTURE.md). Before hosting,
   implement the actual rights/reporting workflow described in the [README](../README.md#community-chart-packs-with-music--future-hosting-policy).
 
 No pre-release compatibility guarantee: report every incompatible format

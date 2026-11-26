@@ -22,19 +22,19 @@ Layout and illustrative controls: [styles.css](styles.css), `screens.js`,
 - HOME: approved centered branding, Play/Edit/Skin/Settings and Exit.
 - Song selection: wide scrollable tree and search on the right, actual Song
   Set metadata, Difficulty V4, event/key counts and chart-specific history
-  on the left; PLAY/EDIT/IMPORT/RESCAN. Enter starts selected chart.
+  on the left; EDIT/MODS/IMPORT/RESCAN in the footer. A second click or Enter starts the selected chart. MODS opens a separate overlay.
   Artwork only when supplied by the set; no synthetic background.
 - EDIT: Song Setup combines metadata, artwork, audio, tempo map, preview start
   and difficulty list; click again or Enter opens Chart Editor (installing an attached new draft if needed). Chart Editor
   has upper ruler, compass/START/tools, equal square comparison previews,
-  bottom Play/RST, full-song overview, numeric 1–100% preview rate and
+  bottom Play/RST, full-song overview, numeric 1–150% preview rate and
   copyable milliseconds. Esc returns to Song Setup.
 - SETTINGS: DISPLAY and AUDIO / OFFSET; key-binding groups for PLAY/MENUS/EDITOR.
-- SKINS: SKINS first (rename and profiles), PATH, PLAYER, COLORS; one stable
+- SKINS: SKINS first (rename and profiles), PATH, PLAYER, AUDIO, COLORS; one stable
   preview rectangle, hex after the HSV wheel in the left panel.
-- RESULTS: actual completed attempt and virtualized history; no replay.
+- RESULTS: actual completed attempt, history access via PLAY, WATCH REPLAY for a compatible recorded attempt.
 - Active PLAY/TEST: separate raylib gameplay, not a native or HTML scene.
-  Combo, accuracy, optional practice rate and right-gutter grades. Esc pause.
+  Combo, accuracy, active mods and right-gutter grades. Esc pauses; spectator playback has a bottom seek timeline.
 
 Native menus have no permanent title/back strip, use adaptive layout and
 semantic commands. The mockup may intentionally differ in navigation,

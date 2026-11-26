@@ -9,7 +9,7 @@ EZ/HR change judgement windows (150% / 70%), not physical press strain.
 HD fades near the player. FL masks the entire scene outside a player-centred
 circular aperture (radius 72 logical pixels on the 540-pixel playfield),
 while preserving the skin's normal route lookahead and the HUD.
-Neither visual nor timing-window modifiers change the physical strain rating.
+Neither visual nor timing-window modifiers change the physical strain rating. MR preserves the physical rating by a consistent key permutation; RD may change strain because it rotates individual events with a deterministic seed.
 It is calculated on demand, not stored in chart JSON.
 
 ## Design
@@ -86,6 +86,6 @@ activeSeconds still sums note gaps capped at 1.5s for telemetry only.
 
 The editor uses a route-revision cache; the library stores derived metadata for each verified chart at native rate. Both use the same core calculator. Difficulty V4 is the estimator version, independent of judgement rules version 1. Ratings are not persisted in charts or Results.
 
-For modded PLAY, a separate selection cache retains only the selected chart payload and its most recent modified rating. The browser tree keeps base ratings, so toggling a modifier never re-rates the whole collection. Unavailable/stale payloads show no modified rating until the library refreshes.
+For modded PLAY, a separate selection cache retains only the selected chart payload and its most recent modified rating, keyed by rate, transform flags and Random seed. The browser tree keeps base ratings, so toggling a modifier never re-rates the whole collection. Unavailable/stale payloads show no modified rating until the library refreshes.
 
 The editor's song overview shows a max-pooled 256-bin timeline from the same occupied 400 ms section peaks, using the physical weighted norm before whole-chart aggregation. Silence is empty; height is relative to the highest local strain of the focused chart, not a star rating. The cache is invalidated by route revisions (including duration changes), not cursor motion. The overview still seeks on click.

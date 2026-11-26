@@ -48,7 +48,7 @@
 
 **Состояние.** Единое преобразование монотонного времени нажатия в song time, snapshot raw/visual, silent preroll/tail, rate/pause/seek; SoundTouch и один retained PCM-буфер.
 
-**Приёмка / оставшееся.** Loopback или внешняя запись на 100/50/10%: startup, нота на 0, intro skip, pause/resume, rate change на паузе, seek, конец аудио, отсутствие устройства. Указать устройство, буфер, sample rate, median/P95/max ошибки, задержку первой декомпрессии и peak RSS. SoundTouch rate clock не считать подтверждённым hardware cursor.
+**Приёмка / оставшееся.** Loopback или внешняя запись на 100/50/125% в PLAY и 10% в редакторе: startup, нота на 0, intro skip, pause/resume, rate change на паузе, seek, конец аудио, отсутствие устройства. Указать устройство, буфер, sample rate, median/P95/max ошибки, задержку первой декомпрессии и peak RSS. SoundTouch rate clock не считать подтверждённым hardware cursor.
 
 [Timing contract](TIMING_CONTRACT.md), [clock tests](../tests/clock_contract_tests.cpp).
 
@@ -68,7 +68,7 @@
 
 **Состояние.** Постоянный difficultyId в chart v4, gameplayRevision и judgementVersion в Results v2; rename сохраняет ID, copy/new создают новый. Пакеты объединяются по setId/difficultyId.
 
-**Приёмка / оставшееся.** Полная приёмка rename → перезапуск → история, copy → независимая история, смена содержимого/правил → отметка старой ревизии, collision/import/restore. TEST и незавершённый заход не публикуются; variable rate обозначен.
+**Приёмка / оставшееся.** Полная приёмка rename → перезапуск → история, copy → независимая история, смена содержимого/правил → отметка старой ревизии, collision/import/restore. TEST и незавершённый заход не публикуются; фиксированные HT/DT, моды и seed RD сохраняются; старый variable rate обозначен. Реплей проверяется тем же судьёй; AT не сохраняет результат, перемотка разрешена только зрителю.
 
 [Results](RESULTS.md), [Song Sets](SONG_SETS.md).
 
@@ -76,7 +76,7 @@
 
 ### T07. Запись, частичный успех и восстановление
 
-**Состояние.** Общие эксклюзивные staging/flush/atomic replace, chart backup, root/set lock, пакетная валидация/rollback, частичный Save All и сохранение dirty-состояния при ошибке.
+**Состояние.** Общие эксклюзивные staging/flush/atomic replace, chart backup, root/set lock, пакетная валидация/rollback, мультивыбор импорта с одним обновлением индекса, экспорт актуальных сохранённых файлов без зависимости от кеша, частичный Save All и сохранение dirty-состояния при ошибке.
 
 **Приёмка / оставшееся.** Физические denied write, full disk, прерывание между записью/rename/index refresh и одновременный save двух процессов. Повтор не дублирует сложность, старые данные или backup доступны, ошибка соответствует факту; оставшиеся черновики открыты. Не удалять неизвестные staging-файлы.
 
@@ -138,7 +138,7 @@
 
 **Состояние.** Основные пользовательские пути и кнопки есть; пауза, скрытие курсора, единая preview и чистый Home → Edit реализованы.
 
-**Приёмка / оставшееся.** Прогнать [review](../design/ui/v2/REVIEW.md) на чистом профиле и заполненной библиотеке. Проверить PLAY→RESULTS→retry, 50% при 200–600 px/s, диагонали/реверсы/повторы, Song Setup→Chart Editor→TEST, offset/bind conflicts, HSV↔HEX↔preview, failed save и dirty guard. Фиксировать кадры, DPI, данные, шаг дефекта. Новые gameplay cues — отдельное дизайнерское решение.
+**Приёмка / оставшееся.** Прогнать [review](../design/ui/v2/REVIEW.md) на чистом профиле и заполненной библиотеке. Проверить PLAY→RESULTS→retry, MODS (ползунки/конфликты), replay/AT (перемотка вперёд/назад и на паузе), 50% при 200–600 px/s, диагонали/реверсы/повторы, Song Setup→Chart Editor→TEST, offset/bind conflicts, HSV↔HEX↔preview, failed save и dirty guard. Фиксировать кадры, DPI, данные, шаг дефекта. Новые gameplay cues — отдельное дизайнерское решение.
 
 [GDD](GDD.md), [design review](../design/ui/v2/REVIEW.md).
 
@@ -171,6 +171,10 @@
 **Приёмка / оставшееся.** Чистая Windows без VS/CMake: запуск из Unicode и read-only install path, demo, edit/save/restart, skin, import/export, delete/restore, history. Проверить dependency notices (включая SoundTouch), version, checksum, список файлов, сообщения об отсутствии ресурсов. Только после реального прогона — tagged release.
 
 [README](../README.md#run), [Windows CI](../.github/workflows/windows_ci.yml).
+
+## Подготовка к вебу
+
+Отдельный план — [ONLINE_ARCHITECTURE.md](ONLINE_ARCHITECTURE.md). Не смешивать статус серверной разработки с приёмкой локального клиента. Linux core-only не подтверждает переносимость Windows-файловых адаптеров; серверные проверки должны запускаться без desktop targets.
 
 ## Правила проверки
 
