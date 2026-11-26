@@ -125,7 +125,7 @@ bool TestNativeEditorVirtualLists() {
         sync();
         auto* playLabel=document->GetElementById("editor-play-label");
         auto* metronome=document->GetElementById("editor-metronome");
-        ok &= Check(playLabel && playLabel->GetInnerRML()==u8"\u25BA" &&
+        ok &= Check(playLabel && playLabel->GetInnerRML()==u8"\u25B6" &&
                     metronome && metronome->GetChild(0) &&
                     metronome->GetChild(0)->GetInnerRML()==u8"\u2669",
                     "transport uses text symbols rather than image assets");

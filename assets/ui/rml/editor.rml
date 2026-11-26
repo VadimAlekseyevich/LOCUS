@@ -81,7 +81,7 @@
   <div id="editor-status-slot" style="display:none;"></div>
   <div id="editor-transport">
   <div id="editor-footer-playback">
-    <button id="editor-preview-play" class="secondary" data-action="preview-play" title="PLAY / PAUSE"><span id="editor-play-label" class="button-label editor-icon-label">►</span></button>
+    <button id="editor-preview-play" class="secondary" data-action="preview-play" title="PLAY / PAUSE"><span id="editor-play-label" class="button-label editor-icon-label">▶</span></button>
     <button id="editor-preview-stop" class="quiet" data-action="preview-stop" title="STOP"><span class="button-label editor-icon-label">■</span></button>
     <button id="editor-metronome" class="quiet" data-action="metronome-toggle" title="METRONOME"><span class="button-label editor-icon-label">♩</span></button>
   </div>

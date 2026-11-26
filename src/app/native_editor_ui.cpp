@@ -91,7 +91,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     // Song Setup shows the selected name; authoring panes show chart names.
     // No global screen header is needed.
     (void)dirty;
-    SetText("editor-play-label", running ? u8"\u2016" : u8"\u25BA");
+    SetText("editor-play-label", running ? u8"\u2016" : u8"\u25B6");
     for (auto* label:iconLabels_) AlignRmlGlyph(*label,glyphAlignment_[label]);
     SetText("editor-waveform-label",ui.waveformVisible?"WAVE ON":"WAVE OFF");
     if (auto* wave=document_->GetElementById("editor-waveform"))
