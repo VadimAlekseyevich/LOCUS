@@ -78,3 +78,5 @@ activeSeconds still sums note gaps capped at 1.5s for telemetry only.
   matched-density pattern families; this is not a measured human skill model.
 
 The editor uses a route-revision cache; the library stores derived metadata for each verified chart. Both use the same core calculator. Difficulty V4 is the estimator version, independent of judgement rules version 1. Ratings are not persisted in charts or Results.
+
+The editor's song overview shows a max-pooled 256-bin timeline from the same occupied 400 ms section peaks, using the physical weighted norm before whole-chart aggregation. Silence is empty; height is relative to the highest local strain of the focused chart, not a star rating. The cache is invalidated by route revisions (including duration changes), not cursor motion. The overview still seeks on click.

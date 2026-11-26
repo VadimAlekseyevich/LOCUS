@@ -37,10 +37,10 @@ const std::array<int,8>& ChartEditor::DirectionPressCounts() const noexcept {
 }
 
 const ChartDifficulty& ChartEditor::Difficulty() const {
-    if (difficultyRevision_ != revision_) {
+    if (difficultyRevision_ != routeRevision_) {
         difficulty_ = CalculateChartDifficulty(chart_.route,
-                                                chart_.offsetSeconds);
-        difficultyRevision_ = revision_;
+            chart_.offsetSeconds,&difficultyGraph_,SongDurationSeconds());
+        difficultyRevision_ = routeRevision_;
     }
     return difficulty_;
 }

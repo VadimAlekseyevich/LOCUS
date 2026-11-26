@@ -26,7 +26,7 @@ inline float PlayheadX(const EditorUiState& ui) noexcept {
 }
 constexpr Rectangle kEditorPreviewPlay{52, 485, 39, 40};
 constexpr Rectangle kEditorPreviewRestart{96, 485, 39, 40};
-constexpr Rectangle kSongOverview{145, 485, 570, 40};
+constexpr Rectangle kSongOverview{145, 469, 570, 56};
 inline Rectangle OverviewBounds(const EditorUiState& ui) noexcept {
     return ResolveEditorRegion(ui.layout, ui.layout.overview, kSongOverview);
 }

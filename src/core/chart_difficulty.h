@@ -3,6 +3,7 @@
 #include "core/route.h"
 
 #include <cstddef>
+#include <array>
 
 namespace locus::core {
 
@@ -27,10 +28,19 @@ struct ChartDifficulty {
     std::size_t keyPresses = 0;
 };
 
+// Bounded song-time visualization; local physical strain, not final stars.
+// Max-pooling preserves hard sections when several fall in one display bin.
+struct DifficultyTimeline {
+    static constexpr std::size_t kBins=256;
+    std::array<double,kBins> peaks{};
+    double maximum=0.0;
+};
+
 // Exact note timestamps win over ticks; only fallback notes use offsetSeconds.
 // Invalid/unsorted events are skipped without impacting the rest of the app.
 // Complexity: O(n log n), with bounded local geometry comparisons per note.
 ChartDifficulty CalculateChartDifficulty(
-    const Chart& chart, double offsetSeconds = 0.0);
+    const Chart& chart, double offsetSeconds = 0.0,
+    DifficultyTimeline* timeline = nullptr, double durationSeconds = 0.0);
 
 } // namespace locus::core

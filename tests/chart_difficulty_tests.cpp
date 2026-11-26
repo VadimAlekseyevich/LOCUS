@@ -53,6 +53,16 @@ int main() {
     ok &= Check(blank.overall == 0 && blank.notes == 0 &&
                 blank.keyPresses == 0, "empty chart has zero difficulty");
 
+    DifficultyTimeline graph;
+    const auto timelineChart=Sequence(40,{100},{Heading::Right,Heading::Up});
+    const auto withGraph=CalculateChartDifficulty(timelineChart,0,&graph,20);
+    ok &= Check(SameDimensions(withGraph,CalculateChartDifficulty(timelineChart)) &&
+                graph.maximum>0 && graph.peaks.front()==0 && graph.peaks.back()==0 &&
+                *std::max_element(graph.peaks.begin(),graph.peaks.end())==graph.maximum,
+                "timeline preserves rating and song-time silence");
+    CalculateChartDifficulty(empty,0,&graph,20);
+    ok &= Check(graph.maximum==0,"empty chart clears timeline");
+
     // Imported library difficulties have not yet decoded their song file.
     // Their chart length stays at its default until play activation.
     Chart unprepared = Sequence(60, {200}, {Heading::Right, Heading::Up});

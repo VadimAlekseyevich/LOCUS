@@ -55,6 +55,7 @@ public:
     std::uint64_t RouteRevision() const noexcept { return routeRevision_; }
     // Recomputed once per authored revision, not on every rendered frame.
     const ChartDifficulty& Difficulty() const;
+    const DifficultyTimeline& DifficultyGraph() const { Difficulty(); return difficultyGraph_; }
     const std::array<int,8>& DirectionPressCounts() const noexcept;
     void MarkSaved() noexcept;
     // Accept validated bytes after saving without resetting cursor/history.
@@ -160,6 +161,7 @@ private:
     mutable std::uint64_t difficultyRevision_ =
         std::numeric_limits<std::uint64_t>::max();
     mutable ChartDifficulty difficulty_;
+    mutable DifficultyTimeline difficultyGraph_;
     mutable std::uint64_t directionCountsRevision_ =
         std::numeric_limits<std::uint64_t>::max();
     mutable std::array<int,8> directionCounts_{};

@@ -103,6 +103,12 @@ constexpr std::int64_t kSectionMs = 400;
 constexpr double kPeakWeight = 0.90;
 enum Skill : std::size_t { Speed, Finger, Coordination, Rhythm, Stamina, SkillCount };
 using Skills = std::array<double, SkillCount>;
+constexpr double kSkillWeights[]={0.35,0.30,0.20,0.10,0.05};
+double PhysicalNorm(const Skills& skills) {
+    double sum=0.0;
+    for (std::size_t i=0;i<SkillCount;++i) sum+=kSkillWeights[i]*skills[i]*skills[i];
+    return std::sqrt(sum);
+}
 
 double Decay(double dt, double tau) {
     return std::exp(-dt / tau);
@@ -113,10 +119,12 @@ double Decay(double dt, double tau) {
 // Only sections containing actual input contribute: silence is recovery.
 class SectionPeaks {
 public:
+    SectionPeaks(DifficultyTimeline* timeline,double duration,std::int64_t firstMs)
+        : timeline_(timeline), durationMs_(duration*1000.0), firstMs_(firstMs) {}
     void Add(std::int64_t relativeMs, const Skills& sample) {
         const auto section = relativeMs / kSectionMs;
         if (section != current_) {
-            if (current_ >= 0) peaks_.push_back(peak_);
+            if (current_ >= 0) Flush();
             current_ = section;
             peak_.fill(0.0);
         }
@@ -124,7 +132,7 @@ public:
             peak_[i] = std::max(peak_[i], sample[i]);
     }
     Skills Finish() {
-        if (current_ >= 0) peaks_.push_back(peak_);
+        if (current_ >= 0) Flush();
         Skills result{};
         std::vector<double> values;
         values.reserve(peaks_.size());
@@ -144,6 +152,25 @@ public:
         return result;
     }
 private:
+    void Flush() {
+        peaks_.push_back(peak_);
+        if (!timeline_ || !std::isfinite(durationMs_) || durationMs_<=0) return;
+        const double start=static_cast<double>(firstMs_+current_*kSectionMs);
+        const double end=start+kSectionMs;
+        if (end<=0 || start>=durationMs_) return;
+        const double count=DifficultyTimeline::kBins;
+        const auto lo=static_cast<std::size_t>(std::clamp(
+            std::floor(start/durationMs_*count),0.0,count-1));
+        const auto hi=static_cast<std::size_t>(std::clamp(
+            std::ceil(end/durationMs_*count)-1,0.0,count-1));
+        const double strain=PhysicalNorm(peak_);
+        for (auto i=lo;i<=hi;++i)
+            timeline_->peaks[i]=std::max(timeline_->peaks[i],strain);
+        timeline_->maximum=std::max(timeline_->maximum,strain);
+    }
+    DifficultyTimeline* timeline_;
+    double durationMs_;
+    std::int64_t firstMs_;
     std::int64_t current_ = -1;
     Skills peak_{};
     std::vector<Skills> peaks_;
@@ -256,7 +283,10 @@ private:
 } // namespace
 
 ChartDifficulty CalculateChartDifficulty(const Chart& chart,
-                                         double offsetSeconds) {
+                                         double offsetSeconds,
+                                         DifficultyTimeline* timeline,
+                                         double durationSeconds) {
+    if (timeline) *timeline={};
     ChartDifficulty result;
     if (!std::isfinite(chart.bpm) || chart.bpm <= 0.0 ||
         chart.ticksPerBeat <= 0 || !std::isfinite(offsetSeconds) ||
@@ -307,7 +337,7 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     if (n == 0) return result;
 
     InputStrain input;
-    SectionPeaks peaks;
+    SectionPeaks peaks(timeline,durationSeconds,notes.front().timeMs);
     // Geometry is a separate editor diagnostic. It is deliberately absent
     // from the input strain calculation and final rating.
     for (std::size_t i = 0; i < n; ++i) {
@@ -370,12 +400,7 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
 
     // All weighted skills are physical input skills. A geometric crossing
     // cannot raise the rating independently of the actual key sequence.
-    result.overall = Nonnegative(std::sqrt(
-        0.35 * result.speed * result.speed +
-        0.30 * result.fingerStrain * result.fingerStrain +
-        0.20 * result.coordination * result.coordination +
-        0.10 * result.rhythm * result.rhythm +
-        0.05 * result.stamina * result.stamina));
+    result.overall = Nonnegative(PhysicalNorm(skills));
     return result;
 }
 

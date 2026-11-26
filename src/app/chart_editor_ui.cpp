@@ -449,7 +449,17 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
 
     const float right = bounds.x + bounds.width;
     const float cursor = SongOverviewX(songSeconds, duration, bounds);
-    const float lineY = bounds.y + 25.0f;
+    const float lineY = bounds.y + bounds.height - 8.0f;
+    const auto& graph=draft.DifficultyGraph();
+    if (graph.maximum>0.0 && bounds.height>20.0f) {
+        const float top=bounds.y+14.0f;
+        const float width=(bounds.width-6.0f)/graph.peaks.size();
+        if (width>0) for (std::size_t i=0;i<graph.peaks.size();++i) {
+            const float height=static_cast<float>(graph.peaks[i]/graph.maximum)*(lineY-top);
+            if (height>0) DrawRectangleRec({bounds.x+3+i*width,lineY-height,width,height},
+                                           Color{181,164,243,150});
+        }
+    }
     if (cursor > bounds.x + 2.0f) {
         DrawRectangleRec({bounds.x + 2.0f, lineY - 2.0f,
                           cursor - bounds.x - 2.0f, 5.0f},
@@ -470,7 +480,7 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
     float previousTextRight = -1000.0f;
     for (const auto& marker : tempoMarkers) {
         const float x = SongOverviewX(marker.timeMs / 1000.0, duration, bounds);
-        DrawLineEx({x, bounds.y + 5.0f}, {x, bounds.y + 31.0f},
+        DrawLineEx({x, bounds.y + 5.0f}, {x, lineY+4.0f},
                    2.0f, Color{128, 223, 210, 255});
         const char* name = TextFormat("%g BPM", marker.bpm);
         const float width = MeasureTextEx(font, name, 11.0f, 1.0f).x;

@@ -5,7 +5,7 @@
   background-color:transparent; pointer-events:none; }
 .editor-canvas-slot { flex:1; min-width:0; min-height:0; pointer-events:none; }
 #editor-status-slot { flex:0 0 14dp; height:14dp; pointer-events:none; }
-#editor-transport { display:flex; flex-direction:row; flex:0 0 40dp;
+#editor-transport { display:flex; flex-direction:row; flex:0 0 56dp;
   align-items:stretch; gap:8dp; }
 #editor-footer-playback { display:flex; flex-direction:row; gap:5dp; pointer-events:auto; }
 #editor-footer-playback button { width:39dp; height:40dp; padding:1dp;
