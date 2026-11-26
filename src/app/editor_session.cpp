@@ -195,16 +195,20 @@ core::MetronomeClick EditorSession::UpdateMetronome(double now) noexcept {
 void EditorSession::UpdateAudioAnalysis() {
     const auto revision=music_.SourceRevision();
     if (waveformRevision_!=revision) {
-        waveform_.reset();
-        ui_.waveform.reset();
+        analysis_.reset();
+        analysisFailed_=false;
+        ui_.showTempoSuggestions=false;
     }
     if (waveformJob_.valid() &&
         waveformJob_.wait_for(std::chrono::seconds(0))==std::future_status::ready) {
         try {
             auto result=waveformJob_.get();
-            if (jobRevision_==revision) waveform_=std::move(result);
+            if (jobRevision_==revision) {
+                analysis_=std::move(result);
+                analysisFailed_=!analysis_;
+            }
         } catch (...) {
-            // Analysis is optional; never break playback or authored notes.
+            if (jobRevision_==revision) analysisFailed_=true;
         }
     }
     if (waveformRevision_!=revision && !waveformJob_.valid()) {
@@ -212,12 +216,39 @@ void EditorSession::UpdateAudioAnalysis() {
         if (music_.Ready() && !music_.EncodedBytes().empty() && !audioPath_.empty()) {
             jobRevision_=revision;
             try {
-                waveformJob_=std::async(std::launch::async,DecodeEditorWaveform,
+                waveformJob_=std::async(std::launch::async,DecodeEditorAudio,
                     music_.EncodedBytes(),music_.SourceFormat());
-            } catch (...) {}
+            } catch (...) { analysisFailed_=true; }
         }
     }
-    ui_.waveform=waveform_;
+    ui_.audioAnalysis=analysis_;
+    // Aliasing shared_ptr keeps the waveform alive without copying its pyramid.
+    ui_.waveform=analysis_?std::shared_ptr<const core::AudioWaveform>(
+        analysis_,&analysis_->waveform):nullptr;
+    ui_.audioAnalysisBusy=waveformJob_.valid() && music_.Ready();
+    ui_.audioAnalysisFailed=analysisFailed_;
+}
+
+std::vector<core::TempoMarker> EditorSession::ProposedTempoMap(
+    int index,bool replace) const {
+    if (!analysis_ || waveformRevision_!=music_.SourceRevision() ||
+        ui_.audioAnalysis!=analysis_ || !ui_.showTempoSuggestions) return {};
+    const auto& proposals=analysis_->tempo;
+    if (proposals.empty()) return {};
+    if (replace) {
+        std::vector<core::TempoMarker> markers;
+        markers.reserve(proposals.size());
+        for (const auto& p:proposals) markers.push_back({p.timeMs,p.bpm});
+        return markers;
+    }
+    if (index<0 || static_cast<std::size_t>(index)>=proposals.size()) return {};
+    const auto& p=proposals[static_cast<std::size_t>(index)];
+    auto markers=TempoMap();
+    const auto pos=std::lower_bound(markers.begin(),markers.end(),p.timeMs,
+        [](const core::TempoMarker& marker,std::int64_t time){return marker.timeMs<time;});
+    if (pos!=markers.end() && pos->timeMs==p.timeMs) pos->bpm=p.bpm;
+    else markers.insert(pos,{p.timeMs,p.bpm});
+    return markers;
 }
 
 void EditorSession::UpdatePreview(double now) {

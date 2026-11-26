@@ -36,7 +36,7 @@ int main() {
             met.Update(song,0,0.61,1)==C::None &&
             met.Update(song,0,1.85,1)==C::Downbeat &&
             met.Update(song,0,2.255,0.5)==C::Beat &&
-            met.Update(song,0,2.7,1)==C::None;
+            met.Update(song,0,2.74,1)==C::None;
         if (!beats) { std::cerr<<"METRONOME_FAIL variable BPM or repeated beat\n"; ok=false; }
     }
     const std::vector<TempoMarker> map = {

@@ -138,3 +138,10 @@
 #editor-compare-notice { min-height:16dp; flex:0 0 auto; }
 
 #editor-metronome.selected { background-color:#585281; border-color:#b5a4f3; color:#f4efff; }
+
+#editor-tempo-suggestions, #editor-tempo-replace { flex:0 0 28dp; height:28dp; padding:0; font-size:11dp; }
+#editor-proposal-list { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:4dp; }
+.editor-proposal-row { display:flex; flex-direction:row; align-items:center; gap:4dp; flex:0 0 38dp; height:38dp; }
+.editor-proposal-info { flex:1; min-width:0; font-size:12dp; color:#eef1fb; }
+.editor-proposal-confidence { font-size:10dp; color:#a6bad9; }
+.editor-proposal-row button { width:42dp; height:29dp; padding:0; font-size:11dp; }

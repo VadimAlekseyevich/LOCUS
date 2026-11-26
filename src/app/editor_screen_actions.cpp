@@ -52,6 +52,20 @@ void EditorScreenActions::BlurTextOnPointer(Vector2 mouse, double& now) {
 }
 
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
+    if (input.editor.tempoSuggestionsToggle) {
+        context_.ui.showTempoSuggestions=!context_.ui.showTempoSuggestions;
+        return false;
+    }
+    if (input.editor.tempoReplaceFromAnalysis || input.editor.tempoProposalIndex>=0) {
+        const auto markers=context_.session.ProposedTempoMap(
+            input.editor.tempoProposalIndex,input.editor.tempoReplaceFromAnalysis);
+        if (!markers.empty() && context_.sets.ApplyTempoMap(markers)) {
+            context_.session.StopPreviewForTempoChange();
+            if (input.editor.tempoReplaceFromAnalysis)
+                context_.ui.showTempoSuggestions=false;
+        }
+        return false;
+    }
     if (input.editor.metronomeToggle) {
         context_.session.ToggleMetronome();
         return false;

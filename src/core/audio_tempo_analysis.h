@@ -81,12 +81,14 @@ std::vector<float> BuildOnsetEnvelope(std::uint32_t frames,unsigned rate,
     Spectrum spectrum{};
     std::array<double,kFftSize/2+1> previous{};
     std::array<double,kFftSize> window{};
+    std::array<double,kFftSize/2+1> weights{};
+    for (std::size_t k=1;k<weights.size();++k) weights[k]=1.0/std::sqrt(static_cast<double>(k));
     for (std::size_t i=0;i<window.size();++i)
         window[i]=0.5-0.5*std::cos(2*kPi*i/(window.size()-1));
     for (std::size_t frame=0;frame<envelope.size();++frame) {
         const auto center=static_cast<std::int64_t>(frame*hop);
         for (std::size_t j=0;j<kFftSize;++j) {
-            const auto i=center+static_cast<std::int64_t>(j)-kFftSize/2;
+            const auto i=center+static_cast<std::int64_t>(j)-static_cast<std::int64_t>(kFftSize/2);
             spectrum[j]=i>=0 && static_cast<std::size_t>(i)<mono.size()
                 ? mono[static_cast<std::size_t>(i)]*window[j] : 0.0;
         }
@@ -96,8 +98,7 @@ std::vector<float> BuildOnsetEnvelope(std::uint32_t frames,unsigned rate,
             const double value=std::log1p(std::abs(spectrum[k]));
             // Reduce the domination of high-frequency bins and retain
             // bass/percussion evidence without depending on one band.
-            const double weight=1.0/std::sqrt(static_cast<double>(k));
-            flux+=weight*std::max(0.0,value-previous[k]);
+            flux+=weights[k]*std::max(0.0,value-previous[k]);
             previous[k]=value;
         }
         envelope[frame]=static_cast<float>(flux);
@@ -222,6 +223,11 @@ inline std::vector<TempoProposal> SuggestTempoMap(const std::vector<float>& flux
     std::vector<std::array<short,states>> back;
     std::vector<std::array<double,states>> evidence;
     std::array<double,states> previous{},current{};
+    std::array<std::array<double,states>,states> transition{};
+    for (int k=0;k<states;++k) for (int j=0;j<states;++j) {
+        const double delta=std::abs(std::log2(static_cast<double>(k+minLag)/(j+minLag)));
+        transition[k][j]=0.17*delta+(delta>0.06?0.10:0.0);
+    }
     for (int center=0;center<n;center+=hop) {
         const int from=std::max(0,center-halfWindow);
         const int to=std::min(n,center+halfWindow);
@@ -246,9 +252,7 @@ inline std::vector<TempoProposal> SuggestTempoMap(const std::vector<float>& flux
             double best=-std::numeric_limits<double>::infinity();
             short at=static_cast<short>(k);
             for (int j=0;j<states;++j) {
-                const double delta=std::abs(std::log2(
-                    static_cast<double>(lag)/(j+minLag)));
-                const double score=previous[j]-0.17*delta-(delta>0.06?0.10:0.0);
+                const double score=previous[j]-transition[k][j];
                 if (score>best) {best=score;at=static_cast<short>(j);}
             }
             current[k]=best+emission; links[k]=at;
@@ -284,7 +288,7 @@ inline std::vector<TempoProposal> SuggestTempoMap(const std::vector<float>& flux
     for (std::size_t i=0;i<segments.size() && result.size()<256;++i) {
         const auto& s=segments[i];
         if (s.count<2) continue;
-        const double from=i==0?0.0:(segments[i-1].to+s.from)*0.5;
+        const double from=i==0?std::max(0,s.from-halfWindow):(segments[i-1].to+s.from)*0.5;
         const double to=i+1==segments.size()?n:(s.to+segments[i+1].from)*0.5;
         // Fit the reliable interior; boundary uncertainty is shown to mapper.
         const double margin=std::min(100.0,(to-from)*0.15);
@@ -297,7 +301,21 @@ inline std::vector<TempoProposal> SuggestTempoMap(const std::vector<float>& flux
         // Locate the earliest measured beat close to the estimated anchor.
         // For later sections search backwards up to a beat so a BPM change
         // at a boundary is not systematically delayed by one quarter note.
-        if (i>0) {
+        if (result.empty()) {
+            // Beat zero must be an observed onset, not an extrapolated
+            // phase inside the silent lead-in of a recording.
+            bool found=false;
+            for (auto it=std::lower_bound(peaks.begin(),peaks.end(),from,
+                     [](const Onset& p,double t){return p.frame<t;});
+                 it!=peaks.end() && it->frame<to;++it) {
+                const double index=std::round((it->frame-fit.phase)/fit.period);
+                if (std::abs(it->frame-fit.phase-index*fit.period)<=
+                        std::min(9.0,fit.period*0.15)) {
+                    marker=it->frame; found=true; break;
+                }
+            }
+            if (!found) continue;
+        } else {
             const double prior=marker-fit.period;
             if (std::abs(prior-from)<std::abs(marker-from)) marker=prior;
         }

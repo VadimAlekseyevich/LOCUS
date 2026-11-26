@@ -1,5 +1,6 @@
 #include "app/chart_editor_ui.h"
 #include "core/audio_waveform.h"
+#include "core/editor_audio_analysis.h"
 #include "app/path_mesh.h"
 #include "core/tempo_map.h"
 #include "app/editor_comparison.h"
@@ -519,6 +520,13 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
             Label(font, name, labelX, bounds.y + 3.0f, 11.0f,
                   Color{172, 233, 219, 255});
             previousTextRight = labelX + width;
+        }
+    }
+
+    if (ui.showTempoSuggestions && ui.audioAnalysis) {
+        for (const auto& candidate:ui.audioAnalysis->tempo) {
+            const float x=SongOverviewX(candidate.timeMs/1000.0,duration,bounds);
+            DrawLineEx({x,bounds.y+14},{x,lineY},2,Color{236,182,104,230});
         }
     }
 
