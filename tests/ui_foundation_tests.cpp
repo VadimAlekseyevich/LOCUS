@@ -283,6 +283,12 @@ int main() {
     ok &= Check(home.Update(homeInput, 3.3) == 4,
                 "Home Enter/Space activates focused Exit");
     homeInput.keyboardActivate = false;
+    homeInput.tabPressed = true;
+    homeInput.backwards = true;
+    ok &= Check(home.Update(homeInput,3.31)==-1 && home.focus.Focused()==5,
+                "Home Profile is reachable immediately before Exit");
+    homeInput.tabPressed=false;
+    homeInput.backwards=false;
     homeInput.pointerValid = true;
     homeInput.pointerPressed = true;
     homeInput.pointer = {HomeMenuButton(2).x + 8.0f,

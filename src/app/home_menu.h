@@ -52,8 +52,8 @@ struct HomeMenuUi {
     int Update(const HomeMenuInput& input, double now) {
         active = true;
         focus.Begin();
-        for (int i = 0; i < kHomeMenuActionCount; ++i)
-            focus.Add(i, HomeMenuButton(i));
+        // Same tab order as the native Home document; Exit remains last.
+        for (int i : {0,1,2,3,5,4}) focus.Add(i,HomeMenuButton(i));
         focus.Validate();
         if (input.tabPressed) focus.Move(input.backwards);
 
