@@ -73,7 +73,3 @@ target_link_libraries(locus_audio_waveform_tests PRIVATE locus_core)
 target_compile_features(locus_audio_waveform_tests PRIVATE cxx_std_17)
 add_test(NAME locus_audio_waveform COMMAND locus_audio_waveform_tests)
 
-add_executable(locus_audio_tempo_tests tests/audio_tempo_tests.cpp)
-target_link_libraries(locus_audio_tempo_tests PRIVATE locus_core)
-target_compile_features(locus_audio_tempo_tests PRIVATE cxx_std_17)
-add_test(NAME locus_audio_tempo_analysis COMMAND locus_audio_tempo_tests)

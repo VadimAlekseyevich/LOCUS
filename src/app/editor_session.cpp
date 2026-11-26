@@ -1,5 +1,5 @@
 #include "app/editor_session.h"
-#include "app/editor_audio_analysis.h"
+#include "app/editor_waveform.h"
 #include <chrono>
 #include "core/tempo_map.h"
 
@@ -70,11 +70,9 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
     }
     constexpr double speeds[] = {1.0, 0.75, 0.5, 0.25, 0.1};
     if (input.speedPercent >= 1 && input.speedPercent <= 100) {
-        ResetTempoTap();
         playback_.SetSpeed(input.speedPercent / 100.0, now);
         status_ = "PREVIEW SPEED " + std::to_string(input.speedPercent) + "%";
     } else if (action.speedIndex >= 0 && action.speedIndex < 5) {
-        ResetTempoTap();
         playback_.SetSpeed(speeds[action.speedIndex], now);
         status_ = "PREVIEW SPEED CHANGED";
     }
@@ -91,7 +89,6 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
         (ui_.draggingSongOverview && (input.mouseHeld || input.mouseReleased)))
         ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
     if (selectionChanged) previewBeat_ = editor_.SelectedBeat();
-    if (action.changedChart || selectionChanged) ResetTempoTap();
     if ((action.changedChart || selectionChanged) &&
         (playback_.Playing() || playback_.Finished())) {
         playback_.Stop();
@@ -109,7 +106,6 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
 
 void EditorSession::StartPreview(int beat, double now) {
     metronome_.Reset();
-    ResetTempoTap();
     if (!music_.Ready() || audioPath_.empty()) {
         status_ = "NO SONG - CLICK LOAD SONG / PRESS O";
         return;
@@ -196,52 +192,16 @@ core::MetronomeClick EditorSession::UpdateMetronome(double now) noexcept {
                              playback_.AudioSeconds(now),playback_.Speed());
 }
 
-void EditorSession::ResetTempoTap() noexcept {
-    tapTempo_.Reset();
-    tapRevision_=music_.SourceRevision();
-    ui_.tempoTapCount=0;
-    ui_.tappedTempo.reset();
-}
-void EditorSession::RecordTempoTap(double now) {
-    if (!playback_.Playing() || playback_.Paused()) {
-        ui_.feedback="PLAY AUDIO BEFORE TAPPING"; ui_.feedbackError=true;
-        return;
-    }
-    if (tapRevision_!=music_.SourceRevision()) ResetTempoTap();
-    if (tapTempo_.Tap(playback_.AudioSeconds(now))) {
-        ui_.tempoTapCount=tapTempo_.Count();
-        ui_.tappedTempo=tapTempo_.Estimate();
-        ui_.feedback.clear(); ui_.feedbackError=false;
-    }
-}
-std::vector<core::TempoMarker> EditorSession::TappedTempoMap() const {
-    if (!ui_.tappedTempo || tapRevision_!=music_.SourceRevision()) return {};
-    auto markers=TempoMap();
-    const auto& p=*ui_.tappedTempo;
-    const auto pos=std::lower_bound(markers.begin(),markers.end(),p.timeMs,
-        [](const core::TempoMarker& marker,std::int64_t time){return marker.timeMs<time;});
-    if (pos!=markers.end() && pos->timeMs==p.timeMs) pos->bpm=p.bpm;
-    else markers.insert(pos,p);
-    return markers;
-}
-void EditorSession::UpdateAudioAnalysis() {
-    if (tapRevision_!=music_.SourceRevision()) ResetTempoTap();
+void EditorSession::UpdateWaveform() {
     const auto revision=music_.SourceRevision();
-    if (waveformRevision_!=revision) {
-        analysis_.reset();
-        analysisFailed_=false;
-        ui_.showTempoSuggestions=false;
-    }
+    if (waveformRevision_!=revision) waveform_.reset();
     if (waveformJob_.valid() &&
         waveformJob_.wait_for(std::chrono::seconds(0))==std::future_status::ready) {
         try {
             auto result=waveformJob_.get();
-            if (jobRevision_==revision) {
-                analysis_=std::move(result);
-                analysisFailed_=!analysis_;
-            }
+            if (jobRevision_==revision) waveform_=std::move(result);
         } catch (...) {
-            if (jobRevision_==revision) analysisFailed_=true;
+            // Waveform is optional: playback and chart editing remain usable.
         }
     }
     if (waveformRevision_!=revision && !waveformJob_.valid()) {
@@ -249,39 +209,12 @@ void EditorSession::UpdateAudioAnalysis() {
         if (music_.Ready() && !music_.EncodedBytes().empty() && !audioPath_.empty()) {
             jobRevision_=revision;
             try {
-                waveformJob_=std::async(std::launch::async,DecodeEditorAudio,
+                waveformJob_=std::async(std::launch::async,DecodeEditorWaveform,
                     music_.EncodedBytes(),music_.SourceFormat());
-            } catch (...) { analysisFailed_=true; }
+            } catch (...) {}
         }
     }
-    ui_.audioAnalysis=analysis_;
-    // Aliasing shared_ptr keeps the waveform alive without copying its pyramid.
-    ui_.waveform=analysis_?std::shared_ptr<const core::AudioWaveform>(
-        analysis_,&analysis_->waveform):nullptr;
-    ui_.audioAnalysisBusy=waveformJob_.valid() && music_.Ready();
-    ui_.audioAnalysisFailed=analysisFailed_;
-}
-
-std::vector<core::TempoMarker> EditorSession::ProposedTempoMap(
-    int index,bool replace) const {
-    if (!analysis_ || waveformRevision_!=music_.SourceRevision() ||
-        ui_.audioAnalysis!=analysis_ || !ui_.showTempoSuggestions) return {};
-    const auto& proposals=analysis_->tempo;
-    if (proposals.empty()) return {};
-    if (replace) {
-        std::vector<core::TempoMarker> markers;
-        markers.reserve(proposals.size());
-        for (const auto& p:proposals) markers.push_back({p.timeMs,p.bpm});
-        return markers;
-    }
-    if (index<0 || static_cast<std::size_t>(index)>=proposals.size()) return {};
-    const auto& p=proposals[static_cast<std::size_t>(index)];
-    auto markers=TempoMap();
-    const auto pos=std::lower_bound(markers.begin(),markers.end(),p.timeMs,
-        [](const core::TempoMarker& marker,std::int64_t time){return marker.timeMs<time;});
-    if (pos!=markers.end() && pos->timeMs==p.timeMs) pos->bpm=p.bpm;
-    else markers.insert(pos,{p.timeMs,p.bpm});
-    return markers;
+    ui_.waveform=waveform_;
 }
 
 void EditorSession::UpdatePreview(double now) {

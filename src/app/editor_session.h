@@ -4,7 +4,6 @@
 #include "core/chart_json.h"
 #include "core/tempo_map.h"
 #include "core/metronome.h"
-#include "core/tap_tempo.h"
 
 #include <string>
 #include <future>
@@ -53,12 +52,7 @@ public:
     EditorUiAction ApplyControls(const EditorControls& input, double now);
     bool BeginTest(EditorTestTarget target, double now, std::string& error);
     void UpdatePreview(double now);
-    void UpdateAudioAnalysis();
-    void RecordTempoTap(double now);
-    void ResetTempoTap() noexcept;
-    std::vector<core::TempoMarker> TappedTempoMap() const;
-    // An empty result is also the stale/invalid guard for UI commands.
-    std::vector<core::TempoMarker> ProposedTempoMap(int index,bool replace) const;
+    void UpdateWaveform();
     void ToggleMetronome() noexcept { ui_.metronomeEnabled=!ui_.metronomeEnabled; metronome_.Reset(); }
     core::MetronomeClick UpdateMetronome(double now) noexcept;
     void ResetMetronome() noexcept { metronome_.Reset(); }
@@ -74,13 +68,10 @@ private:
     void StartPreview(int beat, double now);
 
     core::MetronomeCursor metronome_;
-    core::TapTempo tapTempo_;
-    std::uint64_t tapRevision_=0;
-    std::future<std::shared_ptr<const core::EditorAudioAnalysis>> waveformJob_;
+    std::future<std::shared_ptr<const core::AudioWaveform>> waveformJob_;
     std::uint64_t waveformRevision_=~std::uint64_t{0};
     std::uint64_t jobRevision_=0;
-    std::shared_ptr<const core::EditorAudioAnalysis> analysis_;
-    bool analysisFailed_=false;
+    std::shared_ptr<const core::AudioWaveform> waveform_;
     core::ChartEditor& editor_;
     EditorUiState& ui_;
     ChartPlayback& playback_;

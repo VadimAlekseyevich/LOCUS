@@ -64,14 +64,8 @@
       <div id="editor-audio-name" class="editor-setup-caption"></div>
       <div class="editor-set-field"><div>MENU PREVIEW START / MS</div><input type="text" id="editor-preview-ms" class="editor-set-input" data-kind="preview-ms" maxlength="7" value="" /></div>
       <div class="editor-set-title editor-tempo-heading">TEMPO MAP</div>
-      <button id="editor-tempo-suggestions" data-action="tempo-suggestions"><span class="button-label">DETECT BPM</span></button>
-      <div id="editor-tempo-analysis-status" class="editor-setup-caption"></div>
-      <div class="editor-tap-controls"><button data-action="tempo-tap"><span class="button-label">TAP BPM</span></button><button data-action="tempo-tap-reset"><span class="button-label">RESET</span></button><button id="editor-tap-apply" data-action="tempo-tap-apply" disabled=""><span class="button-label">ADD</span></button></div>
-      <div id="editor-tap-status" class="editor-setup-caption"></div>
       <div id="editor-tempo-labels" class="editor-tempo-row editor-tempo-labels"><div class="editor-tempo-offset">OFFSET / MS</div><div class="editor-tempo-bpm">BPM</div><div class="editor-tempo-action"></div></div>
       <div id="editor-tempo-list"></div>
-      <div id="editor-proposal-list" style="display:none;"></div>
-      <button id="editor-tempo-replace" data-action="tempo-replace" class="secondary" style="display:none;"><span class="button-label">REPLACE TEMPO MAP</span></button>
       <button id="editor-tempo-add" class="secondary" data-action="tempo-add"><span class="button-label">+ ADD BPM MARKER</span></button>
     </div>
     <div id="editor-set-difficulties" class="editor-set-panel">

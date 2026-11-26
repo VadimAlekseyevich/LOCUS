@@ -1,6 +1,5 @@
 #include "app/chart_editor_ui.h"
 #include "core/audio_waveform.h"
-#include "core/editor_audio_analysis.h"
 #include "app/path_mesh.h"
 #include "core/tempo_map.h"
 #include "app/editor_comparison.h"
@@ -476,14 +475,18 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
     if (ui.waveform)
         DrawWaveform(*ui.waveform,{bounds.x,bounds.y+13,bounds.width,bounds.height-22},
                      0,duration,Color{92,173,195,95});
-    const auto& graph=draft.DifficultyGraph();
-    if (graph.maximum>0.0 && bounds.height>24.0f) {
-        const float top=bounds.y+14.0f;
-        const float width=bounds.width/graph.peaks.size();
-        if (width>0) for (std::size_t i=0;i<graph.peaks.size();++i) {
-            const float height=static_cast<float>(graph.peaks[i]/graph.maximum)*(lineY-top);
-            if (height>0) DrawRectangleRec({bounds.x+i*width,lineY-height,width,height},
-                                           Color{181,164,243,150});
+    // Song Setup describes the shared audio, not the currently loaded
+    // difficulty. Do not even calculate its strain graph in that view.
+    if (ui.tab==EditorTab::Route && bounds.height>24.0f) {
+        const auto& graph=draft.DifficultyGraph();
+        if (graph.maximum>0.0 && !graph.peaks.empty()) {
+            const float top=bounds.y+14.0f;
+            const float width=bounds.width/graph.peaks.size();
+            if (width>0) for (std::size_t i=0;i<graph.peaks.size();++i) {
+                const float height=static_cast<float>(graph.peaks[i]/graph.maximum)*(lineY-top);
+                if (height>0) DrawRectangleRec({bounds.x+i*width,lineY-height,width,height},
+                                               Color{181,164,243,150});
+            }
         }
     }
     if (cursor > bounds.x + 2.0f) {
@@ -520,13 +523,6 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
             Label(font, name, labelX, bounds.y + 3.0f, 11.0f,
                   Color{172, 233, 219, 255});
             previousTextRight = labelX + width;
-        }
-    }
-
-    if (ui.showTempoSuggestions && ui.audioAnalysis) {
-        for (const auto& candidate:ui.audioAnalysis->tempo) {
-            const float x=SongOverviewX(candidate.timeMs/1000.0,duration,bounds);
-            DrawLineEx({x,bounds.y+14},{x,lineY},2,Color{236,182,104,230});
         }
     }
 

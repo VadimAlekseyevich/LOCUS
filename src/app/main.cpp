@@ -1125,7 +1125,7 @@ int main(int argc, char** argv) try {
             listener.Update(loadedNewSong, input.restartPressed,
                             input.startPressed, input.pausePressed, now);
         if (state.screen == Screen::Editor) {
-            editorSession.UpdateAudioAnalysis();
+            editorSession.UpdateWaveform();
             editorSession.UpdatePreview(now);
             editorMetronome.Play(editorSession.UpdateMetronome(now),settings.volume);
         }

@@ -19,7 +19,6 @@
 #include <cmath>
 #include <iomanip>
 #include "core/tempo_map.h"
-#include "core/editor_audio_analysis.h"
 
 namespace locus::app {
 namespace {
@@ -46,7 +45,6 @@ void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
     // Reset the real layer along with the cached visibility state.
     if (document_) SetRmlModalVisibility(document_->GetElementById("editor-compare-layer"),false);
     tempoRows_ = -1;
-    proposalRows_.reset(); proposalsBuilt_=false;
     lastTab_ = -1;
     lastTextEditing_ = -1;
 }
@@ -205,53 +203,6 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
             bpm << std::setprecision(15) << tempo[i].bpm;
             setInput("editor-tempo-ms-" + suffix, std::to_string(tempo[i].timeMs), true);
             setInput("editor-tempo-bpm-" + suffix, bpm.str(), true);
-        }
-        std::ostringstream tapLabel;
-        if (ui.tappedTempo)
-            tapLabel<<std::fixed<<std::setprecision(3)<<ui.tappedTempo->bpm
-                <<" BPM / "<<ui.tappedTempo->timeMs<<" ms";
-        else if (ui.tempoTapCount>=4) tapLabel<<"UNSTABLE / KEEP TAPPING OR RESET";
-        else tapLabel<<"TAP 4+ BEATS DURING PLAYBACK ("<<ui.tempoTapCount<<"/4)";
-        SetText("editor-tap-status",tapLabel.str());
-        if (auto* add=document_->GetElementById("editor-tap-apply")) {
-            if (ui.tappedTempo) add->RemoveAttribute("disabled");
-            else add->SetAttribute("disabled","");
-        }
-        const auto analysis=ui.audioAnalysis;
-        const bool proposals=ui.showTempoSuggestions;
-        const auto show=[&](const char* id,bool visible,const char* display) {
-            if (auto* element=document_->GetElementById(id))
-                element->SetProperty("display",visible?display:"none");
-        };
-        show("editor-tempo-labels",!proposals,"flex");
-        show("editor-tempo-list",!proposals,"flex");
-        show("editor-tempo-add",!proposals,"block");
-        show("editor-proposal-list",proposals,"flex");
-        show("editor-tempo-replace",proposals && analysis && !analysis->tempo.empty(),"block");
-        SetText("editor-tempo-suggestions",proposals?"SHOW TEMPO MAP":"DETECT BPM");
-        SetText("editor-tempo-analysis-status",!setView->hasAudio?"ATTACH AUDIO TO ANALYZE":
-            ui.audioAnalysisBusy?"ANALYZING AUDIO":
-            ui.audioAnalysisFailed?"AUDIO ANALYSIS FAILED":
-            !analysis?"NO ANALYSIS":
-            analysis->tempo.empty()?"NO RELIABLE TEMPO FOUND":
-            std::to_string(analysis->tempo.size())+" TEMPO CANDIDATES / REVIEW");
-        if (proposals && (!proposalsBuilt_ || proposalRows_!=analysis)) {
-            std::ostringstream html;
-            if (analysis) for (std::size_t i=0;i<analysis->tempo.size();++i) {
-                const auto& candidate=analysis->tempo[i];
-                html<<"<div class='editor-proposal-row'><div class='editor-proposal-info'>"
-                    <<candidate.timeMs<<" ms / "<<std::fixed<<std::setprecision(3)
-                    <<candidate.bpm<<" BPM"
-                    <<"<div class='editor-proposal-confidence'>"
-                    <<(candidate.confidence>=0.65?"STRONG":candidate.confidence>=0.35?"MEDIUM":"WEAK")
-                    <<" EVIDENCE</div></div><button data-action='tempo-use-proposal' data-index='"
-                    <<i<<"'><span class='button-label'>ADD</span></button></div>";
-            }
-            if (auto* list=document_->GetElementById("editor-proposal-list")) {
-                list->SetInnerRML(html.str());
-                list->SetScrollTop(0);
-            }
-            proposalRows_=analysis; proposalsBuilt_=true;
         }
         SyncDifficultyList(ui,*setView,title,false);
     }
@@ -459,18 +410,6 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
         input_->editor.selectDraft = true;
     } else if (action == "attach-audio") {
         input_->editor.attachAudio = true;
-    } else if (action == "tempo-tap") {
-        input_->editor.tempoTap=true;
-    } else if (action == "tempo-tap-reset") {
-        input_->editor.tempoTapReset=true;
-    } else if (action == "tempo-tap-apply") {
-        input_->editor.tempoTapApply=true;
-    } else if (action == "tempo-suggestions") {
-        input_->editor.tempoSuggestionsToggle=true;
-    } else if (action == "tempo-use-proposal") {
-        input_->editor.tempoProposalIndex=target->GetAttribute<int>("data-index",-1);
-    } else if (action == "tempo-replace") {
-        input_->editor.tempoReplaceFromAnalysis=true;
     } else if (action == "tempo-add") {
         input_->editor.tempoAdd = true;
     } else if (action == "tempo-remove") {

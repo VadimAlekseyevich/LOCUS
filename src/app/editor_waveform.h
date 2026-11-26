@@ -1,5 +1,5 @@
 #pragma once
-#include "core/editor_audio_analysis.h"
+#include "core/audio_waveform.h"
 #include "raylib.h"
 #include <memory>
 #include <string>
@@ -8,8 +8,8 @@
 namespace locus::app {
 
 // CPU-only decoder; no access to the output device, chart or UI.
-// Called by the editor analysis worker, never in a render callback.
-inline std::shared_ptr<const core::EditorAudioAnalysis> DecodeEditorAudio(
+// Called by the waveform worker, never in a render callback.
+inline std::shared_ptr<const core::AudioWaveform> DecodeEditorWaveform(
     const std::vector<std::uint8_t>& bytes,const std::string& format) {
     if (bytes.empty() || format.empty()) return {};
     struct OwnedWave {
@@ -31,10 +31,6 @@ inline std::shared_ptr<const core::EditorAudioAnalysis> DecodeEditorAudio(
     };
     auto waveform=core::AudioWaveform::Build(w.frameCount,w.sampleRate,w.channels,sample);
     if (waveform.Empty()) return {};
-    auto analysis=std::make_shared<core::EditorAudioAnalysis>();
-    analysis->waveform=std::move(waveform);
-    analysis->tempo=core::SuggestTempoMap(
-        core::BuildOnsetEnvelope(w.frameCount,w.sampleRate,w.channels,sample));
-    return analysis;
+    return std::make_shared<const core::AudioWaveform>(std::move(waveform));
 }
 } // namespace locus::app

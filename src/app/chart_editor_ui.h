@@ -15,7 +15,7 @@
 #include <vector>
 #include <string>
 
-namespace locus::core { class AudioWaveform; struct EditorAudioAnalysis; }
+namespace locus::core { class AudioWaveform; }
 
 namespace locus::app {
 
@@ -51,9 +51,6 @@ struct EditorControls {
     bool enter = false, escape = false, backspace = false, tab = false;
     bool previewToggle = false, previewRestart = false;
     bool metronomeToggle = false;
-    bool tempoSuggestionsToggle=false, tempoReplaceFromAnalysis=false;
-    bool tempoTap=false, tempoTapReset=false, tempoTapApply=false;
-    int tempoProposalIndex=-1;
     bool copySongTime = false;
     // Semantic editor actions emitted by RmlUi; never synthesize a click at
     // legacy pixel coordinates to reach the chart editing model.
@@ -133,11 +130,6 @@ enum class EditorSetField { None, Title, Artist, Mapper, Tags };
 
 struct EditorUiState {
     std::shared_ptr<const core::AudioWaveform> waveform;
-    std::shared_ptr<const core::EditorAudioAnalysis> audioAnalysis;
-    bool audioAnalysisBusy=false, audioAnalysisFailed=false;
-    bool showTempoSuggestions=false;
-    int tempoTapCount=0;
-    std::optional<core::TempoMarker> tappedTempo;
     bool metronomeEnabled=false;
     EditorLayoutSnapshot layout; // presentation only; refreshed from RmlUi
     EditorField active = EditorField::None;

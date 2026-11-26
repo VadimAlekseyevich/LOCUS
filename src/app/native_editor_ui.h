@@ -2,11 +2,10 @@
 
 #include "app/virtual_list.h"
 #include <string>
-#include <memory>
 #include <unordered_map>
 
 namespace Rml { class ElementDocument; class Event; }
-namespace locus::core { class ChartEditor; struct EditorAudioAnalysis; }
+namespace locus::core { class ChartEditor; }
 namespace locus::app {
 struct EditorUiState;
 struct FrameInput;
@@ -49,7 +48,5 @@ private:
     bool compareVisible_ = false;
     int lastTab_ = -1, lastTextEditing_ = -1;
     int tempoRows_ = -1;
-    std::shared_ptr<const core::EditorAudioAnalysis> proposalRows_;
-    bool proposalsBuilt_=false;
 };
 } // namespace locus::app
