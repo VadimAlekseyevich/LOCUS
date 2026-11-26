@@ -182,8 +182,8 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     fit(artistMapper, 28, 120, 315, 13, sky);
     std::string songFacts = song
         ? TextFormat("%.2f BPM  |  %d CHARTS",
-              song->bpm, static_cast<int>(song->charts.size()))
-        : "120 BPM  |  1 CHART";
+              song->bpm * ui.mods.RatePercent()/100.0, static_cast<int>(song->charts.size()))
+        : TextFormat("%.2f BPM  |  1 CHART",120.0 * ui.mods.RatePercent()/100.0);
     if (song && !song->tags.empty())
         songFacts += "  |  " + song->tags.front();
     fit(songFacts, 28, 143, 320, 12, faint);
@@ -242,7 +242,7 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
             Label(font,TextFormat("%.2f%%",result.accuracyPercent),
                   rect.x+52,rect.y+7,16,theme.foreground);
             const auto mod = FormatRunMods(result);
-            Label(font,mod,rect.x+146,rect.y+10,11,lilac);
+            fit(mod,rect.x+146,rect.y+10,100,11,lilac);
             const auto combo=FormatRunCombo(result);
             const float comboWidth=MeasureTextEx(font,combo.c_str(),13.0f,1.0f).x;
             Label(font,combo.c_str(),rect.x+rect.width-9-comboWidth,

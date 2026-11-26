@@ -32,20 +32,20 @@ constexpr Color kGradeColors[] = {
 };
 
 void DrawHitErrorBar(const GameplayHudLayout& l, const Skin& skin,
-                     const HitErrorHistory* errors, double now) {
+                     const HitErrorHistory* errors, double now, double windowScale) {
     const auto b = LayoutHitErrorBar(l,skin);
     if (b.width<=0) return;
     const float u = l.unit;
     const float center = b.x+b.width*0.5f;
     const auto xFor = [&](double error) {
         return center + b.width*0.5f*static_cast<float>(
-            std::clamp(error/core::kBadWindowSeconds,-1.0,1.0));
+            std::clamp(error/(core::kBadWindowSeconds*windowScale),-1.0,1.0));
     };
     const float y = b.y+b.height*0.5f;
     // One skin color; subtle opacity differences preserve timing zones.
     const auto range = [&](double from, double to, float opacity) {
-        const float x=xFor(from);
-        DrawRectangleRec({x,y-2*u,xFor(to)-x,4*u},
+        const float x=xFor(from*windowScale);
+        DrawRectangleRec({x,y-2*u,xFor(to*windowScale)-x,4*u},
                          WithOpacity(skin.hitErrorColor,opacity));
     };
     range(-core::kBadWindowSeconds,-core::kGoodWindowSeconds,0.18f);
@@ -91,7 +91,7 @@ void DrawGameplayHud(Font font, const GameplayHudLayout& l,
         Text(font,mods.c_str(),l.accuracy,41,12,u,muted,Align::Right);
     }
 
-    if (skin.showHitErrorBar) DrawHitErrorBar(l,skin,errors,now);
+    if (skin.showHitErrorBar) DrawHitErrorBar(l,skin,errors,now,core::WindowScale(stats.modFlags));
     if (l.grades.width <= 0.0f) return;
     const int counts[] = {stats.grades.perfect, stats.grades.good,
                           stats.grades.bad, stats.grades.miss};

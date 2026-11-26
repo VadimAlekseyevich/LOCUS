@@ -159,8 +159,8 @@ void NativeResultsUi::SyncHistogram() {
     }
     graph->SetInnerRML(html.str());
     std::ostringstream axis;
-    axis << "-" << core::kBadWindowSeconds*1000.0
-         << " ms   /   0   /   +" << core::kBadWindowSeconds*1000.0 << " ms";
+    const double limitMs = core::kBadWindowSeconds*core::WindowScale(selected_->modFlags)*1000.0;
+    axis << "-" << limitMs << " ms   /   0   /   +" << limitMs << " ms";
     SetText("results-histogram-axis",axis.str());
 }
 
