@@ -31,9 +31,9 @@ constexpr std::uint32_t kLocal = 0x04034b50;
 constexpr std::uint32_t kCentral = 0x02014b50;
 constexpr std::uint32_t kEnd = 0x06054b50;
 constexpr std::uint16_t kUtf8 = 0x0800;
-constexpr std::uint64_t kMaxFile = 256ULL * 1024ULL * 1024ULL;
-constexpr std::uint64_t kMaxArchive = 320ULL * 1024ULL * 1024ULL;
-constexpr std::size_t kMaxEntries = 256;
+constexpr auto kMaxFile=kMaxPackageAssetBytes;
+constexpr auto kMaxArchive=kMaxPackageBytes;
+constexpr auto kMaxEntries=kMaxPackageEntries;
 
 struct ZipEntry {
     fs::path file;

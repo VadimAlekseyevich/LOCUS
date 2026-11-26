@@ -25,7 +25,10 @@ struct PackageRevisionContent {
 // Caller exclusively owns a private, immutable, extracted directory for
 // the duration. No network, database, media decode or publication.
 // Outputs remain unchanged on failure. Hashing is bounded and streaming.
+// Optional effectivePackage contains the same validated chart objects used
+// for hashing, with authoritative shared timing already applied.
 bool DescribePackageRevision(const std::filesystem::path& folder,
-                             PackageRevisionContent& revision,std::string& error);
+                             PackageRevisionContent& revision,std::string& error,
+                             ValidatedPackage* effectivePackage=nullptr);
 
 } // namespace locus::app

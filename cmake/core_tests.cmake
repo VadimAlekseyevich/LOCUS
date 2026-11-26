@@ -89,3 +89,11 @@ add_test(NAME locus_local_player_identity COMMAND locus_player_profile_tests)
 add_executable(locus_performance_tests tests/performance_tests.cpp)
 target_link_libraries(locus_performance_tests PRIVATE locus_result_model)
 add_test(NAME locus_performance_v1 COMMAND locus_performance_tests)
+
+add_executable(locus_worker_fixture tests/worker_fixture.cpp)
+target_link_libraries(locus_worker_fixture PRIVATE locus_package)
+add_test(NAME locus_worker_protocol_v1 COMMAND "${CMAKE_COMMAND}"
+    "-DWORKER=$<TARGET_FILE:locus_worker>"
+    "-DFIXTURE=$<TARGET_FILE:locus_worker_fixture>"
+    "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/worker-protocol-test"
+    -P "${PROJECT_SOURCE_DIR}/tests/worker_protocol_test.cmake")

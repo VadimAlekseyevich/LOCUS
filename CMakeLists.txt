@@ -74,6 +74,14 @@ add_library(locus_player_profile STATIC src/app/player_profile.cpp)
 target_link_libraries(locus_player_profile PUBLIC locus_core PRIVATE nlohmann_json::nlohmann_json)
 set_target_properties(locus_player_profile PROPERTIES CXX_EXTENSIONS OFF)
 
+# Internal offline worker boundary, built in the Linux core configuration.
+add_library(locus_verification_job STATIC workers/verification_job.cpp)
+target_link_libraries(locus_verification_job PUBLIC locus_package)
+target_include_directories(locus_verification_job PUBLIC "${PROJECT_SOURCE_DIR}/workers")
+add_executable(locus_worker workers/main.cpp)
+target_link_libraries(locus_worker PRIVATE locus_verification_job nlohmann_json::nlohmann_json)
+set_target_properties(locus_worker locus_verification_job PROPERTIES CXX_EXTENSIONS OFF)
+
 if(LOCUS_BUILD_TESTS)
     enable_testing()
     include(cmake/core_tests.cmake)

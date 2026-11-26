@@ -1,4 +1,5 @@
 #include "app/publication_revision.h"
+#include "app/song_archive.h"
 #include "app/chart_file.h"
 #include "app/image_asset_file.h"
 #include "app/song_timing.h"
@@ -65,12 +66,12 @@ std::string GameplayDigest(const core::LoadedChart& chart,const ContentDigest& a
 } // namespace
 
 bool DescribePackageRevision(const fs::path& folder,PackageRevisionContent& revision,
-                             std::string& error) {
+                             std::string& error,ValidatedPackage* effectivePackage) {
     ValidatedPackage package;
     if (!ValidateStagedPackage(folder,package,error)) return false;
     PackageRevisionContent result;
     if (!HashFile(folder/"set.locus.json",kMaxSongSetManifestBytes,result.manifest,error) ||
-        !HashFile(package.audio,256ULL*1024ULL*1024ULL,result.audio,error))
+        !HashFile(package.audio,kMaxPackageAssetBytes,result.audio,error))
         return false;
     if (!package.manifest.backgroundFile.empty()) {
         ContentDigest art;
@@ -87,6 +88,7 @@ bool DescribePackageRevision(const fs::path& folder,PackageRevisionContent& revi
         result.difficulties.emplace(entry.first,std::move(content));
     }
     revision=std::move(result);
+    if (effectivePackage) *effectivePackage=std::move(package);
     error.clear();
     return true;
 }

@@ -56,6 +56,8 @@ Suggested repository boundaries when needed:
 - `infra/`: reproducible local and deployed configuration; no secrets.
 - `workers/`: isolated validation/calculation entry points.
 
+The first concrete worker is implemented: [internal protocol 1](../workers/README.md) builds `locus_worker` in core-only CI, inspects a staged package and derives a score from an exact expected gameplay digest and replay. It requires independently decoded audio duration and expected attempt settings from the future orchestrator. There is still no HTTP API, database, authentication, media decoder or ranking approval.
+
 Do not create empty directories or abstract repositories for hypothetical
 consumers. Extract actual boundaries as the first vertical slice requires.
 

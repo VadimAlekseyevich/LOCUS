@@ -1,4 +1,5 @@
 #include "app/package_validation.h"
+#include "app/song_archive.h"
 #include "app/chart_file.h"
 #include "app/image_asset_file.h"
 #include "app/song_timing.h"
@@ -11,6 +12,25 @@ bool ValidateStagedPackage(const fs::path& folder,ValidatedPackage& package,std:
     error.clear();
     ValidatedPackage result;
     std::error_code ec;
+    if (fs::symlink_status(folder,ec).type()!=fs::file_type::directory || ec) {
+        error="Package staging is not a regular directory."; return false;
+    }
+    // Apply archive limits also when a worker reopens an extracted revision.
+    // Check the whole budget before parsing any potentially large chart.
+    std::uint64_t total=0;
+    std::size_t count=0;
+    for (fs::directory_iterator it(folder,ec),end; !ec && it!=end; it.increment(ec)) {
+        if (++count>kMaxPackageEntries ||
+            it->symlink_status(ec).type()!=fs::file_type::regular || ec) {
+            error="Package has too many entries or a non-regular file."; return false;
+        }
+        const auto size=it->file_size(ec);
+        if (ec || size>kMaxPackageAssetBytes || size>kMaxPackageBytes-total) {
+            error="Package exceeds the staged byte budget."; return false;
+        }
+        total+=size;
+    }
+    if (ec) { error="Cannot enumerate package staging."; return false; }
     const auto manifest=folder/"set.locus.json";
     if (fs::symlink_status(manifest,ec).type()!=fs::file_type::regular || ec ||
         !LoadSongSetManifest(manifest,result.manifest,error)) {

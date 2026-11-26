@@ -1,10 +1,16 @@
 #pragma once
 
 #include <filesystem>
+#include <cstdint>
+#include <cstddef>
 #include <string>
 #include <vector>
 
 namespace locus::app {
+
+inline constexpr std::uint64_t kMaxPackageBytes=320ULL*1024*1024;
+inline constexpr std::uint64_t kMaxPackageAssetBytes=256ULL*1024*1024;
+inline constexpr std::size_t kMaxPackageEntries=256;
 
 // Portable .locuspack ZIP archives: only store (method 0), flat UTF-8 names,
 // bounded file counts/sizes and CRC verification. ZIP import is deliberately
