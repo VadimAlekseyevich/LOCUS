@@ -3,6 +3,9 @@
 #include "core/score_verification.h"
 #include "core/utf8.h"
 #include <cmath>
+#include <algorithm>
+#include <map>
+#include <set>
 
 namespace locus::app {
 namespace {
@@ -52,6 +55,12 @@ bool ValidResultData(const RunResult& r) noexcept {
             if (sum!=s.timedHits) return false;
         }
     }
+    if (r.performanceDifficulty &&
+        (!std::isfinite(r.performanceDifficulty->stars) ||
+         r.performanceDifficulty->stars<0.0 ||
+         r.performanceDifficulty->stars>100000.0 ||
+         r.performanceDifficulty->difficultyVersion<1 ||
+         r.performanceDifficulty->keyPresses!=static_cast<std::size_t>(r.notesJudged))) return false;
     const double computed = r.grades.AccuracyPercent();
     return std::abs(r.accuracyPercent - computed) <= 0.011;
 }
@@ -94,12 +103,61 @@ std::optional<RunResult> BuildCompletedRun(const CompletedRunContext& completion
     record.modFlags = completion.modFlags;
     record.modSeed = completion.modSeed;
     record.statistics = completion.statistics;
+    record.performanceDifficulty=completion.performanceDifficulty;
     record.accuracyPercent=record.grades.AccuracyPercent();
     if (!ValidResultData(record)) {
         error="Invalid completed result.";
         return std::nullopt;
     }
     return record;
+}
+
+std::optional<double> RunPerformance(const RunResult& r) noexcept {
+    if (!ValidRunResult(r) || !r.performanceDifficulty || r.variablePracticeRate ||
+        r.judgementVersion!=core::kJudgementRulesVersion || r.songSetId=="builtin-demo")
+        return std::nullopt;
+    const auto percent=static_cast<int>(std::lround(r.practiceRate*100.0));
+    if (std::abs(percent/100.0-r.practiceRate)>1e-9) return std::nullopt;
+    return core::CalculatePerformance(*r.performanceDifficulty,r.grades,percent,r.modFlags);
+}
+
+PlayerPerformanceSummary SummarizePlayerPerformance(
+    const std::string& playerId,const std::vector<RunResult>& results) {
+    PlayerPerformanceSummary summary;
+    if (!core::ValidDifficultyId(playerId)) return summary;
+    // A duplicated attempt is not extra play count or extra PP. Conflicting
+    // duplicate records are excluded altogether rather than order-dependent.
+    std::map<std::string,const RunResult*> unique;
+    for (const auto& r : results) {
+        if (r.playerId!=playerId || !ValidRunResult(r)) continue;
+        const auto inserted=unique.emplace(r.id,&r);
+        if (!inserted.second) inserted.first->second=nullptr;
+    }
+    std::map<std::pair<std::string,std::string>,double> best;
+    double accuracySum=0.0,keys=0.0;
+    for (const auto& entry : unique) {
+        if (!entry.second) continue;
+        const auto& r=*entry.second;
+        ++summary.playCount;
+        keys+=r.notesJudged;
+        accuracySum+=r.grades.AccuracyPercent()*r.notesJudged;
+        if (const auto pp=RunPerformance(r)) {
+            auto& value=best[{r.songSetId,r.difficultyId}];
+            value=std::max(value,*pp);
+        }
+    }
+    if (keys>0.0) summary.weightedAccuracy=accuracySum/keys;
+    std::vector<double> values;
+    values.reserve(best.size());
+    for (const auto& entry : best) values.push_back(entry.second);
+    std::sort(values.begin(),values.end(),std::greater<double>{});
+    summary.ratedDifficulties=values.size();
+    double weight=1.0;
+    for (double pp : values) {
+        summary.totalPp+=weight*pp;
+        weight*=0.95;
+    }
+    return summary;
 }
 
 bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,

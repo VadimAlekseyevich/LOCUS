@@ -62,6 +62,11 @@ Json Encode(const RunResult& r) {
         {"variablePracticeRate", r.variablePracticeRate}, {"modFlags", r.modFlags}, {"modSeed", r.modSeed}
     };
     result["hasReplay"] = r.hasReplay;
+    if (r.performanceDifficulty) {
+        const auto& d=*r.performanceDifficulty;
+        result["performanceDifficulty"]={{"difficultyVersion",d.difficultyVersion},
+            {"stars",d.stars},{"keyPresses",d.keyPresses}};
+    }
     if (r.statistics) {
         const auto& s = *r.statistics;
         result["statistics"] = {{"maxCombo", s.maxCombo},
@@ -129,6 +134,16 @@ bool Decode(const Json& obj, RunResult& out) {
                 }
                 r.statistics->histogram=histogram;
             }
+        }
+        if (obj.contains("performanceDifficulty")) {
+            const auto& d=obj.at("performanceDifficulty");
+            if (!d.is_object() || !d.at("difficultyVersion").is_number_integer() ||
+                !d.at("keyPresses").is_number_integer() || !d.at("stars").is_number()) return false;
+            const auto version=d.at("difficultyVersion").get<std::int64_t>();
+            const auto keys=d.at("keyPresses").get<std::int64_t>();
+            if (version<1 || version>1000 || keys<=0 || keys>2000000) return false;
+            r.performanceDifficulty=core::PerformanceDifficulty{static_cast<int>(version),
+                d.at("stars").get<double>(),static_cast<std::size_t>(keys)};
         }
         if (!ValidRunResult(r)) return false;
         out = std::move(r);

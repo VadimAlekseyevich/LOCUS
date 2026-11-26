@@ -1,5 +1,7 @@
 #pragma once
 #include "core/judgement.h"
+#include "core/performance.h"
+#include <vector>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -32,6 +34,7 @@ struct RunResult {
     core::ModFlags modFlags = 0;
     std::uint32_t modSeed = 0;
     std::string playerId; // local owner; never an authenticated account ID
+    std::optional<core::PerformanceDifficulty> performanceDifficulty;
 };
 
 struct RunKey {
@@ -85,7 +88,7 @@ struct CompletedRunContext {
     bool spectator = false;
     core::ModFlags modFlags = 0;
     std::uint32_t modSeed = 0;
-};
+    std::optional<core::PerformanceDifficulty> performanceDifficulty;
 
 // Build an eligible attempt without touching the filesystem or assigning
 // persistence identity/time. The owner-scoped store assigns player and attempt IDs.
@@ -93,6 +96,17 @@ struct CompletedRunContext {
 std::optional<RunResult> BuildCompletedRun(const CompletedRunContext& completion,
                                            std::string& error);
 bool ValidRunResult(const RunResult& result) noexcept;
+std::optional<double> RunPerformance(const RunResult& result) noexcept;
+struct PlayerPerformanceSummary {
+    double totalPp=0.0;
+    std::size_t playCount=0;
+    std::size_t ratedDifficulties=0;
+    double weightedAccuracy=0.0; // percent across unique completed attempts
+};
+// Owner-scoped, order-independent projection. One best per stable difficulty
+// across rates, mods and revisions; duplicate attempt IDs are ignored.
+PlayerPerformanceSummary SummarizePlayerPerformance(
+    const std::string& playerId,const std::vector<RunResult>& results);
 // Check a local summary against the shared authoritative scoring engine.
 // This is consistency verification, not authentication or rank eligibility.
 bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,

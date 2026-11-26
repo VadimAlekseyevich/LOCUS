@@ -1164,14 +1164,30 @@ int main(int argc, char** argv) try {
                 gameSession.Stop(customChart);
                 gameSession.ClearReplay();
             } else if (!alreadyCompleted && sessionCompleted) {
-                const locus::app::CompletedRunContext completion{
+                const auto scoredTransport=playActions.Transport(now);
+                locus::app::CompletedRunContext completion{
                     true, gameSession.IsEditorTest(), playCameFromEditor,
                     playedRunKey, playedSongTitle, chartTitle, judge.Counts(),
-                    judge.ScorableCount(), playActions.Transport(now).practiceSpeed,
+                    judge.ScorableCount(), scoredTransport.practiceSpeed,
                     playedGameplayRevision,
                     gameSession.VariablePracticeRate(), judge.Statistics(),
                     judge.CompletedReplay(), gameSession.IsReplay(), judge.Mods(), judge.ModSeed()
                 };
+                if (!completion.editorTest && !completion.launchedFromEditor &&
+                    !completion.spectator && !completion.variablePracticeRate &&
+                    completion.key.songSetId!="builtin-demo" && !judge.Failed()) {
+                    try {
+                        completion.performanceDifficulty=locus::core::CalculatePerformanceDifficulty(
+                            activeChart,scoredTransport.offsetSeconds,
+                            static_cast<int>(std::lround(scoredTransport.practiceSpeed*100.0)),
+                            judge.Mods(),judge.ModSeed());
+                        if (completion.performanceDifficulty &&
+                            completion.performanceDifficulty->keyPresses!=completion.scorableCount)
+                            completion.performanceDifficulty.reset();
+                    } catch (const std::exception& e) {
+                        std::cerr<<"PERFORMANCE_UNAVAILABLE "<<e.what()<<'\n';
+                    }
+                }
                 locus::app::RunResult record;
                 std::string error;
                 if (locus::app::CaptureCompletedRun(

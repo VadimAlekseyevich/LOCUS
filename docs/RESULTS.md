@@ -65,6 +65,14 @@ The sidecar is exclusively published before the small result JSON, which is the 
 
 New timing summaries also include optional `statistics.hitErrorHistogram`: 36 nonnegative counts, equally spaced over the symmetric, modifier-scaled Bad window (10 ms per bin for NM under judgement v1). Their sum equals `timedHits`. Results renders this fixed-size distribution with the current timing-window labels; old attempts without bins, unsupported rules or zero hits display no distribution. The core records bins in O(1) per hit, and replay verification compares the exact bins when present. History still never loads replay payloads.
 
+## Local performance
+
+New eligible attempts may include optional `performanceDifficulty` with
+`difficultyVersion`, `stars` and `keyPresses`. Native Results derives
+experimental PP from this snapshot and the grades; the formula is versioned
+separately (see [Performance V1](PERFORMANCE.md)). No Results version change;
+old v3 records without this field remain readable but unrated.
+
 ## Online boundary
 
 `locus_result_model` builds and validates completed local attempt snapshots

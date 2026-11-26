@@ -60,7 +60,8 @@ Keep exact input timestamps, authoritative route and grading independent of rend
   for matching revisions in native Results.
 - [x] Seekable replay and Autoplay playback with scoring reconstruction.
 - [ ] Validate spectator playback on physical Windows devices, including seek while paused, rate mods and end-of-song.
-- [ ] Establish shared portable score contracts, published chart identity and a versioned performance model before implementing profiles and leaderboard UI.
+- [x] Shared portable score contracts, cryptographic content identity and experimental [Performance V1](PERFORMANCE.md) with local per-attempt PP.
+- [ ] Connect owner-wide history to the profile projection and build the profile UI; calibrate PP and ranking policy.
 - [ ] Prepare the local/client-server boundaries now; build a private vertical slice for accounts, published maps, score submission and leaderboards before public hosting. See [online architecture](ONLINE_ARCHITECTURE.md). Before hosting,
   implement the actual rights/reporting workflow described in the [README](../README.md#community-chart-packs-with-music--future-hosting-policy).
 

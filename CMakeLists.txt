@@ -24,6 +24,7 @@ add_library(locus_core STATIC
     src/core/chart_json.cpp
     src/core/chart_editor.cpp
     src/core/chart_difficulty.cpp
+    src/core/performance.cpp
     src/core/unicode_search.cpp
 )
 target_compile_features(locus_core PUBLIC cxx_std_17)

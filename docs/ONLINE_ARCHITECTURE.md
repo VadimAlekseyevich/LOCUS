@@ -131,10 +131,10 @@ Important gaps in the current scoring trace:
 
 Keep all verified attempts and original replay blobs independent of derived
 PP. Difficulty V4 measures physical execution; READ stays diagnostic and
-has zero ranking weight. A future Performance V1 should be a separate
-versioned pure calculation from validated difficulty, actual grades and
-explicit mods. Choose its constants after calibration on representative
-charts and observed runs. Store calculator versions and support
+has zero ranking weight. [Performance V1](PERFORMANCE.md) is now a provisional pure calculation from
+validated difficulty, actual grades and explicit mods. Local Results shows
+PP and a pure owner-scoped best-score projection exists; full history loading
+and profile UI remain pending. Calibrate the constants before competition. Store calculator versions and support
 deterministic recalculation without overwriting source attempts.
 
 Use a durable outbox for eligible submissions with bounded retries and
@@ -195,7 +195,7 @@ No legal workflow is currently operational.
 | --- | --- | --- |
 | W0 | Documentation and portable rules boundary | Core-only CI; no future capability described as implemented |
 | W1 | Portable verifier + package validation boundary (verifier, structural package validation and SHA-256 content descriptor implemented; media/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
-| W2 | Local run/profile ownership and PP contract (portable attempt model, local identity and owner-scoped storage implemented; PP and profile UI pending) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
+| W2 | Local run/profile ownership and PP contract (portable attempt model, local identity and owner-scoped storage implemented; experimental PP calculator and pure profile projection implemented; full history and profile UI pending) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
 | W3 | API/data contract and private backend | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
 | W4 | Private vertical slice | Publish one authorized test map, play, submit replay, server rejudge, show leaderboard and profile through the same API; retry idempotency |
 | W5 | Catalog/download/upload workflow | Immutable revision mapping, paging, cancellation, safe install, quotas, rollback and fault recovery |

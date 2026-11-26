@@ -84,7 +84,7 @@ activeSeconds still sums note gaps capped at 1.5s for telemetry only.
 - Parameters need real-player calibration using observed accuracy and
   matched-density pattern families; this is not a measured human skill model.
 
-The editor uses a route-revision cache; the library stores derived metadata for each verified chart at native rate. Both use the same core calculator. Difficulty V4 is the estimator version, independent of judgement rules version 1. Ratings are not persisted in charts or Results.
+The editor uses a route-revision cache; the library stores derived metadata for each verified chart at native rate. Both use the same core calculator. Difficulty V4 is the estimator version, independent of judgement rules version 1. Ratings are not persisted in chart JSON. New eligible Results may retain a versioned effective difficulty snapshot for experimental [Performance V1](PERFORMANCE.md).
 
 For modded PLAY, a separate selection cache retains only the selected chart payload and its most recent modified rating, keyed by rate, transform flags and Random seed. The browser tree keeps base ratings, so toggling a modifier never re-rates the whole collection. Unavailable/stale payloads show no modified rating until the library refreshes.
 

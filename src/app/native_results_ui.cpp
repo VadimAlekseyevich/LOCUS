@@ -113,6 +113,8 @@ void NativeResultsUi::Sync() {
         }
     }
     SetText("results-practice", detail);
+    const auto pp=selected_?RunPerformance(*selected_):std::nullopt;
+    SetText("results-performance",pp ? timing(*pp,false," PP (V1 / LOCAL)") : "");
     SetText("results-replay-status",history_->replayNotice);
     if (auto* error=document_->GetElementById("results-replay-status"))
         error->SetProperty("display",history_->replayNotice.empty() ? "none" : "block");

@@ -9,7 +9,8 @@
     <div class="results-heading"><div id="results-song" class="results-song">LOCUS</div>
      <div id="results-chart" class="results-chart">ORIGINAL</div>
      <div id="results-date" class="results-muted"></div>
-     <div id="results-practice" class="results-muted"></div></div>
+     <div id="results-practice" class="results-muted"></div>
+     <div id="results-performance" class="results-muted"></div></div>
     <div class="results-primary-stats">
      <div class="results-stat"><div class="results-label">ACCURACY</div>
       <div id="results-accuracy" class="results-accuracy">100.00%</div></div>
