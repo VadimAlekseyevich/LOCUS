@@ -16,6 +16,7 @@ inline Rectangle ColorRow(int row) {
     // Keep all eleven colors above the skin action row.
     return {70.0f, 194.0f + row * 24.0f, 205.0f, 23.0f};
 }
+inline Rectangle HitSoundButton(int i) { return {70.0f+i*161.0f,280,153,36}; }
 inline Rectangle NameField() { return {175, 190, 376, 34}; }
 constexpr float RowPitch(int /*page*/) noexcept {
     return 31.0f;

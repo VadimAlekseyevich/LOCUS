@@ -2,6 +2,7 @@
 #include "core/judgement.h"
 #include "app/demo_transport.h"
 #include "app/audio_device.h"
+#include "app/hit_sound_player.h"
 #include "app/local_music.h"
 #include "app/chart_playback.h"
 #include "app/music_picker.h"
@@ -319,6 +320,7 @@ int main(int argc, char** argv) try {
     std::cerr << "LOCUS_STARTUP audio\n";
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
+    locus::app::HitSoundPlayer hitSounds;
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
     // Dedicated calibration stream. It does not touch scoring transports,
     // chart data or the player's existing audio decoder.
@@ -348,7 +350,8 @@ int main(int argc, char** argv) try {
 
     locus::app::SkinProfileActions skinProfiles{
         activeSkin, draftSkin, skinUi, activeSkinFile,
-        {locus::app::ChooseSkinFile, locus::app::ChooseSkinSaveFile}
+        {locus::app::ChooseSkinFile, locus::app::ChooseSkinSaveFile,
+         locus::app::ChooseHitSoundFile}
     };
     skinProfiles.RefreshProfiles();
     locus::app::QuitMediaCoordinator quitMedia;
@@ -622,8 +625,21 @@ int main(int argc, char** argv) try {
             settingsUi.noticeError = true;
         }
         if (menuEvents.applyDisplaySettings) applyDisplaySettings();
-        if (state.screen == Screen::Skin)
+        if (state.screen == Screen::Skin) {
             skinProfiles.Apply(menuEvents.skinCommand);
+            if (menuEvents.skinCommand==locus::app::SkinCommand::PreviewHitSound) {
+                if (draftSkin.hitSoundWav && hitSounds.Configure(draftSkin)) {
+                    hitSounds.Play(draftSkin.hitSoundVolume*0.01f*settings.volume);
+                    skinUi.notice="HITSOUND PREVIEW"; skinUi.noticeError=false;
+                } else {
+                    skinUi.notice="NO PLAYABLE HITSOUND"; skinUi.noticeError=true;
+                }
+            }
+            if (menuEvents.skinCommand==locus::app::SkinCommand::ClearHitSound)
+                hitSounds.Clear();
+        }
+        if (previousScreen==Screen::Play && state.screen!=Screen::Play)
+            hitSounds.Stop();
         if (menuEvents.saveSettings) {
             transport.SetVolume(settings.volume);
             localSong.SetVolume(settings.volume);
@@ -1100,7 +1116,12 @@ int main(int argc, char** argv) try {
             editorSession.UpdatePreview(now);
         if (state.screen == Screen::Play) {
             const bool alreadyCompleted = sessionCompleted;
+            if (input.pausePressed || input.restartPressed) hitSounds.Stop();
+            hitSounds.Configure(activeSkin);
             playActions.Update(input, now);
+            const auto hitCount=gameSession.TakeHitSoundCount();
+            for (unsigned i=0;i<std::min(hitCount,16u);++i)
+                hitSounds.Play(activeSkin.hitSoundVolume*0.01f*settings.volume);
             // The same completed-outro edge is used in live play and the
             // headless journey test. Save only once; never save Editor TEST.
             if (!alreadyCompleted && sessionCompleted && gameSession.IsReplay()) {
@@ -1324,6 +1345,7 @@ int main(int argc, char** argv) try {
     homeBrand.Unload();
     localSong.Shutdown();
     transport.Shutdown();
+    hitSounds.Clear();
     audioDevice.Shutdown();
     if (uiFont.owned) {
         UnloadFont(uiFont.value);

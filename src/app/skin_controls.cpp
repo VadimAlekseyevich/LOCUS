@@ -41,6 +41,8 @@ constexpr SkinSetting kPlayerSettings[] = {
 }
 
 const SkinSetting* GetSkinSetting(int page, int row) noexcept {
+    static constexpr SkinSetting audio{"HITSOUND VOLUME (%)",{0,100,0,100},&Skin::hitSoundVolume};
+    if (page==4 && row==0) return &audio;
     if (row < 0) return nullptr;
     if (page == 0 && row < static_cast<int>(std::size(kPathSettings)))
         return &kPathSettings[row];
@@ -51,7 +53,7 @@ const SkinSetting* GetSkinSetting(int page, int row) noexcept {
 
 int SkinSettingCount(int page) noexcept {
     return page == 0 ? static_cast<int>(std::size(kPathSettings))
-         : page == 1 ? static_cast<int>(std::size(kPlayerSettings)) : 0;
+         : page == 1 ? static_cast<int>(std::size(kPlayerSettings)) : page==4 ? 1 : 0;
 }
 
 bool GetSkinToggle(const Skin& skin, int page, int row) noexcept {

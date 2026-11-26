@@ -68,6 +68,7 @@ public:
     }
     void Update(bool customChart, double now, const ArrowInput& arrows);
     const HitFlash& Flash() const noexcept { return hitFlash_; }
+    unsigned TakeHitSoundCount() noexcept { return std::exchange(hitSoundCount_,0u); }
 
 private:
     void UpdateReplay(bool customChart, double now);
@@ -77,6 +78,7 @@ private:
     ChartPlayback& local_;
     std::optional<EditorTestOrigin> testOrigin_;
     HitFlash hitFlash_;
+    unsigned hitSoundCount_=0;
     int globalOffsetMs_ = 0;
     bool variablePracticeRate_ = false;
     std::optional<core::ReplayTrace> replay_;

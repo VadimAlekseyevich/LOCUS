@@ -231,15 +231,15 @@ void DrawColorPicker(Font font, const Skin& skin, const SkinUi& ui) {
 
 void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
     const auto& theme=ApprovedUiTheme();
-    const char* tabs[]={"PATH","PLAYER","COLORS","SKINS"};
-    for(int i=0;i<4;++i)
+    const char* tabs[]={"PATH","PLAYER","COLORS","SKINS","AUDIO"};
+    for(int i=0;i<5;++i)
         DrawUiThemedButton(font,SkinTabButton(i),tabs[i],
             ui.page==i?UiButtonVariant::Cool:UiButtonVariant::Quiet,
             {},{},theme,14);
 
     Panel({52,181,536,302});
     Panel({595,181,341,342});
-    if (ui.page == 0 || ui.page == 1) {
+    if (SkinSettingCount(ui.page)>0) {
         for (int row = 0; row < RowCount(ui.page); ++row) {
             Label(font, RowName(ui.page, row), 70.0f,
                    206.0f + row * RowPitch(ui.page),
@@ -256,6 +256,11 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
                 DrawSwitch(font, SwitchRect(ui.page, row),
                            ToggleValue(skin, ui.page, row));
             }
+        }
+        if (ui.page==4) {
+            Label(font,skin.hitSoundWav ? "CUSTOM HITSOUND LOADED" : "NO HITSOUND",70,250,14,kMuted);
+            const char* labels[]={"LOAD WAV","PREVIEW","REMOVE"};
+            for (int i=0;i<3;++i) Button(font,HitSoundButton(i),labels[i]);
         }
         PreviewPath(font, skin);
     } else if (ui.page == 2) {

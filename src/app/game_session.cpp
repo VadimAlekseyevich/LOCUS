@@ -11,6 +11,7 @@ namespace locus::app {
 void GameSession::Start(bool customChart, double now) {
     variablePracticeRate_ = false;
     hitFlash_.Reset();
+    hitSoundCount_=0;
     audioEndedAt_ = -1.0;
     audioEndSongSeconds_ = 0.0;
     judge_.Reset();
@@ -46,6 +47,7 @@ void GameSession::Restart(bool customChart, double now) {
 
 void GameSession::Stop(bool customChart) {
     hitFlash_.Reset();
+    hitSoundCount_=0;
     audioEndedAt_ = -1.0;
     audioEndSongSeconds_ = 0.0;
     if (customChart) local_.Stop();
@@ -54,6 +56,7 @@ void GameSession::Stop(bool customChart) {
 
 void GameSession::TogglePause(bool customChart, double now) {
     hitFlash_.Reset();
+    hitSoundCount_=0;
     if (customChart) {
         if (local_.Paused()) local_.Resume(now);
         else local_.Pause(now);
@@ -96,7 +99,7 @@ void GameSession::UpdateReplay(bool customChart, double now) {
                *replay_,cursorSeconds,replayFinishSeconds_,drain)) {
         const auto hit = core::ApplyReplayEvent(judge_,*event);
         if (hit && !hit->wrongDirection && hit->grade!=core::Grade::Miss)
-            hitFlash_.Trigger(*hit,now);
+            { hitFlash_.Trigger(*hit,now); ++hitSoundCount_; }
     }
 }
 
@@ -138,6 +141,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 : demo_.StartAtAudioSeconds(*target, now);
             if (seeked) {
                 hitFlash_.Reset();
+    hitSoundCount_=0;
                 if (customChart) local_.Update(now);
                 else demo_.Update(now);
                 judge_.Advance(CalibratedTime(*target, customChart ? local_.Speed() : 1.0));
@@ -157,7 +161,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 direction, CalibratedTime(timestamp, playbackRate));
             if (judgement && !judgement->wrongDirection &&
                 judgement->grade != core::Grade::Miss)
-                hitFlash_.Trigger(*judgement, now);
+                { hitFlash_.Trigger(*judgement, now); ++hitSoundCount_; }
         };
         if (arrows.precise) {
             if (arrows.events) {

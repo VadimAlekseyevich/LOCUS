@@ -130,3 +130,5 @@ The following areas remain open:
 
 Remaining work is tracked in [ROADMAP.md](ROADMAP.md).
 
+
+Optional skin hitsounds: one user WAV and volume in SKINS → AUDIO; successful physical arrows, including individual diagonal components and replayed hits, trigger the sound. This is presentation-only and does not change the judge or replay format.
