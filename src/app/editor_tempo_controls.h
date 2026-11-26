@@ -134,7 +134,8 @@ bool HandleTempoTable(EditorUiState& ui, const EditorControls& input,
             return true;
         }
         const auto when = static_cast<std::int64_t>(std::llround(
-            draft.AudioSecondsAtBeat(draft.SelectedBeat()) * 1000.0));
+            (std::isfinite(ui.focusSongSeconds) ? ui.focusSongSeconds :
+                draft.AudioSecondsAtBeat(draft.SelectedBeat())) * 1000.0));
         auto next = current;
         const auto at = std::upper_bound(next.begin(), next.end(), when,
             [](std::int64_t time, const core::TempoMarker& marker) {

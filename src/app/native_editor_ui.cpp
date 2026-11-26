@@ -206,6 +206,17 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
             setInput("editor-tempo-ms-" + suffix, std::to_string(tempo[i].timeMs), true);
             setInput("editor-tempo-bpm-" + suffix, bpm.str(), true);
         }
+        std::ostringstream tapLabel;
+        if (ui.tappedTempo)
+            tapLabel<<std::fixed<<std::setprecision(3)<<ui.tappedTempo->bpm
+                <<" BPM / "<<ui.tappedTempo->timeMs<<" ms";
+        else if (ui.tempoTapCount>=4) tapLabel<<"UNSTABLE / KEEP TAPPING OR RESET";
+        else tapLabel<<"TAP 4+ BEATS DURING PLAYBACK ("<<ui.tempoTapCount<<"/4)";
+        SetText("editor-tap-status",tapLabel.str());
+        if (auto* add=document_->GetElementById("editor-tap-apply")) {
+            if (ui.tappedTempo) add->RemoveAttribute("disabled");
+            else add->SetAttribute("disabled","");
+        }
         const auto analysis=ui.audioAnalysis;
         const bool proposals=ui.showTempoSuggestions;
         const auto show=[&](const char* id,bool visible,const char* display) {
@@ -448,6 +459,12 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
         input_->editor.selectDraft = true;
     } else if (action == "attach-audio") {
         input_->editor.attachAudio = true;
+    } else if (action == "tempo-tap") {
+        input_->editor.tempoTap=true;
+    } else if (action == "tempo-tap-reset") {
+        input_->editor.tempoTapReset=true;
+    } else if (action == "tempo-tap-apply") {
+        input_->editor.tempoTapApply=true;
     } else if (action == "tempo-suggestions") {
         input_->editor.tempoSuggestionsToggle=true;
     } else if (action == "tempo-use-proposal") {

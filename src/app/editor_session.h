@@ -4,6 +4,7 @@
 #include "core/chart_json.h"
 #include "core/tempo_map.h"
 #include "core/metronome.h"
+#include "core/tap_tempo.h"
 
 #include <string>
 #include <future>
@@ -53,6 +54,9 @@ public:
     bool BeginTest(EditorTestTarget target, double now, std::string& error);
     void UpdatePreview(double now);
     void UpdateAudioAnalysis();
+    void RecordTempoTap(double now);
+    void ResetTempoTap() noexcept;
+    std::vector<core::TempoMarker> TappedTempoMap() const;
     // An empty result is also the stale/invalid guard for UI commands.
     std::vector<core::TempoMarker> ProposedTempoMap(int index,bool replace) const;
     void ToggleMetronome() noexcept { ui_.metronomeEnabled=!ui_.metronomeEnabled; metronome_.Reset(); }
@@ -70,6 +74,8 @@ private:
     void StartPreview(int beat, double now);
 
     core::MetronomeCursor metronome_;
+    core::TapTempo tapTempo_;
+    std::uint64_t tapRevision_=0;
     std::future<std::shared_ptr<const core::EditorAudioAnalysis>> waveformJob_;
     std::uint64_t waveformRevision_=~std::uint64_t{0};
     std::uint64_t jobRevision_=0;

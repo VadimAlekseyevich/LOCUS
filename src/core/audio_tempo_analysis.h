@@ -285,6 +285,7 @@ inline std::vector<TempoProposal> SuggestTempoMap(const std::vector<float>& flux
         }
     }
     std::vector<TempoProposal> result;
+    BeatFit previousFit{};
     for (std::size_t i=0;i<segments.size() && result.size()<256;++i) {
         const auto& s=segments[i];
         if (s.count<2) continue;
@@ -318,6 +319,33 @@ inline std::vector<TempoProposal> SuggestTempoMap(const std::vector<float>& flux
         } else {
             const double prior=marker-fit.period;
             if (std::abs(prior-from)<std::abs(marker-from)) marker=prior;
+            if (previousFit.period>0) {
+                const auto lo=std::lower_bound(peaks.begin(),peaks.end(),from-300,
+                    [](const Onset& p,double t){return p.frame<t;});
+                const auto hi=std::lower_bound(lo,peaks.end(),from+300,
+                    [](const Onset& p,double t){return p.frame<t;});
+                const auto cost=[](const Onset& p,const BeatFit& grid) {
+                    const double index=std::round((p.frame-grid.phase)/grid.period);
+                    const double residual=std::abs(p.frame-grid.phase-index*grid.period);
+                    const double tolerance=std::max(2.0,grid.period*0.12);
+                    return p.weight*std::min(1.0,residual*residual/(tolerance*tolerance));
+                };
+                double bestCost=std::numeric_limits<double>::infinity();
+                for (auto it=lo;it!=hi;++it) {
+                    const double at=it->frame;
+                    const double gridIndex=std::round((at-fit.phase)/fit.period);
+                    if (std::abs(at-fit.phase-gridIndex*fit.period)>fit.period*0.12 ||
+                        at*10<=result.back().timeMs) continue;
+                    double error=0,weight=0;
+                    for (auto p=lo;p!=hi;++p) {
+                        error+=cost(*p,p->frame<at?previousFit:fit);
+                        weight+=p->weight;
+                    }
+                    if (!(weight>0)) continue;
+                    error=error/weight+0.02*std::abs(at-from)/300.0;
+                    if (error<bestCost) {bestCost=error;marker=at;}
+                }
+            }
         }
         double best=std::min(9.0,fit.period*0.15);
         double exact=marker;
@@ -338,6 +366,7 @@ inline std::vector<TempoProposal> SuggestTempoMap(const std::vector<float>& flux
             if (std::abs(beat-std::round(beat))<0.10) continue;
         }
         result.push_back({ms,bpm,confidence});
+        previousFit=fit;
     }
     return result;
 }

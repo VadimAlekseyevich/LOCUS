@@ -1,10 +1,20 @@
 #include "core/audio_tempo_analysis.h"
+#include "core/tap_tempo.h"
 #include <iostream>
 #include <cmath>
 #include <vector>
 
 int main() {
     using namespace locus::core;
+    TapTempo tap;
+    for (double at : {10.001,10.499,11.005,12.000,12.501,13.002}) tap.Tap(at);
+    const auto measured=tap.Estimate();
+    if (!measured || std::abs(measured->bpm-120)>0.5 ||
+        std::abs(measured->timeMs-10000)>10) {
+        std::cerr<<"TAP_TEMPO_FAIL\n"; return 1;
+    }
+    tap.Reset();
+    if (tap.Estimate()) return 1;
     std::vector<float> flux(4000);
     const auto pulses=[&](double from,double until,double step) {
         for(double t=from;t<until;t+=step) {

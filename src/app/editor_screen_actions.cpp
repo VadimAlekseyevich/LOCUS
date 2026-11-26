@@ -52,6 +52,18 @@ void EditorScreenActions::BlurTextOnPointer(Vector2 mouse, double& now) {
 }
 
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
+    if (input.editor.tempoTapReset || input.editor.tempoTap || input.editor.tempoTapApply) {
+        if (input.editor.tempoTapReset) context_.session.ResetTempoTap();
+        else if (input.editor.tempoTap) context_.session.RecordTempoTap(now);
+        else {
+            const auto markers=context_.session.TappedTempoMap();
+            if (!markers.empty() && context_.sets.ApplyTempoMap(markers)) {
+                context_.session.StopPreviewForTempoChange();
+                context_.session.ResetTempoTap();
+            }
+        }
+        return false;
+    }
     if (input.editor.tempoSuggestionsToggle) {
         context_.ui.showTempoSuggestions=!context_.ui.showTempoSuggestions;
         return false;

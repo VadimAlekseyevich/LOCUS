@@ -145,3 +145,6 @@
 .editor-proposal-info { flex:1; min-width:0; font-size:12dp; color:#eef1fb; }
 .editor-proposal-confidence { font-size:10dp; color:#a6bad9; }
 .editor-proposal-row button { width:42dp; height:29dp; padding:0; font-size:11dp; }
+
+.editor-tap-controls { display:flex; flex-direction:row; gap:4dp; flex:0 0 28dp; }
+.editor-tap-controls button { flex:1; min-width:0; height:28dp; padding:0; font-size:11dp; }

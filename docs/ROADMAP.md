@@ -45,7 +45,7 @@ Keep exact input timestamps, authoritative route and grading independent of rend
   streams, jacks, alternating keys, diagonal transitions and real attempts.
   Reading remains a separate diagnostic, not a ranking factor.
 - [x] Display cached physical-strain timeline in editor song overview.
-- [ ] Evaluate waveform-assisted mapping, automatic BPM analysis, and
+- [ ] Validate the implemented waveform, variable-tempo metronome, BPM proposals and tap tempo on real recordings; improve beat/downbeat tracking and
   other tools based on mapper feedback. Shared tempo maps, exact unsnapped
   note placement, pattern transforms and pitch-preserving practice already exist.
 - [ ] Build a representative local chart collection and validate progression

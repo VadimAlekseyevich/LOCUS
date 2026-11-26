@@ -66,6 +66,8 @@
       <div class="editor-set-title editor-tempo-heading">TEMPO MAP</div>
       <button id="editor-tempo-suggestions" data-action="tempo-suggestions"><span class="button-label">DETECT BPM</span></button>
       <div id="editor-tempo-analysis-status" class="editor-setup-caption"></div>
+      <div class="editor-tap-controls"><button data-action="tempo-tap"><span class="button-label">TAP BPM</span></button><button data-action="tempo-tap-reset"><span class="button-label">RESET</span></button><button id="editor-tap-apply" data-action="tempo-tap-apply" disabled=""><span class="button-label">ADD</span></button></div>
+      <div id="editor-tap-status" class="editor-setup-caption"></div>
       <div id="editor-tempo-labels" class="editor-tempo-row editor-tempo-labels"><div class="editor-tempo-offset">OFFSET / MS</div><div class="editor-tempo-bpm">BPM</div><div class="editor-tempo-action"></div></div>
       <div id="editor-tempo-list"></div>
       <div id="editor-proposal-list" style="display:none;"></div>

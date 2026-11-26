@@ -132,3 +132,5 @@ Remaining work is tracked in [ROADMAP.md](ROADMAP.md).
 
 
 Optional skin hitsounds: one user WAV, MP3 or OGG Vorbis and volume in SKINS → AUDIO; successful physical arrows, including individual diagonal components and replayed hits, trigger the sound. This is presentation-only and does not change the judge or replay format.
+
+Editor audio analysis: cached min/max waveform at 5 ms resolution in both rulers, per-tempo-marker MET click with a 4/4 accent, and DETECT BPM candidates in Song Setup. Candidate evidence is heuristic; review phase and BPM before ADD or REPLACE TEMPO MAP. TAP BPM fits the original song-time period from at least four taps during playback; RESET starts a new estimate. Tempo changes preserve all exact authored note timestamps. Auto analysis uses 40–240 BPM candidates and may miss fast changes, ambiguous subdivisions or expressive timing; manually edit markers as necessary.
