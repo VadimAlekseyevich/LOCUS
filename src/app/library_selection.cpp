@@ -226,4 +226,42 @@ const LibraryChart* SongSelectUi::Selected(const SongLibrary& songs) const {
     return &charts[static_cast<std::size_t>(selectedChart)];
 }
 
+std::optional<core::ChartDifficulty> SongSelectUi::SelectedDifficulty(
+        const SongLibrary& songs) const {
+    const auto* selected = Selected(songs);
+    auto& cache = rateDifficulty;
+    const int rate = mods.RatePercent();
+    if (cache.source != &songs || cache.revision != songs.Revision() ||
+        cache.song != selectedSong || cache.chart != selectedChart) {
+        cache = {};
+        cache.source = &songs;
+        cache.revision = songs.Revision();
+        cache.song = selectedSong;
+        cache.chart = selectedChart;
+    }
+    if (rate == 100) {
+        if (selected) return selected->difficulty;
+        if (selectedSong != 0) return std::nullopt;
+        static const auto demoRating = core::CalculateChartDifficulty(core::MakeDemoChart());
+        return demoRating;
+    }
+    if (cache.rate == rate) return cache.rating;
+    cache.rate = rate;
+    cache.rating.reset();
+    if (!cache.attemptedLoad) {
+        cache.attemptedLoad = true;
+        core::LoadedChart payload;
+        if (selectedSong == 0) {
+            payload.route = core::MakeDemoChart();
+            cache.payload = std::move(payload);
+        } else if (selected) {
+            std::string error;
+            if (selected->CopyPayload(payload,error)) cache.payload = std::move(payload);
+        }
+    }
+    if (cache.payload) cache.rating = core::CalculateChartDifficulty(
+        cache.payload->route,cache.payload->offsetSeconds,nullptr,0.0,rate/100.0);
+    return cache.rating;
+}
+
 } // namespace locus::app

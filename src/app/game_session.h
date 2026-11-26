@@ -58,8 +58,8 @@ public:
     void SetRatePercent(int percent) noexcept {
         if (core::ValidModRate(percent)) ratePercent_ = percent;
     }
-    // Sticky within a scored attempt. Returning to the starting speed cannot
-    // disguise a variable-rate practice run as a constant-rate score.
+    // New attempts are always fixed-rate. Historical result summaries can
+    // still contain the legacy variable-rate flag.
     bool VariablePracticeRate() const noexcept { return variablePracticeRate_; }
     void SetGlobalOffsetMs(int milliseconds) noexcept {
         globalOffsetMs_ = milliseconds;

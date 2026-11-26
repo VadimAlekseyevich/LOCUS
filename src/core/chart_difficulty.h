@@ -11,7 +11,7 @@ namespace locus::core {
 // Reading and peak density remain diagnostics; neither affects overall.
 // Not a grade, a player skill rating or a promise of sight-readability.
 inline constexpr int kChartDifficultyVersion = 4;
-// No skin, key binding, playback speed or song duration dependence.
+// No skin, key binding or song duration dependence. Default is native rate.
 struct ChartDifficulty {
     double overall = 0.0;
     double speed = 0.0;
@@ -41,6 +41,7 @@ struct DifficultyTimeline {
 // Complexity: O(n log n), with bounded local geometry comparisons per note.
 ChartDifficulty CalculateChartDifficulty(
     const Chart& chart, double offsetSeconds = 0.0,
-    DifficultyTimeline* timeline = nullptr, double durationSeconds = 0.0);
+    DifficultyTimeline* timeline = nullptr, double durationSeconds = 0.0,
+    double clockRate = 1.0);
 
 } // namespace locus::core

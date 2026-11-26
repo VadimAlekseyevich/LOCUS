@@ -19,7 +19,7 @@
         </div>
         <div id="difficulty-section">
           <div class="difficulty-heading">
-            <div class="eyebrow">DIFFICULTY V4</div>
+            <div id="difficulty-label" class="eyebrow">DIFFICULTY V4</div>
             <div id="rating">0.8</div>
           </div>
           <div id="chart-title">ORIGINAL</div>

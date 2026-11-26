@@ -711,16 +711,20 @@ int main() {
                         error).empty(),
                     "Copy difficulty receives independent identity and empty results");
     }
-    // Speed changes inside one PLAY attempt are sticky even if the player
-    // returns to 100%. Restart begins a clean attempt at the current speed.
+    // A configured rate applies only at an attempt boundary, never to live audio.
     ok &= Check(!scoredGame.VariablePracticeRate(),
                 "completed constant-rate attempt remains a fixed-rate result");
-    scoredGame.SetPracticeSpeed(true, 0.5, startAt + 6.0);
-    scoredGame.SetPracticeSpeed(true, 1.0, startAt + 6.1);
-    ok &= Check(scoredGame.VariablePracticeRate(),
-                "PLAY records speed changes even after returning to original rate");
+    scoredGame.SetRatePercent(50);
+    ok &= Check(playback.Speed() == 1.0,
+                "pending HT does not mutate the existing attempt");
     scoredGame.Restart(true, startAt + 6.2);
-    ok &= Check(!scoredGame.VariablePracticeRate(),
-                "Restart resets variable-rate state for a new scored attempt");
+    ok &= Check(playback.Speed() == 0.5 && !scoredGame.VariablePracticeRate(),
+                "new HT attempt freezes its rate");
+    scoredGame.SetRatePercent(125);
+    ok &= Check(playback.Speed() == 0.5,
+                "pending DT does not mutate active HT");
+    scoredGame.Restart(true, startAt + 7.0);
+    ok &= Check(playback.Speed() == 1.25 && !scoredGame.VariablePracticeRate(),
+                "new DT attempt freezes its rate");
     return ok ? 0 : 1;
 }

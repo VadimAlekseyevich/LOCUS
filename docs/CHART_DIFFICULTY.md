@@ -3,7 +3,8 @@
 The overall rating is a chart-only, uncapped estimate of physical execution
 difficulty. A directional event is a simultaneous mask of one or two of the
 four physical keys. The rating does not depend on route geometry, crossings,
-turn angles, skin, BPM notation, snap, practice speed, or keyboard layout.
+turn angles, skin, BPM notation, snap, or keyboard layout. The base rating
+uses 100% speed; HT/DT recompute the same model at the selected rate.
 It is calculated on demand, not stored in chart JSON.
 
 ## Design
@@ -18,7 +19,8 @@ either game's rating scale. All parameters are provisional and uncalibrated.
 
 ## Input strain
 
-All times are original song seconds. For every event let dt be the gap from
+All times are real elapsed seconds at the selected rate: original song
+seconds divided by the clock rate, without rounding the event times. For every event let dt be the gap from
 the preceding event, k the number of physical keys (1 or 2), and df the gap
 from the previous press of finger f. Every state decays by exp(-dt/tau).
 
@@ -77,6 +79,8 @@ activeSeconds still sums note gaps capped at 1.5s for telemetry only.
 - Parameters need real-player calibration using observed accuracy and
   matched-density pattern families; this is not a measured human skill model.
 
-The editor uses a route-revision cache; the library stores derived metadata for each verified chart. Both use the same core calculator. Difficulty V4 is the estimator version, independent of judgement rules version 1. Ratings are not persisted in charts or Results.
+The editor uses a route-revision cache; the library stores derived metadata for each verified chart at native rate. Both use the same core calculator. Difficulty V4 is the estimator version, independent of judgement rules version 1. Ratings are not persisted in charts or Results.
+
+For modded PLAY, a separate selection cache retains only the selected chart payload and its most recent modified rating. The browser tree keeps base ratings, so toggling a modifier never re-rates the whole collection. Unavailable/stale payloads show no modified rating until the library refreshes.
 
 The editor's song overview shows a max-pooled 256-bin timeline from the same occupied 400 ms section peaks, using the physical weighted norm before whole-chart aggregation. Silence is empty; height is relative to the highest local strain of the focused chart, not a star rating. The cache is invalidated by route revisions (including duration changes), not cursor motion. The overview still seeks on click.

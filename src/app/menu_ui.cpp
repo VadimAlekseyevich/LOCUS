@@ -188,13 +188,14 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     fit(songFacts, 28, 143, 320, 12, faint);
     DrawLine(28, 166, 350, 166, line);
 
-    Label(font, "DIFFICULTY", 28, 174, 11, lilac);
+    Label(font, ui.mods.RatePercent() == 100 ? std::string("DIFFICULTY") :
+          std::string("DIFFICULTY / ") + core::FormatRateMod(ui.mods.RatePercent()),
+          28, 174, 11, lilac);
     fit(selected ? selected->metadata.title : "ORIGINAL",
         28, 190, 246, 17, theme.foreground);
-    const auto score = selected
-        ? selected->difficulty
-        : core::CalculateChartDifficulty(core::MakeDemoChart());
-    Label(font, TextFormat("%.1f", score.overall), 288, 184, 27, sky);
+    const auto rating = ui.SelectedDifficulty(library);
+    const auto score = rating.value_or(core::ChartDifficulty{});
+    Label(font, rating ? TextFormat("%.1f", score.overall) : "--", 288, 184, 27, sky);
     const int turns = selected
         ? static_cast<int>(selected->metadata.noteCount)
         : static_cast<int>(core::MakeDemoChart().turns.size());
@@ -202,12 +203,14 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
 
     // Six real difficulty metrics take only two lines; Results gets the
     // remaining ~165px instead of being squeezed below explanatory copy.
+    if (rating) {
     Label(font, TextFormat("SPD %.1f   RHY %.1f   COORD %.1f",
           score.speed, score.rhythm, score.coordination),
           28, 232, 12, theme.foreground);
     Label(font, TextFormat("READ %.1f   STA %.1f   PEAK %.1f",
           score.reading, score.stamina, score.peak),
           28, 250, 12, faint);
+    } else Label(font,"RATING UNAVAILABLE - RESCAN",28,232,12,faint);
     DrawLine(28, 271, 350, 271, line);
 
     Label(font, "RESULTS", 28, 283, 12, sky);

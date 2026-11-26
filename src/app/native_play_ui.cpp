@@ -201,8 +201,12 @@ void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
         ? &library.Songs()[static_cast<std::size_t>(ui.selectedSong - 1)]
         : nullptr;
     const LibraryChart* chart = ui.Selected(library);
-    const auto rating = chart ? chart->difficulty :
-        core::CalculateChartDifficulty(core::MakeDemoChart());
+    const auto rating = ui.SelectedDifficulty(library);
+    const auto metric = [&](double core::ChartDifficulty::* field) {
+        return rating ? Rating((*rating).*field) : std::string("--");
+    };
+    SetText("difficulty-label", percent == 100 ? "DIFFICULTY V4" :
+        std::string("DIFFICULTY V4 / ") + core::FormatRateMod(percent));
     // Initial library-index telemetry is not a user-facing notification.
     SetText("notice", ui.notice.rfind("LIBRARY:", 0) == 0
         ? "" : ui.notice);
@@ -213,9 +217,9 @@ void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     SetText("song-mapper", song && !song->mapper.empty()
         ? "Mapped by " + song->mapper : "");
     SetText("song-meta", song
-        ? Rating(song->bpm) + " BPM  /  " +
+        ? Rating(song->bpm * percent / 100.0) + " BPM  /  " +
           std::to_string(song->charts.size()) + " CHARTS"
-        : "120 BPM  /  1 CHART");
+        : Rating(120.0 * percent / 100.0) + " BPM  /  1 CHART");
     std::string tags;
     if (song) {
         for (std::size_t i = 0; i < song->tags.size() && i < 3; ++i) {
@@ -225,15 +229,15 @@ void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     }
     SetText("song-tags", tags);
     SetText("chart-title", chart ? chart->metadata.title : "ORIGINAL");
-    SetText("rating", Rating(rating.overall));
-    SetText("chart-notes", std::to_string(rating.notes) + " EVENTS / " +
-        std::to_string(rating.keyPresses) + " KEYS");
-    SetText("metric-speed", Rating(rating.speed));
-    SetText("metric-rhythm", Rating(rating.rhythm));
-    SetText("metric-coord", Rating(rating.coordination));
-    SetText("metric-reading", Rating(rating.reading));
-    SetText("metric-stamina", Rating(rating.stamina));
-    SetText("metric-fingers", Rating(rating.fingerStrain));
+    SetText("rating", metric(&core::ChartDifficulty::overall));
+    SetText("chart-notes", rating ? std::to_string(rating->notes) + " EVENTS / " +
+        std::to_string(rating->keyPresses) + " KEYS" : "RATING UNAVAILABLE - RESCAN");
+    SetText("metric-speed", metric(&core::ChartDifficulty::speed));
+    SetText("metric-rhythm", metric(&core::ChartDifficulty::rhythm));
+    SetText("metric-coord", metric(&core::ChartDifficulty::coordination));
+    SetText("metric-reading", metric(&core::ChartDifficulty::reading));
+    SetText("metric-stamina", metric(&core::ChartDifficulty::stamina));
+    SetText("metric-fingers", metric(&core::ChartDifficulty::fingerStrain));
 
 }
 

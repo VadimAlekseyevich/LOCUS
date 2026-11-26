@@ -29,7 +29,7 @@ Point Unit(Heading heading) noexcept {
     return {};
 }
 struct Note {
-    std::int64_t timeMs = 0;
+    double timeMs = 0.0; // Real elapsed milliseconds at the selected rate.
     Point pos;
     Heading heading = Heading::Right;
     unsigned mask = 0;
@@ -93,7 +93,7 @@ double Percentile(std::vector<double> values, double fraction) {
 }
 
 // These are chart-only heuristics, not physiological or player-specific
-// parameters. Times are original song seconds and each bit is one key.
+// parameters. Times are elapsed real seconds at the selected rate.
 constexpr double kSpeedTau = 0.40;
 constexpr double kFingerTau = 0.48;
 constexpr double kCoordinationTau = 0.42;
@@ -119,10 +119,10 @@ double Decay(double dt, double tau) {
 // Only sections containing actual input contribute: silence is recovery.
 class SectionPeaks {
 public:
-    SectionPeaks(DifficultyTimeline* timeline,double duration,std::int64_t firstMs)
+    SectionPeaks(DifficultyTimeline* timeline,double duration,double firstMs)
         : timeline_(timeline), durationMs_(duration*1000.0), firstMs_(firstMs) {}
-    void Add(std::int64_t relativeMs, const Skills& sample) {
-        const auto section = relativeMs / kSectionMs;
+    void Add(double relativeMs, const Skills& sample) {
+        const auto section = static_cast<std::int64_t>(std::floor(relativeMs / kSectionMs));
         if (section != current_) {
             if (current_ >= 0) Flush();
             current_ = section;
@@ -170,7 +170,7 @@ private:
     }
     DifficultyTimeline* timeline_;
     double durationMs_;
-    std::int64_t firstMs_;
+    double firstMs_;
     std::int64_t current_ = -1;
     Skills peak_{};
     std::vector<Skills> peaks_;
@@ -270,7 +270,7 @@ public:
 private:
     struct FingerState {
         bool seen = false;
-        std::int64_t lastMs = 0;
+        double lastMs = 0.0;
         double lastGap = 0.0;
         double strain = 0.0;
     };
@@ -285,12 +285,14 @@ private:
 ChartDifficulty CalculateChartDifficulty(const Chart& chart,
                                          double offsetSeconds,
                                          DifficultyTimeline* timeline,
-                                         double durationSeconds) {
+                                         double durationSeconds,
+                                         double clockRate) {
     if (timeline) *timeline={};
     ChartDifficulty result;
     if (!std::isfinite(chart.bpm) || chart.bpm <= 0.0 ||
         chart.ticksPerBeat <= 0 || !std::isfinite(offsetSeconds) ||
-        std::abs(offsetSeconds) > 3600.0)
+        std::abs(offsetSeconds) > 3600.0 || !std::isfinite(clockRate) ||
+        clockRate < 0.5 || clockRate > 1.5)
         return result;
 
     // Difficulty needs relative distances between exact note timestamps,
@@ -317,7 +319,7 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
             // Constant visual-reference units per real second. Neither the
             // authored grid nor any BPM segment affects path readability.
             const double distance = static_cast<double>(currentTime - lastTime)
-                / 500.0;
+                / (500.0 * clockRate);
             const Point unit = Unit(preceding);
             position.x += unit.x * distance;
             position.y += unit.y * distance;
@@ -325,7 +327,8 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         const unsigned mask = HeadingArrowMask(event.direction);
         const int keys = Bits(mask);
         if (keys == 0) continue;
-        notes.push_back({currentTime, position, event.direction, mask, keys});
+        notes.push_back({static_cast<double>(currentTime) / clockRate, position,
+                         event.direction, mask, keys});
         totalKeys += static_cast<std::size_t>(keys);
         lastTick = event.beat;
         lastTime = currentTime;
@@ -337,7 +340,7 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     if (n == 0) return result;
 
     InputStrain input;
-    SectionPeaks peaks(timeline,durationSeconds,notes.front().timeMs);
+    SectionPeaks peaks(timeline,durationSeconds / clockRate,notes.front().timeMs);
     // Geometry is a separate editor diagnostic. It is deliberately absent
     // from the input strain calculation and final rating.
     for (std::size_t i = 0; i < n; ++i) {

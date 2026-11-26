@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -55,6 +56,18 @@ struct LibraryTreeCache {
     std::vector<LibraryTreeEntry> rows;
 };
 
+// Only the selected difficulty is materialized for modified ratings. The
+// catalog itself remains compact, and rate adjustment never reparses a file.
+struct SelectedRateDifficultyCache {
+    const SongLibrary* source = nullptr;
+    std::uint64_t revision = 0;
+    int song = -1, chart = -1;
+    int rate = 0;
+    bool attemptedLoad = false;
+    std::optional<core::LoadedChart> payload;
+    std::optional<core::ChartDifficulty> rating;
+};
+
 struct SongSelectUi {
     core::PlayMods mods;
     // 0 = the built-in demo, 1..N = permanent user Songs.
@@ -89,6 +102,8 @@ struct SongSelectUi {
     void MoveTree(int delta, const SongLibrary& songs);
     void ScrollTree(int delta, const SongLibrary& songs);
     const LibraryChart* Selected(const SongLibrary& songs) const;
+    std::optional<core::ChartDifficulty> SelectedDifficulty(const SongLibrary& songs) const;
+    mutable SelectedRateDifficultyCache rateDifficulty;
 };
 
 // Legacy fallback scroll window; native presenters use measured viewports.

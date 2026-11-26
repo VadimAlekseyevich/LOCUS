@@ -53,6 +53,21 @@ int main() {
     ok &= Check(blank.overall == 0 && blank.notes == 0 &&
                 blank.keyPresses == 0, "empty chart has zero difficulty");
 
+    const auto stream = Sequence(128,{100},{Heading::Right,Heading::Up});
+    const auto normal = CalculateChartDifficulty(stream);
+    const auto half = CalculateChartDifficulty(stream,0,nullptr,0,0.75);
+    const auto fast = CalculateChartDifficulty(stream,0,nullptr,0,1.25);
+    ok &= Check(half.overall < normal.overall && normal.overall < fast.overall &&
+                half.keyPresses == fast.keyPresses && half.notes == fast.notes &&
+                half.activeSeconds > fast.activeSeconds,
+                "rate mods recalculate physical strain on real elapsed time");
+    ok &= Check(SameDimensions(normal,CalculateChartDifficulty(stream,0,nullptr,0,1.0)) &&
+                CalculateChartDifficulty(stream,0,nullptr,0,0).notes == 0,
+                "default is native difficulty; invalid rate rejected");
+    const auto equivalent = Sequence(128,{80},{Heading::Right,Heading::Up});
+    ok &= Check(SameDimensions(fast,CalculateChartDifficulty(equivalent)),
+                "125 percent is equivalent to actually shortening every gap by 20 percent");
+
     DifficultyTimeline graph;
     const auto timelineChart=Sequence(40,{100},{Heading::Right,Heading::Up});
     const auto withGraph=CalculateChartDifficulty(timelineChart,0,&graph,20);
