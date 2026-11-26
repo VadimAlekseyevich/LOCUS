@@ -236,6 +236,19 @@ bool SongLibrary::Import(const fs::path& sourceChart,
 bool SongLibrary::ImportChart(const fs::path& sourceChart,
                               const fs::path& targetSet,
                               fs::path& installedChart, std::string& error) {
+    LibraryImportBatch batch;
+    batch.files.push_back({sourceChart,{},false,false,{}});
+    auto& item=batch.files.front();
+    if (ImportChartOnDisk(sourceChart,targetSet,item.installed,item.error))
+        VerifyImports(batch,{{}});
+    installedChart=std::move(item.installed);
+    error=std::move(item.error);
+    return item.indexed;
+}
+
+bool SongLibrary::ImportChartOnDisk(const fs::path& sourceChart,
+                                   const fs::path& targetSet,
+                                   fs::path& installedChart, std::string& error) {
     MarkDiskMutation();
     installedChart.clear(); // Assigned only after a confirmed disk commit.
     core::LoadedChart source;
@@ -252,13 +265,6 @@ bool SongLibrary::ImportChart(const fs::path& sourceChart,
     const auto actualChart = fs::canonical(sourceChart, ec);
     if (ec) { error = "Cannot resolve source chart path."; return false; }
     if (targetSet.empty() && Inside(root, actualChart)) {
-        std::string notice;
-        if (!Refresh(notice)) { error = notice; return false; }
-        int s = -1, c = -1;
-        if (!FindChart(actualChart, s, c)) {
-            error = "Existing library chart could not be indexed.";
-            return false;
-        }
         installedChart = actualChart;
         error.clear();
         return true;
@@ -386,16 +392,6 @@ bool SongLibrary::ImportChart(const fs::path& sourceChart,
         return false;
     }
     installedChart = destinationChart;
-    std::string notice;
-    if (!Refresh(notice)) {
-        error = "Difficulty saved on disk, but library refresh failed: " + notice;
-        return false;
-    }
-    int indexedSong = -1, indexedChart = -1;
-    if (!FindChart(installedChart, indexedSong, indexedChart)) {
-        error = "Difficulty saved on disk, but library index omitted it: " + notice;
-        return false;
-    }
     error.clear();
     return true;
 }

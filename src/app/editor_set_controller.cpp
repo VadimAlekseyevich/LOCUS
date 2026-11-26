@@ -17,6 +17,7 @@
 #include <cctype>
 #include <filesystem>
 #include <iterator>
+#include <iostream>
 #include <string>
 
 namespace locus::app {
@@ -867,54 +868,34 @@ bool EditorSetController::Execute(const EditorSetRequest& request) {
             if (!pickers_.chooseImport) { error = "Import file dialog unavailable."; break; }
             const auto picked = pickers_.chooseImport();
             if (picked.canceled) return true;
-            if (picked.path.empty()) {
-                error = picked.error.empty() ? "No file selected." : picked.error;
+            if (picked.paths.empty()) {
+                error=picked.error.empty()?"No file selected.":picked.error;
                 break;
             }
-            const fs::path source(picked.path);
-            const bool hadSet = song != nullptr;
-            if (source.extension() == L".locuspack") {
-                fs::path importedSet;
-                if (!ctx_.library.ImportPackage(source, importedSet, error)) {
-                    if (!importedSet.empty())
-                        error = "PACKAGE SAVED; REFRESH PLAY LIBRARY: " + error;
-                    break;
-                }
-                if (!hadSet && !ctx_.files.AnyDirty()) {
-                    const auto* imported = FindSet(ctx_.library, importedSet);
-                    if (imported && !imported->charts.empty()) {
-                        const auto chart = imported->charts.front().file;
-                        if (ctx_.files.OpenFromLibrary(chart.wstring(), error))
-                            ctx_.ui.tab = EditorTab::Set;
-                        else { Notice("IMPORTED; OPEN FAILED: " + error, true); return false; }
+            const bool hadSet=song!=nullptr;
+            const auto batch=ctx_.library.ImportFiles(picked.paths,hadSet?folder:fs::path{});
+            for (const auto& item : batch.files)
+                if (!item.indexed) std::cerr << "IMPORT: " << item.source.u8string()
+                                            << ": " << item.error << '\n';
+            if (!hadSet && !ctx_.files.AnyDirty()) {
+                // Preserve an existing editor session; only a clean draft
+                // may open one of the newly imported charts.
+                for (const auto& item : batch.files) {
+                    if (!item.indexed) continue;
+                    fs::path chart=item.installed;
+                    if (item.package) {
+                        const auto* imported=FindSet(ctx_.library,item.installed);
+                        if (!imported || imported->charts.empty()) continue;
+                        chart=imported->charts.front().file;
                     }
-                }
-                Notice("SONG SET IMPORTED");
-                return true;
-            }
-            if (!song) {
-                fs::path installed;
-                if (!ctx_.library.Import(source, installed, error)) {
-                    if (!installed.empty())
-                        error = "CHART SAVED; REFRESH PLAY LIBRARY: " + error;
+                    if (ctx_.files.OpenFromLibrary(chart.wstring(),error))
+                        ctx_.ui.tab=EditorTab::Set;
+                    else { Notice(batch.Summary()+"; OPEN FAILED: "+error,true); return false; }
                     break;
                 }
-                if (!ctx_.files.AnyDirty()) {
-                    if (ctx_.files.OpenFromLibrary(installed.wstring(), error))
-                        ctx_.ui.tab = EditorTab::Set;
-                    else { Notice("IMPORTED; OPEN FAILED: " + error, true); return false; }
-                }
-                Notice("CHART IMPORTED");
-                return true;
             }
-            fs::path installed;
-            if (!ctx_.library.ImportIntoSet(source, folder, installed, error)) {
-                if (!installed.empty())
-                    error = "DIFFICULTY SAVED; REFRESH PLAY LIBRARY: " + error;
-                break;
-            }
-            Notice("DIFFICULTY IMPORTED; SELECT IT IN THE LIST");
-            return true;
+            Notice(batch.Summary(),batch.ImportedCount()!=batch.files.size());
+            return batch.ImportedCount()!=0;
         }
         case EditorSetAction::None:
             return false;

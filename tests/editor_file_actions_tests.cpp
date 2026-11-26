@@ -21,6 +21,7 @@ using namespace locus;
 namespace {
 int openCalls = 0, audioCalls = 0, saveCalls = 0;
 double mockedNow() { return 42.75; }
+app::ImportPickResult CanceledImport() { return {{}, {}, true}; }
 app::MusicPickResult CanceledChart() { ++openCalls; return {{}, {}, true}; }
 app::MusicPickResult MissingChart() {
     ++openCalls; return {L"missing-chart-for-editor-actions.locus.json", {}, false};
@@ -171,7 +172,7 @@ int main() {
                 "failed library edit retains the current unsaved draft");
     app::EditorSetController setControl{
         {library, failed, editor, ui, chartPath, status, libraryUi, menuStatus},
-        {CanceledChart, CanceledSave}
+        {CanceledImport, CanceledSave}
     };
     ok &= Check(!setControl.View().managed &&
                 failed.ActiveSetFolder().empty(),
@@ -238,7 +239,7 @@ int main() {
         app::EditorSetController managedSet{
             {managedLibrary, managedFiles, editor, ui, activePath,
              status, libraryUi, menuStatus},
-            {CanceledChart, CanceledSave}};
+            {CanceledImport, CanceledSave}};
         const auto view = managedSet.View();
         ok &= Check(view.managed && view.difficulties.size() == 2 &&
                     view.current == 0 &&

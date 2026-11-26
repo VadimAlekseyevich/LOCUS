@@ -12,7 +12,7 @@ namespace locus::app {
 // File and library-index commands are separate from game-session navigation.
 // Native pickers and the monotonic clock are injected for headless tests.
 struct LibraryFilePickers {
-    MusicPickResult (*chooseImport)() = nullptr;
+    ImportPickResult (*chooseImport)() = nullptr;
     MusicPickResult (*chooseExport)(const std::wstring&) = nullptr;
     double (*now)() = nullptr;
     MusicPickResult (*chooseBackground)() = nullptr;

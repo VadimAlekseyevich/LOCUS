@@ -287,7 +287,7 @@ int main(int argc, char** argv) try {
     locus::app::EditorSetController editorSet{
         {library, editorFiles, editor, editorUi, editorChartPath,
          editorStatus, libraryUi, menuStatus},
-        {locus::app::ChooseLibraryImportFile,
+        {locus::app::ChooseLibraryImportFiles,
          locus::app::ChooseSongSetExportFile,
          locus::app::ChooseSongBackgroundFile}
     };
@@ -308,7 +308,7 @@ int main(int argc, char** argv) try {
     };
     locus::app::LibraryFileActions libraryFileActions{
         library, libraryUi, menuStatus, musicError,
-        {locus::app::ChooseLibraryImportFile,
+        {locus::app::ChooseLibraryImportFiles,
          locus::app::ChooseSongSetExportFile, MonotonicSeconds,
          locus::app::ChooseSongBackgroundFile}
     };
@@ -551,7 +551,7 @@ int main(int argc, char** argv) try {
                     displayedResult ? displayedResult->notesJudged :
                         static_cast<int>(judge.ScorableCount()),
                     !displayedResult && judge.Failed() ? chartTitle + " / FAILED" :
-                    !displayedResult && core::HasMod(judge.Mods(),core::PlayMod::Autoplay) ? chartTitle + " / AUTOPLAY (NOT SAVED)" : chartTitle, historicalResult, libraryUi);
+                    !displayedResult && locus::core::HasMod(judge.Mods(),locus::core::PlayMod::Autoplay) ? chartTitle + " / AUTOPLAY (NOT SAVED)" : chartTitle, historicalResult, libraryUi);
             else if (state.screen == Screen::Editor && nativeMenu.EditorAvailable()) {
                 nativeMenu.UpdateEditor(editorUi, input, editor.Data().title,
                     editor.Dirty(), chartPlayback.Speed(),

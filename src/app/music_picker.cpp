@@ -54,12 +54,43 @@ MusicPickResult ChooseLocalMusicFile() {
                     L"WAV (*.wav)\0*.wav\0MP3 (*.mp3)\0*.mp3\0\0");
 }
 
-MusicPickResult ChooseLibraryImportFile() {
-    return PickFile(L"LOCUS - Import Chart or Song Set",
-                    L"LOCUS files (*.locuspack;*.locus.json;*.json)\0"
-                    L"*.locuspack;*.locus.json;*.json\0"
-                    L"Song Set (*.locuspack)\0*.locuspack\0"
-                    L"Chart (*.locus.json;*.json)\0*.locus.json;*.json\0\0");
+ImportPickResult ChooseLibraryImportFiles() {
+#ifdef _WIN32
+    // Explorer returns either one full path or a directory followed by a
+    // NUL-delimited list of filenames. Other pickers remain single-select.
+    std::vector<wchar_t> buffer(1024*1024,L'\0');
+    OPENFILENAMEW dialog{};
+    dialog.lStructSize=sizeof(dialog);
+    dialog.hwndOwner=GetActiveWindow();
+    dialog.lpstrFile=buffer.data();
+    dialog.nMaxFile=static_cast<DWORD>(buffer.size());
+    dialog.lpstrTitle=L"LOCUS - Import Charts or Song Sets";
+    dialog.lpstrFilter=L"LOCUS files (*.locuspack;*.locus.json;*.json)\0"
+                       L"*.locuspack;*.locus.json;*.json\0"
+                       L"Song Set (*.locuspack)\0*.locuspack\0"
+                       L"Chart (*.locus.json;*.json)\0*.locus.json;*.json\0\0";
+    dialog.Flags=OFN_EXPLORER|OFN_ALLOWMULTISELECT|OFN_FILEMUSTEXIST|
+                 OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR|OFN_HIDEREADONLY;
+    if (!GetOpenFileNameW(&dialog)) {
+        const auto error=CommDlgExtendedError();
+        if (error==0) return {{},{},true};
+        if (error==FNERR_BUFFERTOOSMALL)
+            return {{},"Selection is too large; choose fewer files at once.",false};
+        return {{},"Windows could not open the import dialog.",false};
+    }
+    ImportPickResult result;
+    const std::filesystem::path first(buffer.data());
+    const wchar_t* item=buffer.data()+std::wstring(buffer.data()).size()+1;
+    if (!*item) result.paths.push_back(first);
+    else while (*item) {
+        const std::wstring name(item);
+        result.paths.push_back(first/name);
+        item+=name.size()+1;
+    }
+    return result;
+#else
+    return {{},"File picker requires Windows.",false};
+#endif
 }
 
 MusicPickResult ChooseChartFile() {

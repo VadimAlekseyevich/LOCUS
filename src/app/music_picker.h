@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <filesystem>
+#include <vector>
 
 namespace locus::app {
 
@@ -13,7 +15,12 @@ struct MusicPickResult {
 // Native Windows file dialog. Canceling leaves the current song untouched.
 MusicPickResult ChooseLocalMusicFile();
 MusicPickResult ChooseChartFile();
-MusicPickResult ChooseLibraryImportFile();
+struct ImportPickResult {
+    std::vector<std::filesystem::path> paths;
+    std::string error;
+    bool canceled = false;
+};
+ImportPickResult ChooseLibraryImportFiles();
 MusicPickResult ChooseSongSetExportFile(const std::wstring& suggestedPath);
 MusicPickResult ChooseChartSaveFile(const std::wstring& suggestedPath);
 MusicPickResult ChooseSkinFile();

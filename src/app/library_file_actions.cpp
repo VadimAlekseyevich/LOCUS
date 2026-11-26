@@ -2,6 +2,7 @@
 #include "app/library_browser.h"
 
 #include <filesystem>
+#include <iostream>
 #include <string>
 
 namespace locus::app {
@@ -40,47 +41,48 @@ void LibraryFileActions::Import(bool intoSelectedSet, double& now) {
         ui_.notice = "IMPORT FAILED: FILE PICKER UNAVAILABLE";
         return;
     }
-    const MusicPickResult selected = pickers_.chooseImport();
+    const auto selected=pickers_.chooseImport();
     PickerReturned(now);
-    if (selected.path.empty()) {
-        if (!selected.canceled)
-            ui_.notice = "IMPORT FAILED: " + selected.error;
+    if (selected.paths.empty()) {
+        if (!selected.canceled) ui_.notice="IMPORT FAILED: "+selected.error;
         return;
     }
-
-    const fs::path chosen(selected.path);
-    if (chosen.extension() == L".locuspack") {
-        fs::path installedSet;
-        if (!library_.ImportPackage(chosen, installedSet, error_)) {
-            ui_.notice = installedSet.empty() ? "PACKAGE IMPORT FAILED: " + error_
-                : "PACKAGE SAVED; REFRESH LIBRARY (F5): " + error_;
-            menuStatus_ = ui_.notice;
+    fs::path target;
+    if (intoSelectedSet) {
+        if (ui_.selectedSong<=0 || ui_.selectedSong>static_cast<int>(library_.Songs().size()) ||
+            !library_.Songs()[ui_.selectedSong-1].managed) {
+            ui_.notice="SELECT A MANAGED SONG SET FIRST";
             return;
         }
-        // The library was rescanned. Never retain stale LibrarySong pointers.
-        for (std::size_t i = 0; i < library_.Songs().size(); ++i) {
-            if (library_.Songs()[i].folder == installedSet) {
-                ui_.SelectSong(static_cast<int>(i) + 1, library_);
-                break;
+        target=library_.Songs()[ui_.selectedSong-1].folder;
+    }
+    const auto bookmark=CaptureLibrarySelection(library_,ui_);
+    const auto batch=library_.ImportFiles(selected.paths,target);
+    const auto notice=batch.Summary();
+    RestoreLibrarySelection(library_,ui_,bookmark,notice,menuStatus_);
+    // Focus the last successful import; a failed final file cannot move
+    // selection to an unrelated difficulty.
+    for (auto it=batch.files.rbegin();it!=batch.files.rend();++it) {
+        if (!it->indexed) continue;
+        if (it->package) {
+            for (std::size_t i=0;i<library_.Songs().size();++i)
+                if (library_.Songs()[i].folder==it->installed) {
+                    ui_.SelectSong(static_cast<int>(i)+1,library_);
+                    break;
+                }
+        } else {
+            int song=-1,chart=-1;
+            if (library_.FindChart(it->installed,song,chart)) {
+                ui_.SelectSong(song+1,library_);
+                ui_.SelectChart(chart,library_);
             }
         }
-        ui_.notice = "SONG SET PACKAGE IMPORTED";
-        return;
+        break;
     }
-
-    if (intoSelectedSet) {
-        if (ui_.selectedSong <= 0 ||
-            ui_.selectedSong > static_cast<int>(library_.Songs().size()) ||
-            !library_.Songs()[ui_.selectedSong - 1].managed) {
-            ui_.notice = "SELECT A MANAGED SONG SET FIRST";
-            return;
-        }
-        // Capture a path value: ImportIntoSet replaces the cached index.
-        const fs::path folder = library_.Songs()[ui_.selectedSong - 1].folder;
-        ImportLibraryChartToSet(library_, ui_, chosen, folder, menuStatus_);
-        return;
-    }
-    ImportLibraryChart(library_, ui_, chosen, menuStatus_);
+    for (const auto& item : batch.files)
+        if (!item.indexed) std::cerr << "IMPORT: " << item.source.u8string()
+                                    << ": " << item.error << '\n';
+    PickerReturned(now);
 }
 
 void LibraryFileActions::SetBackground(double& now) {

@@ -83,6 +83,19 @@ struct LibraryRefreshStats {
     std::size_t resolvedAudioPaths = 0;
 };
 
+// One outcome per selected file, including committed-but-unindexed data.
+struct LibraryImportResult {
+    std::filesystem::path source, installed;
+    bool package = false;
+    bool indexed = false;
+    std::string error;
+};
+struct LibraryImportBatch {
+    std::vector<LibraryImportResult> files;
+    std::size_t ImportedCount() const noexcept;
+    std::string Summary() const;
+};
+
 // On-disk Songs folders are authoritative. The index is kept in RAM and
 // rescanned only at startup / import / explicit refresh, not every play.
 // Notes and audio are materialized only for the selected difficulty.
@@ -109,6 +122,8 @@ public:
     bool ImportPackage(const std::filesystem::path& archive,
                        std::filesystem::path& installedSet,
                        std::string& error);
+    LibraryImportBatch ImportFiles(const std::vector<std::filesystem::path>& sources,
+                                   const std::filesystem::path& targetSet = {});
     bool ExportPackage(const std::filesystem::path& setFolder,
                        const std::filesystem::path& archive,
                        std::string& error);
@@ -164,6 +179,14 @@ private:
     bool ImportChart(const std::filesystem::path& sourceChart,
                      const std::filesystem::path& targetSet,
                      std::filesystem::path& installedChart, std::string& error);
+    bool ImportChartOnDisk(const std::filesystem::path& sourceChart,
+                           const std::filesystem::path& targetSet,
+                           std::filesystem::path& installedChart, std::string& error);
+    bool ImportPackageOnDisk(const std::filesystem::path& archive,
+                             std::filesystem::path& installedSet,
+                             std::vector<std::string>& incomingIds, std::string& error);
+    void VerifyImports(LibraryImportBatch& batch,
+                       const std::vector<std::vector<std::string>>& packageIds);
     std::filesystem::path root_;
     std::vector<LibrarySong> songs_;
     LibraryRefreshStats lastRefreshStats_{};

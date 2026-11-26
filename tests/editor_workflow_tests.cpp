@@ -101,6 +101,7 @@ public:
     }
 };
 
+app::ImportPickResult CancelImport() { return {{}, {}, true}; }
 app::MusicPickResult CancelPick() { return {{}, {}, true}; }
 app::MusicPickResult CancelSave(const std::wstring&) {
     return {{}, {}, true};
@@ -206,7 +207,7 @@ int main() {
     if (!song.Ready()) return 1;
     app::EditorSetController sets{
         {library, files, editor, editorUi, chartPath, status, libraryUi, menuStatus},
-        {CancelPick, CancelSave}};
+        {CancelImport, CancelSave}};
     const auto indexFor = [&](const fs::path& path) {
         const auto view = sets.View();
         for (std::size_t i = 0; i < view.comparisonOptions.size(); ++i)

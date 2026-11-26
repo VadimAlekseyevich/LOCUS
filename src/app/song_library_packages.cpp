@@ -74,8 +74,24 @@ bool SongLibrary::ExportPackage(const fs::path& setFolder,
 bool SongLibrary::ImportPackage(const fs::path& archive,
                                 fs::path& installedSet,
                                 std::string& error) {
+    LibraryImportBatch batch;
+    batch.files.push_back({archive,{},true,false,{}});
+    std::vector<std::vector<std::string>> ids(1);
+    auto& item=batch.files.front();
+    if (ImportPackageOnDisk(archive,item.installed,ids.front(),item.error))
+        VerifyImports(batch,ids);
+    installedSet=std::move(item.installed);
+    error=std::move(item.error);
+    return item.indexed;
+}
+
+bool SongLibrary::ImportPackageOnDisk(const fs::path& archive,
+                                     fs::path& installedSet,
+                                     std::vector<std::string>& incomingIds,
+                                     std::string& error) {
     MarkDiskMutation();
     installedSet.clear();
+    incomingIds.clear();
     std::error_code ec;
     fs::create_directories(root_, ec);
     if (ec) { error = "Cannot create Songs folder."; return false; }
@@ -248,33 +264,85 @@ bool SongLibrary::ImportPackage(const fs::path& archive,
     // Publication or merge completed. Keep the actual installed
     // location even if the in-memory index cannot be refreshed immediately.
     installedSet = target;
-    std::string notice;
-    if (!Refresh(notice)) {
-        error = "Package installed on disk, but library refresh failed: " + notice;
-        return false;
-    }
-    const auto present = std::find_if(songs_.begin(), songs_.end(),
-        [&](const LibrarySong& song) {
-            return song.managed && song.folder == target;
-        });
-    if (present == songs_.end()) {
-        error = "Package installed on disk, but library index omitted it: " + notice;
-        return false;
-    }
-    // Refresh can succeed with skipped files. Check EVERY incoming ID,
-    // not merely that at least one old chart remains visible.
-    std::set<std::string> publishedIds;
-    for (const auto& chart : present->charts)
-        publishedIds.insert(chart.metadata.difficultyId);
-    for (const auto& id : incomingDifficultyIds) {
-        if (publishedIds.count(id) == 0) {
-            error = "Package installed on disk, but library index omitted difficulty " +
-                    id + ": " + notice;
-            return false;
-        }
-    }
+    incomingIds.assign(incomingDifficultyIds.begin(),incomingDifficultyIds.end());
     error.clear();
     return true;
+}
+
+std::size_t LibraryImportBatch::ImportedCount() const noexcept {
+    return static_cast<std::size_t>(std::count_if(files.begin(),files.end(),
+        [](const LibraryImportResult& item){ return item.indexed; }));
+}
+
+std::string LibraryImportBatch::Summary() const {
+    const auto imported=ImportedCount();
+    std::size_t saved=0;
+    const LibraryImportResult* firstError=nullptr;
+    for (const auto& item : files) if (!item.indexed) {
+        if (!item.installed.empty()) ++saved;
+        if (!firstError) firstError=&item;
+    }
+    std::string message="IMPORTED "+std::to_string(imported)+"/"+std::to_string(files.size());
+    if (saved) message+=" / "+std::to_string(saved)+" SAVED, RESCAN REQUIRED";
+    if (files.size()>imported+saved)
+        message+=" / "+std::to_string(files.size()-imported-saved)+" FAILED";
+    if (firstError) message+=": "+firstError->source.filename().u8string()+" - "+firstError->error;
+    return message;
+}
+
+LibraryImportBatch SongLibrary::ImportFiles(const std::vector<fs::path>& sources,
+                                           const fs::path& targetSet) {
+    LibraryImportBatch batch;
+    batch.files.reserve(sources.size());
+    std::vector<std::vector<std::string>> ids(sources.size());
+    for (std::size_t i=0;i<sources.size();++i) {
+        const auto& source=sources[i];
+        auto ext=source.extension().wstring();
+        for (auto& ch : ext) if (ch>=L'A' && ch<=L'Z') ch+=L'a'-L'A';
+        const bool package=ext==L".locuspack";
+        auto& item=batch.files.emplace_back();
+        item.source=source;
+        item.package=package;
+        if (package) ImportPackageOnDisk(source,item.installed,ids[i],item.error);
+        else ImportChartOnDisk(source,targetSet,item.installed,item.error);
+    }
+    VerifyImports(batch,ids);
+    return batch;
+}
+
+void SongLibrary::VerifyImports(LibraryImportBatch& batch,
+                                const std::vector<std::vector<std::string>>& ids) {
+    if (std::none_of(batch.files.begin(),batch.files.end(),[](const auto& item){
+        return !item.installed.empty() && item.error.empty();
+    })) return;
+    std::string notice;
+    const bool refreshed=Refresh(notice);
+    std::map<fs::path,const LibrarySong*> sets;
+    std::set<fs::path> charts;
+    if (refreshed) for (const auto& song : songs_) {
+        if (song.managed) sets.emplace(song.folder,&song);
+        for (const auto& chart : song.charts) charts.insert(chart.file);
+    }
+    for (std::size_t i=0;i<batch.files.size();++i) {
+        auto& item=batch.files[i];
+        if (item.installed.empty() || !item.error.empty()) continue;
+        if (!refreshed) {
+            item.error="Saved on disk, but library refresh failed: "+notice;
+            continue;
+        }
+        if (item.package) {
+            const auto found=sets.find(item.installed);
+            if (found!=sets.end()) {
+                std::set<std::string> published;
+                for (const auto& chart : found->second->charts)
+                    published.insert(chart.metadata.difficultyId);
+                item.indexed=std::all_of(ids[i].begin(),ids[i].end(),[&](const auto& id){
+                    return published.count(id)!=0;
+                });
+            }
+        } else item.indexed=charts.count(item.installed)!=0;
+        if (!item.indexed) item.error="Saved on disk, but library index omitted imported data: "+notice;
+    }
 }
 
 } // namespace locus::app

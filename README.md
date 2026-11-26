@@ -54,7 +54,7 @@ Perfect/Good/Bad timing windows are ±50/110/180 ms. Accuracy is `(100*Perfect +
 
 ## Song selection and mapping
 
-HOME → PLAY opens a searchable song tree, with metadata and saved chart attempts on the left. Click the selected chart again or press Enter when a text field is not focused to play. EDIT, MODS, IMPORT and RESCAN share the library footer. MODS opens a separate panel with speed sliders and modifier toggles. Difficulty V4 ranks charts by physical speed, individual key strain, coordination, rhythm and stamina. Read* is diagnostic only. Ratings are computed on demand, never serialized.
+HOME → PLAY opens a searchable song tree, with metadata and saved chart attempts on the left. Click the selected chart again or press Enter when a text field is not focused to play. EDIT, MODS, IMPORT and RESCAN share the library footer. IMPORT supports selecting several packs and chart files in one Windows dialog (Ctrl/Shift); individual failures do not stop the batch. MODS opens a separate panel with speed sliders and modifier toggles. Difficulty V4 ranks charts by physical speed, individual key strain, coordination, rhythm and stamina. Read* is diagnostic only. Ratings are computed on demand, never serialized.
 
 HOME → EDIT opens a clean **Song Setup** draft. Attach WAV/MP3 and configure timing; select the draft and click it again or press Enter to open **Chart Editor**, installing the initial Song Set if necessary. Managed Song Sets expose title/artist/mapper/tags, shared tempo map, menu preview start, background and difficulty management in Song Setup. Esc returns to Song Setup without losing the draft.
 

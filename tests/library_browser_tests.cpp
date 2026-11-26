@@ -49,10 +49,11 @@ bool WriteAudio(const fs::path& file) {
 fs::path pickedChart, exportedPackage;
 bool cancelImport = false;
 int importPickerCalls = 0, exportPickerCalls = 0, clockCalls = 0;
-MusicPickResult PickImport() {
+std::vector<fs::path> pickedBatch;
+ImportPickResult PickImport() {
     ++importPickerCalls;
-    return cancelImport ? MusicPickResult{{}, {}, true}
-                        : MusicPickResult{pickedChart.wstring(), {}, false};
+    return cancelImport ? ImportPickResult{{}, {}, true}
+                        : ImportPickResult{pickedBatch.empty()?std::vector<fs::path>{pickedChart}:pickedBatch, {}, false};
 }
 MusicPickResult PickExport(const std::wstring& suggestion) {
     ++exportPickerCalls;
@@ -409,14 +410,15 @@ int main() {
     // right tree cannot overlap the Play/Edit buttons in the left column.
     const Rectangle treeFirst = LibrarySongRow(0);
     const Rectangle treeLast = LibraryChartRow(kLibraryTreeVisibleRows - 1);
-    const Rectangle playButton = LibraryPlayButton();
+    const Rectangle modsButton = LibraryModsButton();
     const Rectangle editButton = LibraryEditButton();
     ok &= Check(kLibraryTreeVisibleRows == 8 &&
                 treeFirst.x >= 382.0f && treeLast.x >= 382.0f &&
                 treeLast.y + treeLast.height <= 470.0f &&
-                playButton.x + playButton.width < treeFirst.x &&
-                editButton.x + editButton.width < treeFirst.x,
-                "native PLAY layout has eight scroll rows and a separate action column");
+                modsButton.y >= treeLast.y + treeLast.height &&
+                editButton.y >= treeLast.y + treeLast.height &&
+                editButton.x + editButton.width <= modsButton.x,
+                "PLAY tree does not overlap its footer actions");
 
     ui.MoveTree(-1, library);
     ok &= Check(ui.selectedSong == 1 && ui.selectedChart == 0 &&
@@ -524,6 +526,19 @@ int main() {
     ok &= Check(exportPickerCalls == 1 && fs::exists(exportedPackage) &&
                 ui.notice == "SONG SET EXPORTED",
                 "controller exports selected song with native dialog injected");
+
+    // A mixed-success batch continues past an invalid archive, refreshes
+    // once, and leaves the successful package indexed.
+    pickedBatch={root/"missing.locuspack",exportedPackage};
+    const auto revisionBeforeBatch=library.Revision();
+    request=MenuEvents{};
+    request.import=true;
+    commands.Apply(request,false,eventTime);
+    ok &= Check(library.Revision()==revisionBeforeBatch+1 && library.ChartCount()==3 &&
+                ui.notice.find("IMPORTED 1/2")!=std::string::npos &&
+                ui.notice.find("1 FAILED")!=std::string::npos,
+                "multi-file import preserves valid packages and publishes one index");
+    pickedBatch.clear();
 
     // Explicit actions reuse the existing recoverable Trash semantics.
     ui.SelectSong(2, library);

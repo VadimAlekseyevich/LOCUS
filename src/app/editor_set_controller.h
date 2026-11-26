@@ -40,7 +40,7 @@ struct EditorSetContext {
 };
 
 struct EditorSetPickers {
-    MusicPickResult (*chooseImport)();
+    ImportPickResult (*chooseImport)();
     MusicPickResult (*chooseExport)(const std::wstring&);
     MusicPickResult (*chooseBackground)() = nullptr;
 };
