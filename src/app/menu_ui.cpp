@@ -1,4 +1,5 @@
 #include "app/menu_ui.h"
+#include "app/result_rank_color.h"
 #include "core/chart_difficulty.h"
 #include "core/utf8.h"
 #include "app/ui_button.h"
@@ -219,10 +220,12 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
                                  Color{49, 54, 81, 238});
             DrawRectangleRoundedLinesEx(rect, UiRoundness(rect, 8.0f), 8,
                                         1.0f, line);
-            Label(font, TextFormat("%.2f%%", result.accuracyPercent),
-                  rect.x + 9, rect.y + 7, 14, sky);
-            fit(FormatRunTimestamp(result.completedAtMs),
-                rect.x + 125, rect.y + 10, rect.width - 137, 10, faint);
+            const auto rank=core::RankForAccuracy(result.accuracyPercent,result.grades.Resolved());
+            const char* name=core::ResultRankName(rank);
+            const float width=MeasureTextEx(font,name,18.0f,1.0f).x;
+            Label(font,name,rect.x+26-width*0.5f,rect.y+6,18,ResultRankColor(rank));
+            Label(font,TextFormat("%.2f%%",result.accuracyPercent),
+                  rect.x+52,rect.y+7,16,theme.foreground);
         }
     }
     action(LibraryPlayButton(), "PLAY", UiButtonVariant::Blue);

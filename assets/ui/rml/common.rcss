@@ -86,3 +86,11 @@ scrollbarvertical sliderarrowdec, scrollbarvertical sliderarrowinc {
 .ui-confirmation-layer { z-index:40; background-color:#0a0e19d9; }
 .ui-confirmation-notice { min-height:0; overflow-y:auto; word-break:break-word; }
 #confirmation-approve { color:#f0b7b7; border-color:#a97588; }
+
+/* Shared result rank palette, independent of the size/effects of the view. */
+.rank-SS { color:#fff0ae; }
+.rank-S { color:#ffd57f; }
+.rank-A { color:#9cf0bb; }
+.rank-B { color:#94d7ff; }
+.rank-C { color:#c6a4ff; }
+.rank-D { color:#f39cae; }

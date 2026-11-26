@@ -6,12 +6,12 @@
   flex-direction:column; justify-content:center; align-items:center; }
 .results-rank { display:block; width:100%; text-align:center; font-size:148dp;
   line-height:1.3; font-weight:800; color:#c3c9de; }
-.rank-SS { color:#fff0ae; font-effect:glow(2dp 13dp 0dp 0dp #f9c550b0); }
-.rank-S { color:#ffd57f; font-effect:glow(2dp 11dp 0dp 0dp #edaa46a0); }
-.rank-A { color:#9cf0bb; font-effect:glow(2dp 10dp 0dp 0dp #4bd78399); }
-.rank-B { color:#94d7ff; font-effect:glow(2dp 10dp 0dp 0dp #489fe899); }
-.rank-C { color:#c6a4ff; font-effect:glow(2dp 9dp 0dp 0dp #9862e899); }
-.rank-D { color:#f39cae; font-effect:glow(2dp 9dp 0dp 0dp #df617999); }
+.results-rank.rank-SS { font-effect:glow(2dp 13dp 0dp 0dp #f9c550b0); }
+.results-rank.rank-S { font-effect:glow(2dp 11dp 0dp 0dp #edaa46a0); }
+.results-rank.rank-A { font-effect:glow(2dp 10dp 0dp 0dp #4bd78399); }
+.results-rank.rank-B { font-effect:glow(2dp 10dp 0dp 0dp #489fe899); }
+.results-rank.rank-C { font-effect:glow(2dp 9dp 0dp 0dp #9862e899); }
+.results-rank.rank-D { font-effect:glow(2dp 9dp 0dp 0dp #df617999); }
 .results-content { flex:1; min-height:0; display:flex; flex-direction:column; gap:14dp; overflow-y:auto; }
 .results-heading { flex-shrink:0; }
 .results-song { font-size:25dp; font-weight:800; color:#eef1fb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

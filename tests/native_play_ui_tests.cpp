@@ -94,6 +94,10 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         saved.id="attempt-1";
         saved.songSetId="test-set";
         saved.difficultyId="test-chart";
+        saved.grades={4,0,0,1};
+        saved.notesJudged=5;
+        saved.accuracyPercent=80.0;
+        saved.completedAtMs=1700000000000LL;
         selection.ReplaceResults({"test-set","test-chart"},{saved});
         presenter.BeginFrame(library,selection,1.6f);
         presenter.Sync();
@@ -101,6 +105,11 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         auto* results=document->GetElementById("results-list");
         auto* row=results && results->GetNumChildren()>0 ? results->GetChild(0):nullptr;
         auto* viewport=document->GetElementById("results-scroll");
+        ok &= Check(row && row->GetNumChildren()==2 &&
+                    row->GetChild(0)->IsClassSet("rank-B") &&
+                    row->GetChild(0)->GetInnerRML()=="B" &&
+                    row->GetChild(1)->GetInnerRML()=="80.00%",
+                    "history row contains only rank and accuracy");
         if (row && viewport && viewport->GetClientHeight()>0) {
             const int x=static_cast<int>(row->GetAbsoluteLeft()+row->GetOffsetWidth()/2);
             const int y=static_cast<int>(row->GetAbsoluteTop()+row->GetOffsetHeight()/2);

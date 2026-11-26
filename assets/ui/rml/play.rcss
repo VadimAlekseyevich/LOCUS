@@ -47,7 +47,10 @@
   text-align:left; font-size:12dp; border:1dp #545a79;
   background-color:#343a57; }
 .result:hover { border-color:#b5a4f3; background-color:#484c73; }
-.result .button-label { left:9dp; right:9dp; text-align:left; font-size:13dp; }
+.result .result-rank { left:9dp; right:auto; width:34dp; font-size:18dp;
+  font-weight:800; text-align:center; }
+.result .result-accuracy { left:52dp; right:9dp; text-align:left;
+  font-size:15dp; font-weight:700; }
 #notice { display:block; color:#ecc3d1; padding:0 12dp;
   font-size:11dp; }
 #commands { display:flex; flex-direction:row;

@@ -1,4 +1,5 @@
 #include "app/gameplay_ui.h"
+#include "app/result_rank_color.h"
 #include "app/gameplay_hud.h"
 #include "app/path_mesh.h"
 #include "core/utf8.h"
@@ -140,10 +141,7 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay,
                   {94, 232}, 44, violet);
     const auto rank=core::RankForAccuracy(
         saved ? saved->accuracyPercent : counts.AccuracyPercent(),counts.Resolved());
-    const Color rankColors[]={{190,196,215,255},{243,156,174,255},
-        {198,164,255,255},{148,215,255,255},{156,240,187,255},
-        {255,213,127,255},{255,240,174,255}};
-    const Color rankColor=rankColors[static_cast<int>(rank)];
+    const Color rankColor=ResultRankColor(rank);
     const char* rankText=core::ResultRankName(rank);
     const float rankSize=80.0f;
     const auto rankWidth=MeasureTextEx(font,rankText,rankSize,1.0f).x;

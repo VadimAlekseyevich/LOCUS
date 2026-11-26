@@ -310,18 +310,14 @@ void NativePlayUi::RebuildResults(SongSelectUi& ui) {
              << window.before << "dp;flex:0 0 " << window.before << "dp'></div>";
     for (std::size_t i = window.first; i < window.end; ++i) {
         const auto& result = ui.results[i];
-        const auto revision = CompareRunRevision(
-            result, ui.resultGameplayRevision);
-        const char* label = revision == RunRevisionState::OlderChart
-            ? "OLD CHART · " : revision == RunRevisionState::OlderRules
-                ? "OLD RULES · " : result.variablePracticeRate
-                    ? "VARIABLE RATE · " : "";
+        const auto rank=core::RankForAccuracy(result.accuracyPercent,result.grades.Resolved());
+        const char* name=core::ResultRankName(rank);
         html << "<button class='result' data-action='result' data-index='"
              << i << "' data-run='" << EscapeRml(result.id)
-             << "'><span class='button-label'>"
-             << Accuracy(result.accuracyPercent) << "  /  "
-             << label << EscapeRml(FormatRunTimestamp(result.completedAtMs))
-             << "</span></button>";
+             << "'><span class='button-label result-rank rank-"
+             << (rank==core::ResultRank::None ? "none" : name)
+             << "'>" << name << "</span><span class='button-label result-accuracy'>"
+             << Accuracy(result.accuracyPercent) << "</span></button>";
     }
     if (window.after > 0.0f)
         html << "<div class='result-spacer' style='height:"
