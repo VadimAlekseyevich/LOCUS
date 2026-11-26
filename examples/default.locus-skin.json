@@ -92,7 +92,6 @@
     ]
   },
   "audio": {
-    "hitSoundVolume": 70,
     "hitSoundFormat": "",
     "hitSoundHex": ""
   }

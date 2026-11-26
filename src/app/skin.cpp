@@ -89,7 +89,6 @@ bool Skin::Valid(std::string& error) const {
         return false;
     }
     const struct { float value, min, max; const char* label; } fields[] = {
-        {hitSoundVolume,0.0f,100.0f,"Hitsound volume"},
         {lookaheadMs, 50.0f, 10000.0f, "Preview time (ms)"},
         {pathWidth, 0.25f, 40.0f, "Trajectory width"},
         {outlineScale, 1.0f, 8.0f, "Outline scale"},
@@ -138,8 +137,7 @@ std::string SerializeSkin(const Skin& skin) {
             {"hitFlashScale", skin.hitFlashScale}
         }},
         {"hud", {{"visible", skin.showHud}, {"hitErrorBar", skin.showHitErrorBar}, {"hitErrorLength", skin.hitErrorLength}}},
-        {"audio", {{"hitSoundVolume",skin.hitSoundVolume},
-                   {"hitSoundFormat",skin.hitSound ? HitSoundExtension(skin.hitSound->Format()) : ""},
+        {"audio", {{"hitSoundFormat",skin.hitSound ? HitSoundExtension(skin.hitSound->Format()) : ""},
                    {"hitSoundHex",skin.hitSound ? EncodeHitSound(skin.hitSound->Bytes()) : std::string{}}}},
         {"colors", std::move(colors)}
     };
@@ -184,7 +182,6 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
             parsed.hitErrorLength = hud.at("hitErrorStyle").value("length", parsed.hitErrorLength);
         if (object.contains("audio")) {
             const auto& audio=object.at("audio");
-            parsed.hitSoundVolume=audio.value("hitSoundVolume",parsed.hitSoundVolume);
             // Preserve existing WAV profiles; new files carry the codec
             // explicitly and do not transcode compressed source data.
             const bool modern=audio.contains("hitSoundHex");

@@ -35,7 +35,6 @@ struct Skin {
     float hitFlashScale = 1.0f;
     bool showHud = true;
     float hitErrorLength = 144.0f; // logical HUD pixels
-    float hitSoundVolume = 70.0f; // percent, multiplied by global master volume
     std::shared_ptr<const HitSoundAsset> hitSound; // validated immutable encoded asset
     bool showHitErrorBar = false; // optional, bottom-center timing feedback
 

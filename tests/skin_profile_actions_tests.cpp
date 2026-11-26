@@ -288,12 +288,10 @@ int main() {
                 "hitsound import affects only draft");
     std::error_code ec;
     fs::remove(soundFile,ec);
-    draft.hitSoundVolume=35;
     soundActions.Apply(SkinCommand::SaveAs);
     Skin portable;
     ok &= Check(!ui.dirty && LoadSkin(exportFile,portable,error,false) &&
-                portable.hitSound && portable.hitSound->Bytes()==wav &&
-                portable.hitSoundVolume==35,
+                portable.hitSound && portable.hitSound->Bytes()==wav,
                 "exported profile retains sound after source deletion");
     soundActions.Apply(SkinCommand::LoadHitSound);
     ok &= Check(ui.noticeError && draft.hitSound && draft.hitSound->Bytes()==wav,

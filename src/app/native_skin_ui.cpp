@@ -94,11 +94,13 @@ void NativeSkinUi::RebuildControls() {
             }
             html << "</div>";
         }
-        if (ui_->page==4) html << "<div id='skin-hitsound-status' class='skin-channel-heading'></div>"
+    } else if (ui_->page==4) {
+        html << "<div id='skin-hitsound-status' class='skin-channel-heading'></div>"
             "<div class='skin-profile-actions'>"
             "<button data-action='hitsound-load'><span class='button-label'>LOAD AUDIO</span></button>"
             "<button data-action='hitsound-preview'><span class='button-label'>PREVIEW</span></button>"
-            "<button data-action='hitsound-clear'><span class='button-label'>REMOVE</span></button></div>";
+            "<button data-action='hitsound-clear'><span class='button-label'>REMOVE</span></button></div>"
+            "<div class='skin-channel-heading'>VOLUME: SETTINGS / AUDIO</div>";
     } else if (ui_->page == 2) {
         html << "<div class='skin-swatches'>";
         for (int i = 0; i < kSkinColorCount; ++i) {

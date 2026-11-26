@@ -257,11 +257,12 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
                            ToggleValue(skin, ui.page, row));
             }
         }
-        if (ui.page==4) {
-            Label(font,skin.hitSound ? "CUSTOM HITSOUND LOADED" : "NO HITSOUND",70,250,14,kMuted);
-            const char* labels[]={"LOAD AUDIO","PREVIEW","REMOVE"};
-            for (int i=0;i<3;++i) Button(font,HitSoundButton(i),labels[i]);
-        }
+        PreviewPath(font, skin);
+    } else if (ui.page==4) {
+        Label(font,skin.hitSound ? "CUSTOM HITSOUND LOADED" : "NO HITSOUND",70,250,14,kMuted);
+        const char* labels[]={"LOAD AUDIO","PREVIEW","REMOVE"};
+        for (int i=0;i<3;++i) Button(font,HitSoundButton(i),labels[i]);
+        Label(font,"VOLUME: SETTINGS / AUDIO",70,330,14,kMuted);
         PreviewPath(font, skin);
     } else if (ui.page == 2) {
         for (int index = 0; index < kSkinColorCount; ++index) {

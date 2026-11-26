@@ -35,11 +35,10 @@ int main() {
     std::string audioError;
     audioSkin.hitSound=HitSoundAsset::Create(HitSoundFormat::Wav,wav,audioError);
     check(static_cast<bool>(audioSkin.hitSound),"decode PCM without audio device");
-    audioSkin.hitSoundVolume=42;
     Skin decodedAudio;
     check(ParseSkin(SerializeSkin(audioSkin),decodedAudio,audioError) &&
-          decodedAudio.hitSound && decodedAudio.hitSound->Bytes()==wav &&
-          decodedAudio.hitSoundVolume==42,"self-contained hitsound round trip");
+          decodedAudio.hitSound && decodedAudio.hitSound->Bytes()==wav,
+          "self-contained hitsound round trip");
     check(!DecodeHitSound("0z",wav) &&
           !HitSoundAsset::Create(HitSoundFormat::Wav,"RIFF",audioError),"reject malformed audio");
     // A 5-second PCM sample exceeds the previous 2-second policy.
