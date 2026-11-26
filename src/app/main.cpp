@@ -641,10 +641,6 @@ int main(int argc, char** argv) try {
             // Applied resources are prepared in menus, not on the first hit.
             hitSounds.Configure(activeSkin);
         }
-        if (previousScreen==Screen::Skin && state.screen!=Screen::Skin)
-            previewHitSounds.Clear();
-        if (previousScreen==Screen::Play && state.screen!=Screen::Play)
-            hitSounds.Stop();
         if (menuEvents.saveSettings) {
             transport.SetVolume(settings.volume);
             localSong.SetVolume(settings.volume);
@@ -995,6 +991,8 @@ int main(int argc, char** argv) try {
             menuMusic.FadeOut(now);
         }
         if (state.screen != previousScreen) {
+            if (previousScreen==Screen::Skin) previewHitSounds.Clear();
+            if (previousScreen==Screen::Play) hitSounds.Stop();
             if (state.screen == Screen::Play) {
                 if (!replaySource) gameSession.ClearReplay();
                 libraryUi.replayNotice.clear();
