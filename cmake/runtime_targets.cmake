@@ -21,7 +21,7 @@ add_library(locus_result_store STATIC
     src/app/run_results.cpp
     src/app/async_result_history.cpp
 )
-target_link_libraries(locus_result_store PUBLIC locus_core
+target_link_libraries(locus_result_store PUBLIC locus_result_model
     PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
 
 add_library(locus_path_mesh STATIC

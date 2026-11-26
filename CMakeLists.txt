@@ -59,6 +59,16 @@ else()
     target_compile_options(locus_package PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+# Portable local attempt model; persistence and account identity remain adapters.
+add_library(locus_result_model STATIC src/app/run_result_model.cpp)
+target_link_libraries(locus_result_model PUBLIC locus_core)
+set_target_properties(locus_result_model PROPERTIES CXX_EXTENSIONS OFF)
+if(MSVC)
+    target_compile_options(locus_result_model PRIVATE /W4 /permissive- /utf-8)
+else()
+    target_compile_options(locus_result_model PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 if(LOCUS_BUILD_TESTS)
     enable_testing()
     include(cmake/core_tests.cmake)
@@ -168,6 +178,7 @@ add_dependencies(locus locus_ui_assets)
 
 # The same portable layout is used by local installs and Windows CI artifacts.
 install(TARGETS locus RUNTIME DESTINATION ".")
+install(FILES "${picosha2_SOURCE_DIR}/LICENSE" DESTINATION "licenses" RENAME PicoSHA2.txt)
 install(DIRECTORY "${LOCUS_UI_SOURCE_DIR}/" DESTINATION "assets/ui")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
 if(WIN32)

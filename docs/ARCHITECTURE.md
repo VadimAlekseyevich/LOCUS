@@ -14,7 +14,8 @@ pre-release; incompatible changes are allowed but must be called out.
 | `SongLibrary` / `song_set_storage` | Installed Song Sets, authoritative shared tempo map, file transactions, recovery, cache/index | Gameplay scoring or editor keyboard state |
 | `ChartPlayback` / `GameSession` | Audio-time transport, per-arrow judgement and spectator dispatch | Screen rendering, camera, skin settings |
 | `core/replay` / `core/score_verification` | Deterministic replay codec/cursor and completed score derivation from a trusted chart and offset | Storage, UI, audio, online trust |
-| `RunResultsStore` | Compact local result JSON and lazily loaded sidecars; compares claims against core verification | UI, audio, online trust |
+| `locus_result_model` | Portable local attempt snapshot, validation and comparison with core scoring | Filesystem, account authentication, server IDs |
+| `RunResultsStore` | Compact local result JSON and lazily loaded sidecars, assigns local persistence ID/time | UI, audio, online trust |
 | `PlayPresentation` | Presentation-only camera lag, outro and adjustment notice | Authoritative song time or note results |
 | `path_mesh` / `route_renderer` / `gameplay_ui` | Project sampled route into a clipped square, draw ribbons, turn targets and marker | Loading files or changing gameplay state |
 | Screen controllers | Play, editor, library, skin and modal commands | Other screens' storage or render internals |
@@ -135,7 +136,7 @@ The storage targets in `cmake/storage_targets.cmake` share production code with 
 
 Editor targets in `cmake/editor_targets.cmake` separate authoring input/commands, comparison preparation, canvas rendering, document IO, multi-document workspace, and TEST/preview session. Platform picker/folder adapters, settings and skin model are also shared with tests. Native editor, library/results and skin presenters are optional RmlUi targets; no RmlUi dependency flows into document editing, transport or core. The desktop executable retains screen composition. Shared screen flow, session actions, play presentation, library activation/browser and menu/brand rendering targets are defined in `cmake/application_targets.cmake`. A configure-time ownership check rejects duplicate first-party implementation source assignments and emits `locus-source-ownership.csv` for both desktop and portable builds.
 
-The portable `LOCUS_BUILD_APP=OFF` configuration fetches only JSON and utf8proc, builds `locus_core` and optionally the same portable tests/editor benchmark as the desktop build. `cmake/core_tests.cmake` is the single registration source for these tests. Linux CI exercises this configuration; it is not a Linux desktop port.
+The portable `LOCUS_BUILD_APP=OFF` configuration fetches JSON, utf8proc and PicoSHA2, builds `locus_core`, `locus_package`, `locus_result_model` and optionally the same portable tests/editor benchmark as the desktop build. `cmake/core_tests.cmake` is the single registration source for these tests. Linux CI exercises this configuration; it is not a Linux desktop port.
 
 The Windows CI and headless domain tests are valuable, but cannot establish
 actual motion readability, acoustic sync or screen-tearing behavior.
@@ -150,7 +151,7 @@ tests only for contracts or failures they can actually detect.
 
 ## Online readiness
 
-The `LOCUS_BUILD_APP=OFF` build supplies the portable chart/judge/replay/difficulty engine and `EvaluateCompletedReplay`, the shared scoring consistency verifier. The portable `locus_package` target contains the ZIP codec, manifest codec and staged package structural validator, shared by desktop import and headless tests. The desktop catalog and other filesystem adapters are not a portable server storage layer: `ReadLocalFileBytes` and `OpenChartWithAudioPath` have Windows-only implementations. No network or account service is implemented. The future server must own published revisions, authenticated scores and ranking eligibility. See [online architecture](ONLINE_ARCHITECTURE.md) for the staged plan.
+The `LOCUS_BUILD_APP=OFF` build supplies the portable chart/judge/replay/difficulty engine and `EvaluateCompletedReplay`, the shared scoring consistency verifier. The portable `locus_package` target contains the ZIP codec, manifest codec and staged package structural validator, shared by desktop import and headless tests, plus SHA-256 publication content descriptors. `locus_result_model` builds eligible local attempt snapshots without disk access; the store remains responsible for persistence. The desktop catalog and other filesystem adapters are not a portable server storage layer: `ReadLocalFileBytes` and `OpenChartWithAudioPath` have Windows-only implementations. No network or account service is implemented. The future server must own published revisions, authenticated scores and ranking eligibility. See [online architecture](ONLINE_ARCHITECTURE.md) for the staged plan.
 
 ## Difficulty and remaining architecture work
 

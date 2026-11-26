@@ -64,6 +64,10 @@ New timing summaries also include optional `statistics.hitErrorHistogram`: 36 no
 
 ## Online boundary
 
+`locus_result_model` builds and validates completed local attempt snapshots
+without disk I/O. `RunResultsStore` assigns local IDs/time and writes the
+unchanged JSON/sidecar format.
+
 These records are local history, not authenticated scores. A local attempt ID is not globally unique; `gameplayRevision` is a noncryptographic fingerprint and does not bind the audio bytes. The replay proves reproducibility under the judge, not that a human produced its input. See [online architecture](ONLINE_ARCHITECTURE.md) for the proposed server-owned identity, verification and publication policies.
 
 ## Result rank

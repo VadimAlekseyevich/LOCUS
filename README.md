@@ -25,7 +25,7 @@ A portable Windows build is available as the **`locus-windows-x64`** [GitHub Act
 
 ### Portable core development (Linux, Windows)
 
-The rhythm/chart model can be compiled and tested without raylib, RmlUi, SoundTouch, a display or an audio device. Only the pinned JSON and Unicode dependencies are fetched.
+The rhythm/chart model can be compiled and tested without raylib, RmlUi, SoundTouch, a display or an audio device. Only the pinned JSON, Unicode and SHA-256 header dependencies are fetched.
 
 ```sh
 cmake -S . -B build/core -DCMAKE_BUILD_TYPE=Release -DLOCUS_BUILD_APP=OFF -DLOCUS_BUILD_TESTS=ON -DLOCUS_BUILD_BENCHMARKS=ON

@@ -13,7 +13,7 @@ remain subject to design review. It is not an API specification.
 | `locus_core` / `LOCUS_BUILD_APP=OFF` | Portable chart parser, exact timestamps, judge, mods, replay codec, Difficulty V4 | Portable score verification entry point implemented; authoritative package/session input validation still needed |
 | Song Set ID + difficulty ID | Stable local identity through rename/copy/import | Server-owned published IDs, ownership and revision mapping |
 | `ChartGameplayRevision` | Detect changed gameplay within local history | Local fingerprint is unchanged; SHA-256 publication content descriptor binds effective chart and exact audio bytes, not ownership |
-| Results v2 + LOCREP04 | Immutable summaries and separate replay data | Player identity, global attempt identity, submission status, verified result derivation |
+| Results v2 + LOCREP04 | Immutable summaries and separate replay data | Portable local result model extracted; player identity, global attempt identity and submission status pending |
 | `.locuspack` | Portable package with shared audio, metadata, optional background and charts | Portable structural validation shared with desktop; quotas, full media inspection and immutable publication pending |
 | Async catalog/history | Cached, cancellable off-frame data loading | Network I/O, paging, cancellation, session ownership and durable submission retries |
 | Local file transactions | Protect local edits and recoverable import | Not a server persistence layer; Windows-only chart/byte I/O and local paths must not leak into API |
@@ -97,7 +97,10 @@ recalculation. No file paths or mutable array indexes in server IDs.
 
 ## 4. Scores, verification and PP
 
-A completed scored run is saved locally independently of network state.
+A completed scored run is saved locally independently of network state. The portable
+`BuildCompletedRun` constructs an eligible local attempt snapshot; `RunResultsStore`
+assigns local persistence identity and time. `locus_result_model` has no filesystem
+dependency. Its local IDs and historical fields are not the future API schema.
 A future authenticated submission contains an idempotency key, server
 attempt/session identifier, published revision, exact rate and flags,
 seed where applicable, and bounded replay bytes. The local summary is
@@ -192,7 +195,7 @@ No legal workflow is currently operational.
 | --- | --- | --- |
 | W0 | Documentation and portable rules boundary | Core-only CI; no future capability described as implemented |
 | W1 | Portable verifier + package validation boundary (verifier, structural package validation and SHA-256 content descriptor implemented; media/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
-| W2 | Local run/profile ownership and PP contract | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
+| W2 | Local run/profile ownership and PP contract (portable attempt model implemented) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
 | W3 | API/data contract and private backend | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
 | W4 | Private vertical slice | Publish one authorized test map, play, submit replay, server rejudge, show leaderboard and profile through the same API; retry idempotency |
 | W5 | Catalog/download/upload workflow | Immutable revision mapping, paging, cancellation, safe install, quotas, rollback and fault recovery |
