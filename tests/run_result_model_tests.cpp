@@ -23,7 +23,7 @@ int main() {
         result->completedAtMs!=0 || !context.replay) {
         std::cerr<<"Could not build pure completed-run snapshot: "<<error<<'\n'; return 1;
     }
-    result->id="1000-0"; result->completedAtMs=1000;
+    result->id="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"; result->playerId="cccccccccccccccccccccccccccccccc"; result->completedAtMs=1000;
     if (!app::ValidRunResult(*result) ||
         !app::VerifyRunReplay(*result,*context.replay,chart.route,context.gameplayRevision,0.0)) {
         std::cerr<<"Portable score model did not reproduce completed run\n"; return 1;

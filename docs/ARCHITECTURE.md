@@ -15,7 +15,8 @@ pre-release; incompatible changes are allowed but must be called out.
 | `ChartPlayback` / `GameSession` | Audio-time transport, per-arrow judgement and spectator dispatch | Screen rendering, camera, skin settings |
 | `core/replay` / `core/score_verification` | Deterministic replay codec/cursor and completed score derivation from a trusted chart and offset | Storage, UI, audio, online trust |
 | `locus_result_model` | Portable local attempt snapshot, validation and comparison with core scoring | Filesystem, account authentication, server IDs |
-| `RunResultsStore` | Compact local result JSON and lazily loaded sidecars, assigns local persistence ID/time | UI, audio, online trust |
+| `locus_player_profile` | Atomically created persistent local player identity; separate from authenticated user identity | Account login, profile switching |
+| `RunResultsStore` | Owner-scoped result v3 JSON and lazily loaded sidecars; assigns random attempt ID/time | UI, audio, online trust |
 | `PlayPresentation` | Presentation-only camera lag, outro and adjustment notice | Authoritative song time or note results |
 | `path_mesh` / `route_renderer` / `gameplay_ui` | Project sampled route into a clipped square, draw ribbons, turn targets and marker | Loading files or changing gameplay state |
 | Screen controllers | Play, editor, library, skin and modal commands | Other screens' storage or render internals |

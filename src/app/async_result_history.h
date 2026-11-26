@@ -19,8 +19,8 @@ class AsyncResultHistory {
 public:
     enum class PollState { Idle, Pending, Ready, Failed };
 
-    explicit AsyncResultHistory(std::filesystem::path root)
-        : root_(std::move(root)) {}
+    AsyncResultHistory(std::filesystem::path root,std::string playerId)
+        : root_(std::move(root)), playerId_(std::move(playerId)) {}
     ~AsyncResultHistory() { CancelAndJoin(); }
     AsyncResultHistory(const AsyncResultHistory&) = delete;
     AsyncResultHistory& operator=(const AsyncResultHistory&) = delete;
@@ -42,6 +42,7 @@ private:
     bool Start(std::string& status);
 
     const std::filesystem::path root_;
+    const std::string playerId_;
     RunKey latest_;
     std::future<Outcome> worker_;
     std::shared_ptr<std::atomic<bool>> cancellation_;

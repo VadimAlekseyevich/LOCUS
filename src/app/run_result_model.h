@@ -31,6 +31,7 @@ struct RunResult {
     bool hasReplay = false;
     core::ModFlags modFlags = 0;
     std::uint32_t modSeed = 0;
+    std::string playerId; // local owner; never an authenticated account ID
 };
 
 struct RunKey {
@@ -87,7 +88,7 @@ struct CompletedRunContext {
 };
 
 // Build an eligible attempt without touching the filesystem or assigning
-// persistence identity/time. The storage adapter assigns the local ID.
+// persistence identity/time. The owner-scoped store assigns player and attempt IDs.
 // An ineligible transition returns nullopt with an empty error.
 std::optional<RunResult> BuildCompletedRun(const CompletedRunContext& completion,
                                            std::string& error);

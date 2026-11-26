@@ -81,3 +81,7 @@ add_test(NAME locus_portable_package_validation COMMAND locus_package_tests)
 add_executable(locus_result_model_tests tests/run_result_model_tests.cpp)
 target_link_libraries(locus_result_model_tests PRIVATE locus_result_model)
 add_test(NAME locus_portable_result_model COMMAND locus_result_model_tests)
+
+add_executable(locus_player_profile_tests tests/player_profile_tests.cpp)
+target_link_libraries(locus_player_profile_tests PRIVATE locus_player_profile)
+add_test(NAME locus_local_player_identity COMMAND locus_player_profile_tests)

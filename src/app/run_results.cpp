@@ -1,5 +1,6 @@
 #include "app/run_results.h"
 #include "app/atomic_text_file.h"
+#include "app/local_identity.h"
 
 #include "core/utf8.h"
 #include "core/chart_json.h"
@@ -47,7 +48,7 @@ std::int64_t ClockMs() {
 
 Json Encode(const RunResult& r) {
     Json result{
-        {"version", 2}, {"id", r.id}, {"songSetId", r.songSetId},
+        {"version", 3}, {"id", r.id}, {"playerId", r.playerId}, {"songSetId", r.songSetId},
         {"difficultyId", r.difficultyId},
         {"gameplayRevision", r.gameplayRevision},
         {"judgementVersion", r.judgementVersion},
@@ -74,10 +75,11 @@ Json Encode(const RunResult& r) {
 
 bool Decode(const Json& obj, RunResult& out) {
     try {
-        if (!obj.is_object() || obj.at("version").get<int>() != 2)
+        if (!obj.is_object() || obj.at("version") != 3)
             return false;
         RunResult r;
         r.id = obj.at("id").get<std::string>();
+        r.playerId = obj.at("playerId").get<std::string>();
         r.songSetId = obj.at("songSetId").get<std::string>();
         r.difficultyId = obj.at("difficultyId").get<std::string>();
         r.gameplayRevision = obj.at("gameplayRevision").get<std::string>();
@@ -173,11 +175,15 @@ std::string FormatRunTimestamp(std::int64_t ms) {
 }
 
 fs::path RunResultsStore::Directory(const RunKey& key) const {
-    return root_ / PathToken(key);
+    return root_ / playerId_ / PathToken(key);
 }
 
 bool RunResultsStore::Save(RunResult& r, std::string& error,
                            const core::ReplayTrace* replay) const {
+    if (!core::ValidDifficultyId(playerId_) || (!r.playerId.empty() && r.playerId!=playerId_)) {
+        error="No valid local player or result belongs to another player.";
+        return false;
+    }
     // Do not copy a reference to another attempt's replay. Serialize once
     // before allocating an ID. Failure to record must not lose a valid score.
     r.hasReplay = false;
@@ -190,7 +196,10 @@ bool RunResultsStore::Save(RunResult& r, std::string& error,
     }
     if (r.completedAtMs == 0) r.completedAtMs = ClockMs();
     r.accuracyPercent = r.grades.AccuracyPercent();
-    if (r.id.empty()) r.id = std::to_string(r.completedAtMs);
+    r.playerId=playerId_;
+    // Save is a new attempt operation, not an update by caller-supplied ID.
+    try { r.id=NewLocalId(); }
+    catch (const std::exception& e) { error=e.what(); return false; }
     if (!ValidRunResult(r)) {
         error = "Invalid completed result.";
         return false;
@@ -202,14 +211,13 @@ bool RunResultsStore::Save(RunResult& r, std::string& error,
         error = "Results directory could not be created: " + ec.message();
         return false;
     }
-    for (int suffix = 0; suffix < 1000; ++suffix) {
-        const std::string fileId = r.id + "-" + std::to_string(suffix);
-        RunResult candidate = r;
-        candidate.id = fileId;
-        if (!ValidRunResult(candidate)) {
-            error = "Result identifier exceeds the supported length.";
-            return false;
+    for (int attempt=0; attempt<32; ++attempt) {
+        if (attempt!=0) {
+            try { r.id=NewLocalId(); }
+            catch (const std::exception& e) { error=e.what(); return false; }
         }
+        const auto& fileId=r.id;
+        RunResult candidate=r;
         const fs::path dest = dir / (fileId + ".json");
         const fs::path replayPath = dir / (fileId + ".locus-replay");
         if (!replayBytes.empty()) {
@@ -249,7 +257,8 @@ bool RunResultsStore::Save(RunResult& r, std::string& error,
 bool RunResultsStore::LoadReplay(const RunResult& run, core::ReplayTrace& replay,
                                  std::string& error) const {
     error.clear();
-    if (!run.hasReplay || !ValidRunResult(run)) {
+    if (!core::ValidDifficultyId(playerId_) || run.playerId!=playerId_ ||
+        !run.hasReplay || !ValidRunResult(run)) {
         error = "No replay for this attempt.";
         return false;
     }
@@ -290,6 +299,7 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
                                              const std::atomic<bool>* cancelled) const {
     std::vector<RunResult> records;
     error.clear();
+    if (!core::ValidDifficultyId(playerId_)) { error="Local player unavailable."; return records; }
     if (key.Empty()) return records;
     const fs::path dir = Directory(key);
     std::error_code ec;
@@ -340,6 +350,7 @@ std::vector<RunResult> RunResultsStore::Load(const RunKey& key,
             Json json = Json::parse(stream);
             RunResult record;
             if (!Decode(json, record) ||
+                record.playerId != playerId_ ||
                 record.songSetId != key.songSetId ||
                 record.difficultyId != key.difficultyId ||
                 entry.path().stem().string() != record.id) continue;

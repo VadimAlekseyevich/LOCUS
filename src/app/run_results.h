@@ -16,8 +16,8 @@ namespace locus::app {
 // Disk I/O happens only on completion/selection; never per judging frame.
 class RunResultsStore {
 public:
-    explicit RunResultsStore(std::filesystem::path root)
-        : root_(std::move(root)) {}
+    RunResultsStore(std::filesystem::path root,std::string playerId)
+        : root_(std::move(root)), playerId_(std::move(playerId)) {}
 
     // Creates a new attempt file without overwriting an existing one.
     bool Save(RunResult& result, std::string& error,
@@ -35,6 +35,7 @@ public:
 private:
     std::filesystem::path Directory(const RunKey& key) const;
     std::filesystem::path root_;
+    const std::string playerId_;
 };
 
 // Returns true only after a durable result is written. On ineligible calls

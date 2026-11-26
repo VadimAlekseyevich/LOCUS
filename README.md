@@ -82,7 +82,7 @@ Native menus omit persistent title/back bars: Esc navigates back, except during 
 
 ## Local data
 
-Files live under `%LOCALAPPDATA%/LOCUS/`: `Songs/`, `Trash/`, `Results/`, `Skins/Profiles/`, `Skins/Trash/`, `Skins/active.locus-skin.json` and `settings.json`. Text uses UTF-8; Windows filesystem paths use Unicode APIs. Current pre-release contracts:
+Files live under `%LOCALAPPDATA%/LOCUS/`: `Songs/`, `Trash/`, `player.json`, `Results/<playerId>/`, `Skins/Profiles/`, `Skins/Trash/`, `Skins/active.locus-skin.json` and `settings.json`. Text uses UTF-8; Windows filesystem paths use Unicode APIs. Current pre-release contracts:
 
 | Data | Version | Reference |
 | --- | --- | --- |
@@ -90,7 +90,8 @@ Files live under `%LOCALAPPDATA%/LOCUS/`: `Songs/`, `Trash/`, `Results/`, `Skins
 | Song Set manifest | formatVersion 2 | [Storage](docs/SONG_SETS.md) |
 | Skins | version 2 | [Example](examples/default.locus-skin.json) |
 | Settings | version 3 | [GameSettings](src/app/game_settings.h) |
-| Results | version 2; judgement rules 1 | [Results](docs/RESULTS.md) |
+| Local player | version 1; persistent local 128-bit ID | [Results](docs/RESULTS.md) |
+| Results | version 3; judgement rules 1 | [Results](docs/RESULTS.md) |
 | Scoring replay | LOCREP04 | [Results](docs/RESULTS.md#scoring-replays-locrep04) |
 
 Backward compatibility before the first release is not guaranteed. Back up local data before format changes. The current portable ZIP is validated in CI, but clean-machine interactive acceptance and a tagged release remain pending.

@@ -59,8 +59,7 @@ bool ValidResultData(const RunResult& r) noexcept {
 } // namespace
 
 bool ValidRunResult(const RunResult& r) noexcept {
-    return !r.id.empty() && r.id.size()<=80 &&
-        r.id.find_first_not_of("0123456789-")==std::string::npos &&
+    return core::ValidDifficultyId(r.id) && core::ValidDifficultyId(r.playerId) &&
         r.completedAtMs>0 && ValidResultData(r);
 }
 

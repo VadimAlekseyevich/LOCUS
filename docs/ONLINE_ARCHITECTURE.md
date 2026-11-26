@@ -13,7 +13,7 @@ remain subject to design review. It is not an API specification.
 | `locus_core` / `LOCUS_BUILD_APP=OFF` | Portable chart parser, exact timestamps, judge, mods, replay codec, Difficulty V4 | Portable score verification entry point implemented; authoritative package/session input validation still needed |
 | Song Set ID + difficulty ID | Stable local identity through rename/copy/import | Server-owned published IDs, ownership and revision mapping |
 | `ChartGameplayRevision` | Detect changed gameplay within local history | Local fingerprint is unchanged; SHA-256 publication content descriptor binds effective chart and exact audio bytes, not ownership |
-| Results v2 + LOCREP04 | Immutable summaries and separate replay data | Portable local result model extracted; player identity, global attempt identity and submission status pending |
+| Results v3 + LOCREP04 | Immutable summaries and separate replay data | Portable local result model, persistent local player ID and random 128-bit attempt ID implemented; authenticated account mapping and submission status pending |
 | `.locuspack` | Portable package with shared audio, metadata, optional background and charts | Portable structural validation shared with desktop; quotas, full media inspection and immutable publication pending |
 | Async catalog/history | Cached, cancellable off-frame data loading | Network I/O, paging, cancellation, session ownership and durable submission retries |
 | Local file transactions | Protect local edits and recoverable import | Not a server persistence layer; Windows-only chart/byte I/O and local paths must not leak into API |
@@ -148,7 +148,7 @@ recoverable and rebuildable from verified attempts.
 ## 5. Accounts and native network integration
 
 Desktop remains playable while signed out or the service is unavailable.
-A local profile identity and authenticated server user ID are distinct.
+A local profile identity and authenticated server user ID are distinct. The desktop currently loads or creates one default local player in `player.json` and scopes result storage/history/replay access to that owner for the entire process. Result v3 records carry `playerId` and a random 128-bit attempt ID. Old unowned results remain on disk without migration. A future switcher must freeze the owner at launch, cancel old history requests and recreate the owner-scoped adapters; there is no switching UI or sign-in yet.
 Scope history, cached account data and queued submissions to the correct
 owner. Account switching cannot change the owner of an in-flight attempt.
 
@@ -195,7 +195,7 @@ No legal workflow is currently operational.
 | --- | --- | --- |
 | W0 | Documentation and portable rules boundary | Core-only CI; no future capability described as implemented |
 | W1 | Portable verifier + package validation boundary (verifier, structural package validation and SHA-256 content descriptor implemented; media/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
-| W2 | Local run/profile ownership and PP contract (portable attempt model implemented) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
+| W2 | Local run/profile ownership and PP contract (portable attempt model, local identity and owner-scoped storage implemented; PP and profile UI pending) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
 | W3 | API/data contract and private backend | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
 | W4 | Private vertical slice | Publish one authorized test map, play, submit replay, server rejudge, show leaderboard and profile through the same API; retry idempotency |
 | W5 | Catalog/download/upload workflow | Immutable revision mapping, paging, cancellation, safe install, quotas, rollback and fault recovery |

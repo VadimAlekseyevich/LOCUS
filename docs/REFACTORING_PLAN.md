@@ -66,7 +66,7 @@
 
 ### T06. Стабильная идентичность сложности и версии результата
 
-**Состояние.** Постоянный difficultyId в chart v4, gameplayRevision и judgementVersion в Results v2; rename сохраняет ID, copy/new создают новый. Пакеты объединяются по setId/difficultyId.
+**Состояние.** Постоянный difficultyId в chart v4, gameplayRevision и judgementVersion в Results v3 (playerId и случайный 128-bit attempt ID); rename сохраняет ID, copy/new создают новый. Пакеты объединяются по setId/difficultyId.
 
 **Приёмка / оставшееся.** Полная приёмка rename → перезапуск → история, copy → независимая история, смена содержимого/правил → отметка старой ревизии, collision/import/restore. TEST и незавершённый заход не публикуются; фиксированные HT/DT, моды и seed RD сохраняются; старый variable rate обозначен. Реплей проверяется тем же судьёй; AT не сохраняет результат, перемотка разрешена только зрителю.
 

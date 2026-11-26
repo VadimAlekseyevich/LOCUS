@@ -1,3 +1,4 @@
+#include "app/player_profile.h"
 #include "core/route.h"
 #include "core/judgement.h"
 #include "app/demo_transport.h"
@@ -365,8 +366,16 @@ int main(int argc, char** argv) try {
     bool playCameFromEditor = false;
     std::filesystem::path playedChartPath;
     std::filesystem::path playedBackgroundPath;
-    const locus::app::RunResultsStore resultsStore(userData / L"Results");
-    locus::app::AsyncResultHistory historyReader(userData / L"Results");
+    locus::app::LocalPlayerProfile localPlayer;
+    std::string playerError;
+    if (!locus::app::LoadOrCreateLocalPlayer(userData,localPlayer,playerError)) {
+        libraryUi.notice="LOCAL PLAYER UNAVAILABLE: "+playerError;
+        std::cerr<<libraryUi.notice<<'\n';
+    }
+    // The owner is immutable for this process/session. Future account
+    // switching must replace both adapters at a session boundary.
+    const locus::app::RunResultsStore resultsStore(userData / L"Results",localPlayer.id);
+    locus::app::AsyncResultHistory historyReader(userData / L"Results",localPlayer.id);
     locus::app::RunKey playedRunKey;
     std::string playedGameplayRevision;
     std::string playedSongTitle = "BUILT-IN DEMO";

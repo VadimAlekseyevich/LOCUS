@@ -10,17 +10,18 @@ namespace locus::app {
 
 bool AsyncResultHistory::Start(std::string& status) {
     const auto root = root_;
+    const auto playerId=playerId_;
     const RunKey key = latest_;
     const std::uint64_t ticket = requested_;
     auto stop = std::make_shared<std::atomic<bool>>(false);
     try {
         worker_ = std::async(std::launch::async,
-            [root, key, ticket, stop]() -> Outcome {
+            [root, playerId, key, ticket, stop]() -> Outcome {
                 Outcome outcome;
                 outcome.key = key;
                 outcome.ticket = ticket;
                 try {
-                    RunResultsStore store(root);
+                    RunResultsStore store(root,playerId);
                     outcome.records = store.Load(key, outcome.status, stop.get());
                     outcome.success = outcome.status.empty();
                 } catch (const std::exception& e) {

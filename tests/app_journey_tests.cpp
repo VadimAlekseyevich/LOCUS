@@ -45,7 +45,7 @@ int main() {
 
     bool ok = true;
     TempResults profile;
-    app::RunResultsStore disk(profile.root / "Results");
+    app::RunResultsStore disk(profile.root / "Results","11111111111111111111111111111111");
     app::AppState nav;
 
     // Real Home navigation: selecting the editor is not implicitly Play.

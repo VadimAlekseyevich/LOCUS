@@ -396,7 +396,7 @@ int main() {
     // An actual EditorSession::BeginTest gives GameSession a TestOrigin;
     // even a completely resolved judge is not eligible for a saved attempt.
     judge.FinishRemainingMisses();
-    app::RunResultsStore transientResults(profile.root / "Results");
+    app::RunResultsStore transientResults(profile.root / "Results","11111111111111111111111111111111");
     const app::RunKey testKey{
         library.Songs().front().id,
         library.Songs().front().charts[0].metadata.difficultyId};
@@ -657,7 +657,7 @@ int main() {
     const auto expectedStats=scoredJudge.Statistics();
     ok &= Check(trace!=nullptr,"completed attempt retains spectator scoring trace");
 
-    app::RunResultsStore results(profile.root / "Results");
+    app::RunResultsStore results(profile.root / "Results","11111111111111111111111111111111");
     app::CompletedRunContext finish{
         scoredCompleted, false, false,
         {songs[0].id, savedPayload.difficultyId},

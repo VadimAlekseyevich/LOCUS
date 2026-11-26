@@ -21,6 +21,8 @@ using locus::app::RunResultsStore;
 using locus::app::RunResult;
 using locus::app::RunKey;
 
+constexpr const char* kOwner = "dddddddddddddddddddddddddddddddd";
+constexpr const char* kOtherOwner = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 constexpr const char* kEasyId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 constexpr const char* kHardId = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 constexpr const char* kParallelId = "cccccccccccccccccccccccccccccccc";
@@ -40,7 +42,7 @@ int main(int argc, char** argv) {
             static_cast<DWORD>(parent.size()));
         if (length == 0 || length >= parent.size()) return 2;
         parent.resize(length);
-        RunResultsStore writer(fs::path(parent) / "Results");
+        RunResultsStore writer(fs::path(parent) / "Results",kOwner);
         RunResult run;
         run.id = "1760000000000"; // deliberately identical between processes
         run.songSetId = "parallel-set";
@@ -76,7 +78,7 @@ int main(int argc, char** argv) {
     ok &= Check(RunResult{}.judgementVersion ==
                 locus::core::kJudgementRulesVersion,
                 "new score records inherit the authoritative judgement revision");
-    RunResultsStore store(root / "Results");
+    RunResultsStore store(root / "Results",kOwner);
     std::string error;
     RunResult first;
     first.songSetId = "set-123";
@@ -110,14 +112,22 @@ int main(int argc, char** argv) {
     other.id.clear();
     other.difficultyId = kHardId;
     ok &= Check(store.Save(other, error) &&
-                // Equal filenames are legal in different RunKey directories.
-                // Identifying the history directory by filename alone would
-                // mistake Hard for Easy and break the obstruction regression.
-                other.id == first.id &&
+                other.id != first.id && other.playerId==kOwner &&
                 store.Load({"set-123", kHardId}, error).size() == 1 &&
                 store.Load({"set-123", kEasyId}, error).size() == 2 &&
                 store.Load({"different-set", kEasyId}, error).empty(),
                 "records are isolated by set identity and persistent difficulty ID");
+
+    RunResultsStore otherStore(root/"Results",kOtherOwner);
+    RunResult foreign=first;
+    ok &= Check(otherStore.Load({"set-123",kEasyId},error).empty() &&
+                !otherStore.Save(foreign,error),"another player cannot see or reassign existing scores");
+    foreign.playerId.clear();
+    ok &= Check(otherStore.Save(foreign,error) && foreign.playerId==kOtherOwner &&
+                foreign.id!=first.id &&
+                otherStore.Load({"set-123",kEasyId},error).size()==1 &&
+                store.Load({"set-123",kEasyId},error).size()==2,
+                "separate player histories are isolated");
 
     RunResult renamedSong = first;
     renamedSong.id.clear();
@@ -151,15 +161,11 @@ int main(int argc, char** argv) {
     // Deliberate corruption and abandoned .pending writes cannot create
     // phantom attempts nor prevent valid results from loading.
     fs::path easyFolder;
-    for (const auto& item : fs::directory_iterator(root / "Results")) {
+    for (const auto& item : fs::directory_iterator(root / "Results" / kOwner)) {
         if (fs::is_directory(item.path())) {
             bool containsEasy = false;
             for (const auto& file : fs::directory_iterator(item.path())) {
-                // Result filenames need only be unique within one
-                // difficulty. The first and the separate Hard result use
-                // the same timestamp-based ID, so matching first.id here
-                // can select the WRONG history directory on Windows.
-                // second.id was saved only for the Easy difficulty.
+                // Find the difficulty directory by its known attempt ID.
                 if (file.path().filename() == (second.id + ".json"))
                     containsEasy = true;
             }
@@ -280,7 +286,7 @@ int main(int argc, char** argv) {
     // History loads on a worker and only the latest selected difficulty may
     // publish. Repeated requests must cancel/discard earlier results.
     {
-        locus::app::AsyncResultHistory reader(root / "Results");
+        locus::app::AsyncResultHistory reader(root / "Results",kOwner);
         std::string status;
         const RunKey easyKey{"set-123", kEasyId};
         const RunKey hardKey{"set-123", kHardId};

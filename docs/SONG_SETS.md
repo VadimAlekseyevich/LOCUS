@@ -158,7 +158,7 @@ Back up **%LOCALAPPDATA%\LOCUS** before changing chart/storage formats.
 ## Pre-release compatibility
 
 Before the first public release, **backwards compatibility is not promised**.
-Current formats: chart v4, Song Set manifest v2, skin v2, settings v3, Results v2 and replay LOCREP04. Unsupported versions are rejected.
+Current formats: chart v4, Song Set manifest v2, skin v2, settings v3, Results v3, local player v1 and replay LOCREP04. Unsupported versions are rejected.
 
 ## Remaining limitations
 
