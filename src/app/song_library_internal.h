@@ -16,6 +16,6 @@ std::string FilenamePart(std::string);
 std::string SongDisplayTitle(const std::filesystem::path&);
 void SortChartDifficulties(std::vector<LibraryChart>&);
 // Under the Song Set lock, reject a stale index or a chart added/changed
-// externally. Used by both shared BPM edits and portable set export.
+// externally. Used by shared BPM edits; export validates live disk data.
 bool SameSongSetFiles(const LibrarySong&, std::string& error);
 } // namespace locus::app::detail

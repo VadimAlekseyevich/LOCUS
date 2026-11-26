@@ -785,10 +785,18 @@ int main(int argc,char** argv) {
     ok &= Check(!ec &&
                 !library.ExportPackage(easyInstalled.parent_path(),
                                        packageFile, error) &&
-                error.find("changed on disk") != std::string::npos &&
+                error.find("duplicate difficulty ID") != std::string::npos &&
                 !fs::exists(packageFile),
-                "stale Song Set index cannot export a partial ZIP package");
+                "live export rejects duplicate difficulty IDs rather than exporting a partial set");
     fs::remove(unindexedChart, ec);
+    ec.clear();
+    // A valid saved chart edit must not require a catalog refresh to export.
+    const auto originalExportChart=Read(easyInstalled);
+    const auto oldExportTime=fs::last_write_time(easyInstalled,ec);
+    fs::last_write_time(easyInstalled,oldExportTime-std::chrono::seconds(5),ec);
+    ok &= Check(!ec && library.ExportPackage(easyInstalled.parent_path(),packageFile,error),
+                "export reads saved files even when catalog timestamp is stale");
+    fs::last_write_time(easyInstalled,oldExportTime,ec);
     ec.clear();
     ok &= Check(library.ExportPackage(easyInstalled.parent_path(),
                                      packageFile, error) &&

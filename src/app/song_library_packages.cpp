@@ -37,38 +37,58 @@ bool SongLibrary::ExportPackage(const fs::path& setFolder,
     FolderWriteLock libraryLock, setLock;
     if (!libraryLock.Acquire(root, error) ||
         !setLock.Acquire(setFolder, error)) return false;
-    if (!SameSongSetFiles(*selected, error)) return false;
-    // Never export a cached set identity against a changed manifest. The
-    // authoritative timing and shared audio must match the indexed charts.
-    SongSetManifest published;
-    if (!LoadSongSetManifest(setFolder / L"set.locus.json", published, error))
-        return false;
-    if (published.id != selected->id ||
-        published.audioFile != selected->audioFile.filename().u8string() ||
-        published.tempoMap != selected->tempoMap) {
-        error = "Song Set manifest changed on disk; refresh before exporting.";
+    // Export is a read-only snapshot of the saved Song Set, not a
+    // mutation based on cached chart metadata. Enumerate and validate
+    // the authoritative files while holding the same locks as writers.
+    const auto folder=fs::canonical(setFolder,ec);
+    if (ec || !Inside(root,folder)) {
+        error="Song Set resolves outside the library.";
         return false;
     }
+    SongSetManifest published;
+    if (!LoadSongSetManifest(folder / L"set.locus.json",published,error))
+        return false;
+    if (published.id!=selected->id) {
+        error="Song Set identity changed on disk; refresh before exporting.";
+        return false;
+    }
+    const auto sharedAudio=folder/fs::u8path(published.audioFile);
     std::set<std::string> exportedIds;
     std::vector<fs::path> charts;
-    for (const auto& chart : selected->charts) {
+    for (fs::directory_iterator it(folder,ec),end; !ec && it!=end; it.increment(ec)) {
+        const auto file=it->path();
+        if (file.extension()!=L".json" || file.filename()==L"set.locus.json") continue;
+        if (it->is_symlink(ec) || !it->is_regular_file(ec) || ec) {
+            error="Invalid difficulty file: "+file.filename().u8string();
+            return false;
+        }
         core::LoadedChart parsed;
         std::wstring audio;
-        if (!OpenChartWithAudioPath(chart.file.wstring(), parsed, audio, error))
+        if (!OpenChartWithAudioPath(file.wstring(),parsed,audio,error)) {
+            error=file.filename().u8string()+": "+error;
             return false;
-        if (!fs::equivalent(fs::path(audio), selected->audioFile, ec) || ec) {
-            error = "Song Set has a difficulty using different audio.";
+        }
+        if (!fs::equivalent(fs::path(audio),sharedAudio,ec) || ec) {
+            error=file.filename().u8string()+": difficulty uses different audio.";
             return false;
         }
         if (!core::ValidDifficultyId(parsed.difficultyId) ||
-            parsed.difficultyId != chart.metadata.difficultyId ||
             !exportedIds.insert(parsed.difficultyId).second) {
-            error = "Song Set chart IDs changed on disk; refresh before exporting.";
+            error=file.filename().u8string()+": missing or duplicate difficulty ID.";
             return false;
         }
-        charts.push_back(chart.file);
+        if (!ApplySongTiming(parsed,published.tempoMap,error)) {
+            error=file.filename().u8string()+": "+error;
+            return false;
+        }
+        charts.push_back(file);
     }
-    return ExportSongSetArchive(setFolder, charts, archive, error);
+    if (ec) {
+        error="Cannot enumerate Song Set difficulties: "+ec.message();
+        return false;
+    }
+    std::sort(charts.begin(),charts.end());
+    return ExportSongSetArchive(folder,charts,archive,error);
 }
 
 bool SongLibrary::ImportPackage(const fs::path& archive,
