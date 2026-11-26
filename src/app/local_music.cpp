@@ -141,7 +141,7 @@ void LocalMusic::StartAt(double monotonicSeconds, double audioSeconds) {
     finished_ = false;
     startPositionSeconds_ = audioSeconds;
     activeStretch_ = false;
-    if (speed_ < 0.999 && backend_->SupportsPitchPreserving()) {
+    if (std::abs(speed_ - 1.0) > 0.001 && backend_->SupportsPitchPreserving()) {
         if (!stretch_) stretch_ = std::make_unique<PitchPreservingStream>();
         if (!stretch_->Ready()) {
             std::string error;
@@ -197,7 +197,7 @@ void LocalMusic::SetVolume(float level) {
 }
 
 void LocalMusic::SetSpeed(double fraction, double monotonicSeconds) {
-    if (!std::isfinite(fraction) || fraction < 0.01 || fraction > 1.0 ||
+    if (!std::isfinite(fraction) || fraction < 0.01 || fraction > 1.5 ||
         std::abs(fraction - speed_) < 0.000001) return;
     const bool wasPlaying = playing_, wasPaused = paused_;
     const double position = wasPlaying
@@ -254,7 +254,7 @@ double LocalMusic::SongSeconds(double monotonicSeconds) const noexcept {
     // The raylib stream's consumed PCM frame position is the source of truth
     // for slowed authoring playback. A second synthetic rate clock drifts
     // ahead when audio output stalls, making authored turns seem late.
-    if (ready_ && playing_ && speed_ < 0.999 &&
+    if (ready_ && playing_ && std::abs(speed_ - 1.0) > 0.001 &&
         backend_->HasConsumedAudioCursor()) {
         // The SoundTouch output is written at fixed hardware sample rate;
         // its chart-time advances at the requested musical tempo.

@@ -153,9 +153,9 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay,
                       TextFormat("VARIABLE RATE / LAST %.0f%%",
                                  saved->practiceRate * 100),
                       {94, 346}, 13, sky);
-    else if (saved && saved->practiceRate < 0.999)
+    else if (saved && std::abs(saved->practiceRate - 1.0) > 0.001)
         DrawTextLabel(font,
-                      TextFormat("PRACTICE %.0f%%", saved->practiceRate * 100),
+                      TextFormat("%s %.0f%%", saved->practiceRate < 1.0 ? "HT" : "DT", saved->practiceRate * 100),
                       {94, 346}, 13, sky);
 
     const auto item = [&](const char* name, int value, float y, Color tint) {

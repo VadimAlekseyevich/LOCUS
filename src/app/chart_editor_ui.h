@@ -81,7 +81,7 @@ struct EditorControls {
     // note/tempo editing retain their original semantics.
     bool nativeChrome = false;
     int speedIndex = -1; // Legacy speed key bindings.
-    int speedPercent = 0; // RmlUi numeric transport rate, 1..100; 0=no change.
+    int speedPercent = 0; // Numeric transport rate, 1..150; 0=no change.
     std::string typedUtf8;
 };
 
@@ -176,6 +176,7 @@ struct EditorUiState {
     int comparisonFocusedSlot = 0; // Stable physical pane index of focused chart, [0..comparisonFiles.size()].
     bool comparisonPickerOpen = false;
     int comparisonPickerFirst = 0;
+    int previewRatePercent = 100; // Independent of selected Play mods.
     bool rateDropdownOpen = false; // Preview transport rate, all editor tabs.
     int timelineZoomIndex = 3; // Default 36 px/beat; zoom changes view only.
     // Exact song-time anchor set by cross-difficulty focus. Each chart's

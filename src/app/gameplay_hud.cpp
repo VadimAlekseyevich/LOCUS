@@ -86,7 +86,7 @@ void DrawGameplayHud(Font font, const GameplayHudLayout& l,
     std::snprintf(value, sizeof(value), "%.2f%%", stats.grades.AccuracyPercent());
     Text(font,value,l.accuracy,0,34,u,text,Align::Right);
     if (stats.practiceRate < 0.999 || stats.practiceRate > 1.001) {
-        std::snprintf(value, sizeof(value), "Practice  %.0f%%", stats.practiceRate*100.0);
+        std::snprintf(value, sizeof(value), "%s  %.0f%%", stats.practiceRate < 1.0 ? "HT" : "DT", stats.practiceRate*100.0);
         Text(font,value,l.accuracy,41,12,u,muted,Align::Right);
     }
 

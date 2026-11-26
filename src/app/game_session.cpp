@@ -15,6 +15,11 @@ void GameSession::Start(bool customChart, double now) {
     audioEndedAt_ = -1.0;
     audioEndSongSeconds_ = 0.0;
     judge_.Reset();
+    const int percent = replay_ ? replay_->ratePercent : ratePercent_;
+    if (!testOrigin_) {
+        if (customChart) local_.SetSpeed(percent / 100.0, now);
+        else demo_.SetSpeed(percent / 100.0, now);
+    }
     if (replay_) {
         judge_.SetOffsetSeconds(replay_->offsetSeconds);
         replayCursor_.Reset();
@@ -38,7 +43,7 @@ void GameSession::Start(bool customChart, double now) {
     } else {
         demo_.Start(now);
     }
-    if (!testOrigin_ && !replay_) judge_.BeginReplayCapture();
+    if (!testOrigin_ && !replay_) judge_.BeginReplayCapture(percent);
 }
 
 void GameSession::Restart(bool customChart, double now) {
@@ -66,13 +71,6 @@ void GameSession::TogglePause(bool customChart, double now) {
     }
 }
 
-void GameSession::SetPracticeSpeed(bool customChart, double speed, double now) {
-    if (!customChart) return;
-    const double previous = local_.Speed();
-    local_.SetSpeed(speed, now);
-    if (local_.Speed() != previous) variablePracticeRate_ = true;
-}
-
 void GameSession::UpdateReplay(bool customChart, double now) {
     if (customChart ? local_.Paused() : demo_.Paused()) return;
     if (customChart) local_.Update(now);
@@ -80,7 +78,7 @@ void GameSession::UpdateReplay(bool customChart, double now) {
     const bool finished = customChart ? local_.Finished() : demo_.Finished();
     const bool playing = customChart ? local_.Playing() : demo_.Playing();
     if (!playing && !finished) return;
-    const double rate = customChart ? local_.Speed() : 1.0;
+    const double rate = customChart ? local_.Speed() : demo_.Speed();
     double songSeconds = customChart ? local_.AudioSeconds(now) : demo_.SongSeconds(now);
     if (finished) {
         if (audioEndedAt_ < 0.0) {
@@ -115,7 +113,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
     // GetMusicTimePlayed for each historical key timestamp returns the same
     // *current* cursor; projecting from this sample preserves inter-key
     // spacing even if a decoder only exposes buffer-stepped positions.
-    const double playbackRate = customChart ? local_.Speed() : 1.0;
+    const double playbackRate = customChart ? local_.Speed() : demo_.Speed();
     const SampledSongTime inputSongTime{
         now, customChart ? local_.AudioSeconds(now) : demo_.SongSeconds(now),
         playbackRate
@@ -144,7 +142,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 hitSoundCount_=0;
                 if (customChart) local_.Update(now);
                 else demo_.Update(now);
-                judge_.Advance(CalibratedTime(*target, customChart ? local_.Speed() : 1.0));
+                judge_.Advance(CalibratedTime(*target, customChart ? local_.Speed() : demo_.Speed()));
                 return;
             }
         }
@@ -194,11 +192,11 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
             judge_.Advance(CalibratedTime(
                 audioEndSongSeconds_ +
                 std::max(0.0, now - audioEndedAt_) *
-                    (customChart ? local_.Speed() : 1.0),
-                customChart ? local_.Speed() : 1.0));
+                    (customChart ? local_.Speed() : demo_.Speed()),
+                customChart ? local_.Speed() : demo_.Speed()));
         } else {
             judge_.Advance(CalibratedTime(
-                songTime, customChart ? local_.Speed() : 1.0));
+                songTime, customChart ? local_.Speed() : demo_.Speed()));
         }
     }
 }

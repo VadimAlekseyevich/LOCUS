@@ -27,12 +27,10 @@ namespace locus::app {
 namespace {
 const char* kNames[kGameActionCount] = {
     "UP", "RIGHT", "DOWN", "LEFT", "PAUSE / MENU", "RETRY", "LEAVE LEVEL",
-    "PRACTICE 100%", "PRACTICE 75%", "PRACTICE 50%", "PRACTICE 25%",
-    "PRACTICE 10%", "SPEED +", "SPEED -", "PREVIEW +", "PREVIEW -"
+    "SPEED +", "SPEED -", "PREVIEW +", "PREVIEW -"
 };
 const char* kJsonKeys[kGameActionCount] = {
     "up", "right", "down", "left", "pause", "retry", "home",
-    "practice100", "practice75", "practice50", "practice25", "practice10",
     "speedUp", "speedDown", "previewUp", "previewDown"
 };
 const char* kShortcutNames[kShortcutActionCount] = {

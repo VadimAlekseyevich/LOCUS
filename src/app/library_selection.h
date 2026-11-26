@@ -2,6 +2,7 @@
 
 #include "app/song_library.h"
 #include "app/run_results.h"
+#include "core/play_mods.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -55,6 +56,7 @@ struct LibraryTreeCache {
 };
 
 struct SongSelectUi {
+    core::PlayMods mods;
     // 0 = the built-in demo, 1..N = permanent user Songs.
     int selectedSong = 0;
     int selectedChart = 0;

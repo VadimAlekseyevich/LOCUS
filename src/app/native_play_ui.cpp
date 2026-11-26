@@ -12,6 +12,7 @@
 #include <cmath>
 #include <iomanip>
 #include <sstream>
+#include <utility>
 
 namespace locus::app {
 namespace {
@@ -145,6 +146,10 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
     const std::string action =
         target->GetAttribute<Rml::String>("data-action", "");
     if (action == "play") pending_.playSelected = true;
+    else if (action == "mod-ht") currentUi_->mods.Toggle(core::RateMod::HalfTime);
+    else if (action == "mod-dt") currentUi_->mods.Toggle(core::RateMod::DoubleTime);
+    else if (action == "mod-minus") currentUi_->mods.Adjust(-1);
+    else if (action == "mod-plus") currentUi_->mods.Adjust(1);
     else if (action == "edit") pending_.editSelected = true;
     else if (action == "rescan") pending_.refresh = true;
     else if (action == "import") pending_.import = true;
@@ -173,6 +178,12 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
 }
 
 void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
+    SetText("mod-ht-label", "HT " + std::to_string(ui.mods.halfTimePercent) + "%");
+    SetText("mod-dt-label", "DT " + std::to_string(ui.mods.doubleTimePercent) + "%");
+    for (const auto& item : {std::pair{"mod-ht",core::RateMod::HalfTime},
+                             std::pair{"mod-dt",core::RateMod::DoubleTime}})
+        if (auto* button = document_->GetElementById(item.first))
+            button->SetClass("selected", ui.mods.rateMod == item.second);
     const LibrarySong* song = ui.selectedSong > 0 &&
         ui.selectedSong <= static_cast<int>(library.Songs().size())
         ? &library.Songs()[static_cast<std::size_t>(ui.selectedSong - 1)]
@@ -319,7 +330,10 @@ void NativePlayUi::RebuildResults(SongSelectUi& ui) {
              << "'>" << name << "</span><span class='button-label result-accuracy'>"
              << Accuracy(result.accuracyPercent)
              << "</span><span class='button-label result-combo'>"
-             << FormatRunCombo(result) << "</span></button>";
+             << FormatRunCombo(result) << "</span><span class='button-label result-mod'>"
+             << (result.variablePracticeRate ? "VAR" : core::RateModCode(core::RateModFor(
+                    static_cast<int>(std::lround(result.practiceRate*100)))))
+             << "</span></button>";
     }
     if (window.after > 0.0f)
         html << "<div class='result-spacer' style='height:"
@@ -376,7 +390,9 @@ void NativePlayUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
     // must never recreate all rows or drop scroll position/focus.
     std::ostringstream summary;
     summary << library.Revision() << ':' << ui.selectedSong << ':'
-            << ui.selectedChart << ':' << ui.notice;
+            << ui.selectedChart << ':' << ui.notice << ':'
+            << static_cast<int>(ui.mods.rateMod) << ':' << ui.mods.halfTimePercent
+            << ':' << ui.mods.doubleTimePercent;
     if (summary.str() != lastSummarySignature_) {
         UpdateSummary(library, ui);
         lastSummarySignature_ = summary.str();

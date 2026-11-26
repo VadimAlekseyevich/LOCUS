@@ -30,7 +30,7 @@ bool ParsePercent(const std::string& raw, int& result) noexcept {
         if (c < '0' || c > '9') return false;
         value = value * 10 + static_cast<int>(c - '0');
     }
-    result = std::clamp(value, 1, 100);
+    result = std::clamp(value, 1, 150);
     return true;
 }
 bool ParseSongTime(const std::string& raw,long long& result) noexcept {
@@ -99,7 +99,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     if (auto* metronome=document_->GetElementById("editor-metronome"))
         metronome->SetClass("selected",ui.metronomeEnabled);
     lastRatePercent_ = std::clamp(
-        static_cast<int>(std::lround(rate * 100.0)), 1, 100);
+        static_cast<int>(std::lround(rate * 100.0)), 1, 150);
     if (auto* control = dynamic_cast<Rml::ElementFormControlInput*>(
             document_->GetElementById("editor-preview-rate"))) {
         const std::string number = std::to_string(lastRatePercent_);

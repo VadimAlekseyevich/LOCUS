@@ -146,7 +146,7 @@ bool ValidRunResult(const RunResult& r) noexcept {
         r.grades.Resolved() != r.notesJudged ||
         !std::isfinite(r.accuracyPercent) ||
         !std::isfinite(r.practiceRate) ||
-        r.practiceRate <= 0.0 || r.practiceRate > 1.0) return false;
+        r.practiceRate <= 0.0 || r.practiceRate > 1.5) return false;
     if (r.statistics) {
         const auto& s = *r.statistics;
         const int hits = r.notesJudged - r.grades.miss;
@@ -239,7 +239,8 @@ bool RunResultsStore::Save(RunResult& r, std::string& error,
     r.hasReplay = false;
     std::string replayBytes;
     if (replay && replay->judgementVersion == r.judgementVersion &&
-        !replay->events.empty()) {
+        !r.variablePracticeRate && !replay->events.empty() &&
+        std::abs(replay->ratePercent / 100.0 - r.practiceRate) < 1e-9) {
         try { core::EncodeReplay(*replay, replayBytes); }
         catch (...) { replayBytes.clear(); }
     }
@@ -327,7 +328,8 @@ bool RunResultsStore::LoadReplay(const RunResult& run, core::ReplayTrace& replay
         if (!in.read(bytes.data(),static_cast<std::streamsize>(bytes.size())) ||
             in.peek() != std::char_traits<char>::eof() ||
             !core::DecodeReplay(bytes,decoded) ||
-            decoded.judgementVersion != run.judgementVersion) {
+            decoded.judgementVersion != run.judgementVersion || run.variablePracticeRate ||
+             std::abs(decoded.ratePercent / 100.0 - run.practiceRate) > 1e-9) {
             error = "Invalid or incompatible replay.";
             return false;
         }
@@ -342,7 +344,8 @@ bool RunResultsStore::LoadReplay(const RunResult& run, core::ReplayTrace& replay
 bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,
                      const core::Chart& chart,
                      const std::string& loadedGameplayRevision) {
-    if (!ValidRunResult(run) ||
+    if (!ValidRunResult(run) || run.variablePracticeRate ||
+        std::abs(replay.ratePercent / 100.0 - run.practiceRate) > 1e-9 ||
         CompareRunRevision(run, loadedGameplayRevision) != RunRevisionState::Current)
         return false;
     core::TurnJudge judge(chart);

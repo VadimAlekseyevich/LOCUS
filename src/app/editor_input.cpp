@@ -67,15 +67,6 @@ EditorControls PollEditorControls(const GameSettings& settings,
     input.escape = IsKeyPressed(KEY_ESCAPE);
     input.backspace = IsKeyPressed(KEY_BACKSPACE);
     input.tab = IsKeyPressed(KEY_TAB);
-    input.speedIndex = -1;
-    if (!control && !shift) {
-        for (int i = 0; i < 5; ++i)
-            if (IsKeyPressed(settings.Key(static_cast<GameAction>(
-                    static_cast<int>(GameAction::Practice100) + i)))) {
-                input.speedIndex = i;
-                break;
-            }
-    }
     input.mouseClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     input.mouseHeld = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     input.mouseReleased = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);

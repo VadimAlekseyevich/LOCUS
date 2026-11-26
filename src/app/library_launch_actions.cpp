@@ -49,6 +49,7 @@ bool LaunchLibrarySelection(const LibraryLaunchContext& ctx,
                 ctx.ui.notice = "EDIT FAILED: " + ctx.error;
             return false;
         case LibraryLaunchKind::PlayDemo:
+            ctx.session.gameSession.SetRatePercent(ctx.ui.mods.RatePercent());
             ctx.session.customChart = false;
             ctx.session.activeChart = ctx.session.demoChart;
             ctx.session.chartTitle = "BUILT-IN DEMO";
@@ -77,6 +78,7 @@ bool LaunchLibrarySelection(const LibraryLaunchContext& ctx,
                 ctx.ui.notice = "PLAY FAILED: " + ctx.error;
                 return false;
             }
+            ctx.session.gameSession.SetRatePercent(ctx.ui.mods.RatePercent());
             ctx.app.screen = Screen::Play;
             return true;
         }

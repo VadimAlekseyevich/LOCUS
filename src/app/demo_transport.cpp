@@ -55,6 +55,11 @@ void DemoTransport::SetVolume(float level) {
     if (musicLoaded_) SetMusicVolume(music_, volume_);
 }
 
+void DemoTransport::SetSpeed(double rate, double now) noexcept {
+    clock_.SetRate(rate, now);
+    if (musicLoaded_) SetMusicPitch(music_, static_cast<float>(clock_.Rate()));
+}
+
 void DemoTransport::Start(double monotonicSeconds) {
     (void)StartAtAudioSeconds(0.0, monotonicSeconds);
 }

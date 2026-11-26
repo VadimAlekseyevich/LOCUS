@@ -22,7 +22,7 @@ struct ReplayEvent {
 };
 
 inline constexpr std::size_t kMaxReplayEvents = 2000000;
-inline constexpr std::size_t kReplayHeaderBytes = 24;
+inline constexpr std::size_t kReplayHeaderBytes = 28;
 inline constexpr std::size_t kReplayEventBytes = 9;
 inline constexpr std::size_t kMaxReplayBytes =
     kReplayHeaderBytes + kMaxReplayEvents * kReplayEventBytes;
@@ -31,6 +31,7 @@ struct ReplayTrace {
     int judgementVersion = 0;
     double offsetSeconds = 0.0;
     std::vector<ReplayEvent> events;
+    int ratePercent = 100; // Immutable HT/DT configuration.
 };
 
 // Frame-independent sequential delivery. Earlier timestamps arriving after

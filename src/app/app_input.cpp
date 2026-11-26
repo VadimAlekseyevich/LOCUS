@@ -67,14 +67,6 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
     input.editorOpen = shortcut(ShortcutAction::EditorOpen);
     input.editorNew = shortcut(ShortcutAction::EditorNew);
     input.editorTest = shortcut(ShortcutAction::EditorTest);
-    input.practiceSpeedIndex = -1;
-    for (int i = 0; i < 5; ++i) {
-        if (IsKeyPressed(settings.Key(static_cast<GameAction>(
-                static_cast<int>(GameAction::Practice100) + i)))) {
-            input.practiceSpeedIndex = i;
-            break;
-        }
-    }
     const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     if (currentScreen == Screen::Play && !ctrl && !shift) {

@@ -19,7 +19,7 @@ int main() {
                    {4, Heading::Left, 2000}, {5, Heading::Down, 2500}};
     TurnJudge live(chart);
     live.SetOffsetSeconds(0.25);
-    live.BeginReplayCapture();
+    live.BeginReplayCapture(125);
     for (int i = 0; i < 10000; ++i) live.Advance(0.5);
     live.PressHeading(Heading::Right, 1.08);
     live.PressHeading(Heading::Up, 0.96); // dispatch order, not sorted time
@@ -34,7 +34,7 @@ int main() {
     std::string bytes;
     ReplayTrace decoded;
     ok &= Check(EncodeReplay(*trace, bytes) && DecodeReplay(bytes, decoded) &&
-                decoded.events.size() == trace->events.size() &&
+                decoded.ratePercent == 125 && decoded.events.size() == trace->events.size() &&
                 decoded.events[1].songSeconds == 0.96 &&
                 decoded.offsetSeconds == 0.25,
                 "binary codec round trips exact double timestamps");

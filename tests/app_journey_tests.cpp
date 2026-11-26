@@ -144,7 +144,7 @@ int main() {
     // Actual two-key diagonal at 1000 ms and one left key after the
     // 2000 ms BPM transition. This path exercises the production judge.
     judge.SetOffsetSeconds(hardPayload.offsetSeconds);
-    judge.BeginReplayCapture();
+    judge.BeginReplayCapture(50);
     const auto up = judge.PressHeading(core::Heading::Up, 1.000);
     const auto right = judge.PressHeading(core::Heading::Right, 1.007);
     const auto left = judge.PressHeading(core::Heading::Left, 3.000);

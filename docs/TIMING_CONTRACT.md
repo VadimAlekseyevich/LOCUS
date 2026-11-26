@@ -75,7 +75,7 @@ every transition between two frames.
 | Crossing song time 0 | Start the physical audio stream once; preserve the overshoot and existing clock anchor |
 | Pause | Freeze song time; do not judge newly pressed keys or build up pending input |
 | Resume | Exclude paused wall time; no new origin for chart timestamps |
-| Change practice rate | Preserve the exact song position while changing slope; a rate change while paused must remain paused |
+| Change editor preview rate | Preserve the exact song position while changing slope; a rate change while paused must remain paused. PLAY and replay use a fixed rate from launch. |
 | Seek / retry | Explicit new origin, single discontinuity, clear the presentation cursor and pending physical inputs |
 | Final audio frame | `GameSession` retains a short **silent judgement tail** so late inputs can finish the last note's standard window |
 | Results | Save only the completed-outro transition, never Editor TEST or an abandoned run |

@@ -112,7 +112,7 @@ void PitchPreservingStream::StartAt(double songSeconds, double tempo,
     if (!ready_) return;
     Stop();
     processor_.clear();
-    processor_.setTempo(std::clamp(tempo, 0.01, 1.0));
+    processor_.setTempo(std::clamp(tempo, 0.01, 1.5));
     processor_.setPitch(1.0);
     cursorFrames_ = std::min<std::size_t>(
         static_cast<std::size_t>(std::max(0.0, songSeconds) * sampleRate_),

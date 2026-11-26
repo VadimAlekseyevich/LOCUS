@@ -30,6 +30,9 @@ void ApplySessionTransition(const SessionTransitionContext& context,
     if (previous == Screen::Editor)
         context.chartPlayback.Stop();
 
+    if (next == Screen::Editor)
+        context.chartPlayback.SetSpeed(context.editorUi.previewRatePercent / 100.0, now);
+
     if (next == Screen::Play) {
         context.sessionCompleted = false;
         if (previous != Screen::Results && !loadedNewChart &&

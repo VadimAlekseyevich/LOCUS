@@ -41,7 +41,6 @@ struct FrameInput {
     bool editorOpen = false;
     bool editorNew = false;
     bool editorTest = false;
-    int practiceSpeedIndex = -1;
     int baseSpeedDelta = 0; // [ / ] and numpad - / + while playing
     int previewTimeDelta = 0; // , / . while playing, 50 ms per step
     int baseSpeedHeld = 0; // held direction for deterministic auto-repeat

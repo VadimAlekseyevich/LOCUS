@@ -45,6 +45,12 @@
         <div id="results-scroll"><div id="results-list"></div></div>
       </div>
       <div id="notice"></div>
+      <div id="mods">
+        <button id="mod-ht" data-action="mod-ht" class="secondary"><span id="mod-ht-label" class="button-label">HT 75%</span></button>
+        <button id="mod-dt" data-action="mod-dt" class="secondary"><span id="mod-dt-label" class="button-label">DT 125%</span></button>
+        <button id="mod-minus" data-action="mod-minus" title="Decrease selected mod rate by 1%"><span class="button-label">-</span></button>
+        <button id="mod-plus" data-action="mod-plus" title="Increase selected mod rate by 1%"><span class="button-label">+</span></button>
+      </div>
       <div id="commands">
         <button id="start" data-action="play" class="primary"><span class="button-label">PLAY</span></button>
         <button id="edit" data-action="edit" class="secondary"><span class="button-label">EDIT</span></button>

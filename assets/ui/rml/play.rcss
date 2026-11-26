@@ -114,3 +114,8 @@
   .result .result-accuracy { left:35dp; font-size:12dp; }
   .result .result-combo { right:5dp; font-size:11dp; }
 }
+#mods { display:flex; flex-direction:row; flex:0 0 35dp; gap:5dp; padding:0 12dp; }
+#mods button { flex:1; height:32dp; font-size:12dp; }
+#mod-minus, #mod-plus { flex:0 0 32dp; }
+#mods button.selected { background-color:#6c579a; border:1dp #d5c5ff; }
+.result-mod { font-size:10dp; color:#c1b3ea; }

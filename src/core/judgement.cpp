@@ -164,9 +164,10 @@ RunStatistics TurnJudge::Statistics() const noexcept {
                 std::max(0.0, errorM2Ms_ / timedHits_)), histogram_};
 }
 
-void TurnJudge::BeginReplayCapture() noexcept {
+void TurnJudge::BeginReplayCapture(int ratePercent) noexcept {
     replay_.events.clear();
     replay_.offsetSeconds = offsetSeconds_;
+    replay_.ratePercent = ratePercent;
     replay_.judgementVersion = kJudgementRulesVersion;
     captureReplay_ = firstScoredEvent_ == 0 && counts_.Resolved() == 0;
 }

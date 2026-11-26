@@ -28,6 +28,8 @@ public:
     void Stop();
     void Update(double monotonicSeconds);
     void SetVolume(float level);
+    void SetSpeed(double rate, double now) noexcept;
+    double Speed() const noexcept { return clock_.Rate(); }
     void Shutdown();
 
     bool Ready() const noexcept { return musicLoaded_; }

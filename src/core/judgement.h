@@ -112,7 +112,7 @@ public:
     void Reset() noexcept;
     // Only complete normal PLAY attempts are captured. A reset invalidates
     // the previous trace; allocation failure disables capture, not scoring.
-    void BeginReplayCapture() noexcept;
+    void BeginReplayCapture(int ratePercent = 100) noexcept;
     const ReplayTrace* CompletedReplay() const noexcept {
         return captureReplay_ && AllScorableJudged() ? &replay_ : nullptr;
     }

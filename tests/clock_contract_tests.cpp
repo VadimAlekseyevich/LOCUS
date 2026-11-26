@@ -192,6 +192,11 @@ int main() {
                 Close(play.Beat(t0 + 13.0), 7.0),
                 "50% practice rate advances one song second in two wall seconds");
 
+    { core::SongClock fastClock;
+      fastClock.SetRate(1.25, t0);
+      fastClock.Start(t0);
+      ok &= Check(Close(fastClock.SecondsAt(t0 + 4.0),5.0),
+                  "125 percent DT advances five song seconds in four wall seconds"); }
     play.Pause(t0 + 13.0);
     play.SetSpeed(0.1, t0 + 13.0);
     ok &= Check(play.Paused() &&

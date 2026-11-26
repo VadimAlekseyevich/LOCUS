@@ -24,8 +24,6 @@ struct PlayTransportView {
     double judgeSongSeconds = 0.0;
 };
 
-double PracticeRateForIndex(int index) noexcept;
-
 // Non-owning, strictly Play-screen coordination. All references are owned by
 // the composition root and remain stable when a different chart is loaded.
 struct PlayActionsContext {

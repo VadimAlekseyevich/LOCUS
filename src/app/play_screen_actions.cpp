@@ -8,18 +8,8 @@
 
 namespace locus::app {
 
-double PracticeRateForIndex(int index) noexcept {
-    constexpr double speeds[] = {1.0, 0.75, 0.5, 0.25, 0.1};
-    return index >= 0 && index < 5 ? speeds[index] : -1.0;
-}
-
 void PlayScreenActions::HandleControls(const FrameInput& input, double now) {
     const bool custom = context_.customChart;
-    if (custom) {
-        const double speed = PracticeRateForIndex(input.practiceSpeedIndex);
-        if (speed > 0.0)
-            context_.game.SetPracticeSpeed(custom, speed, now);
-    }
     if (input.restartPressed ||
         (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
         context_.sessionCompleted = false;
@@ -46,10 +36,9 @@ void PlayScreenActions::Update(const FrameInput& input, double now) {
     ArrowInput arrows{input.arrowPressed, input.arrowCapturedAt, input.arrowHeld};
     arrows.events = &input.directionEvents;
     arrows.precise = input.exactDirectionEvents;
-    // Modal, retry, pause and rate changes consume all coincident keys.
+    // Modal, retry and pause consume all coincident keys.
     if (input.pausePressed || input.restartPressed ||
-        input.leaveRequested || input.homePressed || input.requestedScreen ||
-        input.practiceSpeedIndex >= 0) {
+        input.leaveRequested || input.homePressed || input.requestedScreen) {
         arrows.pressed.fill(false);
         arrows.events = nullptr;
         arrows.precise = true;
@@ -67,13 +56,13 @@ void PlayScreenActions::Update(const FrameInput& input, double now) {
 PlayTransportView PlayScreenActions::Transport(double now) const {
     if (!context_.customChart) {
         const double raw = context_.demo.SongSeconds(now);
-        const double song = context_.game.CalibratedTime(raw);
+        const double song = context_.game.CalibratedTime(raw, context_.demo.Speed());
         return {
             song,
             0.0, // Demo song offset (not a snap-grid beat).
             context_.demo.Paused(),
             context_.demo.Finished(),
-            1.0, context_.demo.Status(), song
+            context_.demo.Speed(), context_.demo.Status(), song
         };
     }
     // The audio device exposes a stepped cursor at reduced pitch. The

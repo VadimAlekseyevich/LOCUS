@@ -11,7 +11,6 @@ namespace locus::app {
 
 enum class GameAction : int {
     Up, Right, Down, Left, Pause, Retry, Home,
-    Practice100, Practice75, Practice50, Practice25, Practice10,
     SpeedUp, SpeedDown, PreviewUp, PreviewDown, Count
 };
 constexpr int kGameActionCount = static_cast<int>(GameAction::Count);
@@ -50,7 +49,6 @@ struct GameSettings {
     std::array<int, kGameActionCount> keys{{
         KEY_J, KEY_K, KEY_F, KEY_D,
         KEY_ESCAPE, KEY_R, KEY_H,
-        KEY_ONE, KEY_TWO, KEY_THREE, KEY_FOUR, KEY_FIVE,
         KEY_RIGHT_BRACKET, KEY_LEFT_BRACKET, KEY_PERIOD, KEY_COMMA
     }};
     std::array<KeyChord, kShortcutActionCount> shortcuts{{

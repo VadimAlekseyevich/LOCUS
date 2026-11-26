@@ -196,11 +196,24 @@ int main() {
         {appState, game, judge, demo, preview, customChart, completed,
          activeChart, outro}
     };
-    ok &= Check(app::PracticeRateForIndex(-1) < 0.0 &&
-                app::PracticeRateForIndex(0) == 1.0 &&
-                app::PracticeRateForIndex(4) == 0.1 &&
-                app::PracticeRateForIndex(5) < 0.0,
-                "practice presets reject out-of-range input");
+    core::PlayMods mods;
+    ok &= Check(mods.RatePercent() == 100, "no mod uses native rate");
+    mods.Toggle(core::RateMod::HalfTime);
+    ok &= Check(mods.RatePercent() == 75, "HT defaults to 75 percent");
+    mods.Adjust(-100);
+    ok &= Check(mods.RatePercent() == 50, "HT clamps to lower bound");
+    mods.Adjust(100);
+    ok &= Check(mods.RatePercent() == 99, "HT cannot reach normal speed");
+    mods.Toggle(core::RateMod::DoubleTime);
+    ok &= Check(mods.RatePercent() == 125, "DT replaces HT and defaults to 125 percent");
+    mods.Adjust(100);
+    ok &= Check(mods.RatePercent() == 150, "DT clamps to upper bound");
+    mods.Adjust(-100);
+    ok &= Check(mods.RatePercent() == 101, "DT cannot reach normal speed");
+    mods.Toggle(core::RateMod::DoubleTime);
+    ok &= Check(mods.RatePercent() == 100, "toggling active mod restores normal speed");
+    mods.Toggle(core::RateMod::HalfTime);
+    ok &= Check(mods.RatePercent() == 99, "configured HT rate survives toggling");
     customChart = false;
     const auto demoView = play.Transport(20.0);
     ok &= Check(demoView.practiceSpeed == 1.0 &&

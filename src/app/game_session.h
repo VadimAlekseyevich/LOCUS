@@ -6,6 +6,7 @@
 #include "app/hit_flash.h"
 #include "app/demo_transport.h"
 #include "core/judgement.h"
+#include "core/play_mods.h"
 
 #include <array>
 #include <optional>
@@ -54,7 +55,9 @@ public:
     void Restart(bool customChart, double now);
     void Stop(bool customChart);
     void TogglePause(bool customChart, double now);
-    void SetPracticeSpeed(bool customChart, double speed, double now);
+    void SetRatePercent(int percent) noexcept {
+        if (core::ValidModRate(percent)) ratePercent_ = percent;
+    }
     // Sticky within a scored attempt. Returning to the starting speed cannot
     // disguise a variable-rate practice run as a constant-rate score.
     bool VariablePracticeRate() const noexcept { return variablePracticeRate_; }
@@ -81,6 +84,7 @@ private:
     unsigned hitSoundCount_=0;
     int globalOffsetMs_ = 0;
     bool variablePracticeRate_ = false;
+    int ratePercent_ = 100;
     std::optional<core::ReplayTrace> replay_;
     core::ReplayCursor replayCursor_;
     double replayFinishSeconds_ = 0.0;

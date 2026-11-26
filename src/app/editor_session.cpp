@@ -73,10 +73,12 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
             editor_.Data().route.lengthBeats - 1);
     }
     constexpr double speeds[] = {1.0, 0.75, 0.5, 0.25, 0.1};
-    if (input.speedPercent >= 1 && input.speedPercent <= 100) {
+    if (input.speedPercent >= 1 && input.speedPercent <= 150) {
+        ui_.previewRatePercent = input.speedPercent;
         playback_.SetSpeed(input.speedPercent / 100.0, now);
         status_ = "PREVIEW SPEED " + std::to_string(input.speedPercent) + "%";
     } else if (action.speedIndex >= 0 && action.speedIndex < 5) {
+        ui_.previewRatePercent = static_cast<int>(speeds[action.speedIndex] * 100 + 0.5);
         playback_.SetSpeed(speeds[action.speedIndex], now);
         status_ = "PREVIEW SPEED CHANGED";
     }
@@ -164,6 +166,7 @@ void EditorSession::StartPreview(int beat, double now) {
                         editor_.Data().offsetSeconds,
                         editor_.Data().route.tempoMap,
                         editor_.Data().route.ticksPerBeat);
+    playback_.SetSpeed(ui_.previewRatePercent / 100.0, now);
     if (!playback_.StartAtAudioSeconds(songTime, now)) {
         status_ = "PREVIEW FAILED: COULD NOT START AUDIO";
         return;
@@ -204,6 +207,7 @@ bool EditorSession::BeginTest(EditorTestTarget target, double now,
                         target.activeChart.tempoMap,
                         target.activeChart.ticksPerBeat);
     target.judge.SetOffsetSeconds(plan.chart.offsetSeconds);
+    playback_.SetSpeed(ui_.previewRatePercent / 100.0, now);
     target.gameSession.SetTestOrigin(
         {plan.audioSeconds, plan.firstScoredBeat});
     target.customChart = true;

@@ -32,7 +32,7 @@ void SongClock::Stop() noexcept {
 }
 
 void SongClock::SetRate(double rate, double monotonicSeconds) noexcept {
-    if (!std::isfinite(rate) || rate < 0.01 || rate > 1.0 || rate == rate_) return;
+    if (!std::isfinite(rate) || rate < 0.01 || rate > 1.5 || rate == rate_) return;
     if (running_ && !paused_) {
         elapsedBeforePause_ +=
             std::max(0.0, monotonicSeconds - startedAtSeconds_) * rate_;
