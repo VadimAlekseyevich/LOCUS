@@ -141,7 +141,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
                 : demo_.StartAtAudioSeconds(*target, now);
             if (seeked) {
                 hitFlash_.Reset();
-    hitSoundCount_=0;
+                hitSoundCount_=0;
                 if (customChart) local_.Update(now);
                 else demo_.Update(now);
                 judge_.Advance(CalibratedTime(*target, customChart ? local_.Speed() : 1.0));

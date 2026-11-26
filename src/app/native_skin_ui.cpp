@@ -135,6 +135,7 @@ void NativeSkinUi::RebuildControls() {
     }
     if (auto* list = document_->GetElementById("skin-controls"))
         list->SetInnerRML(html.str());
+    cache_.erase("skin-hitsound-status");
     sliderRatios_.fill(-1.0f);
     swatchColors_.fill("");
 }

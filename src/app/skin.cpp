@@ -236,13 +236,16 @@ bool LoadSkin(const std::filesystem::path& file, Skin& result,
         error = "Cannot open skin JSON.";
         return false;
     }
-    std::string bytes(kMaxSkinJsonBytes+1,'\0');
-    stream.read(bytes.data(),static_cast<std::streamsize>(bytes.size()));
-    bytes.resize(static_cast<std::size_t>(stream.gcount()));
-    if (stream.bad()) { error="Cannot read skin JSON."; return false; }
-    if (bytes.size() > kMaxSkinJsonBytes) {
+    const auto size=std::filesystem::file_size(file,ec);
+    if (ec) { error="Cannot read skin size."; return false; }
+    if (size > kMaxSkinJsonBytes) {
         error = "Skin JSON is too large.";
         return false;
+    }
+    std::string bytes(static_cast<std::size_t>(size),'\0');
+    if (!stream.read(bytes.data(),static_cast<std::streamsize>(bytes.size())) ||
+        stream.peek()!=std::char_traits<char>::eof() || stream.bad()) {
+        error="Cannot read skin JSON."; return false;
     }
     return ParseSkin(bytes, result, error);
 }

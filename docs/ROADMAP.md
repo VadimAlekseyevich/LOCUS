@@ -34,7 +34,7 @@ Keep exact input timestamps, authoritative route and grading independent of rend
   grade counts are implemented. Validate narrow windows and contrast.
 - [ ] **G04. Judgement feedback:** evaluate distinct effects, timing feedback,
   and optional hitsounds without changing judgement windows prematurely.
-  The optional hit error bar and persistent timing histogram are implemented;
+  The optional hit error bar, persistent timing histogram, global background dim and custom skin WAV hitsounds are implemented;
   validate their readability and timing with physical devices.
 - [ ] **G05. Sight-reading:** test dense patterns with players. Route reading
   should communicate input, not dominate physical execution difficulty.
@@ -44,6 +44,7 @@ Keep exact input timestamps, authoritative route and grading independent of rend
 - [ ] Calibrate [Difficulty V4](CHART_DIFFICULTY.md) against matched-density
   streams, jacks, alternating keys, diagonal transitions and real attempts.
   Reading remains a separate diagnostic, not a ranking factor.
+- [x] Display cached physical-strain timeline in editor song overview.
 - [ ] Evaluate waveform-assisted mapping, automatic BPM analysis, and
   other tools based on mapper feedback. Shared tempo maps, exact unsnapped
   note placement, pattern transforms and pitch-preserving practice already exist.

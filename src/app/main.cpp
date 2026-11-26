@@ -320,7 +320,8 @@ int main(int argc, char** argv) try {
     std::cerr << "LOCUS_STARTUP audio\n";
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
-    locus::app::HitSoundPlayer hitSounds;
+    locus::app::HitSoundPlayer hitSounds, previewHitSounds;
+    hitSounds.Configure(activeSkin);
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
     // Dedicated calibration stream. It does not touch scoring transports,
     // chart data or the player's existing audio decoder.
@@ -628,16 +629,20 @@ int main(int argc, char** argv) try {
         if (state.screen == Screen::Skin) {
             skinProfiles.Apply(menuEvents.skinCommand);
             if (menuEvents.skinCommand==locus::app::SkinCommand::PreviewHitSound) {
-                if (draftSkin.hitSoundWav && hitSounds.Configure(draftSkin)) {
-                    hitSounds.Play(draftSkin.hitSoundVolume*0.01f*settings.volume);
+                if (draftSkin.hitSoundWav && previewHitSounds.Configure(draftSkin)) {
+                    previewHitSounds.Play(draftSkin.hitSoundVolume*0.01f*settings.volume);
                     skinUi.notice="HITSOUND PREVIEW"; skinUi.noticeError=false;
                 } else {
                     skinUi.notice="NO PLAYABLE HITSOUND"; skinUi.noticeError=true;
                 }
             }
             if (menuEvents.skinCommand==locus::app::SkinCommand::ClearHitSound)
-                hitSounds.Clear();
+                previewHitSounds.Clear();
+            // Applied resources are prepared in menus, not on the first hit.
+            hitSounds.Configure(activeSkin);
         }
+        if (previousScreen==Screen::Skin && state.screen!=Screen::Skin)
+            previewHitSounds.Clear();
         if (previousScreen==Screen::Play && state.screen!=Screen::Play)
             hitSounds.Stop();
         if (menuEvents.saveSettings) {
@@ -1345,6 +1350,7 @@ int main(int argc, char** argv) try {
     homeBrand.Unload();
     localSong.Shutdown();
     transport.Shutdown();
+    previewHitSounds.Clear();
     hitSounds.Clear();
     audioDevice.Shutdown();
     if (uiFont.owned) {
