@@ -790,7 +790,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     EditorIconButton(kEditorPreviewRestart,EditorIcon::Stop,violet);
 
     DrawUiThemedButton(font,kEditorRateDropdown,
-        (std::string(speeds[rate])+" v").c_str(),
+        TextFormat("%.0f%%",playbackSpeed*100.0),
         UiButtonVariant::Quiet,{}, {},theme,13);
     DrawUiThemedButton(font,kRouteTimeValue,
         TextFormat("%lld ms",RouteTimeMs(draft,previewBeat)),

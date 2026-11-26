@@ -49,9 +49,9 @@
 .result:hover { border-color:#b5a4f3; background-color:#484c73; }
 .result .result-rank { left:9dp; right:auto; width:34dp; font-size:18dp;
   font-weight:800; text-align:center; }
-.result .result-accuracy { left:52dp; right:45%; text-align:left;
+.result .result-accuracy { left:52dp; right:56%; text-align:left;
   font-size:15dp; font-weight:700; }
-.result .result-combo { left:57%; right:9dp; text-align:right;
+.result .result-combo { left:72%; right:9dp; text-align:right;
   font-size:13dp; font-weight:650; color:#c0c9e2; }
 #notice { display:block; color:#ecc3d1; padding:0 12dp;
   font-size:11dp; }
@@ -118,4 +118,4 @@
 #mods button { flex:1; height:32dp; font-size:12dp; }
 #mod-minus, #mod-plus { flex:0 0 32dp; }
 #mods button.selected { background-color:#6c579a; border:1dp #d5c5ff; }
-.result-mod { font-size:10dp; color:#c1b3ea; }
+.result .result-mod { left:44%; right:28%; text-align:center; font-size:10dp; color:#c1b3ea; }

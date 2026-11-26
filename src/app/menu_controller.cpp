@@ -324,6 +324,10 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
     };
 
     if (state.screen == Screen::SongSelect) {
+        if (hit(LibraryModButton(0))) { libraryUi.mods.Toggle(core::RateMod::HalfTime); return events; }
+        if (hit(LibraryModButton(1))) { libraryUi.mods.Toggle(core::RateMod::DoubleTime); return events; }
+        if (hit(LibraryModButton(2))) { libraryUi.mods.Adjust(-1); return events; }
+        if (hit(LibraryModButton(3))) { libraryUi.mods.Adjust(1); return events; }
         if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
         if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
         if (hit(locus::app::LibraryEditButton())) events.editSelected = true;

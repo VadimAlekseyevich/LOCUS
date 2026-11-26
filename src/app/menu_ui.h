@@ -39,7 +39,7 @@ Rectangle LibrarySongRow(int row);
 Rectangle LibraryChartRow(int row);
 // Flat visible rows contain the complete song list and child charts of only
 // the selected song. All drawing, mouse and key hit-testing share these rows.
-constexpr int kLibraryResultVisibleRows = 4;
+constexpr int kLibraryResultVisibleRows = 3;
 Rectangle LibraryResultRow(int visibleRow);
 Rectangle LibraryResultPrevButton();
 Rectangle LibraryResultNextButton();
@@ -47,6 +47,7 @@ Rectangle LibraryRefreshButton();
 Rectangle LibraryBackButton();
 Rectangle LibrarySearchField();
 Rectangle LibraryPlayButton();
+Rectangle LibraryModButton(int index);
 Rectangle LibraryEditButton();
 Rectangle SettingsBindingButton(int visibleRow);
 Rectangle SettingsBindingGroupButton(int group);

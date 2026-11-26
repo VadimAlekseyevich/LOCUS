@@ -184,6 +184,18 @@ void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
                              std::pair{"mod-dt",core::RateMod::DoubleTime}})
         if (auto* button = document_->GetElementById(item.first))
             button->SetClass("selected", ui.mods.rateMod == item.second);
+    const int percent = ui.mods.RatePercent();
+    const bool active = ui.mods.rateMod != core::RateMod::None;
+    const int minimum = ui.mods.rateMod == core::RateMod::HalfTime ? 50 : 101;
+    const int maximum = ui.mods.rateMod == core::RateMod::HalfTime ? 99 : 150;
+    if (auto* button = document_->GetElementById("mod-minus")) {
+        if (active && percent > minimum) button->RemoveAttribute("disabled");
+        else button->SetAttribute("disabled", "");
+    }
+    if (auto* button = document_->GetElementById("mod-plus")) {
+        if (active && percent < maximum) button->RemoveAttribute("disabled");
+        else button->SetAttribute("disabled", "");
+    }
     const LibrarySong* song = ui.selectedSong > 0 &&
         ui.selectedSong <= static_cast<int>(library.Songs().size())
         ? &library.Songs()[static_cast<std::size_t>(ui.selectedSong - 1)]
@@ -331,8 +343,8 @@ void NativePlayUi::RebuildResults(SongSelectUi& ui) {
              << Accuracy(result.accuracyPercent)
              << "</span><span class='button-label result-combo'>"
              << FormatRunCombo(result) << "</span><span class='button-label result-mod'>"
-             << (result.variablePracticeRate ? "VAR" : core::RateModCode(core::RateModFor(
-                    static_cast<int>(std::lround(result.practiceRate*100)))))
+             << (result.variablePracticeRate ? "VAR" : result.practiceRate == 1.0 ? "NM" :
+                 core::FormatRateMod(static_cast<int>(std::lround(result.practiceRate*100))))
              << "</span></button>";
     }
     if (window.after > 0.0f)
