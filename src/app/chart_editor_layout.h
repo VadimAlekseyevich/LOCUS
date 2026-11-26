@@ -356,7 +356,7 @@ constexpr Rectangle kFieldHeading = kStartHeadingValue;
 constexpr Rectangle kFieldHeadingNext = kStartHeadingNext;
 
 // Absolute song milliseconds at the same fractional tick used by the route.
-// The displayed value and copied clipboard value share this calculation.
+// Fractional tick to absolute milliseconds for the fallback time readout.
 constexpr Rectangle kRouteTimeValue{827, 485, 105, 40};
 inline long long RouteTimeMs(const core::ChartEditor& draft, double activeTick) {
     const auto& loaded = draft.Data();

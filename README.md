@@ -60,11 +60,11 @@ HOME → EDIT opens a clean **Song Setup** draft. Attach WAV/MP3 and configure t
 
 In Chart Editor:
 
-- The upper zoomable note ruler selects notes and patterns with snap; the lower whole-song overview seeks through audio and shows shared BPM markers. TIME copies whole milliseconds.
+- The upper zoomable note ruler selects notes and patterns with snap; the lower whole-song overview seeks through audio and shows shared BPM markers. The editable ms field seeks to an exact song timestamp.
 - Click the mouse-only 3×3 compass to place or change a note, including repeated headings; DEL removes it. Diagonal notes contribute to both constituent cardinal counts on the pad. START edits initial heading.
 - Ctrl+click the ruler stages an unsnapped millisecond; the next direction click commits it. Distinct timestamps sharing one tick remain editable; repeated clicks cycle overlapping note clusters.
 - Mirror horizontally/vertically, rotate ±90°, copy/cut/paste, shift and undo/redo patterns. COMPARE opens up to two additional same-song difficulties with independent draft/history and equal-sized synchronized previews. Focus changes neither seek nor rearrange panes.
-- SPEED and PATH set editor-only visual speed (20–2000 logical px/s) and lookahead (50–10000 ms). Bottom Play/RST, whole-song overview and numeric 1–100% preview rate share one transport. SoundTouch preserves pitch on supported slow playback; fallback changes pitch. TEST plays the unsaved draft and returns to it.
+- SPEED and PATH set editor-only visual speed (20–2000 logical px/s) and lookahead (50–10000 ms). Bottom Play/Pause and Stop, whole-song overview and numeric 1–100% preview rate share one transport. SoundTouch preserves pitch on supported slow playback; fallback changes pitch. TEST plays the unsaved draft and returns to it.
 
 Default shortcuts: O attach audio, Space preview, T TEST, Ctrl+S save focused difficulty, Ctrl+Shift+S new difficulty, Ctrl+O/Ctrl+N open/new, Ctrl+C/X/V copy/cut/paste, Ctrl+Z/Y undo/redo. Arrow keys navigate the upper ruler and adjust snap; Backspace/Delete removes notes. Save/Discard/Cancel protects dirty drafts; Save All leaves any failed draft open.
 

@@ -7,7 +7,7 @@ namespace locus::app {
 
 // The same glyph geometry is used by the legacy raylib authoring UI and the
 // RmlUi editor chrome; do not rely on host font glyph coverage for directions.
-enum class EditorIcon { FlipH, FlipV, RotateL, RotateR, Compare, Play, Pause, Restart, Previous, Next };
+enum class EditorIcon { FlipH, FlipV, RotateL, RotateR, Compare, Play, Pause, Restart, Stop, Test, Previous, Next };
 
 inline void EditorGlyph(Rectangle bounds, EditorIcon icon, Color tint,
                         float uiScale = 1.0f) {
@@ -38,8 +38,13 @@ inline void EditorGlyph(Rectangle bounds, EditorIcon icon, Color tint,
                 DrawTriangle(pt(12,-10),pt(8,-3),pt(4,-12),tint);
             break;
         case EditorIcon::Compare:
-            DrawRectangleRoundedLinesEx({x-13*s,y-12*s,18*s,20*s},
-                .2f,6,2*s,tint); break;
+            line(-12,-5,12,-5); line(12,-5,6,-11); line(12,-5,6,1);
+            line(12,5,-12,5); line(-12,5,-6,-1); line(-12,5,-6,11); break;
+        case EditorIcon::Test:
+            DrawRing({x-3*s,y-3*s},6*s,8.5f*s,0,360,32,tint);
+            line(3,3,11,11); break;
+        case EditorIcon::Stop:
+            DrawRectangleRec({x-8*s,y-8*s,16*s,16*s},tint); break;
         case EditorIcon::Play:
             DrawTriangle(pt(-7,-11),pt(-7,11),pt(11,0),tint); break;
         case EditorIcon::Pause:

@@ -98,33 +98,16 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     }
     if (!input.nativeChrome && input.mouseClick &&
         Hit(kEditorPreviewRestart, input.mouse)) {
-        action.previewRestart = true;
+        action.previewStop = true;
         return action;
     }
-    // The current Route time readout, not individual timeline beats, copies
-    // a single exact audio timestamp as whole milliseconds.
-    if (!input.nativeChrome && input.mouseClick &&
-        Hit(kRouteTimeValue, input.mouse)) {
-        const long long ms = RouteTimeMs(draft, input.timelineViewBeat);
-        action.clipboardWrite = std::to_string(ms);
-        ui.feedback = std::to_string(ms) + " MS COPIED";
-        ui.feedbackError = false;
-        return action;
-    }
+    if (!input.nativeChrome && input.mouseClick && Hit(kRouteTimeValue,input.mouse))
+        return action; // fallback time readout is informational
 
     // The native AUDIO marker table handles its own clicks after this pass.
     // Dropdown popup options overlap that table visually and take priority.
     if (!input.nativeChrome && (ui.tab == EditorTab::Set || ui.tab == EditorTab::Audio) &&
         input.mouseClick && (Hit(kTempoTable, input.mouse) || Hit(kTempoAdd, input.mouse))) return action;
-
-    // RmlUi time button and legacy time hitbox share one exact clock action.
-    if (input.copySongTime) {
-        const long long ms = RouteTimeMs(draft, input.timelineViewBeat);
-        action.clipboardWrite = std::to_string(ms);
-        ui.feedback = std::to_string(ms) + " MS COPIED";
-        ui.feedbackError = false;
-        return action;
-    }
 
     // SET is a library-management tab: note keys, undo and the timeline
     // must not modify the current chart while managing its difficulties.
@@ -137,6 +120,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
         }
         action.previewToggle |= input.previewToggle;
         action.previewRestart |= input.previewRestart;
+        action.previewStop |= input.previewStop;
         if (input.speedIndex >= 0) action.speedIndex = input.speedIndex;
         return action;
     }
@@ -264,6 +248,7 @@ EditorUiAction ApplyEditorControls(core::ChartEditor& draft, EditorUiState& ui,
     editor_timeline::ApplyWheel(draft, input.mouseWheel);
     action.previewToggle |= input.previewToggle;
     action.previewRestart |= input.previewRestart;
+        action.previewStop |= input.previewStop;
     if (input.speedIndex >= 0) action.speedIndex = input.speedIndex;
     return action;
 }

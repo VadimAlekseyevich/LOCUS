@@ -49,10 +49,10 @@ struct EditorControls {
     bool shiftRangePrevious = false, shiftRangeNext = false;
 
     bool enter = false, escape = false, backspace = false, tab = false;
-    bool previewToggle = false, previewRestart = false;
+    bool previewToggle = false, previewRestart = false, previewStop = false;
     bool metronomeToggle = false;
     bool waveformToggle = false;
-    bool copySongTime = false;
+    std::optional<long long> seekSongTimeMs;
     // Semantic editor actions emitted by RmlUi; never synthesize a click at
     // legacy pixel coordinates to reach the chart editing model.
     std::optional<core::Heading> placeHeading;

@@ -52,6 +52,10 @@ void EditorScreenActions::BlurTextOnPointer(Vector2 mouse, double& now) {
 }
 
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
+    if (input.editor.seekSongTimeMs) {
+        context_.session.ApplyControls(input.editor,now);
+        return false;
+    }
     if (input.editor.waveformToggle && context_.ui.tab==EditorTab::Route) {
         context_.ui.waveformVisible=!context_.ui.waveformVisible;
         return false;

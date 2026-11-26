@@ -564,7 +564,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
             EditorIconButton(CompareToggleBounds(ui),EditorIcon::Compare,
                              set.managed?sky:muted,ui.comparisonPickerOpen);
         if (!nativeShell) {
-        EditorIconButton(kRouteTest,EditorIcon::Play,sky);
+        EditorIconButton(kRouteTest,EditorIcon::Test,sky);
         }
 
         const Rectangle previewArea = PreviewBounds(ui);
@@ -778,7 +778,7 @@ void RenderChartEditor(Font font, const core::ChartEditor& draft,
     if (!nativeShell) {
     EditorIconButton(kEditorPreviewPlay,
         running?EditorIcon::Pause:EditorIcon::Play,sky);
-    EditorIconButton(kEditorPreviewRestart,EditorIcon::Restart,violet);
+    EditorIconButton(kEditorPreviewRestart,EditorIcon::Stop,violet);
 
     DrawUiThemedButton(font,kEditorRateDropdown,
         (std::string(speeds[rate])+" v").c_str(),

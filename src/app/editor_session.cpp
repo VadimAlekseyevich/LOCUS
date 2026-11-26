@@ -43,6 +43,10 @@ bool PrepareEditorTest(const core::LoadedChart& source, double audioSeconds,
 
 EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
                                             double now) {
+    if (input.seekSongTimeMs) {
+        SeekSongTime(*input.seekSongTimeMs);
+        return {};
+    }
     const int beforeBeat = editor_.SelectedBeat();
     const int beforeTicks = editor_.Data().route.ticksPerBeat;
     EditorControls controls = input;
@@ -94,7 +98,15 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
         playback_.Stop();
         status_ = "PREVIEW STOPPED - SPACE PLAYS FROM SELECTED BEAT";
     }
-    if (action.previewRestart) {
+    if (action.previewStop) {
+        if (playback_.Playing() || playback_.Finished()) {
+            playback_.Stop();
+            metronome_.Reset();
+            // Restore the exact origin of the preview, not a rounded tick.
+            SetCursorTime(previewStartSeconds_);
+            status_="PREVIEW STOPPED";
+        }
+    } else if (action.previewRestart) {
         StartPreview(previewBeat_, now);
     } else if (action.previewToggle) {
         if (!playback_.Playing()) StartPreview(editor_.SelectedBeat(), now);
@@ -102,6 +114,33 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
         else playback_.Pause(now);
     }
     return action;
+}
+
+void EditorSession::SetCursorTime(double seconds) {
+    editor_.SelectBeat(detail::SongOverviewTick(editor_,seconds));
+    ui_.focusSongSeconds=seconds;
+    ui_.pendingExactPlacementTimeMs.reset();
+    ui_.rangeFirst=ui_.rangeLast=-1;
+    ui_.draggingTimeline=false;
+    ui_.draggingSongOverview=false;
+    previewBeat_=editor_.SelectedBeat();
+}
+
+bool EditorSession::SeekSongTime(long long ms) {
+    const double seconds=static_cast<double>(ms)/1000.0;
+    const auto& chart=editor_.Data().route;
+    const double earliest=std::min(0.0,editor_.AudioSecondsAtBeat(chart.firstBeat));
+    if (!editor_.HasSongDuration() || seconds<earliest ||
+        seconds>editor_.SongDurationSeconds()) {
+        ui_.feedback="TIME OUTSIDE SONG"; ui_.feedbackError=true;
+        return false;
+    }
+    playback_.Stop();
+    metronome_.Reset();
+    SetCursorTime(seconds);
+    ui_.feedback.clear(); ui_.feedbackError=false;
+    status_="PREVIEW POSITION "+std::to_string(ms)+" MS";
+    return true;
 }
 
 void EditorSession::StartPreview(int beat, double now) {
@@ -129,6 +168,7 @@ void EditorSession::StartPreview(int beat, double now) {
         status_ = "PREVIEW FAILED: COULD NOT START AUDIO";
         return;
     }
+    previewStartSeconds_=songTime;
     ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
     previewBeat_ = beat;
     status_ = "PREVIEW FROM BEAT " + std::to_string(beat) +

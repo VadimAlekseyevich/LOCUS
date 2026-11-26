@@ -21,8 +21,8 @@
     <button id="editor-tool-mirror-v" data-action="mirror-v" title="MIRROR V"><span class="button-label editor-icon-label">↕</span></button>
     <button id="editor-tool-rotate-ccw" data-action="rotate-ccw" title="ROTATE LEFT"><span class="button-label editor-icon-label">↶</span></button>
     <button id="editor-tool-rotate-cw" data-action="rotate-cw" title="ROTATE RIGHT"><span class="button-label editor-icon-label">↷</span></button>
-    <button id="editor-tool-compare" data-action="compare-toggle" title="COMPARE CHARTS"><span class="button-label">CMP</span></button>
-    <button id="editor-tool-test" data-action="test-chart" title="TEST CHART"><span class="button-label editor-icon-label">▶</span></button>
+    <button id="editor-tool-compare" data-action="compare-toggle" title="COMPARE CHARTS"><span class="button-label editor-icon-label">⇄</span></button>
+    <button id="editor-tool-test" data-action="test-chart" title="TEST CHART"><span class="button-label editor-icon-label">⌕</span></button>
     </div>
     <div id="editor-preview-slot" class="editor-canvas-slot"></div>
     <div id="editor-route-inspector">
@@ -81,14 +81,14 @@
   <div id="editor-status-slot" style="display:none;"></div>
   <div id="editor-transport">
   <div id="editor-footer-playback">
-    <button id="editor-preview-play" class="secondary" data-action="preview-play"><span class="button-label">PLAY</span></button>
-    <button id="editor-preview-restart" class="quiet" data-action="preview-restart"><span class="button-label">RST</span></button>
+    <button id="editor-preview-play" class="secondary" data-action="preview-play" title="PLAY / PAUSE"><span id="editor-play-label" class="button-label editor-icon-label">▶</span></button>
+    <button id="editor-preview-stop" class="quiet" data-action="preview-stop" title="STOP"><span class="button-label editor-icon-label">■</span></button>
     <button id="editor-metronome" class="quiet" data-action="metronome-toggle" title="METRONOME"><span class="button-label">MET</span></button>
   </div>
   <div id="editor-overview-slot" class="editor-canvas-slot"></div>
   <div id="editor-footer-rate-time">
     <div id="editor-rate-control"><input id="editor-preview-rate" type="text" value="100" data-kind="preview-rate" maxlength="3"/><span class="editor-rate-unit">%</span></div>
-    <button id="editor-preview-time" class="quiet" data-action="time-copy"><span class="button-label">0 MS</span></button>
+    <div id="editor-time-control"><input id="editor-preview-time" type="text" value="0" data-kind="song-time" maxlength="9" title="Seek to song time in milliseconds"/><span class="editor-rate-unit">ms</span></div>
   </div>
   </div>
 </div>

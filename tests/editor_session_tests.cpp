@@ -127,6 +127,17 @@ int main() {
     ok &= Check(editor.SelectedBeat() == 14 &&
                 std::isnan(ui.focusSongSeconds),
                 "manual ruler click resumes normal snapped-time navigation");
+    const bool dirty=editor.Dirty();
+    app::EditorControls seek;
+    seek.seekSongTimeMs=7125;
+    session.ApplyControls(seek,5.3);
+    ok &= Check(std::abs(ui.focusSongSeconds-7.125)<1e-9 &&
+                editor.Dirty()==dirty && !playback.Playing(),
+                "typed milliseconds preserve exact cursor without editing notes");
+    seek.seekSongTimeMs=17000;
+    session.ApplyControls(seek,5.4);
+    ok &= Check(std::abs(ui.focusSongSeconds-7.125)<1e-9 && ui.feedbackError,
+                "out of range time does not move cursor");
     // Editor file actions have a pure priority policy, testable without UI.
     app::FrameInput command{};
     app::EditorUiAction action{};

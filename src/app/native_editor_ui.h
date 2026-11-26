@@ -34,6 +34,7 @@ private:
     FrameInput* input_ = nullptr;
     std::unordered_map<std::string, std::string> textCache_;
     int lastRatePercent_ = 100;
+    long long lastSongTimeMs_ = 0;
     std::string focusedInitialValue_;
     struct DifficultyList {
         LibraryRowWindow window;

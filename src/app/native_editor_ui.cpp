@@ -32,6 +32,19 @@ bool ParsePercent(const std::string& raw, int& result) noexcept {
     result = std::clamp(value, 1, 100);
     return true;
 }
+bool ParseSongTime(const std::string& raw,long long& result) noexcept {
+    if (raw.empty() || raw.size()>9) return false;
+    const bool negative=raw.front()=='-';
+    if (negative && raw.size()==1) return false;
+    long long value=0;
+    for (std::size_t i=negative?1:0;i<raw.size();++i) {
+        const unsigned char c=raw[i];
+        if (c<'0' || c>'9') return false;
+        value=value*10+c-'0';
+    }
+    result=negative?-value:value;
+    return true;
+}
 } // namespace
 
 void NativeEditorUi::Attach(Rml::ElementDocument* document) noexcept {
@@ -74,7 +87,7 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     // Song Setup shows the selected name; authoring panes show chart names.
     // No global screen header is needed.
     (void)dirty;
-    SetText("editor-preview-play", running ? "PAUSE" : "PLAY");
+    SetText("editor-play-label", running ? "Ⅱ" : "▶");
     SetText("editor-waveform-label",ui.waveformVisible?"WAVE ON":"WAVE OFF");
     if (auto* wave=document_->GetElementById("editor-waveform"))
         wave->SetClass("selected",ui.waveformVisible);
@@ -89,7 +102,15 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
             control->GetValue() != number)
             control->SetValue(number);
     }
-    SetText("editor-preview-time", std::to_string(timeMs) + " MS");
+    lastSongTimeMs_=timeMs;
+    if (auto* field=dynamic_cast<Rml::ElementFormControlInput*>(
+            document_->GetElementById("editor-preview-time"))) {
+        const auto value=std::to_string(timeMs);
+        if (field!=document_->GetContext()->GetFocusElement() &&
+            field->GetValue()!=value) field->SetValue(value);
+        if (draft && !draft->HasSongDuration()) field->SetAttribute("disabled","");
+        else field->RemoveAttribute("disabled");
+    }
     if (settings) {
         SetText("editor-speed-label", std::to_string(
             static_cast<int>(std::lround(settings->editorPreviewSpeed))) + " px/s");
@@ -331,12 +352,30 @@ void NativeEditorUi::CancelFocusedField() {
     if (!document_) return;
     if (auto* field = dynamic_cast<Rml::ElementFormControlInput*>(document_->GetContext()->GetFocusElement())) {
         field->SetValue(field->GetId() == "editor-preview-rate"
-            ? std::to_string(lastRatePercent_) : focusedInitialValue_);
+            ? std::to_string(lastRatePercent_) : field->GetId()=="editor-preview-time"
+                ? std::to_string(lastSongTimeMs_) : focusedInitialValue_);
+        focusedInitialValue_=field->GetValue();
         field->Blur();
     }
 }
 void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     if (!ui_ || !input_) return;
+    if (auto* field=dynamic_cast<Rml::ElementFormControlInput*>(event.GetTargetElement());
+        field && field->GetId()=="editor-preview-time") {
+        const auto type=event.GetType();
+        if (type=="focus") {
+            focusedInitialValue_=field->GetValue();
+            field->Select();
+        } else if (type=="click") field->Select();
+        else if (type=="blur") {
+            long long ms=0;
+            if (field->GetValue()!=focusedInitialValue_ &&
+                ParseSongTime(field->GetValue(),ms) && ms!=lastSongTimeMs_)
+                input_->editor.seekSongTimeMs=ms;
+            field->SetValue(std::to_string(lastSongTimeMs_));
+        }
+        return;
+    }
     // RmlUi emits "change" on every keystroke, not just on form commit.
     // Never clamp/rewrite the live value: deleting "100" to type "50" must
     // allow an empty input. Commit only on blur (Enter also blurs).
@@ -425,9 +464,9 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     } else if (action == "preview-play") {
         ui_->rateDropdownOpen = false;
         input_->editor.previewToggle = true;
-    } else if (action == "preview-restart") {
+    } else if (action == "preview-stop") {
         ui_->rateDropdownOpen = false;
-        input_->editor.previewRestart = true;
+        input_->editor.previewStop = true;
     } else if (action == "set-difficulty") {
         input_->editor.selectedDifficultyId =
             target->GetAttribute<Rml::String>("data-id", "");
@@ -459,9 +498,5 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
         input_->editor.previewSpeedDelta = action == "speed-plus" ? 1 : -1;
     else if (action == "path-minus" || action == "path-plus")
         input_->editor.previewLengthDelta = action == "path-plus" ? 1 : -1;
-    else if (action == "time-copy") {
-        ui_->rateDropdownOpen = false;
-        input_->editor.copySongTime = true;
-    }
 }
 } // namespace locus::app

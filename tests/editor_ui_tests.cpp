@@ -293,14 +293,13 @@ int main() {
     ok &= Check(detail::RouteTimeMs(ruler,4.0)==2000 &&
                 detail::RouteTimeMs(ruler,4.5)==2250 &&
                 detail::Hit(detail::kRouteTimeValue,{854,506}),
-                "bottom song time copies fractional-beat milliseconds");
+                "bottom song time displays fractional-beat milliseconds");
     EditorUiState timeCopyUi;
     EditorControls timeCopyClick=Click(854,506);
     timeCopyClick.timelineViewBeat=4.5;
     const auto timeCopyAction=ApplyEditorControls(ruler,timeCopyUi,timeCopyClick);
-    ok &= Check(timeCopyAction.clipboardWrite=="2250" &&
-                timeCopyUi.feedback=="2250 MS COPIED",
-                "copy time is a pure clipboard intent");
+    ok &= Check(timeCopyAction.clipboardWrite.empty() && !timeCopyAction.changedChart,
+                "fallback time readout never copies or edits notes");
     // FIELD is removed from navigation; START belongs to ROUTE now.
     ui.tab = EditorTab::Route;
     ok &= Check(ui.tab==EditorTab::Route,"Route tab has start heading");
@@ -419,7 +418,7 @@ int main() {
     const auto play=ApplyEditorControls(chart,ui,Click(73,504));
     const auto restart=ApplyEditorControls(chart,ui,Click(116,504));
     ok &= Check(audioAttach.chooseAudio&&play.previewToggle&&
-                restart.previewRestart,
+                restart.previewStop,
                 "Audio attachment and shared footer transport work");
     ui.tab = EditorTab::Route;
     ok &= Check(ui.tab==EditorTab::Route,"Route tab restores grid");

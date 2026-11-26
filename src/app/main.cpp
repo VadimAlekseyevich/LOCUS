@@ -555,8 +555,10 @@ int main(int argc, char** argv) try {
                 nativeMenu.UpdateEditor(editorUi, input, editor.Data().title,
                     editor.Dirty(), chartPlayback.Speed(),
                     chartPlayback.Playing() && !chartPlayback.Paused(),
-                    locus::app::detail::RouteTimeMs(editor,
-                        static_cast<double>(editor.SelectedBeat())),
+                    std::llround(1000.0*(chartPlayback.Playing()
+                        ? chartPlayback.VisualAudioSeconds(now)
+                        : std::isfinite(editorUi.focusSongSeconds) ? editorUi.focusSongSeconds
+                            : editor.AudioSecondsAtBeat(editor.SelectedBeat()))),
                     editor, settings, editorSet.FrameView());
             } else if (state.screen == Screen::Settings &&
                      nativeMenu.SettingsAvailable()) {
@@ -1260,7 +1262,7 @@ int main(int argc, char** argv) try {
             nativeMenu.SyncEditor(editorUi, editor.Data().title, editor.Dirty(),
                 editorClock.practiceRate,
                 editorClock.playing && !editorClock.paused,
-                locus::app::detail::RouteTimeMs(editor, editorClock.tick),
+                std::llround(editorClock.songSeconds*1000.0),
                 editor, settings, editorSetView);
         }
 #endif

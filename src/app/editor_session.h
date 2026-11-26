@@ -66,6 +66,9 @@ public:
 
 private:
     void StartPreview(int beat, double now);
+    void SetCursorTime(double seconds);
+    bool SeekSongTime(long long ms);
+    double previewStartSeconds_=0.0;
 
     core::MetronomeCursor metronome_;
     std::future<std::shared_ptr<const core::AudioWaveform>> waveformJob_;
