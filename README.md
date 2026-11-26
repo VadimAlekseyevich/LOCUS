@@ -110,7 +110,7 @@ Local [Performance V1](docs/PERFORMANCE.md) is experimental; supported completed
 
 ## Online development (planned)
 
-The internal [verification worker](workers/README.md) now exposes a versioned JSON process interface for package inspection and replay evaluation in the headless build. No public endpoint or account service exists.
+The internal [verification worker](workers/README.md) now exposes a versioned JSON process interface for package inspection and replay evaluation in the headless build. A private [ASP.NET Core backend](server/README.md) includes PostgreSQL schema v1, read-only [HTTP contracts](protocol/openapi.yaml) and a process adapter. No public deployment, account service or write endpoint exists.
 
 LOCUS is currently a local-first desktop game: accounts, online scores, PP, published map IDs and hosting are not implemented. The portable C++ core is the intended shared scoring and difficulty engine for the future backend. See [web preparation](docs/ONLINE_ARCHITECTURE.md) for the proposed service boundaries, trust model, decisions and implementation gates.
 

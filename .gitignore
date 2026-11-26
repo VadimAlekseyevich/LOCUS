@@ -41,3 +41,9 @@ Desktop.ini
 
 # Do not blanket-ignore *.wav, *.json, or *.cpp: authored test fixtures
 # and licensed audio assets must remain possible to version intentionally.
+
+# Backend local build output and developer secrets
+/server/bin/
+/server/obj/
+/server/appsettings.Local.json
+/.env

@@ -1,0 +1,140 @@
+openapi: 3.1.0
+info:
+  title: LOCUS private read API
+  version: 1.0.0
+  description: Development-only read interface. No write or authentication endpoints.
+servers:
+  - url: http://127.0.0.1:5080
+paths:
+  /health/live:
+    get:
+      operationId: live
+      responses:
+        '200':
+          description: Process alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {const: ok}
+                required: [status]
+  /health/ready:
+    get:
+      operationId: ready
+      responses:
+        '200':
+          description: Database schema available
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {const: ready}
+                  schemaVersion: {type: integer}
+                required: [status, schemaVersion]
+        '503': {description: Database or expected schema unavailable}
+  /api/v1/maps:
+    get:
+      operationId: listMaps
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - name: after
+          in: query
+          description: Revision UUID returned as next by the previous page
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Current published difficulties, ordered by revision UUID
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/Map'}
+                  next:
+                    type: [string, 'null']
+                    format: uuid
+        '400': {description: Invalid limit or cursor}
+  /api/v1/players/{id}:
+    get:
+      operationId: player
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Public player identity
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, displayName, createdAt]
+                properties:
+                  id: {type: string, format: uuid}
+                  displayName: {type: string}
+                  createdAt: {type: string, format: date-time}
+        '404': {description: Missing or inactive player}
+  /api/v1/revisions/{id}/leaderboard:
+    get:
+      operationId: revisionLeaderboard
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Best rank-approved Performance V1 score per active player, top N
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revisionId, performanceVersion, items]
+                properties:
+                  revisionId: {type: string, format: uuid}
+                  performanceVersion: {const: 1}
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/Score'}
+        '400': {description: Invalid limit}
+        '404': {description: Missing, unpublished or unranked revision}
+components:
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  schemas:
+    Map:
+      type: object
+      required: [revisionId, difficultyId, setId, title, artist, difficulty, stars, difficultyVersion, keyPresses, audioDurationMs, ranked]
+      properties:
+        revisionId: {type: string, format: uuid}
+        difficultyId: {type: string, format: uuid}
+        setId: {type: string, format: uuid}
+        title: {type: string}
+        artist: {type: string}
+        difficulty: {type: string}
+        stars: {type: number, minimum: 0}
+        difficultyVersion: {type: integer}
+        keyPresses: {type: integer}
+        audioDurationMs: {type: integer}
+        ranked: {type: boolean}
+    Score:
+      type: object
+      required: [attemptId, playerId, displayName, pp, accuracyPercent, maxCombo, ratePercent, modFlags]
+      properties:
+        attemptId: {type: string, format: uuid}
+        playerId: {type: string, format: uuid}
+        displayName: {type: string}
+        pp: {type: number}
+        accuracyPercent: {type: number, minimum: 0, maximum: 100}
+        maxCombo: {type: integer}
+        ratePercent: {type: integer}
+        modFlags: {type: integer}

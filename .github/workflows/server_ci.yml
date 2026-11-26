@@ -1,0 +1,68 @@
+name: LOCUS private backend
+on:
+  push:
+    paths:
+      - "server/**"
+      - "protocol/**"
+      - "workers/**"
+      - "src/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "tests/worker_fixture.cpp"
+      - ".github/workflows/server_ci.yml"
+  pull_request:
+    paths:
+      - "server/**"
+      - "protocol/**"
+      - "workers/**"
+      - "src/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "tests/worker_fixture.cpp"
+      - ".github/workflows/server_ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: locus
+          POSTGRES_USER: locus
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U locus -d locus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ConnectionStrings__Locus: Host=127.0.0.1;Port=5432;Database=locus;Username=locus;Password=ci-only-password
+      PGPASSWORD: ci-only-password
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Build backend
+        run: dotnet build server/Locus.Server.csproj -c Release
+      - name: Build real worker
+        run: |
+          cmake -S . -B build/server-worker -G Ninja -DCMAKE_BUILD_TYPE=Release -DLOCUS_BUILD_APP=OFF -DLOCUS_BUILD_TESTS=ON
+          cmake --build build/server-worker --target locus_worker locus_worker_fixture --parallel 2
+      - name: Migrate twice and seed private fixture
+        run: |
+          dotnet server/bin/Release/net10.0/Locus.Server.dll migrate
+          dotnet server/bin/Release/net10.0/Locus.Server.dll migrate
+          psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U locus -d locus -f server/tests/seed.sql
+      - name: HTTP and worker smoke
+        env:
+          LOCUS_WORKER_PATH: ${{ github.workspace }}/build/server-worker/locus_worker
+        run: python3 server/tests/smoke.py server/bin/Release/net10.0/Locus.Server.dll build/server-worker/locus_worker_fixture build/backend-smoke

@@ -1,8 +1,7 @@
 # LOCUS — Online architecture and preparation
 
-**Status: proposed plan, not an implemented service.** The desktop game remains
-local-first. There is no account server, public upload endpoint, online
-leaderboard, global PP, web frontend, or deployed infrastructure. This
+**Status: private backend prototype; public service remains planned.** The desktop game remains
+local-first. There is a local read API for published maps, player identities and revision leaderboards, but no account service, real online submissions, public upload endpoint, global PP, web frontend or deployed infrastructure. This
 document defines preparation and acceptance gates; implementation details
 remain subject to design review. It is not an API specification.
 
@@ -38,7 +37,7 @@ workers validate submissions and calculate derived scores via the exact
 same pinned C++ core used by the desktop client. Do not reimplement the
 judge or difficulty formula in JavaScript or C#.
 
-Proposed stack (not selected dependencies): ASP.NET Core API, PostgreSQL,
+Implemented backend stack: ASP.NET Core (.NET 10), PostgreSQL and Npgsql. Proposed remaining stack:
 TypeScript web UI (e.g. Next.js), C++ verifier executable/worker, libcurl for
 native HTTPS, Docker for local development. Choose a simple authenticated
 process boundary for the C++ worker first; benchmark before adopting FFI,
@@ -56,7 +55,7 @@ Suggested repository boundaries when needed:
 - `infra/`: reproducible local and deployed configuration; no secrets.
 - `workers/`: isolated validation/calculation entry points.
 
-The first concrete worker is implemented: [internal protocol 1](../workers/README.md) builds `locus_worker` in core-only CI, inspects a staged package and derives a score from an exact expected gameplay digest and replay. It requires independently decoded audio duration and expected attempt settings from the future orchestrator. There is still no HTTP API, database, authentication, media decoder or ranking approval.
+The first concrete worker is implemented: [internal protocol 1](../workers/README.md) builds `locus_worker` in core-only CI, inspects a staged package and derives a score from an exact expected gameplay digest and replay. It requires independently decoded audio duration and expected attempt settings from the future orchestrator. The [private backend](../server/README.md) now provides explicit SQL migration, a versioned read-only HTTP API and operator-only C# process adapter. There is still no authentication, media decoder, real publication/submission transaction or ranking approval workflow.
 
 Do not create empty directories or abstract repositories for hypothetical
 consumers. Extract actual boundaries as the first vertical slice requires.
@@ -197,7 +196,7 @@ No legal workflow is currently operational.
 | W0 | Documentation and portable rules boundary | Core-only CI; no future capability described as implemented |
 | W1 | Portable verifier + package validation boundary (verifier, structural package validation and SHA-256 content descriptor implemented; media/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
 | W2 | Local run/profile ownership and PP contract (portable attempt model, local identity and owner-scoped storage implemented; experimental PP calculator and pure profile projection implemented; owner-scoped full history scan and compact Home summary implemented; local profile and paginated best scores implemented; account API and competitive policy pending) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
-| W3 | API/data contract and private backend | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
+| W3 | API/data contract and private backend (read API, schema v1 and process bridge implemented; authentication and writes pending) | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
 | W4 | Private vertical slice | Publish one authorized test map, play, submit replay, server rejudge, show leaderboard and profile through the same API; retry idempotency |
 | W5 | Catalog/download/upload workflow | Immutable revision mapping, paging, cancellation, safe install, quotas, rollback and fault recovery |
 | W6 | Competitive and public readiness | Ranking/mod policies, anomaly review, moderation tools, legal/privacy workflows, backups, monitoring, load/abuse tests, real Windows acceptance |
