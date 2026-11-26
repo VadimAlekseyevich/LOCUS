@@ -48,8 +48,10 @@ add_library(locus_package STATIC
     src/app/song_set_manifest.cpp
     src/app/song_archive.cpp
     src/app/package_validation.cpp
+    src/app/publication_revision.cpp
 )
 target_link_libraries(locus_package PUBLIC locus_core PRIVATE nlohmann_json::nlohmann_json)
+target_include_directories(locus_package SYSTEM PRIVATE "${picosha2_SOURCE_DIR}")
 set_target_properties(locus_package PROPERTIES CXX_EXTENSIONS OFF)
 if(MSVC)
     target_compile_options(locus_package PRIVATE /W4 /permissive- /utf-8)

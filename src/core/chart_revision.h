@@ -11,21 +11,11 @@
 
 namespace locus::core {
 
-// Stable, platform-independent 128-bit *content fingerprint*, not an ID.
-// Gameplay-affecting authored properties are included; presentation name,
-// difficultyId, source filename and file layout are deliberately excluded.
-// Recompute when launching PLAY or showing historical scores, never per frame.
-inline std::string ChartGameplayRevision(const LoadedChart& chart) {
-    std::uint64_t first = 14695981039346656037ULL;
-    std::uint64_t second = 1099511628211ULL;
-    const auto addByte = [&](std::uint8_t value) {
-        first = (first ^ value) * 1099511628211ULL;
-        second = (second ^ value) * 14029467366897019727ULL;
-    };
-    const auto add64 = [&](std::uint64_t value) {
-        for (int byte = 0; byte < 8; ++byte)
-            addByte(static_cast<std::uint8_t>(value >> (byte * 8)));
-    };
+// Canonical sequence of little-endian 64-bit words, version 1.
+// Shared by local fingerprints and cryptographic publication digests.
+// Only invoke on a validated chart with authoritative Song Set timing.
+template<class AddWord>
+inline void VisitGameplayRevisionWords(const LoadedChart& chart, AddWord add64) {
     const auto addDouble = [&](double value) {
         std::uint64_t bits = 0;
         static_assert(sizeof(bits) == sizeof(value), "IEEE754 binary64 required");
@@ -56,6 +46,24 @@ inline std::string ChartGameplayRevision(const LoadedChart& chart) {
             EventTimeMs(route, turn, chart.offsetSeconds)));
         add64(static_cast<std::uint64_t>(turn.direction));
     }
+}
+
+// Stable, platform-independent 128-bit *content fingerprint*, not an ID.
+// Gameplay-affecting authored properties are included; presentation name,
+// difficultyId, source filename and file layout are deliberately excluded.
+// Recompute when launching PLAY or showing historical scores, never per frame.
+inline std::string ChartGameplayRevision(const LoadedChart& chart) {
+    std::uint64_t first = 14695981039346656037ULL;
+    std::uint64_t second = 1099511628211ULL;
+    const auto addByte = [&](std::uint8_t value) {
+        first = (first ^ value) * 1099511628211ULL;
+        second = (second ^ value) * 14029467366897019727ULL;
+    };
+    const auto add64 = [&](std::uint64_t value) {
+        for (int byte = 0; byte < 8; ++byte)
+            addByte(static_cast<std::uint8_t>(value >> (byte * 8)));
+    };
+    VisitGameplayRevisionWords(chart,add64);
     std::ostringstream text;
     text << std::hex << std::setfill('0')
          << std::setw(16) << first << std::setw(16) << second;

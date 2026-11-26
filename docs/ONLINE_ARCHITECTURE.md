@@ -12,7 +12,7 @@ remain subject to design review. It is not an API specification.
 | --- | --- | --- |
 | `locus_core` / `LOCUS_BUILD_APP=OFF` | Portable chart parser, exact timestamps, judge, mods, replay codec, Difficulty V4 | Portable score verification entry point implemented; authoritative package/session input validation still needed |
 | Song Set ID + difficulty ID | Stable local identity through rename/copy/import | Server-owned published IDs, ownership and revision mapping |
-| `ChartGameplayRevision` | Detect changed gameplay within local history | Noncryptographic fingerprint; does not bind audio bytes or authenticate ownership |
+| `ChartGameplayRevision` | Detect changed gameplay within local history | Local fingerprint is unchanged; SHA-256 publication content descriptor binds effective chart and exact audio bytes, not ownership |
 | Results v2 + LOCREP04 | Immutable summaries and separate replay data | Player identity, global attempt identity, submission status, verified result derivation |
 | `.locuspack` | Portable package with shared audio, metadata, optional background and charts | Portable structural validation shared with desktop; quotas, full media inspection and immutable publication pending |
 | Async catalog/history | Cached, cancellable off-frame data loading | Network I/O, paging, cancellation, session ownership and durable submission retries |
@@ -81,8 +81,14 @@ Proposed relational model:
 | PlayerStats | Rebuildable projections (PP, play count, accuracy, rank) |
 | ModerationEvent | Subject, decision, actor, timestamp, reason and audit trail |
 
-Use SHA-256 or equivalent standard cryptographic digest for exact bytes
-and canonical effective chart data. Bind effective chart, authoritative
+The portable `DescribePackageRevision` computes SHA-256 for exact manifest,
+audio, optional artwork and chart bytes, plus per-difficulty gameplay content
+hashes from the effective shared timing, canonical version-1 little-endian word
+stream and exact audio SHA-256. Metadata-only chart renames change the raw
+file hash, not the gameplay hash. The caller owns immutable private staging;
+this descriptor is not a server-issued revision ID. The implementation uses
+pinned MIT PicoSHA2 and streams files in bounded blocks.
+Use these digests for content addressing, never authentication. Bind effective chart, authoritative
 shared tempo map and audio content to a published revision. Do not confuse
 the existing local gameplay fingerprint with a security hash. Metadata
 changes need not invalidate comparable gameplay; define that policy
@@ -185,7 +191,7 @@ No legal workflow is currently operational.
 | Gate | Deliverable | Acceptance |
 | --- | --- | --- |
 | W0 | Documentation and portable rules boundary | Core-only CI; no future capability described as implemented |
-| W1 | Portable verifier + package validation boundary (verifier and structural package validation implemented; media/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
+| W1 | Portable verifier + package validation boundary (verifier, structural package validation and SHA-256 content descriptor implemented; media/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
 | W2 | Local run/profile ownership and PP contract | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
 | W3 | API/data contract and private backend | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
 | W4 | Private vertical slice | Publish one authorized test map, play, submit replay, server rejudge, show leaderboard and profile through the same API; retry idempotency |

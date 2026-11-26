@@ -23,3 +23,13 @@ FetchContent_Declare(
     GIT_TAG 79cdd5ab40c79afa559f689ffc13b76812dee1ac
 )
 FetchContent_MakeAvailable(utf8proc)
+
+# SHA-256 for content addressing, not authentication or password hashing.
+# PicoSHA2 (MIT), pinned immutable commit; no platform crypto dependency.
+FetchContent_Declare(
+    picosha2
+    GIT_REPOSITORY https://github.com/okdshin/PicoSHA2.git
+    GIT_TAG 161cb3fc4170fa7a3eca9e582cebd27cc4d1fe29
+    SOURCE_SUBDIR locus-header-only
+)
+FetchContent_MakeAvailable(picosha2)

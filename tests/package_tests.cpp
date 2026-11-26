@@ -1,4 +1,5 @@
 #include "app/package_validation.h"
+#include "app/publication_revision.h"
 #include "app/song_archive.h"
 #include "app/song_timing.h"
 #include <chrono>
@@ -70,6 +71,43 @@ int main() {
     ok &= Check(app::ApplySongTiming(effective,package.manifest.tempoMap,error) &&
         effective.route.turns[1].timeMs==2000 &&
         effective.route.tempoMap==manifest.tempoMap,"effective shared timing preserves exact notes",error);
+    app::PackageRevisionContent original, changed;
+    ok &= Check(Write(stage/"music.wav","abc") &&
+        app::DescribePackageRevision(stage,original,error) &&
+        original.audio.sha256=="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" &&
+        original.audio.bytes==3,"SHA-256 known vector and exact bytes",error);
+    if (!ok) return 1;
+    auto revised=chart;
+    revised.title="Renamed";
+    std::string revisedBytes;
+    const auto& originalChart=original.difficulties.at(chart.difficultyId);
+    ok &= Check(core::SerializeChartJson(revised,revisedBytes,error) &&
+        Write(stage/"hard.locus.json",revisedBytes) &&
+        app::DescribePackageRevision(stage,changed,error) &&
+        changed.difficulties.at(chart.difficultyId).file.sha256!=originalChart.file.sha256 &&
+        changed.difficulties.at(chart.difficultyId).gameplaySha256==originalChart.gameplaySha256,
+        "rename changes exact bytes but not gameplay digest",error);
+    ok &= Check(Write(stage/"music.wav","abd") &&
+        app::DescribePackageRevision(stage,changed,error) &&
+        changed.difficulties.at(chart.difficultyId).gameplaySha256!=originalChart.gameplaySha256,
+        "audio change invalidates published gameplay content",error);
+    revised.route.turns.back().timeMs=2100;
+    ok &= Check(Write(stage/"music.wav","abc") &&
+        core::SerializeChartJson(revised,revisedBytes,error) &&
+        Write(stage/"hard.locus.json",revisedBytes) &&
+        app::DescribePackageRevision(stage,changed,error) &&
+        changed.difficulties.at(chart.difficultyId).gameplaySha256!=originalChart.gameplaySha256,
+        "note edit invalidates published gameplay content",error);
+    auto timingChanged=manifest;
+    timingChanged.tempoMap.back().bpm=200.0;
+    std::string timingBytes;
+    ok &= Check(Write(stage/"hard.locus.json",chartBytes) &&
+        app::EncodeSongSetManifest(timingChanged,timingBytes,error) &&
+        Write(stage/"set.locus.json",timingBytes) &&
+        app::DescribePackageRevision(stage,changed,error) &&
+        changed.difficulties.at(chart.difficultyId).gameplaySha256!=originalChart.gameplaySha256 &&
+        Write(stage/"set.locus.json",manifestBytes),
+        "shared timing invalidates publication digest",error);
     ok &= Check(Write(stage/"duplicate.json",chartBytes) &&
         !app::ValidateStagedPackage(stage,package,error) &&
         package.difficulties.size()==1,"duplicate ID rejected without replacing output",error);
