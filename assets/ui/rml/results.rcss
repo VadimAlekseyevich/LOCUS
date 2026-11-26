@@ -2,7 +2,16 @@
 .results-columns { display:flex; flex:1; min-height:0; min-width:0; gap:12dp; padding:12dp 14dp; }
 .results-panel { min-width:0; min-height:0; padding:16dp; }
 .results-main { flex:2; display:flex; flex-direction:column; gap:10dp; }
-.results-side { flex:1; display:flex; flex-direction:column; gap:10dp; }
+.results-rank-panel { flex:1; min-width:0; min-height:0; display:flex;
+  flex-direction:column; justify-content:center; align-items:center; }
+.results-rank { display:block; width:100%; text-align:center; font-size:148dp;
+  line-height:1.3; font-weight:800; color:#c3c9de; }
+.rank-SS { color:#fff0ae; font-effect:glow(2dp 13dp 0dp 0dp #f9c550b0); }
+.rank-S { color:#ffd57f; font-effect:glow(2dp 11dp 0dp 0dp #edaa46a0); }
+.rank-A { color:#9cf0bb; font-effect:glow(2dp 10dp 0dp 0dp #4bd78399); }
+.rank-B { color:#94d7ff; font-effect:glow(2dp 10dp 0dp 0dp #489fe899); }
+.rank-C { color:#c6a4ff; font-effect:glow(2dp 9dp 0dp 0dp #9862e899); }
+.rank-D { color:#f39cae; font-effect:glow(2dp 9dp 0dp 0dp #df617999); }
 .results-content { flex:1; min-height:0; display:flex; flex-direction:column; gap:14dp; overflow-y:auto; }
 .results-heading { flex-shrink:0; }
 .results-song { font-size:25dp; font-weight:800; color:#eef1fb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -27,20 +36,17 @@
 .results-actions button { flex:1; min-width:0; height:48dp; font-size:15dp; }
 #results-watch-replay { flex:1.5; }
 .results-error { color:#ef95a8; font-size:13dp; flex-shrink:0; }
-.results-block-title { color:#cfc1fa; font-size:15dp; font-weight:800; }
-#results-history { flex:1; min-height:0; overflow-y:auto; }
-#results-history-list { display:flex; flex-direction:column; gap:6dp; }
-.results-history-spacer { flex-shrink:0; width:1dp; }
-.results-history-row { display:inline-block; width:100%; flex:0 0 36dp; height:36dp; font-size:12dp; text-align:left; }
-.results-empty { color:#9da8c6; padding:9dp; font-size:12dp; }
 @media (max-width:730dp) {
  .results-columns { gap:7dp; padding:7dp; }
  .results-panel { padding:10dp; }
  .results-content { gap:9dp; }
  .results-song { font-size:20dp; }
+ .results-rank { font-size:96dp; }
  .results-accuracy { font-size:32dp; }
  .results-combo { font-size:28dp; }
  .results-grade { padding:5dp; font-size:10dp; }
  .results-grade strong { font-size:20dp; }
  .results-actions button { font-size:12dp; }
 }
+
+@media (max-width:520dp) { .results-rank { font-size:66dp; } }

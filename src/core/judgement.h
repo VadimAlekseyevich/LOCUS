@@ -51,6 +51,30 @@ struct GradeCounts {
     }
 };
 
+// Final result rank is derived, not persisted. Match mania-style inclusive
+// cutoffs using the unrounded accuracy, with no independent miss restriction.
+enum class ResultRank { None, D, C, B, A, S, SS };
+constexpr ResultRank RankForAccuracy(double accuracy, int resolved) noexcept {
+    if (resolved<=0 || !(accuracy>=0.0 && accuracy<=100.0)) return ResultRank::None;
+    if (accuracy==100.0) return ResultRank::SS;
+    if (accuracy>=95.0) return ResultRank::S;
+    if (accuracy>=90.0) return ResultRank::A;
+    if (accuracy>=80.0) return ResultRank::B;
+    if (accuracy>=70.0) return ResultRank::C;
+    return ResultRank::D;
+}
+constexpr const char* ResultRankName(ResultRank rank) noexcept {
+    switch (rank) {
+        case ResultRank::SS: return "SS";
+        case ResultRank::S: return "S";
+        case ResultRank::A: return "A";
+        case ResultRank::B: return "B";
+        case ResultRank::C: return "C";
+        case ResultRank::D: return "D";
+        default: return "--";
+    }
+}
+
 // Compact completed-attempt telemetry, in original song milliseconds.
 // Misses (including wrong directions) are not timing samples.
 // 36 equal-width bins covering the complete Bad window, in song time.

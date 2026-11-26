@@ -27,7 +27,6 @@ public:
     void EndFrame() noexcept;
 private:
     void SetText(const char* id, const std::string& value);
-    void SyncHistory();
     void SyncHistogram();
     Rml::ElementDocument* document_ = nullptr;
     const RunResult* selected_ = nullptr;
@@ -37,17 +36,11 @@ private:
     MenuEvents* events_ = nullptr;
     std::string chartTitle_;
     bool historical_ = false;
-    int total_ = 0;
-    std::uint64_t lastHistoryRevision_ = ~std::uint64_t(0);
-    std::string lastSelectedId_;
+    core::ResultRank lastRank_ = core::ResultRank::None;
+    bool rankValid_ = false;
     std::string lastHistogramId_;
     RunKey lastHistogramKey_;
     bool histogramValid_ = false;
-    RunKey lastHistoryKey_;
-    std::vector<std::size_t> historyIndices_;
-    LibraryRowWindow historyWindow_;
-    bool historyWindowValid_ = false;
-    float historyRowStepDp_ = 42.0f;
     std::unordered_map<std::string, std::string> textCache_;
 };
 } // namespace locus::app

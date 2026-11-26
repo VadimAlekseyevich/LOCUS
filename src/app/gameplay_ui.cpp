@@ -117,8 +117,6 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay,
     const auto& theme = ApprovedUiTheme();
     const core::GradeCounts& counts =
         saved ? saved->grades : gameplay.judge.Counts();
-    const int total = saved ? saved->notesJudged
-        : static_cast<int>(gameplay.judge.ScorableCount());
     const std::string title = saved ? saved->chartTitle : gameplay.title;
     const Color muted = theme.secondaryText;
     const Color sky = theme.softBlue;
@@ -140,9 +138,16 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay,
     DrawTextLabel(font, "ACCURACY", {94, 206}, 17, muted);
     DrawTextLabel(font, TextFormat("%.2f%%", counts.AccuracyPercent()),
                   {94, 232}, 44, violet);
-    DrawTextLabel(font, TextFormat("%d / %d NOTES JUDGED",
-                  counts.Resolved(), total),
-                  {94, 319}, 15, muted);
+    const auto rank=core::RankForAccuracy(
+        saved ? saved->accuracyPercent : counts.AccuracyPercent(),counts.Resolved());
+    const Color rankColors[]={{190,196,215,255},{243,156,174,255},
+        {198,164,255,255},{148,215,255,255},{156,240,187,255},
+        {255,213,127,255},{255,240,174,255}};
+    const Color rankColor=rankColors[static_cast<int>(rank)];
+    const char* rankText=core::ResultRankName(rank);
+    const float rankSize=80.0f;
+    const auto rankWidth=MeasureTextEx(font,rankText,rankSize,1.0f).x;
+    DrawTextLabel(font,rankText,{(72+412)-rankWidth-24,282},rankSize,rankColor);
     if (saved && saved->variablePracticeRate)
         DrawTextLabel(font,
                       TextFormat("VARIABLE RATE / LAST %.0f%%",
@@ -165,8 +170,6 @@ void DrawResultsScreen(Font font, const GameplayView& gameplay,
     if (!historical) {
         DrawUiThemedButton(font, kResultsReplayButton, "PLAY AGAIN",
                            UiButtonVariant::Blue);
-        DrawUiThemedButton(font, kResultsEditorButton, "EDIT CHART",
-                           UiButtonVariant::Rose);
     }
 }
 

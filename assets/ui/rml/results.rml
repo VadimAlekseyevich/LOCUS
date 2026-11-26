@@ -5,7 +5,7 @@
 <body><div id="results-root">
  <div class="results-columns">
   <div class="panel results-panel results-main">
-   <div class="results-content">
+   <div id="results-content" class="results-content">
     <div class="results-heading"><div id="results-song" class="results-song">LOCUS</div>
      <div id="results-chart" class="results-chart">ORIGINAL</div>
      <div id="results-date" class="results-muted"></div>
@@ -36,12 +36,10 @@
    <div class="results-actions">
     <button id="results-watch-replay" class="primary" data-action="watch-replay"><span class="button-label">WATCH REPLAY</span></button>
     <button id="results-retry" class="secondary" data-action="retry"><span class="button-label">RETRY</span></button>
-    <button id="results-edit" class="quiet" data-action="edit"><span class="button-label">EDIT CHART</span></button>
    </div>
   </div>
-  <div class="panel results-panel results-side">
-   <div class="results-block-title">OTHER RESULTS</div>
-   <div id="results-history"><div id="results-history-list"><div class="results-empty">NO OTHER SAVED RESULTS</div></div></div>
+  <div class="results-rank-panel">
+   <div id="results-rank" class="results-rank rank-none">--</div>
   </div>
  </div>
 </div></body></rml>

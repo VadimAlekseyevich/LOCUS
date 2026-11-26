@@ -27,6 +27,19 @@ bool SameRoute(const RouteStep& a, const RouteStep& b) {
 
 int main() {
     bool ok = true;
+    ok &= Check(RankForAccuracy(100,1)==ResultRank::SS &&
+                RankForAccuracy(99.999,1)==ResultRank::S &&
+                RankForAccuracy(95,20)==ResultRank::S &&
+                RankForAccuracy(94.999,20)==ResultRank::A &&
+                RankForAccuracy(90,20)==ResultRank::A &&
+                RankForAccuracy(89.999,20)==ResultRank::B &&
+                RankForAccuracy(80,20)==ResultRank::B &&
+                RankForAccuracy(79.999,20)==ResultRank::C &&
+                RankForAccuracy(70,20)==ResultRank::C &&
+                RankForAccuracy(69.999,20)==ResultRank::D &&
+                RankForAccuracy(0,20)==ResultRank::D &&
+                RankForAccuracy(100,0)==ResultRank::None,
+                "mania-style inclusive rank thresholds, no rank for empty chart");
     // Every resolved note contributes once. Miss = 0, and its denominator
     // still counts; otherwise missing notes would never reduce accuracy.
     GradeCounts accuracy;

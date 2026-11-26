@@ -8,7 +8,7 @@ Each completed LOCUS chart attempt creates **one small JSON record**. New attemp
 - Retrying, leaving early, revisiting Results, or a partial TEST from the editor never creates a completed record.
 - Normal PLAY sessions at lower practice rates include the selected speed as `practiceRate`. The built-in demo uses a separate identity.
 - The newly completed result opens in Results. Selecting a prior result from the PLAY screen's left history panel opens its statistics **read-only**. WATCH REPLAY is available for attempts with a recorded sidecar in the native Results screen.
-- One chart can have as many completed results as the user creates. PLAY and RESULTS use scrollable virtualized history lists sized to the viewport.
+- One chart can have as many completed results as the user creates. PLAY uses a scrollable virtualized history list sized to the viewport. Results shows the selected attempt only.
 
 ## Disk format and identity
 
@@ -61,3 +61,7 @@ The optional v2 JSON flag `hasReplay` identifies a sidecar named `<attempt-id>.l
 The sidecar is exclusively published before the small result JSON, which is the commit marker. If replay creation fails, the score still saves without a replay. A failed summary publication removes only the writer's own sidecar; a crash may leave an unreferenced sidecar, ignored by history. Old JSON results remain readable; history never parses replay payloads. A missing/corrupt replay does not remove the saved score. Results indicates recording availability. WATCH REPLAY resolves the exact installed Song Set/difficulty revision, verifies the trace with TurnJudge before activating the scene, then reconstructs the scoring timeline in the normal Play renderer and audio transport. A spectator ignores live direction input, can pause or retry, and returns to the original read-only result without writing a new attempt. Playback starts at normal speed using the current skin and audio calibration; it does not reproduce original pauses, intro skips, rate changes or camera movement. The legacy Results fallback does not yet expose the replay button. Missing or incompatible revisions and corrupt sidecars are rejected without changing the active session.
 
 New timing summaries also include optional `statistics.hitErrorHistogram`: 36 nonnegative counts, equally spaced over the symmetric Bad window (10 ms per bin under judgement v1). Their sum equals `timedHits`. Results renders this fixed-size distribution with the current timing-window labels; old attempts without bins, unsupported rules or zero hits display no distribution. The core records bins in O(1) per hit, and replay verification compares the exact bins when present. History still never loads replay payloads.
+
+## Result rank
+
+The final rank is derived from unrounded accuracy: SS at exactly 100%, S at 95% or higher, A at 90%, B at 80%, C at 70%, D below 70%. No separate miss/combo constraint. Empty attempts have no rank. The rank is a presentation of existing accuracy, not a new stored score field or judgement revision. Results shows a large color-coded letter with RmlUi font glow; other attempts remain in PLAY history. Edit Chart is no longer a Results action button.

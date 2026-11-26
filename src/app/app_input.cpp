@@ -178,7 +178,6 @@ FrameInput PollFrameInput(bool debugScreens, const AppState& state,
             else if (hit(kListenChooseButton)) input.chooseMusicPressed = true;
         } else {
             if (hit(kResultsReplayButton)) input.restartPressed = true;
-            else if (hit(kResultsEditorButton)) input.openEditorPressed = true;
         }
     }
     return input;
