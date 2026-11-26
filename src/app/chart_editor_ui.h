@@ -197,6 +197,7 @@ struct EditorUiAction {
     bool chooseAudio = false;
     bool previewToggle = false;
     bool previewRestart = false;
+    bool previewStop = false;
     bool testPlay = false;
     bool changedChart = false;
     // The pure editor returns clipboard text; the outer screen adapter
