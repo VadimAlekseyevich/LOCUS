@@ -72,7 +72,7 @@
         <div class="eyebrow">VISIBILITY</div><div class="mods-row"><button id="mod-hd" data-action="mod-hd" class="secondary"><span class="button-label">Hidden (HD)</span></button><button id="mod-fl" data-action="mod-fl" class="secondary"><span class="button-label">Flashlight (FL)</span></button></div>
         <div class="eyebrow">TRANSFORM</div><div class="mods-row"><button id="mod-mr" data-action="mod-mr" class="secondary"><span class="button-label">Mirror (MR)</span></button><button id="mod-rd" data-action="mod-rd" class="secondary"><span class="button-label">Random (RD)</span></button></div>
         <div class="eyebrow">FAIL CONDITIONS</div><div class="mods-row"><button id="mod-sd" data-action="mod-sd" class="secondary"><span class="button-label">Sudden Death (SD)</span></button><button id="mod-pf" data-action="mod-pf" class="secondary"><span class="button-label">Perfect (PF)</span></button></div>
-        <div class="eyebrow">ASSIST / WATCH</div><div class="mods-row"><button id="mod-at" data-action="mod-at" class="secondary"><span class="button-label">Autoplay (AT)</span></button><button id="mod-cn" data-action="mod-cn" class="secondary"><span class="button-label">Cinema (CN)</span></button></div>
+        <div class="eyebrow">ASSIST / WATCH</div><div class="mods-row"><button id="mod-at" data-action="mod-at" class="secondary"><span class="button-label">Autoplay (AT)</span></button></div>
       </div>
       <div class="mods-heading"><span id="mods-selection">NM</span><button data-action="mods-reset" class="quiet"><span class="button-label">RESET</span></button></div>
     </div>

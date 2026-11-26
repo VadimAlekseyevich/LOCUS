@@ -8,16 +8,44 @@
 
 namespace locus::app {
 
-void PlayScreenActions::HandleControls(const FrameInput& input, double now) {
+bool PlayScreenActions::HandleControls(const FrameInput& input, double now) {
     const bool custom = context_.customChart;
+    if (context_.app.quitConfirmation || context_.app.levelExitConfirmation || input.closeRequested || input.leaveRequested || input.homePressed) {
+        dragging_=false;
+        return false;
+    }
     if (input.restartPressed ||
         (input.requestedScreen && *input.requestedScreen == Screen::Play)) {
         context_.sessionCompleted = false;
         context_.outro.Reset();
         context_.game.Restart(custom, now);
+        dragging_=false;
+        return true;
     } else if (input.pausePressed && !context_.outro.Active()) {
         context_.game.TogglePause(custom, now);
     }
+    if (!context_.game.IsSpectator()) { dragging_=false; return false; }
+    if (input.spectatorTimelinePressed) dragging_=true;
+    if (dragging_) {
+        dragFraction_=input.spectatorPointerFraction;
+        if (input.spectatorPointerDown) return false;
+        dragging_=false;
+        if (context_.game.SeekSpectator(custom,dragFraction_*TimelineDuration(),now)) {
+            context_.outro.Reset(); context_.sessionCompleted=false; return true;
+        }
+    } else if (input.spectatorSeekStep) {
+        if (context_.game.SeekSpectator(custom,context_.game.RawSongSeconds(custom,now)+5.0*input.spectatorSeekStep,now)) {
+            context_.outro.Reset(); context_.sessionCompleted=false; return true;
+        }
+    }
+    return false;
+}
+
+double PlayScreenActions::TimelineSeconds(double now) const noexcept {
+    return dragging_ ? dragFraction_*TimelineDuration() : context_.game.RawSongSeconds(context_.customChart,now);
+}
+double PlayScreenActions::TimelineDuration() const noexcept {
+    return context_.game.DurationSeconds(context_.customChart);
 }
 
 void PlayScreenActions::Update(const FrameInput& input, double now) {
@@ -27,13 +55,6 @@ void PlayScreenActions::Update(const FrameInput& input, double now) {
         if (custom) context_.local.Update(now);
         else context_.demo.Update(now);
         if (context_.outro.Done(now)) {
-            if (core::HasMod(context_.judge.Mods(),core::PlayMod::Cinema)) {
-                context_.app.screen=Screen::SongSelect;
-                context_.sessionCompleted=false;
-                context_.game.Stop(custom);
-                context_.outro.Reset();
-                return;
-            }
             FinishSession(context_.app, context_.judge);
             context_.sessionCompleted = true;
             context_.outro.BeginResults(now);
@@ -59,6 +80,8 @@ void PlayScreenActions::Update(const FrameInput& input, double now) {
     }
     const bool audioFinished = custom
         ? context_.local.Finished() : context_.demo.Finished();
+    // A spectator may seek through the whole song, even after its final note.
+    if (context_.game.IsSpectator() && (!audioFinished || !context_.game.SpectatorEventsDone() || dragging_)) return;
     if (ChartReadyForResults(context_.judge, audioFinished)) {
         const auto transport = Transport(now);
         context_.outro.Begin(context_.judge.EffectiveChart(), transport.songSeconds,

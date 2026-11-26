@@ -1024,6 +1024,7 @@ int main(int argc, char** argv) try {
             }
             if (state.screen == Screen::Play) {
                 presentation.EnterPlay();
+                playActions.ResetSpectatorControls();
                 drainingGameplayAudio = false;
                 // The outgoing menu song fades first; the new gameplay
                 // stream starts silent and eases up just afterwards.
@@ -1122,7 +1123,10 @@ int main(int argc, char** argv) try {
                 hotkeySkinSavePending = true;
                 hotkeySkinSaveAfter = now + 0.25;
             }
-            playActions.HandleControls(input, now);
+            if (playActions.HandleControls(input, now)) {
+                presentation.OnSeek();
+                hitSounds.Stop();
+            }
         }
         if (state.screen == Screen::Listen)
             listener.Update(loadedNewSong, input.restartPressed,
@@ -1232,6 +1236,11 @@ int main(int argc, char** argv) try {
             state.screen == Screen::Play,
             state.quitConfirmation || state.levelExitConfirmation, renderNow);
         gameplay.watchingReplay=gameSession.IsReplay();
+        gameplay.spectator=state.screen==Screen::Play && gameSession.IsSpectator();
+        if (gameplay.spectator) {
+            gameplay.spectatorSeconds=playActions.TimelineSeconds(renderNow);
+            gameplay.spectatorDuration=playActions.TimelineDuration();
+        }
         // The editor and COMPARE pane routes all see the same one clock
         // snapshot; no transport sampling happens inside drawing methods.
         locus::app::EditorRenderClock editorClock;
@@ -1326,7 +1335,7 @@ int main(int argc, char** argv) try {
         // Cursor ownership follows the live interaction state, not a
         // transient fade frame. Hide without locking or warping the mouse.
         const bool hidePointer = locus::app::HideGameplayCursor(
-            state, gameplay.paused, IsWindowFocused());
+            state, gameplay.paused, IsWindowFocused()) && !gameplay.spectator;
         if (hidePointer != IsCursorHidden()) {
             if (hidePointer) HideCursor();
             else ShowCursor();

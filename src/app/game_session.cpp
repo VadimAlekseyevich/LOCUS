@@ -5,6 +5,8 @@
 #include "core/route.h"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace locus::app {
 
@@ -23,6 +25,7 @@ void GameSession::Start(bool customChart, double now) {
     judge_.SetMods(testOrigin_ ? 0 : replay_ ? replay_->modFlags : modFlags_,
                    testOrigin_ ? 0 : replay_ ? replay_->modSeed : modSeed_);
     autoIndex_ = 0;
+    spectatorScoredThrough_=-std::numeric_limits<double>::infinity();
     const int percent = replay_ ? replay_->ratePercent : ratePercent_;
     if (!testOrigin_) {
         if (customChart) local_.SetSpeed(percent / 100.0, now);
@@ -101,12 +104,64 @@ void GameSession::UpdateReplay(bool customChart, double now) {
     // the bounded tail rather than trapping a viewer in silence indefinitely.
     const double cursorSeconds = CalibratedTime(songSeconds,rate);
     const bool drain = finished && songSeconds-audioEndSongSeconds_ >= 2.0;
-    while (const auto* event = replayCursor_.NextDue(
-               *replay_,cursorSeconds,replayFinishSeconds_,drain)) {
-        const auto hit = core::ApplyReplayEvent(judge_,*event);
-        if (hit && !hit->wrongDirection && hit->grade!=core::Grade::Miss)
-            { hitFlash_.Trigger(*hit,now); ++hitSoundCount_; }
+    AdvanceSpectator(cursorSeconds,0.0,now,drain,true);
+}
+
+void GameSession::AdvanceSpectator(double cursorSeconds,double offsetSeconds,double now,
+                                   bool drain,bool effects) {
+    const auto hitEffect=[&](const std::optional<core::Judgement>& hit) {
+        if (effects && hit && !hit->wrongDirection && hit->grade!=core::Grade::Miss) {
+            hitFlash_.Trigger(*hit,now); ++hitSoundCount_;
+        }
+    };
+    if (replay_) {
+        while (const auto* event=replayCursor_.NextDue(*replay_,cursorSeconds,replayFinishSeconds_,drain))
+            hitEffect(core::ApplyReplayEvent(judge_,*event));
+    } else {
+        const auto& chart=judge_.EffectiveChart();
+        constexpr core::Heading keys[]={core::Heading::Up,core::Heading::Right,core::Heading::Down,core::Heading::Left};
+        while (autoIndex_<chart.turns.size()) {
+            const auto& turn=chart.turns[autoIndex_];
+            const double at=core::EventTimeMs(chart,turn,offsetSeconds)/1000.0;
+            if (!drain && cursorSeconds<at) break;
+            const auto mask=core::HeadingArrowMask(turn.direction);
+            for (unsigned i=0;i<4;++i) if (mask & (1u<<i))
+                hitEffect(judge_.PressHeading(keys[i],at));
+            ++autoIndex_;
+        }
     }
+    spectatorScoredThrough_=drain ? std::numeric_limits<double>::infinity() :
+        std::max(spectatorScoredThrough_,cursorSeconds);
+}
+
+bool GameSession::SeekSpectator(bool custom,double audioSeconds,double now) {
+    if (!IsSpectator() || !std::isfinite(audioSeconds)) return false;
+    const double duration=DurationSeconds(custom);
+    if (!std::isfinite(duration) || duration<=0.0) return false;
+    // Transport requires a position strictly before EOF.
+    const double target=std::clamp(audioSeconds,0.0,std::max(0.0,duration-0.001));
+    const bool paused=custom?local_.Paused():demo_.Paused();
+    const bool started=custom?local_.StartAtAudioSeconds(target,now):demo_.StartAtAudioSeconds(target,now);
+    if (!started) return false;
+    if (paused) {
+        if (custom) local_.Pause(now); else demo_.Pause(now);
+    }
+    hitFlash_.Reset();
+    hitSoundCount_=0;
+    audioEndedAt_=-1.0;
+    audioEndSongSeconds_=0.0;
+    const double rate=custom?local_.Speed():demo_.Speed();
+    const double cursor=CalibratedTime(target,rate);
+    // Forward seeks can consume only the new prefix. Backwards seeks
+    // rebuild from the original recorded dispatch order, not sorted times.
+    if (cursor<spectatorScoredThrough_) {
+        judge_.Reset();
+        replayCursor_.Reset();
+        autoIndex_=0;
+        spectatorScoredThrough_=-std::numeric_limits<double>::infinity();
+    }
+    AdvanceSpectator(cursor,custom?local_.OffsetSeconds():0.0,now,false,false);
+    return true;
 }
 
 void GameSession::Update(bool customChart, double now, const ArrowInput& arrows) {
@@ -162,22 +217,7 @@ void GameSession::Update(bool customChart, double now, const ArrowInput& arrows)
         if (customChart) local_.Update(now); else demo_.Update(now);
         const bool finished = customChart ? local_.Finished() : demo_.Finished();
         const double cursor = CalibratedTime(customChart ? local_.AudioSeconds(now) : demo_.SongSeconds(now),playbackRate);
-        const auto& chart = judge_.EffectiveChart();
-        const double offset = customChart ? local_.OffsetSeconds() : 0.0;
-        constexpr core::Heading keys[] = {core::Heading::Up,core::Heading::Right,core::Heading::Down,core::Heading::Left};
-        while (autoIndex_ < chart.turns.size()) {
-            const auto& turn = chart.turns[autoIndex_];
-            const double at = core::EventTimeMs(chart,turn,offset)/1000.0;
-            if (!finished && cursor < at) break;
-            const auto mask=core::HeadingArrowMask(turn.direction);
-            for (unsigned i=0;i<4;++i) if (mask & (1u<<i)) {
-                const auto hit=judge_.PressHeading(keys[i],at);
-                if (hit && !core::HasMod(judge_.Mods(),core::PlayMod::Cinema)) {
-                    hitFlash_.Trigger(*hit,now); ++hitSoundCount_;
-                }
-            }
-            ++autoIndex_;
-        }
+        AdvanceSpectator(cursor,customChart?local_.OffsetSeconds():0.0,now,finished,true);
         return;
     }
     if ((playing && !paused) || audioAlreadyFinished) {

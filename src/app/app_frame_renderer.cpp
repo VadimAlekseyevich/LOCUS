@@ -1,4 +1,5 @@
 #include "app/app_frame_renderer.h"
+#include "app/spectator_timeline.h"
 #include "core/utf8.h"
 #include "app/app_quit_dialog_layout.h"
 #include "app/editor_save_modal_layout.h"
@@ -313,6 +314,22 @@ void RenderFrame(const AppState& state, bool debugScreens, Font font,
                            static_cast<float>(GetScreenHeight())}),
                 Color{5, 6, 11, static_cast<unsigned char>(
                     std::lround(gameplay.outro.blackOpacity * 255.0f))});
+        if (gameplay.spectator && gameplay.spectatorDuration>0.0 && !state.quitConfirmation && !state.levelExitConfirmation) {
+            const auto panel=SpectatorTimelineBounds();
+            const auto track=SpectatorTimelineTrack();
+            const auto fraction=static_cast<float>(std::clamp(gameplay.spectatorSeconds/gameplay.spectatorDuration,0.0,1.0));
+            const auto& theme=ApprovedUiTheme();
+            DrawRectangleRounded(panel,0.25f,8,Color{24,28,43,235});
+            DrawRectangleRec(track,theme.divider);
+            DrawRectangleRec({track.x,track.y,track.width*fraction,track.height},theme.softBlue);
+            DrawCircleV({track.x+track.width*fraction,track.y+track.height*0.5f},5.0f,theme.softBlue);
+            const int current=static_cast<int>(std::max(0.0,gameplay.spectatorSeconds));
+            const int total=static_cast<int>(gameplay.spectatorDuration);
+            DrawTextEx(font,TextFormat("%02d:%02d / %02d:%02d",current/60,current%60,total/60,total%60),{252,498},11,0.5f,theme.foreground);
+            const char* hint="LEFT / RIGHT  5s";
+            const auto width=MeasureTextEx(font,hint,11,0.5f).x;
+            DrawTextEx(font,hint,{708-width,498},11,0.5f,theme.secondaryText);
+        }
     } else if (state.screen == Screen::Results) {
 #ifdef LOCUS_WITH_RMLUI
         if (!nativeMenu || !nativeMenu->ResultsAvailable() ||

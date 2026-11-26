@@ -10,6 +10,7 @@
 
 #include <array>
 #include <optional>
+#include <limits>
 #include <utility>
 
 namespace locus::app {
@@ -50,6 +51,11 @@ public:
     }
     void ClearReplay() noexcept { replay_.reset(); replayCursor_.Reset(); }
     bool IsReplay() const noexcept { return replay_.has_value(); }
+    bool IsSpectator() const noexcept { return IsReplay() || core::Assisted(judge_.Mods()); }
+    bool SpectatorEventsDone() const noexcept { return !replay_ || replayCursor_.Done(*replay_); }
+    double DurationSeconds(bool custom) const noexcept { return custom ? local_.DurationSeconds() : demo_.DurationSeconds(); }
+    double RawSongSeconds(bool custom,double now) const noexcept { return custom ? local_.AudioSeconds(now) : demo_.SongSeconds(now); }
+    bool SeekSpectator(bool custom,double audioSeconds,double now);
 
     void Start(bool customChart, double now);
     void Restart(bool customChart, double now);
@@ -76,6 +82,8 @@ public:
 
 private:
     void UpdateReplay(bool customChart, double now);
+    void AdvanceSpectator(double cursorSeconds,double offsetSeconds,double now,bool drain,bool effects);
+    double spectatorScoredThrough_ = -std::numeric_limits<double>::infinity();
     const core::Chart& chart_;
     core::TurnJudge& judge_;
     DemoTransport& demo_;

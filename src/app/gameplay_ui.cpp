@@ -140,8 +140,7 @@ void DrawPlayGrid(Font font,const GameplayView& gameplay,double now,
     if (core::HasMod(gameplay.judge.Mods(),core::PlayMod::Flashlight))
         DrawFlashlightMask(marker,visible);
     const auto layout = LayoutGameplayHud(visible,kGameplayWorldViewport);
-    if (!core::HasMod(gameplay.judge.Mods(),core::PlayMod::Cinema))
-        DrawGameplayHud(font,layout,MakeGameplayHudStats(gameplay.judge,gameplay.practiceSpeed,
+    DrawGameplayHud(font,layout,MakeGameplayHudStats(gameplay.judge,gameplay.practiceSpeed,
                                                      gameplay.watchingReplay),
                     gameplay.skin,&gameplay.hitFlash.Errors(),now);
     if (now < gameplay.adjustmentNoticeUntil)

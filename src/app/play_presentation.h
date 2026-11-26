@@ -12,6 +12,7 @@ class PlayPresentation {
 public:
     PlayOutroTransition& Outro() noexcept { return outro_; }
     void EnterPlay() noexcept;
+    void OnSeek() noexcept { ResetCamera(); }
     void Pause(double now) noexcept { outro_.Pause(now); }
     void Resume(double now) noexcept { outro_.Resume(now); }
     void ShowAdjustment(std::string message, double now);

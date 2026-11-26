@@ -44,13 +44,18 @@ public:
         : context_(context) {}
 
     // Used on frames which stay on Play, not at a screen boundary.
-    void HandleControls(const FrameInput& input, double now);
+    bool HandleControls(const FrameInput& input, double now);
+    void ResetSpectatorControls() noexcept { dragging_=false; }
+    double TimelineSeconds(double now) const noexcept;
+    double TimelineDuration() const noexcept;
     // Scoring also runs on the first frame of a newly entered Play screen.
     void Update(const FrameInput& input, double now);
     PlayTransportView Transport(double now) const;
 
 private:
     PlayActionsContext context_;
+    bool dragging_=false;
+    float dragFraction_=0.0f;
 };
 
 } // namespace locus::app

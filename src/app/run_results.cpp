@@ -99,7 +99,7 @@ bool Decode(const Json& obj, RunResult& out) {
         if (obj.contains("modFlags")) {
             if (!obj.at("modFlags").is_number_unsigned() && !obj.at("modFlags").is_number_integer()) return false;
             const auto flags = obj.at("modFlags").get<std::int64_t>();
-            if (flags < 0 || flags > 1023 || !core::ValidModFlags(static_cast<core::ModFlags>(flags))) return false;
+            if (flags < 0 || flags > 511 || !core::ValidModFlags(static_cast<core::ModFlags>(flags))) return false;
             r.modFlags = static_cast<core::ModFlags>(flags);
         }
         if (obj.contains("modSeed")) {

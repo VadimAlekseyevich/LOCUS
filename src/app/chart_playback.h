@@ -29,7 +29,7 @@ public:
                    const std::vector<core::TempoMarker>& map = {},
                    int ticksPerBeat = 1) noexcept;
     void Start(double monotonicSeconds);
-    // Editor-only seek: no scoring and no separate Play screen.
+    // Seek the audio clock; the caller owns any scoring reconstruction.
     bool StartAtAudioSeconds(double audioSeconds, double monotonicSeconds);
     void Pause(double monotonicSeconds);
     void Resume(double monotonicSeconds);
@@ -38,6 +38,7 @@ public:
     void SetSpeed(double fraction, double monotonicSeconds);
     double Speed() const noexcept { return speed_; }
     double OffsetSeconds() const noexcept { return offsetSeconds_; }
+    double DurationSeconds() const noexcept { return audio_.DurationSeconds(); }
 
     bool Playing() const noexcept { return playing_; }
     bool Paused() const noexcept { return paused_; }

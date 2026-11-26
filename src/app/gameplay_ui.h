@@ -45,6 +45,8 @@ struct GameplayView {
     // this object; RenderFrame must not retain the pointer.
     const RoutePreviewFrame* routePreview = nullptr;
     bool watchingReplay = false;
+    bool spectator = false;
+    double spectatorSeconds=0.0, spectatorDuration=0.0;
 };
 
 // The visible playfield is exactly one screen-height square, centred in

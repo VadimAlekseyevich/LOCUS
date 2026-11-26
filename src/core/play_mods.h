@@ -17,28 +17,27 @@ inline std::string FormatRateMod(int percent) {
     return std::string(RateModCode(RateModFor(percent))) + " " + std::to_string(percent) + "%";
 }
 // Stable persisted modifier bits. Never reuse a bit for a different rule.
-enum class PlayMod : std::uint32_t { Easy=1, HardRock=2, Hidden=4, Flashlight=8, Mirror=16, Random=32, Autoplay=64, SuddenDeath=128, Perfect=256, Cinema=512 };
+enum class PlayMod : std::uint32_t { Easy=1, HardRock=2, Hidden=4, Flashlight=8, Mirror=16, Random=32, Autoplay=64, SuddenDeath=128, Perfect=256 };
 using ModFlags = std::uint32_t;
 constexpr ModFlags ModBit(PlayMod mod) noexcept { return static_cast<ModFlags>(mod); }
 constexpr bool HasMod(ModFlags flags, PlayMod mod) noexcept { return (flags & ModBit(mod)) != 0; }
 struct ModDefinition { PlayMod mod; const char* id; const char* code; const char* name; ModFlags conflicts; };
-inline constexpr std::array<ModDefinition,10> kPlayModDefinitions{{
+inline constexpr std::array<ModDefinition,9> kPlayModDefinitions{{
     {PlayMod::Easy,"ez","EZ","Easy",2u}, {PlayMod::HardRock,"hr","HR","Hard Rock",1u},
     {PlayMod::Hidden,"hd","HD","Hidden",8u}, {PlayMod::Flashlight,"fl","FL","Flashlight",4u},
     {PlayMod::Mirror,"mr","MR","Mirror",32u}, {PlayMod::Random,"rd","RD","Random",16u},
-    {PlayMod::Autoplay,"at","AT","Autoplay",128u|256u|512u},
-    {PlayMod::SuddenDeath,"sd","SD","Sudden Death",64u|256u|512u},
-    {PlayMod::Perfect,"pf","PF","Perfect",64u|128u|512u},
-    {PlayMod::Cinema,"cn","CN","Cinema",64u|128u|256u}
+    {PlayMod::Autoplay,"at","AT","Autoplay",128u|256u},
+    {PlayMod::SuddenDeath,"sd","SD","Sudden Death",64u|256u},
+    {PlayMod::Perfect,"pf","PF","Perfect",64u|128u}
 }};
 constexpr bool ValidModFlags(ModFlags flags) noexcept {
-    if (flags & ~1023u) return false;
+    if (flags & ~511u) return false;
     for (const auto& mod : kPlayModDefinitions)
         if (HasMod(flags,mod.mod) && (flags & mod.conflicts)) return false;
     return true;
 }
 constexpr bool Assisted(ModFlags flags) noexcept {
-    return HasMod(flags,PlayMod::Autoplay) || HasMod(flags,PlayMod::Cinema);
+    return HasMod(flags,PlayMod::Autoplay);
 }
 // Fixed integer PRNG: replay output does not depend on standard-library RNGs.
 inline Chart TransformModChart(const Chart& source, ModFlags flags, std::uint32_t seed) {

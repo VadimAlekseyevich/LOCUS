@@ -1,4 +1,5 @@
 #include "app/app_input.h"
+#include "app/spectator_timeline.h"
 
 #include "app/native_close.h"
 #include "app/app_quit_dialog_layout.h"
@@ -82,6 +83,14 @@ FrameInput PollInput(bool debugScreens, Screen currentScreen,
                                  static_cast<int>(IsKeyPressed(less));
         input.previewTimeHeld = static_cast<int>(IsKeyDown(more)) -
                                 static_cast<int>(IsKeyDown(less));
+    }
+    if (currentScreen==Screen::Play) {
+        input.spectatorSeekStep=static_cast<int>(IsKeyPressed(KEY_RIGHT))-static_cast<int>(IsKeyPressed(KEY_LEFT));
+        const auto transform=ViewportTransform::Gameplay(GetScreenWidth(),GetScreenHeight());
+        const auto pointer=transform.ToVirtual(GetMousePosition());
+        input.spectatorTimelinePressed=IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(pointer,SpectatorTimelineBounds());
+        input.spectatorPointerDown=IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        input.spectatorPointerFraction=SpectatorTimelineFraction(pointer);
     }
     // IsKeyPressed() captures fresh key-downs only; held keys never re-score.
     // Use the same steady clock origin as DemoTransport, not frame duration.

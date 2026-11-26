@@ -53,6 +53,9 @@ struct FrameInput {
     DirectionKeyBatch directionEvents;
     bool exactDirectionEvents = false;
     locus::app::EditorControls editor;
+    int spectatorSeekStep=0;
+    bool spectatorTimelinePressed=false, spectatorPointerDown=false;
+    float spectatorPointerFraction=0.0f;
 };
 
 // A focused native menu control owns navigation keys. Preserve close requests
