@@ -17,6 +17,8 @@ Double-click **`build_and_run.bat`** in the repository folder. It checks for Git
 | `build_and_run.bat test` | Build and run the game’s CTest suite |
 | `build_and_run.bat package` | Build and create a portable Windows ZIP in the build directory’s `dist/` |
 
+The Windows launcher chooses parallel build jobs from available logical CPUs and free physical RAM, up to 12 jobs (leaving two logical CPUs where possible and budgeting 1.25 GiB per job after a 2 GiB reserve). Set `LOCUS_BUILD_JOBS` to an integer from 1 to 64 to override this policy; for example, `set LOCUS_BUILD_JOBS=8` in Command Prompt before running the launcher. The selected value is printed and logged. The existing incremental build directory is reused.
+
 A local log folder is created under `.locus-runs/` (Git-ignored). Logs are not uploaded. CI runs the same production CMake build and tests on Windows.
 
 A portable Windows build is available as the **`locus-windows-x64`** [GitHub Actions artifact](https://github.com/VadimAlekseyevich/LOCUS/actions): download the contained `LOCUS-windows-x64.zip`, extract all files and run `Start LOCUS.bat` (or `locus.exe`). The launcher records startup output and the exit code in a temporary log and prints its path on failure. The complete `assets/ui` directory and `examples` ship beside the executable; CI diagnostics are a separate artifact. For the same portable layout locally, use `cmake --install build/windows --config Release --prefix build/windows/portable` after building. Required resources are declared in [`cmake/ui_assets_manifest.cmake`](cmake/ui_assets_manifest.cmake).

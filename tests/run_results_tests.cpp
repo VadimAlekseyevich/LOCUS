@@ -66,6 +66,13 @@ int main(int argc, char** argv) {
     fs::create_directories(root, ec);
     if (ec) return 1;
     bool ok = true;
+    RunResult combo;
+    combo.notesJudged=202;
+    ok &= Check(locus::app::FormatRunCombo(combo)=="--/202",
+                "historical attempt does not invent missing maximum combo");
+    combo.statistics=locus::core::RunStatistics{180,190,0.0,0.0};
+    ok &= Check(locus::app::FormatRunCombo(combo)=="180/202",
+                "combo denominator uses the recorded physical note count");
     ok &= Check(RunResult{}.judgementVersion ==
                 locus::core::kJudgementRulesVersion,
                 "new score records inherit the authoritative judgement revision");

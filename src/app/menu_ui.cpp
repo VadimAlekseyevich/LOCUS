@@ -226,6 +226,10 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
             Label(font,name,rect.x+26-width*0.5f,rect.y+6,18,ResultRankColor(rank));
             Label(font,TextFormat("%.2f%%",result.accuracyPercent),
                   rect.x+52,rect.y+7,16,theme.foreground);
+            const auto combo=FormatRunCombo(result);
+            const float comboWidth=MeasureTextEx(font,combo.c_str(),13.0f,1.0f).x;
+            Label(font,combo.c_str(),rect.x+rect.width-9-comboWidth,
+                  rect.y+9,13,theme.secondaryText);
         }
     }
     action(LibraryPlayButton(), "PLAY", UiButtonVariant::Blue);

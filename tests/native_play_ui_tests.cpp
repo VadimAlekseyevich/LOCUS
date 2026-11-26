@@ -98,6 +98,7 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         saved.notesJudged=5;
         saved.accuracyPercent=80.0;
         saved.completedAtMs=1700000000000LL;
+        saved.statistics=locus::core::RunStatistics{4,4,0.0,0.0};
         selection.ReplaceResults({"test-set","test-chart"},{saved});
         presenter.BeginFrame(library,selection,1.6f);
         presenter.Sync();
@@ -105,11 +106,15 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         auto* results=document->GetElementById("results-list");
         auto* row=results && results->GetNumChildren()>0 ? results->GetChild(0):nullptr;
         auto* viewport=document->GetElementById("results-scroll");
-        ok &= Check(row && row->GetNumChildren()==2 &&
+        ok &= Check(row && row->GetNumChildren()==3 &&
                     row->GetChild(0)->IsClassSet("rank-B") &&
                     row->GetChild(0)->GetInnerRML()=="B" &&
-                    row->GetChild(1)->GetInnerRML()=="80.00%",
-                    "history row contains only rank and accuracy");
+                    row->GetChild(1)->GetInnerRML()=="80.00%" &&
+                    row->GetChild(2)->GetInnerRML()=="4/5" &&
+                    row->GetChild(2)->IsClassSet("result-combo") &&
+                    row->GetChild(2)->GetAbsoluteLeft()>
+                        row->GetChild(1)->GetAbsoluteLeft(),
+                    "history row contains rank, accuracy and right-side combo");
         if (row && viewport && viewport->GetClientHeight()>0) {
             const int x=static_cast<int>(row->GetAbsoluteLeft()+row->GetOffsetWidth()/2);
             const int y=static_cast<int>(row->GetAbsoluteTop()+row->GetOffsetHeight()/2);

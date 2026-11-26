@@ -317,7 +317,9 @@ void NativePlayUi::RebuildResults(SongSelectUi& ui) {
              << "'><span class='button-label result-rank rank-"
              << (rank==core::ResultRank::None ? "none" : name)
              << "'>" << name << "</span><span class='button-label result-accuracy'>"
-             << Accuracy(result.accuracyPercent) << "</span></button>";
+             << Accuracy(result.accuracyPercent)
+             << "</span><span class='button-label result-combo'>"
+             << FormatRunCombo(result) << "</span></button>";
     }
     if (window.after > 0.0f)
         html << "<div class='result-spacer' style='height:"

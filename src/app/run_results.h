@@ -120,6 +120,8 @@ bool CaptureCompletedRun(const RunResultsStore& store,
                          RunResult& saved, std::string& error);
 
 std::string FormatRunTimestamp(std::int64_t unixMs);
+// Denominator belongs to the recorded chart revision, not the current chart.
+std::string FormatRunCombo(const RunResult& result);
 bool ValidRunResult(const RunResult& result) noexcept;
 // The caller supplies the actual loaded chart revision. Never mutates live play.
 bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,

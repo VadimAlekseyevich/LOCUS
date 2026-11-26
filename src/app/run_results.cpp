@@ -208,6 +208,12 @@ bool CaptureCompletedRun(const RunResultsStore& store,
     return true;
 }
 
+std::string FormatRunCombo(const RunResult& result) {
+    const std::string numerator=result.statistics
+        ? std::to_string(result.statistics->maxCombo) : "--";
+    return numerator+"/"+std::to_string(result.notesJudged);
+}
+
 std::string FormatRunTimestamp(std::int64_t ms) {
     if (ms <= 0) return "--";
     const std::time_t sec = static_cast<std::time_t>(ms / 1000);

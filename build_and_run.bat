@@ -110,11 +110,24 @@ if errorlevel 1 (
     goto :failed
 )
 
-echo [LOCUS] Compiling LOCUS (Release)...
+rem MSBuild parallelism is at project level. Leave two logical CPUs
+rem and about 2 GiB free, budgeting 1.25 GiB per simultaneous project.
+rem The explicit override is validated before passing it to CMake.
+set "BUILD_JOBS="
+for /f "delims=" %%J in ('powershell -NoProfile -Command "$cpu=[Math]::Max(1,[Environment]::ProcessorCount-2); if ($env:LOCUS_BUILD_JOBS) { $n=0; if (-not [int]::TryParse($env:LOCUS_BUILD_JOBS,[ref]$n) -or $n -lt 1 -or $n -gt 64) { exit 2 }; $n } else { $mem=4; try { $os=Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop; $mem=[Math]::Max(1,[Math]::Floor(($os.FreePhysicalMemory*1KB-2GB)/(1.25*1GB))) } catch {}; [int][Math]::Min(12,[Math]::Min($cpu,$mem)) }" 2^>nul') do set "BUILD_JOBS=%%J"
+if not defined BUILD_JOBS (
+    if defined LOCUS_BUILD_JOBS (
+        echo [LOCUS] Invalid LOCUS_BUILD_JOBS. Use an integer from 1 to 64.
+        goto :failed
+    )
+    set "BUILD_JOBS=2"
+)
+>> "%LOG_DIR%\run-info.txt" echo build_jobs=%BUILD_JOBS%
+echo [LOCUS] Compiling LOCUS (Release, %BUILD_JOBS% parallel jobs)...
 if /I "%MODE%"=="test" (
-    cmake --build "%BUILD%" --config Release --parallel 2 > "%LOG_DIR%\build.log" 2>&1
+    cmake --build "%BUILD%" --config Release --parallel %BUILD_JOBS% > "%LOG_DIR%\build.log" 2>&1
 ) else (
-    cmake --build "%BUILD%" --config Release --target locus --parallel 2 > "%LOG_DIR%\build.log" 2>&1
+    cmake --build "%BUILD%" --config Release --target locus --parallel %BUILD_JOBS% > "%LOG_DIR%\build.log" 2>&1
 )
 if errorlevel 1 (
     echo [LOCUS] Compilation FAILED.

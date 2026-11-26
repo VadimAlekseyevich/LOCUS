@@ -49,8 +49,10 @@
 .result:hover { border-color:#b5a4f3; background-color:#484c73; }
 .result .result-rank { left:9dp; right:auto; width:34dp; font-size:18dp;
   font-weight:800; text-align:center; }
-.result .result-accuracy { left:52dp; right:9dp; text-align:left;
+.result .result-accuracy { left:52dp; right:45%; text-align:left;
   font-size:15dp; font-weight:700; }
+.result .result-combo { left:57%; right:9dp; text-align:right;
+  font-size:13dp; font-weight:650; color:#c0c9e2; }
 #notice { display:block; color:#ecc3d1; padding:0 12dp;
   font-size:11dp; }
 #commands { display:flex; flex-direction:row;
@@ -105,4 +107,10 @@
   #pack-section { padding-top:8dp; padding-bottom:7dp; }
   #difficulty-section { padding-top:7dp; padding-bottom:7dp; }
   #commands { flex-basis:58dp; padding-top:6dp; padding-bottom:6dp; }
+}
+
+@media (max-width:650dp) {
+  .result .result-rank { left:5dp; width:26dp; font-size:15dp; }
+  .result .result-accuracy { left:35dp; font-size:12dp; }
+  .result .result-combo { right:5dp; font-size:11dp; }
 }
