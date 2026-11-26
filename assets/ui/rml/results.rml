@@ -5,36 +5,42 @@
 <body><div id="results-root">
  <div class="results-columns">
   <div class="panel results-panel results-main">
-   <div><div id="results-song" class="results-song">LOCUS</div>
-    <div id="results-chart" class="results-chart">ORIGINAL</div>
-    <div id="results-date" class="results-muted"></div></div>
-   <div><div class="results-muted">ACCURACY</div>
-    <div id="results-accuracy" class="results-accuracy">100.00%</div></div>
-   <div><div class="results-muted">NOTES JUDGED</div>
-    <div id="results-notes" class="results-notes">0 / 0</div>
-    <div id="results-practice" class="results-muted"></div></div>
-   <div class="results-muted">MAX COMBO <strong id="results-max-combo">--</strong></div>
-   <div class="results-muted">MEAN HIT ERROR (SONG TIME) <strong id="results-mean-error">--</strong></div>
-   <div class="results-muted">UNSTABLE RATE (SONG TIME) <strong id="results-unstable-rate">--</strong></div>
-   <div class="results-muted">HIT ERROR DISTRIBUTION</div>
-   <div id="results-hit-histogram"></div>
-   <div id="results-histogram-axis" class="results-muted results-histogram-axis"></div>
-   <div id="results-replay-status" class="results-muted"></div>
-   <button id="results-watch-replay" class="secondary" data-action="watch-replay"><span class="button-label">WATCH REPLAY</span></button>
+   <div class="results-content">
+    <div class="results-heading"><div id="results-song" class="results-song">LOCUS</div>
+     <div id="results-chart" class="results-chart">ORIGINAL</div>
+     <div id="results-date" class="results-muted"></div>
+     <div id="results-practice" class="results-muted"></div></div>
+    <div class="results-primary-stats">
+     <div class="results-stat"><div class="results-label">ACCURACY</div>
+      <div id="results-accuracy" class="results-accuracy">100.00%</div></div>
+     <div class="results-stat"><div class="results-label">MAX COMBO</div>
+      <div id="results-max-combo" class="results-combo">--</div></div>
+    </div>
+    <div class="results-grid">
+     <div class="results-grade"><div>PERFECT</div><strong id="results-perfect">0</strong></div>
+     <div class="results-grade"><div>GOOD</div><strong id="results-good">0</strong></div>
+     <div class="results-grade"><div>BAD</div><strong id="results-bad">0</strong></div>
+     <div class="results-grade"><div>MISS</div><strong id="results-miss">0</strong></div>
+    </div>
+    <div class="results-timing">
+     <div class="results-stat"><div class="results-label">MEAN HIT ERROR</div><div id="results-mean-error" class="results-timing-value">--</div></div>
+     <div class="results-stat"><div class="results-label">UNSTABLE RATE</div><div id="results-unstable-rate" class="results-timing-value">--</div></div>
+    </div>
+    <div class="results-chart-block">
+     <div class="results-label">HIT ERROR DISTRIBUTION</div>
+     <div id="results-hit-histogram"></div>
+     <div id="results-histogram-axis" class="results-muted results-histogram-axis"></div>
+    </div>
+   </div>
+   <div id="results-replay-status" class="results-error" style="display:none;"></div>
    <div class="results-actions">
-    <button id="results-retry" class="primary" data-action="retry"><span class="button-label">RETRY</span></button>
-    <button id="results-edit" class="secondary" data-action="edit"><span class="button-label">EDIT CHART</span></button>
+    <button id="results-watch-replay" class="primary" data-action="watch-replay"><span class="button-label">WATCH REPLAY</span></button>
+    <button id="results-retry" class="secondary" data-action="retry"><span class="button-label">RETRY</span></button>
+    <button id="results-edit" class="quiet" data-action="edit"><span class="button-label">EDIT CHART</span></button>
    </div>
   </div>
   <div class="panel results-panel results-side">
-   <div class="results-block-title">JUDGMENTS</div>
-   <div class="results-grid">
-    <div class="results-grade"><div>PERFECT</div><strong id="results-perfect">0</strong></div>
-    <div class="results-grade"><div>GOOD</div><strong id="results-good">0</strong></div>
-    <div class="results-grade"><div>BAD</div><strong id="results-bad">0</strong></div>
-    <div class="results-grade"><div>MISS</div><strong id="results-miss">0</strong></div>
-   </div>
-   <div class="results-block-title results-separator">OTHER RESULTS</div>
+   <div class="results-block-title">OTHER RESULTS</div>
    <div id="results-history"><div id="results-history-list"><div class="results-empty">NO OTHER SAVED RESULTS</div></div></div>
   </div>
  </div>

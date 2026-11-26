@@ -727,7 +727,8 @@ MenuEvents NativeMenuUi::Update(const SongLibrary& library, SongSelectUi& ui,
     playPresenter_.Sync();
     // The library presenter owns Enter (including keypad Enter). RmlUi
     // must not also activate the focused row or action on the same press.
-    PumpInput(true, false, false);
+    // Apply rebuilt history row geometry before hit-testing mouse events.
+    PumpInput(true, true, false);
     playPresenter_.ProcessKeyboard(input);
     playPresenter_.Sync();
     context_->Update();
@@ -807,7 +808,7 @@ MenuEvents NativeMenuUi::UpdateResults(FrameInput& input,
     resultsPresenter_.BeginFrame(selected, grades, total, chartTitle,
                                  historical, history, input, events);
     resultsPresenter_.Sync();
-    PumpInput();
+    PumpInput(true,true,false);
     bool consumed = input.startPressed || input.openEditorPressed ||
                     events.viewResultIndex >= 0 || events.watchReplay;
     if (!consumed && keyboard.activate) {

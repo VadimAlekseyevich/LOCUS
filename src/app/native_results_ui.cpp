@@ -73,8 +73,6 @@ void NativeResultsUi::Sync() {
         ? FormatRunTimestamp(selected_->completedAtMs) : "");
     SetText("results-accuracy", Percent(selected_ ?
         selected_->accuracyPercent : grades_->AccuracyPercent()));
-    SetText("results-notes", std::to_string(grades_->Resolved()) +
-        " / " + std::to_string(total_));
     SetText("results-perfect", std::to_string(grades_->perfect));
     SetText("results-good", std::to_string(grades_->good));
     SetText("results-bad", std::to_string(grades_->bad));
@@ -113,12 +111,12 @@ void NativeResultsUi::Sync() {
         }
     }
     SetText("results-practice", detail);
-    SetText("results-replay-status", !history_->replayNotice.empty()
-        ? history_->replayNotice : selected_ && selected_->hasReplay
-        ? "REPLAY RECORDED" : "NO RECORDED REPLAY");
+    SetText("results-replay-status",history_->replayNotice);
+    if (auto* error=document_->GetElementById("results-replay-status"))
+        error->SetProperty("display",history_->replayNotice.empty() ? "none" : "block");
     if (auto* button=document_->GetElementById("results-watch-replay"))
         button->SetProperty("display",selected_ && selected_->hasReplay
-            ? "block" : "none");
+            ? "inline-block" : "none");
     for (const char* id : {"results-retry", "results-edit"}) {
         if (auto* button = document_->GetElementById(id))
             button->SetProperty("display", historical_ ? "none" : "inline-block");
@@ -155,7 +153,7 @@ void NativeResultsUi::SyncHistogram() {
         const double magnitude=std::abs(seconds);
         const char* color=magnitude<=core::kPerfectWindowSeconds ? "#8ee2cc"
             : magnitude<=core::kGoodWindowSeconds ? "#9bcdf5" : "#edc68f";
-        const int height=peak>0 ? ((*bins)[i]*38+peak/2)/peak : 0;
+        const int height=peak>0 ? ((*bins)[i]*62+peak/2)/peak : 0;
         html << "<div class='results-histogram-bin' style='height:"
              << std::max(1,height) << "dp;background-color:" << color
              << ";opacity:" << ((*bins)[i]>0 ? "1" : "0.18") << "'></div>";

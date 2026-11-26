@@ -88,6 +88,34 @@ bool TestNativePlayPresenter(const locus::app::SongLibrary& library) {
         ok &= Check(start && play.playSelected && !play.editSelected,
                     "native PLAY emits only the typed Play command");
 
+        // Real pointer hit-testing of a saved result after layout, not
+        // just a synthetic Click on a node with no usable geometry.
+        RunResult saved;
+        saved.id="attempt-1";
+        saved.songSetId="test-set";
+        saved.difficultyId="test-chart";
+        selection.ReplaceResults({"test-set","test-chart"},{saved});
+        presenter.BeginFrame(library,selection,1.6f);
+        presenter.Sync();
+        context->Update();
+        auto* results=document->GetElementById("results-list");
+        auto* row=results && results->GetNumChildren()>0 ? results->GetChild(0):nullptr;
+        auto* viewport=document->GetElementById("results-scroll");
+        if (row && viewport && viewport->GetClientHeight()>0) {
+            const int x=static_cast<int>(row->GetAbsoluteLeft()+row->GetOffsetWidth()/2);
+            const int y=static_cast<int>(row->GetAbsoluteTop()+row->GetOffsetHeight()/2);
+            context->ProcessMouseMove(x,y,0);
+            context->ProcessMouseButtonDown(0,0);
+            context->ProcessMouseButtonUp(0,0);
+        }
+        FrameInput resultInput;
+        resultInput.startPressed=true;
+        presenter.ProcessKeyboard(resultInput);
+        const auto resultEvent=presenter.EndFrame();
+        ok &= Check(row && viewport && viewport->GetClientHeight()>0 &&
+                    resultEvent.viewResultIndex==0 && !resultEvent.playSelected &&
+                    !resultInput.startPressed,"saved result has a clickable row and owns navigation");
+
         // An event after EndFrame must not use borrowed frame model pointers.
         hard = ChartRow(tree,1,1);
         if (hard) hard->Click();

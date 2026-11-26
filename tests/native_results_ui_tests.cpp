@@ -77,6 +77,11 @@ bool TestNativeResultsVirtualHistory() {
         ok &= Check(watch && events.watchReplay,
                     "historical attempt can emit watch replay without retry");
         events.watchReplay=false;
+        auto* error=document->GetElementById("results-replay-status");
+        ok &= Check(error && error->GetOffsetHeight()==0 &&
+                    !document->GetElementById("results-notes") &&
+                    watch->GetOffsetHeight()>0,
+                    "no redundant replay status or notes count; watch has a visible action");
         auto* scroll=document->GetElementById("results-history");
         auto* list=document->GetElementById("results-history-list");
         ok &= Check(scroll && list && list->GetNumChildren()<50 &&

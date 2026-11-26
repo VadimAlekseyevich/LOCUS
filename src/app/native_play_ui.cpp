@@ -141,7 +141,7 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
     if (event.GetType() != "click") return;
     while (target && !target->HasAttribute("data-action"))
         target = target->GetParentNode();
-    if (!target) return;
+    if (!target || target->HasAttribute("disabled")) return;
     const std::string action =
         target->GetAttribute<Rml::String>("data-action", "");
     if (action == "play") pending_.playSelected = true;
@@ -164,7 +164,11 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
             currentUi_->treeChartFocused = true;
         }
     } else if (action == "result") {
-        pending_.viewResultIndex = target->GetAttribute<int>("data-index", -1);
+        const int index=target->GetAttribute<int>("data-index",-1);
+        if (index>=0 && index<static_cast<int>(currentUi_->results.size()) &&
+            currentUi_->results[static_cast<std::size_t>(index)].id==
+                target->GetAttribute<Rml::String>("data-run",""))
+            pending_.viewResultIndex=index;
     }
 }
 
@@ -269,6 +273,10 @@ void NativePlayUi::RebuildRows(const SongLibrary& library, SongSelectUi& ui) {
         html << "<div class='tree-spacer' style='height:"
              << view.after << "dp;flex:0 0 " << view.after << "dp'></div>";
     if (entries.empty()) html << "<div class='empty'>NO MATCHING SONGS</div>";
+    for (auto* focus=document_->GetContext()->GetFocusElement(); focus;
+         focus=focus->GetParentNode()) {
+        if (focus==rows) { document_->Focus(); break; }
+    }
     rows->SetInnerRML(html.str());
     if (scroll) scroll->SetScrollTop(oldScroll);
     treeFirst_ = view.first;
@@ -309,10 +317,11 @@ void NativePlayUi::RebuildResults(SongSelectUi& ui) {
                 ? "OLD RULES · " : result.variablePracticeRate
                     ? "VARIABLE RATE · " : "";
         html << "<button class='result' data-action='result' data-index='"
-             << i << "'><strong>" << Accuracy(result.accuracyPercent)
-             << "</strong><span class='result-date'>"
+             << i << "' data-run='" << EscapeRml(result.id)
+             << "'><span class='button-label'>"
+             << Accuracy(result.accuracyPercent) << "  /  "
              << label << EscapeRml(FormatRunTimestamp(result.completedAtMs))
-             << "</span><span class='result-arrow'>&gt;</span></button>";
+             << "</span></button>";
     }
     if (window.after > 0.0f)
         html << "<div class='result-spacer' style='height:"
@@ -413,6 +422,10 @@ void NativePlayUi::ProcessKeyboard(FrameInput& input) {
     if (!context) return;
     // Resolve ownership before activation, because a click may rebuild the
     // focused subtree. A single Enter must never fall through to PLAY.
+    if (pending_.viewResultIndex>=0) {
+        SuppressGlobalMenuShortcuts(input);
+        return;
+    }
     if (IsSearchFocused()) {
         if (input.cancelLibrarySearch || input.startPressed)
             if (auto* search = document_->GetElementById("search")) search->Blur();

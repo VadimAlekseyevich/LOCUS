@@ -577,6 +577,9 @@ int main(int argc, char** argv) try {
             libraryUi.replayNotice.clear();
             input.requestedScreen = Screen::Results;
             input.startPressed = false;
+            input.restartPressed = false;
+            input.openEditorPressed = false;
+            input.homePressed = false;
             input.backPressed = false;
         }
         if (state.screen == Screen::Results && historicalResult) {

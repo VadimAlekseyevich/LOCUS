@@ -32,7 +32,7 @@
   justify-content:space-between; align-items:center;
   font-size:10dp; color:#acb6cb; }
 .metric strong { color:#e0def6; font-size:11dp; font-weight:750; }
-#history { display:flex; flex-direction:column; flex:1; min-height:0;
+#history { display:flex; flex-direction:column; flex:1 0 120dp; min-height:120dp;
   padding:0 11dp; }
 .history-heading { display:flex; flex-direction:row;
   align-items:center; justify-content:space-between;
@@ -42,15 +42,12 @@
 #results-list { display:flex; flex-direction:column; gap:5dp;
   padding:2dp 0 7dp; }
 .result-spacer { flex-shrink:0; width:1dp; }
-.result { display:flex; flex-direction:row; align-items:center;
-  width:100%; min-height:38dp; padding:7dp 9dp; gap:8dp;
+.result { display:inline-block; flex:0 0 38dp; position:relative;
+  width:100%; height:38dp; min-height:38dp; padding:0;
   text-align:left; font-size:12dp; border:1dp #545a79;
   background-color:#343a57; }
 .result:hover { border-color:#b5a4f3; background-color:#484c73; }
-.result strong { color:#d0c7fa; font-size:15dp; min-width:78dp; }
-.result .result-date { flex:1; min-width:0; font-size:10dp; color:#c2c5d7;
-  overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-.result .result-arrow { color:#a2d8ee; font-size:18dp; }
+.result .button-label { left:9dp; right:9dp; text-align:left; font-size:13dp; }
 #notice { display:block; color:#ecc3d1; padding:0 12dp;
   font-size:11dp; }
 #commands { display:flex; flex-direction:row;
