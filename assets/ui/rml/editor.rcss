@@ -27,13 +27,14 @@
 #editor-footer-playback .editor-icon-label { font-size:20dp; }
 
 #editor-route-ui { flex:1; min-height:0; display:flex; flex-direction:column; gap:8dp; pointer-events:none; }
-#editor-ruler-row { display:flex; flex-direction:row; flex:0 0 47dp; gap:8dp; }
-#editor-waveform { flex:0 0 78dp; width:78dp; height:30dp; align-self:center; padding:0; font-size:11dp; pointer-events:auto; }
+#editor-ruler-row { display:flex; flex-direction:row; flex:0 0 68dp; gap:8dp; }
+#editor-note-ruler { height:47dp; align-self:center; }
+#editor-waveform { flex:0 0 20dp; width:100%; height:20dp; padding:0; font-size:11dp; pointer-events:auto; }
 #editor-waveform.selected { background-color:#585281; border-color:#b5a4f3; color:#f4efff; }
-#editor-ruler-controls { display:flex; flex-direction:column; flex:0 0 184dp; gap:3dp; pointer-events:auto; }
+#editor-ruler-controls { display:flex; flex-direction:column; flex:0 0 184dp; gap:2dp; pointer-events:auto; }
 .editor-ruler-control { display:flex; flex:1; min-height:0; flex-direction:row; align-items:center; gap:4dp; }
 .editor-ruler-control .editor-option-label { flex:1; width:auto; }
-.editor-ruler-control button { flex:0 0 37dp; height:22dp; padding:0; }
+.editor-ruler-control button { flex:0 0 37dp; height:20dp; padding:0; }
 #editor-route-workspace { display:flex; flex-direction:row; flex:1; min-height:0; gap:10dp; align-items:stretch; }
 #editor-route-tools { flex:0 0 42dp; display:flex; flex-direction:column; justify-content:center; gap:4dp; pointer-events:auto; }
 #editor-route-inspector { display:flex; flex-direction:column; justify-content:center; flex:0 0 184dp; gap:5dp; pointer-events:none; }
@@ -144,4 +145,4 @@
 
 
 
-@media (max-width:740dp) { #editor-waveform { flex-basis:62dp; width:62dp; font-size:10dp; } }
+@media (max-width:740dp) { #editor-waveform { font-size:10dp; } }

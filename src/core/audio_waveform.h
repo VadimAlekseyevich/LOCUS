@@ -10,12 +10,19 @@ namespace locus::core {
 
 struct AudioPeak {
     float minimum=0,maximum=0;
+    double sumSquares=0;
+    std::uint64_t sampleCount=0;
+
+    float Rms() const noexcept {
+        return sampleCount ? static_cast<float>(std::sqrt(sumSquares/sampleCount)) : 0.0f;
+    }
 };
 inline AudioPeak MergeAudioPeaks(AudioPeak a,AudioPeak b) noexcept {
-    return {std::min(a.minimum,b.minimum),std::max(a.maximum,b.maximum)};
+    return {std::min(a.minimum,b.minimum),std::max(a.maximum,b.maximum),
+            a.sumSquares+b.sumSquares,a.sampleCount+b.sampleCount};
 }
 
-// Peak envelope at 200 Hz with power-of-two reduction levels. A view
+// Peak and mean-square envelope at 200 Hz with power-of-two reduction levels. A view
 // queries exact base-bin coverage in O(log n), independently of track length.
 class AudioWaveform {
 public:
@@ -36,8 +43,11 @@ public:
             for (unsigned c=0;c<channels;++c) {
                 const float v=sample(i,c);
                 if (!std::isfinite(v)) continue;
-                bin.minimum=std::min(bin.minimum,std::clamp(v,-1.0f,1.0f));
-                bin.maximum=std::max(bin.maximum,std::clamp(v,-1.0f,1.0f));
+                const float amplitude=std::clamp(v,-1.0f,1.0f);
+                bin.minimum=std::min(bin.minimum,amplitude);
+                bin.maximum=std::max(bin.maximum,amplitude);
+                bin.sumSquares+=static_cast<double>(amplitude)*amplitude;
+                ++bin.sampleCount;
             }
         }
         out.levels_.push_back(std::move(bins));

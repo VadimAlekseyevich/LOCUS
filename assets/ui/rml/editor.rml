@@ -9,10 +9,10 @@
   <div id="editor-route-ui">
     <div id="editor-ruler-row">
       <div id="editor-note-ruler" class="editor-canvas-slot"></div>
-      <button id="editor-waveform" class="quiet selected" data-action="waveform-toggle" title="Show or hide waveform"><span id="editor-waveform-label" class="button-label">WAVE ON</span></button>
       <div id="editor-ruler-controls">
         <div class="editor-ruler-control"><div id="editor-snap-label" class="editor-option-label">SNAP</div><button data-action="snap-less"><span class="button-label">−</span></button><button data-action="snap-more"><span class="button-label">+</span></button></div>
         <div class="editor-ruler-control"><div id="editor-zoom-label" class="editor-option-label">ZOOM</div><button data-action="zoom-out"><span class="button-label">−</span></button><button data-action="zoom-in"><span class="button-label">+</span></button></div>
+        <button id="editor-waveform" class="quiet selected" data-action="waveform-toggle" title="Show or hide waveform"><span id="editor-waveform-label" class="button-label">WAVE ON</span></button>
       </div>
     </div>
     <div id="editor-route-workspace">

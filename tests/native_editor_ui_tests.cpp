@@ -127,6 +127,14 @@ bool TestNativeEditorVirtualLists() {
         ok &= Check(wave && waveLabel && wave->IsClassSet("selected") &&
                     wave->GetOffsetWidth()>0 && waveLabel->GetInnerRML()=="WAVE ON",
                     "waveform toggle visible and enabled by default");
+        auto* controls=document->GetElementById("editor-ruler-controls");
+        auto* zoom=document->GetElementById("editor-zoom-label");
+        auto* ruler=document->GetElementById("editor-note-ruler");
+        ok &= Check(wave && controls && zoom && ruler &&
+                    wave->GetParentNode()==controls &&
+                    wave->GetAbsoluteTop()>=zoom->GetAbsoluteTop()+zoom->GetOffsetHeight()-1 &&
+                    ruler->GetAbsoluteLeft()+ruler->GetOffsetWidth()<=controls->GetAbsoluteLeft()+1,
+                    "waveform toggle shares Snap/Zoom column below Zoom");
         if (wave) wave->Click();
         ok &= Check(input.editor.waveformToggle,"waveform button emits semantic toggle");
         input.editor.waveformToggle=false;

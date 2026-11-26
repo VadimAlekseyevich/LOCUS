@@ -222,13 +222,22 @@ void DrawWaveform(const core::AudioWaveform& waveform,Rectangle bounds,
     const int columns=std::clamp(static_cast<int>(std::ceil(bounds.width)),1,2048);
     const float width=bounds.width/columns;
     const float center=bounds.y+bounds.height*0.5f;
-    const float radius=bounds.height*0.5f;
+    // Keep headroom even for brickwall-limited masters. The quiet outer
+    // peak envelope preserves transients, while the brighter RMS interior
+    // makes local energy changes visible even if every bin reaches full scale.
+    const float radius=bounds.height*0.42f;
+    Color peaks=color;
+    peaks.a=static_cast<unsigned char>(color.a/3);
     for (int i=0;i<columns;++i) {
         const auto peak=waveform.Range(from+(to-from)*i/columns,
                                       from+(to-from)*(i+1)/columns);
         if (peak.maximum==0 && peak.minimum==0) continue;
-        DrawRectangleRec({bounds.x+i*width,center-peak.maximum*radius,width,
-            (peak.maximum-peak.minimum)*radius},color);
+        const float x=bounds.x+i*width;
+        DrawRectangleRec({x,center-peak.maximum*radius,width,
+            (peak.maximum-peak.minimum)*radius},peaks);
+        const float rms=peak.Rms()*radius;
+        if (rms>0)
+            DrawRectangleRec({x,center-rms,width,2*rms},color);
     }
 }
 
@@ -266,7 +275,7 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
 
     if (ui.waveformVisible && ui.waveform)
         DrawWaveform(*ui.waveform,{strip.x+5,strip.y+4,strip.width-10,strip.height-8},
-                     leftTime,rightTime,Color{100,168,193,75});
+                     leftTime,rightTime,Color{100,168,193,115});
 
     if (ui.tab == EditorTab::Route && ui.HasRange()) {
         const double halfStep = 0.5 * chart.ticksPerBeat / chart.snapDivision;
