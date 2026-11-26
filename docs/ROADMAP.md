@@ -45,6 +45,7 @@ Keep exact input timestamps, authoritative route and grading independent of rend
   streams, jacks, alternating keys, diagonal transitions and real attempts.
   Reading remains a separate diagnostic, not a ranking factor.
 - [x] Display cached physical-strain timeline in the ROUTE chart editor overview only.
+- [x] Toggle the cached waveform in the upper note ruler independently of difficulty.
 - [ ] Validate the waveform and variable-tempo metronome on real recordings;
   improve authoring tools based on mapper feedback. Shared tempo maps, exact unsnapped
   note placement, pattern transforms and pitch-preserving practice already exist.

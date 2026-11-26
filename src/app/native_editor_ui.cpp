@@ -75,6 +75,9 @@ void NativeEditorUi::Sync(const EditorUiState& ui, const std::string& title,
     // No global screen header is needed.
     (void)dirty;
     SetText("editor-preview-play", running ? "PAUSE" : "PLAY");
+    SetText("editor-waveform-label",ui.waveformVisible?"WAVE ON":"WAVE OFF");
+    if (auto* wave=document_->GetElementById("editor-waveform"))
+        wave->SetClass("selected",ui.waveformVisible);
     if (auto* metronome=document_->GetElementById("editor-metronome"))
         metronome->SetClass("selected",ui.metronomeEnabled);
     lastRatePercent_ = std::clamp(
@@ -415,6 +418,8 @@ void NativeEditorUi::ProcessEvent(Rml::Event& event) {
     } else if (action == "tempo-remove") {
         input_->editor.tempoRemove = true;
         input_->editor.tempoRow = target->GetAttribute<int>("data-index", -1);
+    } else if (action == "waveform-toggle" && ui_->tab==EditorTab::Route) {
+        input_->editor.waveformToggle=true;
     } else if (action == "metronome-toggle") {
         input_->editor.metronomeToggle=true;
     } else if (action == "preview-play") {

@@ -51,6 +51,7 @@ struct EditorControls {
     bool enter = false, escape = false, backspace = false, tab = false;
     bool previewToggle = false, previewRestart = false;
     bool metronomeToggle = false;
+    bool waveformToggle = false;
     bool copySongTime = false;
     // Semantic editor actions emitted by RmlUi; never synthesize a click at
     // legacy pixel coordinates to reach the chart editing model.
@@ -130,6 +131,7 @@ enum class EditorSetField { None, Title, Artist, Mapper, Tags };
 
 struct EditorUiState {
     std::shared_ptr<const core::AudioWaveform> waveform;
+    bool waveformVisible=true; // editor view preference, not chart data
     bool metronomeEnabled=false;
     EditorLayoutSnapshot layout; // presentation only; refreshed from RmlUi
     EditorField active = EditorField::None;

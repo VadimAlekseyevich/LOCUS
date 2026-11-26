@@ -264,7 +264,7 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
                       PlayheadX(ui) - strip.x - 2.0f,
                       strip.height - 4.0f}, Color{41, 62, 70, 255});
 
-    if (ui.waveform)
+    if (ui.waveformVisible && ui.waveform)
         DrawWaveform(*ui.waveform,{strip.x+5,strip.y+4,strip.width-10,strip.height-8},
                      leftTime,rightTime,Color{100,168,193,75});
 
@@ -472,9 +472,6 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
     const float right = bounds.x + bounds.width;
     const float cursor = SongOverviewX(songSeconds, duration, bounds);
     const float lineY = bounds.y + bounds.height - 8.0f;
-    if (ui.waveform)
-        DrawWaveform(*ui.waveform,{bounds.x,bounds.y+13,bounds.width,bounds.height-22},
-                     0,duration,Color{92,173,195,95});
     // Song Setup describes the shared audio, not the currently loaded
     // difficulty. Do not even calculate its strain graph in that view.
     if (ui.tab==EditorTab::Route && bounds.height>24.0f) {

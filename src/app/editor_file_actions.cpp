@@ -31,9 +31,11 @@ namespace {
 void ResetDocumentUi(EditorUiState& ui) {
     auto clipboard = std::move(ui.clipboard);
     const auto layout = ui.layout;
+    const bool waveformVisible=ui.waveformVisible;
     ui = EditorUiState{};
     ui.clipboard = std::move(clipboard);
     ui.layout = layout;
+    ui.waveformVisible=waveformVisible;
 }
 } // namespace
 
@@ -525,6 +527,7 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
             ? context_.ui.focusSongSeconds
             : context_.editor.AudioSecondsAtBeat(context_.editor.SelectedBeat());
     const int timelineZoom = context_.ui.timelineZoomIndex;
+    const bool waveformVisible=context_.ui.waveformVisible;
     const auto layout = context_.ui.layout;
 
     // Comparison editing shares exactly one decoder and one Song Set.
@@ -606,6 +609,7 @@ bool EditorFileActions::FocusChart(const std::filesystem::path& file,
     context_.ui.layout = layout;
     context_.ui.focusSongSeconds = songSeconds;
     context_.ui.timelineZoomIndex = timelineZoom;
+    context_.ui.waveformVisible=waveformVisible;
     context_.ui.draggingTimeline = false;
     context_.ui.draggingSongOverview = false;
     context_.chartPath = std::move(target.chartPath);

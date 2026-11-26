@@ -97,6 +97,19 @@ bool TestNativeEditorVirtualLists() {
             }
         }
         ui.tab=EditorTab::Route;
+        sync();
+        auto* wave=document->GetElementById("editor-waveform");
+        auto* waveLabel=document->GetElementById("editor-waveform-label");
+        ok &= Check(wave && waveLabel && wave->IsClassSet("selected") &&
+                    wave->GetOffsetWidth()>0 && waveLabel->GetInnerRML()=="WAVE ON",
+                    "waveform toggle visible and enabled by default");
+        if (wave) wave->Click();
+        ok &= Check(input.editor.waveformToggle,"waveform button emits semantic toggle");
+        input.editor.waveformToggle=false;
+        ui.waveformVisible=false;
+        sync();
+        ok &= Check(wave && waveLabel && !wave->IsClassSet("selected") &&
+                    waveLabel->GetInnerRML()=="WAVE OFF","waveform toggle reflects hidden state");
         ui.comparisonPickerOpen=true;
         view.current=0;
         sync();

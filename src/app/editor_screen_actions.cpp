@@ -52,6 +52,10 @@ void EditorScreenActions::BlurTextOnPointer(Vector2 mouse, double& now) {
 }
 
 bool EditorScreenActions::Apply(const FrameInput& input, double& now) {
+    if (input.editor.waveformToggle && context_.ui.tab==EditorTab::Route) {
+        context_.ui.waveformVisible=!context_.ui.waveformVisible;
+        return false;
+    }
     if (input.editor.metronomeToggle) {
         context_.session.ToggleMetronome();
         return false;
