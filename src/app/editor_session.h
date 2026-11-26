@@ -3,6 +3,7 @@
 #include "app/chart_editor_ui.h"
 #include "core/chart_json.h"
 #include "core/tempo_map.h"
+#include "core/metronome.h"
 
 #include <string>
 #include <future>
@@ -52,6 +53,9 @@ public:
     bool BeginTest(EditorTestTarget target, double now, std::string& error);
     void UpdatePreview(double now);
     void UpdateAudioAnalysis();
+    void ToggleMetronome() noexcept { ui_.metronomeEnabled=!ui_.metronomeEnabled; metronome_.Reset(); }
+    core::MetronomeClick UpdateMetronome(double now) noexcept;
+    void ResetMetronome() noexcept { metronome_.Reset(); }
     // Tempo-table commits invalidate the configured playback beat clock.
     // Stop rather than letting the old and new BPM rulers diverge mid-song.
     void StopPreviewForTempoChange();
@@ -63,6 +67,7 @@ public:
 private:
     void StartPreview(int beat, double now);
 
+    core::MetronomeCursor metronome_;
     std::future<std::shared_ptr<const core::AudioWaveform>> waveformJob_;
     std::uint64_t waveformRevision_=~std::uint64_t{0};
     std::uint64_t jobRevision_=0;

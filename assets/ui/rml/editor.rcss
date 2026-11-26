@@ -136,3 +136,5 @@
   padding:2dp 5dp; font-size:12dp; }
 .editor-compare-row.selected { border-color:#a2d8ee; background-color:#465476; }
 #editor-compare-notice { min-height:16dp; flex:0 0 auto; }
+
+#editor-metronome.selected { background-color:#585281; border-color:#b5a4f3; color:#f4efff; }

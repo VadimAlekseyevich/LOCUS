@@ -3,6 +3,7 @@
 #include "app/demo_transport.h"
 #include "app/audio_device.h"
 #include "app/hit_sound_player.h"
+#include "app/editor_metronome_sound.h"
 #include "app/local_music.h"
 #include "app/chart_playback.h"
 #include "app/music_picker.h"
@@ -321,6 +322,8 @@ int main(int argc, char** argv) try {
     if (!audioDevice.Initialize())
         std::cerr << "AUDIO_DEVICE_UNAVAILABLE\n";
     locus::app::HitSoundPlayer hitSounds, previewHitSounds;
+    locus::app::EditorMetronomeSound editorMetronome;
+    editorMetronome.Initialize();
     if (!hitSounds.Configure(activeSkin))
         std::cerr << "HITSOUND_LOAD_FAILED\n";
     transport.Initialize(demo); // Borrows AudioDevice; failure does not close it.
@@ -996,6 +999,7 @@ int main(int argc, char** argv) try {
             menuMusic.FadeOut(now);
         }
         if (state.screen != previousScreen) {
+            if (previousScreen==Screen::Editor) { editorMetronome.Stop(); editorSession.ResetMetronome(); }
             if (previousScreen==Screen::Skin) previewHitSounds.Clear();
             if (previousScreen==Screen::Play) hitSounds.Stop();
             if (state.screen == Screen::Play) {
@@ -1123,6 +1127,7 @@ int main(int argc, char** argv) try {
         if (state.screen == Screen::Editor) {
             editorSession.UpdateAudioAnalysis();
             editorSession.UpdatePreview(now);
+            editorMetronome.Play(editorSession.UpdateMetronome(now),settings.volume);
         }
         if (state.screen == Screen::Play) {
             const bool alreadyCompleted = sessionCompleted;
@@ -1356,6 +1361,7 @@ int main(int argc, char** argv) try {
     transport.Shutdown();
     previewHitSounds.Clear();
     hitSounds.Clear();
+    editorMetronome.Clear();
     audioDevice.Shutdown();
     if (uiFont.owned) {
         UnloadFont(uiFont.value);

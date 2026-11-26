@@ -105,6 +105,7 @@ EditorUiAction EditorSession::ApplyControls(const EditorControls& input,
 }
 
 void EditorSession::StartPreview(int beat, double now) {
+    metronome_.Reset();
     if (!music_.Ready() || audioPath_.empty()) {
         status_ = "NO SONG - CLICK LOAD SONG / PRESS O";
         return;
@@ -173,11 +174,22 @@ bool EditorSession::BeginTest(EditorTestTarget target, double now,
 }
 
 void EditorSession::StopPreviewForTempoChange() {
+    metronome_.Reset();
     if (!playback_.Playing() && !playback_.Finished()) return;
     playback_.Stop();
     ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
     previewBeat_ = editor_.SelectedBeat();
     status_ = "PREVIEW STOPPED - TEMPO MAP CHANGED";
+}
+
+core::MetronomeClick EditorSession::UpdateMetronome(double now) noexcept {
+    if (!ui_.metronomeEnabled || !playback_.Playing() || playback_.Finished()) {
+        metronome_.Reset(); return core::MetronomeClick::None;
+    }
+    if (playback_.Paused()) return core::MetronomeClick::None;
+    const auto& data=editor_.Data();
+    return metronome_.Update(data.route,data.offsetSeconds,
+                             playback_.AudioSeconds(now),playback_.Speed());
 }
 
 void EditorSession::UpdateAudioAnalysis() {

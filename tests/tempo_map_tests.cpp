@@ -1,6 +1,7 @@
 #include "core/chart_editor.h"
 #include "core/chart_json.h"
 #include "core/tempo_map.h"
+#include "core/metronome.h"
 #include "core/timed_route.h"
 #include "core/judgement.h"
 #include "app/song_timing.h"
@@ -24,6 +25,20 @@ bool Near(double lhs, double rhs, double epsilon = 1e-7) {
 
 int main() {
     bool ok = true;
+    {
+        locus::core::Chart song;
+        song.bpm=120;
+        song.tempoMap={{100,120},{1850,150}};
+        locus::core::MetronomeCursor met;
+        using C=locus::core::MetronomeClick;
+        const bool beats=met.Update(song,0,0.1,1)==C::Downbeat &&
+            met.Update(song,0,0.605,1)==C::Beat &&
+            met.Update(song,0,0.61,1)==C::None &&
+            met.Update(song,0,1.85,1)==C::Downbeat &&
+            met.Update(song,0,2.255,0.5)==C::Beat &&
+            met.Update(song,0,2.7,1)==C::None;
+        if (!beats) { std::cerr<<"METRONOME_FAIL variable BPM or repeated beat\n"; ok=false; }
+    }
     const std::vector<TempoMarker> map = {
         {250, 120.0}, {20250, 180.0}, {40250, 90.0}
     };
