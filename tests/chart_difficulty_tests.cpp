@@ -68,6 +68,12 @@ int main() {
     ok &= Check(SameDimensions(fast,CalculateChartDifficulty(equivalent)),
                 "125 percent is equivalent to actually shortening every gap by 20 percent");
 
+    auto shifted = stream;
+    for (auto& note : shifted.turns) note.timeMs += 123456;
+    ok &= Check(SameDimensions(CalculateChartDifficulty(stream,0,nullptr,0,1.01),
+                               CalculateChartDifficulty(shifted,0,nullptr,0,1.01)),
+                "fractional rate is invariant under a shift of exact timestamps");
+
     DifficultyTimeline graph;
     const auto timelineChart=Sequence(40,{100},{Heading::Right,Heading::Up});
     const auto withGraph=CalculateChartDifficulty(timelineChart,0,&graph,20);

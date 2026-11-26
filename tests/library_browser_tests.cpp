@@ -104,6 +104,16 @@ int main() {
                 library.Songs().empty() && ui.selectedSong == 0,
                 "empty refresh preserves the demo row");
 
+    const auto demoNormal = ui.SelectedDifficulty(library);
+    ui.mods.Toggle(locus::core::RateMod::DoubleTime);
+    const auto demoFast = ui.SelectedDifficulty(library);
+    ok &= Check(demoNormal && demoFast && demoFast->overall > demoNormal->overall &&
+                demoFast->keyPresses == demoNormal->keyPresses,
+                "selected difficulty uses the modded demo rate");
+    ui.mods.Toggle(locus::core::RateMod::DoubleTime);
+    ok &= Check(ui.SelectedDifficulty(library)->overall == demoNormal->overall,
+                "disabling mods restores the native catalog difficulty");
+
     ok &= Check(ImportLibraryChart(library, ui, easy, menuStatus) &&
                 library.Songs().size() == 1 && library.ChartCount() == 1 &&
                 ui.selectedSong == 1 && ui.selectedChart == 0 &&

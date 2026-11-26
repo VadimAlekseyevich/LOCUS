@@ -304,6 +304,7 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     Point position{};
     Heading preceding = chart.initialHeading;
     std::int64_t lastTime = std::numeric_limits<std::int64_t>::min();
+    std::int64_t firstTime = 0;
     std::size_t totalKeys = 0;
     for (const auto& event : chart.turns) {
         if (!ValidHeading(event.direction) || event.beat < lastTick)
@@ -327,7 +328,8 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
         const unsigned mask = HeadingArrowMask(event.direction);
         const int keys = Bits(mask);
         if (keys == 0) continue;
-        notes.push_back({static_cast<double>(currentTime) / clockRate, position,
+        if (notes.empty()) firstTime = currentTime;
+        notes.push_back({static_cast<double>(currentTime - firstTime) / clockRate, position,
                          event.direction, mask, keys});
         totalKeys += static_cast<std::size_t>(keys);
         lastTick = event.beat;
@@ -340,13 +342,14 @@ ChartDifficulty CalculateChartDifficulty(const Chart& chart,
     if (n == 0) return result;
 
     InputStrain input;
-    SectionPeaks peaks(timeline,durationSeconds / clockRate,notes.front().timeMs);
+    SectionPeaks peaks(timeline,durationSeconds / clockRate,
+                       static_cast<double>(firstTime) / clockRate);
     // Geometry is a separate editor diagnostic. It is deliberately absent
     // from the input strain calculation and final rating.
     for (std::size_t i = 0; i < n; ++i) {
         Note& cur = notes[i];
         const Note* prev = i ? &notes[i-1] : nullptr;
-        peaks.Add(cur.timeMs - notes.front().timeMs, input.Add(cur, prev));
+        peaks.Add(cur.timeMs, input.Add(cur, prev));
         if (!prev) continue;
         const double dt = (cur.timeMs - prev->timeMs) / 1000.0;
         result.activeSeconds += std::min(1.5, dt);
