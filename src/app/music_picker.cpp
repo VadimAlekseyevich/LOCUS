@@ -69,6 +69,10 @@ MusicPickResult ChooseChartFile() {
 }
 
 
+MusicPickResult ChooseHitSoundFile() {
+    return PickFile(L"LOCUS - Select hitsound WAV",L"WAV (*.wav)\0*.wav\0\0");
+}
+
 MusicPickResult ChooseSkinFile() {
     return PickFile(L"LOCUS - Load Gameplay Skin",
                     L"LOCUS skins (*.locus-skin.json;*.json)\0*.locus-skin.json;*.json\0"

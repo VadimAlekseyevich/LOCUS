@@ -1,4 +1,6 @@
 #include "app/skin_profile_actions.h"
+#include "app/skin_hitsound_data.h"
+#include <fstream>
 #include "app/song_set_storage.h"
 #include "app/open_folder.h"
 
@@ -327,6 +329,32 @@ void SkinProfileActions::Apply(SkinCommand command) {
             ui_.noticeError = false;
             break;
         }
+        case SkinCommand::LoadHitSound: {
+            if (!pickers_.chooseHitSound) break;
+            const auto picked=pickers_.chooseHitSound();
+            if (picked.path.empty()) {
+                if (!picked.canceled) { ui_.notice=picked.error; ui_.noticeError=true; }
+                break;
+            }
+            std::ifstream in(fs::path(picked.path),std::ios::binary);
+            std::string wav(kMaxHitSoundBytes+1,'\0');
+            in.read(wav.data(),static_cast<std::streamsize>(wav.size()));
+            wav.resize(static_cast<std::size_t>(in.gcount()));
+            if (in.bad() || !ValidHitSoundWav(wav)) {
+                ui_.notice="USE 16-BIT PCM WAV, MONO/STEREO, MAX 2 SECONDS";
+                ui_.noticeError=true; break;
+            }
+            draft_.hitSoundWav=std::make_shared<const std::string>(std::move(wav));
+            ui_.dirty=true;
+            ui_.notice="HITSOUND IMPORTED / SAVE TO APPLY"; ui_.noticeError=false;
+            break;
+        }
+        case SkinCommand::ClearHitSound:
+            ui_.dirty |= static_cast<bool>(draft_.hitSoundWav);
+            draft_.hitSoundWav.reset();
+            ui_.notice="HITSOUND REMOVED / SAVE TO APPLY"; ui_.noticeError=false;
+            break;
+        case SkinCommand::PreviewHitSound:
         case SkinCommand::None: break;
     }
 }

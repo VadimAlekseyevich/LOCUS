@@ -90,5 +90,9 @@
       243,
       255
     ]
+  },
+  "audio": {
+    "hitSoundVolume": 70,
+    "hitSoundWavHex": ""
   }
 }

@@ -1,4 +1,5 @@
 #include "app/skin.h"
+#include "app/skin_hitsound_data.h"
 #include "app/skin_controls.h"
 #include "app/skin_hue_geometry.h"
 #include "app/skin_preview_geometry.h"
@@ -26,6 +27,18 @@ int main() {
         if (!pass) std::cerr << "SKIN_FAIL " << what << '\n';
         ok &= pass;
     };
+    std::string wav;
+    check(DecodeHitSound("524946462800000057415645666d74201000000001000100401f0000803e000002001000646174610400000000000100",wav),
+          "valid short PCM WAV");
+    Skin audioSkin;
+    audioSkin.hitSoundWav=std::make_shared<const std::string>(wav);
+    audioSkin.hitSoundVolume=42;
+    Skin decodedAudio;
+    std::string audioError;
+    check(ParseSkin(SerializeSkin(audioSkin),decodedAudio,audioError) &&
+          decodedAudio.hitSoundWav && *decodedAudio.hitSoundWav==wav &&
+          decodedAudio.hitSoundVolume==42,"self-contained hitsound round trip");
+    check(!DecodeHitSound("00",wav) && !ValidHitSoundWav("RIFF"),"reject malformed WAV");
     // Exercise raylib's ACTUAL DrawRing geometry: x=cos(angle),
     // y=sin(angle). The previous regression test used the same wrong
     // coordinate swap as the renderer and could never catch its bug.

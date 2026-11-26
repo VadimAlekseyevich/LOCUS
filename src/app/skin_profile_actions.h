@@ -15,6 +15,7 @@ namespace locus::app {
 struct SkinProfilePickers {
     MusicPickResult (*chooseLoad)();
     MusicPickResult (*chooseExport)(const std::wstring&);
+    MusicPickResult (*chooseHitSound)() = nullptr;
 };
 
 class SkinProfileActions {

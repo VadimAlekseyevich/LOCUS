@@ -1,4 +1,5 @@
 #include "app/skin.h"
+#include "app/skin_hitsound_data.h"
 #include "app/atomic_text_file.h"
 #include "core/utf8.h"
 
@@ -87,7 +88,11 @@ bool Skin::Valid(std::string& error) const {
         error = "Skin name must be 1..64 Unicode characters (valid UTF-8).";
         return false;
     }
+    if (hitSoundWav && !ValidHitSoundWav(*hitSoundWav)) {
+        error="Hitsound must be a short 16-bit PCM WAV."; return false;
+    }
     const struct { float value, min, max; const char* label; } fields[] = {
+        {hitSoundVolume,0.0f,100.0f,"Hitsound volume"},
         {lookaheadMs, 50.0f, 10000.0f, "Preview time (ms)"},
         {pathWidth, 0.25f, 40.0f, "Trajectory width"},
         {outlineScale, 1.0f, 8.0f, "Outline scale"},
@@ -136,12 +141,15 @@ std::string SerializeSkin(const Skin& skin) {
             {"hitFlashScale", skin.hitFlashScale}
         }},
         {"hud", {{"visible", skin.showHud}, {"hitErrorBar", skin.showHitErrorBar}, {"hitErrorLength", skin.hitErrorLength}}},
+        {"audio", {{"hitSoundVolume",skin.hitSoundVolume},
+                   {"hitSoundWavHex",skin.hitSoundWav ? EncodeHitSound(*skin.hitSoundWav) : std::string{}}}},
         {"colors", std::move(colors)}
     };
     return object.dump(2) + "\n";
 }
 
 bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
+    if (text.size()>kMaxSkinJsonBytes) { error="Skin JSON is too large."; return false; }
     try {
         const auto object = nlohmann::json::parse(text.begin(), text.end());
         if (!object.is_object() || !object.contains("version") ||
@@ -176,6 +184,18 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         parsed.hitErrorLength = hud.value("hitErrorLength", parsed.hitErrorLength);
         if (!hud.contains("hitErrorLength") && hud.contains("hitErrorStyle"))
             parsed.hitErrorLength = hud.at("hitErrorStyle").value("length", parsed.hitErrorLength);
+        if (object.contains("audio")) {
+            const auto& audio=object.at("audio");
+            parsed.hitSoundVolume=audio.value("hitSoundVolume",parsed.hitSoundVolume);
+            const auto encoded=audio.value("hitSoundWavHex",std::string{});
+            if (!encoded.empty()) {
+                std::string wav;
+                if (!DecodeHitSound(encoded,wav)) {
+                    error="Invalid embedded hitsound WAV."; return false;
+                }
+                parsed.hitSoundWav=std::make_shared<const std::string>(std::move(wav));
+            }
+        }
         const auto& colors = object.at("colors");
         for (int i = 0; i < kSkinColorCount; ++i) {
             if (i == 10 && !colors.contains(kColorKeys[i])) continue;
@@ -216,9 +236,11 @@ bool LoadSkin(const std::filesystem::path& file, Skin& result,
         error = "Cannot open skin JSON.";
         return false;
     }
-    const std::string bytes((std::istreambuf_iterator<char>(stream)),
-                             std::istreambuf_iterator<char>());
-    if (bytes.size() > 65536) {
+    std::string bytes(kMaxSkinJsonBytes+1,'\0');
+    stream.read(bytes.data(),static_cast<std::streamsize>(bytes.size()));
+    bytes.resize(static_cast<std::size_t>(stream.gcount()));
+    if (stream.bad()) { error="Cannot read skin JSON."; return false; }
+    if (bytes.size() > kMaxSkinJsonBytes) {
         error = "Skin JSON is too large.";
         return false;
     }

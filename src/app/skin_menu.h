@@ -13,7 +13,7 @@ namespace locus::app {
 
 enum class SkinCommand {
     None, Load, Save, SaveAs, Reset, ActivateProfile, StoreProfile, RefreshProfiles,
-    DeleteProfile, RestoreProfile, OpenProfilesFolder
+    DeleteProfile, RestoreProfile, OpenProfilesFolder, LoadHitSound, ClearHitSound, PreviewHitSound
 };
 struct SkinProfileItem {
     std::filesystem::path path;
