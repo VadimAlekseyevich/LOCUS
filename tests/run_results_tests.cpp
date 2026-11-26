@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
         parent.resize(length);
         RunResultsStore writer(fs::path(parent) / "Results",kOwner);
         RunResult run;
-        run.id = "1760000000000"; // deliberately identical between processes
+        run.id = "1760000000000"; // supplied IDs are ignored for new attempts
         run.songSetId = "parallel-set";
         run.difficultyId = kParallelId;
         run.gameplayRevision = kRevision;
@@ -180,8 +180,8 @@ int main(int argc, char** argv) {
                     "corrupt and pending files are ignored independently");
     }
 
-    // A deliberately reused ID must never replace an earlier completed
-    // result, even if an abandoned legacy .pending file occupies its name.
+    // Reusing an input record must allocate a fresh attempt ID and never
+    // replace an earlier result, even when a stale pending file exists.
     RunResult collision = first;
     collision.completedAtMs += 5000;
     collision.id = first.id;
@@ -190,18 +190,18 @@ int main(int argc, char** argv) {
     ok &= Check(store.Save(collision, error) &&
                 collision.id != first.id &&
                 store.Load({"set-123", kEasyId}, error).size() == 5,
-                "colliding completed attempt is published without overwriting old result");
+                "new attempt does not reuse the input ID");
     RunResult secondCollision = first;
     secondCollision.completedAtMs += 6000;
     secondCollision.id = first.id;
     ok &= Check(store.Save(secondCollision, error) &&
                 secondCollision.id != collision.id &&
                 store.Load({"set-123", kEasyId}, error).size() == 6,
-                "repeated ID gets another unique result despite stale pending files");
+                "repeated input gets a new ID despite stale pending files");
 
 #ifdef _WIN32
-    // Real independent processes compete for the same record ID. Both
-    // results must survive; a preflight exists() check would race here.
+    // Independent writers use the same owner, chart and completion time.
+    // Both results must survive, with distinct attempt IDs.
     {
         std::wstring executable(32768, L'\0');
         const DWORD length = GetModuleFileNameW(
@@ -391,7 +391,7 @@ int main(int argc, char** argv) {
         collision.id = std::to_string(run.completedAtMs);
         ok &= Check(store.Save(collision,error,trace) &&
                     collision.id != run.id && collision.hasReplay,
-                    "exclusive replay collision allocates a new attempt ID");
+                    "saving another replay allocates a new attempt ID");
         fs::path sidecar;
         for (const auto& item : fs::recursive_directory_iterator(root / "Results")) {
             if (item.path().filename() == run.id + ".locus-replay") {

@@ -94,8 +94,7 @@ bool Decode(const Json& obj, RunResult& out) {
         r.notesJudged = obj.at("notesJudged").get<int>();
         r.accuracyPercent = obj.at("accuracyPercent").get<double>();
         r.practiceRate = obj.at("practiceRate").get<double>();
-        // v2 records created before variable-rate tracking represented a
-        // single nominal speed. New records always persist this explicit flag.
+        // Historical variable-rate metadata is not a ranked fixed-rate result.
         r.variablePracticeRate = obj.value("variablePracticeRate", false);
         r.hasReplay = obj.value("hasReplay", false);
         if (obj.contains("modFlags")) {
@@ -184,6 +183,14 @@ bool RunResultsStore::Save(RunResult& r, std::string& error,
         error="No valid local player or result belongs to another player.";
         return false;
     }
+    // Validate counts before AccuracyPercent performs integer arithmetic.
+    const auto& grades=r.grades;
+    if (r.notesJudged<=0 || r.notesJudged>2000000 ||
+        grades.perfect<0 || grades.good<0 || grades.bad<0 || grades.miss<0 ||
+        static_cast<std::int64_t>(grades.perfect)+grades.good+grades.bad+grades.miss!=r.notesJudged) {
+        error="Invalid completed result counts.";
+        return false;
+    }
     // Do not copy a reference to another attempt's replay. Serialize once
     // before allocating an ID. Failure to record must not lose a valid score.
     r.hasReplay = false;
@@ -233,7 +240,7 @@ bool RunResultsStore::Save(RunResult& r, std::string& error,
             candidate.hasReplay = replayStatus == AtomicTextWriteStatus::Published;
         }
         // No exists()/ofstream gap: the CREATE_NEW/link publication is
-        // exclusive even if two processes picked the same timestamp and ID.
+        // exclusive even if two processes generated the same random ID.
         // Abandoned legacy .pending files must not block new attempts.
         const auto status = AtomicCreateTextFile(
             dest, Encode(candidate).dump(2), error);
