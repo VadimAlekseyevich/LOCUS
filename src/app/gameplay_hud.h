@@ -81,12 +81,13 @@ struct GameplayHudStats {
     int combo = 0;
     double practiceRate = 1.0;
     bool watchingReplay = false;
+    core::ModFlags modFlags = 0;
 };
 
 inline GameplayHudStats MakeGameplayHudStats(const core::TurnJudge& judge,
                                               double practiceRate,
                                               bool watchingReplay = false) noexcept {
-    return {judge.Counts(), judge.Combo(), practiceRate, watchingReplay};
+    return {judge.Counts(), judge.Combo(), practiceRate, watchingReplay, judge.Mods()};
 }
 
 void DrawGameplayHud(Font font, const GameplayHudLayout& layout,

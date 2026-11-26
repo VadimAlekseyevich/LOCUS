@@ -34,6 +34,7 @@ struct RunResult {
     // Missing for attempts created before timing telemetry was introduced.
     std::optional<core::RunStatistics> statistics;
     bool hasReplay = false;
+    core::ModFlags modFlags = 0;
 };
 
 struct RunKey {
@@ -110,6 +111,7 @@ struct CompletedRunContext {
     std::optional<core::RunStatistics> statistics;
     const core::ReplayTrace* replay = nullptr; // borrowed during capture
     bool spectator = false;
+    core::ModFlags modFlags = 0;
 };
 
 // Returns true only after a durable result is written. On ineligible calls
@@ -119,6 +121,7 @@ bool CaptureCompletedRun(const RunResultsStore& store,
                          const CompletedRunContext& completion,
                          RunResult& saved, std::string& error);
 
+std::string FormatRunMods(const RunResult& result);
 std::string FormatRunTimestamp(std::int64_t unixMs);
 // Denominator belongs to the recorded chart revision, not the current chart.
 std::string FormatRunCombo(const RunResult& result);

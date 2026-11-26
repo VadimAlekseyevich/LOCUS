@@ -91,6 +91,35 @@ int main() {
     ok &= Check(trace && trace->events.size() == 1 &&
                 RejudgeReplay(*trace,playback) && playback.Counts().miss == 5,
                 "explicit finalization also replays");
+    PlayMods mods;
+    mods.Toggle(PlayMod::Easy);
+    mods.Toggle(PlayMod::HardRock);
+    mods.Toggle(PlayMod::Hidden);
+    mods.Toggle(PlayMod::Flashlight);
+    ok &= Check(ValidModFlags(mods.flags) && HasMod(mods.flags,PlayMod::HardRock) &&
+                HasMod(mods.flags,PlayMod::Flashlight) && !HasMod(mods.flags,PlayMod::Easy),
+                "exclusive groups preserve independent modifiers");
+    Chart one;
+    one.turns = {{2, Heading::Right, 1000}};
+    TurnJudge modJudge(one), normalJudge(one), hardJudge(one);
+    modJudge.SetMods(ModBit(PlayMod::Easy)|ModBit(PlayMod::Hidden));
+    hardJudge.SetMods(ModBit(PlayMod::HardRock));
+    modJudge.BeginReplayCapture(75);
+    const auto easyHit = modJudge.PressHeading(Heading::Right,1.06);
+    const auto normalHit = normalJudge.PressHeading(Heading::Right,1.06);
+    const auto hardHit = hardJudge.PressHeading(Heading::Right,1.06);
+    ok &= Check(easyHit && normalHit && hardHit && easyHit->grade == Grade::Perfect &&
+                normalHit->grade == Grade::Good && hardHit->grade == Grade::Good,
+                "EZ and HR apply distinct timing windows");
+    const auto* modTrace = modJudge.CompletedReplay();
+    TurnJudge verified(one);
+    ok &= Check(modTrace && EncodeReplay(*modTrace,bytes) && DecodeReplay(bytes,decoded) &&
+                decoded.modFlags == (ModBit(PlayMod::Easy)|ModBit(PlayMod::Hidden)) &&
+                decoded.ratePercent == 75 && RejudgeReplay(decoded,verified) &&
+                verified.Mods() == decoded.modFlags && verified.Counts().perfect == 1,
+                "modded replay restores scoring and presentation configuration");
+    decoded.modFlags = 3;
+    ok &= Check(!EncodeReplay(decoded,bytes), "conflicting mods rejected");
     live.ResetFromAudioSeconds(2.0);
     live.BeginReplayCapture();
     live.FinishRemainingMisses();

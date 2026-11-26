@@ -148,6 +148,10 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
     if (action == "play") pending_.playSelected = true;
     else if (action == "mod-ht") currentUi_->mods.Toggle(core::RateMod::HalfTime);
     else if (action == "mod-dt") currentUi_->mods.Toggle(core::RateMod::DoubleTime);
+    else if (action == "mod-ez") currentUi_->mods.Toggle(core::PlayMod::Easy);
+    else if (action == "mod-hr") currentUi_->mods.Toggle(core::PlayMod::HardRock);
+    else if (action == "mod-hd") currentUi_->mods.Toggle(core::PlayMod::Hidden);
+    else if (action == "mod-fl") currentUi_->mods.Toggle(core::PlayMod::Flashlight);
     else if (action == "mod-minus") currentUi_->mods.Adjust(-1);
     else if (action == "mod-plus") currentUi_->mods.Adjust(1);
     else if (action == "edit") pending_.editSelected = true;
@@ -184,6 +188,12 @@ void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
                              std::pair{"mod-dt",core::RateMod::DoubleTime}})
         if (auto* button = document_->GetElementById(item.first))
             button->SetClass("selected", ui.mods.rateMod == item.second);
+    for (const auto& item : {std::pair{"mod-ez",core::PlayMod::Easy},
+                             std::pair{"mod-hr",core::PlayMod::HardRock},
+                             std::pair{"mod-hd",core::PlayMod::Hidden},
+                             std::pair{"mod-fl",core::PlayMod::Flashlight}})
+        if (auto* button = document_->GetElementById(item.first))
+            button->SetClass("selected",core::HasMod(ui.mods.flags,item.second));
     const int percent = ui.mods.RatePercent();
     const bool active = ui.mods.rateMod != core::RateMod::None;
     const int minimum = ui.mods.rateMod == core::RateMod::HalfTime ? 50 : 101;
@@ -347,8 +357,7 @@ void NativePlayUi::RebuildResults(SongSelectUi& ui) {
              << Accuracy(result.accuracyPercent)
              << "</span><span class='button-label result-combo'>"
              << FormatRunCombo(result) << "</span><span class='button-label result-mod'>"
-             << (result.variablePracticeRate ? "VAR" : result.practiceRate == 1.0 ? "NM" :
-                 core::FormatRateMod(static_cast<int>(std::lround(result.practiceRate*100))))
+             << FormatRunMods(result)
              << "</span></button>";
     }
     if (window.after > 0.0f)
@@ -408,7 +417,7 @@ void NativePlayUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
     summary << library.Revision() << ':' << ui.selectedSong << ':'
             << ui.selectedChart << ':' << ui.notice << ':'
             << static_cast<int>(ui.mods.rateMod) << ':' << ui.mods.halfTimePercent
-            << ':' << ui.mods.doubleTimePercent;
+            << ':' << ui.mods.doubleTimePercent << ':' << ui.mods.flags;
     if (summary.str() != lastSummarySignature_) {
         UpdateSummary(library, ui);
         lastSummarySignature_ = summary.str();

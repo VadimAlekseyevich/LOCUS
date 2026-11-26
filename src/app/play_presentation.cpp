@@ -45,7 +45,8 @@ GameplayView PlayPresentation::Prepare(GameplayView view, bool playing,
     lastVisualSeconds_ = visualSeconds;
     const float step = StepForTimedRoute(
         view.skin.baseSpeedPxPerSecond, route_, view.practiceSpeed);
-    PrepareRoutePreview(route_, visualSeconds, view.skin.lookaheadMs, preview_);
+    PrepareRoutePreview(route_, visualSeconds, view.skin.lookaheadMs, preview_,
+                        view.judge.Mods(),view.practiceSpeed);
     view.routePreview = &preview_;
     view.cameraAnchor = camera_.Follow(
         preview_.marker, step, now,

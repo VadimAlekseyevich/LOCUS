@@ -3,6 +3,7 @@
 #include "app/visual_style.h"
 
 #include <cstdio>
+#include <cmath>
 
 namespace locus::app {
 namespace {
@@ -85,9 +86,9 @@ void DrawGameplayHud(Font font, const GameplayHudLayout& l,
 
     std::snprintf(value, sizeof(value), "%.2f%%", stats.grades.AccuracyPercent());
     Text(font,value,l.accuracy,0,34,u,text,Align::Right);
-    if (stats.practiceRate < 0.999 || stats.practiceRate > 1.001) {
-        std::snprintf(value, sizeof(value), "%s  %.0f%%", stats.practiceRate < 1.0 ? "HT" : "DT", stats.practiceRate*100.0);
-        Text(font,value,l.accuracy,41,12,u,muted,Align::Right);
+    if (stats.modFlags || stats.practiceRate < 0.999 || stats.practiceRate > 1.001) {
+        const auto mods = core::FormatMods(static_cast<int>(std::lround(stats.practiceRate*100)),stats.modFlags);
+        Text(font,mods.c_str(),l.accuracy,41,12,u,muted,Align::Right);
     }
 
     if (skin.showHitErrorBar) DrawHitErrorBar(l,skin,errors,now);

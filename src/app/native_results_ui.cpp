@@ -99,9 +99,8 @@ void NativeResultsUi::Sync() {
     if (selected_ && selected_->variablePracticeRate) {
         detail = "VARIABLE RATE / LAST " + std::to_string(static_cast<int>(
             selected_->practiceRate * 100 + 0.5)) + "%";
-    } else if (selected_ && std::abs(selected_->practiceRate - 1.0) > 0.001) {
-        detail = std::string(selected_->practiceRate < 1.0 ? "HT " : "DT ") +
-            std::to_string(static_cast<int>(selected_->practiceRate * 100 + 0.5)) + "%";
+    } else if (selected_) {
+        detail = FormatRunMods(*selected_);
     }
     if (selected_) {
         const auto revision = CompareRunRevision(

@@ -109,6 +109,9 @@ public:
         Reset();
     }
 
+    void SetMods(ModFlags flags) noexcept { mods_ = ValidModFlags(flags) ? flags : 0; Reset(); }
+    ModFlags Mods() const noexcept { return mods_; }
+    double BadWindowSeconds() const noexcept { return kBadWindowSeconds * WindowScale(mods_); }
     void Reset() noexcept;
     // Only complete normal PLAY attempts are captured. A reset invalidates
     // the previous trace; allocation failure disables capture, not scoring.
@@ -159,6 +162,7 @@ private:
 
     const Chart& chart_;
     double offsetSeconds_ = 0.0;
+    ModFlags mods_ = 0;
     std::size_t firstScoredEvent_ = 0;
     std::size_t scorableCount_ = 0;
     // Four independent lane cursors, one for each physical arrow.

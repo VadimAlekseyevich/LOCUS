@@ -181,7 +181,7 @@ void PrepareScoredPathRibbon(const RoutePreviewFrame& preview,
                 span.from.y + (span.to.y - span.from.y) * fraction};
             const double ahead = at - preview.songSeconds;
             const float proximity=ScoredPathOpacity(ahead,horizon,skin.fadePower);
-            const float opacity=proximity*skin.pathOpacity;
+            const float opacity=proximity*skin.pathOpacity*ModVisibility(preview,ahead);
             const float halfWidth=ScoredPathWidthFromOpacity(proximity,skin.pathWidth)*0.5f;
             samples.push_back({position, at, halfWidth, opacity});
         }

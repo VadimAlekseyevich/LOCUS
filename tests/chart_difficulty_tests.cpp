@@ -56,22 +56,22 @@ int main() {
     const auto stream = Sequence(128,{100},{Heading::Right,Heading::Up});
     const auto normal = CalculateChartDifficulty(stream);
     const auto half = CalculateChartDifficulty(stream,0,nullptr,0,0.75);
-    const auto fast = CalculateChartDifficulty(stream,0,nullptr,0,1.25);
-    ok &= Check(half.overall < normal.overall && normal.overall < fast.overall &&
-                half.keyPresses == fast.keyPresses && half.notes == fast.notes &&
-                half.activeSeconds > fast.activeSeconds,
+    const auto modFast = CalculateChartDifficulty(stream,0,nullptr,0,1.25);
+    ok &= Check(half.overall < normal.overall && normal.overall < modFast.overall &&
+                half.keyPresses == modFast.keyPresses && half.notes == modFast.notes &&
+                half.activeSeconds > modFast.activeSeconds,
                 "rate mods recalculate physical strain on real elapsed time");
     ok &= Check(SameDimensions(normal,CalculateChartDifficulty(stream,0,nullptr,0,1.0)) &&
                 CalculateChartDifficulty(stream,0,nullptr,0,0).notes == 0,
                 "default is native difficulty; invalid rate rejected");
     const auto equivalent = Sequence(128,{80},{Heading::Right,Heading::Up});
-    ok &= Check(SameDimensions(fast,CalculateChartDifficulty(equivalent)),
+    ok &= Check(SameDimensions(modFast,CalculateChartDifficulty(equivalent)),
                 "125 percent is equivalent to actually shortening every gap by 20 percent");
 
-    auto shifted = stream;
-    for (auto& note : shifted.turns) note.timeMs += 123456;
+    auto modShifted = stream;
+    for (auto& note : modShifted.turns) note.timeMs += 123456;
     ok &= Check(SameDimensions(CalculateChartDifficulty(stream,0,nullptr,0,1.01),
-                               CalculateChartDifficulty(shifted,0,nullptr,0,1.01)),
+                               CalculateChartDifficulty(modShifted,0,nullptr,0,1.01)),
                 "fractional rate is invariant under a shift of exact timestamps");
 
     DifficultyTimeline graph;

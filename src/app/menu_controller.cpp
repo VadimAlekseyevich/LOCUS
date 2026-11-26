@@ -328,6 +328,10 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
         if (hit(LibraryModButton(1))) { libraryUi.mods.Toggle(core::RateMod::DoubleTime); return events; }
         if (hit(LibraryModButton(2))) { libraryUi.mods.Adjust(-1); return events; }
         if (hit(LibraryModButton(3))) { libraryUi.mods.Adjust(1); return events; }
+        if (hit(LibraryModButton(4))) { libraryUi.mods.Toggle(core::PlayMod::Easy); return events; }
+        if (hit(LibraryModButton(5))) { libraryUi.mods.Toggle(core::PlayMod::HardRock); return events; }
+        if (hit(LibraryModButton(6))) { libraryUi.mods.Toggle(core::PlayMod::Hidden); return events; }
+        if (hit(LibraryModButton(7))) { libraryUi.mods.Toggle(core::PlayMod::Flashlight); return events; }
         if (hit(locus::app::LibraryRefreshButton())) events.refresh = true;
         if (hit(locus::app::LibraryPlayButton())) events.playSelected = true;
         if (hit(locus::app::LibraryEditButton())) events.editSelected = true;

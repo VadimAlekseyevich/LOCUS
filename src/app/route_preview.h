@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/timed_route.h"
+#include "core/play_mods.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,6 +16,7 @@ struct RoutePreviewFrame {
     double songSeconds = 0.0;
     double horizonSeconds = 0.0;
     int ticksPerBeat = 1;
+    double hiddenFadeSeconds = 0.0;
     core::GridPoint marker{};
     std::vector<core::TimedRouteSpan> spans;
     // Draw distant events first. Imminent notes win at world-space overlaps.
@@ -24,10 +26,12 @@ struct RoutePreviewFrame {
 // Caller-owned storage reuses capacity across successive render frames.
 inline void PrepareRoutePreview(const core::TimedRoute& route,
                                 double songSeconds, float lookaheadMs,
-                                RoutePreviewFrame& out) {
+                                RoutePreviewFrame& out,
+                                core::ModFlags mods = 0, double clockRate = 1.0) {
     out.ready = route.Ready() && std::isfinite(songSeconds);
     out.songSeconds = songSeconds;
     out.horizonSeconds = 0.0;
+    out.hiddenFadeSeconds = 0.0;
     out.ticksPerBeat = route.TicksPerBeat();
     out.marker = route.Ready() ? route.PositionAt(songSeconds)
                                : core::GridPoint{};
@@ -36,6 +40,10 @@ inline void PrepareRoutePreview(const core::TimedRoute& route,
     if (!out.ready || !std::isfinite(lookaheadMs) ||
         lookaheadMs <= 0.0f) return;
     out.horizonSeconds = static_cast<double>(lookaheadMs) / 1000.0;
+    if (core::HasMod(mods,core::PlayMod::Flashlight))
+        out.horizonSeconds = std::min(out.horizonSeconds,0.35*clockRate);
+    if (core::HasMod(mods,core::PlayMod::Hidden))
+        out.hiddenFadeSeconds = std::min(out.horizonSeconds*0.5,0.45*clockRate);
     route.Window(songSeconds, songSeconds + out.horizonSeconds, out.spans);
     const auto& turns = route.Turns();
     const auto first = std::lower_bound(
@@ -53,6 +61,13 @@ inline void PrepareRoutePreview(const core::TimedRoute& route,
         --it;
         out.turnsFarToNear.push_back(*it);
     }
+}
+
+// Hidden fades both the ribbon and the junctions before reaching the player.
+inline float ModVisibility(const RoutePreviewFrame& preview,double ahead) noexcept {
+    if (preview.hiddenFadeSeconds <= 0.0) return 1.0f;
+    return static_cast<float>(std::clamp((ahead-preview.hiddenFadeSeconds*0.35)/
+        (preview.hiddenFadeSeconds*0.65),0.0,1.0));
 }
 
 inline RoutePreviewFrame MakeRoutePreview(const core::TimedRoute& route,

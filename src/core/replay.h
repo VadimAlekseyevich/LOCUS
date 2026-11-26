@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/play_mods.h"
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -22,7 +23,7 @@ struct ReplayEvent {
 };
 
 inline constexpr std::size_t kMaxReplayEvents = 2000000;
-inline constexpr std::size_t kReplayHeaderBytes = 28;
+inline constexpr std::size_t kReplayHeaderBytes = 32;
 inline constexpr std::size_t kReplayEventBytes = 9;
 inline constexpr std::size_t kMaxReplayBytes =
     kReplayHeaderBytes + kMaxReplayEvents * kReplayEventBytes;
@@ -32,6 +33,7 @@ struct ReplayTrace {
     double offsetSeconds = 0.0;
     std::vector<ReplayEvent> events;
     int ratePercent = 100; // Immutable HT/DT configuration.
+    ModFlags modFlags = 0;
 };
 
 // Frame-independent sequential delivery. Earlier timestamps arriving after

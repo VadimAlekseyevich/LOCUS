@@ -54,7 +54,8 @@ Rectangle LibraryResultNextButton() { return {315, 277, 32, 25}; }
 Rectangle LibraryModButton(int index) {
     if (index == 0) return {27, 430, 118, 33};
     if (index == 1) return {151, 430, 118, 33};
-    return {275.0f + (index-2)*38.0f, 430, 35, 33};
+    if (index < 4) return {275.0f + (index-2)*38.0f, 430, 35, 33};
+    return {27.0f + (index-4)*82.0f, 393, 77, 32};
 }
 Rectangle LibraryPlayButton() { return {27, 473, 154, 41}; }
 Rectangle LibraryEditButton() { return {193, 473, 155, 41}; }
@@ -240,9 +241,7 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
             Label(font,name,rect.x+26-width*0.5f,rect.y+6,18,ResultRankColor(rank));
             Label(font,TextFormat("%.2f%%",result.accuracyPercent),
                   rect.x+52,rect.y+7,16,theme.foreground);
-            const auto mod = result.variablePracticeRate ? std::string("VAR") :
-                result.practiceRate == 1.0 ? std::string("NM") :
-                core::FormatRateMod(static_cast<int>(std::lround(result.practiceRate*100)));
+            const auto mod = FormatRunMods(result);
             Label(font,mod,rect.x+146,rect.y+10,11,lilac);
             const auto combo=FormatRunCombo(result);
             const float comboWidth=MeasureTextEx(font,combo.c_str(),13.0f,1.0f).x;
@@ -256,6 +255,10 @@ void DrawSongSelectMenu(Font font, const SongLibrary& library,
     Button(font,LibraryModButton(1),dt,lilac,ui.mods.rateMod==core::RateMod::DoubleTime);
     action(LibraryModButton(2), "-", UiButtonVariant::Quiet);
     action(LibraryModButton(3), "+", UiButtonVariant::Quiet);
+    Button(font,LibraryModButton(4),"EZ",lilac,core::HasMod(ui.mods.flags,core::PlayMod::Easy));
+    Button(font,LibraryModButton(5),"HR",lilac,core::HasMod(ui.mods.flags,core::PlayMod::HardRock));
+    Button(font,LibraryModButton(6),"HD",lilac,core::HasMod(ui.mods.flags,core::PlayMod::Hidden));
+    Button(font,LibraryModButton(7),"FL",lilac,core::HasMod(ui.mods.flags,core::PlayMod::Flashlight));
     action(LibraryPlayButton(), "PLAY", UiButtonVariant::Blue);
     action(LibraryEditButton(), "EDIT", UiButtonVariant::Rose);
 

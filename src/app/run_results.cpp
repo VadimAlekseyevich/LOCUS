@@ -58,7 +58,7 @@ Json Encode(const RunResult& r) {
         {"notesJudged", r.notesJudged},
         {"accuracyPercent", r.accuracyPercent},
         {"practiceRate", r.practiceRate},
-        {"variablePracticeRate", r.variablePracticeRate}
+        {"variablePracticeRate", r.variablePracticeRate}, {"modFlags", r.modFlags}
     };
     result["hasReplay"] = r.hasReplay;
     if (r.statistics) {
@@ -96,6 +96,12 @@ bool Decode(const Json& obj, RunResult& out) {
         // single nominal speed. New records always persist this explicit flag.
         r.variablePracticeRate = obj.value("variablePracticeRate", false);
         r.hasReplay = obj.value("hasReplay", false);
+        if (obj.contains("modFlags")) {
+            if (!obj.at("modFlags").is_number_unsigned() && !obj.at("modFlags").is_number_integer()) return false;
+            const auto flags = obj.at("modFlags").get<std::int64_t>();
+            if (flags < 0 || flags > 15 || !core::ValidModFlags(static_cast<core::ModFlags>(flags))) return false;
+            r.modFlags = static_cast<core::ModFlags>(flags);
+        }
         if (obj.contains("statistics")) {
             const auto& s = obj.at("statistics");
             if (!s.is_object() || !s.at("maxCombo").is_number_integer() ||
@@ -146,13 +152,13 @@ bool ValidRunResult(const RunResult& r) noexcept {
         r.grades.Resolved() != r.notesJudged ||
         !std::isfinite(r.accuracyPercent) ||
         !std::isfinite(r.practiceRate) ||
-        r.practiceRate <= 0.0 || r.practiceRate > 1.5) return false;
+        r.practiceRate <= 0.0 || r.practiceRate > 1.5 || !core::ValidModFlags(r.modFlags)) return false;
     if (r.statistics) {
         const auto& s = *r.statistics;
         const int hits = r.notesJudged - r.grades.miss;
         // At most miss+1 streaks; a nonempty run needs a nonempty best streak.
         const int minCombo = (hits + r.grades.miss) / (r.grades.miss + 1);
-        constexpr double limitMs = core::kBadWindowSeconds * 1000.0;
+        const double limitMs = core::kBadWindowSeconds * core::WindowScale(r.modFlags) * 1000.0;
         // Historical rules may have different windows; only apply the
         // current window bound to results with the current rules revision.
         if (s.timedHits != hits || s.maxCombo < minCombo || s.maxCombo > hits ||
@@ -202,6 +208,7 @@ bool CaptureCompletedRun(const RunResultsStore& store,
     record.notesJudged = static_cast<int>(completion.scorableCount);
     record.practiceRate = completion.practiceRate;
     record.variablePracticeRate = completion.variablePracticeRate;
+    record.modFlags = completion.modFlags;
     record.statistics = completion.statistics;
     if (!store.Save(record, error, completion.replay)) return false;
     saved = std::move(record);
@@ -212,6 +219,11 @@ std::string FormatRunCombo(const RunResult& result) {
     const std::string numerator=result.statistics
         ? std::to_string(result.statistics->maxCombo) : "--";
     return numerator+"/"+std::to_string(result.notesJudged);
+}
+
+std::string FormatRunMods(const RunResult& r) {
+    return r.variablePracticeRate ? "VAR / " + std::to_string(static_cast<int>(std::lround(r.practiceRate*100))) + "%" :
+        core::FormatMods(static_cast<int>(std::lround(r.practiceRate*100)),r.modFlags);
 }
 
 std::string FormatRunTimestamp(std::int64_t ms) {
@@ -239,7 +251,7 @@ bool RunResultsStore::Save(RunResult& r, std::string& error,
     r.hasReplay = false;
     std::string replayBytes;
     if (replay && replay->judgementVersion == r.judgementVersion &&
-        !r.variablePracticeRate && !replay->events.empty() &&
+        !r.variablePracticeRate && replay->modFlags == r.modFlags && !replay->events.empty() &&
         std::abs(replay->ratePercent / 100.0 - r.practiceRate) < 1e-9) {
         try { core::EncodeReplay(*replay, replayBytes); }
         catch (...) { replayBytes.clear(); }
@@ -328,7 +340,7 @@ bool RunResultsStore::LoadReplay(const RunResult& run, core::ReplayTrace& replay
         if (!in.read(bytes.data(),static_cast<std::streamsize>(bytes.size())) ||
             in.peek() != std::char_traits<char>::eof() ||
             !core::DecodeReplay(bytes,decoded) ||
-            decoded.judgementVersion != run.judgementVersion || run.variablePracticeRate ||
+            decoded.judgementVersion != run.judgementVersion || run.variablePracticeRate || decoded.modFlags != run.modFlags ||
              std::abs(decoded.ratePercent / 100.0 - run.practiceRate) > 1e-9) {
             error = "Invalid or incompatible replay.";
             return false;
@@ -344,7 +356,7 @@ bool RunResultsStore::LoadReplay(const RunResult& run, core::ReplayTrace& replay
 bool VerifyRunReplay(const RunResult& run, const core::ReplayTrace& replay,
                      const core::Chart& chart,
                      const std::string& loadedGameplayRevision) {
-    if (!ValidRunResult(run) || run.variablePracticeRate ||
+    if (!ValidRunResult(run) || run.variablePracticeRate || replay.modFlags != run.modFlags ||
         std::abs(replay.ratePercent / 100.0 - run.practiceRate) > 1e-9 ||
         CompareRunRevision(run, loadedGameplayRevision) != RunRevisionState::Current)
         return false;

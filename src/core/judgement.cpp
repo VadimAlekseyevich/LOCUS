@@ -143,8 +143,8 @@ void TurnJudge::Resolve(Grade grade, double errorSeconds, bool wrongDirection,
         const double delta = errorMs - meanErrorMs_;
         meanErrorMs_ += delta / ++timedHits_;
         errorM2Ms_ += delta * (errorMs - meanErrorMs_);
-        const double normalized = (errorSeconds+kBadWindowSeconds) /
-                                  (2.0*kBadWindowSeconds);
+        const double normalized = (errorSeconds+BadWindowSeconds()) /
+                                  (2.0*BadWindowSeconds());
         const auto bin = static_cast<std::size_t>(std::clamp(
             normalized * kHitErrorBinCount,0.0,
             static_cast<double>(kHitErrorBinCount-1)));
@@ -168,6 +168,7 @@ void TurnJudge::BeginReplayCapture(int ratePercent) noexcept {
     replay_.events.clear();
     replay_.offsetSeconds = offsetSeconds_;
     replay_.ratePercent = ratePercent;
+    replay_.modFlags = mods_;
     replay_.judgementVersion = kJudgementRulesVersion;
     captureReplay_ = firstScoredEvent_ == 0 && counts_.Resolved() == 0;
 }
@@ -204,7 +205,7 @@ void TurnJudge::AdvanceImpl(double songSeconds) noexcept {
             ? offsetSeconds_ + event->beat * 60.0 /
                 (chart_.bpm * chart_.ticksPerBeat)
             : static_cast<double>(event->timeMs) / 1000.0;
-        if (songSeconds <= expectedSeconds + kBadWindowSeconds) break;
+        if (songSeconds <= expectedSeconds + BadWindowSeconds()) break;
         const auto index = NextEventIndex();
         for (int i = 0; i < 4; ++i)
             if (nextByArrow_[i] == index)
@@ -241,10 +242,10 @@ std::optional<Judgement> TurnJudge::PressHeading(Heading outgoing,
                 (chart_.bpm * chart_.ticksPerBeat)
             : static_cast<double>(target.timeMs) / 1000.0;
         const double error = songSeconds - targetSeconds;
-        if (std::abs(error) <= kBadWindowSeconds) {
+        if (std::abs(error) <= BadWindowSeconds()) {
             const double deviation = std::abs(error);
-            const Grade grade = deviation <= kPerfectWindowSeconds ? Grade::Perfect
-                : deviation <= kGoodWindowSeconds ? Grade::Good : Grade::Bad;
+            const Grade grade = deviation <= kPerfectWindowSeconds * WindowScale(mods_) ? Grade::Perfect
+                : deviation <= kGoodWindowSeconds * WindowScale(mods_) ? Grade::Good : Grade::Bad;
             Resolve(grade, error, false, outgoing);
             return last_;
         }
@@ -260,7 +261,7 @@ std::optional<Judgement> TurnJudge::PressHeading(Heading outgoing,
             (chart_.bpm * chart_.ticksPerBeat)
         : static_cast<double>(oldest->timeMs) / 1000.0;
     const double error = songSeconds - expectedSeconds;
-    if (std::abs(error) > kBadWindowSeconds) return std::nullopt;
+    if (std::abs(error) > BadWindowSeconds()) return std::nullopt;
     Resolve(Grade::Miss, error, true, oldest->direction);
     return last_;
 }

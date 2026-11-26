@@ -9,7 +9,7 @@
 
 namespace locus::core {
 namespace {
-constexpr char kMagic[] = "LOCREP02";
+constexpr char kMagic[] = "LOCREP03";
 static_assert(sizeof(double) == 8 && std::numeric_limits<double>::is_iec559,
               "Replay requires binary64 timestamps");
 void Put(std::string& out, std::uint64_t value, unsigned count) {
@@ -56,7 +56,7 @@ const ReplayEvent* ReplayCursor::NextDue(const ReplayTrace& trace,
 
 bool ValidReplay(const ReplayTrace& trace) noexcept {
     if (trace.judgementVersion < 1 || trace.judgementVersion > 1000 ||
-        !std::isfinite(trace.offsetSeconds) || !ValidModRate(trace.ratePercent) ||
+        !std::isfinite(trace.offsetSeconds) || !ValidModRate(trace.ratePercent) || !ValidModFlags(trace.modFlags) ||
         trace.events.size() > kMaxReplayEvents) return false;
     for (const auto& event : trace.events)
         if (!ValidEvent(event)) return false;
@@ -72,6 +72,7 @@ bool EncodeReplay(const ReplayTrace& trace, std::string& bytes) {
     PutDouble(encoded, trace.offsetSeconds);
     Put(encoded, trace.events.size(), 4);
     Put(encoded, static_cast<unsigned>(trace.ratePercent), 4);
+    Put(encoded, trace.modFlags, 4);
     for (const auto& event : trace.events) {
         Put(encoded, static_cast<unsigned>(event.action), 1);
         PutDouble(encoded, event.songSeconds);
@@ -94,6 +95,8 @@ bool DecodeReplay(std::string_view bytes, ReplayTrace& trace) {
     const auto rate = Get(bytes,24,4);
     if (rate < 50 || rate > 150) return false;
     decoded.ratePercent = static_cast<int>(rate);
+    decoded.modFlags = static_cast<ModFlags>(Get(bytes,28,4));
+    if (!ValidModFlags(decoded.modFlags)) return false;
     if (!std::isfinite(decoded.offsetSeconds)) return false;
     decoded.events.reserve(static_cast<std::size_t>(count));
     for (std::size_t at = kReplayHeaderBytes; at < bytes.size(); at += kReplayEventBytes) {
@@ -119,6 +122,7 @@ std::optional<Judgement> ApplyReplayEvent(TurnJudge& judge, const ReplayEvent& e
 bool RejudgeReplay(const ReplayTrace& trace, TurnJudge& judge) {
     if (!ValidReplay(trace) || trace.judgementVersion != kJudgementRulesVersion)
         return false;
+    judge.SetMods(trace.modFlags);
     judge.SetOffsetSeconds(trace.offsetSeconds);
     for (const auto& event : trace.events) ApplyReplayEvent(judge,event);
     return true;

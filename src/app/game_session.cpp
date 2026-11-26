@@ -14,7 +14,7 @@ void GameSession::Start(bool customChart, double now) {
     hitSoundCount_=0;
     audioEndedAt_ = -1.0;
     audioEndSongSeconds_ = 0.0;
-    judge_.Reset();
+    judge_.SetMods(testOrigin_ ? 0 : replay_ ? replay_->modFlags : modFlags_);
     const int percent = replay_ ? replay_->ratePercent : ratePercent_;
     if (!testOrigin_) {
         if (customChart) local_.SetSpeed(percent / 100.0, now);
@@ -25,7 +25,7 @@ void GameSession::Start(bool customChart, double now) {
         replayCursor_.Reset();
         replayFinishSeconds_ = chart_.turns.empty() ? 0.0 :
             core::EventTimeMs(chart_,chart_.turns.back(),replay_->offsetSeconds)/1000.0 +
-                core::kBadWindowSeconds;
+                judge_.BadWindowSeconds();
     }
     if (customChart) {
         if (testOrigin_) {

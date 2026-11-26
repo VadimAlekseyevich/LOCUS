@@ -339,7 +339,8 @@ void DrawTimedRouteJunctions(const RoutePreviewFrame& preview,
         const float proximity = ScoredPathOpacity(
             turn.songSeconds - preview.songSeconds,
             preview.horizonSeconds, skin.fadePower);
-        const float opacity = proximity * skin.pathOpacity;
+        const float opacity = proximity * skin.pathOpacity *
+            ModVisibility(preview,turn.songSeconds-preview.songSeconds);
         if (opacity <= 0.0005f) continue;
         const Vector2 point = canvas.Position(turn.position);
         const float radius = std::min(
