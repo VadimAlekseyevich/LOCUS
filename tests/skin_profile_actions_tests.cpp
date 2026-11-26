@@ -284,7 +284,7 @@ int main() {
     { std::ofstream out(soundFile,std::ios::binary); out.write(wav.data(),wav.size()); }
     SkinProfileActions soundActions{active,draft,ui,activeFile,{GoodLoad,Export,PickSound}};
     soundActions.Apply(SkinCommand::LoadHitSound);
-    ok &= Check(ui.dirty && draft.hitSoundWav && !active.hitSoundWav,
+    ok &= Check(ui.dirty && draft.hitSound && !active.hitSound,
                 "hitsound import affects only draft");
     std::error_code ec;
     fs::remove(soundFile,ec);
@@ -292,17 +292,17 @@ int main() {
     soundActions.Apply(SkinCommand::SaveAs);
     Skin portable;
     ok &= Check(!ui.dirty && LoadSkin(exportFile,portable,error,false) &&
-                portable.hitSoundWav && *portable.hitSoundWav==wav &&
+                portable.hitSound && portable.hitSound->Bytes()==wav &&
                 portable.hitSoundVolume==35,
                 "exported profile retains sound after source deletion");
     soundActions.Apply(SkinCommand::LoadHitSound);
-    ok &= Check(ui.noticeError && draft.hitSoundWav && *draft.hitSoundWav==wav,
+    ok &= Check(ui.noticeError && draft.hitSound && draft.hitSound->Bytes()==wav,
                 "failed import preserves existing sound");
     soundActions.Apply(SkinCommand::ClearHitSound);
-    ok &= Check(ui.dirty && !draft.hitSoundWav && active.hitSoundWav,
+    ok &= Check(ui.dirty && !draft.hitSound && active.hitSound,
                 "remove is a draft-only change until Save");
     soundActions.Apply(SkinCommand::Save);
-    ok &= Check(!active.hitSoundWav && !ui.dirty,"save applies sound removal");
+    ok &= Check(!active.hitSound && !ui.dirty,"save applies sound removal");
     fs::remove_all(root, ec);
     if (!ok) return 1;
     std::cout << "SKIN_PROFILE_PASS cancel=1 load=1 saveas=1 reset=1 invalid=1\n";

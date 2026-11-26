@@ -336,22 +336,36 @@ void SkinProfileActions::Apply(SkinCommand command) {
                 if (!picked.canceled) { ui_.notice=picked.error; ui_.noticeError=true; }
                 break;
             }
-            std::ifstream in(fs::path(picked.path),std::ios::binary);
-            std::string wav(kMaxHitSoundBytes+1,'\0');
-            in.read(wav.data(),static_cast<std::streamsize>(wav.size()));
-            wav.resize(static_cast<std::size_t>(in.gcount()));
-            if (in.bad() || !ValidHitSoundWav(wav)) {
-                ui_.notice="USE 16-BIT PCM WAV, MONO/STEREO, MAX 2 SECONDS";
+            HitSoundFormat format;
+            if (!HitSoundFormatFromPath(picked.path,format)) {
+                ui_.notice="CHOOSE WAV, MP3 OR OGG"; ui_.noticeError=true; break;
+            }
+            const fs::path file(picked.path);
+            std::error_code ec;
+            const auto size=fs::file_size(file,ec);
+            if (ec || size==0 || size>kMaxHitSoundBytes) {
+                ui_.notice="CANNOT READ HITSOUND OR FILE EXCEEDS 32 MIB";
                 ui_.noticeError=true; break;
             }
-            draft_.hitSoundWav=std::make_shared<const std::string>(std::move(wav));
+            std::ifstream in(file,std::ios::binary);
+            std::string bytes(static_cast<std::size_t>(size),'\0');
+            if (!in.read(bytes.data(),static_cast<std::streamsize>(bytes.size())) ||
+                in.peek()!=std::char_traits<char>::eof() || in.bad()) {
+                ui_.notice="CANNOT READ HITSOUND"; ui_.noticeError=true; break;
+            }
+            std::string error;
+            auto asset=HitSoundAsset::Create(format,std::move(bytes),error);
+            if (!asset) {
+                ui_.notice=error; ui_.noticeError=true; break;
+            }
+            draft_.hitSound=std::move(asset);
             ui_.dirty=true;
             ui_.notice="HITSOUND IMPORTED / SAVE TO APPLY"; ui_.noticeError=false;
             break;
         }
         case SkinCommand::ClearHitSound:
-            ui_.dirty |= static_cast<bool>(draft_.hitSoundWav);
-            draft_.hitSoundWav.reset();
+            ui_.dirty |= static_cast<bool>(draft_.hitSound);
+            draft_.hitSound.reset();
             ui_.notice="HITSOUND REMOVED / SAVE TO APPLY"; ui_.noticeError=false;
             break;
         case SkinCommand::PreviewHitSound:

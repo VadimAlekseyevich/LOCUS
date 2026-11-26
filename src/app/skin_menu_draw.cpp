@@ -258,8 +258,8 @@ void DrawSkinMenu(Font font, const Skin& skin, const SkinUi& ui) {
             }
         }
         if (ui.page==4) {
-            Label(font,skin.hitSoundWav ? "CUSTOM HITSOUND LOADED" : "NO HITSOUND",70,250,14,kMuted);
-            const char* labels[]={"LOAD WAV","PREVIEW","REMOVE"};
+            Label(font,skin.hitSound ? "CUSTOM HITSOUND LOADED" : "NO HITSOUND",70,250,14,kMuted);
+            const char* labels[]={"LOAD AUDIO","PREVIEW","REMOVE"};
             for (int i=0;i<3;++i) Button(font,HitSoundButton(i),labels[i]);
         }
         PreviewPath(font, skin);

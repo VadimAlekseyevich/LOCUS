@@ -96,7 +96,7 @@ void NativeSkinUi::RebuildControls() {
         }
         if (ui_->page==4) html << "<div id='skin-hitsound-status' class='skin-channel-heading'></div>"
             "<div class='skin-profile-actions'>"
-            "<button data-action='hitsound-load'><span class='button-label'>LOAD WAV</span></button>"
+            "<button data-action='hitsound-load'><span class='button-label'>LOAD AUDIO</span></button>"
             "<button data-action='hitsound-preview'><span class='button-label'>PREVIEW</span></button>"
             "<button data-action='hitsound-clear'><span class='button-label'>REMOVE</span></button></div>";
     } else if (ui_->page == 2) {
@@ -163,7 +163,7 @@ void NativeSkinUi::Sync() {
     if (auto* nameRow = document_->GetElementById("skin-name-row"))
         nameRow->SetProperty("display",ui_->page==3 ? "flex" : "none");
     syncInput("skin-name", skin_->name);
-    SetText("skin-hitsound-status",skin_->hitSoundWav ? "CUSTOM HITSOUND LOADED" : "NO HITSOUND");
+    SetText("skin-hitsound-status",skin_->hitSound ? "CUSTOM HITSOUND LOADED" : "NO HITSOUND");
     SetText("skin-dirty", ui_->dirty ? "UNSAVED" : "");
     SetText("skin-notice", ui_->notice);
     if (auto* notice = document_->GetElementById("skin-notice"))

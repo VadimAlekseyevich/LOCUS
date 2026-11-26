@@ -70,7 +70,10 @@ MusicPickResult ChooseChartFile() {
 
 
 MusicPickResult ChooseHitSoundFile() {
-    return PickFile(L"LOCUS - Select hitsound WAV",L"WAV (*.wav)\0*.wav\0\0");
+    return PickFile(L"LOCUS - Select hitsound",
+                    L"Audio (*.wav;*.mp3;*.ogg)\0*.wav;*.mp3;*.ogg\0"
+                    L"WAV (*.wav)\0*.wav\0MP3 (*.mp3)\0*.mp3\0"
+                    L"OGG (*.ogg)\0*.ogg\0\0");
 }
 
 MusicPickResult ChooseSkinFile() {

@@ -1,46 +1,98 @@
 #pragma once
+
+#include "raylib.h"
+
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace locus::app {
-inline constexpr std::size_t kMaxHitSoundBytes=400000;
-inline constexpr std::size_t kMaxSkinJsonBytes=2*kMaxHitSoundBytes+65536;
-// Bound and validate untrusted PCM before handing it to the audio decoder.
-inline bool ValidHitSoundWav(std::string_view wav) noexcept {
-    if (wav.size()<44 || wav.size()>kMaxHitSoundBytes ||
-        wav.substr(0,4)!="RIFF" || wav.substr(8,4)!="WAVE") return false;
-    const auto read=[&](std::size_t at,unsigned count) {
-        std::uint32_t value=0;
-        for (unsigned i=0;i<count;++i)
-            value |= std::uint32_t(static_cast<unsigned char>(wav[at+i])) << (8*i);
-        return value;
-    };
-    if (read(4,4)!=wav.size()-8) return false;
-    std::uint32_t rate=0,channels=0,block=0,data=0;
-    bool format=false,samples=false;
-    for (std::size_t at=12;at<wav.size();) {
-        if (wav.size()-at<8) return false;
-        const auto type=wav.substr(at,4);
-        const auto size=read(at+4,4);
-        at+=8;
-        if (size>wav.size()-at) return false;
-        if (type=="fmt ") {
-            if (format || size<16 || read(at,2)!=1) return false;
-            channels=read(at+2,2); rate=read(at+4,4); block=read(at+12,2);
-            if ((channels!=1 && channels!=2) || rate<8000 || rate>48000 ||
-                read(at+14,2)!=16 || block!=channels*2 || read(at+8,4)!=rate*block)
-                return false;
-            format=true;
-        } else if (type=="data") {
-            if (samples || !format) return false;
-            data=size; samples=true;
-        }
-        at+=size;
-        if (size%2) { if (at==wav.size()) return false; ++at; }
+
+// Resource budgets, not a duration restriction. Encoded assets are retained
+// in their original format. The decoded audio is only needed by the player.
+inline constexpr std::size_t kMaxHitSoundBytes=32U*1024U*1024U;
+inline constexpr std::size_t kMaxSkinJsonBytes=2*kMaxHitSoundBytes+65536U;
+inline constexpr std::uint64_t kMaxHitSoundPcmBytes=256ULL*1024*1024;
+
+enum class HitSoundFormat { Wav, Mp3, Ogg };
+inline const char* HitSoundExtension(HitSoundFormat format) noexcept {
+    switch (format) {
+        case HitSoundFormat::Wav: return ".wav";
+        case HitSoundFormat::Mp3: return ".mp3";
+        case HitSoundFormat::Ogg: return ".ogg";
     }
-    return format && samples && data>0 && data%block==0 && data<=2*rate*block;
+    return "";
 }
+inline bool ParseHitSoundFormat(std::string_view value,HitSoundFormat& format) noexcept {
+    if (value==".wav") format=HitSoundFormat::Wav;
+    else if (value==".mp3") format=HitSoundFormat::Mp3;
+    else if (value==".ogg") format=HitSoundFormat::Ogg;
+    else return false;
+    return true;
+}
+inline bool HitSoundFormatFromPath(std::wstring path,HitSoundFormat& format) {
+    const auto dot=path.find_last_of(L'.');
+    if (dot==std::wstring::npos) return false;
+    auto suffix=path.substr(dot);
+    for (auto& c : suffix) if (c>=L'A' && c<=L'Z') c+=L'a'-L'A';
+    if (suffix==L".wav") format=HitSoundFormat::Wav;
+    else if (suffix==L".mp3") format=HitSoundFormat::Mp3;
+    else if (suffix==L".ogg") format=HitSoundFormat::Ogg;
+    else return false;
+    return true;
+}
+
+inline bool ValidHitSoundWave(const Wave& wave) noexcept {
+    if (!IsWaveValid(wave) || !wave.frameCount || !wave.sampleRate ||
+        !wave.channels || wave.channels>2 ||
+        (wave.sampleSize!=8 && wave.sampleSize!=16 && wave.sampleSize!=32))
+        return false;
+    const auto bytes=std::uint64_t(wave.frameCount)*wave.channels*(wave.sampleSize/8);
+    // Also budget for raylib's conversion to float stereo at device rate.
+    const double mixedBytes=static_cast<double>(wave.frameCount)*48000.0*8.0/wave.sampleRate;
+    return bytes<=kMaxHitSoundPcmBytes && mixedBytes<=kMaxHitSoundPcmBytes;
+}
+
+class HitSoundAsset final {
+public:
+    HitSoundFormat Format() const noexcept { return format_; }
+    const std::string& Bytes() const noexcept { return bytes_; }
+    Wave Decode() const {
+        return LoadWaveFromMemory(HitSoundExtension(format_),
+            reinterpret_cast<const unsigned char*>(bytes_.data()),
+            static_cast<int>(bytes_.size()));
+    }
+    // Decode once at the document boundary, never on a slider change.
+    // This does not require a playback device and uses the same raylib
+    // WAV/MP3/Vorbis decoders as the music subsystem.
+    static std::shared_ptr<const HitSoundAsset> Create(
+        HitSoundFormat format,std::string bytes,std::string& error) {
+        if (bytes.empty() || bytes.size()>kMaxHitSoundBytes ||
+            !*HitSoundExtension(format)) {
+            error="Hitsound is empty, unsupported or exceeds 32 MiB.";
+            return {};
+        }
+        auto result=std::shared_ptr<const HitSoundAsset>(
+            new HitSoundAsset(format,std::move(bytes)));
+        auto wave=result->Decode();
+        const bool valid=ValidHitSoundWave(wave);
+        if (wave.data) UnloadWave(wave);
+        if (!valid) {
+            error="Cannot decode hitsound, unsupported channels or PCM memory budget exceeded.";
+            return {};
+        }
+        error.clear();
+        return result;
+    }
+private:
+    HitSoundAsset(HitSoundFormat format,std::string bytes)
+        : format_(format),bytes_(std::move(bytes)) {}
+    HitSoundFormat format_;
+    std::string bytes_;
+};
+
 inline std::string EncodeHitSound(std::string_view bytes) {
     constexpr char hex[]="0123456789abcdef";
     std::string out; out.reserve(bytes.size()*2);
@@ -48,7 +100,7 @@ inline std::string EncodeHitSound(std::string_view bytes) {
     return out;
 }
 inline bool DecodeHitSound(std::string_view encoded,std::string& bytes) {
-    if (encoded.size()%2 || encoded.size()>2*kMaxHitSoundBytes) return false;
+    if (encoded.empty() || encoded.size()%2 || encoded.size()>2*kMaxHitSoundBytes) return false;
     const auto digit=[](char c) {
         if (c>='0'&&c<='9') return c-'0';
         if (c>='a'&&c<='f') return c-'a'+10;
@@ -61,7 +113,6 @@ inline bool DecodeHitSound(std::string_view encoded,std::string& bytes) {
         if (a<0||b<0) return false;
         result+=static_cast<char>(a*16+b);
     }
-    if (!ValidHitSoundWav(result)) return false;
     bytes.swap(result); return true;
 }
 } // namespace locus::app

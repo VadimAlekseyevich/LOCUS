@@ -630,7 +630,7 @@ int main(int argc, char** argv) try {
         if (state.screen == Screen::Skin) {
             skinProfiles.Apply(menuEvents.skinCommand);
             if (menuEvents.skinCommand==locus::app::SkinCommand::PreviewHitSound) {
-                if (draftSkin.hitSoundWav && previewHitSounds.Configure(draftSkin)) {
+                if (draftSkin.hitSound && previewHitSounds.Configure(draftSkin)) {
                     previewHitSounds.Play(draftSkin.hitSoundVolume*0.01f*settings.volume);
                     skinUi.notice="HITSOUND PREVIEW"; skinUi.noticeError=false;
                 } else {

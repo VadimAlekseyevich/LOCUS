@@ -34,7 +34,7 @@ Keep exact input timestamps, authoritative route and grading independent of rend
   grade counts are implemented. Validate narrow windows and contrast.
 - [ ] **G04. Judgement feedback:** evaluate distinct effects, timing feedback,
   and optional hitsounds without changing judgement windows prematurely.
-  The optional hit error bar, persistent timing histogram, global background dim and custom skin WAV hitsounds are implemented;
+  The optional hit error bar, persistent timing histogram, global background dim and custom skin WAV/MP3/OGG hitsounds are implemented;
   validate their readability and timing with physical devices.
 - [ ] **G05. Sight-reading:** test dense patterns with players. Route reading
   should communicate input, not dominate physical execution difficulty.

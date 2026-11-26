@@ -88,9 +88,6 @@ bool Skin::Valid(std::string& error) const {
         error = "Skin name must be 1..64 Unicode characters (valid UTF-8).";
         return false;
     }
-    if (hitSoundWav && !ValidHitSoundWav(*hitSoundWav)) {
-        error="Hitsound must be a short 16-bit PCM WAV."; return false;
-    }
     const struct { float value, min, max; const char* label; } fields[] = {
         {hitSoundVolume,0.0f,100.0f,"Hitsound volume"},
         {lookaheadMs, 50.0f, 10000.0f, "Preview time (ms)"},
@@ -142,7 +139,8 @@ std::string SerializeSkin(const Skin& skin) {
         }},
         {"hud", {{"visible", skin.showHud}, {"hitErrorBar", skin.showHitErrorBar}, {"hitErrorLength", skin.hitErrorLength}}},
         {"audio", {{"hitSoundVolume",skin.hitSoundVolume},
-                   {"hitSoundWavHex",skin.hitSoundWav ? EncodeHitSound(*skin.hitSoundWav) : std::string{}}}},
+                   {"hitSoundFormat",skin.hitSound ? HitSoundExtension(skin.hitSound->Format()) : ""},
+                   {"hitSoundHex",skin.hitSound ? EncodeHitSound(skin.hitSound->Bytes()) : std::string{}}}},
         {"colors", std::move(colors)}
     };
     return object.dump(2) + "\n";
@@ -187,13 +185,22 @@ bool ParseSkin(std::string_view text, Skin& result, std::string& error) {
         if (object.contains("audio")) {
             const auto& audio=object.at("audio");
             parsed.hitSoundVolume=audio.value("hitSoundVolume",parsed.hitSoundVolume);
-            const auto encoded=audio.value("hitSoundWavHex",std::string{});
-            if (!encoded.empty()) {
-                std::string wav;
-                if (!DecodeHitSound(encoded,wav)) {
-                    error="Invalid embedded hitsound WAV."; return false;
+            // Preserve existing WAV profiles; new files carry the codec
+            // explicitly and do not transcode compressed source data.
+            const bool modern=audio.contains("hitSoundHex");
+            const auto& key=modern ? "hitSoundHex" : "hitSoundWavHex";
+            if (audio.contains(key)) {
+                const auto& encoded=audio.at(key).get_ref<const std::string&>();
+                if (!encoded.empty()) {
+                    HitSoundFormat format=HitSoundFormat::Wav;
+                    std::string bytes;
+                    if ((modern && !ParseHitSoundFormat(audio.value("hitSoundFormat",std::string{}),format)) ||
+                        !DecodeHitSound(encoded,bytes)) {
+                        error="Invalid embedded hitsound."; return false;
+                    }
+                    parsed.hitSound=HitSoundAsset::Create(format,std::move(bytes),error);
+                    if (!parsed.hitSound) return false;
                 }
-                parsed.hitSoundWav=std::make_shared<const std::string>(std::move(wav));
             }
         }
         const auto& colors = object.at("colors");

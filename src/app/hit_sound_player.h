@@ -1,5 +1,6 @@
 #pragma once
 #include "app/skin.h"
+#include "app/skin_hitsound_data.h"
 #include <array>
 #include <algorithm>
 
@@ -12,15 +13,16 @@ public:
     HitSoundPlayer& operator=(const HitSoundPlayer&)=delete;
     ~HitSoundPlayer() { Clear(); }
     bool Configure(const Skin& skin) {
-        if (source_==skin.hitSoundWav) return !source_ || IsSoundValid(sound_);
+        if (source_==skin.hitSound) return !source_ || IsSoundValid(sound_);
         Clear();
-        source_=skin.hitSoundWav;
+        source_=skin.hitSound;
         if (!source_) return true;
         if (!IsAudioDeviceReady()) return false;
-        auto wave=LoadWaveFromMemory(".wav",
-            reinterpret_cast<const unsigned char*>(source_->data()),
-            static_cast<int>(source_->size()));
-        if (!IsWaveValid(wave)) return false;
+        auto wave=source_->Decode();
+        if (!ValidHitSoundWave(wave)) {
+            if (wave.data) UnloadWave(wave);
+            return false;
+        }
         sound_=LoadSoundFromWave(wave);
         UnloadWave(wave);
         if (!IsSoundValid(sound_)) return false;
@@ -49,7 +51,7 @@ public:
         sound_={}; source_.reset(); next_=0;
     }
 private:
-    std::shared_ptr<const std::string> source_;
+    std::shared_ptr<const HitSoundAsset> source_;
     Sound sound_{};
     std::array<Sound,16> voices_{};
     std::size_t next_=0;

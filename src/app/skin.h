@@ -13,6 +13,8 @@ namespace locus::app {
 // A skin describes presentation only. Never serialize it into a song/chart.
 inline constexpr float kDefaultReverseCapScale = 2.0f;
 
+class HitSoundAsset;
+
 struct Skin {
     std::string name = "Default";
     float lookaheadMs = 800.0f; // original song-time preview, independent of practice rate
@@ -34,7 +36,7 @@ struct Skin {
     bool showHud = true;
     float hitErrorLength = 144.0f; // logical HUD pixels
     float hitSoundVolume = 70.0f; // percent, multiplied by global master volume
-    std::shared_ptr<const std::string> hitSoundWav; // immutable, cheap skin copies
+    std::shared_ptr<const HitSoundAsset> hitSound; // validated immutable encoded asset
     bool showHitErrorBar = false; // optional, bottom-center timing feedback
 
     Color background{21, 23, 33, 255};

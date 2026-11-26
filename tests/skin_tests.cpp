@@ -31,14 +31,39 @@ int main() {
     check(DecodeHitSound("524946462800000057415645666d74201000000001000100401f0000803e000002001000646174610400000000000100",wav),
           "valid short PCM WAV");
     Skin audioSkin;
-    audioSkin.hitSoundWav=std::make_shared<const std::string>(wav);
+    std::string audioError;
+    audioSkin.hitSound=HitSoundAsset::Create(HitSoundFormat::Wav,wav,audioError);
+    check(static_cast<bool>(audioSkin.hitSound),"decode PCM without audio device");
     audioSkin.hitSoundVolume=42;
     Skin decodedAudio;
-    std::string audioError;
     check(ParseSkin(SerializeSkin(audioSkin),decodedAudio,audioError) &&
-          decodedAudio.hitSoundWav && *decodedAudio.hitSoundWav==wav &&
+          decodedAudio.hitSound && decodedAudio.hitSound->Bytes()==wav &&
           decodedAudio.hitSoundVolume==42,"self-contained hitsound round trip");
-    check(!DecodeHitSound("00",wav) && !ValidHitSoundWav("RIFF"),"reject malformed WAV");
+    check(!DecodeHitSound("0z",wav) &&
+          !HitSoundAsset::Create(HitSoundFormat::Wav,"RIFF",audioError),"reject malformed audio");
+    // A 5-second PCM sample exceeds the previous 2-second policy.
+    std::string longWav=wav.substr(0,44);
+    longWav.resize(44+8000*2*5,'\0');
+    const auto put32=[&](std::size_t offset,std::uint32_t value) {
+        for (unsigned i=0;i<4;++i) longWav[offset+i]=static_cast<char>(value>>(8*i));
+    };
+    put32(4,static_cast<std::uint32_t>(longWav.size()-8));
+    put32(40,static_cast<std::uint32_t>(longWav.size()-44));
+    audioSkin.hitSound=HitSoundAsset::Create(HitSoundFormat::Wav,longWav,audioError);
+    check(audioSkin.hitSound && ParseSkin(SerializeSkin(audioSkin),decodedAudio,audioError) &&
+          decodedAudio.hitSound && decodedAudio.hitSound->Bytes()==longWav,
+          "long audio accepted and preserved");
+    auto oldAudio=nlohmann::json::parse(SerializeSkin(audioSkin));
+    oldAudio["audio"].erase("hitSoundHex");
+    oldAudio["audio"].erase("hitSoundFormat");
+    oldAudio["audio"]["hitSoundWavHex"]=EncodeHitSound(wav);
+    check(ParseSkin(oldAudio.dump(),decodedAudio,audioError) &&
+          decodedAudio.hitSound && decodedAudio.hitSound->Bytes()==wav,
+          "previous WAV skin remains readable");
+    HitSoundFormat format;
+    check(HitSoundFormatFromPath(L"sample.MP3",format) && format==HitSoundFormat::Mp3 &&
+          HitSoundFormatFromPath(L"sample.OGG",format) && format==HitSoundFormat::Ogg &&
+          !HitSoundFormatFromPath(L"sample.exe",format),"supported file extensions");
     // Exercise raylib's ACTUAL DrawRing geometry: x=cos(angle),
     // y=sin(angle). The previous regression test used the same wrong
     // coordinate swap as the renderer and could never catch its bug.
