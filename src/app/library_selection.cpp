@@ -2,6 +2,7 @@
 #include "core/unicode_search.h"
 
 #include <algorithm>
+#include <chrono>
 #include <utility>
 
 namespace locus::app {
@@ -226,11 +227,19 @@ const LibraryChart* SongSelectUi::Selected(const SongLibrary& songs) const {
     return &charts[static_cast<std::size_t>(selectedChart)];
 }
 
+void SongSelectUi::ToggleMod(core::PlayMod mod) noexcept {
+    mods.Toggle(mod);
+    if (mod==core::PlayMod::Random && core::HasMod(mods.flags,mod))
+        mods.randomSeed=static_cast<std::uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+}
+
 std::optional<core::ChartDifficulty> SongSelectUi::SelectedDifficulty(
         const SongLibrary& songs) const {
     const auto* selected = Selected(songs);
     auto& cache = rateDifficulty;
     const int rate = mods.RatePercent();
+    const auto transforms=mods.flags & (core::ModBit(core::PlayMod::Mirror)|core::ModBit(core::PlayMod::Random));
+    const auto seed=core::HasMod(transforms,core::PlayMod::Random)?mods.randomSeed:0;
     if (cache.source != &songs || cache.revision != songs.Revision() ||
         cache.song != selectedSong || cache.chart != selectedChart) {
         cache = {};
@@ -239,14 +248,16 @@ std::optional<core::ChartDifficulty> SongSelectUi::SelectedDifficulty(
         cache.song = selectedSong;
         cache.chart = selectedChart;
     }
-    if (rate == 100) {
+    if (rate == 100 && !transforms) {
         if (selected) return selected->difficulty;
         if (selectedSong != 0) return std::nullopt;
         static const auto demoRating = core::CalculateChartDifficulty(core::MakeDemoChart());
         return demoRating;
     }
-    if (cache.rate == rate) return cache.rating;
+    if (cache.rate == rate && cache.transforms==transforms && cache.seed==seed) return cache.rating;
     cache.rate = rate;
+    cache.transforms=transforms;
+    cache.seed=seed;
     cache.rating.reset();
     if (!cache.attemptedLoad) {
         cache.attemptedLoad = true;
@@ -259,8 +270,12 @@ std::optional<core::ChartDifficulty> SongSelectUi::SelectedDifficulty(
             if (selected->CopyPayload(payload,error)) cache.payload = std::move(payload);
         }
     }
-    if (cache.payload) cache.rating = core::CalculateChartDifficulty(
-        cache.payload->route,cache.payload->offsetSeconds,nullptr,0.0,rate/100.0);
+    if (cache.payload) {
+        if (transforms) {
+            const auto transformed=core::TransformModChart(cache.payload->route,transforms,seed);
+            cache.rating=core::CalculateChartDifficulty(transformed,cache.payload->offsetSeconds,nullptr,0.0,rate/100.0);
+        } else cache.rating=core::CalculateChartDifficulty(cache.payload->route,cache.payload->offsetSeconds,nullptr,0.0,rate/100.0);
+    }
     return cache.rating;
 }
 

@@ -159,7 +159,9 @@ bool ValidRunResult(const RunResult& r) noexcept {
         !std::isfinite(r.accuracyPercent) ||
         !std::isfinite(r.practiceRate) ||
         r.practiceRate <= 0.0 || r.practiceRate > 1.5 || !core::ValidModFlags(r.modFlags) || core::Assisted(r.modFlags) ||
-        (!core::HasMod(r.modFlags,core::PlayMod::Random) && r.modSeed!=0)) return false;
+        (!core::HasMod(r.modFlags,core::PlayMod::Random) && r.modSeed!=0) ||
+        (core::HasMod(r.modFlags,core::PlayMod::SuddenDeath) && r.grades.miss) ||
+        (core::HasMod(r.modFlags,core::PlayMod::Perfect) && (r.grades.good || r.grades.bad || r.grades.miss))) return false;
     if (r.statistics) {
         const auto& s = *r.statistics;
         const int hits = r.notesJudged - r.grades.miss;

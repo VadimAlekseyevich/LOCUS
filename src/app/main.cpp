@@ -550,7 +550,8 @@ int main(int argc, char** argv) try {
                     displayedResult ? displayedResult->grades : judge.Counts(),
                     displayedResult ? displayedResult->notesJudged :
                         static_cast<int>(judge.ScorableCount()),
-                    judge.Failed() && !displayedResult ? chartTitle + " / FAILED" : chartTitle, historicalResult, libraryUi);
+                    !displayedResult && judge.Failed() ? chartTitle + " / FAILED" :
+                    !displayedResult && core::HasMod(judge.Mods(),core::PlayMod::Autoplay) ? chartTitle + " / AUTOPLAY (NOT SAVED)" : chartTitle, historicalResult, libraryUi);
             else if (state.screen == Screen::Editor && nativeMenu.EditorAvailable()) {
                 nativeMenu.UpdateEditor(editorUi, input, editor.Data().title,
                     editor.Dirty(), chartPlayback.Speed(),

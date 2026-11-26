@@ -5,15 +5,13 @@
 #include "core/route.h"
 
 #include <algorithm>
-#include <chrono>
 
 namespace locus::app {
 
 void GameSession::SetMods(const core::PlayMods& mods) noexcept {
     SetRatePercent(mods.RatePercent());
     modFlags_ = core::ValidModFlags(mods.flags) ? mods.flags : 0;
-    modSeed_ = core::HasMod(modFlags_,core::PlayMod::Random) ? static_cast<std::uint32_t>(
-        std::chrono::steady_clock::now().time_since_epoch().count()) : 0;
+    modSeed_ = core::HasMod(modFlags_,core::PlayMod::Random) ? mods.randomSeed : 0;
 }
 
 void GameSession::Start(bool customChart, double now) {

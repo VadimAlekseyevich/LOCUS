@@ -155,7 +155,7 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
     if (!target || target->HasAttribute("disabled")) return;
     const std::string action =
         target->GetAttribute<Rml::String>("data-action", "");
-    if (action == "mods-open") currentUi_->modsOpen=true;
+    if (action == "mods-open") { currentUi_->modsOpen=true; pending_={}; }
     else if (action == "mods-close") { currentUi_->modsOpen=false; document_->Focus(); }
     else if (action == "mods-reset") currentUi_->mods={};
     else if (currentUi_->modsOpen && action.rfind("mod-",0)!=0) return;
@@ -163,7 +163,7 @@ void NativePlayUi::ProcessEvent(Rml::Event& event) {
     else if (action == "mod-dt") currentUi_->mods.Toggle(core::RateMod::DoubleTime);
     else if (action.rfind("mod-",0)==0) {
         for (const auto& mod : core::kPlayModDefinitions)
-            if (action == std::string("mod-")+mod.id) currentUi_->mods.Toggle(mod.mod);
+            if (action == std::string("mod-")+mod.id) currentUi_->ToggleMod(mod.mod);
     }
     else if (action == "edit") pending_.editSelected = true;
     else if (action == "rescan") pending_.refresh = true;
@@ -222,8 +222,7 @@ void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     const auto metric = [&](double core::ChartDifficulty::* field) {
         return rating ? Rating((*rating).*field) : std::string("--");
     };
-    SetText("difficulty-label", percent == 100 ? "DIFFICULTY V4" :
-        std::string("DIFFICULTY V4 / ") + core::FormatRateMod(percent));
+    SetText("difficulty-label", summary=="NM" ? "DIFFICULTY V4" : "DIFFICULTY / "+summary);
     // Initial library-index telemetry is not a user-facing notification.
     SetText("notice", ui.notice.rfind("LIBRARY:", 0) == 0
         ? "" : ui.notice);
@@ -246,7 +245,7 @@ void NativePlayUi::UpdateSummary(const SongLibrary& library, SongSelectUi& ui) {
     }
     SetText("song-tags", tags);
     SetText("chart-title", chart ? chart->metadata.title : "ORIGINAL");
-    SetText("rating", "★ " + metric(&core::ChartDifficulty::overall));
+    SetText("rating", "\xE2\x98\x85 " + metric(&core::ChartDifficulty::overall));
     SetText("chart-notes", rating ? std::to_string(rating->notes) + " EVENTS / " +
         std::to_string(rating->keyPresses) + " KEYS" : "RATING UNAVAILABLE - RESCAN");
     SetText("metric-speed", metric(&core::ChartDifficulty::speed));
@@ -424,7 +423,7 @@ void NativePlayUi::Rebuild(const SongLibrary& library, SongSelectUi& ui) {
     summary << library.Revision() << ':' << ui.selectedSong << ':'
             << ui.selectedChart << ':' << ui.notice << ':'
             << static_cast<int>(ui.mods.rateMod) << ':' << ui.mods.halfTimePercent
-            << ':' << ui.mods.doubleTimePercent << ':' << ui.mods.flags << ':' << ui.modsOpen;
+            << ':' << ui.mods.doubleTimePercent << ':' << ui.mods.flags << ':' << ui.mods.randomSeed << ':' << ui.modsOpen;
     if (summary.str() != lastSummarySignature_) {
         UpdateSummary(library, ui);
         lastSummarySignature_ = summary.str();

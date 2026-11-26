@@ -63,6 +63,8 @@ struct SelectedRateDifficultyCache {
     std::uint64_t revision = 0;
     int song = -1, chart = -1;
     int rate = 0;
+    core::ModFlags transforms=0;
+    std::uint32_t seed=0;
     bool attemptedLoad = false;
     std::optional<core::LoadedChart> payload;
     std::optional<core::ChartDifficulty> rating;
@@ -72,6 +74,7 @@ struct SongSelectUi {
     core::PlayMods mods;
     bool modsOpen=false;
     int modSliderDrag=-1;
+    void ToggleMod(core::PlayMod mod) noexcept;
     // 0 = the built-in demo, 1..N = permanent user Songs.
     int selectedSong = 0;
     int selectedChart = 0;

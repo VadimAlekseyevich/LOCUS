@@ -267,7 +267,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
                 if (CheckCollisionPointRec(mouse,LibraryModsReset())) libraryUi.mods={};
                 for (int i=0;i<2;++i) if (CheckCollisionPointRec(mouse,LibraryModButton(i))) libraryUi.mods.Toggle(i==0?core::RateMod::HalfTime:core::RateMod::DoubleTime);
                 for (std::size_t i=0;i<core::kPlayModDefinitions.size();++i)
-                    if (CheckCollisionPointRec(mouse,LibraryModButton(static_cast<int>(i)+2))) libraryUi.mods.Toggle(core::kPlayModDefinitions[i].mod);
+                    if (CheckCollisionPointRec(mouse,LibraryModButton(static_cast<int>(i)+2))) libraryUi.ToggleMod(core::kPlayModDefinitions[i].mod);
             }
             if (libraryUi.modSliderDrag>=0) {
                 const int i=libraryUi.modSliderDrag;

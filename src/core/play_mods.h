@@ -70,6 +70,7 @@ inline std::string FormatMods(int rate, ModFlags flags) {
 struct PlayMods {
     RateMod rateMod = RateMod::None;
     ModFlags flags = 0;
+    std::uint32_t randomSeed=0;
     int halfTimePercent = 75;
     int doubleTimePercent = 125;
     int RatePercent() const noexcept {

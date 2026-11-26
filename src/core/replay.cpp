@@ -128,7 +128,10 @@ bool RejudgeReplay(const ReplayTrace& trace, TurnJudge& judge) {
         return false;
     judge.SetMods(trace.modFlags,trace.modSeed);
     judge.SetOffsetSeconds(trace.offsetSeconds);
-    for (const auto& event : trace.events) ApplyReplayEvent(judge,event);
+    for (const auto& event : trace.events) {
+        ApplyReplayEvent(judge,event);
+        if (judge.Failed()) return false;
+    }
     return true;
 }
 
