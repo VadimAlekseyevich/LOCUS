@@ -66,6 +66,8 @@ int main() {
                 "editor hotkeys include modifiers, reject duplicate chords");
 
     options.volume = 0.4f;
+    options.hitSoundVolume=0.35f;
+    options.metronomeVolume=0.85f;
     options.backgroundDim=35;
     options.StepBackgroundDim(1);
     options.hitFlash = false;
@@ -82,6 +84,7 @@ int main() {
                 parsed.Key(GameAction::Up) == KEY_W &&
                 parsed.Key(GameAction::Right) == KEY_D &&
                 parsed.volume > 0.39f && parsed.volume < 0.41f &&
+                parsed.hitSoundVolume==0.35f && parsed.metronomeVolume==0.85f &&
                 parsed.backgroundDim==40 &&
                 !parsed.hitFlash && parsed.fullscreen &&
                 parsed.Shortcut(ShortcutAction::EditorSave).key == KEY_B &&

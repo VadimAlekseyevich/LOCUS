@@ -610,7 +610,7 @@ int main(int argc, char** argv) try {
                 settingsUi.noticeError = true;
             } else {
                 const double startNow = MonotonicSeconds();
-                calibrationTransport.SetVolume(settings.volume);
+                calibrationTransport.SetVolume(settings.metronomeVolume);
                 calibrationTransport.Start(startNow);
                 settingsUi.calibration.Start();
                 settingsUi.calibrationExpired = false;
@@ -636,7 +636,7 @@ int main(int argc, char** argv) try {
             skinProfiles.Apply(menuEvents.skinCommand);
             if (menuEvents.skinCommand==locus::app::SkinCommand::PreviewHitSound) {
                 if (draftSkin.hitSound && previewHitSounds.Configure(draftSkin)) {
-                    previewHitSounds.Play(draftSkin.hitSoundVolume*0.01f*settings.volume);
+                    previewHitSounds.Play(settings.hitSoundVolume);
                     skinUi.notice="HITSOUND PREVIEW"; skinUi.noticeError=false;
                 } else {
                     skinUi.notice="NO PLAYABLE HITSOUND"; skinUi.noticeError=true;
@@ -654,7 +654,7 @@ int main(int argc, char** argv) try {
         if (menuEvents.saveSettings) {
             transport.SetVolume(settings.volume);
             localSong.SetVolume(settings.volume);
-            calibrationTransport.SetVolume(settings.volume);
+            calibrationTransport.SetVolume(settings.metronomeVolume);
             gameSession.SetGlobalOffsetMs(settings.globalOffsetMs);
         
             persistSettings();
@@ -1129,7 +1129,7 @@ int main(int argc, char** argv) try {
         if (state.screen == Screen::Editor) {
             editorSession.UpdateWaveform();
             editorSession.UpdatePreview(now);
-            editorMetronome.Play(editorSession.UpdateMetronome(now),settings.volume);
+            editorMetronome.Play(editorSession.UpdateMetronome(now),settings.metronomeVolume);
         }
         if (state.screen == Screen::Play) {
             const bool alreadyCompleted = sessionCompleted;
@@ -1137,7 +1137,7 @@ int main(int argc, char** argv) try {
             playActions.Update(input, now);
             const auto hitCount=gameSession.TakeHitSoundCount();
             for (unsigned i=0;i<std::min(hitCount,16u);++i)
-                hitSounds.Play(activeSkin.hitSoundVolume*0.01f*settings.volume);
+                hitSounds.Play(settings.hitSoundVolume);
             // The same completed-outro edge is used in live play and the
             // headless journey test. Save only once; never save Editor TEST.
             if (!alreadyCompleted && sessionCompleted && gameSession.IsReplay()) {

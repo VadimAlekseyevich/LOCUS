@@ -69,7 +69,10 @@ struct GameSettings {
     // Signed milliseconds, manual entry or metronome calibration.
     int globalOffsetMs = 0;
     static constexpr int kGlobalOffsetLimitMs = 1000;
-    float volume = 0.7f;
+    float volume = 0.7f; // music gain, independent of sound effects
+    float hitSoundVolume = 0.5f;
+    float metronomeVolume = 1.0f;
+    static void StepAudioVolume(float& gain,int direction) noexcept;
     int backgroundDim = 65; // PLAY/TEST/replay artwork darkening, percent
     void StepBackgroundDim(int direction) noexcept;
     bool hitFlash = true;

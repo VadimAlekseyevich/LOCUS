@@ -174,7 +174,19 @@ void GameSettings::StepBackgroundDim(int direction) noexcept {
     backgroundDim=std::clamp(backgroundDim+(direction>0 ? 5 : direction<0 ? -5 : 0),0,100);
 }
 
+void GameSettings::StepAudioVolume(float& gain,int direction) noexcept {
+    if (!direction) return;
+    gain=std::clamp(static_cast<int>(std::lround(gain*20.0f))+
+                    (direction>0?1:-1),0,20)/20.0f;
+}
+
 bool GameSettings::Valid(std::string& error) const {
+    for (const float gain : {hitSoundVolume,metronomeVolume}) {
+        if (!std::isfinite(gain) || gain<0.0f || gain>1.0f) {
+            error="Sound effect volume must be between 0 and 100 percent.";
+            return false;
+        }
+    }
     if (backgroundDim<0 || backgroundDim>100) {
         error="Background dim must be between 0 and 100 percent.";
         return false;
@@ -281,6 +293,8 @@ std::string SerializeGameSettings(const GameSettings& settings) {
         {"version", 3},
         {"globalOffsetMs", settings.globalOffsetMs},
         {"volume", settings.volume},
+        {"hitSoundVolume", settings.hitSoundVolume},
+        {"metronomeVolume", settings.metronomeVolume},
         {"backgroundDim", settings.backgroundDim},
         {"hitFlash", settings.hitFlash},
         {"fullscreen", settings.fullscreen},
@@ -323,6 +337,18 @@ bool ParseGameSettings(std::string_view text, GameSettings& result,
             parsed.globalOffsetMs = object["globalOffsetMs"].get<int>();
         }
         parsed.volume = object["volume"].get<float>();
+        if (object.contains("hitSoundVolume")) {
+            if (!object["hitSoundVolume"].is_number()) {
+                error="Invalid hitsound volume."; return false;
+            }
+            parsed.hitSoundVolume=object["hitSoundVolume"].get<float>();
+        }
+        if (object.contains("metronomeVolume")) {
+            if (!object["metronomeVolume"].is_number()) {
+                error="Invalid metronome volume."; return false;
+            }
+            parsed.metronomeVolume=object["metronomeVolume"].get<float>();
+        }
         if (object.contains("backgroundDim")) {
             if (!object["backgroundDim"].is_number_integer()) {
                 error="Background dim must be an integer percentage.";

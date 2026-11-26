@@ -20,7 +20,9 @@
         <div class="settings-row"><span>Fullscreen</span><button id="value-fullscreen" data-action="fullscreen"><span class="button-label">OFF</span></button></div>
       </div>
       <div id="settings-audio" class="settings-fields" style="display:none;">
-        <div class="settings-row"><span>Master volume</span><div class="settings-step"><button data-action="volume-minus"><span class="button-label">-</span></button><strong id="value-volume">70%</strong><button data-action="volume-plus"><span class="button-label">+</span></button></div></div>
+        <div class="settings-row"><span>Music volume</span><div class="settings-step"><button data-action="volume-minus"><span class="button-label">-</span></button><strong id="value-volume">70%</strong><button data-action="volume-plus"><span class="button-label">+</span></button></div></div>
+        <div class="settings-row"><span>Hitsound volume</span><div class="settings-step"><button data-action="hitsound-minus"><span class="button-label">-</span></button><strong id="value-hitsound-volume">50%</strong><button data-action="hitsound-plus"><span class="button-label">+</span></button></div></div>
+        <div class="settings-row"><span>Metronome volume</span><div class="settings-step"><button data-action="metronome-minus"><span class="button-label">-</span></button><strong id="value-metronome-volume">100%</strong><button data-action="metronome-plus"><span class="button-label">+</span></button></div></div>
         <div class="settings-row"><span>Global audio offset</span><button id="value-offset" data-action="edit-offset"><span class="button-label">0 MS</span></button></div>
         <div class="settings-description">Signed milliseconds, from -1000 to +1000. Press Enter to save; Escape cancels.</div>
         <div class="settings-row"><span>Offset calibration</span><button data-action="calibrate" class="secondary"><span class="button-label">CALIBRATE</span></button></div>

@@ -113,8 +113,12 @@ void NativeSettingsUi::Sync() {
     SetText("value-fps", settings_->FpsLimitLabel());
     SetText("value-show-fps", settings_->showFps ? "ON" : "OFF");
     SetText("value-fullscreen", settings_->fullscreen ? "ON" : "OFF");
-    SetText("value-volume", std::to_string(
-        static_cast<int>(std::lround(settings_->volume * 100.0f))) + "%");
+    const auto volumeLabel=[](float gain) {
+        return std::to_string(static_cast<int>(std::lround(gain*100.0f)))+"%";
+    };
+    SetText("value-volume",volumeLabel(settings_->volume));
+    SetText("value-hitsound-volume",volumeLabel(settings_->hitSoundVolume));
+    SetText("value-metronome-volume",volumeLabel(settings_->metronomeVolume));
     const std::string offset = ui_->editingGlobalOffset
         ? ui_->globalOffsetBuffer + "_"
         : (settings_->globalOffsetMs > 0 ? "+" : "") +
@@ -211,11 +215,12 @@ void NativeSettingsUi::ProcessEvent(Rml::Event& event) {
     } else if (action == "dim-minus" || action == "dim-plus") {
         settings_->StepBackgroundDim(action=="dim-plus" ? 1 : -1);
         events_->saveSettings=true;
-    } else if (action == "volume-minus" || action == "volume-plus") {
-        const int current = static_cast<int>(
-            std::lround(settings_->volume * 10.0f));
-        settings_->volume = std::clamp(current +
-            (action == "volume-plus" ? 1 : -1), 0, 10) / 10.0f;
+    } else if (action == "volume-minus" || action == "volume-plus" ||
+               action == "hitsound-minus" || action == "hitsound-plus" ||
+               action == "metronome-minus" || action == "metronome-plus") {
+        float& gain=action.find("hitsound-")==0 ? settings_->hitSoundVolume :
+            action.find("metronome-")==0 ? settings_->metronomeVolume : settings_->volume;
+        GameSettings::StepAudioVolume(gain,action.find("-plus")!=std::string::npos ? 1 : -1);
         events_->saveSettings = true;
     } else if (action == "edit-offset") {
         ui_->editingGlobalOffset = true;
