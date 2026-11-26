@@ -6,6 +6,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <commdlg.h>
+#include <cderr.h>
 #endif
 
 #include <algorithm>
