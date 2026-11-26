@@ -1120,8 +1120,10 @@ int main(int argc, char** argv) try {
         if (state.screen == Screen::Listen)
             listener.Update(loadedNewSong, input.restartPressed,
                             input.startPressed, input.pausePressed, now);
-        if (state.screen == Screen::Editor)
+        if (state.screen == Screen::Editor) {
+            editorSession.UpdateAudioAnalysis();
             editorSession.UpdatePreview(now);
+        }
         if (state.screen == Screen::Play) {
             const bool alreadyCompleted = sessionCompleted;
             if (input.pausePressed || input.restartPressed) hitSounds.Stop();

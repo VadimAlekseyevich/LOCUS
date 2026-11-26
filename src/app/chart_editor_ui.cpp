@@ -1,4 +1,5 @@
 #include "app/chart_editor_ui.h"
+#include "core/audio_waveform.h"
 #include "app/path_mesh.h"
 #include "core/tempo_map.h"
 #include "app/editor_comparison.h"
@@ -214,6 +215,23 @@ void DrawComparisonPicker(Font font, const EditorUiState& ui,
 // Time-linear, note-bearing ruler. Source milliseconds are authoritative.
 // Each tempo marker starts its own beat grid at a strong beat; increasing BPM
 // packs lines more tightly instead of changing the ruler's song-time speed.
+// One min/max query per visible column, never per PCM sample.
+void DrawWaveform(const core::AudioWaveform& waveform,Rectangle bounds,
+                  double from,double to,Color color) {
+    if (waveform.Empty() || bounds.width<1 || bounds.height<2 || !(to>from)) return;
+    const int columns=std::clamp(static_cast<int>(std::ceil(bounds.width)),1,2048);
+    const float width=bounds.width/columns;
+    const float center=bounds.y+bounds.height*0.5f;
+    const float radius=bounds.height*0.5f;
+    for (int i=0;i<columns;++i) {
+        const auto peak=waveform.Range(from+(to-from)*i/columns,
+                                      from+(to-from)*(i+1)/columns);
+        if (peak.maximum==0 && peak.minimum==0) continue;
+        DrawRectangleRec({bounds.x+i*width,center-peak.maximum*radius,width,
+            (peak.maximum-peak.minimum)*radius},color);
+    }
+}
+
 void DrawTimeline(Font font, const core::ChartEditor& draft,
                   const EditorUiState& ui, double previewBeat, bool nativeShell) {
     const auto strip = TimelineBounds(ui);
@@ -245,6 +263,10 @@ void DrawTimeline(Font font, const core::ChartEditor& draft,
     DrawRectangleRec({strip.x + 2.0f, strip.y + 2.0f,
                       PlayheadX(ui) - strip.x - 2.0f,
                       strip.height - 4.0f}, Color{41, 62, 70, 255});
+
+    if (ui.waveform)
+        DrawWaveform(*ui.waveform,{strip.x+5,strip.y+4,strip.width-10,strip.height-8},
+                     leftTime,rightTime,Color{100,168,193,75});
 
     if (ui.tab == EditorTab::Route && ui.HasRange()) {
         const double halfStep = 0.5 * chart.ticksPerBeat / chart.snapDivision;
@@ -450,6 +472,9 @@ void DrawSongOverview(Font font, const core::ChartEditor& draft,
     const float right = bounds.x + bounds.width;
     const float cursor = SongOverviewX(songSeconds, duration, bounds);
     const float lineY = bounds.y + bounds.height - 8.0f;
+    if (ui.waveform)
+        DrawWaveform(*ui.waveform,{bounds.x,bounds.y+13,bounds.width,bounds.height-22},
+                     0,duration,Color{92,173,195,95});
     const auto& graph=draft.DifficultyGraph();
     if (graph.maximum>0.0 && bounds.height>24.0f) {
         const float top=bounds.y+14.0f;

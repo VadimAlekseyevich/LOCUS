@@ -75,9 +75,14 @@ public:
     double SongSeconds(double monotonicSeconds) const noexcept;
     const std::string& DisplayName() const noexcept { return displayName_; }
     const std::string& Error() const noexcept { return error_; }
+    // Snapshot on the UI thread; analysis owns its bytes across song swaps.
+    std::uint64_t SourceRevision() const noexcept { return sourceRevision_; }
+    const std::vector<std::uint8_t>& EncodedBytes() const noexcept { return fileBytes_; }
+    const std::string& SourceFormat() const noexcept { return sourceFormat_; }
 
 private:
     core::SongClock clock_;
+    std::uint64_t sourceRevision_=0;
     // Raylib's memory stream borrows these bytes until UnloadMusicStream().
     std::vector<std::uint8_t> fileBytes_;
     // Lazily decoded on sub-100% playback, keeps pitch at 1.0.

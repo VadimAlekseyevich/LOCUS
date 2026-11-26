@@ -68,6 +68,7 @@ LocalMusic::~LocalMusic() {
 
 void LocalMusic::SwapWith(LocalMusic& other) noexcept {
     using std::swap;
+    ++sourceRevision_; ++other.sourceRevision_;
     swap(clock_, other.clock_);
     swap(fileBytes_, other.fileBytes_);
     swap(stretch_, other.stretch_);
@@ -233,6 +234,7 @@ void LocalMusic::Update(double monotonicSeconds) {
 }
 
 void LocalMusic::Shutdown() {
+    ++sourceRevision_;
     Stop();
     stretch_.reset();
     if (ready_) {

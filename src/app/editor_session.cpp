@@ -1,4 +1,6 @@
 #include "app/editor_session.h"
+#include "app/editor_audio_analysis.h"
+#include <chrono>
 #include "core/tempo_map.h"
 
 #include "app/chart_playback.h"
@@ -176,6 +178,34 @@ void EditorSession::StopPreviewForTempoChange() {
     ui_.focusSongSeconds = std::numeric_limits<double>::quiet_NaN();
     previewBeat_ = editor_.SelectedBeat();
     status_ = "PREVIEW STOPPED - TEMPO MAP CHANGED";
+}
+
+void EditorSession::UpdateAudioAnalysis() {
+    const auto revision=music_.SourceRevision();
+    if (waveformRevision_!=revision) {
+        waveform_.reset();
+        ui_.waveform.reset();
+    }
+    if (waveformJob_.valid() &&
+        waveformJob_.wait_for(std::chrono::seconds(0))==std::future_status::ready) {
+        try {
+            auto result=waveformJob_.get();
+            if (jobRevision_==revision) waveform_=std::move(result);
+        } catch (...) {
+            // Analysis is optional; never break playback or authored notes.
+        }
+    }
+    if (waveformRevision_!=revision && !waveformJob_.valid()) {
+        waveformRevision_=revision;
+        if (music_.Ready() && !music_.EncodedBytes().empty() && !audioPath_.empty()) {
+            jobRevision_=revision;
+            try {
+                waveformJob_=std::async(std::launch::async,DecodeEditorWaveform,
+                    music_.EncodedBytes(),music_.SourceFormat());
+            } catch (...) {}
+        }
+    }
+    ui_.waveform=waveform_;
 }
 
 void EditorSession::UpdatePreview(double now) {

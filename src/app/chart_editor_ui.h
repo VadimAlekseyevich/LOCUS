@@ -7,12 +7,15 @@
 #include "raylib.h"
 
 #include <limits>
+#include <memory>
 #include <cstdint>
 #include <functional>
 #include <optional>
 #include <filesystem>
 #include <vector>
 #include <string>
+
+namespace locus::core { class AudioWaveform; }
 
 namespace locus::app {
 
@@ -125,6 +128,7 @@ enum class EditorField { None, Title, Bpm, OffsetMs };
 enum class EditorSetField { None, Title, Artist, Mapper, Tags };
 
 struct EditorUiState {
+    std::shared_ptr<const core::AudioWaveform> waveform;
     EditorLayoutSnapshot layout; // presentation only; refreshed from RmlUi
     EditorField active = EditorField::None;
     EditorTab tab = EditorTab::Route;

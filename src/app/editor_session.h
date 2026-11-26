@@ -5,6 +5,7 @@
 #include "core/tempo_map.h"
 
 #include <string>
+#include <future>
 
 namespace locus::core { class TurnJudge; }
 namespace locus::app {
@@ -50,6 +51,7 @@ public:
     EditorUiAction ApplyControls(const EditorControls& input, double now);
     bool BeginTest(EditorTestTarget target, double now, std::string& error);
     void UpdatePreview(double now);
+    void UpdateAudioAnalysis();
     // Tempo-table commits invalidate the configured playback beat clock.
     // Stop rather than letting the old and new BPM rulers diverge mid-song.
     void StopPreviewForTempoChange();
@@ -61,6 +63,10 @@ public:
 private:
     void StartPreview(int beat, double now);
 
+    std::future<std::shared_ptr<const core::AudioWaveform>> waveformJob_;
+    std::uint64_t waveformRevision_=~std::uint64_t{0};
+    std::uint64_t jobRevision_=0;
+    std::shared_ptr<const core::AudioWaveform> waveform_;
     core::ChartEditor& editor_;
     EditorUiState& ui_;
     ChartPlayback& playback_;
