@@ -652,6 +652,11 @@ int main() {
     ok &= Check(scoredCompleted && scoredNav.screen == Screen::Results &&
                 !outro.Active(), "last judgement > outro > Results screen");
 
+    const auto* trace=scoredJudge.CompletedReplay();
+    const core::ReplayTrace spectatorTrace=trace?*trace:core::ReplayTrace{};
+    const auto expectedStats=scoredJudge.Statistics();
+    ok &= Check(trace!=nullptr,"completed attempt retains spectator scoring trace");
+
     app::RunResultsStore results(profile.root / "Results");
     app::CompletedRunContext finish{
         scoredCompleted, false, false,
@@ -727,5 +732,43 @@ int main() {
     scoredGame.Restart(true, startAt + 7.0);
     ok &= Check(playback.Speed() == 1.25 && !scoredGame.VariablePracticeRate(),
                 "new DT attempt freezes its rate");
+    // Seek the real GameSession/transport, including paused reconstruction
+    // of diagonals, hit statistics and the same non-rescoring replay cursor.
+    const double endSeek=static_cast<double>(core::EventTimeMs(
+        scored,scored.turns.back(),savedPayload.offsetSeconds))/1000.0+0.1;
+    const double seekNow=startAt+10.0;
+    ok &= Check(!scoredGame.SeekSpectator(true,0.0,seekNow),
+                "live scored play cannot seek");
+    core::PlayMods autoplay;
+    autoplay.Toggle(core::PlayMod::Autoplay);
+    scoredGame.SetMods(autoplay);
+    scoredGame.Start(true,seekNow);
+    ok &= Check(scoredGame.SeekSpectator(true,endSeek,seekNow+0.1) &&
+                scoredJudge.AllScorableJudged() &&
+                scoredJudge.Counts().perfect==static_cast<int>(scoredJudge.ScorableCount()) &&
+                scoredGame.TakeHitSoundCount()==0,
+                "Autoplay forward seek reconstructs exact hits without sounds");
+    scoredGame.TogglePause(true,seekNow+0.2);
+    ok &= Check(scoredGame.SeekSpectator(true,0.0,seekNow+0.3) &&
+                playback.Paused() && scoredJudge.Counts().Resolved()==0 &&
+                scoredJudge.MaxCombo()==0,
+                "Autoplay backward seek resets judge while retaining pause");
+    scoredGame.SetReplay(spectatorTrace);
+    scoredGame.Start(true,seekNow+1);
+    ok &= Check(scoredGame.SeekSpectator(true,endSeek,seekNow+1.1) &&
+                scoredJudge.AllScorableJudged() &&
+                scoredJudge.Statistics().maxCombo==expectedStats.maxCombo &&
+                std::abs(scoredJudge.Statistics().unstableRate-expectedStats.unstableRate)<1e-7 &&
+                scoredGame.TakeHitSoundCount()==0,
+                "Replay seek restores recorded timing and combo");
+    scoredGame.TogglePause(true,seekNow+1.2);
+    ok &= Check(scoredGame.SeekSpectator(true,0.0,seekNow+1.3) &&
+                playback.Paused() && scoredJudge.Counts().Resolved()==0 &&
+                scoredGame.SeekSpectator(true,endSeek,seekNow+1.4) &&
+                scoredJudge.Statistics().maxCombo==expectedStats.maxCombo &&
+                scoredJudge.AllScorableJudged() && scoredGame.TakeHitSoundCount()==0,
+                "Replay rewind then forward seek reproduces the same result");
+    scoredGame.Stop(true);
+    scoredGame.ClearReplay();
     return ok ? 0 : 1;
 }
