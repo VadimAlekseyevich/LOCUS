@@ -99,7 +99,7 @@ int main() {
     localized.name += std::string("\xED\xA0\x80", 3);
     check(!localized.Valid(localizedError),
           "malformed UTF-8 skin names are rejected");
-    check(kSkinColorCount == 10 &&
+    check(kSkinColorCount == 17 &&
           std::string(SkinColorLabel(9)) == "FIELD BORDER" &&
           SkinColor(original, 9).g == 207,
           "square border is available as tenth editable RGBA colour");
@@ -183,6 +183,7 @@ int main() {
     check(!invalid.Valid(error), "reject invalid base speed");
     // The settings catalog binds labels, toggles and ranges to real fields.
     check(SkinSettingCount(0) == 8 && SkinSettingCount(1) == 7 &&
+          SkinSettingCount(4) == 8 &&
           SkinSettingCount(2) == 0 &&
           std::string(GetSkinSetting(0, 0)->label) == "PREVIEW TIME (MS)" &&
           std::string(GetSkinSetting(1, 5)->label) == "CAMERA LAG (MS)" &&
@@ -307,6 +308,28 @@ int main() {
     check(ParseSkin(editedCapJson, savedCap, error) &&
           savedCap.reverseCapScale == 6.0f,
           "selected reverse cap size survives skin serialization");
+    Skin timing;
+    check(SetSkinNumber(timing,4,0,0,320,false,error) &&
+          SetSkinNumber(timing,4,4,0,2750,false,error) &&
+          SetSkinNumber(timing,4,6,0,0.65,false,error) &&
+          timing.hitErrorLength==320 && timing.hitErrorFadeMs==2750 &&
+          std::abs(timing.hitErrorMarkOpacity-0.65f)<1e-6f,
+          "timing bar controls bind to the actual skin");
+    SkinColor(timing,16)={10,20,30,40};
+    Skin timingReloaded;
+    check(ParseSkin(SerializeSkin(timing),timingReloaded,error) &&
+          timingReloaded.hitErrorLength==320 && timingReloaded.hitErrorFadeMs==2750 &&
+          timingReloaded.hitErrorCenter.a==40,
+          "hit error dimensions and colors round trip");
+    auto oldTiming=nlohmann::json::parse(SerializeSkin(timing));
+    oldTiming["hud"].erase("hitErrorStyle");
+    for (const char* key : {"hitErrorPerfectZone","hitErrorGoodZone","hitErrorBadZone","hitErrorPerfectMark","hitErrorGoodMark","hitErrorBadMark","hitErrorCenter"})
+        oldTiming["colors"].erase(key);
+    check(ParseSkin(oldTiming.dump(),timingReloaded,error) &&
+          timingReloaded.hitErrorLength==144 && timingReloaded.hitErrorCenter.a==255,
+          "v2 without optional hit error style uses defaults");
+    timing.hitErrorLength=1000;
+    check(!timing.Valid(error),"reject excessive bar length");
     const float before = edited.lookaheadMs;
     check(!SetSkinNumber(edited, 0, 0, 1, 10001.0, false, error) &&
           edited.lookaheadMs == before,

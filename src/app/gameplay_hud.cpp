@@ -32,7 +32,8 @@ constexpr Color kGradeColors[] = {
 
 void DrawHitErrorBar(const GameplayHudLayout& l, const Skin& skin,
                      const HitErrorHistory* errors, double now) {
-    const auto b = l.hitError;
+    const auto b = LayoutHitErrorBar(l,skin);
+    if (b.width<=0 || b.height<=0) return;
     const float u = l.unit;
     const float center = b.x+b.width*0.5f;
     const auto xFor = [&](double error) {
@@ -42,24 +43,26 @@ void DrawHitErrorBar(const GameplayHudLayout& l, const Skin& skin,
     const float y = b.y+b.height*0.5f;
     const auto range = [&](double from, double to, Color c) {
         const float x = xFor(from);
-        DrawRectangleRec({x,y-2.0f*u,xFor(to)-x,4.0f*u},
-                         WithOpacity(c,0.45f*skin.hudText.a/255.0f));
+        const float h=skin.hitErrorThickness*u;
+        DrawRectangleRec({x,y-h*0.5f,xFor(to)-x,h},WithOpacity(c,skin.hitErrorZoneOpacity));
     };
-    range(-core::kBadWindowSeconds,-core::kGoodWindowSeconds,kGradeColors[2]);
-    range(-core::kGoodWindowSeconds,-core::kPerfectWindowSeconds,kGradeColors[1]);
-    range(-core::kPerfectWindowSeconds,core::kPerfectWindowSeconds,kGradeColors[0]);
-    range(core::kPerfectWindowSeconds,core::kGoodWindowSeconds,kGradeColors[1]);
-    range(core::kGoodWindowSeconds,core::kBadWindowSeconds,kGradeColors[2]);
-    DrawRectangleRec({center-u,y-7.0f*u,2.0f*u,14.0f*u},skin.hudText);
+    range(-core::kBadWindowSeconds,-core::kGoodWindowSeconds,skin.hitErrorBadZone);
+    range(-core::kGoodWindowSeconds,-core::kPerfectWindowSeconds,skin.hitErrorGoodZone);
+    range(-core::kPerfectWindowSeconds,core::kPerfectWindowSeconds,skin.hitErrorPerfectZone);
+    range(core::kPerfectWindowSeconds,core::kGoodWindowSeconds,skin.hitErrorGoodZone);
+    range(core::kGoodWindowSeconds,core::kBadWindowSeconds,skin.hitErrorBadZone);
+    const float w=skin.hitErrorMarkWidth*u;
+    const float h=skin.hitErrorMarkHeight*u;
+    DrawRectangleRec({center-w*0.5f,y-(h+2*u)*0.5f,w,h+2*u},skin.hitErrorCenter);
+    const Color marks[]={skin.hitErrorPerfectMark,skin.hitErrorGoodMark,skin.hitErrorBadMark};
     if (!errors) return;
     for (std::size_t i=0; i<errors->Size(); ++i) {
         const auto& sample=errors->At(i);
-        const float opacity=HitErrorHistory::Opacity(sample,now);
+        const float opacity=HitErrorHistory::Opacity(sample,now,skin.hitErrorFadeMs/1000.0);
         if (opacity<=0.0f) continue;
         const float x=xFor(sample.errorSeconds);
-        const auto c=kGradeColors[static_cast<int>(sample.grade)];
-        DrawRectangleRec({x-u,y-6.0f*u,2.0f*u,12.0f*u},
-                         WithOpacity(c,opacity*skin.hudText.a/255.0f));
+        const auto c=marks[static_cast<int>(sample.grade)];
+        DrawRectangleRec({x-w*0.5f,y-h*0.5f,w,h},WithOpacity(c,opacity*skin.hitErrorMarkOpacity));
     }
 }
 

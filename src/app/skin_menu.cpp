@@ -107,8 +107,9 @@ void UpdateSkinColorDrag(Vector2 logicalMouse, Skin& skin, SkinUi& ui) {
 
 Rectangle SkinBackButton() { return {52, 74, 100, 39}; }
 Rectangle SkinTabButton(int index) {
-    const int slot = (index + 1) % 4; // profiles first; setting IDs unchanged
-    return {52.0f + slot * 221.0f, 128.0f, 214.0f, 40.0f};
+    constexpr int slots[] = {1,2,4,0,3};
+    const int slot = slots[std::clamp(index,0,4)];
+    return {52.0f + slot * 176.0f, 128.0f, 169.0f, 40.0f};
 }
 Rectangle SkinActionButton(int index) {
     return {604.0f + (index % 2) * 166.0f,
@@ -138,7 +139,7 @@ Rectangle SkinDeleteCancelRect() { return {506, 310, 169, 42}; }
 SkinCommand SkinMenuClick(Vector2 mouse, Skin& skin, SkinUi& ui) {
     ui.draggingRow = -1;
     ui.draggingColor = 0;
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 5; ++i)
         if (Hit(mouse, SkinTabButton(i))) {
             ui.page = i;
             ui.editingNumberRow = -1;

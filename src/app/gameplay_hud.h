@@ -66,6 +66,24 @@ inline GameplayHudLayout LayoutGameplayHud(Rectangle bounds,
     return out;
 }
 
+inline Rectangle LayoutHitErrorBar(const GameplayHudLayout& l,const Skin& skin) noexcept {
+    const float u=l.unit;
+    const auto bounds=l.bounds;
+    if (bounds.width<=0 || bounds.height<=0 || u<=0) return {};
+    const float margin=std::max(4.0f*u,skin.hitErrorMarkWidth*u);
+    const float width=std::min(skin.hitErrorLength*u,std::max(0.0f,bounds.width-2*margin));
+    const float height=std::max(skin.hitErrorThickness,skin.hitErrorMarkHeight+2)*u;
+    const float x=bounds.x+(bounds.width-width)*0.5f;
+    const float top=bounds.y+margin;
+    const float bottom=bounds.y+bounds.height-margin-height;
+    float y=std::clamp(bounds.y+bounds.height-skin.hitErrorBottomOffset*u-height,
+                       top,std::max(top,bottom));
+    if (x < l.combo.x+l.combo.width+4*u && x+width > l.combo.x &&
+        y+height>l.combo.y && y<l.combo.y+l.combo.height)
+        y=std::max(top,l.combo.y-height-4*u);
+    return {x,y,width,height};
+}
+
 struct GameplayHudStats {
     core::GradeCounts grades{};
     int combo = 0;

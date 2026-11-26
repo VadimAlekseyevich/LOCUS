@@ -69,6 +69,9 @@ int main() {
     ok &= Check(HitErrorHistory::Opacity(flash.Errors().At(0),50.0)==1.0f &&
                 HitErrorHistory::Opacity(flash.Errors().At(0),52.0)==0.0f,
                 "timing marks expire in wall time");
+    ok &= Check(HitErrorHistory::Opacity(flash.Errors().At(0),50.5,0.25)==0.0f &&
+                HitErrorHistory::Opacity(flash.Errors().At(0),52.0,4.0)==0.5f,
+                "custom timing mark duration controls fade");
     for (int i=0;i<100;++i)
         flash.Trigger(Judgement{Grade::Perfect,0,0.001*i},53.0);
     ok &= Check(flash.Errors().Size()==HitErrorHistory::kCapacity &&

@@ -34,11 +34,13 @@ public:
     const HitErrorSample& At(std::size_t index) const noexcept {
         return samples_[(next_+kCapacity-count_+index)%kCapacity];
     }
-    static float Opacity(const HitErrorSample& sample, double now) noexcept {
+    static float Opacity(const HitErrorSample& sample, double now,
+                         double lifetime=kLifetimeSeconds) noexcept {
         const double age = now-sample.capturedAt;
-        if (!std::isfinite(age) || age<0.0 || age>=kLifetimeSeconds)
+        if (!std::isfinite(age) || !std::isfinite(lifetime) || lifetime<=0.0 ||
+            age<0.0 || age>=lifetime)
             return 0.0f;
-        return static_cast<float>(1.0-age/kLifetimeSeconds);
+        return static_cast<float>(1.0-age/lifetime);
     }
 private:
     std::array<HitErrorSample,kCapacity> samples_{};
