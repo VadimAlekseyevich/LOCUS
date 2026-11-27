@@ -140,8 +140,24 @@ exchange(code, secrets.token_urlsafe(48), 400)
 code, verifier = authorize()
 tokens = exchange(code, verifier)
 exchange(code, verifier, 400)
-header = json.loads(base64.urlsafe_b64decode(tokens["access_token"].split(".")[0] + "=="))
-assert header["typ"].lower() == "at+jwt" and header["alg"] == "RS256"
+def assert_access_contract(access):
+    # Test-only decoding, never a substitute for the API signature validation.
+    # Diagnostic messages deliberately contain no token or personal claim values.
+    def segment(index):
+        value = access.split(".")[index]
+        return json.loads(base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)))
+    header, claims = segment(0), segment(1)
+    assert header.get("typ", "").lower() == "at+jwt" and header.get("alg") == "RS256", "Unexpected token type or algorithm"
+    assert claims.get("iss") == issuer, "Issuer claim mismatch"
+    assert claims.get("sub") == subject, "Missing or incorrect immutable subject mapping"
+    audiences = claims.get("aud", [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+    assert "https://api.locus.test" in audiences, "Missing LOCUS API audience"
+    assert "locus.player" in claims.get("scope", "").split(), "Missing player scope"
+    assert "act" not in claims, "Unexpected delegated identity"
+
+assert_access_contract(tokens["access_token"])
 
 def request(path, bearer=None, expected=200):
     req = urllib.request.Request(api + path)
@@ -172,6 +188,7 @@ with (root / "api.log").open("w+") as log:
         assert request("/api/v1/me", tokens["access_token"])["id"] == player
         request("/api/v1/me", tokens["id_token"], 401)
         refreshed = token_request(dict(grant_type="refresh_token", refresh_token=tokens["refresh_token"]))
+        assert_access_contract(refreshed["access_token"])
         assert request("/api/v1/me", refreshed["access_token"])["id"] == player
         assert refreshed["refresh_token"] != tokens["refresh_token"]
         token_request(dict(grant_type="refresh_token", refresh_token=tokens["refresh_token"]), 400)

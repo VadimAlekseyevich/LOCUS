@@ -93,7 +93,7 @@ jobs:
             -v "$PWD/build/keycloak-smoke/realm.json:/opt/keycloak/data/import/locus-realm.json:ro" \
             -v "$PWD/build/keycloak-smoke/tls.key:/tls/tls.key:ro" \
             -v "$PWD/build/keycloak-smoke/tls.crt:/tls/tls.crt:ro" \
-            quay.io/keycloak/keycloak:26.8.2 start-dev --import-realm --http-enabled=false \
+            quay.io/keycloak/keycloak:26.8.2@sha256:7e66a96e4739239070aeaf72e4c5decf0f7f682cfc725b9f7ea2b336eaba38b3 start-dev --import-realm --http-enabled=false \
             --hostname=https://127.0.0.1:5444 --https-certificate-file=/tls/tls.crt --https-certificate-key-file=/tls/tls.key
           trap 'docker rm -f locus-keycloak-ci >/dev/null 2>&1 || true; rm -f build/keycloak-smoke/password build/keycloak-smoke/realm.json build/keycloak-smoke/tls.key' EXIT
           python3 server/tests/keycloak.py server/bin/Release/net10.0/Locus.Server.dll build/keycloak-smoke

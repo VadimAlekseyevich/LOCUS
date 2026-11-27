@@ -3,8 +3,8 @@
 Keycloak 26.8.2 is the selected **development** OIDC provider. It is not
 part of the game executable or the API process. The realm has no committed
 users, credentials, signing keys or administrative access for the API.
-The tag is pinned for reproducibility; review security releases and pin
-verified image digests before deploying. The production provider may be
+The development image tag and registry digest are pinned for reproducibility;
+review security releases and verify image provenance before deploying. The production provider may be
 changed without changing the desktop protocol or scoring engine.
 
 ## Local development
@@ -49,7 +49,12 @@ use the system browser, bind the listener to loopback only, and securely
 store refresh credentials. No password grant, client secret, implicit
 grant, service-account token or token exchange. Access tokens use RS256,
 at+jwt, separate API audience and 120-second lifetime; refresh rotation
-allows zero reuse. ID tokens are not API credentials.
+allows zero reuse. ID tokens are not API credentials. The dedicated player
+scope explicitly maps the immutable Keycloak subject into the access token;
+replacing default client scopes otherwise removes the built-in subject mapper.
+For an existing realm, add the Subject (sub) protocol mapper to the
+locus.player client scope (access token and introspection enabled). This
+preserves existing user IDs; do not reset the database merely to update a mapper.
 
 Registration is closed and no public account creation is implemented.
 The local provider uses Keycloak dev mode and a disposable embedded
