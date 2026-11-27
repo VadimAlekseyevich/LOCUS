@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: LOCUS private read API
   version: 1.0.0
-  description: Development-only read interface. No write or authentication endpoints.
+  description: Development-only read interface, including an authenticated player self endpoint. No write or token issuance endpoints.
 servers:
   - url: http://127.0.0.1:5080
 paths:
@@ -34,6 +34,26 @@ paths:
                   schemaVersion: {type: integer}
                 required: [status, schemaVersion]
         '503': {description: Database or expected schema unavailable}
+  /api/v1/me:
+    get:
+      operationId: currentPlayer
+      security:
+        - PlayerBearer: []
+      description: Resolves the authenticated active server player. Requires locus.player scope.
+      responses:
+        '200':
+          description: Current player; not cacheable
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, displayName, createdAt]
+                properties:
+                  id: {type: string, format: uuid}
+                  displayName: {type: string}
+                  createdAt: {type: string, format: date-time}
+        '401': {description: Missing or invalid access token, or authentication disabled}
+        '403': {description: Missing player scope, unmapped identity or inactive player}
   /api/v1/maps:
     get:
       operationId: listMaps
@@ -100,6 +120,11 @@ paths:
         '400': {description: Invalid limit}
         '404': {description: Missing, unpublished or unranked revision}
 components:
+  securitySchemes:
+    PlayerBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     Limit:
       name: limit

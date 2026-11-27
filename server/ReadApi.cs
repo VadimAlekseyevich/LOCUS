@@ -6,7 +6,7 @@ internal static class ReadApi
 {
     internal static void Map(WebApplication app)
     {
-        app.MapGet("/health/live", () => Results.Ok(new { status = "ok" }));
+        app.MapGet("/health/live", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
         app.MapGet("/health/ready", async (NpgsqlDataSource db, CancellationToken ct) =>
         {
             try
@@ -17,12 +17,12 @@ internal static class ReadApi
             }
             catch (NpgsqlException) { return Results.StatusCode(503); }
             catch (TimeoutException) { return Results.StatusCode(503); }
-        });
+        }).AllowAnonymous();
 
         var v1 = app.MapGroup("/api/v1");
-        v1.MapGet("/maps", Maps);
-        v1.MapGet("/players/{id:guid}", Player);
-        v1.MapGet("/revisions/{id:guid}/leaderboard", Leaderboard);
+        v1.MapGet("/maps", Maps).AllowAnonymous();
+        v1.MapGet("/players/{id:guid}", Player).AllowAnonymous();
+        v1.MapGet("/revisions/{id:guid}/leaderboard", Leaderboard).AllowAnonymous();
     }
 
     private sealed record MapEntry(Guid RevisionId, Guid DifficultyId, Guid SetId,

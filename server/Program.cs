@@ -23,11 +23,23 @@ var builder = WebApplication.CreateBuilder(args);
 if (string.IsNullOrEmpty(builder.Configuration["urls"]))
     builder.WebHost.UseUrls("http://127.0.0.1:5080");
 builder.Services.AddProblemDetails();
+builder.Services.AddHttpContextAccessor();
+PlayerAuth.Configure(builder);
 builder.Services.AddSingleton<NpgsqlDataSource>(_ => Database.Connect(builder.Configuration.GetConnectionString("Locus")));
 var app = builder.Build();
 // Resolve configuration immediately, not on the first public request.
 _ = app.Services.GetRequiredService<NpgsqlDataSource>();
 app.UseExceptionHandler();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.Equals("/api/v1/me", StringComparison.OrdinalIgnoreCase) ||
+        context.Request.Path.Equals("/api/v1/me/", StringComparison.OrdinalIgnoreCase))
+        context.Response.Headers.CacheControl = "no-store";
+    await next(context);
+});
+app.UseAuthentication();
+app.UseAuthorization();
 ReadApi.Map(app);
+PlayerAuth.Map(app);
 await app.RunAsync();
 return 0;

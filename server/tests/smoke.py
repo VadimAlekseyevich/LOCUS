@@ -70,7 +70,13 @@ with (root / "server.log").open("w+") as log:
         assert [x["pp"] for x in board["items"]] == [20, 15], board
         request("/api/v1/revisions/30000000-0000-0000-0000-000000000002/leaderboard", 404)
         request("/api/v1/revisions/30000000-0000-0000-0000-000000000003/leaderboard", 404)
-        request("/api/v1/maps", 405, method="POST")
+        request("/api/v1/me", 401)
+        # No write route: framework may challenge via the fallback policy.
+        try:
+            urllib.request.urlopen(urllib.request.Request(base + "/api/v1/maps", method="POST"), timeout=5)
+            raise AssertionError("Unexpected write route")
+        except urllib.error.HTTPError as e:
+            assert e.code in (401, 405), e.code
     finally:
         server.terminate()
         try:

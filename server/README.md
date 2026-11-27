@@ -3,7 +3,8 @@
 .NET 10 (ASP.NET Core Minimal API), PostgreSQL 17, Npgsql 10.0.3.
 The C++ worker remains the sole implementation of gameplay calculations.
 This is a runnable private development service, **not a public deployment**.
-There are no account creation, login, map upload or score submission endpoints.
+There are no account creation, token issuance, map upload or score submission endpoints.
+The optional JWT bearer resource-server boundary authenticates already provisioned players.
 
 ## Local start
 
@@ -46,6 +47,40 @@ revisions and rank-approved Performance V1 scores, with one best score per
 active player. The provisional ordering is PP, then accuracy, then attempt
 ID. The response is a bounded top-N, not a global player ranking.
 
+## Private player authentication
+
+Without both settings below, no authenticated endpoint is usable. If only
+one setting is supplied or the issuer is not HTTPS, startup fails.
+Configure a trusted OIDC issuer which issues delegated user access tokens:
+
+```sh
+export Auth__Issuer='https://identity.example'
+export Auth__Audience='https://api.example'
+```
+
+These are placeholders, not a deployed identity provider. The API uses
+Microsoft JWT Bearer, HTTPS discovery/JWKS, exact issuer and audience,
+RS256 signatures, access-token type at+jwt or application/at+jwt,
+expiration and 30-second clock skew. It requires the exact scope
+`locus.player` and a case-sensitive issuer/subject mapping to an active
+server player. The issuer must grant this scope only to delegated human
+user sessions, not client-credentials grants, and issue short-lived access
+tokens. Do not reuse a client ID as the API audience. No ID tokens,
+local IDs, emails, client-supplied player IDs or roles authorize requests.
+No bearer token is persisted. Unmapped/disabled players are denied on
+each private request; unlinking or disabling takes effect on the next
+authorization decision. Private routes require this policy by default;
+only explicit public reads and health routes are anonymous.
+
+`GET /api/v1/me` returns the authenticated server player's ID, display name
+and creation time. Invalid/missing tokens receive 401, valid tokens lacking
+the required player authorization receive 403. Responses are not cacheable.
+The service still binds to loopback by default; require HTTPS at ingress
+before any remote access. Provider provisioning, interactive OAuth/PKCE,
+refresh/revocation and session management remain pending. CI uses a
+disposable HTTPS discovery issuer and test signing keys, never a production
+validation bypass.
+
 ## Operator worker commands
 
 Build the worker as described in [workers](../workers/README.md). Set
@@ -70,15 +105,17 @@ SQL defines server IDs, ownership, published revision references, attempt
 idempotency and verified-score records. Schema v2 adds operator-only
 external identity bindings: exact case-sensitive (issuer, subject) maps
 to a server player, with at most one binding per issuer per player. No
-identity is linked by display name, email or a desktop ID. This is storage,
-not authentication; no identity provider has been selected. The HTTP API is read-only; the
-CI fixture inserts synthetic records through SQL. No real publication or
-submission transaction, account authentication, media decoding, score
+identity is linked by display name, email or a desktop ID. The API can resolve validated bearer tokens to these bindings; no production
+identity provider has been selected. The HTTP API is read-only; the CI fixture
+inserts synthetic records through SQL. No real publication or
+submission transaction, interactive account login, media decoding, score
 approval workflow, object storage, global PP or frontend yet.
-Next: authentication and a private authenticated publication/submission
-vertical slice with validated worker DTOs and durable object references.
+Next: provider provisioning and login/session integration, worker isolation,
+and a private authenticated publication/submission vertical slice with
+validated worker DTOs and durable object references.
 
 CI builds the actual C++ executable and .NET service, exercises concurrent
 fresh migrations, a v1-to-v2 upgrade, invalid history rejection and identity
 constraints on PostgreSQL, and checks the operator process bridge and HTTP
-visibility/ranking/pagination. The local game has no network dependency.
+visibility/ranking/pagination, real TLS discovery, invalid JWT rejection and
+active-player authorization. The local game has no network dependency.

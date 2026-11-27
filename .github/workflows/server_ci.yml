@@ -65,3 +65,12 @@ jobs:
         env:
           LOCUS_WORKER_PATH: ${{ github.workspace }}/build/server-worker/locus_worker
         run: python3 server/tests/smoke.py server/bin/Release/net10.0/Locus.Server.dll build/server-worker/locus_worker_fixture build/backend-smoke
+      - name: JWT bearer and player authorization over real discovery TLS
+        run: |
+          mkdir -p build/auth-smoke
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=LOCUS CI issuer' \
+            -addext 'subjectAltName=IP:127.0.0.1' -addext 'basicConstraints=critical,CA:TRUE' \
+            -keyout build/auth-smoke/tls.key -out build/auth-smoke/tls.crt
+          sudo cp build/auth-smoke/tls.crt /usr/local/share/ca-certificates/locus-ci-issuer.crt
+          sudo update-ca-certificates
+          python3 server/tests/auth.py server/bin/Release/net10.0/Locus.Server.dll build/auth-smoke
