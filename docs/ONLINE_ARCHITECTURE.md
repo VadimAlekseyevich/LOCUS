@@ -176,11 +176,18 @@ disables redirects, cookies and automatic authentication, and bounds response
 headers/body. The private slice uses direct connections (no WPAD/proxy).
 Synchronous calls are for the network worker only: per-phase timeouts and
 cooperative cancellation between calls, not a hard asynchronous abort.
-Browser launch, discovery/token exchange orchestration, ID-token validation,
-refresh storage and UI are not connected yet. These primitives alone do not
+The account protocol validates discovery metadata (exact issuer, same-origin
+HTTPS endpoints, S256 and response issuer), constructs
+code/refresh/revocation forms and parses bounded strict JSON. The Windows
+browser flow opens the system browser, waits for a validated loopback code,
+exchanges it once and accepts identity only from HTTPS GET /api/v1/me.
+This native flow deliberately requests OAuth locus.player without openid;
+it does not consume ID tokens or locally decode identity from access tokens.
+A future OIDC consumer must validate ID tokens separately. Worker ownership,
+refresh rotation orchestration, credential storage and UI remain pending. These primitives alone do not
 establish a login session.
 
-Use browser-based native OAuth/OIDC authorization with PKCE and a
+Use browser-based native OAuth authorization with PKCE and a
 supported redirect mechanism; do not collect account passwords inside
 the game. Use short-lived access credentials, OS credential storage for
 refresh credentials, TLS, explicit sign-out/revocation and server-side

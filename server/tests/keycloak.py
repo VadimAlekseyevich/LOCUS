@@ -50,6 +50,10 @@ else:
     raise RuntimeError("Keycloak discovery unavailable")
 assert metadata["issuer"] == issuer
 assert "S256" in metadata["code_challenge_methods_supported"]
+assert metadata.get("authorization_response_iss_parameter_supported") is True
+assert "code" in metadata["response_types_supported"]
+for endpoint in ("authorization_endpoint", "token_endpoint", "revocation_endpoint"):
+    assert metadata[endpoint].startswith("https://127.0.0.1:5444/")
 
 env = dict(os.environ, Auth__Issuer=issuer, Auth__Audience="https://api.locus.test")
 def provision(sub, name, success=True):
@@ -88,13 +92,15 @@ def form(values):
 def b64(raw):
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
 
-def authorize(challenge=True):
+def authorize(challenge=True, oidc=True):
     browser = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),
                                           StopAtCallback())
     verifier = secrets.token_urlsafe(48)
     state = secrets.token_urlsafe(24)
     params = dict(client_id=client, redirect_uri=callback, response_type="code",
-                  scope="openid locus.player", state=state, nonce=secrets.token_urlsafe(24))
+                  scope="openid locus.player" if oidc else "locus.player", state=state)
+    if oidc:
+        params["nonce"] = secrets.token_urlsafe(24)
     if challenge:
         params.update(code_challenge=b64(hashlib.sha256(verifier.encode()).digest()),
                       code_challenge_method="S256")
@@ -199,6 +205,11 @@ with (root / "api.log").open("w+") as log:
         assert request("/api/v1/me", refreshed["access_token"])["id"] == player
         assert refreshed["refresh_token"] != tokens["refresh_token"]
         token_request(dict(grant_type="refresh_token", refresh_token=tokens["refresh_token"]), 400)
+        # Native client uses OAuth API access, not OIDC ID-token identity.
+        code, verifier = authorize(oidc=False)
+        native = exchange(code, verifier)
+        assert_access_contract(native["access_token"])
+        assert request("/api/v1/me", native["access_token"])["id"] == player
     finally:
         process.terminate()
         try:

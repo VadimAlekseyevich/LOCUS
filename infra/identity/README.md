@@ -44,17 +44,20 @@ before provisioning. Do not use the player's local desktop ID.
 
 Native client contract: public client locus-desktop, authorization code
 with mandatory S256 PKCE, loopback IP redirect with ephemeral port,
-scope openid locus.player. The callback must include the exact issuer (RFC
+scope locus.player (OAuth API access; no openid in the desktop request).
+The callback must include the exact issuer (RFC
 9207). Native C++ PKCE/state/nonce generation and callback parsing now exist;
 a one-shot Windows loopback listener with bounded HTTP parsing and
 cancellation now exists. The independent WinHTTP adapter enforces HTTPS,
 OS certificate validation, origin-bound requests and response budgets.
-Discovery/token exchange orchestration, ID-token checks and credential storage
-remain pending. The private API must also have a trusted HTTPS listener or
+Discovery and browser code exchange now exist; identity is established only
+through the validated HTTPS game API /me response, not an ID token. Refresh
+orchestration, credential storage and asynchronous UI integration remain pending. The private API must also have a trusted HTTPS listener or
 TLS ingress for the native client; the current HTTP smoke endpoints are not
-valid native transport targets. A native client must validate state and nonce,
-use the system browser, bind the listener to loopback only, and securely
-store refresh credentials. No password grant, client secret, implicit
+valid native transport targets. The native flow validates state and issuer,
+uses the system browser and binds the listener to loopback only. Secure
+refresh credential storage is still required; an OIDC flow consuming an ID
+token would also need nonce and ID-token validation. No password grant, client secret, implicit
 grant, service-account token or token exchange. Access tokens use RS256,
 at+jwt, separate API audience and 120-second lifetime; refresh rotation
 allows zero reuse. ID tokens are not API credentials. The dedicated player
