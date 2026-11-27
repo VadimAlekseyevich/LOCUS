@@ -55,7 +55,7 @@ Suggested repository boundaries when needed:
 - `infra/`: reproducible local and deployed configuration; no secrets.
 - `workers/`: isolated validation/calculation entry points.
 
-The first concrete worker is implemented: [internal protocol 1](../workers/README.md) builds `locus_worker` in core-only CI, inspects a staged package and derives a score from an exact expected gameplay digest and replay. It requires independently decoded audio duration and expected attempt settings from the future orchestrator. The [private backend](../server/README.md) now provides explicit SQL migration, a versioned read-only HTTP API and operator-only C# process adapter. The optional JWT bearer resource-server boundary authenticates pre-provisioned players; identity provider deployment, interactive login, media decoder, real publication/submission transaction and ranking approval workflow are pending.
+The first concrete worker is implemented: [internal protocol 1](../workers/README.md) builds `locus_worker` in core-only CI, inspects a staged package and derives a score from an exact expected gameplay digest and replay. It requires independently decoded audio duration and expected attempt settings from the future orchestrator. The [private backend](../server/README.md) now provides explicit SQL migration, a versioned read-only HTTP API and operator-only C# process adapter. The optional JWT bearer resource-server boundary authenticates pre-provisioned players; a private Keycloak realm and operator provisioning command are implemented; production deployment, native/browser login integration, media decoder, real publication/submission transaction and ranking approval workflow are pending.
 
 Do not create empty directories or abstract repositories for hypothetical
 consumers. Extract actual boundaries as the first vertical slice requires.
@@ -158,8 +158,10 @@ per issuer. Validated access-token-to-active-player resolution and the private /
 route are implemented using Microsoft JWT Bearer and HTTPS discovery/JWKS.
 The resource server requires RS256, exact issuer/audience, access-token type
 at+jwt and delegated locus.player scope. Private routes deny by default;
-public reads explicitly opt out. Account provisioning and interactive
-login remain pending; never link by email, nickname or a local player ID.
+public reads explicitly opt out. Operator provisioning creates a new player and identity atomically; a private
+[Keycloak realm](../infra/identity/README.md) supports S256 PKCE and rotating
+refresh tokens. Native/browser login integration and production account
+lifecycle remain pending; never link by email, nickname or a local player ID.
 
 Use browser-based native OAuth/OIDC authorization with PKCE and a
 supported redirect mechanism; do not collect account passwords inside
@@ -205,7 +207,7 @@ No legal workflow is currently operational.
 | W0 | Documentation and portable rules boundary | Core-only CI; no future capability described as implemented |
 | W1 | Portable verifier + package validation boundary (verifier, structural package validation and SHA-256 content descriptor implemented; media/session policy pending) | Linux tests against exact chart/replay fixtures; reject mismatched offset, malformed input and unsupported rules; no desktop dependencies |
 | W2 | Local run/profile ownership and PP contract (portable attempt model, local identity and owner-scoped storage implemented; experimental PP calculator and pure profile projection implemented; owner-scoped full history scan and compact Home summary implemented; local profile and paginated best scores implemented; account API and competitive policy pending) | Stable local attempt identity, explicit owner and immutable run snapshot; versioned calculator; offline regression tests |
-| W3 | API/data contract and private backend (read API, append-only schema v2 with identity bindings and process bridge implemented; resource-server authentication implemented; provider/login and writes pending) | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
+| W3 | API/data contract and private backend (read API, append-only schema v2 with identity bindings and process bridge implemented; resource-server authentication implemented; private provider config and provisioning implemented; native/browser login and gameplay writes pending) | OpenAPI, migrations, auth, isolated dev environment, secrets and authorization tests; no public uploads |
 | W4 | Private vertical slice | Publish one authorized test map, play, submit replay, server rejudge, show leaderboard and profile through the same API; retry idempotency |
 | W5 | Catalog/download/upload workflow | Immutable revision mapping, paging, cancellation, safe install, quotas, rollback and fault recovery |
 | W6 | Competitive and public readiness | Ranking/mod policies, anomaly review, moderation tools, legal/privacy workflows, backups, monitoring, load/abuse tests, real Windows acceptance |
@@ -223,8 +225,9 @@ cryptography or premature optimization; benchmark the actual service.
 
 1. W3.1: append-only migrations and external identity storage (implemented).
 2. W3.2: resource-server JWT validation, active-player policy and denial-path
-   integration tests implemented; choose and configure OIDC provider, account
-   provisioning, browser/native login and revocation still pending.
+   integration tests, private Keycloak realm and operator provisioning implemented;
+   browser/native client login, production provider deployment and immediate
+   session revocation still pending.
 3. W3.3: constrain untrusted worker execution (CPU, memory, process, disk,
    network and wall-clock limits); validate typed output and media.
 4. W4.1: immutable blob storage and bounded staging with durable references.
@@ -242,7 +245,7 @@ public hosting. Public competition still requires W6 acceptance.
 - Exact online eligibility for rates, transforms, calibration and visual mods.
 - Whether offline runs can ever be submitted for global ranking.
 - How publication updates affect ranked status and existing best scores.
-- Identity provider, hosting region/operator, budget, retention, privacy
+- Production identity deployment, hosting region/operator, budget, retention, privacy
   and copyright/reporting procedures.
 - Web framework/API version details and deployment layout after a small
   working prototype.

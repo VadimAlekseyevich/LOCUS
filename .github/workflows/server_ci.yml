@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - "server/**"
+      - "infra/identity/**"
       - "protocol/**"
       - "workers/**"
       - "src/**"
@@ -13,6 +14,7 @@ on:
   pull_request:
     paths:
       - "server/**"
+      - "infra/identity/**"
       - "protocol/**"
       - "workers/**"
       - "src/**"
@@ -26,7 +28,7 @@ permissions:
 jobs:
   integration:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:17
@@ -74,3 +76,24 @@ jobs:
           sudo cp build/auth-smoke/tls.crt /usr/local/share/ca-certificates/locus-ci-issuer.crt
           sudo update-ca-certificates
           python3 server/tests/auth.py server/bin/Release/net10.0/Locus.Server.dll build/auth-smoke
+      - name: Real Keycloak browser code and PKCE
+        run: |
+          set -euo pipefail
+          mkdir -p build/keycloak-smoke
+          python3 server/tests/keycloak.py server/bin/Release/net10.0/Locus.Server.dll build/keycloak-smoke prepare
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=LOCUS CI Keycloak' \
+            -addext 'subjectAltName=IP:127.0.0.1' -addext 'basicConstraints=critical,CA:TRUE' \
+            -keyout build/keycloak-smoke/tls.key -out build/keycloak-smoke/tls.crt
+          sudo cp build/keycloak-smoke/tls.crt /usr/local/share/ca-certificates/locus-ci-keycloak.crt
+          sudo update-ca-certificates
+          # Private disposable fixture; grant only the container group read access.
+          sudo chgrp 0 build/keycloak-smoke/tls.key
+          chmod 640 build/keycloak-smoke/tls.key
+          docker run -d --name locus-keycloak-ci -p 127.0.0.1:5444:8443 \
+            -v "$PWD/build/keycloak-smoke/realm.json:/opt/keycloak/data/import/locus-realm.json:ro" \
+            -v "$PWD/build/keycloak-smoke/tls.key:/tls/tls.key:ro" \
+            -v "$PWD/build/keycloak-smoke/tls.crt:/tls/tls.crt:ro" \
+            quay.io/keycloak/keycloak:26.8.2 start-dev --import-realm --http-enabled=false \
+            --hostname=https://127.0.0.1:5444 --https-certificate-file=/tls/tls.crt --https-certificate-key-file=/tls/tls.key
+          trap 'docker rm -f locus-keycloak-ci >/dev/null 2>&1 || true; rm -f build/keycloak-smoke/password build/keycloak-smoke/realm.json build/keycloak-smoke/tls.key' EXIT
+          python3 server/tests/keycloak.py server/bin/Release/net10.0/Locus.Server.dll build/keycloak-smoke

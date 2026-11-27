@@ -19,6 +19,28 @@ if (args.Length == 1 && args[0] == "migrate")
     catch (Exception) { Console.Error.WriteLine("Database migration failed."); return 1; }
 }
 
+if (args.Length > 0 && args[0] == "provision-player")
+{
+    if (args.Length != 3)
+    {
+        Console.Error.WriteLine("Usage: provision-player SUBJECT NAME");
+        return 1;
+    }
+    try
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await using var db = Database.Connect(Environment.GetEnvironmentVariable("ConnectionStrings__Locus"));
+        var id = await PlayerProvisioning.CreateAsync(db, Environment.GetEnvironmentVariable("Auth__Issuer"),
+            args[1], args[2], timeout.Token);
+        Console.WriteLine(id);
+        return 0;
+    }
+    catch (ArgumentException) { Console.Error.WriteLine("Invalid player identity or name."); return 1; }
+    catch (PostgresException error) when (error.SqlState == PostgresErrorCodes.UniqueViolation)
+    { Console.Error.WriteLine("Player name or identity already exists."); return 1; }
+    catch (Exception) { Console.Error.WriteLine("Player provisioning failed."); return 1; }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 if (string.IsNullOrEmpty(builder.Configuration["urls"]))
     builder.WebHost.UseUrls("http://127.0.0.1:5080");

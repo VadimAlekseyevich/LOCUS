@@ -12,16 +12,22 @@ internal static class PlayerAuth
     internal const string Policy = "active-player";
     internal const string Scope = "locus.player";
 
+    internal static bool ValidIssuer(string? issuer) =>
+        !string.IsNullOrWhiteSpace(issuer) && Encoding.UTF8.GetByteCount(issuer) <= 512 &&
+        Uri.TryCreate(issuer, UriKind.Absolute, out var uri) &&
+        uri.Scheme == Uri.UriSchemeHttps && uri.UserInfo.Length == 0 &&
+        uri.Query.Length == 0 && uri.Fragment.Length == 0;
+
+    internal static bool ValidSubject(string? subject) =>
+        !string.IsNullOrEmpty(subject) && subject.Length <= 255 &&
+        subject.All(c => c >= 0x21 && c <= 0x7e);
+
     internal static void Configure(WebApplicationBuilder builder)
     {
         var issuer = builder.Configuration["Auth:Issuer"];
         var audience = builder.Configuration["Auth:Audience"];
         var enabled = issuer is not null || audience is not null;
-        if (enabled && (string.IsNullOrWhiteSpace(issuer) ||
-            Encoding.UTF8.GetByteCount(issuer) > 512 ||
-            !Uri.TryCreate(issuer, UriKind.Absolute, out var uri) ||
-            uri.Scheme != Uri.UriSchemeHttps || uri.UserInfo.Length != 0 ||
-            uri.Query.Length != 0 || uri.Fragment.Length != 0 ||
+        if (enabled && (!ValidIssuer(issuer) ||
             string.IsNullOrWhiteSpace(audience) || audience.Length > 256 ||
             audience.Any(char.IsWhiteSpace)))
             throw new InvalidOperationException("Auth requires an HTTPS issuer and an explicit API audience.");
@@ -94,13 +100,13 @@ internal static class PlayerAuth
         protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context,
             ActivePlayerRequirement requirement)
         {
-            if (context.User.Identity?.IsAuthenticated != true) return;
+            if (context.User.Identity?.IsAuthenticated != true ||
+                context.User.HasClaim(c => c.Type == "act")) return;
             var issuer = SingleClaim(context.User, "iss");
             var subject = SingleClaim(context.User, "sub");
             var scope = SingleClaim(context.User, "scope");
             if (issuer is null || Encoding.UTF8.GetByteCount(issuer) > 512 ||
-                string.IsNullOrEmpty(subject) || subject.Length > 255 ||
-                subject.Any(c => c < 0x21 || c > 0x7e) ||
+                !ValidSubject(subject) ||
                 scope is null || !scope.Split(' ', StringSplitOptions.RemoveEmptyEntries)
                     .Contains(Scope, StringComparer.Ordinal))
                 return;
@@ -115,7 +121,7 @@ internal static class PlayerAuth
                 WHERE i.issuer = @issuer AND i.subject = @subject AND p.active
                 """);
             command.Parameters.AddWithValue("issuer", issuer);
-            command.Parameters.AddWithValue("subject", subject);
+            command.Parameters.AddWithValue("subject", subject!);
             await using var row = await command.ExecuteReaderAsync(request.RequestAborted);
             if (!await row.ReadAsync(request.RequestAborted)) return;
             current.Value = new(row.GetGuid(0), row.GetString(1), row.GetDateTime(2));

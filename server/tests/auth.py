@@ -137,7 +137,8 @@ try:
                         token(nbf=int(time.time())+120)):
             request(bearer=invalid, expected=401)
         for forbidden in (token("unknown"), token("Alpha"), token("disabled"),
-                          token(scope="locus.player.other"), token(scope=""), token(subject="")):
+                          token(scope="locus.player.other"), token(scope=""), token(subject=""),
+                          token(act={"sub": "other"})):
             request(bearer=forbidden, expected=403)
         sql(f"UPDATE players SET active=false WHERE id='{alpha}'")
         try:

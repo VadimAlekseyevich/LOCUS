@@ -1,0 +1,22 @@
+# Private development only. Never publish this configuration to the Internet.
+services:
+  identity:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command:
+      - start-dev
+      - --import-realm
+      - --http-enabled=false
+      - --hostname=https://127.0.0.1:5444
+      - --https-certificate-file=/tls/tls.crt
+      - --https-certificate-key-file=/tls/tls.key
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${LOCUS_IDENTITY_ADMIN:?Set a local bootstrap administrator}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${LOCUS_IDENTITY_PASSWORD:?Set a unique local bootstrap password}
+    ports:
+      - "127.0.0.1:5444:8443"
+    volumes:
+      - ./locus-realm.json:/opt/keycloak/data/import/locus-realm.json:ro
+      - ${LOCUS_IDENTITY_TLS_DIR:?Set an absolute directory with tls.crt and tls.key}:/tls:ro
+      - identity-data:/opt/keycloak/data
+volumes:
+  identity-data:
