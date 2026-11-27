@@ -57,11 +57,10 @@ jobs:
         run: |
           cmake -S . -B build/server-worker -G Ninja -DCMAKE_BUILD_TYPE=Release -DLOCUS_BUILD_APP=OFF -DLOCUS_BUILD_TESTS=ON
           cmake --build build/server-worker --target locus_worker locus_worker_fixture --parallel 2
-      - name: Migrate twice and seed private fixture
-        run: |
-          dotnet server/bin/Release/net10.0/Locus.Server.dll migrate
-          dotnet server/bin/Release/net10.0/Locus.Server.dll migrate
-          psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U locus -d locus -f server/tests/seed.sql
+      - name: Migration integrity and account identity constraints
+        run: python3 server/tests/migrations.py server/bin/Release/net10.0/Locus.Server.dll
+      - name: Seed private fixture
+        run: psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U locus -d locus -f server/tests/seed.sql
       - name: HTTP and worker smoke
         env:
           LOCUS_WORKER_PATH: ${{ github.workspace }}/build/server-worker/locus_worker

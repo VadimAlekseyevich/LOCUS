@@ -7,6 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Npgsql" Version="10.0.3" />
-    <EmbeddedResource Include="Migrations/001_initial.sql" LogicalName="Locus.Server.Migrations.001_initial.sql" />
+    <EmbeddedResource Include="Migrations/*.sql" LogicalName="Locus.Server.Migrations.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

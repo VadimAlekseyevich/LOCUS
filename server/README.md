@@ -27,8 +27,10 @@ dotnet run --project server
 Default URL: http://127.0.0.1:5080. Do not expose externally. The migration
 is explicit, transactionally applied under an advisory lock, and records
 a checksum. Re-running it is safe; an incompatible migration history
-fails. The initial schema is intended to evolve through numbered migrations,
-not destructive startup resets. Production will require distinct migration
+fails. The schema is now version 2. Numbered embedded migrations are append-only;
+a valid older prefix is upgraded atomically. Gaps, unknown versions and
+checksum mismatches are rejected. Readiness checks the complete history,
+not just its largest version. Production will require distinct migration
 and application database roles, TLS, backup and secret management.
 
 ```sh
@@ -65,13 +67,18 @@ successful process. Worker output is for internal use only.
 ## Current boundaries
 
 SQL defines server IDs, ownership, published revision references, attempt
-idempotency and verified-score records. The HTTP API is read-only; the
+idempotency and verified-score records. Schema v2 adds operator-only
+external identity bindings: exact case-sensitive (issuer, subject) maps
+to a server player, with at most one binding per issuer per player. No
+identity is linked by display name, email or a desktop ID. This is storage,
+not authentication; no identity provider has been selected. The HTTP API is read-only; the
 CI fixture inserts synthetic records through SQL. No real publication or
 submission transaction, account authentication, media decoding, score
 approval workflow, object storage, global PP or frontend yet.
 Next: authentication and a private authenticated publication/submission
 vertical slice with validated worker DTOs and durable object references.
 
-CI builds the actual C++ executable and .NET service, applies the schema
-twice on PostgreSQL, and checks both the operator process bridge and HTTP
+CI builds the actual C++ executable and .NET service, exercises concurrent
+fresh migrations, a v1-to-v2 upgrade, invalid history rejection and identity
+constraints on PostgreSQL, and checks the operator process bridge and HTTP
 visibility/ranking/pagination. The local game has no network dependency.

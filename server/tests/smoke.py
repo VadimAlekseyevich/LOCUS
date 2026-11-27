@@ -57,7 +57,7 @@ with (root / "server.log").open("w+") as log:
                 time.sleep(0.5)
         else:
             raise RuntimeError("Server did not start")
-        assert request("/health/ready")["schemaVersion"] == 1
+        assert request("/health/ready")["schemaVersion"] == 2
         first = request("/api/v1/maps?limit=1")
         assert len(first["items"]) == 1 and first["next"]
         second = request("/api/v1/maps?limit=1&after=" + first["next"])
