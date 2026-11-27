@@ -38,8 +38,8 @@ same pinned C++ core used by the desktop client. Do not reimplement the
 judge or difficulty formula in JavaScript or C#.
 
 Implemented backend stack: ASP.NET Core (.NET 10), PostgreSQL and Npgsql. Proposed remaining stack:
-TypeScript web UI (e.g. Next.js), C++ verifier executable/worker, libcurl for
-native HTTPS, Docker for local development. Choose a simple authenticated
+TypeScript web UI (e.g. Next.js), C++ verifier executable/worker and Docker for
+local development. Native Windows HTTPS uses WinHTTP and the OS TLS trust store; Choose a simple authenticated
 process boundary for the C++ worker first; benchmark before adopting FFI,
 a new service or another language. No Redis, Kubernetes, microservices or
 persistent socket connection are necessary for the first vertical slice.
@@ -170,8 +170,14 @@ bounded loopback callback targets against the pending state and exact issuer
 coverage. The Windows listener now exclusively binds an ephemeral IPv4 loopback port,
 accepts a bounded single HTTP GET callback with exact Host/state/issuer,
 and closes on completion, cancellation or deadline. Invalid requests do
-not consume the pending flow. Browser launch, HTTPS transport, ID-token
-validation, refresh storage and UI are not connected yet. These primitives alone do not
+not consume the pending flow. A separate WinHTTP HTTPS adapter binds each reusable session/connection to a
+trusted origin, requires TLS 1.2 or newer, verifies certificates and revocation,
+disables redirects, cookies and automatic authentication, and bounds response
+headers/body. The private slice uses direct connections (no WPAD/proxy).
+Synchronous calls are for the network worker only: per-phase timeouts and
+cooperative cancellation between calls, not a hard asynchronous abort.
+Browser launch, discovery/token exchange orchestration, ID-token validation,
+refresh storage and UI are not connected yet. These primitives alone do not
 establish a login session.
 
 Use browser-based native OAuth/OIDC authorization with PKCE and a

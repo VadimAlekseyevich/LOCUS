@@ -47,8 +47,12 @@ with mandatory S256 PKCE, loopback IP redirect with ephemeral port,
 scope openid locus.player. The callback must include the exact issuer (RFC
 9207). Native C++ PKCE/state/nonce generation and callback parsing now exist;
 a one-shot Windows loopback listener with bounded HTTP parsing and
-cancellation now exists. HTTPS exchange, ID-token checks and credential
-storage remain pending. A native client must validate state and nonce,
+cancellation now exists. The independent WinHTTP adapter enforces HTTPS,
+OS certificate validation, origin-bound requests and response budgets.
+Discovery/token exchange orchestration, ID-token checks and credential storage
+remain pending. The private API must also have a trusted HTTPS listener or
+TLS ingress for the native client; the current HTTP smoke endpoints are not
+valid native transport targets. A native client must validate state and nonce,
 use the system browser, bind the listener to loopback only, and securely
 store refresh credentials. No password grant, client secret, implicit
 grant, service-account token or token exchange. Access tokens use RS256,

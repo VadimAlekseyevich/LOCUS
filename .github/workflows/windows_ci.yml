@@ -61,6 +61,13 @@ jobs:
           "clean,$clean,$owned,2" | Add-Content build/windows/build-profile.csv
           Write-Output "BUILD_PROFILE clean_ms=$clean unique_production_sources=$owned"
 
+      - name: Exercise WinHTTP against trusted and untrusted local TLS
+        run: |
+          $openssl = Join-Path $env:ProgramFiles "Git/usr/bin/openssl.exe"
+          if (-not (Test-Path -LiteralPath $openssl)) { throw "OpenSSL fixture tool missing" }
+          python tests/https_transport_fixture.py build/windows/Release/locus_https_transport_tests.exe "$openssl"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Measure unchanged incremental build on the same runner
         run: |
           $timer = [System.Diagnostics.Stopwatch]::StartNew()
