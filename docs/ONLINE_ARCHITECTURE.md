@@ -167,8 +167,11 @@ The native OAuth module now generates independent 256-bit verifier, state
 and nonce values using Windows CNG, computes the S256 challenge and validates
 bounded loopback callback targets against the pending state and exact issuer
 (RFC 9207). The portable callback parser and RFC 7636 test vector have CTest
-coverage. The listener, HTTP transport, browser launch, ID-token validation,
-refresh storage and UI are not connected yet. These primitives alone do not
+coverage. The Windows listener now exclusively binds an ephemeral IPv4 loopback port,
+accepts a bounded single HTTP GET callback with exact Host/state/issuer,
+and closes on completion, cancellation or deadline. Invalid requests do
+not consume the pending flow. Browser launch, HTTPS transport, ID-token
+validation, refresh storage and UI are not connected yet. These primitives alone do not
 establish a login session.
 
 Use browser-based native OAuth/OIDC authorization with PKCE and a

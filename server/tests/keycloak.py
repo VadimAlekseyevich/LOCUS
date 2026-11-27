@@ -119,6 +119,7 @@ def authorize(challenge=True):
         assert location.startswith(callback + "?") or location.startswith(callback + "/?")
         query = urllib.parse.parse_qs(urllib.parse.urlsplit(location).query)
         assert query["state"] == [state] and "code" in query
+        assert query.get("iss") == [issuer], "Missing authorization response issuer"
         return query["code"][0], verifier
 
 def token_request(values, expected=200):
@@ -138,8 +139,14 @@ authorize(False)
 code, verifier = authorize()
 exchange(code, secrets.token_urlsafe(48), 400)
 code, verifier = authorize()
-tokens = exchange(code, verifier)
+replayed_session = exchange(code, verifier)
 exchange(code, verifier, 400)
+# Keycloak deliberately detaches the client session on code replay.
+token_request(dict(grant_type="refresh_token",
+                   refresh_token=replayed_session["refresh_token"]), 400)
+# A separate fresh session is required to test normal refresh rotation.
+code, verifier = authorize()
+tokens = exchange(code, verifier)
 def assert_access_contract(access):
     # Test-only decoding, never a substitute for the API signature validation.
     # Diagnostic messages deliberately contain no token or personal claim values.

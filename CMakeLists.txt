@@ -76,13 +76,13 @@ set_target_properties(locus_player_profile PROPERTIES CXX_EXTENSIONS OFF)
 
 # Native OAuth boundary: portable callback validation, Windows CNG primitives.
 # No dependency on gameplay, graphics, audio, or a third-party crypto library.
-add_library(locus_native_oauth STATIC src/app/native_oauth.cpp)
+add_library(locus_native_oauth STATIC src/app/native_oauth.cpp src/app/native_oauth_http.cpp)
 target_compile_features(locus_native_oauth PUBLIC cxx_std_17)
 target_include_directories(locus_native_oauth PUBLIC "${PROJECT_SOURCE_DIR}/src")
 set_target_properties(locus_native_oauth PROPERTIES CXX_EXTENSIONS OFF)
 if(WIN32)
-    target_sources(locus_native_oauth PRIVATE src/app/native_oauth_win32.cpp)
-    target_link_libraries(locus_native_oauth PRIVATE bcrypt)
+    target_sources(locus_native_oauth PRIVATE src/app/native_oauth_win32.cpp src/app/native_oauth_listener_win32.cpp)
+    target_link_libraries(locus_native_oauth PRIVATE bcrypt ws2_32)
 endif()
 if(MSVC)
     target_compile_options(locus_native_oauth PRIVATE /W4 /permissive- /utf-8)
@@ -94,6 +94,10 @@ if(LOCUS_BUILD_TESTS)
     add_executable(locus_native_oauth_tests tests/native_oauth_tests.cpp)
     target_link_libraries(locus_native_oauth_tests PRIVATE locus_native_oauth)
     add_test(NAME locus_native_oauth_contract COMMAND locus_native_oauth_tests)
+    add_executable(locus_native_oauth_http_tests tests/native_oauth_http_tests.cpp)
+    target_link_libraries(locus_native_oauth_http_tests PRIVATE locus_native_oauth)
+    add_test(NAME locus_native_oauth_http_contract COMMAND locus_native_oauth_http_tests)
+    set_tests_properties(locus_native_oauth_http_contract PROPERTIES TIMEOUT 20)
 endif()
 
 # Internal offline worker boundary, built in the Linux core configuration.
