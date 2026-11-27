@@ -163,6 +163,14 @@ public reads explicitly opt out. Operator provisioning creates a new player and 
 refresh tokens. Native/browser login integration and production account
 lifecycle remain pending; never link by email, nickname or a local player ID.
 
+The native OAuth module now generates independent 256-bit verifier, state
+and nonce values using Windows CNG, computes the S256 challenge and validates
+bounded loopback callback targets against the pending state and exact issuer
+(RFC 9207). The portable callback parser and RFC 7636 test vector have CTest
+coverage. The listener, HTTP transport, browser launch, ID-token validation,
+refresh storage and UI are not connected yet. These primitives alone do not
+establish a login session.
+
 Use browser-based native OAuth/OIDC authorization with PKCE and a
 supported redirect mechanism; do not collect account passwords inside
 the game. Use short-lived access credentials, OS credential storage for

@@ -44,7 +44,10 @@ before provisioning. Do not use the player's local desktop ID.
 
 Native client contract: public client locus-desktop, authorization code
 with mandatory S256 PKCE, loopback IP redirect with ephemeral port,
-scope openid locus.player. A native client must validate state and nonce,
+scope openid locus.player. The callback must include the exact issuer (RFC
+9207). Native C++ PKCE/state/nonce generation and callback parsing now exist;
+the listener, HTTPS exchange, ID-token checks and credential storage remain
+pending. A native client must validate state and nonce,
 use the system browser, bind the listener to loopback only, and securely
 store refresh credentials. No password grant, client secret, implicit
 grant, service-account token or token exchange. Access tokens use RS256,

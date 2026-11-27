@@ -74,6 +74,28 @@ add_library(locus_player_profile STATIC src/app/player_profile.cpp)
 target_link_libraries(locus_player_profile PUBLIC locus_core PRIVATE nlohmann_json::nlohmann_json)
 set_target_properties(locus_player_profile PROPERTIES CXX_EXTENSIONS OFF)
 
+# Native OAuth boundary: portable callback validation, Windows CNG primitives.
+# No dependency on gameplay, graphics, audio, or a third-party crypto library.
+add_library(locus_native_oauth STATIC src/app/native_oauth.cpp)
+target_compile_features(locus_native_oauth PUBLIC cxx_std_17)
+target_include_directories(locus_native_oauth PUBLIC "${PROJECT_SOURCE_DIR}/src")
+set_target_properties(locus_native_oauth PROPERTIES CXX_EXTENSIONS OFF)
+if(WIN32)
+    target_sources(locus_native_oauth PRIVATE src/app/native_oauth_win32.cpp)
+    target_link_libraries(locus_native_oauth PRIVATE bcrypt)
+endif()
+if(MSVC)
+    target_compile_options(locus_native_oauth PRIVATE /W4 /permissive- /utf-8)
+else()
+    target_compile_options(locus_native_oauth PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+if(LOCUS_BUILD_TESTS)
+    enable_testing()
+    add_executable(locus_native_oauth_tests tests/native_oauth_tests.cpp)
+    target_link_libraries(locus_native_oauth_tests PRIVATE locus_native_oauth)
+    add_test(NAME locus_native_oauth_contract COMMAND locus_native_oauth_tests)
+endif()
+
 # Internal offline worker boundary, built in the Linux core configuration.
 add_library(locus_verification_job STATIC workers/verification_job.cpp)
 target_link_libraries(locus_verification_job PUBLIC locus_package)
