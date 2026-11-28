@@ -51,8 +51,10 @@ a one-shot Windows loopback listener with bounded HTTP parsing and
 cancellation now exists. The independent WinHTTP adapter enforces HTTPS,
 OS certificate validation, origin-bound requests and response budgets.
 Discovery and browser code exchange now exist; identity is established only
-through the validated HTTPS game API /me response, not an ID token. Refresh
-orchestration, credential storage and asynchronous UI integration remain pending. The private API must also have a trusted HTTPS listener or
+through the validated HTTPS game API /me response, not an ID token. The session worker now schedules refresh before expiry, requires a new
+refresh token and unchanged player ID, supports cancellation and best-effort
+revocation on explicit logout, and exposes credential-free snapshots.
+Persistent credential storage and UI integration remain pending. The private API must also have a trusted HTTPS listener or
 TLS ingress for the native client; the current HTTP smoke endpoints are not
 valid native transport targets. The native flow validates state and issuer,
 uses the system browser and binds the listener to loopback only. Secure

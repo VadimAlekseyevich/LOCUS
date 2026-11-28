@@ -51,6 +51,7 @@ SignInResult SignInWithBrowser(const Config& config, const std::atomic_bool& can
     SecureZeroMemory(callback.code.data(), callback.code.size());
     SecureZeroMemory(secrets->verifier.data(), secrets->verifier.size());
     if (!form) return Failure(SignInStatus::ExchangeFailed);
+    const auto issuedBefore = std::chrono::steady_clock::now();
     auto exchange = issuer->PostForm(provider->tokenPath, *form, TokenLimit, cancel);
     SecureZeroMemory(form->data(), form->size());
     auto tokens = ParseTokens(exchange);
@@ -65,6 +66,12 @@ SignInResult SignInWithBrowser(const Config& config, const std::atomic_bool& can
             NetworkStatus(profile, profile.status == 401 || profile.status == 403 ?
                 SignInStatus::PlayerRejected : SignInStatus::TransportFailed));
     }
-    return {SignInStatus::Success, Session{std::move(*player), std::move(*tokens)}};
+    const auto expiresAt = issuedBefore + std::chrono::seconds(tokens->expiresIn);
+    if (expiresAt <= std::chrono::steady_clock::now()) {
+        SecureZeroMemory(tokens->access.data(), tokens->access.size());
+        SecureZeroMemory(tokens->refresh.data(), tokens->refresh.size());
+        return Failure(SignInStatus::TimedOut);
+    }
+    return {SignInStatus::Success, Session{std::move(*player), std::move(*tokens), expiresAt}};
 }
 } // namespace locus::app::account

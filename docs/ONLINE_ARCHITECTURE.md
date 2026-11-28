@@ -183,8 +183,15 @@ browser flow opens the system browser, waits for a validated loopback code,
 exchanges it once and accepts identity only from HTTPS GET /api/v1/me.
 This native flow deliberately requests OAuth locus.player without openid;
 it does not consume ID tokens or locally decode identity from access tokens.
-A future OIDC consumer must validate ID tokens separately. Worker ownership,
-refresh rotation orchestration, credential storage and UI remain pending. These primitives alone do not
+A future OIDC consumer must validate ID tokens separately. A single sleeping session worker now owns the volatile credentials,
+interactive login, scheduled refresh and explicit logout/revocation. UI
+snapshots carry no tokens; sign-out clears the visible identity immediately
+and late operations cannot restore it. Rotation must return a new refresh
+credential and the same server player; ambiguous refresh failures require
+a new sign-in rather than retrying the possibly consumed token. Revocation
+is best effort and unconfirmed remote revocation is exposed separately.
+Process shutdown cancels and joins the worker without remote logout.
+Protected persistent credential storage and UI integration remain pending. These primitives alone do not
 establish a login session.
 
 Use browser-based native OAuth authorization with PKCE and a

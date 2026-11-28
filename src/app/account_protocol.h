@@ -44,17 +44,19 @@ std::optional<std::string> RevocationForm(const Config& config, std::string_view
 std::optional<Tokens> ParseTokens(const net::HttpResult& response);
 std::optional<Player> ParsePlayer(const net::HttpResult& response);
 
-#ifdef _WIN32
 enum class SignInStatus { Success, InvalidConfiguration, DiscoveryFailed, BrowserFailed,
     Denied, Cancelled, TimedOut, ExchangeFailed, PlayerRejected, TransportFailed };
 struct Session {
     Player player;
     Tokens tokens;
+    // Conservative monotonic deadline, measured from the token request start.
+    std::chrono::steady_clock::time_point expiresAt;
 };
 struct SignInResult {
     SignInStatus status = SignInStatus::TransportFailed;
     std::optional<Session> session;
 };
+#ifdef _WIN32
 // Blocking operation for the single account worker only. No UI thread calls,
 // no automatic retry of an authorization code, no credential persistence.
 SignInResult SignInWithBrowser(const Config& config, const std::atomic_bool& cancel);

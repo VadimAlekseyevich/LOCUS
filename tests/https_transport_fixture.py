@@ -62,7 +62,10 @@ with tempfile.TemporaryDirectory() as tmp:
             if label == "trusted":
                 fingerprint = run(openssl, "x509", "-in", str(cert), "-noout",
                                   "-fingerprint", "-sha1").strip().split("=")[1].replace(":", "")
-                run("certutil", "-user", "-addstore", "Root", str(cert))
+                # The disposable hosted runner is elevated. CurrentUser Root
+                # can trigger an interactive trust confirmation; use the
+                # machine store and remove this exact generated root in finally.
+                run("certutil", "-f", "-addstore", "Root", str(cert))
             server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             ctx.minimum_version = ssl.TLSVersion.TLSv1_2
@@ -82,5 +85,5 @@ with tempfile.TemporaryDirectory() as tmp:
         for thread in threads:
             thread.join(timeout=5)
         if fingerprint:
-            run("certutil", "-user", "-delstore", "Root", fingerprint)
+            run("certutil", "-f", "-delstore", "Root", fingerprint)
 print("WinHTTP TLS, redirect and response limits passed.")
