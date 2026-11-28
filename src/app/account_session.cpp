@@ -59,17 +59,28 @@ bool SessionManager::BeginSignIn() {
         return false;
     cancel_.store(false, std::memory_order_relaxed);
     desired_ = true;
+    logoutRequested_ = false;
+    restoring_ = false;
     Publish(SessionPhase::SigningIn);
+    wake_.notify_one();
+    return true;
+}
+bool SessionManager::BeginRestore() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (shutdown_ || view_.phase != SessionPhase::SignedOut) return false;
+    cancel_.store(false, std::memory_order_relaxed);
+    desired_ = true;
+    logoutRequested_ = false;
+    restoring_ = true;
+    Publish(SessionPhase::Restoring);
     wake_.notify_one();
     return true;
 }
 void SessionManager::SignOut() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (view_.phase == SessionPhase::SignedOut || view_.phase == SessionPhase::SigningOut) return;
-    if (view_.phase == SessionPhase::Failed) {
-        Publish(SessionPhase::SignedOut, {}, SignInStatus::Success, view_.revocationUnconfirmed);
-        return;
-    }
+    // A failed local credential deletion must be retried by the worker.
+    logoutRequested_ = true;
     desired_ = false;
     cancel_.store(true, std::memory_order_relaxed);
     // Clear the public identity now, even if a blocking transport call has
@@ -85,6 +96,10 @@ SessionView SessionManager::Snapshot() const {
 void SessionManager::Run() {
     std::optional<Session> session;
     std::unique_lock<std::mutex> lock(mutex_);
+    auto forget = [&]() {
+        try { return backend_->Forget(); }
+        catch (...) { return false; }
+    };
     auto revoke = [&](const Session& value) {
         try { return backend_->Revoke(value, stop_); }
         catch (...) { return false; }
@@ -93,10 +108,13 @@ void SessionManager::Run() {
         if (!desired_) {
             if (view_.phase == SessionPhase::SigningOut) {
                 lock.unlock();
+                const bool forgotten = forget();
                 const bool confirmed = !session || revoke(*session);
                 Discard(session);
                 lock.lock();
-                if (!shutdown_) Publish(SessionPhase::SignedOut, {}, SignInStatus::Success, !confirmed);
+                if (forgotten) logoutRequested_ = false;
+                if (!shutdown_) Publish(forgotten ? SessionPhase::SignedOut : SessionPhase::Failed, {},
+                    forgotten ? SignInStatus::Success : SignInStatus::CredentialStorageFailed, !confirmed);
                 continue;
             }
             wake_.wait(lock, [this] { return shutdown_ || desired_ || view_.phase == SessionPhase::SigningOut; });
@@ -104,6 +122,8 @@ void SessionManager::Run() {
         }
 
         const bool refreshing = session.has_value();
+        const bool restoring = !refreshing && restoring_;
+        restoring_ = false;
         if (refreshing) {
             if (wake_.wait_until(lock, RefreshAt(*session), [this] { return shutdown_ || !desired_; }))
                 continue;
@@ -112,7 +132,8 @@ void SessionManager::Run() {
         lock.unlock();
         SignInResult result;
         try {
-            result = refreshing ? backend_->Refresh(*session, cancel_) : backend_->SignIn(cancel_);
+            result = refreshing ? backend_->Refresh(*session, cancel_) :
+                restoring ? backend_->Restore(cancel_) : backend_->SignIn(cancel_);
         } catch (...) {
             result.status = SignInStatus::TransportFailed;
         }
@@ -130,16 +151,33 @@ void SessionManager::Run() {
             }
             continue;
         }
+        if (restoring && result.status == SignInStatus::NoSavedSession && !result.session) {
+            desired_ = false;
+            Publish(SessionPhase::SignedOut);
+            continue;
+        }
         const bool wrongOwner = refreshing && result.session &&
             session->player.id != result.session->player.id;
         const bool reusedRefresh = refreshing && result.session &&
             session->tokens.refresh == result.session->tokens.refresh;
         if (result.status == SignInStatus::Success && result.session && !wrongOwner &&
             !reusedRefresh && Usable(*result.session)) {
+            // Persist only an accepted identity. Never hold the UI mutex
+            // across credential-store operations. Sign-out can still win.
+            lock.unlock();
+            bool remembered = false;
+            try { remembered = backend_->Remember(*result.session); } catch (...) {}
+            lock.lock();
             Discard(session);
             session = std::move(result.session);
-            Publish(SessionPhase::SignedIn, session->player);
-            continue;
+            if (shutdown_) break;
+            if (!desired_) continue;
+            if (remembered) {
+                Publish(SessionPhase::SignedIn, session->player);
+                continue;
+            }
+            result.session.reset();
+            result.status = SignInStatus::CredentialStorageFailed;
         }
         const auto error = wrongOwner ? SignInStatus::PlayerRejected :
             result.status == SignInStatus::Success ? SignInStatus::ExchangeFailed : result.status;
@@ -152,14 +190,19 @@ void SessionManager::Run() {
         desired_ = false;
         Publish(SessionPhase::SigningOut, {}, error);
         lock.unlock();
+        const bool forgotten = forget();
         const bool confirmed = !session || revoke(*session);
         Discard(session);
         lock.lock();
-        if (!shutdown_) Publish(SessionPhase::Failed, {}, error, !confirmed);
+        if (!shutdown_) Publish(SessionPhase::Failed, {},
+            forgotten ? error : SignInStatus::CredentialStorageFailed, !confirmed);
     }
+    const bool pendingLogout = logoutRequested_;
     lock.unlock();
-    // Process exit is not a user-requested logout. No blocking revocation on
-    // shutdown; access credentials expire naturally and are not persisted.
+    // Explicit logout followed immediately by application exit still
+    // deletes the saved token. Do not block shutdown on remote revocation.
+    if (pendingLogout) (void)forget();
     Discard(session);
+    backend_->Close();
 }
 } // namespace locus::app::account

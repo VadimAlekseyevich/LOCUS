@@ -1,4 +1,5 @@
 #include "app/account_session.h"
+#include "app/account_credentials.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -19,15 +20,61 @@ SignInStatus Error(const net::HttpResult& result, SignInStatus fallback) {
 
 class WindowsBackend final : public SessionBackend {
 public:
-    explicit WindowsBackend(Config config) : config_(std::move(config)) {}
+    explicit WindowsBackend(Config config) : config_(std::move(config)), store_(config_) {}
     SignInResult SignIn(const std::atomic_bool& cancel) override {
+        const auto lease = Acquire();
+        if (lease != SignInStatus::Success) return {lease, {}};
+        if (!store_.Erase()) return {SignInStatus::CredentialStorageFailed, {}};
         // Reset cached endpoints between interactive sessions.
         provider_.reset();
         issuer_.reset();
         api_.reset();
         return SignInWithBrowser(config_, cancel);
     }
+    SignInResult Restore(const std::atomic_bool& cancel) override {
+        const auto lease = Acquire();
+        if (lease != SignInStatus::Success) return {lease, {}};
+        // Consume first, so an unavailable provider cannot leave a token
+        // eligible for automatic replay after an ambiguous request.
+        SavedCredential saved;
+        const auto status = store_.Consume(saved);
+        if (status == CredentialStatus::Missing) return {SignInStatus::NoSavedSession, {}};
+        if (status != CredentialStatus::Ok) return {SignInStatus::CredentialStorageFailed, {}};
+        Session previous{{std::move(saved.playerId), {}}, {{}, std::move(saved.refresh), 0}, {}};
+        auto result = Exchange(previous, cancel);
+        if (result.status == SignInStatus::Success && result.session &&
+            result.session->player.id != previous.player.id)
+            result.status = SignInStatus::PlayerRejected;
+        // On ambiguous exchange failure, let the manager try to revoke the
+        // old credential; it must never retry the refresh itself.
+        if (!result.session) result.session = std::move(previous);
+        else Clear(previous.tokens.refresh);
+        return result;
+    }
+    bool Remember(const Session& current) override {
+        return leased_ && store_.Save(current.player.id, current.tokens.refresh);
+    }
+    bool Forget() override {
+        // Never delete a credential owned by another process.
+        return !leased_ || store_.Erase();
+    }
+    void Close() noexcept override {
+        store_.Close();
+        leased_ = false;
+    }
     SignInResult Refresh(const Session& current, const std::atomic_bool& cancel) override {
+        if (!leased_ || !store_.Erase()) return {SignInStatus::CredentialStorageFailed, {}};
+        return Exchange(current, cancel);
+    }
+private:
+    SignInStatus Acquire() {
+        if (!DiscoveryTarget(config_)) return SignInStatus::InvalidConfiguration;
+        const auto status = store_.Acquire();
+        leased_ = status == CredentialStatus::Ok;
+        return leased_ ? SignInStatus::Success : status == CredentialStatus::Busy ?
+            SignInStatus::SessionBusy : SignInStatus::CredentialStorageFailed;
+    }
+    SignInResult Exchange(const Session& current, const std::atomic_bool& cancel) {
         if (!Connect(cancel)) return {SignInStatus::DiscoveryFailed, {}};
         auto form = RefreshForm(config_, current.tokens.refresh);
         if (!form) return {SignInStatus::ExchangeFailed, {}};
@@ -51,6 +98,7 @@ public:
         next.player = std::move(*player);
         return {SignInStatus::Success, std::move(next)};
     }
+public:
     bool Revoke(const Session& current, const std::atomic_bool& cancel) override {
         if (!Connect(cancel)) return false;
         auto form = RevocationForm(config_, current.tokens.refresh);
@@ -76,6 +124,8 @@ private:
         return true;
     }
     Config config_;
+    CredentialStore store_;
+    bool leased_ = false;
     std::optional<Provider> provider_;
     std::unique_ptr<net::HttpsTransport> issuer_, api_;
 };

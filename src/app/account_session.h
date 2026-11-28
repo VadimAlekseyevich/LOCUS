@@ -11,11 +11,17 @@ class SessionBackend {
 public:
     virtual ~SessionBackend() = default;
     virtual SignInResult SignIn(const std::atomic_bool& cancel) = 0;
+    virtual SignInResult Restore(const std::atomic_bool&) { return {SignInStatus::NoSavedSession, {}}; }
+    // Called only after the manager validates the new session; no access
+    // token may be persisted. Default backend is volatile.
+    virtual bool Remember(const Session&) { return true; }
+    virtual bool Forget() { return true; }
+    virtual void Close() noexcept {}
     virtual SignInResult Refresh(const Session& current, const std::atomic_bool& cancel) = 0;
     virtual bool Revoke(const Session& current, const std::atomic_bool& cancel) = 0;
 };
 
-enum class SessionPhase { SignedOut, SigningIn, SignedIn, Refreshing, SigningOut, Failed };
+enum class SessionPhase { SignedOut, Restoring, SigningIn, SignedIn, Refreshing, SigningOut, Failed };
 struct SessionView {
     SessionPhase phase = SessionPhase::SignedOut;
     std::optional<Player> player;
@@ -35,6 +41,7 @@ public:
     SessionManager(const SessionManager&) = delete;
     SessionManager& operator=(const SessionManager&) = delete;
     bool BeginSignIn();
+    bool BeginRestore();
     void SignOut();
     SessionView Snapshot() const;
 private:
@@ -47,6 +54,8 @@ private:
     SessionView view_;
     bool shutdown_ = false;
     bool desired_ = false;
+    bool restoring_ = false;
+    bool logoutRequested_ = false;
     std::atomic_bool cancel_{false};
     std::atomic_bool stop_{false};
     std::thread worker_;

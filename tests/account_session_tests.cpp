@@ -12,7 +12,8 @@ void Check(bool ok, const char* message) {
 using Clock = std::chrono::steady_clock;
 struct Control {
     std::atomic_bool entered{false}, release{false};
-    std::atomic_int logins{0}, refreshes{0}, revokes{0};
+    std::atomic_int logins{0}, refreshes{0}, revokes{0}, restores{0}, remembers{0}, forgets{0};
+    bool hasSaved = false, failRemember = false;
     std::string revoked; // read only after synchronized terminal snapshot
     bool blockLogin = false, due = false, wrongOwner = false, failRefresh = false, failRevoke = false;
 };
@@ -29,6 +30,13 @@ public:
         return {SignInStatus::Success, Session{{"player-a", "Alpha"}, {"access.a", "refresh.a", 120},
             Clock::now() + (c.due ? 20s : 120s)}};
     }
+    SignInResult Restore(const std::atomic_bool& cancel) override {
+        ++c.restores;
+        if (!c.hasSaved) return {SignInStatus::NoSavedSession, {}};
+        return SignIn(cancel);
+    }
+    bool Remember(const Session&) override { ++c.remembers; return !c.failRemember; }
+    bool Forget() override { ++c.forgets; return true; }
     SignInResult Refresh(const Session&, const std::atomic_bool&) override {
         ++c.refreshes;
         if (c.failRefresh) return {SignInStatus::ExchangeFailed, {}};
@@ -55,6 +63,41 @@ void Wait(SessionManager& manager, SessionPhase phase) {
 }
 }
 int main() {
+    {
+        Control c;
+        SessionManager manager(std::make_unique<Backend>(c));
+        Check(manager.BeginRestore(), "restore start");
+        Wait(manager, SessionPhase::SignedOut);
+        Check(c.restores == 1 && c.logins == 0 && c.remembers == 0, "empty restore");
+    }
+    {
+        Control c; c.hasSaved = true;
+        SessionManager manager(std::make_unique<Backend>(c));
+        Check(manager.BeginRestore(), "restore start");
+        Wait(manager, SessionPhase::SignedIn);
+        Check(c.restores == 1 && c.remembers == 1, "restored session not saved");
+        manager.SignOut();
+        Wait(manager, SessionPhase::SignedOut);
+        Check(c.forgets == 1 && c.revokes == 1, "restored session logout");
+    }
+    {
+        Control c;
+        {
+            SessionManager manager(std::make_unique<Backend>(c));
+            Check(manager.BeginSignIn(), "login");
+            Wait(manager, SessionPhase::SignedIn);
+            manager.SignOut();
+        }
+        Check(c.forgets >= 1, "shutdown skipped explicit logout");
+    }
+    {
+        Control c; c.failRemember = true;
+        SessionManager manager(std::make_unique<Backend>(c));
+        Check(manager.BeginSignIn(), "login");
+        Wait(manager, SessionPhase::Failed);
+        Check(!manager.Snapshot().player && manager.Snapshot().error == SignInStatus::CredentialStorageFailed &&
+              c.forgets == 1 && c.revokes == 1, "failed write leaked session");
+    }
     {
         Control c; c.blockLogin = true;
         SessionManager manager(std::make_unique<Backend>(c));

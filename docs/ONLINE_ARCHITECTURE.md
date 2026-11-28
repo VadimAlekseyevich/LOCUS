@@ -191,8 +191,18 @@ credential and the same server player; ambiguous refresh failures require
 a new sign-in rather than retrying the possibly consumed token. Revocation
 is best effort and unconfirmed remote revocation is exposed separately.
 Process shutdown cancels and joins the worker without remote logout.
-Protected persistent credential storage and UI integration remain pending. These primitives alone do not
-establish a login session.
+Windows Credential Manager now stores only the refresh credential and
+expected server player ID under a target scoped to issuer, API origin and
+client ID, with local-machine (non-roaming) persistence per Windows user.
+A global per-user mutex held by the account worker excludes concurrent
+session owners across instances. A stored token is removed before refresh;
+the new credential is written only after successful server identity checks.
+Ambiguous failure or interruption can require new login; no refresh replay
+or fallback to plaintext. Explicit logout deletes the local record before
+attempting remote revocation. BeginRestore is asynchronous and validates
+the restored player through /me; the game startup/UI has not yet wired it.
+Normal process exit retains the last committed refresh credential unless
+an explicit logout is pending; shutdown then still attempts local deletion.
 
 Use browser-based native OAuth authorization with PKCE and a
 supported redirect mechanism; do not collect account passwords inside

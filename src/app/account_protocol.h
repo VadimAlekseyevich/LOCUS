@@ -45,7 +45,8 @@ std::optional<Tokens> ParseTokens(const net::HttpResult& response);
 std::optional<Player> ParsePlayer(const net::HttpResult& response);
 
 enum class SignInStatus { Success, InvalidConfiguration, DiscoveryFailed, BrowserFailed,
-    Denied, Cancelled, TimedOut, ExchangeFailed, PlayerRejected, TransportFailed };
+    Denied, Cancelled, TimedOut, ExchangeFailed, PlayerRejected, TransportFailed,
+    NoSavedSession, CredentialStorageFailed, SessionBusy };
 struct Session {
     Player player;
     Tokens tokens;

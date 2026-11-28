@@ -54,11 +54,15 @@ Discovery and browser code exchange now exist; identity is established only
 through the validated HTTPS game API /me response, not an ID token. The session worker now schedules refresh before expiry, requires a new
 refresh token and unchanged player ID, supports cancellation and best-effort
 revocation on explicit logout, and exposes credential-free snapshots.
-Persistent credential storage and UI integration remain pending. The private API must also have a trusted HTTPS listener or
+The Windows worker stores only the refresh credential and expected player
+ID in Credential Manager, scoped to the configured issuer/API/client,
+and holds a per-Windows-user session lease across processes. Restore consumes
+the saved credential before refresh, validates the server player and saves
+only the rotated token. A crash or network failure may require login again.
+The startup/UI wiring remains pending. The private API must also have a trusted HTTPS listener or
 TLS ingress for the native client; the current HTTP smoke endpoints are not
 valid native transport targets. The native flow validates state and issuer,
-uses the system browser and binds the listener to loopback only. Secure
-refresh credential storage is still required; an OIDC flow consuming an ID
+uses the system browser and binds the listener to loopback only. An OIDC flow consuming an ID
 token would also need nonce and ID-token validation. No password grant, client secret, implicit
 grant, service-account token or token exchange. Access tokens use RS256,
 at+jwt, separate API audience and 120-second lifetime; refresh rotation
