@@ -30,7 +30,9 @@ Each invocation emits one UTF-8 JSON object on stdout with
 `protocolVersion: 1` and `ok`. Exit codes: 0 success, 2 rejected job/input,
 64 invalid command, 1 internal exception. Treat unexpected exit,
 malformed/oversized stdout or timeout as an internal failure. The
-orchestrator must validate the schema. The CLI alone provides no sandbox;
+server adapter validates the exact typed schema, field bounds, versions
+and score/request consistency before emitting validated DTOs. The CLI
+alone provides no sandbox;
 the private Linux [container adapter](../infra/worker/README.md) enforces
 CPU, memory, process, disk and wall-time budgets.
 Do not pass worker error text directly to public HTTP clients.
@@ -55,7 +57,7 @@ Do not pass worker error text directly to public HTTP clients.
 A mathematically correct replay can be fabricated. This worker does not
 prove human input, authenticate users, issue server revision IDs, implement
 idempotency, decide rank eligibility or write a database. Media inspection,
-session policy, typed output validation and API integration are separate gates.
+session policy and API integration are separate gates.
 The initial operator-only Linux container isolation is implemented.
 The worker currently revalidates and hashes the whole staged package on
 each job. Cache immutable verified revisions only after a measured need

@@ -277,7 +277,9 @@ cryptography or premature optimization; benchmark the actual service.
    read-only rootfs, no network, non-root user, dropped capabilities,
    no-new-privileges, bounded CPU/memory/PIDs/output/time and dedicated
    bounded tmpfs inspection stage. No Docker access from the HTTP API.
-   Typed response validation, media decoding, independent queue ownership,
+   Strict typed response validation is implemented (exact members, versions,
+   content/score budgets, request binding and judgement consistency).
+   Media decoding, independent queue ownership,
    production image provenance and host/reaper acceptance remain pending.
 4. W4.1: immutable blob storage and bounded staging with durable references.
 5. W4.2: authorized map publication with transactional revision metadata.

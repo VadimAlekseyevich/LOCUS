@@ -101,7 +101,11 @@ dotnet run --project server -- worker verify /private/stage DIFFICULTY_ID GAMEPL
 The adapter uses an argument array, clears inherited environment, limits
 stdout/stderr by bytes, enforces a 60-second job budget and removes the
 named isolated container even on cancellation. It checks the worker response
-envelope and kind. Typed response validation and persistence remain pending.
+envelope and exact typed response contract, including unique keys, calculation
+versions, package budgets, attempt identity/configuration, grade totals,
+accuracy, combo, timing and histogram invariants. Output is serialized
+from validated DTOs; rejection diagnostics are not forwarded. Persistence
+remains pending.
 The operator owns trusted private paths, independently decoded duration,
 immutable stage contents and cleanup. No ranking approval is inferred.
 
@@ -120,7 +124,7 @@ identity deployment exists; Keycloak is selected for private development. The HT
 inserts synthetic records through SQL. No real publication or
 submission transaction, media decoding, score
 approval workflow, object storage, global PP or frontend yet.
-Next: typed worker DTO validation, media isolation, and a private
+Next: media isolation, and a private
 authenticated publication/submission vertical slice with
 validated worker DTOs and durable object references.
 

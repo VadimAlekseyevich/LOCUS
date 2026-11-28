@@ -59,6 +59,6 @@ recovery. Do not run a broad reaper while live jobs are active.
 
 This is defense in depth, not a proof against kernel/container escapes.
 Aggregate admission/concurrency quotas, dedicated worker host, hardened
-production runtime, media decoder isolation, durable staging and strict
-typed output validation are still required. Explicit trusted-local mode
+production runtime, media decoder isolation and durable staging are still
+required. Strict typed output validation is implemented in the server adapter. Explicit trusted-local mode
 is for private, already trusted inputs only; never use it for uploads.

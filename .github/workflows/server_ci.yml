@@ -73,6 +73,7 @@ jobs:
           sudo mount -t tmpfs -o size=384m,nr_inodes=1024,nosuid,nodev,noexec,mode=0700,uid="$(id -u)",gid="$(id -g)" tmpfs "$PWD/build/backend-smoke/stage"
           trap 'sudo umount "$PWD/build/backend-smoke/stage"; docker ps -aq --filter label=org.locus.worker=1 | xargs -r docker rm -f' EXIT
           python3 server/tests/smoke.py server/bin/Release/net10.0/Locus.Server.dll build/server-worker/locus_worker_fixture build/backend-smoke
+          python3 server/tests/worker_contract.py server/bin/Release/net10.0/Locus.Server.dll build/backend-smoke
           test -z "$(docker ps -aq --filter label=org.locus.worker=1)"
           # Fail closed without a dedicated bounded stage or pinned image.
           mkdir build/backend-smoke/unbounded

@@ -16,6 +16,7 @@ internal static class WorkerProcess
             !(args.Length == 9 && args[0] == "verify"))
             throw new InvalidOperationException("Invalid worker arguments.");
 
+        var request = args[0] == "verify" ? WorkerContract.ScoreRequest.Parse(args) : null;
         var mode = Environment.GetEnvironmentVariable("LOCUS_WORKER_MODE") ?? "container";
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
         budget.CancelAfter(TimeSpan.FromSeconds(60));
@@ -37,18 +38,10 @@ internal static class WorkerProcess
         }
         else throw new InvalidOperationException("Unknown worker mode.");
 
-        using var json = JsonDocument.Parse(outcome.Output, new JsonDocumentOptions { MaxDepth = 32 });
-        var root = json.RootElement;
-        if (root.GetProperty("protocolVersion").GetInt32() != 1)
-            throw new InvalidOperationException("Unsupported worker protocol.");
-        var ok = root.GetProperty("ok").GetBoolean();
-        if ((ok && outcome.ExitCode != 0) || (!ok && outcome.ExitCode != 2))
-            throw new InvalidOperationException("Unexpected worker outcome.");
-        if (ok && (args[0] == "inspect"
-            ? root.GetProperty("kind").GetString() != "packageInspection" || root.GetProperty("mediaValidated").GetBoolean()
-            : root.GetProperty("kind").GetString() != "scoreEvaluation" || root.GetProperty("rankApproved").GetBoolean()))
-            throw new InvalidOperationException("Unexpected worker response kind.");
-        Console.WriteLine(root.GetRawText());
+        var response = WorkerContract.Parse(outcome.Output, outcome.ExitCode, request);
+        // Emit only validated typed data; never forward the original JSON.
+        Console.WriteLine(JsonSerializer.Serialize(response, response.GetType(),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         return outcome.ExitCode;
     }
 

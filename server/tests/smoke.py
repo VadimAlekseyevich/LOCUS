@@ -30,6 +30,9 @@ assert inspection["mediaValidated"] is False
 job = ("verify", stage, chart["difficultyId"], chart["gameplaySha256"], 3000, 100, 0, 0)
 score = worker(*job, root / "valid.replay")
 assert score["grades"]["perfect"] == 3 and score["rankApproved"] is False
+# Real worker outputs serve as golden fixtures for adversarial contract tests.
+(root / "inspection.json").write_text(json.dumps(inspection))
+(root / "score.json").write_text(json.dumps(score))
 worker(*job, root / "offset.replay", expected=2)
 
 base = "http://127.0.0.1:5080"
