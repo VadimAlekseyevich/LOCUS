@@ -41,7 +41,7 @@ Do not pass worker error text directly to public HTTP clients.
   shared timing, returns authoring IDs, titles, asset SHA-256/size and
   each difficulty's effective gameplay digest, physical stars and key
   count. `kind: "packageInspection"`, `mediaValidated: false`. No full
-  media decode, duration verification, ownership or publication.
+  media decode in this process, duration verification, ownership or publication.
 - `verify`: validates expected digest against actual effective chart and
   audio bytes, uses trusted audio duration to prepare the playable chart,
   checks exact replay rules/rate/mods/seed/offset, rejects empty traces,
@@ -56,8 +56,8 @@ Do not pass worker error text directly to public HTTP clients.
 
 A mathematically correct replay can be fabricated. This worker does not
 prove human input, authenticate users, issue server revision IDs, implement
-idempotency, decide rank eligibility or write a database. Media inspection,
-session policy and API integration are separate gates.
+idempotency, decide rank eligibility or write a database. Independent media inspection is implemented as a separate image/operator
+command (see [isolation](../infra/worker/README.md)); session policy and API integration are separate gates.
 The initial operator-only Linux container isolation is implemented.
 The worker currently revalidates and hashes the whole staged package on
 each job. Cache immutable verified revisions only after a measured need

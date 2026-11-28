@@ -62,3 +62,31 @@ Aggregate admission/concurrency quotas, dedicated worker host, hardened
 production runtime, media decoder isolation and durable staging are still
 required. Strict typed output validation is implemented in the server adapter. Explicit trusted-local mode
 is for private, already trusted inputs only; never use it for uploads.
+
+
+## Separate media decoder
+
+```sh
+docker build -t locus-media-dev -f infra/worker/media.Dockerfile .
+export LOCUS_MEDIA_IMAGE="$(docker image inspect --format '{{.Id}}' locus-media-dev)"
+dotnet run --project server -- worker media /private/stage/music.wav EXPECTED_SHA256
+```
+
+The separate image receives only one read-only file and the format selected
+by the trusted adapter from its extension. It uses the same container
+resource limits and cannot write a staging directory. No direct mode.
+Only WAV (ordinary RIFF PCM 8/16/24/32-bit integer or float32), MP3,
+PNG and JPEG are accepted by this initial online policy; audio must have
+one stream, one or two channels and a constant sample rate 8–192 kHz.
+MP3 with additional embedded picture streams is currently rejected.
+Images must decode a single frame, each axis at most 8192 and total
+pixels at most 33,554,432. Decoder errors, corrupt packets/frames and
+resource exhaustion fail closed. Decode counts emitted sample frames,
+not a duration tag, and the server binds the result to the expected
+SHA-256 and exact bytes. No decoded PCM or images leave the container.
+
+These checks do not certify every unused byte or prove compatibility
+with raylib's desktop decoders. MP3 delay/padding and rounding parity,
+full chart-duration validation and production image pinning remain
+release gates. The trusted operator owns immutable input; hashing before
+and after does not protect against concurrent adversarial replacement.

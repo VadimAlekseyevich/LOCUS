@@ -113,6 +113,23 @@ Explicit `LOCUS_WORKER_MODE=trusted-local` and absolute `LOCUS_WORKER_PATH`
 enable direct execution for trusted development inputs only. This mode
 is not a sandbox and must never receive uploaded files.
 
+## Media inspection
+
+Build the separate FFmpeg-based image as described in
+[worker isolation](../infra/worker/README.md). Run:
+
+```sh
+dotnet run --project server -- worker media /private/stage/music.wav EXPECTED_SHA256
+```
+
+The digest comes from structural package inspection. The adapter checks the
+file bytes before and after isolated decoding and returns exact PCM sample
+frames, rate, channels and nearest-millisecond duration, or decoded image
+dimensions. No client duration or container metadata is authoritative.
+The file must remain exclusively owned and immutable during the operation.
+This is a separate operator step; it does not itself publish a package
+or attest compatibility with the desktop decoder.
+
 ## Current boundaries
 
 SQL defines server IDs, ownership, published revision references, attempt
@@ -122,9 +139,9 @@ to a server player, with at most one binding per issuer per player. No
 identity is linked by display name, email or a desktop ID. The API can resolve validated bearer tokens to these bindings; no production
 identity deployment exists; Keycloak is selected for private development. The HTTP API is read-only; the CI fixture
 inserts synthetic records through SQL. No real publication or
-submission transaction, media decoding, score
+submission transaction, automated media orchestration, score
 approval workflow, object storage, global PP or frontend yet.
-Next: media isolation, and a private
+Next: connect structural/media inspection and immutable storage, and a private
 authenticated publication/submission vertical slice with
 validated worker DTOs and durable object references.
 

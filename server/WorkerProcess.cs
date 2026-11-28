@@ -12,6 +12,8 @@ internal static class WorkerProcess
 
     internal static async Task<int> RunAsync(string[] args, CancellationToken ct)
     {
+        if (args.Length == 3 && args[0] == "media")
+            return await WorkerMedia.RunAsync(args[1], args[2], ct);
         if (!(args.Length == 3 && args[0] == "inspect") &&
             !(args.Length == 9 && args[0] == "verify"))
             throw new InvalidOperationException("Invalid worker arguments.");

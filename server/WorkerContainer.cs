@@ -18,13 +18,8 @@ internal static class WorkerContainer
 
     internal static async Task<WorkerProcess.Outcome> RunAsync(string[] args, CancellationToken ct)
     {
-        if (!OperatingSystem.IsLinux() || EffectiveUid() == 0)
-            throw new InvalidOperationException("Container worker requires a non-root Linux operator.");
-        var image = Environment.GetEnvironmentVariable("LOCUS_WORKER_IMAGE");
-        if (image is null || !image.StartsWith("sha256:", StringComparison.Ordinal) ||
-            image.Length != 71 || !image.AsSpan(7).ToString().All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f'))
-            throw new InvalidOperationException("A locally built immutable image ID is required.");
-
+        EnsureOperator();
+        var image = Image("LOCUS_WORKER_IMAGE");
         var inspect = args[0] == "inspect";
         var stage = SafePath(inspect ? args[2] : args[1], true);
         var input = SafePath(inspect ? args[1] : args[8], false);
@@ -34,6 +29,41 @@ internal static class WorkerContainer
         if (inspect) ValidateStage(stage);
         else RejectNestedMounts(stage);
 
+        var mounts = new[] { Mount(input, "/input", true), Mount(stage, "/stage", !inspect) };
+        var command = inspect ? new List<string> { "inspect", "/input", "/stage" } :
+            new List<string> { "verify", "/stage" };
+        if (!inspect)
+        {
+            command.AddRange(args[2..8]);
+            command.Add("/input");
+        }
+        return await RunIsolatedAsync(image, "/usr/local/bin/locus_worker", mounts, command, ct);
+    }
+
+    internal static Task<WorkerProcess.Outcome> DecodeMediaAsync(string input, string format, CancellationToken ct)
+    {
+        EnsureOperator();
+        return RunIsolatedAsync(Image("LOCUS_MEDIA_IMAGE"), "/usr/local/bin/locus_media",
+            [Mount(SafePath(input, false), "/input", true)], [format], ct);
+    }
+
+    private static void EnsureOperator()
+    {
+        if (!OperatingSystem.IsLinux() || EffectiveUid() == 0)
+            throw new InvalidOperationException("Container worker requires a non-root Linux operator.");
+    }
+    private static string Image(string variable)
+    {
+        var image = Environment.GetEnvironmentVariable(variable);
+        if (image is null || !image.StartsWith("sha256:", StringComparison.Ordinal) ||
+            image.Length != 71 || !image.AsSpan(7).ToString().All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f'))
+            throw new InvalidOperationException("A locally built immutable image ID is required.");
+        return image;
+    }
+
+    private static async Task<WorkerProcess.Outcome> RunIsolatedAsync(string image, string entrypoint,
+        IEnumerable<string> mounts, IEnumerable<string> command, CancellationToken ct)
+    {
         // An unpredictable name also lets cleanup address a container after
         // the attached Docker client has been killed or disconnected.
         var name = "locus-job-" + Guid.NewGuid().ToString("N");
@@ -49,18 +79,11 @@ internal static class WorkerContainer
             "--ulimit", "core=0:0", "--ulimit", "nofile=64:64",
             "--ulimit", "fsize=268435456:268435456",
             "--log-driver", "none", "--stop-timeout", "1",
-            "--workdir", "/", "--env", "HOME=/nonexistent",
-            "--mount", Mount(input, "/input", true),
-            "--mount", Mount(stage, "/stage", !inspect),
-            "--entrypoint", "/usr/local/bin/locus_worker", image
+            "--workdir", "/", "--env", "HOME=/nonexistent"
         };
-        if (inspect) create.AddRange(["inspect", "/input", "/stage"]);
-        else
-        {
-            create.AddRange(["verify", "/stage"]);
-            create.AddRange(args[2..8]);
-            create.Add("/input");
-        }
+        foreach (var mount in mounts) create.AddRange(["--mount", mount]);
+        create.AddRange(["--entrypoint", entrypoint, image]);
+        create.AddRange(command);
 
         try
         {
@@ -96,7 +119,7 @@ internal static class WorkerContainer
         $"type=bind,source={source},target={target},bind-propagation=rprivate,bind-recursive=disabled" +
         (readOnly ? ",readonly" : "");
 
-    private static string SafePath(string input, bool directory)
+    internal static string SafePath(string input, bool directory)
     {
         if (!Path.IsPathFullyQualified(input) || input.Any(c => c < 32 || c == ',' || c == '"' || c == '\\'))
             throw new InvalidOperationException("Worker path is not an allowed absolute path.");

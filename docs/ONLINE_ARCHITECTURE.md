@@ -55,7 +55,7 @@ Suggested repository boundaries when needed:
 - `infra/`: reproducible local and deployed configuration; no secrets.
 - `workers/`: isolated validation/calculation entry points.
 
-The first concrete worker is implemented: [internal protocol 1](../workers/README.md) builds `locus_worker` in core-only CI, inspects a staged package and derives a score from an exact expected gameplay digest and replay. It requires independently decoded audio duration and expected attempt settings from the future orchestrator. The [private backend](../server/README.md) now provides explicit SQL migration, a versioned read-only HTTP API and operator-only C# process adapter. The optional JWT bearer resource-server boundary authenticates pre-provisioned players; a private Keycloak realm and operator provisioning command are implemented; production deployment, native/browser login integration, media decoder, real publication/submission transaction and ranking approval workflow are pending.
+The first concrete worker is implemented: [internal protocol 1](../workers/README.md) builds `locus_worker` in core-only CI, inspects a staged package and derives a score from an exact expected gameplay digest and replay. It requires independently decoded audio duration and expected attempt settings from the future orchestrator. The [private backend](../server/README.md) now provides explicit SQL migration, a versioned read-only HTTP API and operator-only C# process adapter. The optional JWT bearer resource-server boundary authenticates pre-provisioned players; a private Keycloak realm and operator provisioning command are implemented; production deployment, media orchestration, real publication/submission transaction and ranking approval workflow are pending.
 
 Do not create empty directories or abstract repositories for hypothetical
 consumers. Extract actual boundaries as the first vertical slice requires.
@@ -279,7 +279,10 @@ cryptography or premature optimization; benchmark the actual service.
    bounded tmpfs inspection stage. No Docker access from the HTTP API.
    Strict typed response validation is implemented (exact members, versions,
    content/score budgets, request binding and judgement consistency).
-   Media decoding, independent queue ownership,
+   Separate isolated FFmpeg media decoding implemented: single-file mount,
+   exact decoded audio samples, static image dimensions, digest-bound typed
+   response. Desktop decoder parity and chart-duration validation are pending.
+   Independent queue ownership,
    production image provenance and host/reaper acceptance remain pending.
 4. W4.1: immutable blob storage and bounded staging with durable references.
 5. W4.2: authorized map publication with transactional revision metadata.

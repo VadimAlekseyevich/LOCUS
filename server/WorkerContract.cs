@@ -104,7 +104,7 @@ internal static class WorkerContract
         var manifest = ReadDigest(root.GetProperty("manifest"), 64 * 1024);
         var audio = ReadDigest(root.GetProperty("audio"), MaxAssetBytes);
         var art = root.GetProperty("background");
-        var background = art.ValueKind == JsonValueKind.Null ? null : ReadDigest(art, MaxAssetBytes);
+        var background = art.ValueKind == JsonValueKind.Null ? null : ReadDigest(art, 24 * 1024 * 1024);
         var entries = root.GetProperty("difficulties");
         Require(entries.ValueKind == JsonValueKind.Array && entries.GetArrayLength() >= 1 &&
             entries.GetArrayLength() <= 254 - (background is null ? 0 : 1));
