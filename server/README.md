@@ -80,28 +80,34 @@ The service still binds to loopback by default; require HTTPS at ingress
 before any remote access. The private Keycloak realm supports authorization code with mandatory S256
 PKCE and rotating refresh credentials. The operator-only provision-player
 command creates a new server player and identity atomically; delegated or
-impersonated tokens with an act claim are denied. Native/browser client
-integration and immediate session revocation remain pending. CI uses a
+impersonated tokens with an act claim are denied. The desktop has optional native browser sign-in and session restoration;
+production deployment and immediate session revocation remain pending. CI uses a
 disposable HTTPS discovery issuer and test signing keys, never a production
 validation bypass.
 
 ## Operator worker commands
 
-Build the worker as described in [workers](../workers/README.md). Set
-`LOCUS_WORKER_PATH` to its absolute executable path. Then run:
+Build the portable worker as described in [workers](../workers/README.md).
+Linux container mode is the default and requires an explicitly selected
+local image ID, a non-root operator with access to the trusted local Docker
+daemon, and a dedicated bounded staging mount. See [worker isolation](../infra/worker/README.md)
+for the exact setup. The HTTP API must not have daemon access.
 
 ```sh
-dotnet run --project server -- worker inspect /private/input.locuspack /private/empty-stage
+dotnet run --project server -- worker inspect /private/input.locuspack /private/stage
 dotnet run --project server -- worker verify /private/stage DIFFICULTY_ID GAMEPLAY_SHA256 AUDIO_DURATION_MS RATE_PERCENT MOD_FLAGS MOD_SEED /private/input.replay
 ```
 
-The adapter uses an argument array (no shell), bounded stdout/stderr,
-60-second wall timeout and process-tree termination. It checks the worker
-response envelope and kind; it does not accept HTTP-controlled paths or
-persist the response in PostgreSQL. It is not a resource sandbox.
-The operator is responsible for trusted private files, independently
-decoded duration and cleanup. No ranking approval is inferred from a
-successful process. Worker output is for internal use only.
+The adapter uses an argument array, clears inherited environment, limits
+stdout/stderr by bytes, enforces a 60-second job budget and removes the
+named isolated container even on cancellation. It checks the worker response
+envelope and kind. Typed response validation and persistence remain pending.
+The operator owns trusted private paths, independently decoded duration,
+immutable stage contents and cleanup. No ranking approval is inferred.
+
+Explicit `LOCUS_WORKER_MODE=trusted-local` and absolute `LOCUS_WORKER_PATH`
+enable direct execution for trusted development inputs only. This mode
+is not a sandbox and must never receive uploaded files.
 
 ## Current boundaries
 
@@ -110,12 +116,12 @@ idempotency and verified-score records. Schema v2 adds operator-only
 external identity bindings: exact case-sensitive (issuer, subject) maps
 to a server player, with at most one binding per issuer per player. No
 identity is linked by display name, email or a desktop ID. The API can resolve validated bearer tokens to these bindings; no production
-production identity deployment exists; Keycloak is selected for private development. The HTTP API is read-only; the CI fixture
+identity deployment exists; Keycloak is selected for private development. The HTTP API is read-only; the CI fixture
 inserts synthetic records through SQL. No real publication or
-submission transaction, interactive account login, media decoding, score
+submission transaction, media decoding, score
 approval workflow, object storage, global PP or frontend yet.
-Next: native/browser login/session integration, worker isolation,
-and a private authenticated publication/submission vertical slice with
+Next: typed worker DTO validation, media isolation, and a private
+authenticated publication/submission vertical slice with
 validated worker DTOs and durable object references.
 
 CI builds the actual C++ executable and .NET service, exercises concurrent

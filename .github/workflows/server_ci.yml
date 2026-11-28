@@ -3,7 +3,7 @@ on:
   push:
     paths:
       - "server/**"
-      - "infra/identity/**"
+      - "infra/**"
       - "protocol/**"
       - "workers/**"
       - "src/**"
@@ -14,7 +14,7 @@ on:
   pull_request:
     paths:
       - "server/**"
-      - "infra/identity/**"
+      - "infra/**"
       - "protocol/**"
       - "workers/**"
       - "src/**"
@@ -63,10 +63,21 @@ jobs:
         run: python3 server/tests/migrations.py server/bin/Release/net10.0/Locus.Server.dll
       - name: Seed private fixture
         run: psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U locus -d locus -f server/tests/seed.sql
-      - name: HTTP and worker smoke
-        env:
-          LOCUS_WORKER_PATH: ${{ github.workspace }}/build/server-worker/locus_worker
-        run: python3 server/tests/smoke.py server/bin/Release/net10.0/Locus.Server.dll build/server-worker/locus_worker_fixture build/backend-smoke
+      - name: HTTP and isolated worker smoke
+        run: |
+          set -euo pipefail
+          mkdir -p build/backend-smoke/stage build/worker-image
+          cp build/server-worker/locus_worker build/worker-image/
+          docker build -t locus-worker-ci -f infra/worker/Dockerfile build/worker-image
+          export LOCUS_WORKER_IMAGE="$(docker image inspect --format '{{.Id}}' locus-worker-ci)"
+          sudo mount -t tmpfs -o size=384m,nr_inodes=1024,nosuid,nodev,noexec,mode=0700,uid="$(id -u)",gid="$(id -g)" tmpfs "$PWD/build/backend-smoke/stage"
+          trap 'sudo umount "$PWD/build/backend-smoke/stage"; docker ps -aq --filter label=org.locus.worker=1 | xargs -r docker rm -f' EXIT
+          python3 server/tests/smoke.py server/bin/Release/net10.0/Locus.Server.dll build/server-worker/locus_worker_fixture build/backend-smoke
+          test -z "$(docker ps -aq --filter label=org.locus.worker=1)"
+          # Fail closed without a dedicated bounded stage or pinned image.
+          mkdir build/backend-smoke/unbounded
+          if dotnet server/bin/Release/net10.0/Locus.Server.dll worker inspect "$PWD/build/backend-smoke/fixture.locuspack" "$PWD/build/backend-smoke/unbounded"; then exit 1; fi
+          if LOCUS_WORKER_IMAGE=locus-worker-ci dotnet server/bin/Release/net10.0/Locus.Server.dll worker inspect "$PWD/build/backend-smoke/fixture.locuspack" "$PWD/build/backend-smoke/unbounded"; then exit 1; fi
       - name: JWT bearer and player authorization over real discovery TLS
         run: |
           mkdir -p build/auth-smoke

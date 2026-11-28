@@ -273,8 +273,12 @@ cryptography or premature optimization; benchmark the actual service.
    integration tests, private Keycloak realm and operator provisioning implemented;
    browser/native client login, production provider deployment and immediate
    session revocation still pending.
-3. W3.3: constrain untrusted worker execution (CPU, memory, process, disk,
-   network and wall-clock limits); validate typed output and media.
+3. W3.3: operator-only Linux container isolation implemented: per-job
+   read-only rootfs, no network, non-root user, dropped capabilities,
+   no-new-privileges, bounded CPU/memory/PIDs/output/time and dedicated
+   bounded tmpfs inspection stage. No Docker access from the HTTP API.
+   Typed response validation, media decoding, independent queue ownership,
+   production image provenance and host/reaper acceptance remain pending.
 4. W4.1: immutable blob storage and bounded staging with durable references.
 5. W4.2: authorized map publication with transactional revision metadata.
 6. W4.3: trusted attempt creation, idempotent replay submission, verification

@@ -11,9 +11,9 @@ import urllib.request
 dll = Path(sys.argv[1]).resolve()
 fixture = Path(sys.argv[2]).resolve()
 root = Path(sys.argv[3]).resolve()
-root.mkdir(parents=True)
+root.mkdir(parents=True, exist_ok=True)
 stage = root / "stage"
-stage.mkdir()
+stage.mkdir(exist_ok=True)
 subprocess.run([str(fixture), str(root)], check=True)
 
 def worker(*args, expected=0):
