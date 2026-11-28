@@ -16,6 +16,8 @@ internal static class WorkerProcess
             return await WorkerMedia.RunAsync(args[1], args[2], ct);
         if (args.Length == 3 && args[0] == "prepare")
             return await PackagePreparation.RunAsync(args[1], args[2], ct);
+        if (args.Length == 3 && args[0] == "store")
+            return await PackageStorage.RunAsync(args[1], args[2], ct);
         var (response, exitCode) = await EvaluateAsync(args, ct);
         Write(response);
         return exitCode;

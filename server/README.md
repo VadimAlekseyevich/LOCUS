@@ -147,6 +147,40 @@ before returning one typed preparedPackage result. No partial result
 is published. The operator must discard the stage after failures.
 This is not durable storage or a public publication transaction.
 
+## Durable private object storage
+
+The first implementation of IBlobStore is a Linux filesystem content store.
+Provision a separate durable filesystem with an operator-owned mode-0700
+directory (not a worker mount or web root):
+
+```sh
+mkdir -m 700 /private/objects
+export LOCUS_OBJECT_ROOT=/private/objects
+dotnet run --project server -- worker store /private/input.locuspack /private/empty-stage
+```
+
+The command prepares the package in process, then persists the original
+archive and all validated constituent files. It returns a typed
+storedPackage receipt only after every object has committed. Logical keys
+are sha256/<64 lowercase hex>; physical objects are ROOT/<first two hex>/<hash>.
+Writes stream through bounded buffers, check expected length and digest,
+fsync the file, then atomically rename without replacement and fsync the
+directory. Existing objects are verified, not overwritten. The store
+requires a filesystem supporting renameat2 RENAME_NOREPLACE and durable
+file/directory fsync. Do not use tmpfs or an unverified network filesystem.
+
+For operator diagnostics and trusted private blob import:
+
+```sh
+dotnet run --project server -- object put /private/blob SHA256 BYTES
+dotnet run --project server -- object verify SHA256 BYTES
+```
+
+These commands do not approve or publish a map/replay. A failed batch can
+leave complete unreferenced blobs; crash leftovers have private pending
+names. No automatic garbage collection or deletion API exists yet.
+See [object storage](../infra/storage/README.md) for boundaries.
+
 ## Current boundaries
 
 SQL defines server IDs, ownership, published revision references, attempt
@@ -156,9 +190,10 @@ to a server player, with at most one binding per issuer per player. No
 identity is linked by display name, email or a desktop ID. The API can resolve validated bearer tokens to these bindings; no production
 identity deployment exists; Keycloak is selected for private development. The HTTP API is read-only; the CI fixture
 inserts synthetic records through SQL. No real publication or
-submission transaction, durable object storage, score
-approval workflow, object storage, global PP or frontend yet.
-Next: immutable storage and a private
+submission transaction, score approval workflow, global PP or frontend yet.
+Private filesystem blob storage is implemented; production S3-compatible
+storage and lifecycle controls remain pending.
+Next: a private
 authenticated publication/submission vertical slice with
 validated worker DTOs and durable object references.
 

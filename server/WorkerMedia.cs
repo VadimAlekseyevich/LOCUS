@@ -95,10 +95,11 @@ internal static class WorkerMedia
 
     internal static async Task<long> CheckDigestAsync(string path, string expected, long maxBytes, CancellationToken ct)
     {
+        var expectedSize = LinuxPrivateFiles.RegularSize(path, maxBytes);
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
             65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
         var length = stream.Length;
-        if (length < 1 || length > maxBytes) throw new InvalidOperationException("Media size out of range.");
+        if (length != expectedSize) throw new InvalidOperationException("Media size changed.");
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var buffer = new byte[65536];
         long read = 0;

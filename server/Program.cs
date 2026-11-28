@@ -6,6 +6,11 @@ if (args.Length > 0 && args[0] == "worker")
     try { return await WorkerProcess.RunAsync(args[1..], CancellationToken.None); }
     catch (Exception) { Console.Error.WriteLine("Worker execution or protocol failed."); return 1; }
 }
+if (args.Length > 0 && args[0] == "object")
+{
+    try { return await PackageStorage.ObjectCommandAsync(args[1..], CancellationToken.None); }
+    catch (Exception) { Console.Error.WriteLine("Object operation failed."); return 1; }
+}
 if (args.Length == 1 && args[0] == "migrate")
 {
     try

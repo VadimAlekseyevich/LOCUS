@@ -79,6 +79,7 @@ jobs:
           if ! command -v ffmpeg >/dev/null; then sudo apt-get update && sudo apt-get install -y ffmpeg; fi
           python3 server/tests/media.py server/bin/Release/net10.0/Locus.Server.dll build/media-smoke
           python3 server/tests/prepare.py server/bin/Release/net10.0/Locus.Server.dll build/backend-smoke build/media-smoke
+          python3 server/tests/storage.py server/bin/Release/net10.0/Locus.Server.dll build/backend-smoke
           test -z "$(docker ps -aq --filter label=org.locus.worker=1)"
           # Fail closed without a dedicated bounded stage or pinned image.
           mkdir build/backend-smoke/unbounded

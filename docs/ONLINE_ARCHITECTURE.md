@@ -286,7 +286,11 @@ cryptography or premature optimization; benchmark the actual service.
    and durable storage remain pending.
    Independent queue ownership,
    production image provenance and host/reaper acceptance remain pending.
-4. W4.1: immutable blob storage and bounded staging with durable references.
+4. W4.1: private Linux IBlobStore implemented, with streaming digest-checked
+   writes, atomic no-replace commits, durable directory sync and verified
+   reads. The worker store command prepares and persists the archive and
+   assets before issuing a typed receipt. Production S3-compatible backend,
+   storage quotas, reconciliation and garbage collection remain pending.
 5. W4.2: authorized map publication with transactional revision metadata.
 6. W4.3: trusted attempt creation, idempotent replay submission, verification
    and durable score records; ranking approval remains separate.

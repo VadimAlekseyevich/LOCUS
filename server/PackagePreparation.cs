@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -15,36 +14,9 @@ internal static class PackagePreparation
         WorkerContract.Digest Archive, WorkerContract.Inspection Inspection,
         WorkerMedia.Result Audio, WorkerMedia.Result? Background, IReadOnlyList<FileEntry> Files);
 
-    // Linux statx is a fixed-width ABI (not platform-dependent struct stat).
-    // Never open a FIFO, socket, device or symlink created by an untrusted
-    // extraction process in the privileged operator's namespace.
-    #pragma warning disable CS0649 // Native statx populates these fields.
-    [StructLayout(LayoutKind.Explicit, Size = 256)]
-    private struct Statx
-    {
-        [FieldOffset(0)] public uint Mask;
-        [FieldOffset(16)] public uint Links;
-        [FieldOffset(28)] public ushort Mode;
-        [FieldOffset(40)] public ulong Size;
-    }
-    #pragma warning restore CS0649
-    [DllImport("libc", EntryPoint = "statx", SetLastError = true)]
-    private static extern int Stat(int dirfd, [MarshalAs(UnmanagedType.LPUTF8Str)] string path,
-        int flags, uint mask, out Statx value);
-
-    private static long RegularSize(string path, long max)
-    {
-        const uint fields = 0x001 | 0x004 | 0x200; // type, nlink, size
-        if (Stat(-100, path, 0x100 | 0x800, fields, out var s) != 0 ||
-            (s.Mask & fields) != fields || (s.Mode & 0xf000) != 0x8000 ||
-            s.Links != 1 || s.Size == 0 || s.Size > (ulong)max)
-            throw new InvalidOperationException("Not an exclusive bounded regular file.");
-        return (long)s.Size;
-    }
-
     private static async Task<WorkerContract.Digest> HashAsync(string path, long max, CancellationToken ct)
     {
-        var length = RegularSize(path, max);
+        var length = LinuxPrivateFiles.RegularSize(path, max);
         await using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
             65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
         if (file.Length != length) throw new InvalidOperationException("File changed.");
