@@ -57,21 +57,22 @@ SignInResult SignInWithBrowser(const Config& config, const std::atomic_bool& can
     auto tokens = ParseTokens(exchange);
     SecureZeroMemory(exchange.body.data(), exchange.body.size());
     if (!tokens) return Failure(NetworkStatus(exchange, SignInStatus::ExchangeFailed));
-    const auto profile = api->Get("/api/v1/me", tokens->access, PlayerLimit, cancel);
+    // Once a token was issued, pass ownership to the session worker even
+    // when the following profile request fails. It can then revoke the
+    // credential without ever publishing the failed identity.
+    const auto expiresAt = issuedBefore + std::chrono::seconds(tokens->expiresIn);
+    Session pending{{}, std::move(*tokens), expiresAt};
+    const auto profile = api->Get("/api/v1/me", pending.tokens.access, PlayerLimit, cancel);
     auto player = ParsePlayer(profile);
     if (!player || cancel.load(std::memory_order_relaxed)) {
-        SecureZeroMemory(tokens->access.data(), tokens->access.size());
-        SecureZeroMemory(tokens->refresh.data(), tokens->refresh.size());
-        return Failure(cancel.load(std::memory_order_relaxed) ? SignInStatus::Cancelled :
+        return {cancel.load(std::memory_order_relaxed) ? SignInStatus::Cancelled :
             NetworkStatus(profile, profile.status == 401 || profile.status == 403 ?
-                SignInStatus::PlayerRejected : SignInStatus::TransportFailed));
+                SignInStatus::PlayerRejected : SignInStatus::TransportFailed),
+            std::move(pending)};
     }
-    const auto expiresAt = issuedBefore + std::chrono::seconds(tokens->expiresIn);
-    if (expiresAt <= std::chrono::steady_clock::now()) {
-        SecureZeroMemory(tokens->access.data(), tokens->access.size());
-        SecureZeroMemory(tokens->refresh.data(), tokens->refresh.size());
-        return Failure(SignInStatus::TimedOut);
-    }
-    return {SignInStatus::Success, Session{std::move(*player), std::move(*tokens), expiresAt}};
+    if (expiresAt <= std::chrono::steady_clock::now())
+        return {SignInStatus::TimedOut, std::move(pending)};
+    pending.player = std::move(*player);
+    return {SignInStatus::Success, std::move(pending)};
 }
 } // namespace locus::app::account

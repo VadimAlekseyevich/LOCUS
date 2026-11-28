@@ -54,6 +54,8 @@ struct Session {
 };
 struct SignInResult {
     SignInStatus status = SignInStatus::TransportFailed;
+    // On failure, a returned credential is for revocation only. Never use
+    // it to authenticate or publish a player unless status is Success.
     std::optional<Session> session;
 };
 #ifdef _WIN32
