@@ -148,7 +148,7 @@ recoverable and rebuildable from verified attempts.
 ## 5. Accounts and native network integration
 
 Desktop remains playable while signed out or the service is unavailable.
-A local profile identity and authenticated server user ID are distinct. The desktop currently loads or creates one default local player in `player.json` and scopes result storage/history/replay access to that owner for the entire process. Result v3 records carry `playerId` and a random 128-bit attempt ID. Old unowned results remain on disk without migration. A future switcher must freeze the owner at launch, cancel old history requests and recreate the owner-scoped adapters; there is no switching UI or sign-in yet.
+A local profile identity and authenticated server user ID are distinct. The desktop currently loads or creates one default local player in `player.json` and scopes result storage/history/replay access to that owner for the entire process. Result v3 records carry `playerId` and a random 128-bit attempt ID. Old unowned results remain on disk without migration. A future switcher must freeze the owner at launch, cancel old history requests and recreate the owner-scoped adapters; the local history owner does not change on online sign-in.
 Scope history, cached account data and queued submissions to the correct
 owner. Account switching cannot change the owner of an in-flight attempt.
 
@@ -200,7 +200,11 @@ the new credential is written only after successful server identity checks.
 Ambiguous failure or interruption can require new login; no refresh replay
 or fallback to plaintext. Explicit logout deletes the local record before
 attempting remote revocation. BeginRestore is asynchronous and validates
-the restored player through /me; the game startup/UI has not yet wired it.
+the restored player through /me. Windows desktop startup wires restoration
+and a separate Home online account control when LOCUS_ONLINE_ISSUER and
+LOCUS_ONLINE_API are explicitly configured. No configuration means no
+online worker or requests. Both native and fallback menus use the same
+credential-free action model; the local profile remains independent.
 Normal process exit retains the last committed refresh credential unless
 an explicit logout is pending; shutdown then still attempts local deletion.
 

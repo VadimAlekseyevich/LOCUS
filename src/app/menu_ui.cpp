@@ -114,19 +114,26 @@ void DrawMainMenu(Font font, const std::string& status,
     const auto& theme = ApprovedUiTheme();
     brand.Draw(font);
 
-    const char* labels[] = {"PLAY", "EDITOR", "SKINS", "SETTINGS", "EXIT", ui.profile.label.c_str()};
+    const char* labels[] = {"PLAY", "EDITOR", "SKINS", "SETTINGS", "EXIT",
+        ui.profile.label.c_str(), ui.account.button.c_str()};
     constexpr UiButtonVariant variants[] = {
         UiButtonVariant::Rose, UiButtonVariant::Blue,
         UiButtonVariant::Cool, UiButtonVariant::Warm,
-        UiButtonVariant::Quiet, UiButtonVariant::Quiet
+        UiButtonVariant::Quiet, UiButtonVariant::Quiet, UiButtonVariant::Quiet
     };
     for (int i = 0; i < kHomeMenuActionCount; ++i) {
+        if (i == kHomeAccountAction && !ui.account.visible) continue;
         const Rectangle bounds = HomeMenuButton(i);
         UiInteraction state{};
         state.focused = ui.focus.Focused() == i;
+        state.disabled = !ui.ActionEnabled(i);
         DrawUiThemedButton(font, bounds, labels[i], variants[i],
                            state, ui.motion[static_cast<std::size_t>(i)].Frame(now),
-                           theme, i == 5 ? 13.0f : i == 4 ? 16.0f : 18.0f);
+                           theme, i >= 5 ? 13.0f : i == 4 ? 16.0f : 18.0f);
+    }
+    if (ui.account.visible) {
+        const float width = MeasureTextEx(font, ui.account.status.c_str(), 12.0f, 1.0f).x;
+        Label(font, ui.account.status, 936.0f - width, 56.0f, 12.0f, kMuted);
     }
 
     // Actual failure notices remain accessible.

@@ -199,7 +199,7 @@ add_executable(locus
     src/app/library_launch_actions.cpp
     src/app/skin_menu_draw.cpp
 )
-target_link_libraries(locus PRIVATE locus_skin_profiles locus_player_profile)
+target_link_libraries(locus PRIVATE locus_skin_profiles locus_player_profile locus_account)
 target_link_libraries(locus PRIVATE locus_listen_session)
 target_link_libraries(locus PRIVATE locus_screen_flow locus_session_actions locus_play_presentation locus_library_activation locus_library_browser locus_brand_assets locus_menu_canvas locus_native_input)
 target_link_libraries(locus PRIVATE locus_platform_dialogs locus_game_settings locus_skin_model locus_editor_comparison locus_editor_controls locus_editor_canvas locus_editor_document locus_editor_workspace locus_editor_session locus_editor_discard)

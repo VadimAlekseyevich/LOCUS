@@ -111,6 +111,7 @@ void SessionManager::Run() {
                 const bool forgotten = forget();
                 const bool confirmed = !session || revoke(*session);
                 Discard(session);
+                if (forgotten) backend_->Close();
                 lock.lock();
                 if (forgotten) logoutRequested_ = false;
                 if (!shutdown_) Publish(forgotten ? SessionPhase::SignedOut : SessionPhase::Failed, {},
@@ -153,7 +154,11 @@ void SessionManager::Run() {
         }
         if (restoring && result.status == SignInStatus::NoSavedSession && !result.session) {
             desired_ = false;
-            Publish(SessionPhase::SignedOut);
+            lock.unlock();
+            backend_->Close();
+            lock.lock();
+            if (!shutdown_ && view_.phase != SessionPhase::SigningOut)
+                Publish(SessionPhase::SignedOut);
             continue;
         }
         const bool wrongOwner = refreshing && result.session &&
@@ -193,6 +198,7 @@ void SessionManager::Run() {
         const bool forgotten = forget();
         const bool confirmed = !session || revoke(*session);
         Discard(session);
+        if (forgotten) backend_->Close();
         lock.lock();
         if (!shutdown_) Publish(SessionPhase::Failed, {},
             forgotten ? error : SignInStatus::CredentialStorageFailed, !confirmed);

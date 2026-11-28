@@ -52,6 +52,7 @@ MenuEvents HandleMenuInput(const AppState& state, FrameInput& input,
             case 3: input.requestedScreen = Screen::Settings; break;
             case 4: input.closeRequested = true; break;
             case 5: input.requestedScreen = Screen::Profile; break;
+            case kHomeAccountAction: events.accountAction = homeUi.account.action; break;
             default: break;
         }
         return events;

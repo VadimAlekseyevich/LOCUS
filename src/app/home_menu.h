@@ -3,6 +3,7 @@
 #include "app/ui_focus.h"
 #include "app/ui_motion.h"
 #include "app/player_profile_view.h"
+#include "app/account_view.h"
 
 #include <array>
 #include <string>
@@ -11,8 +12,10 @@ namespace locus::app {
 
 // Approved Home reference: four centered actions and a quiet Exit.
 // Every rectangle is in the shared virtual 960x540 UI canvas.
-constexpr int kHomeMenuActionCount = 6;
+constexpr int kHomeMenuActionCount = 7;
+constexpr int kHomeAccountAction = 6;
 inline Rectangle HomeMenuButton(int index) noexcept {
+    if (index == kHomeAccountAction) return {746.0f, 18.0f, 190.0f, 32.0f};
     if (index == 5) return {24.0f, 18.0f, 530.0f, 32.0f};
     if (index == 4) return {784.0f, 458.0f, 122.0f, 46.0f};
     if (index < 0 || index >= 4) return {};
@@ -41,6 +44,10 @@ struct HomeMenuUi {
     std::array<UiMotionState, kHomeMenuActionCount> motion{};
     bool active = false;
     PlayerProfileView profile;
+    account::HomeView account;
+    bool ActionEnabled(int id) const noexcept {
+        return id != kHomeAccountAction || (account.visible && account.action != account::Action::None);
+    }
 
     void Reset() noexcept {
         focus.Clear();
@@ -53,14 +60,16 @@ struct HomeMenuUi {
         active = true;
         focus.Begin();
         // Same tab order as the native Home document; Exit remains last.
-        for (int i : {0,1,2,3,5,4}) focus.Add(i,HomeMenuButton(i));
+        for (int i : {0,1,2,3,5,6,4})
+            if (i != kHomeAccountAction || account.visible)
+                focus.Add(i,HomeMenuButton(i),!ActionEnabled(i));
         focus.Validate();
         if (input.tabPressed) focus.Move(input.backwards);
 
         int action = -1;
         if (input.pointerPressed && input.pointerValid) {
             for (int i = 0; i < kHomeMenuActionCount; ++i) {
-                if (UiPointerHit(HomeMenuButton(i), input.pointer)) {
+                if (UiPointerHit(HomeMenuButton(i), input.pointer, !ActionEnabled(i))) {
                     action = i;
                     break;
                 }
@@ -79,7 +88,7 @@ struct HomeMenuUi {
         homeMotion.selectionSeconds = 0.095;
         for (int i = 0; i < kHomeMenuActionCount; ++i) {
             const bool hovered = input.pointerValid &&
-                UiPointerHit(HomeMenuButton(i), input.pointer);
+                UiPointerHit(HomeMenuButton(i), input.pointer, !ActionEnabled(i));
             UiInteraction state{};
             state.hovered = hovered;
             state.pressed = hovered && input.pointerDown;

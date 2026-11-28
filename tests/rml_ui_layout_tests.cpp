@@ -200,6 +200,19 @@ int main(int argc, char** argv) {
         auto* play = home->GetElementById("home-play");
         auto* editor = home->GetElementById("home-editor");
         auto* exit = home->GetElementById("home-exit");
+        auto* accountPanel = home->GetElementById("home-account-panel");
+        auto* accountButton = home->GetElementById("home-account");
+        auto* localProfile = home->GetElementById("home-profile");
+        ok &= Check(accountPanel && accountButton && localProfile, "HOME online and local controls");
+        if (accountPanel && accountButton && localProfile) {
+            accountPanel->SetProperty("display","flex");
+            context->Update();
+            ok &= Check(accountButton->GetAbsoluteLeft() >= localProfile->GetAbsoluteLeft()+localProfile->GetOffsetWidth() &&
+                accountButton->GetAbsoluteLeft()+accountButton->GetOffsetWidth() <= 960.1f &&
+                LabelCentered(accountButton), "online button fits beside local profile");
+            accountPanel->SetProperty("display","none");
+            context->Update();
+        }
         ok &= Check(actions && play && editor && exit,
                     "HOME has real navigation controls");
         if (play && editor && exit && wordmark) {

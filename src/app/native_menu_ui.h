@@ -54,7 +54,7 @@ public:
     Rectangle HomeWordmarkBounds() const noexcept;
     // Share RmlUi input and rendering for HOME and PLAY; both retain fallback.
     void UpdateHome(FrameInput& input, const std::string& status,
-                    const std::string& profileLabel);
+                    const HomeMenuUi& home, MenuEvents& events);
     void UpdateEditor(EditorUiState& ui, FrameInput& input,
                       const std::string& title, bool dirty,
                       double rate, bool playing, long long songTimeMs,
@@ -122,6 +122,7 @@ private:
     Page visiblePage_ = Page::None;
     int pendingHomeAction_ = -1;
     std::string lastHomeNotice_, lastProfileLabel_;
+    account::HomeView lastAccountView_;
     int lastWidth_ = -1, lastHeight_ = -1;
     float lastDensity_ = -1.0f;
     int lastEditorLayoutTab_ = -1;

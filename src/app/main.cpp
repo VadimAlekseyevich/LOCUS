@@ -1,5 +1,7 @@
 #include "app/async_player_summary.h"
 #include "app/player_profile.h"
+#include "app/account_session.h"
+#include "app/account_view.h"
 #include "core/route.h"
 #include "core/judgement.h"
 #include "app/demo_transport.h"
@@ -73,6 +75,8 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <cstdlib>
+#include <memory>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -378,6 +382,30 @@ int main(int argc, char** argv) try {
     const locus::app::RunResultsStore resultsStore(userData / L"Results",localPlayer.id);
     locus::app::AsyncResultHistory historyReader(userData / L"Results",localPlayer.id);
     locus::app::AsyncPlayerSummary playerSummary(resultsStore);
+    // Online is explicitly enabled by the operator/developer. No default
+    // public endpoint, and no network worker for an offline installation.
+    std::unique_ptr<locus::app::account::SessionManager> onlineAccount;
+    std::uint64_t onlineRevision = ~std::uint64_t(0);
+#ifdef _WIN32
+    if (!smokeWindow && !debugScreens) {
+        const auto* issuer = std::getenv("LOCUS_ONLINE_ISSUER");
+        const auto* api = std::getenv("LOCUS_ONLINE_API");
+        if (issuer || api) {
+            locus::app::account::Config config{issuer ? issuer : "", api ? api : "", "locus-desktop"};
+            if (locus::app::account::DiscoveryTarget(config)) {
+                try {
+                    onlineAccount = std::make_unique<locus::app::account::SessionManager>(
+                        locus::app::account::CreateWindowsSessionBackend(std::move(config)));
+                    onlineAccount->BeginRestore();
+                } catch (...) {
+                    homeUi.account = {true, locus::app::account::Action::None, "OFFLINE", "ACCOUNT WORKER UNAVAILABLE"};
+                }
+            } else {
+                homeUi.account = {true, locus::app::account::Action::None, "OFFLINE", "INVALID ONLINE CONFIGURATION"};
+            }
+        }
+    }
+#endif
     locus::app::RunKey playedRunKey;
     std::string playedGameplayRevision;
     std::string playedSongTitle = "BUILT-IN DEMO";
@@ -412,6 +440,13 @@ int main(int argc, char** argv) try {
     while (state.running) {
         if (state.screen==Screen::Home || state.screen==Screen::Profile)
             playerSummary.Update(homeUi.profile);
+        if (onlineAccount && state.screen == Screen::Home) {
+            const auto view = onlineAccount->Snapshot();
+            if (onlineRevision != view.revision) {
+                homeUi.account = locus::app::account::Present(view);
+                onlineRevision = view.revision;
+            }
+        }
         // Publish the worker result only from the main thread. Any import or
         // editor Save that advanced the catalog revision while scanning
         // invalidates the worker snapshot and queues a fresh scan.
@@ -552,7 +587,7 @@ int main(int argc, char** argv) try {
                 if (nativeEditorConfirmation)
                     editorChoice = nativeMenu.UpdateConfirmation(confirmation);
             } else if (state.screen == Screen::Home && nativeMenu.HomeAvailable())
-                nativeMenu.UpdateHome(input, menuStatus, homeUi.profile.label);
+                nativeMenu.UpdateHome(input, menuStatus, homeUi, menuEvents);
             else if (state.screen == Screen::Profile && nativeMenu.ProfileAvailable())
                 nativeMenu.UpdateProfile(input,homeUi.profile);
             else if (state.screen == Screen::SongSelect && nativeMenu.Available())
@@ -590,6 +625,12 @@ int main(int argc, char** argv) try {
 #endif
                 menuEvents = HandleMenuInput(state, input, library, libraryUi,
                     settings, settingsUi, draftSkin, skinUi, homeUi, inputNow);
+        }
+        if (onlineAccount && state.screen == Screen::Home) {
+            if (menuEvents.accountAction == locus::app::account::Action::SignIn)
+                onlineAccount->BeginSignIn();
+            else if (menuEvents.accountAction == locus::app::account::Action::SignOut)
+                onlineAccount->SignOut();
         }
         if ((state.screen == Screen::SongSelect || state.screen == Screen::Results) &&
             menuEvents.viewResultIndex >= 0 &&
@@ -1391,6 +1432,7 @@ int main(int argc, char** argv) try {
                     );
     }
 
+    onlineAccount.reset(); // Cancel and join before destroying the UI/window.
     playerSummary.CancelAndJoin();
     historyReader.CancelAndJoin(); // Both readers finish before teardown.
     libraryRefresh.CancelAndJoin(); // No worker survives application teardown.

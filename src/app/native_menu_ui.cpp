@@ -424,6 +424,7 @@ void NativeMenuUi::ProcessEvent(Rml::Event& event) {
         else if (action == "home-settings") pendingHomeAction_ = 3;
         else if (action == "home-exit") pendingHomeAction_ = 4;
         else if (action == "home-profile") pendingHomeAction_=5;
+        else if (action == "home-account") pendingHomeAction_=kHomeAccountAction;
         return;
     }
     if (visiblePage_ == Page::Profile) {
@@ -695,14 +696,29 @@ void NativeMenuUi::UpdateSettings(GameSettings& settings, SettingsUi& ui,
 }
 
 void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status,
-                              const std::string& profileLabel) {
+                              const HomeMenuUi& home, MenuEvents& events) {
     if (!HomeAvailable()) return;
+    const auto& profileLabel = home.profile.label;
     Activate(Page::Home);
     pendingHomeAction_ = -1;
     if (profileLabel!=lastProfileLabel_) {
         if (auto* element=homeDocument_->GetElementById("home-profile-label"))
             UpdateRmlText(element,profileLabel);
         lastProfileLabel_=profileLabel;
+    }
+    const auto& accountView = home.account;
+    if (accountView.visible != lastAccountView_.visible || accountView.action != lastAccountView_.action ||
+        accountView.button != lastAccountView_.button || accountView.status != lastAccountView_.status) {
+        if (auto* panel = homeDocument_->GetElementById("home-account-panel"))
+            panel->SetProperty("display", accountView.visible ? "flex" : "none");
+        if (auto* button = homeDocument_->GetElementById("home-account")) {
+            if (accountView.action == account::Action::None) button->SetAttribute("disabled",true);
+            else button->RemoveAttribute("disabled");
+            UpdateRmlText(button, accountView.button);
+        }
+        if (auto* label = homeDocument_->GetElementById("home-account-status"))
+            UpdateRmlText(label, accountView.status);
+        lastAccountView_ = accountView;
     }
     const bool failed = status.find("FAILED") != std::string::npos ||
         status.find("UNAVAILABLE") != std::string::npos ||
@@ -730,6 +746,9 @@ void NativeMenuUi::UpdateHome(FrameInput& input, const std::string& status,
         case 3: input.requestedScreen = Screen::Settings; break;
         case 4: input.closeRequested = true; break;
         case 5: input.requestedScreen=Screen::Profile; break;
+        case kHomeAccountAction:
+            if (accountView.visible) events.accountAction = accountView.action;
+            break;
         default: break;
     }
     // Enter on a focused button cannot double-trigger the Home PLAY shortcut.

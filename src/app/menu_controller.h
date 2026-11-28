@@ -18,6 +18,7 @@ inline SkinCommand SkinFileShortcut(const FrameInput& input) noexcept {
 }
 
 struct MenuEvents {
+    account::Action accountAction = account::Action::None;
     bool import = false;
     bool importIntoSelected = false;
     bool exportSelected = false;

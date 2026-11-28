@@ -59,7 +59,21 @@ ID in Credential Manager, scoped to the configured issuer/API/client,
 and holds a per-Windows-user session lease across processes. Restore consumes
 the saved credential before refresh, validates the server player and saves
 only the rotated token. A crash or network failure may require login again.
-The startup/UI wiring remains pending. The private API must also have a trusted HTTPS listener or
+The Windows desktop wires startup restore and a separate Home online
+account control when the trusted operator configuration is supplied.
+Set the following environment variables before starting LOCUS (PowerShell):
+
+```powershell
+$env:LOCUS_ONLINE_ISSUER = 'https://127.0.0.1:5444/realms/locus'
+$env:LOCUS_ONLINE_API = 'https://127.0.0.1:5445'
+```
+
+The API origin above is an example: configure a trusted HTTPS endpoint
+at that address (or substitute your actual TLS ingress). No trailing slash.
+Client ID is locus-desktop. Start the game in this environment; the Home
+online control allows sign-in, cancellation and sign-out. The local profile
+and existing local results remain separate. Without these variables the
+game starts offline and creates no account worker. The private API must also have a trusted HTTPS listener or
 TLS ingress for the native client; the current HTTP smoke endpoints are not
 valid native transport targets. The native flow validates state and issuer,
 uses the system browser and binds the listener to loopback only. An OIDC flow consuming an ID

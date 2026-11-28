@@ -303,6 +303,14 @@ int main() {
                 Near(home.motion[2].Frame(3.46).hover, 1.0f),
                 "Home hover settles in 55ms, not the old 130ms");
     home.Reset();
+    home.account = {true, account::Action::SignIn, "SIGN IN", "OFFLINE"};
+    homeInput.pointer = {HomeMenuButton(kHomeAccountAction).x+4,HomeMenuButton(kHomeAccountAction).y+4};
+    ok &= Check(home.Update(homeInput,4.0)==kHomeAccountAction, "online button clickable");
+    home.account.action = account::Action::None;
+    ok &= Check(home.Update(homeInput,4.1)==-1, "disabled online button ignores clicks");
+    home.account.visible = false;
+    ok &= Check(home.Update(homeInput,4.2)==-1, "hidden online button ignores clicks");
+    home.Reset();
     ok &= Check(!home.active && home.focus.Focused() == -1 &&
                 Near(home.motion[2].Frame(4.0).hover, 0.0f),
                 "Home focus/motion do not persist into other screens");

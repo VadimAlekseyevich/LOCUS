@@ -36,3 +36,10 @@
 }
 
 #home-profile { position:absolute; left:20dp; top:18dp; width:55%; max-width:480dp; height:32dp; font-size:13dp; color:#d0c7fa; }
+
+/* The optional online control never replaces the local profile. */
+#home-account-panel { display:none; position:absolute; right:20dp; top:18dp;
+  flex-direction:column; align-items:flex-end; width:38%; max-width:320dp; }
+#home-account { width:100%; max-width:190dp; height:32dp; font-size:13dp; }
+#home-account-status { width:100%; text-align:right; font-size:11dp;
+  color:#d0c7fa; margin-top:3dp; white-space:nowrap; overflow:hidden; }
