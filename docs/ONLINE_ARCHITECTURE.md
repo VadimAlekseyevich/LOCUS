@@ -281,7 +281,9 @@ cryptography or premature optimization; benchmark the actual service.
    content/score budgets, request binding and judgement consistency).
    Separate isolated FFmpeg media decoding implemented: single-file mount,
    exact decoded audio samples, static image dimensions, digest-bound typed
-   response. Desktop decoder parity and chart-duration validation are pending.
+   response. The preparation command binds archive/stage digests, media and validation
+   of all charts against decoded sample duration; desktop decoder parity
+   and durable storage remain pending.
    Independent queue ownership,
    production image provenance and host/reaper acceptance remain pending.
 4. W4.1: immutable blob storage and bounded staging with durable references.

@@ -130,6 +130,23 @@ The file must remain exclusively owned and immutable during the operation.
 This is a separate operator step; it does not itself publish a package
 or attest compatibility with the desktop decoder.
 
+## Complete package preparation
+
+```sh
+dotnet run --project server -- worker prepare /private/input.locuspack /private/empty-stage
+```
+
+Requires both immutable image IDs and a fresh bounded tmpfs stage.
+The private preparation command hashes the original archive, inspects
+and extracts it, independently inventories regular files and verifies
+their content digests, decodes the actual audio/background, then validates
+every chart against the decoded sample duration in a read-only worker.
+The timing worker returns the same inspection, bound to the exact sample
+count and rate. The adapter checks the original archive and stage again
+before returning one typed preparedPackage result. No partial result
+is published. The operator must discard the stage after failures.
+This is not durable storage or a public publication transaction.
+
 ## Current boundaries
 
 SQL defines server IDs, ownership, published revision references, attempt
@@ -139,9 +156,9 @@ to a server player, with at most one binding per issuer per player. No
 identity is linked by display name, email or a desktop ID. The API can resolve validated bearer tokens to these bindings; no production
 identity deployment exists; Keycloak is selected for private development. The HTTP API is read-only; the CI fixture
 inserts synthetic records through SQL. No real publication or
-submission transaction, automated media orchestration, score
+submission transaction, durable object storage, score
 approval workflow, object storage, global PP or frontend yet.
-Next: connect structural/media inspection and immutable storage, and a private
+Next: immutable storage and a private
 authenticated publication/submission vertical slice with
 validated worker DTOs and durable object references.
 

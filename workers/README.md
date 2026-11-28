@@ -14,6 +14,7 @@ ctest --test-dir build-worker -C Release -R locus_worker_protocol_v1 --output-on
 
 ```text
 locus_worker inspect ARCHIVE EMPTY_STAGE
+locus_worker validate-timing STAGE SAMPLE_FRAMES SAMPLE_RATE
 locus_worker verify STAGE DIFFICULTY_ID GAMEPLAY_SHA256 AUDIO_DURATION_MS RATE_PERCENT MOD_FLAGS MOD_SEED REPLAY
 ```
 
@@ -62,3 +63,9 @@ The initial operator-only Linux container isolation is implemented.
 The worker currently revalidates and hashes the whole staged package on
 each job. Cache immutable verified revisions only after a measured need
 and an explicit trusted-storage boundary.
+
+The read-only validate-timing command returns a timingValidation envelope
+with sample frames/rate and the same structural inspection. It checks every
+chart using the smaller of the exact decoded duration and its rounded-ms
+score-job representation. The server preparation orchestrator compares the
+inspection and inventory against the original extraction before accepting.

@@ -40,6 +40,18 @@ internal static class WorkerContainer
         return await RunIsolatedAsync(image, "/usr/local/bin/locus_worker", mounts, command, ct);
     }
 
+    internal static Task<WorkerProcess.Outcome> ValidateTimingAsync(string stage, long frames,
+        int rate, CancellationToken ct)
+    {
+        EnsureOperator();
+        stage = SafePath(stage, true);
+        RejectNestedMounts(stage);
+        return RunIsolatedAsync(Image("LOCUS_WORKER_IMAGE"), "/usr/local/bin/locus_worker",
+            [Mount(stage, "/stage", true)],
+            ["validate-timing", "/stage", frames.ToString(CultureInfo.InvariantCulture),
+                rate.ToString(CultureInfo.InvariantCulture)], ct);
+    }
+
     internal static Task<WorkerProcess.Outcome> DecodeMediaAsync(string input, string format, CancellationToken ct)
     {
         EnsureOperator();

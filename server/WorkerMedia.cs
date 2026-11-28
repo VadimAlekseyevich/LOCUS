@@ -8,13 +8,23 @@ namespace Locus.Server;
 // a client duration, arbitrary path in a worker response or file extension alone.
 internal static class WorkerMedia
 {
-    private sealed record Audio(long SampleFrames, int SampleRate, int Channels, long DurationMs);
-    private sealed record Image(int Width, int Height);
-    private sealed record Result(int ProtocolVersion, bool Ok, string Kind, string Format,
+    internal sealed record Audio(long SampleFrames, int SampleRate, int Channels, long DurationMs);
+    internal sealed record Image(int Width, int Height);
+    internal sealed record Result(int ProtocolVersion, bool Ok, string Kind, string Format,
         string Sha256, long Bytes, Audio? Audio, Image? Image);
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     internal static async Task<int> RunAsync(string input, string expectedHash, CancellationToken ct)
+    {
+        var result = await InspectAsync(input, expectedHash, ct);
+        if (result is null)
+        {
+            WorkerProcess.Write(new { protocolVersion = 1, ok = false, error = "Media rejected." });
+            return 2;
+        }
+        WorkerProcess.Write(result);
+        return 0;
+    }
+
+    internal static async Task<Result?> InspectAsync(string input, string expectedHash, CancellationToken ct)
     {
         if ((Environment.GetEnvironmentVariable("LOCUS_WORKER_MODE") ?? "container") != "container" ||
             !OperatingSystem.IsLinux() || expectedHash.Length != 64 ||
@@ -43,8 +53,7 @@ internal static class WorkerMedia
             Shape(r, "protocolVersion", "ok");
             if (r.GetProperty("protocolVersion").GetInt32() != 1 || r.GetProperty("ok").GetBoolean())
                 throw new InvalidOperationException("Invalid media rejection.");
-            Console.WriteLine("""{"protocolVersion":1,"ok":false,"error":"Media rejected."}""");
-            return 2;
+            return null;
         }
         if (outcome.ExitCode != 0) throw new InvalidOperationException("Decoder failed.");
         using var doc = JsonDocument.Parse(outcome.Output, new JsonDocumentOptions { MaxDepth = 4 });
@@ -80,12 +89,11 @@ internal static class WorkerMedia
                 throw new InvalidOperationException("Invalid decoded image bounds.");
             imageInfo = new(width, height);
         }
-        Console.WriteLine(JsonSerializer.Serialize(new Result(1, true, "mediaInspection", format,
-            expectedHash, size, audioInfo, imageInfo), Json));
-        return 0;
+        return new Result(1, true, "mediaInspection", format,
+            expectedHash, size, audioInfo, imageInfo);
     }
 
-    private static async Task<long> CheckDigestAsync(string path, string expected, long maxBytes, CancellationToken ct)
+    internal static async Task<long> CheckDigestAsync(string path, string expected, long maxBytes, CancellationToken ct)
     {
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
             65536, FileOptions.Asynchronous | FileOptions.SequentialScan);

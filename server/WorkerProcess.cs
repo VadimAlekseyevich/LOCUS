@@ -14,6 +14,20 @@ internal static class WorkerProcess
     {
         if (args.Length == 3 && args[0] == "media")
             return await WorkerMedia.RunAsync(args[1], args[2], ct);
+        if (args.Length == 3 && args[0] == "prepare")
+            return await PackagePreparation.RunAsync(args[1], args[2], ct);
+        var (response, exitCode) = await EvaluateAsync(args, ct);
+        Write(response);
+        return exitCode;
+    }
+
+    internal static void Write(object response) =>
+        Console.WriteLine(JsonSerializer.Serialize(response, response.GetType(),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+
+    internal static async Task<(WorkerContract.Response Response, int ExitCode)> EvaluateAsync(
+        string[] args, CancellationToken ct)
+    {
         if (!(args.Length == 3 && args[0] == "inspect") &&
             !(args.Length == 9 && args[0] == "verify"))
             throw new InvalidOperationException("Invalid worker arguments.");
@@ -41,10 +55,7 @@ internal static class WorkerProcess
         else throw new InvalidOperationException("Unknown worker mode.");
 
         var response = WorkerContract.Parse(outcome.Output, outcome.ExitCode, request);
-        // Emit only validated typed data; never forward the original JSON.
-        Console.WriteLine(JsonSerializer.Serialize(response, response.GetType(),
-            new JsonSerializerOptions(JsonSerializerDefaults.Web)));
-        return outcome.ExitCode;
+        return (response, outcome.ExitCode);
     }
 
     internal static ProcessStartInfo Start(string executable, IEnumerable<string> args)

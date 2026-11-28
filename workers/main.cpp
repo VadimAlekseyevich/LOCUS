@@ -1,5 +1,7 @@
 #include "verification_job.h"
 #include "app/song_archive.h"
+#include "core/chart_json.h"
+#include <algorithm>
 #include <nlohmann/json.hpp>
 #include <charconv>
 #include <filesystem>
@@ -38,20 +40,22 @@ bool ReplayBytes(const fs::path& path,std::string& bytes) {
     return static_cast<bool>(in.read(bytes.data(),static_cast<std::streamsize>(n))) &&
         in.peek()==std::char_traits<char>::eof() && !in.bad();
 }
-int Run(const std::vector<std::string>& args) {
-    std::string error;
-    if (args.size()==4 && args[1]=="inspect") {
-        const auto archive=fs::u8path(args[2]), stage=fs::u8path(args[3]);
-        std::error_code ec;
-        if (!Regular(archive) || fs::symlink_status(stage,ec).type()!=fs::file_type::directory || ec)
-            return Reject("Archive or private staging path is invalid.");
-        if (!app::ExtractSongSetArchive(archive,stage,error)) return Reject(error);
+Json InspectStage(const fs::path& stage, std::string& error,
+                  std::int64_t frames=0, int sampleRate=0) {
         app::PackageRevisionContent revision;
         app::ValidatedPackage package;
-        if (!app::DescribePackageRevision(stage,revision,error,&package)) return Reject(error);
+        if (!app::DescribePackageRevision(stage,revision,error,&package)) return nullptr;
         Json charts=Json::array();
         for (const auto& entry : package.difficulties) {
             const auto& chart=entry.second.chart;
+            if (sampleRate) {
+                auto playable=chart;
+                // Validate against both actual sample duration and the ms
+                // representation used by the current score job.
+                const auto ms=(frames*1000+sampleRate/2)/sampleRate;
+                const auto duration=std::min(static_cast<double>(frames)/sampleRate, ms/1000.0);
+                if (!core::PrepareChartForSong(playable,duration,error)) return nullptr;
+            }
             const auto& digest=revision.difficulties.at(entry.first);
             const auto rating=core::CalculateChartDifficulty(chart.route,chart.offsetSeconds);
             charts.push_back({{"difficultyId",entry.first},{"title",chart.title},
@@ -60,11 +64,34 @@ int Run(const std::vector<std::string>& args) {
         }
         Json art=nullptr;
         if (revision.background) art=Digest(*revision.background);
-        return Output({{"ok",true},{"kind","packageInspection"},{"mediaValidated",false},
+        return {{"protocolVersion",kProtocolVersion},{"ok",true},{"kind","packageInspection"},{"mediaValidated",false},
             {"setId",package.manifest.id},{"title",package.manifest.title},
             {"artist",package.manifest.artist},{"manifest",Digest(revision.manifest)},
             {"audio",Digest(revision.audio)},{"background",art},
-            {"difficultyVersion",core::kChartDifficultyVersion},{"difficulties",charts}},0);
+            {"difficultyVersion",core::kChartDifficultyVersion},{"difficulties",charts}};
+}
+int Run(const std::vector<std::string>& args) {
+    std::string error;
+    if (args.size()==4 && args[1]=="inspect") {
+        const auto archive=fs::u8path(args[2]), stage=fs::u8path(args[3]);
+        std::error_code ec;
+        if (!Regular(archive) || fs::symlink_status(stage,ec).type()!=fs::file_type::directory || ec)
+            return Reject("Archive or private staging path is invalid.");
+        if (!app::ExtractSongSetArchive(archive,stage,error)) return Reject(error);
+        auto result=InspectStage(stage,error);
+        if (result.is_null()) return Reject(error);
+        return Output(std::move(result),0);
+    }
+    if (args.size()==5 && args[1]=="validate-timing") {
+        std::int64_t frames=0;
+        int rate=0;
+        if (!Number(args[3],frames) || !Number(args[4],rate) ||
+            rate<8000 || rate>192000 || frames<=0 || frames>86400LL*rate)
+            return Reject("Invalid decoded sample duration.");
+        auto inspection=InspectStage(fs::u8path(args[2]),error,frames,rate);
+        if (inspection.is_null()) return Reject(error);
+        return Output({{"ok",true},{"kind","timingValidation"},{"sampleFrames",frames},
+            {"sampleRate",rate},{"inspection",std::move(inspection)}},0);
     }
     if (args.size()==10 && args[1]=="verify") {
         worker::ScoreJob job;
@@ -92,7 +119,7 @@ int Run(const std::vector<std::string>& args) {
             {"timedHits",s.timedHits},{"meanErrorMs",s.meanErrorMs},
             {"unstableRate",s.unstableRate},{"histogram",histogram}},0);
     }
-    return Output({{"ok",false},{"error","Usage: inspect ARCHIVE EMPTY_STAGE | verify STAGE DIFFICULTY_ID GAMEPLAY_SHA256 AUDIO_DURATION_MS RATE_PERCENT MOD_FLAGS MOD_SEED REPLAY"}},64);
+    return Output({{"ok",false},{"error","Usage: inspect ARCHIVE EMPTY_STAGE | validate-timing STAGE SAMPLE_FRAMES SAMPLE_RATE | verify STAGE DIFFICULTY_ID GAMEPLAY_SHA256 AUDIO_DURATION_MS RATE_PERCENT MOD_FLAGS MOD_SEED REPLAY"}},64);
 }
 }
 int main(int argc,char** argv) {

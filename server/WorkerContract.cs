@@ -91,7 +91,7 @@ internal static class WorkerContract
         return request is null ? ParseInspection(root) : ParseScore(root, request);
     }
 
-    private static Inspection ParseInspection(JsonElement root)
+    internal static Inspection ParseInspection(JsonElement root)
     {
         Shape(root, "protocolVersion", "ok", "kind", "mediaValidated", "setId", "title",
             "artist", "manifest", "audio", "background", "difficultyVersion", "difficulties");
@@ -192,7 +192,7 @@ internal static class WorkerContract
         return new(size, Hash(element, "sha256", 64));
     }
 
-    private static void Shape(JsonElement element, params string[] names)
+    internal static void Shape(JsonElement element, params string[] names)
     {
         Require(element.ValueKind == JsonValueKind.Object);
         var remaining = new HashSet<string>(names, StringComparer.Ordinal);
@@ -231,7 +231,7 @@ internal static class WorkerContract
         Require(double.IsFinite(value) && value >= min && value <= max);
         return value;
     }
-    private static void Require(bool condition)
+    internal static void Require(bool condition)
     {
         if (!condition) throw new InvalidOperationException("Invalid worker protocol response or request.");
     }
